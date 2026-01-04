@@ -10,6 +10,7 @@ import 'package:fastybird_smart_panel/core/widgets/colored_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/colored_switch.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/presentation/widgets/tiles/button.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
@@ -286,7 +287,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
   }
 
-  /// Build a single role tile
+  /// Build a single role tile using existing ButtonTileBox components
   Widget _buildRoleTile(
     BuildContext context,
     _RoleGroup group,
@@ -295,136 +296,59 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final isToggling = _togglingRoles.contains(group.role);
     final isOn = group.isOn;
 
+    // Build subtitle with device count and optional brightness
+    final subtitleText = group.hasBrightness && group.avgBrightness != null && isOn
+        ? '${group.onCount}/${group.totalCount} on • ${group.avgBrightness}%'
+        : '${group.onCount}/${group.totalCount} on';
+
     return GestureDetector(
-      onTap:
-          isToggling ? null : () => _toggleRole(context, group, devicesService),
       onLongPress: () => _openRoleDetail(context, group, devicesService),
-      child: Container(
-        decoration: BoxDecoration(
-          color: isOn
-              ? (Theme.of(context).brightness == Brightness.light
-                  ? AppColorsLight.warning.withValues(alpha: 0.15)
-                  : AppColorsDark.warning.withValues(alpha: 0.2))
-              : (Theme.of(context).brightness == Brightness.light
-                  ? AppBgColorLight.page.withValues(alpha: 0.5)
-                  : AppBgColorDark.overlay.withValues(alpha: 0.5)),
-          borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          border: Border.all(
-            color: isOn
-                ? (Theme.of(context).brightness == Brightness.light
-                    ? AppColorsLight.warning.withValues(alpha: 0.3)
-                    : AppColorsDark.warning.withValues(alpha: 0.4))
-                : Colors.transparent,
-            width: 1,
-          ),
-        ),
-        child: Padding(
-          padding: AppSpacings.paddingSm,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Role icon
-              _buildRoleIcon(context, group.role, isOn, isToggling),
-              AppSpacings.spacingSmVertical,
-              // Role name
-              Text(
-                _getRoleName(context, group.role),
-                style: TextStyle(
-                  fontSize: AppFontSize.base,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).brightness == Brightness.light
-                      ? AppTextColorLight.primary
-                      : AppTextColorDark.primary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              AppSpacings.spacingXsVertical,
-              // Device count and state
-              Text(
-                '${group.onCount}/${group.totalCount} on',
-                style: TextStyle(
-                  fontSize: AppFontSize.small,
-                  color: isOn
-                      ? (Theme.of(context).brightness == Brightness.light
-                          ? AppColorsLight.warningDark2
-                          : AppColorsDark.warningDark2)
-                      : (Theme.of(context).brightness == Brightness.light
-                          ? AppTextColorLight.placeholder
-                          : AppTextColorDark.placeholder),
-                ),
-              ),
-              // Brightness if available
-              if (group.hasBrightness && group.avgBrightness != null && isOn)
-                Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Text(
-                    '${group.avgBrightness}%',
-                    style: TextStyle(
-                      fontSize: AppFontSize.extraSmall,
-                      color: Theme.of(context).brightness == Brightness.light
-                          ? AppColorsLight.warningDark2
-                          : AppColorsDark.warningDark2,
-                    ),
-                  ),
-                ),
-            ],
-          ),
+      child: ButtonTileBox(
+        onTap: isToggling ? null : () => _toggleRole(context, group, devicesService),
+        isOn: isOn,
+        isDisabled: isToggling,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ButtonTileIcon(
+              icon: _getRoleIconData(group.role),
+              onTap: isToggling ? null : () => _toggleRole(context, group, devicesService),
+              isOn: isOn,
+              isLoading: isToggling,
+            ),
+            AppSpacings.spacingSmVertical,
+            ButtonTileTitle(
+              title: _getRoleName(context, group.role),
+              isOn: isOn,
+              isLoading: isToggling,
+            ),
+            AppSpacings.spacingXsVertical,
+            ButtonTileSubTitle(
+              subTitle: Text(subtitleText),
+              isOn: isOn,
+              isLoading: isToggling,
+            ),
+          ],
         ),
       ),
     );
   }
 
-  /// Build role icon
-  Widget _buildRoleIcon(
-    BuildContext context,
-    LightTargetRole role,
-    bool isOn,
-    bool isToggling,
-  ) {
-    final iconSize = _screenService.scale(
-      36,
-      density: _visualDensityService.density,
-    );
-
-    if (isToggling) {
-      return SizedBox(
-        width: iconSize,
-        height: iconSize,
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          color: Theme.of(context).colorScheme.primary,
-        ),
-      );
-    }
-
-    return Icon(
-      _getRoleIcon(role, isOn),
-      size: iconSize,
-      color: isOn
-          ? (Theme.of(context).brightness == Brightness.light
-              ? AppColorsLight.warning
-              : AppColorsDark.warning)
-          : (Theme.of(context).brightness == Brightness.light
-              ? AppTextColorLight.placeholder
-              : AppTextColorDark.placeholder),
-    );
-  }
-
-  /// Get icon for a role
-  IconData _getRoleIcon(LightTargetRole role, bool isOn) {
+  /// Get icon data for a role (used with ButtonTileIcon)
+  IconData _getRoleIconData(LightTargetRole role) {
     switch (role) {
       case LightTargetRole.main:
-        return isOn ? MdiIcons.ceilingLight : MdiIcons.ceilingLight;
+        return MdiIcons.ceilingLight;
       case LightTargetRole.task:
-        return isOn ? MdiIcons.deskLamp : MdiIcons.deskLamp;
+        return MdiIcons.deskLamp;
       case LightTargetRole.ambient:
-        return isOn ? MdiIcons.wallSconce : MdiIcons.wallSconceFlat;
+        return MdiIcons.wallSconce;
       case LightTargetRole.accent:
-        return isOn ? MdiIcons.floorLamp : MdiIcons.floorLampOutline;
+        return MdiIcons.floorLamp;
       case LightTargetRole.night:
-        return isOn ? MdiIcons.weatherNight : MdiIcons.moonWaningCrescent;
+        return MdiIcons.weatherNight;
       case LightTargetRole.other:
-        return isOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline;
+        return MdiIcons.lightbulbOutline;
     }
   }
 
