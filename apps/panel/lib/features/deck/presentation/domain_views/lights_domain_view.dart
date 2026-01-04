@@ -791,7 +791,7 @@ class _LightRoleDetailPage extends StatefulWidget {
 }
 
 class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
