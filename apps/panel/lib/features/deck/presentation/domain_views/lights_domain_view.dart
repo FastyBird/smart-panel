@@ -1076,9 +1076,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           if (channel.hasColor && channel.on) {
             final color = _getChannelColorSafe(channel);
             if (color != null) {
-              r += color.red;
-              g += color.green;
-              b += color.blue;
+              r += color.r.toInt();
+              g += color.g.toInt();
+              b += color.b.toInt();
               count++;
             }
           }
@@ -1205,7 +1205,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            anyOn ? localizations.light_state_on : localizations.light_state_off,
+            anyOn ? 'On' : localizations.light_state_off,
             style: TextStyle(
               color: Theme.of(context).brightness == Brightness.light
                   ? AppTextColorLight.regular
@@ -1221,7 +1221,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           ),
           Text(
             anyOn
-                ? localizations.light_state_on_description
+                ? 'Light is on'
                 : localizations.light_state_off_description,
             style: TextStyle(
               color: Theme.of(context).brightness == Brightness.light
