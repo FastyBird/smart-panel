@@ -1,7 +1,7 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_data_type.dart';
+import 'package:fastybird_smart_panel/api/models/devices_module_permission_type.dart';
 import 'package:fastybird_smart_panel/api/models/devices_module_property_category.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/model.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/data.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/data_types.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 
@@ -14,9 +14,9 @@ abstract class ChannelPropertyModel extends Model {
 
   final String? _name;
 
-  final List<Permission> _permission;
+  final List<DevicesModulePermissionType> _permission;
 
-  final DataType _dataType;
+  final DevicesModuleDataType _dataType;
   final String? _unit;
   final FormatType? _format;
   final InvalidValueType? _invalid;
@@ -30,8 +30,8 @@ abstract class ChannelPropertyModel extends Model {
     required String channel,
     DevicesModulePropertyCategory category = DevicesModulePropertyCategory.generic,
     String? name,
-    List<Permission> permission = const [],
-    DataType dataType = DataType.unknown,
+    List<DevicesModulePermissionType> permission = const [],
+    DevicesModuleDataType dataType = DevicesModuleDataType.unknown,
     String? unit,
     FormatType? format,
     InvalidValueType? invalid,
@@ -61,9 +61,9 @@ abstract class ChannelPropertyModel extends Model {
 
   String? get name => _name;
 
-  List<Permission> get permission => _permission;
+  List<DevicesModulePermissionType> get permission => _permission;
 
-  DataType get dataType => _dataType;
+  DevicesModuleDataType get dataType => _dataType;
 
   String? get unit => _unit;
 
@@ -80,16 +80,16 @@ abstract class ChannelPropertyModel extends Model {
   bool get isReadable {
     return _permission.any(
       (permission) =>
-          permission == Permission.readOnly ||
-          permission == Permission.readWrite,
+          permission == DevicesModulePermissionType.ro ||
+          permission == DevicesModulePermissionType.rw,
     );
   }
 
   bool get isWritable {
     return _permission.any(
       (permission) =>
-          permission == Permission.writeOnly ||
-          permission == Permission.readWrite,
+          permission == DevicesModulePermissionType.wo ||
+          permission == DevicesModulePermissionType.rw,
     );
   }
 

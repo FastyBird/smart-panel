@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:fastybird_smart_panel/modules/devices/types/data_types.dart';
+import 'package:fastybird_smart_panel/api/models/devices_module_data_type.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
@@ -37,7 +37,7 @@ class ValueUtils {
 
   static String? _formatNumber({
     required NumberValueType value,
-    required DataType dataType,
+    required DevicesModuleDataType dataType,
     required FormatType? format,
     required InvalidValueType? invalid,
     int? scale,
@@ -61,14 +61,14 @@ class ValueUtils {
         : numValue.toString();
   }
 
-  static bool _isIntegerType(DataType dataType) {
+  static bool _isIntegerType(DevicesModuleDataType dataType) {
     return [
-      DataType.char,
-      DataType.uchar,
-      DataType.short,
-      DataType.ushort,
-      DataType.int,
-      DataType.uint
+      DevicesModuleDataType.char,
+      DevicesModuleDataType.uchar,
+      DevicesModuleDataType.short,
+      DevicesModuleDataType.ushort,
+      DevicesModuleDataType.int,
+      DevicesModuleDataType.uint
     ].contains(dataType);
   }
 

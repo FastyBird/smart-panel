@@ -1,12 +1,12 @@
-import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene.dart';
+import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_category.dart';
-import 'package:fastybird_smart_panel/api/models/spaces_module_data_space.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_category.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_type.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/room_overview_model_builder.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
-import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
+import 'package:fastybird_smart_panel/modules/scenes/views/scenes/view.dart';
+import 'package:fastybird_smart_panel/modules/spaces/views/spaces/view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -42,12 +42,12 @@ DisplayModel createDisplay({
 }
 
 // Helper to create a room (space)
-SpacesModuleDataSpace createRoom({
+SpaceView createRoom({
   String id = 'room-1',
   String name = 'Living Room',
   String? icon = 'living-room',
 }) {
-  return SpacesModuleDataSpace(
+  return SpaceView(
     id: id,
     type: SpacesModuleDataSpaceType.room,
     category: SpacesModuleDataSpaceCategory.livingRoom,
@@ -56,13 +56,11 @@ SpacesModuleDataSpace createRoom({
     displayOrder: 0,
     suggestionsEnabled: true,
     parentId: null,
-    createdAt: DateTime(2024, 1, 1),
-    updatedAt: null,
   );
 }
 
 // Helper to create a scene
-ScenesModuleDataScene createScene({
+SceneView createScene({
   String id = 'scene-1',
   String name = 'Scene',
   ScenesModuleDataSceneCategory category = ScenesModuleDataSceneCategory.generic,
@@ -70,7 +68,7 @@ ScenesModuleDataScene createScene({
   bool triggerable = true,
   int order = 0,
 }) {
-  return ScenesModuleDataScene(
+  return SceneView(
     id: id,
     name: name,
     description: null,
@@ -80,8 +78,6 @@ ScenesModuleDataScene createScene({
     order: order,
     category: category,
     actions: const [],
-    createdAt: DateTime(2024, 1, 1),
-    updatedAt: null,
   );
 }
 

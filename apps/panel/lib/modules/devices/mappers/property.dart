@@ -1,8 +1,8 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_data_type.dart';
+import 'package:fastybird_smart_panel/api/models/devices_module_permission_type.dart';
 import 'package:fastybird_smart_panel/api/models/devices_module_property_category.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/properties/generic_properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/properties/properties.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/data.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/data_types.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/active.dart';
@@ -106,8 +106,8 @@ T _createPropertyView<T extends ChannelPropertyView>(
     required String channel,
     DevicesModulePropertyCategory category,
     String? name,
-    List<Permission> permission,
-    DataType dataType,
+    List<DevicesModulePermissionType> permission,
+    DevicesModuleDataType dataType,
     String? unit,
     FormatType? format,
     InvalidValueType? invalid,

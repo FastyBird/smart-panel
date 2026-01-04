@@ -1,7 +1,7 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_data_type.dart';
+import 'package:fastybird_smart_panel/api/models/devices_module_permission_type.dart';
 import 'package:fastybird_smart_panel/api/models/devices_module_property_category.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/properties/properties.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/data.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/data_types.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/plugins/devices-shelly-v1/constants.dart';
@@ -13,7 +13,7 @@ class ShellyV1ChannelPropertyModel extends ChannelPropertyModel {
     super.category = DevicesModulePropertyCategory.generic,
     super.name,
     super.permission = const [],
-    super.dataType = DataType.unknown,
+    super.dataType = DevicesModuleDataType.unknown,
     super.unit,
     super.format,
     super.invalid,
@@ -33,10 +33,10 @@ class ShellyV1ChannelPropertyModel extends ChannelPropertyModel {
       category: DevicesModulePropertyCategory.fromJson(json['category']),
       name: json['name'],
       permission: (json['permission'] as List<dynamic>? ?? [])
-          .map((e) => Permission.fromValue(e.toString()))
-          .whereType<Permission>()
+          .map((e) => DevicesModulePermissionType.fromJson(e.toString()))
+          .where((e) => e != DevicesModulePermissionType.$unknown)
           .toList(),
-      dataType: DataType.fromValue(json['data_type']) ?? DataType.unknown,
+      dataType: DevicesModuleDataType.fromJson(json['data_type']),
       unit: json['unit'],
       format:
           json['format'] != null ? FormatType.fromJson(json['format']) : null,
