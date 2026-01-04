@@ -1,4 +1,4 @@
-import 'package:fastybird_smart_panel/modules/dashboard/types/weather_data_field.dart';
+import 'package:fastybird_smart_panel/plugins/data-sources-weather/types/weather_data_field.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/data_sources/view.dart';
 import 'package:flutter/material.dart';
 
