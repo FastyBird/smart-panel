@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
@@ -63,23 +64,24 @@ class DeviceDetailPage extends StatelessWidget {
       }
 
       return Scaffold(
-        appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: Row(
-            children: [
-              Icon(buildDeviceIcon(device.category, device.icon)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  device.name,
-                  overflow: TextOverflow.ellipsis,
+        appBar: AppTopBar(
+          title: device.name,
+          icon: buildDeviceIcon(device.category, device.icon),
+          actions: [
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Icon(
+                MdiIcons.close,
+                size: _screenService.scale(
+                  16,
+                  density: _visualDensityService.density,
                 ),
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppTextColorLight.regular
+                    : AppTextColorDark.regular,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
         body: buildDeviceWidget(device),
       );
