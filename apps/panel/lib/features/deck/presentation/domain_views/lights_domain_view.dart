@@ -882,6 +882,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     bool hasBrightness = false;
     bool hasTemperature = false;
     bool hasColor = false;
+    bool hasWhite = false;
 
     for (final target in lightTargets) {
       final device = devicesService.getDevice(target.deviceId);
@@ -891,8 +892,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           orElse: () => device.lightChannels.first,
         );
         if (channel.hasBrightness) hasBrightness = true;
-        if (target.hasColorTemp) hasTemperature = true;
-        if (target.hasColor) hasColor = true;
+        if (channel.hasTemperature) hasTemperature = true;
+        if (channel.hasColor) hasColor = true;
+        if (channel.hasColorWhite) hasWhite = true;
       }
     }
 
@@ -901,6 +903,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     if (hasBrightness) _availableModes.add(_LightRoleMode.brightness);
     if (hasColor) _availableModes.add(_LightRoleMode.color);
     if (hasTemperature) _availableModes.add(_LightRoleMode.temperature);
+    if (hasWhite) _availableModes.add(_LightRoleMode.white);
 
     // Set initial mode to brightness if available, otherwise first available
     if (_availableModes.length > 1 &&
@@ -1158,6 +1161,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         return _buildColorSlider(context, elementMaxSize);
       case _LightRoleMode.temperature:
         return _buildTemperatureSlider(context, elementMaxSize);
+      case _LightRoleMode.white:
+        return _buildWhiteSlider(context, elementMaxSize);
       case _LightRoleMode.off:
         return _buildBrightnessSlider(
           context,
@@ -1290,6 +1295,38 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     );
   }
 
+  /// Build white slider (placeholder)
+  Widget _buildWhiteSlider(BuildContext context, double elementMaxSize) {
+    return ColoredSlider(
+      value: 128,
+      min: 0,
+      max: 255,
+      enabled: true,
+      vertical: true,
+      trackWidth: elementMaxSize,
+      showThumb: false,
+      onValueChanged: (value) {
+        // TODO: Implement white channel control for all devices
+      },
+      activeTrackColor: AppColors.white,
+      inner: [
+        Positioned(
+          left: _screenService.scale(20, density: _visualDensityService.density),
+          child: RotatedBox(
+            quarterTurns: 1,
+            child: Icon(
+              MdiIcons.lightbulbOutline,
+              size: _screenService.scale(40, density: _visualDensityService.density),
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTextColorLight.regular
+                  : AppTextColorDark.regular,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   /// Build devices list
   Widget _buildDevicesList(
     BuildContext context,
@@ -1403,6 +1440,11 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
             return AppBottomNavigationItem(
               icon: Icon(MdiIcons.thermometer),
               label: localizations.light_mode_temperature,
+            );
+          case _LightRoleMode.white:
+            return AppBottomNavigationItem(
+              icon: Icon(MdiIcons.lightbulbOutline),
+              label: localizations.light_mode_white,
             );
         }
       }).toList(),
@@ -1558,4 +1600,5 @@ enum _LightRoleMode {
   brightness,
   color,
   temperature,
+  white,
 }
