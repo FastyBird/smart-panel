@@ -892,7 +892,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           orElse: () => device.lightChannels.first,
         );
         if (channel.hasBrightness) hasBrightness = true;
-        if (channel.hasTemperature) hasTemperature = true;
+        if (target.hasColorTemp) hasTemperature = true;
         if (channel.hasColor) hasColor = true;
         if (channel.hasColorWhite) hasWhite = true;
       }
