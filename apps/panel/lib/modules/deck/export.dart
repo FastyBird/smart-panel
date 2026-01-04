@@ -21,3 +21,6 @@ export 'package:fastybird_smart_panel/modules/deck/intents/intents_service.dart'
 
 // Events
 export 'package:fastybird_smart_panel/modules/deck/events/navigate_to_deck_item.dart';
+
+// Presentation
+export 'package:fastybird_smart_panel/modules/deck/presentation/widgets/button_tile.dart';
