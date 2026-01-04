@@ -78,12 +78,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     try {
       _spacesService = locator<SpacesService>();
-      _spacesService?.addListener(_onDataChanged);
+      _spacesService?.addListener(_onSpacesDataChanged);
     } catch (_) {}
 
     try {
       _devicesService = locator<DevicesService>();
-      _devicesService?.addListener(_onDataChanged);
+      _devicesService?.addListener(_onDevicesDataChanged);
     } catch (_) {}
 
     // Fetch light targets for this space
@@ -104,16 +104,23 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   @override
   void dispose() {
-    _spacesService?.removeListener(_onDataChanged);
-    _devicesService?.removeListener(_onDataChanged);
+    _spacesService?.removeListener(_onSpacesDataChanged);
+    _devicesService?.removeListener(_onDevicesDataChanged);
     super.dispose();
   }
 
-  void _onDataChanged() {
+  void _onSpacesDataChanged() {
+    // SpacesService notification means data is already updated, just rebuild UI
     if (mounted) {
-      // Re-fetch light targets when devices change (e.g., device assigned/unassigned from space)
-      _spacesService?.fetchLightTargetsForSpace(_roomId);
       setState(() {});
+    }
+  }
+
+  void _onDevicesDataChanged() {
+    // DevicesService notification means device was updated (e.g., assigned/unassigned from space)
+    // Re-fetch light targets to get latest data
+    if (mounted) {
+      _spacesService?.fetchLightTargetsForSpace(_roomId);
     }
   }
 
@@ -840,12 +847,12 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
     try {
       _spacesService = locator<SpacesService>();
-      _spacesService?.addListener(_onDataChanged);
+      _spacesService?.addListener(_onSpacesDataChanged);
     } catch (_) {}
 
     try {
       _devicesService = locator<DevicesService>();
-      _devicesService?.addListener(_onDataChanged);
+      _devicesService?.addListener(_onDevicesDataChanged);
     } catch (_) {}
 
     // Initialize available modes
@@ -855,20 +862,27 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
   @override
   void dispose() {
     _brightnessDebounceTimer?.cancel();
-    _spacesService?.removeListener(_onDataChanged);
-    _devicesService?.removeListener(_onDataChanged);
+    _spacesService?.removeListener(_onSpacesDataChanged);
+    _devicesService?.removeListener(_onDevicesDataChanged);
     super.dispose();
   }
 
-  void _onDataChanged() {
+  void _onSpacesDataChanged() {
+    // SpacesService notification means data is already updated, just rebuild UI
     if (mounted) {
-      // Re-fetch light targets when devices change (e.g., device assigned/unassigned from space)
-      _spacesService?.fetchLightTargetsForSpace(widget.roomId);
       _updateAvailableModes();
       setState(() {
         // Reset slider brightness so it reflects actual device state
         _sliderBrightness = null;
       });
+    }
+  }
+
+  void _onDevicesDataChanged() {
+    // DevicesService notification means device was updated (e.g., assigned/unassigned from space)
+    // Re-fetch light targets to get latest data
+    if (mounted) {
+      _spacesService?.fetchLightTargetsForSpace(widget.roomId);
     }
   }
 
