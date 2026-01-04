@@ -70,6 +70,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
     try {
       _devicesService = locator<DevicesService>();
+      _devicesService?.addListener(_onDevicesDataChanged);
     } catch (_) {}
 
     try {
@@ -78,6 +79,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
     try {
       _spacesService = locator<SpacesService>();
+      _spacesService?.addListener(_onSpacesDataChanged);
     } catch (_) {}
 
     // Listen for DeckService changes (e.g., when device categories are loaded)
@@ -97,9 +99,33 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
     }
   }
 
+  void _onDevicesDataChanged() {
+    // Devices updated (e.g., light on/off state changed, device assigned/unassigned)
+    // Refresh live device data and rebuild UI
+    if (mounted) {
+      _refreshLiveData();
+    }
+  }
+
+  void _onSpacesDataChanged() {
+    // Spaces data updated, refresh live data
+    if (mounted) {
+      _refreshLiveData();
+    }
+  }
+
+  Future<void> _refreshLiveData() async {
+    await _fetchLiveDeviceData();
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   @override
   void dispose() {
     _deckService.removeListener(_onDeckServiceChanged);
+    _devicesService?.removeListener(_onDevicesDataChanged);
+    _spacesService?.removeListener(_onSpacesDataChanged);
     super.dispose();
   }
 
