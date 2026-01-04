@@ -227,17 +227,17 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     String stateText;
     if (!canToggle) {
-      stateText = localizations?.device_state_read_only ?? 'Read-only';
+      stateText = 'Read-only';
     } else if (isOn) {
       // Show brightness if available
       if (device.hasBrightness && device.lightChannels.isNotEmpty) {
         final brightness = device.lightChannels.first.brightness;
         stateText = '$brightness%';
       } else {
-        stateText = localizations?.device_state_on ?? 'On';
+        stateText = 'On';
       }
     } else {
-      stateText = localizations?.device_state_off ?? 'Off';
+      stateText = localizations?.light_state_off ?? 'Off';
     }
 
     return Text(
@@ -324,8 +324,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   /// Build the empty state when no devices are found.
   Widget _buildEmptyState(BuildContext context) {
-    final localizations = AppLocalizations.of(context);
-
     return Center(
       child: Padding(
         padding: AppSpacings.paddingLg,
@@ -344,7 +342,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             ),
             AppSpacings.spacingMdVertical,
             Text(
-              localizations?.lights_empty_state_title ?? 'No Lights',
+              'No Lights',
               style: TextStyle(
                 fontSize: AppFontSize.large,
                 fontWeight: FontWeight.w600,
@@ -356,8 +354,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             ),
             AppSpacings.spacingSmVertical,
             Text(
-              localizations?.lights_empty_state_description ??
-                  'No lighting devices found in this room',
+              'No lighting devices found in this room',
               style: TextStyle(
                 fontSize: AppFontSize.small,
                 color: Theme.of(context).brightness == Brightness.light
