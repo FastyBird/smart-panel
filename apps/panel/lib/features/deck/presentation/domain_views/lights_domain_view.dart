@@ -13,7 +13,6 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dar
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
-import 'package:provider/provider.dart';
 
 /// Role group data for displaying in tiles
 class _RoleGroup {
@@ -57,6 +56,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
 
+  SpacesService? _spacesService;
+  DevicesService? _devicesService;
+
   // Track which roles are currently being toggled
   final Set<LightTargetRole> _togglingRoles = {};
   // Track which individual devices are being toggled
@@ -65,15 +67,50 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   String get _roomId => widget.viewItem.roomId;
 
   @override
+  void initState() {
+    super.initState();
+
+    try {
+      _spacesService = locator<SpacesService>();
+      _spacesService?.addListener(_onDataChanged);
+    } catch (_) {}
+
+    try {
+      _devicesService = locator<DevicesService>();
+      _devicesService?.addListener(_onDataChanged);
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    _spacesService?.removeListener(_onDataChanged);
+    _devicesService?.removeListener(_onDataChanged);
+    super.dispose();
+  }
+
+  void _onDataChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final spacesService = _spacesService;
+    final devicesService = _devicesService;
+
     return Scaffold(
       appBar: AppTopBar(
         title: widget.viewItem.title,
         icon: DomainType.lights.icon,
       ),
       body: SafeArea(
-        child: Consumer2<SpacesService, DevicesService>(
-          builder: (context, spacesService, devicesService, _) {
+        child: Builder(
+          builder: (context) {
+            if (spacesService == null || devicesService == null) {
+              return _buildEmptyState(context);
+            }
+
             final lightTargets =
                 spacesService.getLightTargetsForSpace(_roomId);
 
@@ -741,6 +778,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
 
+  SpacesService? _spacesService;
+  DevicesService? _devicesService;
+
   late TabController _tabController;
   int _tabCount = 1;
 
@@ -750,150 +790,180 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 1, vsync: this);
+
+    try {
+      _spacesService = locator<SpacesService>();
+      _spacesService?.addListener(_onDataChanged);
+    } catch (_) {}
+
+    try {
+      _devicesService = locator<DevicesService>();
+      _devicesService?.addListener(_onDataChanged);
+    } catch (_) {}
   }
 
   @override
   void dispose() {
+    _spacesService?.removeListener(_onDataChanged);
+    _devicesService?.removeListener(_onDataChanged);
     _tabController.dispose();
     super.dispose();
   }
 
+  void _onDataChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Consumer2<SpacesService, DevicesService>(
-      builder: (context, spacesService, devicesService, _) {
-        final lightTargets = spacesService
-            .getLightTargetsForSpace(widget.roomId)
-            .where((t) => (t.role ?? LightTargetRole.other) == widget.role)
-            .toList();
+    final spacesService = _spacesService;
+    final devicesService = _devicesService;
 
-        // Calculate aggregate capabilities
-        bool hasBrightness = false;
-        bool hasTemperature = false;
-        bool hasColor = false;
-        int totalBrightness = 0;
-        int brightnessCount = 0;
-        int onCount = 0;
+    if (spacesService == null || devicesService == null) {
+      return Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Text(_getRoleName(widget.role)),
+        ),
+        body: const Center(child: Text('Services not available')),
+      );
+    }
 
-        for (final target in lightTargets) {
-          final device = devicesService.getDevice(target.deviceId);
-          if (device is LightingDeviceView) {
-            final channel = device.lightChannels.firstWhere(
-              (c) => c.id == target.channelId,
-              orElse: () => device.lightChannels.first,
-            );
+    final lightTargets = spacesService
+        .getLightTargetsForSpace(widget.roomId)
+        .where((t) => (t.role ?? LightTargetRole.other) == widget.role)
+        .toList();
 
-            if (channel.on) {
-              onCount++;
-            }
+    // Calculate aggregate capabilities
+    bool hasBrightness = false;
+    bool hasTemperature = false;
+    bool hasColor = false;
+    int totalBrightness = 0;
+    int brightnessCount = 0;
+    int onCount = 0;
 
-            if (channel.hasBrightness) {
-              hasBrightness = true;
-              if (channel.on) {
-                totalBrightness += channel.brightness;
-                brightnessCount++;
-              }
-            }
+    for (final target in lightTargets) {
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is LightingDeviceView) {
+        final channel = device.lightChannels.firstWhere(
+          (c) => c.id == target.channelId,
+          orElse: () => device.lightChannels.first,
+        );
 
-            if (target.hasColorTemp) {
-              hasTemperature = true;
-            }
+        if (channel.on) {
+          onCount++;
+        }
 
-            if (target.hasColor) {
-              hasColor = true;
-            }
+        if (channel.hasBrightness) {
+          hasBrightness = true;
+          if (channel.on) {
+            totalBrightness += channel.brightness;
+            brightnessCount++;
           }
         }
 
-        final avgBrightness = brightnessCount > 0
-            ? (totalBrightness / brightnessCount).round()
-            : 50;
-
-        // Build tab list based on capabilities
-        final List<Widget> tabs = [];
-        final List<Widget> tabViews = [];
-
-        if (hasBrightness) {
-          tabs.add(Tab(icon: Icon(MdiIcons.brightness6)));
-          tabViews.add(_buildBrightnessTab(
-            context,
-            lightTargets,
-            avgBrightness,
-            devicesService,
-          ));
+        if (target.hasColorTemp) {
+          hasTemperature = true;
         }
 
-        if (hasTemperature) {
-          tabs.add(Tab(icon: Icon(MdiIcons.thermometer)));
-          tabViews.add(_buildTemperatureTab(context, lightTargets));
+        if (target.hasColor) {
+          hasColor = true;
         }
+      }
+    }
 
-        if (hasColor) {
-          tabs.add(Tab(icon: Icon(MdiIcons.palette)));
-          tabViews.add(_buildColorTab(context, lightTargets));
-        }
+    final avgBrightness = brightnessCount > 0
+        ? (totalBrightness / brightnessCount).round()
+        : 50;
 
-        // Always add devices tab
-        tabs.add(Tab(icon: Icon(MdiIcons.viewList)));
-        tabViews.add(_buildDevicesTab(
-          context,
-          lightTargets,
-          devicesService,
-        ));
+    // Build tab list based on capabilities
+    final List<Widget> tabs = [];
+    final List<Widget> tabViews = [];
 
-        // Update tab controller if needed
-        if (_tabCount != tabs.length) {
-          _tabCount = tabs.length;
-          _tabController.dispose();
-          _tabController = TabController(length: tabs.length, vsync: this);
-        }
+    if (hasBrightness) {
+      tabs.add(Tab(icon: Icon(MdiIcons.brightness6)));
+      tabViews.add(_buildBrightnessTab(
+        context,
+        lightTargets,
+        avgBrightness,
+        devicesService,
+      ));
+    }
 
-        return Scaffold(
-          appBar: AppBar(
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => Navigator.pop(context),
-            ),
-            title: Row(
-              children: [
-                Icon(_getRoleIcon(widget.role, onCount > 0)),
-                const SizedBox(width: 8),
-                Text(_getRoleName(widget.role)),
-              ],
-            ),
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 16),
-                child: Center(
-                  child: Text(
-                    '${lightTargets.length} devices',
-                    style: TextStyle(
-                      fontSize: AppFontSize.small,
-                      color: Theme.of(context).brightness == Brightness.light
-                          ? AppTextColorLight.regular
-                          : AppTextColorDark.regular,
-                    ),
-                  ),
+    if (hasTemperature) {
+      tabs.add(Tab(icon: Icon(MdiIcons.thermometer)));
+      tabViews.add(_buildTemperatureTab(context, lightTargets));
+    }
+
+    if (hasColor) {
+      tabs.add(Tab(icon: Icon(MdiIcons.palette)));
+      tabViews.add(_buildColorTab(context, lightTargets));
+    }
+
+    // Always add devices tab
+    tabs.add(Tab(icon: Icon(MdiIcons.viewList)));
+    tabViews.add(_buildDevicesTab(
+      context,
+      lightTargets,
+      devicesService,
+    ));
+
+    // Update tab controller if needed
+    if (_tabCount != tabs.length) {
+      _tabCount = tabs.length;
+      _tabController.dispose();
+      _tabController = TabController(length: tabs.length, vsync: this);
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Row(
+          children: [
+            Icon(_getRoleIcon(widget.role, onCount > 0)),
+            const SizedBox(width: 8),
+            Text(_getRoleName(widget.role)),
+          ],
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Center(
+              child: Text(
+                '${lightTargets.length} devices',
+                style: TextStyle(
+                  fontSize: AppFontSize.small,
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTextColorLight.regular
+                      : AppTextColorDark.regular,
                 ),
               ),
-            ],
-            bottom: tabs.length > 1
-                ? TabBar(
-                    controller: _tabController,
-                    tabs: tabs,
-                  )
-                : null,
+            ),
           ),
-          body: tabs.length > 1
-              ? TabBarView(
-                  controller: _tabController,
-                  children: tabViews,
-                )
-              : (tabViews.isNotEmpty
-                  ? tabViews.first
-                  : const SizedBox.shrink()),
-        );
-      },
+        ],
+        bottom: tabs.length > 1
+            ? TabBar(
+                controller: _tabController,
+                tabs: tabs,
+              )
+            : null,
+      ),
+      body: tabs.length > 1
+          ? TabBarView(
+              controller: _tabController,
+              children: tabViews,
+            )
+          : (tabViews.isNotEmpty
+              ? tabViews.first
+              : const SizedBox.shrink()),
     );
   }
 
