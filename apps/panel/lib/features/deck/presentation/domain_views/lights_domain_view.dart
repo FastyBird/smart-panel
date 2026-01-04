@@ -978,7 +978,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     final avgBrightness = brightnessCount > 0
         ? (totalBrightness / brightnessCount).round()
         : 0;
-    final allOn = onCount == lightTargets.length && lightTargets.isNotEmpty;
+    final anyOn = onCount > 0;
 
     return Scaffold(
       appBar: AppTopBar(
@@ -1009,7 +1009,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
                 context,
                 lightTargets,
                 avgBrightness,
-                allOn,
+                anyOn,
                 devicesService,
               ),
             ),
@@ -1029,7 +1029,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     BuildContext context,
     List<LightTargetView> targets,
     int avgBrightness,
-    bool allOn,
+    bool anyOn,
     DevicesService devicesService,
   ) {
     // Check if any devices have color support
@@ -1047,7 +1047,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
     // Get average color from devices that are on and have color
     Color? avgColor;
-    if (hasColorSupport && allOn) {
+    if (hasColorSupport && anyOn) {
       int r = 0, g = 0, b = 0, count = 0;
       for (final target in targets) {
         final device = devicesService.getDevice(target.deviceId);
@@ -1092,7 +1092,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // Brightness display
-                            _buildBrightnessDisplay(context, avgBrightness, allOn),
+                            _buildBrightnessDisplay(context, avgBrightness, anyOn),
                             AppSpacings.spacingMdVertical,
                             // Color box for color-supported devices
                             if (hasColorSupport)
@@ -1552,34 +1552,61 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     List<LightTargetView> targets,
     DevicesService devicesService,
   ) async {
-    // Determine if we should turn on or off (if any are on, turn all off)
-    bool anyOn = false;
-    for (final target in targets) {
-      final device = devicesService.getDevice(target.deviceId);
-      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
-        final channel = device.lightChannels.firstWhere(
-          (c) => c.id == target.channelId,
-          orElse: () => device.lightChannels.first,
-        );
-        if (channel.on) {
-          anyOn = true;
-          break;
+    final localizations = AppLocalizations.of(context);
+
+    try {
+      // Determine if we should turn on or off (if any are on, turn all off)
+      bool anyOn = false;
+      for (final target in targets) {
+        final device = devicesService.getDevice(target.deviceId);
+        if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+          final channel = device.lightChannels.firstWhere(
+            (c) => c.id == target.channelId,
+            orElse: () => device.lightChannels.first,
+          );
+          if (channel.on) {
+            anyOn = true;
+            break;
+          }
         }
       }
-    }
 
-    final newState = !anyOn;
+      final newState = !anyOn;
 
-    for (final target in targets) {
-      final device = devicesService.getDevice(target.deviceId);
-      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
-        final channel = device.lightChannels.firstWhere(
-          (c) => c.id == target.channelId,
-          orElse: () => device.lightChannels.first,
-        );
-        final onProp = channel.onProp;
-        await devicesService.setPropertyValue(onProp.id, newState);
+      int successCount = 0;
+      int failCount = 0;
+
+      for (final target in targets) {
+        final device = devicesService.getDevice(target.deviceId);
+        if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+          final channel = device.lightChannels.firstWhere(
+            (c) => c.id == target.channelId,
+            orElse: () => device.lightChannels.first,
+          );
+          final onProp = channel.onProp;
+          final success = await devicesService.setPropertyValue(onProp.id, newState);
+          if (success) {
+            successCount++;
+          } else {
+            failCount++;
+          }
+        }
       }
+
+      if (!mounted) return;
+
+      if (failCount > 0 && successCount == 0) {
+        AlertBar.showError(
+          this.context,
+          message: localizations?.action_failed ?? 'Failed to toggle lights',
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      AlertBar.showError(
+        this.context,
+        message: localizations?.action_failed ?? 'Failed to toggle lights',
+      );
     }
   }
 
