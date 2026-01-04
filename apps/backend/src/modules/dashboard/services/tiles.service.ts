@@ -223,7 +223,7 @@ export class TilesService {
 		id: string,
 		updateDto: UpdateTileDto,
 	): Promise<TTile> {
-		this.logger.debug(`Updating data source with id=${id}`);
+		this.logger.debug(`Updating tile with id=${id}`);
 
 		const tile = await this.getOneOrThrow<TTile>(id);
 
