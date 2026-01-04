@@ -803,6 +803,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
   int _tabCount = 1;
 
   bool _isSettingBrightness = false;
+  // Local slider value for visual feedback during drag
+  double? _sliderBrightness;
 
   @override
   void initState() {
@@ -818,6 +820,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
       _devicesService = locator<DevicesService>();
       _devicesService?.addListener(_onDataChanged);
     } catch (_) {}
+
+    // Sync tab controller with actual tab count after services are available
+    _updateTabControllerIfNeeded();
   }
 
   @override
@@ -1049,7 +1054,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
           ),
           AppSpacings.spacingMdVertical,
           Text(
-            '$currentBrightness%',
+            '${(_sliderBrightness?.round() ?? currentBrightness)}%',
             style: TextStyle(
               fontSize: AppFontSize.extraLarge,
               fontWeight: FontWeight.bold,
@@ -1063,14 +1068,23 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
             const CircularProgressIndicator()
           else
             Slider(
-              value: currentBrightness.toDouble(),
+              value: _sliderBrightness ?? currentBrightness.toDouble(),
               min: 0,
               max: 100,
               divisions: 20,
-              label: '$currentBrightness%',
-              onChangeEnd: (value) => _setBrightnessForAll(
-                  context, targets, value.round(), devicesService),
-              onChanged: (value) {},
+              label: '${(_sliderBrightness?.round() ?? currentBrightness)}%',
+              onChanged: (value) {
+                setState(() {
+                  _sliderBrightness = value;
+                });
+              },
+              onChangeEnd: (value) {
+                _setBrightnessForAll(
+                    context, targets, value.round(), devicesService);
+                setState(() {
+                  _sliderBrightness = null;
+                });
+              },
             ),
           AppSpacings.spacingMdVertical,
           Text(
