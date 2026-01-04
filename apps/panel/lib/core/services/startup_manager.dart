@@ -7,6 +7,7 @@ import 'package:fastybird_smart_panel/api/models/displays_module_register_displa
 import 'package:fastybird_smart_panel/api/models/displays_module_req_register_display.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/models/discovered_backend.dart';
+import 'package:fastybird_smart_panel/core/interceptors/json_serializer_interceptor.dart';
 import 'package:fastybird_smart_panel/core/interceptors/token_refresh_interceptor.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
@@ -209,6 +210,9 @@ class StartupManagerService {
         contentType: 'application/json',
       ),
     );
+
+    // Add interceptor to serialize Freezed objects to JSON
+    _apiIoService.interceptors.add(JsonSerializerInterceptor());
 
     _apiClient = ApiClient(_apiIoService);
 

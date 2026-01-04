@@ -447,6 +447,15 @@ class DisplayRepository extends ChangeNotifier {
       }
 
       return false;
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        debugPrint('[DISPLAYS MODULE] Failed to update dark mode: ${e.type}');
+        debugPrint('[DISPLAYS MODULE] Status: ${e.response?.statusCode}');
+        debugPrint('[DISPLAYS MODULE] Response: ${e.response?.data}');
+        debugPrint('[DISPLAYS MODULE] Message: ${e.message}');
+        debugPrint('[DISPLAYS MODULE] Error: ${e.error}');
+      }
+      return false;
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[DISPLAYS MODULE] Failed to update dark mode: $e');
