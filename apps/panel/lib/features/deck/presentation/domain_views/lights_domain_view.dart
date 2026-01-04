@@ -1074,11 +1074,13 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
             orElse: () => device.lightChannels.first,
           );
           if (channel.hasColor && channel.on) {
-            final color = channel.color;
-            r += color.red;
-            g += color.green;
-            b += color.blue;
-            count++;
+            final color = _getChannelColorSafe(channel);
+            if (color != null) {
+              r += color.red;
+              g += color.green;
+              b += color.blue;
+              count++;
+            }
           }
         }
       }
@@ -1538,7 +1540,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
             channel?.on == true ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline,
             size: AppFontSize.large,
             color: channel?.on == true
-                ? (channel!.hasColor ? channel.color : Theme.of(context).primaryColor)
+                ? (channel!.hasColor
+                    ? (_getChannelColorSafe(channel) ?? Theme.of(context).primaryColor)
+                    : Theme.of(context).primaryColor)
                 : null,
           ),
           title: Text(
@@ -1764,6 +1768,17 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           _sliderBrightness = null;
         });
       }
+    }
+  }
+
+  /// Safely get color from a light channel
+  /// Returns null if the channel doesn't have valid color properties
+  Color? _getChannelColorSafe(LightChannelView channel) {
+    try {
+      return channel.color;
+    } catch (_) {
+      // Channel has partial color properties but not enough for a valid color
+      return null;
     }
   }
 
