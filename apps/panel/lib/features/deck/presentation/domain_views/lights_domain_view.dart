@@ -814,7 +814,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
         final List<Widget> tabViews = [];
 
         if (hasBrightness) {
-          tabs.add(const Tab(icon: Icon(MdiIcons.brightness6)));
+          tabs.add(Tab(icon: Icon(MdiIcons.brightness6)));
           tabViews.add(_buildBrightnessTab(
             context,
             lightTargets,
@@ -824,17 +824,17 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
         }
 
         if (hasTemperature) {
-          tabs.add(const Tab(icon: Icon(MdiIcons.thermometer)));
+          tabs.add(Tab(icon: Icon(MdiIcons.thermometer)));
           tabViews.add(_buildTemperatureTab(context, lightTargets));
         }
 
         if (hasColor) {
-          tabs.add(const Tab(icon: Icon(MdiIcons.palette)));
+          tabs.add(Tab(icon: Icon(MdiIcons.palette)));
           tabViews.add(_buildColorTab(context, lightTargets));
         }
 
         // Always add devices tab
-        tabs.add(const Tab(icon: Icon(MdiIcons.viewList)));
+        tabs.add(Tab(icon: Icon(MdiIcons.viewList)));
         tabViews.add(_buildDevicesTab(
           context,
           lightTargets,
