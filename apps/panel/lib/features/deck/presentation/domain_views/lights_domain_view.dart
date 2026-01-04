@@ -909,9 +909,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     if (hasTemperature) _availableModes.add(_LightRoleMode.temperature);
     if (hasWhite) _availableModes.add(_LightRoleMode.white);
 
-    // Set initial mode to brightness if available, otherwise first available
-    if (_availableModes.length > 1 &&
-        !_availableModes.contains(_currentMode)) {
+    // Set initial mode to brightness if available, otherwise keep current
+    if (_availableModes.length > 1 && _currentMode == _LightRoleMode.off) {
       _currentMode = _availableModes[1];
     }
   }
