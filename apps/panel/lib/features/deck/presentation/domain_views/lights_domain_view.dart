@@ -64,6 +64,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   // Track which individual devices are being toggled
   final Set<String> _togglingDevices = {};
 
+  bool _isLoading = true;
+
   String get _roomId => widget.viewItem.roomId;
 
   @override
@@ -79,6 +81,21 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       _devicesService = locator<DevicesService>();
       _devicesService?.addListener(_onDataChanged);
     } catch (_) {}
+
+    // Fetch light targets for this space
+    _fetchLightTargets();
+  }
+
+  Future<void> _fetchLightTargets() async {
+    try {
+      await _spacesService?.fetchLightTargetsForSpace(_roomId);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -109,6 +126,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           builder: (context) {
             if (spacesService == null || devicesService == null) {
               return _buildEmptyState(context);
+            }
+
+            if (_isLoading) {
+              return const Center(child: CircularProgressIndicator());
             }
 
             final lightTargets =
