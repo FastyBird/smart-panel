@@ -24,14 +24,29 @@ class GenericTileModel extends TileModel {
   Map<String, dynamic> get configuration => _configuration;
 
   factory GenericTileModel.fromJson(Map<String, dynamic> json) {
+    List<String> dataSources = [];
+
+    if (json['data_source'] is List) {
+      for (var dataSource in json['data_source']) {
+        if (dataSource is String) {
+          dataSources.add(dataSource);
+        } else if (dataSource is Map<String, dynamic> &&
+            dataSource.containsKey('id')) {
+          dataSources.add(dataSource['id']);
+        }
+      }
+    }
+
     return GenericTileModel(
       id: UuidUtils.validateUuid(json['id']),
       type: json['type'] ?? 'unknown',
-      parentType: json['parent_type'] ?? 'page',
-      parentId: UuidUtils.validateUuid(json['parent_id'] ?? json['parent']),
-      dataSource: json['data_source'] != null
-          ? List<String>.from(json['data_source'])
-          : [],
+      parentType: json['parent'] is Map<String, dynamic>
+          ? json['parent']['type']
+          : (json['parent_type'] ?? 'page'),
+      parentId: UuidUtils.validateUuid(json['parent'] is Map<String, dynamic>
+          ? json['parent']['id']
+          : json['parent_id']),
+      dataSource: UuidUtils.validateUuidList(dataSources),
       row: json['row'] ?? 0,
       col: json['col'] ?? 0,
       rowSpan: json['row_span'] ?? 1,
