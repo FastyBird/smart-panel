@@ -104,6 +104,9 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen> {
       } else if (item is SystemViewItem) {
         // For system views, track using the view's ID
         _dashboardService.setCurrentPageId(item.id);
+      } else if (item is DomainViewItem) {
+        // For domain views (lights, climate, media, sensors), track using the view's ID
+        _dashboardService.setCurrentPageId(item.id);
       }
     }
   }
