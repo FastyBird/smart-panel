@@ -458,17 +458,14 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             orElse: () => device.lightChannels.first,
           );
 
-          final onProp = channel.onProp;
-          if (onProp != null) {
-            final success = await devicesService.setPropertyValue(
-              onProp.id,
-              newState,
-            );
-            if (success) {
-              successCount++;
-            } else {
-              failCount++;
-            }
+          final success = await devicesService.setPropertyValue(
+            channel.onProp.id,
+            newState,
+          );
+          if (success) {
+            successCount++;
+          } else {
+            failCount++;
           }
         }
       }
@@ -477,14 +474,14 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
       if (failCount > 0 && successCount == 0) {
         AlertBar.showError(
-          context,
+          this.context,
           message: localizations?.action_failed ?? 'Failed to toggle lights',
         );
       }
     } catch (e) {
       if (!mounted) return;
       AlertBar.showError(
-        context,
+        this.context,
         message: localizations?.action_failed ?? 'Failed to toggle lights',
       );
     } finally {
@@ -685,27 +682,24 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     });
 
     try {
-      final onProp = channel.onProp;
-      if (onProp != null) {
-        final success = await devicesService.setPropertyValue(
-          onProp.id,
-          !channel.on,
+      final success = await devicesService.setPropertyValue(
+        channel.onProp.id,
+        !channel.on,
+      );
+
+      if (!mounted) return;
+
+      if (!success) {
+        AlertBar.showError(
+          this.context,
+          message:
+              localizations?.action_failed ?? 'Failed to toggle device',
         );
-
-        if (!mounted) return;
-
-        if (!success) {
-          AlertBar.showError(
-            context,
-            message:
-                localizations?.action_failed ?? 'Failed to toggle device',
-          );
-        }
       }
     } catch (e) {
       if (!mounted) return;
       AlertBar.showError(
-        context,
+        this.context,
         message: localizations?.action_failed ?? 'Failed to toggle device',
       );
     } finally {
