@@ -7,6 +7,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/bottom_navigation.dart';
 import 'package:fastybird_smart_panel/core/widgets/colored_slider.dart';
+import 'package:fastybird_smart_panel/core/widgets/colored_switch.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
@@ -992,6 +993,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         ? (totalBrightness / brightnessCount).round()
         : 0;
     final anyOn = onCount > 0;
+    final hasBrightness = _availableModes.contains(_LightRoleMode.brightness);
 
     return Scaffold(
       appBar: AppTopBar(
@@ -1023,6 +1025,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
                 lightTargets,
                 avgBrightness,
                 anyOn,
+                hasBrightness,
                 devicesService,
               ),
             ),
@@ -1043,6 +1046,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     List<LightTargetView> targets,
     int avgBrightness,
     bool anyOn,
+    bool hasBrightness,
     DevicesService devicesService,
   ) {
     // Check if any devices have color support
@@ -1104,8 +1108,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Brightness display
-                            _buildBrightnessDisplay(context, avgBrightness, anyOn),
+                            // Brightness or on/off display
+                            _buildStateDisplay(context, avgBrightness, anyOn, hasBrightness),
                             AppSpacings.spacingMdVertical,
                             // Color box for color-supported devices
                             if (hasColorSupport)
@@ -1130,11 +1134,13 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
                   ),
                 ),
               ),
-              // Right side - control slider
+              // Right side - control slider or switch
               _buildControlSlider(
                 context,
                 targets,
                 avgBrightness,
+                anyOn,
+                hasBrightness,
                 elementMaxSize,
                 devicesService,
               ),
@@ -1187,10 +1193,46 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     );
   }
 
-  /// Build brightness display like lighting.dart
-  Widget _buildBrightnessDisplay(BuildContext context, int brightness, bool allOn) {
+  /// Build state display (brightness percentage or on/off)
+  Widget _buildStateDisplay(BuildContext context, int brightness, bool anyOn, bool hasBrightness) {
     final localizations = AppLocalizations.of(context)!;
 
+    // For simple on/off lights, show ON/OFF text
+    if (!hasBrightness) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            anyOn ? localizations.light_state_on : localizations.light_state_off,
+            style: TextStyle(
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTextColorLight.regular
+                  : AppTextColorDark.regular,
+              fontSize: _screenService.scale(
+                60,
+                density: _visualDensityService.density,
+              ),
+              fontFamily: 'DIN1451',
+              fontWeight: FontWeight.w100,
+              height: 1.0,
+            ),
+          ),
+          Text(
+            anyOn
+                ? localizations.light_state_on_description
+                : localizations.light_state_off_description,
+            style: TextStyle(
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTextColorLight.regular
+                  : AppTextColorDark.regular,
+              fontSize: AppFontSize.base,
+            ),
+          ),
+        ],
+      );
+    }
+
+    // For brightness-capable lights, show brightness percentage
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1199,7 +1241,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           textBaseline: TextBaseline.alphabetic,
           children: [
             Text(
-              allOn ? '$brightness' : localizations.light_state_off,
+              anyOn ? '$brightness' : localizations.light_state_off,
               style: TextStyle(
                 color: Theme.of(context).brightness == Brightness.light
                     ? AppTextColorLight.regular
@@ -1213,7 +1255,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
                 height: 1.0,
               ),
             ),
-            if (allOn)
+            if (anyOn)
               Text(
                 '%',
                 style: TextStyle(
@@ -1232,7 +1274,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           ],
         ),
         Text(
-          allOn
+          anyOn
               ? localizations.light_state_brightness_description
               : localizations.light_state_off_description,
           style: TextStyle(
@@ -1251,9 +1293,22 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     BuildContext context,
     List<LightTargetView> targets,
     int currentBrightness,
+    bool anyOn,
+    bool hasBrightness,
     double elementMaxSize,
     DevicesService devicesService,
   ) {
+    // For simple on/off lights, show a switch instead of slider
+    if (!hasBrightness) {
+      return _buildOnOffSwitch(
+        context,
+        targets,
+        anyOn,
+        elementMaxSize,
+        devicesService,
+      );
+    }
+
     switch (_currentMode) {
       case _LightRoleMode.brightness:
         return _buildBrightnessSlider(
@@ -1278,6 +1333,26 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           devicesService,
         );
     }
+  }
+
+  /// Build on/off switch for simple lights
+  Widget _buildOnOffSwitch(
+    BuildContext context,
+    List<LightTargetView> targets,
+    bool anyOn,
+    double elementMaxSize,
+    DevicesService devicesService,
+  ) {
+    return ColoredSwitch(
+      switchState: anyOn,
+      iconOn: MdiIcons.power,
+      iconOff: MdiIcons.power,
+      trackWidth: elementMaxSize,
+      vertical: true,
+      onChanged: (bool state) async {
+        await _toggleAllLights(context, targets, devicesService);
+      },
+    );
   }
 
   /// Build brightness slider
