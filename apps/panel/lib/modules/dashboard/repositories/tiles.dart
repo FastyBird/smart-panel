@@ -3,7 +3,6 @@ import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/tile.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/tiles/tile.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/repositories/repository.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 import 'package:flutter/foundation.dart';
 
 class TilesRepository extends Repository<TileModel> {
@@ -26,17 +25,7 @@ class TilesRepository extends Repository<TileModel> {
         continue;
       }
 
-      final TileType? tileType = TileType.fromValue(row['type']);
-
-      if (tileType == null) {
-        if (kDebugMode) {
-          debugPrint(
-            '[DASHBOARD MODULE][TILES] Unknown tile type: "${row['type']}" for tile: "${row['id']}"',
-          );
-        }
-
-        continue;
-      }
+      final String tileType = row['type'];
 
       try {
         TileModel tile = buildTileModel(tileType, row);

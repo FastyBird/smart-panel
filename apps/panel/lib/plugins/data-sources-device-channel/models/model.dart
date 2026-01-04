@@ -1,6 +1,6 @@
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/data_sources/data_source.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
+import 'package:fastybird_smart_panel/plugins/data-sources-device-channel/mapper.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -26,7 +26,7 @@ class DeviceChannelDataSourceModel extends DataSourceModel {
         _property = UuidUtils.validateUuid(property),
         _icon = icon,
         super(
-          type: DataSourceType.deviceChannel,
+          type: dataSourcesDeviceChannelType,
         );
 
   String get device => _device;

@@ -1,6 +1,5 @@
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/tile.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/tiles/tile.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/data_sources/view.dart';
 import 'package:fastybird_smart_panel/plugins/tiles-weather/models/model.dart';
 import 'package:fastybird_smart_panel/plugins/tiles-weather/presentation/forecast.dart';
@@ -8,21 +7,21 @@ import 'package:fastybird_smart_panel/plugins/tiles-weather/presentation/weather
 import 'package:fastybird_smart_panel/plugins/tiles-weather/views/forecast.dart';
 import 'package:fastybird_smart_panel/plugins/tiles-weather/views/weather.dart';
 
-const String _dayWeatherTileType = 'tiles-weather-day';
-const String _forecastWeatherTileType = 'tiles-weather-forecast';
+const String tilesWeatherDayType = 'tiles-weather-day';
+const String tilesWeatherForecastType = 'tiles-weather-forecast';
 
 void registerTilesWeatherPlugin() {
   // Register model mappers
-  registerTileModelMapper(_dayWeatherTileType, (data) {
+  registerTileModelMapper(tilesWeatherDayType, (data) {
     return DayWeatherTileModel.fromJson(data);
   });
 
-  registerTileModelMapper(_forecastWeatherTileType, (data) {
+  registerTileModelMapper(tilesWeatherForecastType, (data) {
     return ForecastWeatherTileModel.fromJson(data);
   });
 
   // Register view mappers
-  registerTileViewMapper(TileType.weatherDay, (TileModel tile, List<DataSourceView> dataSources) {
+  registerTileViewMapper(tilesWeatherDayType, (TileModel tile, List<DataSourceView> dataSources) {
     if (tile is! DayWeatherTileModel) {
       throw ArgumentError('Tile model is not valid for Day weather tile view.');
     }
@@ -42,7 +41,7 @@ void registerTilesWeatherPlugin() {
     );
   });
 
-  registerTileViewMapper(TileType.weatherForecast, (TileModel tile, List<DataSourceView> dataSources) {
+  registerTileViewMapper(tilesWeatherForecastType, (TileModel tile, List<DataSourceView> dataSources) {
     if (tile is! ForecastWeatherTileModel) {
       throw ArgumentError('Tile model is not valid for Forecast weather tile view.');
     }
@@ -63,11 +62,11 @@ void registerTilesWeatherPlugin() {
   });
 
   // Register widget mappers
-  registerTileWidgetMapper(TileType.weatherDay, (tile) {
+  registerTileWidgetMapper(tilesWeatherDayType, (tile) {
     return WeatherTileWidget(tile as DayWeatherTileView);
   });
 
-  registerTileWidgetMapper(TileType.weatherForecast, (tile) {
+  registerTileWidgetMapper(tilesWeatherForecastType, (tile) {
     return ForecastTileWidget(tile as ForecastWeatherTileView);
   });
 }

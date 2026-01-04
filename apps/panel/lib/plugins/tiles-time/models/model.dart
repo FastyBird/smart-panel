@@ -1,6 +1,6 @@
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/tiles/tile.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
+import 'package:fastybird_smart_panel/plugins/tiles-time/mapper.dart';
 
 class TimeTileModel extends TileModel {
   TimeTileModel({
@@ -15,7 +15,7 @@ class TimeTileModel extends TileModel {
     super.createdAt,
     super.updatedAt,
   }) : super(
-          type: TileType.clock,
+          type: tilesTimeType,
         );
 
   factory TimeTileModel.fromJson(Map<String, dynamic> json) {

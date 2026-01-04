@@ -1,6 +1,5 @@
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/page.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/cards/view.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/data_sources/view.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/tiles/view.dart';
@@ -8,17 +7,17 @@ import 'package:fastybird_smart_panel/plugins/pages-cards/models/model.dart';
 import 'package:fastybird_smart_panel/plugins/pages-cards/presentation/page.dart';
 import 'package:fastybird_smart_panel/plugins/pages-cards/views/view.dart';
 
-const String _pageType = 'pages-cards';
+const String pagesCardsType = 'pages-cards';
 
 void registerPagesCardsPlugin() {
   // Register model mapper
-  registerPageModelMapper(_pageType, (data) {
+  registerPageModelMapper(pagesCardsType, (data) {
     return CardsPageModel.fromJson(data);
   });
 
   // Register view mapper
   registerPageViewMapper(
-    PageType.cards,
+    pagesCardsType,
     (PageModel page, List<TileView> tiles, List<CardView> cards, List<DataSourceView> dataSources) {
       if (page is! CardsPageModel) {
         throw ArgumentError('Page model is not valid for Cards page view.');
@@ -40,7 +39,7 @@ void registerPagesCardsPlugin() {
   );
 
   // Register widget mapper
-  registerPageWidgetMapper(PageType.cards, (page) {
+  registerPageWidgetMapper(pagesCardsType, (page) {
     return CardsPage(page: page as CardsPageView);
   });
 }

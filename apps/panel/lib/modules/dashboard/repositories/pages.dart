@@ -2,7 +2,6 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/repositories/repository.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:flutter/foundation.dart';
 
@@ -35,17 +34,7 @@ class PagesRepository extends Repository<PageModel> {
         continue;
       }
 
-      final PageType? pageType = PageType.fromValue(row['type']);
-
-      if (pageType == null) {
-        if (kDebugMode) {
-          debugPrint(
-            '[DASHBOARD MODULE][PAGES] Unknown page type: "${row['type']}" for page: "${row['id']}"',
-          );
-        }
-
-        continue;
-      }
+      final String pageType = row['type'];
 
       try {
         PageModel page = buildPageModel(pageType, row);

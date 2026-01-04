@@ -5,7 +5,6 @@ import 'package:fastybird_smart_panel/modules/dashboard/repositories/cards.dart'
 import 'package:fastybird_smart_panel/modules/dashboard/repositories/pages.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/repositories/repository.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/repositories/tiles.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 import 'package:flutter/foundation.dart';
 
 class DataSourcesRepository extends Repository<DataSourceModel> {
@@ -29,18 +28,7 @@ class DataSourcesRepository extends Repository<DataSourceModel> {
         continue;
       }
 
-      final DataSourceType? dataSourceType =
-          DataSourceType.fromValue(row['type']);
-
-      if (dataSourceType == null) {
-        if (kDebugMode) {
-          debugPrint(
-            '[DASHBOARD MODULE][DATA SOURCE] Unknown data source type: "${row['type']}" for data source: "${row['id']}"',
-          );
-        }
-
-        continue;
-      }
+      final String dataSourceType = row['type'];
 
       try {
         DataSourceModel dataSource = buildDataSourceModel(dataSourceType, row);

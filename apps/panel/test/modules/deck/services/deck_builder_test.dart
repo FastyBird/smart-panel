@@ -1,5 +1,4 @@
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/page.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/view.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_result.dart';
@@ -15,32 +14,30 @@ const _uuid1 = 'a0000000-0000-4000-8000-000000000001';
 const _uuid2 = 'a0000000-0000-4000-8000-000000000002';
 const _uuid3 = 'a0000000-0000-4000-8000-000000000003';
 
+const String _testPageType = 'test-page';
+
 // Simple test page model for testing
 class TestPageModel extends PageModel {
   TestPageModel({
-    required String id,
-    required String title,
-    int order = 0,
+    required super.id,
+    required super.title,
+    super.order,
   }) : super(
-          id: id,
-          type: PageType.tiles,
-          title: title,
-          order: order,
+          type: _testPageType,
         );
 }
 
 // Simple test page view for testing
-class TestPageView extends DashboardPageView<TestPageModel> {
+class TestPageView extends DashboardPageView {
   TestPageView({
     required String id,
     required String title,
     int order = 0,
   }) : super(
-          pageModel: TestPageModel(
-            id: id,
-            title: title,
-            order: order,
-          ),
+          id: id,
+          type: _testPageType,
+          title: title,
+          order: order,
         );
 }
 

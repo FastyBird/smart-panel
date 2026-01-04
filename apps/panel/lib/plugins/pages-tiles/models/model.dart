@@ -1,6 +1,6 @@
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/page.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
+import 'package:fastybird_smart_panel/plugins/pages-tiles/mapper.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class TilesPageModel extends PageModel {
@@ -34,7 +34,7 @@ class TilesPageModel extends PageModel {
         _rows = rows,
         _cols = cols,
         super(
-          type: PageType.tiles,
+          type: pagesTilesType,
         );
 
   List<String> get tiles => _tiles;

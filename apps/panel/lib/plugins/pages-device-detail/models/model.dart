@@ -1,6 +1,6 @@
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/page.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
+import 'package:fastybird_smart_panel/plugins/pages-device-detail/mapper.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class DeviceDetailPageModel extends PageModel {
@@ -18,7 +18,7 @@ class DeviceDetailPageModel extends PageModel {
     super.updatedAt,
   })  : _device = UuidUtils.validateUuid(device),
         super(
-          type: PageType.deviceDetail,
+          type: pagesDeviceDetailType,
         );
 
   String get device => _device;

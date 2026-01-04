@@ -1,6 +1,6 @@
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/tiles/tile.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
+import 'package:fastybird_smart_panel/plugins/tiles-weather/mapper.dart';
 
 abstract class WeatherTileModel extends TileModel {
   final String? _locationId;
@@ -38,7 +38,7 @@ class DayWeatherTileModel extends WeatherTileModel {
     super.createdAt,
     super.updatedAt,
   }) : super(
-          type: TileType.weatherDay,
+          type: tilesWeatherDayType,
         );
 
   factory DayWeatherTileModel.fromJson(Map<String, dynamic> json) {
@@ -89,7 +89,7 @@ class ForecastWeatherTileModel extends WeatherTileModel {
     super.createdAt,
     super.updatedAt,
   }) : super(
-          type: TileType.weatherForecast,
+          type: tilesWeatherForecastType,
         );
 
   factory ForecastWeatherTileModel.fromJson(Map<String, dynamic> json) {

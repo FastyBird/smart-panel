@@ -1,6 +1,5 @@
 import 'package:fastybird_smart_panel/modules/dashboard/models/data_sources/data_source.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/data_sources/generic_data_source.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/data_sources/generic_data_source.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/data_sources/view.dart';
 import 'package:flutter/material.dart';
@@ -15,10 +14,10 @@ void registerDataSourceModelMapper(
 }
 
 DataSourceModel buildDataSourceModel(
-  DataSourceType type,
+  String type,
   Map<String, dynamic> data,
 ) {
-  final builder = dataModelMappers[data['type']];
+  final builder = dataModelMappers[type];
 
   if (builder != null) {
     return builder(data);
@@ -27,11 +26,11 @@ DataSourceModel buildDataSourceModel(
   }
 }
 
-Map<DataSourceType, DataSourceView Function(DataSourceModel)>
+Map<String, DataSourceView Function(DataSourceModel)>
     dataSourceViewsMappers = {};
 
 void registerDataSourceViewMapper(
-  DataSourceType type,
+  String type,
   DataSourceView Function(DataSourceModel) mapper,
 ) {
   dataSourceViewsMappers[type] = mapper;
@@ -60,11 +59,11 @@ DataSourceView buildDataSourceView(
   }
 }
 
-Map<DataSourceType, Widget Function(DataSourceView)>
+Map<String, Widget Function(DataSourceView)>
     dataSourceWidgetMappers = {};
 
 void registerDataSourceWidgetMapper(
-  DataSourceType type,
+  String type,
   Widget Function(DataSourceView) mapper,
 ) {
   dataSourceWidgetMappers[type] = mapper;
@@ -77,7 +76,7 @@ Widget buildDataSourceWidget(DataSourceView dataSource) {
     return builder(dataSource);
   } else {
     throw ArgumentError(
-      'Data source widget can not be created. Unsupported data source type: ${dataSource.type.value}',
+      'Data source widget can not be created. Unsupported data source type: ${dataSource.type}',
     );
   }
 }

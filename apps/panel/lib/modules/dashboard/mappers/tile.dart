@@ -1,6 +1,5 @@
 import 'package:fastybird_smart_panel/modules/dashboard/models/tiles/generic_tile.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/tiles/tile.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/data_sources/view.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/tiles/generic_tile.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/tiles/view.dart';
@@ -15,8 +14,8 @@ void registerTileModelMapper(
   tileModelMappers[type] = mapper;
 }
 
-TileModel buildTileModel(TileType type, Map<String, dynamic> data) {
-  final builder = tileModelMappers[data['type']];
+TileModel buildTileModel(String type, Map<String, dynamic> data) {
+  final builder = tileModelMappers[type];
 
   if (builder != null) {
     return builder(data);
@@ -25,11 +24,11 @@ TileModel buildTileModel(TileType type, Map<String, dynamic> data) {
   }
 }
 
-Map<TileType, TileView Function(TileModel, List<DataSourceView>)>
+Map<String, TileView Function(TileModel, List<DataSourceView>)>
     tileViewsMappers = {};
 
 void registerTileViewMapper(
-  TileType type,
+  String type,
   TileView Function(TileModel, List<DataSourceView>) mapper,
 ) {
   tileViewsMappers[type] = mapper;
@@ -64,10 +63,10 @@ TileView buildTileView(
   }
 }
 
-Map<TileType, Widget Function(TileView)> tileWidgetMappers = {};
+Map<String, Widget Function(TileView)> tileWidgetMappers = {};
 
 void registerTileWidgetMapper(
-  TileType type,
+  String type,
   Widget Function(TileView) mapper,
 ) {
   tileWidgetMappers[type] = mapper;
@@ -80,7 +79,7 @@ Widget buildTileWidget(TileView tile) {
     return builder(tile);
   } else {
     throw ArgumentError(
-      'Tile widget can not be created. Unsupported tile type: ${tile.type.value}',
+      'Tile widget can not be created. Unsupported tile type: ${tile.type}',
     );
   }
 }

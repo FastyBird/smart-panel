@@ -1,6 +1,5 @@
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/data_sources/data_source.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 
 /// Generic data source model for unknown/unregistered data source types.
 /// Stores the raw configuration from the API for inspection.
@@ -22,7 +21,7 @@ class GenericDataSourceModel extends DataSourceModel {
   factory GenericDataSourceModel.fromJson(Map<String, dynamic> json) {
     return GenericDataSourceModel(
       id: UuidUtils.validateUuid(json['id']),
-      type: DataSourceType.fromValue(json['type']) ?? DataSourceType.deviceChannel,
+      type: json['type'] ?? 'unknown',
       parentType: json['parent_type'] ?? 'tile',
       parentId: UuidUtils.validateUuid(json['parent_id'] ?? json['parent']),
       configuration: json['configuration'] is Map<String, dynamic>

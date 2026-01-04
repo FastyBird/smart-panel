@@ -1,6 +1,6 @@
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/tiles/tile.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
+import 'package:fastybird_smart_panel/plugins/tiles-scene/mapper.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -33,7 +33,7 @@ class SceneTileModel extends TileModel {
         _status = status,
         _isOn = isOn,
         super(
-          type: TileType.scene,
+          type: tilesSceneType,
         );
 
   String get scene => _scene;

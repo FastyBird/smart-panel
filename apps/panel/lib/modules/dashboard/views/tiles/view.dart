@@ -1,9 +1,8 @@
-import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/data_sources/view.dart';
 
 abstract class TileView {
   final String _id;
-  final TileType _type;
+  final String _type;
   final String _parentType;
   final String _parentId;
   final List<String> _dataSource;
@@ -15,7 +14,7 @@ abstract class TileView {
 
   TileView({
     required String id,
-    required TileType type,
+    required String type,
     required String parentType,
     required String parentId,
     List<String> dataSource = const [],
@@ -37,7 +36,7 @@ abstract class TileView {
 
   String get id => _id;
 
-  TileType get type => _type;
+  String get type => _type;
 
   String get parentType => _parentType;
 

@@ -1,21 +1,20 @@
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/tile.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/tiles/tile.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/data_sources/view.dart';
 import 'package:fastybird_smart_panel/plugins/tiles-scene/models/model.dart';
 import 'package:fastybird_smart_panel/plugins/tiles-scene/presentation/widget.dart';
 import 'package:fastybird_smart_panel/plugins/tiles-scene/views/view.dart';
 
-const String _tileType = 'scene';
+const String tilesSceneType = 'scene';
 
 void registerTilesScenePlugin() {
   // Register model mapper
-  registerTileModelMapper(_tileType, (data) {
+  registerTileModelMapper(tilesSceneType, (data) {
     return SceneTileModel.fromJson(data);
   });
 
   // Register view mapper
-  registerTileViewMapper(TileType.scene, (TileModel tile, List<DataSourceView> dataSources) {
+  registerTileViewMapper(tilesSceneType, (TileModel tile, List<DataSourceView> dataSources) {
     if (tile is! SceneTileModel) {
       throw ArgumentError('Tile model is not valid for Scene tile view.');
     }
@@ -40,7 +39,7 @@ void registerTilesScenePlugin() {
   });
 
   // Register widget mapper
-  registerTileWidgetMapper(TileType.scene, (tile) {
+  registerTileWidgetMapper(tilesSceneType, (tile) {
     return SceneTileWidget(tile as SceneTileView);
   });
 }

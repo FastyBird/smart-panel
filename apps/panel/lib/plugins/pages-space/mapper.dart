@@ -1,6 +1,5 @@
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/page.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/cards/view.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/data_sources/view.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/tiles/view.dart';
@@ -8,17 +7,17 @@ import 'package:fastybird_smart_panel/plugins/pages-space/models/model.dart';
 import 'package:fastybird_smart_panel/plugins/pages-space/presentation/page.dart';
 import 'package:fastybird_smart_panel/plugins/pages-space/views/view.dart';
 
-const String _pageType = 'pages-space';
+const String pagesSpaceType = 'pages-space';
 
 void registerPagesSpacePlugin() {
   // Register model mapper
-  registerPageModelMapper(_pageType, (data) {
+  registerPageModelMapper(pagesSpaceType, (data) {
     return SpacePageModel.fromJson(data);
   });
 
   // Register view mapper
   registerPageViewMapper(
-    PageType.space,
+    pagesSpaceType,
     (PageModel page, List<TileView> tiles, List<CardView> cards, List<DataSourceView> dataSources) {
       if (page is! SpacePageModel) {
         throw ArgumentError('Page model is not valid for Space page view.');
@@ -43,7 +42,7 @@ void registerPagesSpacePlugin() {
   );
 
   // Register widget mapper
-  registerPageWidgetMapper(PageType.space, (page) {
+  registerPageWidgetMapper(pagesSpaceType, (page) {
     return SpacePage(page: page as SpacePageView);
   });
 }

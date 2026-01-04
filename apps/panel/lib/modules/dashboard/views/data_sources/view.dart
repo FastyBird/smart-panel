@@ -1,14 +1,12 @@
-import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
-
 abstract class DataSourceView {
   final String _id;
-  final DataSourceType _type;
+  final String _type;
   final String _parentType;
   final String _parentId;
 
   DataSourceView({
     required String id,
-    required DataSourceType type,
+    required String type,
     required String parentType,
     required String parentId,
   })  : _id = id,
@@ -18,7 +16,7 @@ abstract class DataSourceView {
 
   String get id => _id;
 
-  DataSourceType get type => _type;
+  String get type => _type;
 
   String get parentType => _parentType;
 

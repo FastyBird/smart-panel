@@ -1,6 +1,5 @@
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/tiles/tile.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 
 /// Generic tile model for unknown/unregistered tile types.
 /// Stores the raw configuration from the API for inspection.
@@ -27,7 +26,7 @@ class GenericTileModel extends TileModel {
   factory GenericTileModel.fromJson(Map<String, dynamic> json) {
     return GenericTileModel(
       id: UuidUtils.validateUuid(json['id']),
-      type: TileType.fromValue(json['type']) ?? TileType.clock,
+      type: json['type'] ?? 'unknown',
       parentType: json['parent_type'] ?? 'page',
       parentId: UuidUtils.validateUuid(json['parent_id'] ?? json['parent']),
       dataSource: json['data_source'] != null

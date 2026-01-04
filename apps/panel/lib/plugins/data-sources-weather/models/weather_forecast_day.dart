@@ -1,7 +1,7 @@
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/data_sources/data_source.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/types/weather_data_field.dart';
+import 'package:fastybird_smart_panel/plugins/data-sources-weather/mapper.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -30,7 +30,7 @@ class WeatherForecastDayDataSourceModel extends DataSourceModel {
         _icon = icon,
         _unit = unit,
         super(
-          type: DataSourceType.weatherForecastDay,
+          type: dataSourcesWeatherForecastDayType,
         );
 
   String? get locationId => _locationId;

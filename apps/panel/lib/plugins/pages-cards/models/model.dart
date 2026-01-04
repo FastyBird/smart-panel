@@ -1,6 +1,6 @@
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/page.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
+import 'package:fastybird_smart_panel/plugins/pages-cards/mapper.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class CardsPageModel extends PageModel {
@@ -22,7 +22,7 @@ class CardsPageModel extends PageModel {
   })  : _cards = UuidUtils.validateUuidList(cards),
         _dataSource = UuidUtils.validateUuidList(dataSource),
         super(
-          type: PageType.cards,
+          type: pagesCardsType,
         );
 
   List<String> get cards => _cards;

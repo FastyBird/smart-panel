@@ -1,6 +1,5 @@
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/generic_page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/page.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/cards/view.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/data_sources/view.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/generic_page.dart';
@@ -17,8 +16,8 @@ void registerPageModelMapper(
   pageModelMappers[type] = mapper;
 }
 
-PageModel buildPageModel(PageType type, Map<String, dynamic> data) {
-  final builder = pageModelMappers[type.value];
+PageModel buildPageModel(String type, Map<String, dynamic> data) {
+  final builder = pageModelMappers[type];
 
   if (builder != null) {
     return builder(data);
@@ -27,12 +26,12 @@ PageModel buildPageModel(PageType type, Map<String, dynamic> data) {
   }
 }
 
-Map<PageType,
+Map<String,
         DashboardPageView Function(PageModel, List<TileView>, List<CardView>, List<DataSourceView>)>
     pageViewsMappers = {};
 
 void registerPageViewMapper(
-  PageType type,
+  String type,
   DashboardPageView Function(
           PageModel, List<TileView>, List<CardView>, List<DataSourceView>)
       mapper,
@@ -71,10 +70,10 @@ DashboardPageView buildPageView(
   }
 }
 
-Map<PageType, Widget Function(DashboardPageView)> pageWidgetMappers = {};
+Map<String, Widget Function(DashboardPageView)> pageWidgetMappers = {};
 
 void registerPageWidgetMapper(
-  PageType type,
+  String type,
   Widget Function(DashboardPageView) mapper,
 ) {
   pageWidgetMappers[type] = mapper;
@@ -87,7 +86,7 @@ Widget buildPageWidget(DashboardPageView page) {
     return builder(page);
   } else {
     throw ArgumentError(
-      'Page widget can not be created. Unsupported page type: ${page.type.value}',
+      'Page widget can not be created. Unsupported page type: ${page.type}',
     );
   }
 }

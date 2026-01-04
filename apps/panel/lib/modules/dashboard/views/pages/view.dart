@@ -1,4 +1,3 @@
-import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/cards/view.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/data_sources/view.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/tiles/view.dart';
@@ -6,7 +5,7 @@ import 'package:flutter/cupertino.dart';
 
 abstract class DashboardPageView {
   final String _id;
-  final PageType _type;
+  final String _type;
   final String _title;
   final IconData? _icon;
   final int _order;
@@ -18,7 +17,7 @@ abstract class DashboardPageView {
 
   DashboardPageView({
     required String id,
-    required PageType type,
+    required String type,
     required String title,
     IconData? icon,
     int order = 0,
@@ -40,7 +39,7 @@ abstract class DashboardPageView {
 
   String get id => _id;
 
-  PageType get type => _type;
+  String get type => _type;
 
   String get title => _title;
 

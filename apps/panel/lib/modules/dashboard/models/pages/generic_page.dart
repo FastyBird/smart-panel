@@ -1,6 +1,5 @@
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/page.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 
 /// Generic page model for unknown/unregistered page types.
 /// Stores the raw configuration from the API for inspection.
@@ -25,7 +24,7 @@ class GenericPageModel extends PageModel {
   factory GenericPageModel.fromJson(Map<String, dynamic> json) {
     return GenericPageModel(
       id: UuidUtils.validateUuid(json['id']),
-      type: PageType.fromValue(json['type']) ?? PageType.tiles,
+      type: json['type'] ?? 'unknown',
       title: json['title'] ?? 'Unknown',
       icon: null,
       order: json['order'] ?? 0,

@@ -1,6 +1,6 @@
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/page.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
+import 'package:fastybird_smart_panel/plugins/pages-space/mapper.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 enum SpaceViewMode {
@@ -80,7 +80,7 @@ class SpacePageModel extends PageModel {
         _viewMode = viewMode,
         _quickActions = quickActions ?? defaultQuickActions,
         super(
-          type: PageType.space,
+          type: pagesSpaceType,
         );
 
   String get spaceId => _spaceId;
