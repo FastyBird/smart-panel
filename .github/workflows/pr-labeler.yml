@@ -16,5 +16,5 @@ jobs:
     steps:
       - name: "Label"
         uses: "TimonVS/pr-labeler-action@v5"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
