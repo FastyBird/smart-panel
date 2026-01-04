@@ -488,15 +488,15 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             ),
           ),
         ),
-        // Device tiles
+        // Device tiles - horizontal layout with smaller height
         LayoutBuilder(
           builder: (context, constraints) {
             final tileWidth = _screenService.scale(
-              120,
+              200,
               density: _visualDensityService.density,
             );
             final crossAxisCount =
-                (constraints.maxWidth / tileWidth).floor().clamp(2, 4);
+                (constraints.maxWidth / tileWidth).floor().clamp(1, 3);
 
             return GridView.builder(
               shrinkWrap: true,
@@ -505,7 +505,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                 crossAxisCount: crossAxisCount,
                 crossAxisSpacing: AppSpacings.pSm,
                 mainAxisSpacing: AppSpacings.pSm,
-                childAspectRatio: 1.0,
+                childAspectRatio: 2.5,
               ),
               itemCount: group.targets.length,
               itemBuilder: (context, index) {
@@ -522,15 +522,14 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
   }
 
-  /// Build a small device tile for "Other" devices
+  /// Build a small device tile for "Other" devices using horizontal layout
   Widget _buildOtherDeviceTile(
     BuildContext context,
     LightTargetView target,
     DevicesService devicesService,
   ) {
     final device = devicesService.getDevice(target.deviceId);
-    if (device is! LightingDeviceView ||
-        device.lightChannels.isEmpty) {
+    if (device is! LightingDeviceView || device.lightChannels.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -544,85 +543,52 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final hasBrightness = channel.hasBrightness;
     final brightness = hasBrightness ? channel.brightness : null;
 
+    // Build subtitle with brightness or on/off state
+    final subtitleText = hasBrightness && isOn && brightness != null
+        ? '$brightness%'
+        : (isOn ? 'On' : 'Off');
+
     return GestureDetector(
-      onTap: isToggling
-          ? null
-          : () => _toggleDevice(context, target, channel, devicesService),
       onLongPress: () => _openDeviceDetail(context, device),
-      child: Container(
-        decoration: BoxDecoration(
-          color: isOn
-              ? (Theme.of(context).brightness == Brightness.light
-                  ? AppColorsLight.warning.withValues(alpha: 0.15)
-                  : AppColorsDark.warning.withValues(alpha: 0.2))
-              : (Theme.of(context).brightness == Brightness.light
-                  ? AppBgColorLight.page.withValues(alpha: 0.5)
-                  : AppBgColorDark.overlay.withValues(alpha: 0.5)),
-          borderRadius: BorderRadius.circular(AppBorderRadius.small),
-          border: Border.all(
-            color: isOn
-                ? (Theme.of(context).brightness == Brightness.light
-                    ? AppColorsLight.warning.withValues(alpha: 0.3)
-                    : AppColorsDark.warning.withValues(alpha: 0.4))
-                : Colors.transparent,
-            width: 1,
-          ),
-        ),
-        child: Padding(
-          padding: AppSpacings.paddingXs,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Device icon
-              if (isToggling)
-                SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Theme.of(context).colorScheme.primary,
+      child: ButtonTileBox(
+        onTap: isToggling
+            ? null
+            : () => _toggleDevice(context, target, channel, devicesService),
+        isOn: isOn,
+        isDisabled: isToggling,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            ButtonTileIcon(
+              icon: isOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline,
+              onTap: isToggling
+                  ? null
+                  : () => _toggleDevice(context, target, channel, devicesService),
+              isOn: isOn,
+              isLoading: isToggling,
+            ),
+            AppSpacings.spacingMdHorizontal,
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ButtonTileTitle(
+                    title: target.displayName,
+                    isOn: isOn,
+                    isLoading: isToggling,
                   ),
-                )
-              else
-                Icon(
-                  isOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline,
-                  size: 24,
-                  color: isOn
-                      ? (Theme.of(context).brightness == Brightness.light
-                          ? AppColorsLight.warning
-                          : AppColorsDark.warning)
-                      : (Theme.of(context).brightness == Brightness.light
-                          ? AppTextColorLight.placeholder
-                          : AppTextColorDark.placeholder),
-                ),
-              AppSpacings.spacingXsVertical,
-              // Device name
-              Text(
-                target.displayName,
-                style: TextStyle(
-                  fontSize: AppFontSize.extraSmall,
-                  fontWeight: FontWeight.w500,
-                  color: Theme.of(context).brightness == Brightness.light
-                      ? AppTextColorLight.primary
-                      : AppTextColorDark.primary,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+                  AppSpacings.spacingXsVertical,
+                  ButtonTileSubTitle(
+                    subTitle: Text(subtitleText),
+                    isOn: isOn,
+                    isLoading: isToggling,
+                  ),
+                ],
               ),
-              // Brightness value
-              if (hasBrightness && isOn && brightness != null)
-                Text(
-                  '$brightness%',
-                  style: TextStyle(
-                    fontSize: AppFontSize.extraSmall,
-                    color: Theme.of(context).brightness == Brightness.light
-                        ? AppColorsLight.warningDark2
-                        : AppColorsDark.warningDark2,
-                  ),
-                ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

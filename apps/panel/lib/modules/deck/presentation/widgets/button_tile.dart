@@ -254,8 +254,15 @@ class ButtonTileIcon extends StatelessWidget {
             shape: BoxShape.circle,
           ),
           child: Center(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
+            child: SizedBox(
+              width: _screenService.scale(
+                24,
+                density: _visualDensityService.density,
+              ),
+              height: _screenService.scale(
+                24,
+                density: _visualDensityService.density,
+              ),
               child: isLoading
                   ? Theme(
                       data: ThemeData(
@@ -277,27 +284,30 @@ class ButtonTileIcon extends StatelessWidget {
                           linearTrackColor: AppColors.blank,
                         ),
                       ),
-                      child: const CircularProgressIndicator(),
+                      child: const CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : Icon(
-                      icon,
-                      size: _screenService.scale(
-                        24,
-                        density: _visualDensityService.density,
+                  : FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Icon(
+                        icon,
+                        size: _screenService.scale(
+                          24,
+                          density: _visualDensityService.density,
+                        ),
+                        color: isDisabled
+                            ? (Theme.of(context).brightness == Brightness.light
+                                ? AppColorsLight.infoLight5
+                                : AppColorsDark.infoLight5)
+                            : (isOn
+                                ? (Theme.of(context).brightness ==
+                                        Brightness.light
+                                    ? AppColorsLight.primary
+                                    : AppColorsDark.primary)
+                                : (Theme.of(context).brightness ==
+                                        Brightness.light
+                                    ? AppColorsLight.info
+                                    : AppColorsDark.info)),
                       ),
-                      color: isDisabled
-                          ? (Theme.of(context).brightness == Brightness.light
-                              ? AppColorsLight.infoLight5
-                              : AppColorsDark.infoLight5)
-                          : (isOn
-                              ? (Theme.of(context).brightness ==
-                                      Brightness.light
-                                  ? AppColorsLight.primary
-                                  : AppColorsDark.primary)
-                              : (Theme.of(context).brightness ==
-                                      Brightness.light
-                                  ? AppColorsLight.info
-                                  : AppColorsDark.info)),
                     ),
             ),
           ),
