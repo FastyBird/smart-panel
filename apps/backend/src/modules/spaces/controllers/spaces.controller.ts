@@ -113,7 +113,6 @@ export class SpacesController {
 	}
 
 	@Get('propose')
-	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
 		operationId: 'get-spaces-module-propose',
 		summary: 'Propose spaces from device names',
@@ -474,6 +473,7 @@ export class SpacesController {
 	}
 
 	@Post(':id/intents/lighting')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
 		operationId: 'create-spaces-module-space-lighting-intent',
 		summary: 'Execute lighting intent for space',
@@ -540,6 +540,7 @@ export class SpacesController {
 	}
 
 	@Post(':id/intents/climate')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
 		operationId: 'create-spaces-module-space-climate-intent',
 		summary: 'Execute climate intent for space',
@@ -577,7 +578,6 @@ export class SpacesController {
 	// ================================
 
 	@Get(':id/lighting/targets')
-	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
 		operationId: 'get-spaces-module-space-lighting-targets',
 		summary: 'List light targets in space',
@@ -767,6 +767,7 @@ export class SpacesController {
 	}
 
 	@Post(':id/suggestion/feedback')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
 		operationId: 'create-spaces-module-space-suggestion-feedback',
 		summary: 'Submit suggestion feedback',
