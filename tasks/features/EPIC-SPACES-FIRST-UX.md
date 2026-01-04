@@ -4,7 +4,7 @@ Type: chore
 Scope: backend, admin, panel
 Size: large
 Parent: (none)
-Status: completed
+Status: done
 
 ## 1. Business goal
 

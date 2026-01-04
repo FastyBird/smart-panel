@@ -4,7 +4,7 @@ Type: technical
 Scope: admin, backend
 Size: medium
 Parent: FEATURE-SPACES-MODULE
-Status: completed
+Status: done
 
 ## 1. Business goal
 

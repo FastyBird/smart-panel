@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, panel
 Size: medium
 Parent: FEATURE-DASHBOARD-SPACE-PAGE
-Status: completed
+Status: done
 
 ## 1. Business goal
 
