@@ -11,6 +11,7 @@
 		table-layout="fixed"
 		row-key="type"
 		class="flex-grow"
+		:style="{ maxHeight: tableHeight + 'px' }"
 		:max-height="tableHeight"
 		@sort-change="onSortData"
 		@selection-change="onSelectionChange"
