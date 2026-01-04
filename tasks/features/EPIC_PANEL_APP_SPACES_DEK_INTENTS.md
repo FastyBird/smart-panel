@@ -4,7 +4,7 @@ Type: feature
 Scope: panel
 Size: large
 Parent: (none)
-Status: implemented
+Status: done
 
 ## 1. Business goal
 
@@ -107,7 +107,7 @@ Type: feature
 Scope: panel
 Size: medium
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: implemented
+Status: done
 
 ## 1. Business goal
 
@@ -166,7 +166,7 @@ Type: feature
 Scope: panel
 Size: large
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: implemented
+Status: done
 
 ## 1. Business goal
 
@@ -240,7 +240,7 @@ Type: feature
 Scope: panel
 Size: large
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: implemented
+Status: done
 
 ## 1. Business goal
 
@@ -306,7 +306,7 @@ Type: technical
 Scope: panel
 Size: medium
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: implemented
+Status: done
 
 ## 1. Business goal
 
@@ -361,7 +361,7 @@ Type: feature
 Scope: panel
 Size: large
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: implemented
+Status: done
 
 ## 1. Business goal
 
@@ -421,7 +421,7 @@ Type: feature
 Scope: panel
 Size: large
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: implemented
+Status: done
 
 ## 1. Business goal
 
@@ -478,7 +478,7 @@ Type: feature
 Scope: panel
 Size: large
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: implemented
+Status: done
 
 ## 1. Business goal
 
@@ -534,7 +534,7 @@ Type: feature
 Scope: panel
 Size: large
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: implemented
+Status: done
 
 ## 1. Business goal
 
@@ -597,7 +597,7 @@ Type: feature
 Scope: panel
 Size: large
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: implemented
+Status: done
 
 ## 1. Business goal
 
@@ -653,7 +653,7 @@ Type: feature
 Scope: panel
 Size: medium
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: implemented
+Status: done
 
 ## 1. Business goal
 
@@ -705,7 +705,7 @@ Type: feature
 Scope: panel
 Size: medium
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: implemented
+Status: done
 
 ## 1. Business goal
 
@@ -760,7 +760,7 @@ Type: feature
 Scope: panel
 Size: medium
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: implemented
+Status: done
 
 ## 1. Business goal
 
@@ -815,7 +815,7 @@ Type: feature
 Scope: panel
 Size: medium
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: implemented
+Status: done
 
 ## 1. Business goal
 
@@ -868,7 +868,7 @@ Type: technical
 Scope: panel
 Size: medium
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: implemented
+Status: done
 
 ## 1. Business goal
 
@@ -924,7 +924,7 @@ Type: chore
 Scope: panel
 Size: small
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: implemented
+Status: done
 
 ## 1. Business goal
 

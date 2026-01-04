@@ -6,9 +6,9 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | Status | Count |
 |--------|-------|
-| Done | 78 |
-| Planned | 11 |
-| **Total** | **89** |
+| Done | 79 |
+| Planned | 24 |
+| **Total** | **103** |
 
 ---
 
@@ -94,6 +94,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-SPACES-MODULE | Introduce Spaces module (rooms/zones) as first-class domain | backend, admin | medium |
 | FEATURE-UNIFIED-EXTENSION-LOGS | Unified Extension Logs | backend, admin | medium |
 | FEATURE-WLED-PLUGIN | WLED Device Plugin | backend, admin, panel | large |
+| FEATURE-WINDOW-COVERING-DEVICE-PAGE | Window Covering Device Page | panel | medium |
 
 ### Planned
 
@@ -107,7 +108,17 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-PANEL-SENSOR-DEVICE-PAGE | Sensor Device Detail Page | panel | large | - |
 | FEATURE-PLUGIN-MATTER | Matter Plugin | backend | large | - |
 | FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS | Zigbee2MQTT Adoption Improvements | backend, admin | large | FEATURE-PLUGIN-ZIGBEE2MQTT |
-| FEATURE-WINDOW-COVERING-DEVICE-PAGE | Window Covering Device Page | panel | medium | - |
+| FEATURE-PANEL-ROOM-SYSTEM-PAGES | Panel system pages for Room role | panel | large | - |
+| FEATURE-PANEL-ROOM-CONTEXT | RoomContext loader and aggregation | panel | medium | FEATURE-PANEL-ROOM-SYSTEM-PAGES |
+| FEATURE-PANEL-DECK-ROOM-BUILDER | Deterministic system deck for Room role | panel | medium | FEATURE-PANEL-ROOM-SYSTEM-PAGES |
+| FEATURE-PANEL-ROOM-OVERVIEW-UI | Room Overview UI | panel | large | FEATURE-PANEL-ROOM-SYSTEM-PAGES |
+| FEATURE-PANEL-DOMAIN-LIGHTS-PAGE | Lights domain page MVP | panel | medium | FEATURE-PANEL-ROOM-SYSTEM-PAGES |
+| FEATURE-PANEL-DOMAIN-CLIMATE-PAGE | Climate domain page MVP | panel | medium | FEATURE-PANEL-ROOM-SYSTEM-PAGES |
+| FEATURE-PANEL-DOMAIN-SENSORS-PAGE | Sensors domain page MVP | panel | medium | FEATURE-PANEL-ROOM-SYSTEM-PAGES |
+| FEATURE-PANEL-QUICK-SCENES-FEEDBACK | Quick Scenes execution feedback | panel | small | FEATURE-PANEL-ROOM-SYSTEM-PAGES |
+| FEATURE-EXTENSION-LOGS-FILTERS | Level and time range filters for extension logs | admin | small | FEATURE-UNIFIED-EXTENSION-LOGS |
+| FEATURE-WEATHER-PANEL-ENHANCEMENTS | Weather dashboard tile and location switching | panel | medium | FEATURE-MULTI-LOCATION-WEATHER |
+| FEATURE-SPACEPAGE-CLIMATE-SECTION | Climate section for SpacePage | backend, panel | medium | FEATURE-DASHBOARD-SPACE-PAGE |
 
 ---
 
@@ -137,6 +148,9 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | ID | Title | Scope | Size | Parent |
 |----|-------|-------|------|--------|
 | TECH-ONBOARDING-ROUTER-GUARDS | Router guards for onboarding flow | admin | small | EPIC-APP-ONBOARDING |
+| TECH-ADMIN-MODULE-CONFIG-TESTS | Admin unit tests for module configuration | admin | small | FEATURE-MODULE-CONFIG |
+| TECH-PROPERTY-TIMESERIES-E2E | E2E test for property timeseries endpoint | backend | tiny | FEATURE-PROPERTY-TIMESERIES |
+| TECH-EXTENSIONS-CAN-REMOVE-OPENAPI | Add canRemove field to OpenAPI spec | backend | tiny | CHORE-EXTENSIONS-CORE-CONTROL |
 
 ---
 
@@ -228,6 +242,9 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-PLUGIN-MATTER | feature | planned |
 | FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS | feature | planned |
 | EPIC-APP-ONBOARDING | epic | planned |
+| FEATURE-SPACEPAGE-CLIMATE-SECTION | feature | planned |
+| TECH-PROPERTY-TIMESERIES-E2E | technical | planned |
+| TECH-EXTENSIONS-CAN-REMOVE-OPENAPI | technical | planned |
 
 ### Admin
 
@@ -275,6 +292,8 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS | feature | planned |
 | TECH-ONBOARDING-ROUTER-GUARDS | technical | planned |
 | EPIC-APP-ONBOARDING | epic | planned |
+| FEATURE-EXTENSION-LOGS-FILTERS | feature | planned |
+| TECH-ADMIN-MODULE-CONFIG-TESTS | technical | planned |
 
 ### Panel
 
@@ -331,8 +350,18 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-DISPLAY-ROLES-MVP-V2 | feature | done |
 | FEATURE-HOUSE-MODES-MVP-V2 | feature | done |
 | FEATURE-HOUSE-OVERVIEW-PAGE-V2 | feature | done |
+| FEATURE-WINDOW-COVERING-DEVICE-PAGE | feature | done |
 | FEATURE-PANEL-SENSOR-DEVICE-PAGE | feature | planned |
-| FEATURE-WINDOW-COVERING-DEVICE-PAGE | feature | planned |
+| FEATURE-PANEL-ROOM-SYSTEM-PAGES | feature | planned |
+| FEATURE-PANEL-ROOM-CONTEXT | technical | planned |
+| FEATURE-PANEL-DECK-ROOM-BUILDER | technical | planned |
+| FEATURE-PANEL-ROOM-OVERVIEW-UI | feature | planned |
+| FEATURE-PANEL-DOMAIN-LIGHTS-PAGE | feature | planned |
+| FEATURE-PANEL-DOMAIN-CLIMATE-PAGE | feature | planned |
+| FEATURE-PANEL-DOMAIN-SENSORS-PAGE | feature | planned |
+| FEATURE-PANEL-QUICK-SCENES-FEEDBACK | technical | planned |
+| FEATURE-WEATHER-PANEL-ENHANCEMENTS | feature | planned |
+| FEATURE-SPACEPAGE-CLIMATE-SECTION | feature | planned |
 
 ---
 
@@ -422,6 +451,15 @@ EPIC-PANEL-SPACES-DECK-INTENTS (done)
 ├── FEATURE-PANEL-DASHBOARD-PAGES-AS-DECKITEM (done)
 ├── TEST-PANEL-DECK-STARTUP-MATRIX (done)
 └── CHORE-PANEL-DOCS-SPACES-DECK-INTENTS (done)
+
+FEATURE-PANEL-ROOM-SYSTEM-PAGES (planned)
+├── FEATURE-PANEL-ROOM-CONTEXT (planned)
+├── FEATURE-PANEL-DECK-ROOM-BUILDER (planned)
+├── FEATURE-PANEL-ROOM-OVERVIEW-UI (planned)
+├── FEATURE-PANEL-DOMAIN-LIGHTS-PAGE (planned)
+├── FEATURE-PANEL-DOMAIN-CLIMATE-PAGE (planned)
+├── FEATURE-PANEL-DOMAIN-SENSORS-PAGE (planned)
+└── FEATURE-PANEL-QUICK-SCENES-FEEDBACK (planned)
 ```
 
 ---
@@ -467,6 +505,7 @@ tasks/
 │   ├── FEATURE-ONBOARDING-WIZARD.md
 │   ├── FEATURE-PANEL-IDLE-MODE-SPACE-AWARE.md
 │   ├── FEATURE-PANEL-SENSOR-DEVICE-PAGE.md
+│   ├── panel_room_system_pages_epic_and_tasks.md
 │   ├── FEATURE-PLUGIN-HA-ADOPTION-IMPROVEMENTS.md
 │   ├── FEATURE-PLUGIN-HA-AUTO-MAP.md
 │   ├── FEATURE-PLUGIN-MATTER.md
@@ -508,11 +547,17 @@ tasks/
 │   ├── TECH-SCENES-OPENAPI-SYNC.md
 │   ├── TECH-SPACE-CONTEXT-SNAPSHOT.md
 │   ├── TECH-SPACE-LAST-ACTIVITY-TRACKING.md
-│   └── TECH-SPACES-ONBOARDING-WIZARD.md
+│   ├── TECH-SPACES-ONBOARDING-WIZARD.md
+│   ├── FEATURE-EXTENSION-LOGS-FILTERS.md
+│   ├── FEATURE-WEATHER-PANEL-ENHANCEMENTS.md
+│   └── FEATURE-SPACEPAGE-CLIMATE-SECTION.md
 └── technical/              # Technical refactors
     ├── TECHNICAL-DISPLAY-TOKEN-REVOCATION-MULTI-BACKEND.md
     ├── TECHNICAL-OPENAPI-SPECIFICATION.md
-    └── TECHNICAL-SCENES-ACTION-VALIDATION.md
+    ├── TECHNICAL-SCENES-ACTION-VALIDATION.md
+    ├── TECH-ADMIN-MODULE-CONFIG-TESTS.md
+    ├── TECH-PROPERTY-TIMESERIES-E2E.md
+    └── TECH-EXTENSIONS-CAN-REMOVE-OPENAPI.md
 ```
 
 ---

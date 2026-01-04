@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: large
 Parent: FEATURE-SPACES-MODULE
-Status: completed
+Status: done
 
 ## 1. Business goal
 

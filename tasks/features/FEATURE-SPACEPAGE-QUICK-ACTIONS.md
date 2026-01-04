@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: small
 Parent: EPIC-SPACES-FIRST-UX
-Status: completed
+Status: done
 
 ## Description
 

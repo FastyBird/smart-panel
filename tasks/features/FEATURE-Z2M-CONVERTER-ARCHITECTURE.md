@@ -81,47 +81,47 @@ I want to refactor the exposes mapping system into a modular converter architect
 ## 4. Acceptance criteria
 
 ### Infrastructure
-- [ ] Converter interface defined with `canHandle()` and `convert()` methods
-- [ ] Base converter class with common functionality
-- [ ] Converter registry that auto-discovers and registers converters
-- [ ] Existing `Z2mExposesMapperService` refactored to use converter registry
+- [x] Converter interface defined with `canHandle()` and `convert()` methods
+- [x] Base converter class with common functionality
+- [x] Converter registry that auto-discovers and registers converters
+- [x] Existing `Z2mExposesMapperService` refactored to use converter registry
 
 ### Device Converters
-- [ ] Light converter handles: on/off, brightness, color_temp, color_hs (skips color_xy)
-- [ ] Light converter respects `color_mode` property when updating state
-- [ ] Switch converter handles single and multi-endpoint switches
-- [ ] Cover converter handles position, tilt, and motor state
-- [ ] Cover converter supports OPEN/CLOSE/STOP commands
-- [ ] Climate converter handles local_temperature, setpoint, system_mode, running_state
-- [ ] Lock converter handles lock/unlock state
-- [ ] Fan converter handles on/off, speed, mode
+- [x] Light converter handles: on/off, brightness, color_temp, color_hs (skips color_xy)
+- [x] Light converter respects `color_mode` property when updating state
+- [x] Switch converter handles single and multi-endpoint switches
+- [x] Cover converter handles position, tilt, and motor state
+- [x] Cover converter supports OPEN/CLOSE/STOP commands
+- [x] Climate converter handles local_temperature, setpoint, system_mode, running_state
+- [x] Lock converter handles lock/unlock state
+- [x] Fan converter handles on/off, speed, mode
 
 ### Sensor Converters
-- [ ] Base sensor converter provides tamper and low_battery support
-- [ ] Each sensor type has dedicated converter with proper channel category
-- [ ] Temperature converter with °C unit and range validation
-- [ ] Humidity converter with 0-100% range
-- [ ] Occupancy/presence converter with binary detected state
-- [ ] Contact converter with binary detected state
-- [ ] Leak converter with binary detected state
-- [ ] Smoke converter with binary detected state
-- [ ] Illuminance converter with lux unit
-- [ ] Pressure converter with hPa unit
+- [x] Base sensor converter provides tamper and low_battery support
+- [x] Each sensor type has dedicated converter with proper channel category
+- [x] Temperature converter with °C unit and range validation
+- [x] Humidity converter with 0-100% range
+- [x] Occupancy/presence converter with binary detected state
+- [x] Contact converter with binary detected state
+- [x] Leak converter with binary detected state
+- [x] Smoke converter with binary detected state
+- [x] Illuminance converter with lux unit
+- [x] Pressure converter with hPa unit
 
 ### Action/Button Converter
-- [ ] Action converter detects button press patterns (single, double, hold, release)
-- [ ] Multi-button remotes create separate channels per button
-- [ ] Action values are parsed to identify button and press type
+- [x] Action converter detects button press patterns (single, double, hold, release)
+- [x] Multi-button remotes create separate channels per button
+- [x] Action values are parsed to identify button and press type
 
 ### Testing
-- [ ] Unit tests for converter registry
-- [ ] Unit tests for each converter type
-- [ ] Integration tests verifying backward compatibility
+- [x] Unit tests for converter registry
+- [x] Unit tests for each converter type
+- [x] Integration tests verifying backward compatibility
 
 ### Quality
-- [ ] No breaking changes to existing device mappings
-- [ ] All existing tests continue to pass
-- [ ] New converters follow existing code patterns
+- [x] No breaking changes to existing device mappings
+- [x] All existing tests continue to pass
+- [x] New converters follow existing code patterns
 
 ## 5. Example scenarios
 

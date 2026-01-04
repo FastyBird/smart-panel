@@ -4,7 +4,7 @@ Type: feature
 Scope: panel
 Size: small
 Parent: EPIC-SPACES-FIRST-UX
-Status: completed
+Status: done
 
 ## 1. Business goal
 

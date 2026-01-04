@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, panel, admin
 Size: medium
 Parent: EPIC-SPACES-FIRST-UX
-Status: implemented
+Status: done
 
 ## 1. Business goal
 
