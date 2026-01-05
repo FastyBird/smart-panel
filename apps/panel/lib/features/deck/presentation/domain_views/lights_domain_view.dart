@@ -333,13 +333,20 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     _RoleGroup group,
     DevicesService devicesService,
   ) {
+    final localizations = AppLocalizations.of(context)!;
     final isToggling = _togglingRoles.contains(group.role);
     final isOn = group.isOn;
 
-    // Build subtitle with device count and optional brightness
-    final subtitleText = group.hasBrightness && group.avgBrightness != null && isOn
-        ? '${group.onCount}/${group.totalCount} on • ${group.avgBrightness}%'
-        : '${group.onCount}/${group.totalCount} on';
+    // Build subtitle: "X light(s) on" or "all off", with optional brightness
+    String subtitleText;
+    if (group.onCount == 0) {
+      subtitleText = localizations.domain_lights_all_off;
+    } else {
+      subtitleText = localizations.domain_lights_count_on(group.onCount);
+      if (group.hasBrightness && group.avgBrightness != null) {
+        subtitleText = '$subtitleText • ${group.avgBrightness}%';
+      }
+    }
 
     return GestureDetector(
       onLongPress: () => _openRoleDetail(context, group, devicesService),
@@ -609,10 +616,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final hasBrightness = channel.hasBrightness;
     final brightness = hasBrightness ? channel.brightness : null;
 
-    // Build subtitle with brightness or on/off state
-    final subtitleText = hasBrightness && isOn && brightness != null
-        ? '$brightness%'
-        : (isOn ? localizations.light_state_on : localizations.light_state_off);
+    // Build subtitle: On/Off state, with brightness icon if supported
+    final stateText = isOn ? localizations.light_state_on : localizations.light_state_off;
+    final showBrightness = hasBrightness && isOn && brightness != null;
 
     return GestureDetector(
       onLongPress: () => _openDeviceDetail(context, device),
@@ -647,7 +653,23 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                   ),
                   AppSpacings.spacingXsVertical,
                   ButtonTileSubTitle(
-                    subTitle: Text(subtitleText),
+                    subTitle: Row(
+                      children: [
+                        Text(stateText),
+                        if (showBrightness) ...[
+                          AppSpacings.spacingSmHorizontal,
+                          Icon(
+                            MdiIcons.brightnessPercent,
+                            size: AppFontSize.extraSmall,
+                            color: Theme.of(context).brightness == Brightness.light
+                                ? AppTextColorLight.placeholder
+                                : AppTextColorDark.placeholder,
+                          ),
+                          const SizedBox(width: 2),
+                          Text('$brightness%'),
+                        ],
+                      ],
+                    ),
                     isOn: isOn,
                     isLoading: isToggling,
                   ),

@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -931,6 +933,21 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get domain_lights_empty_description => 'V této místnosti nebyla nalezena žádná světla';
+
+  @override
+  String domain_lights_count_on(int count) {
+    return Intl.plural(
+      count,
+      one: '1 světlo zapnuto',
+      few: '$count světla zapnuta',
+      other: '$count světel zapnuto',
+      name: 'domain_lights_count_on',
+      args: [count],
+    );
+  }
+
+  @override
+  String get domain_lights_all_off => 'vše vypnuto';
 
   @override
   String get domain_climate => 'Klima';

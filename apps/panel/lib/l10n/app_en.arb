@@ -1252,6 +1252,19 @@
   "@domain_lights_empty_description": {
     "description": "Description shown when no lights are found in the room"
   },
+  "domain_lights_count_on": "{count, plural, =1{1 light on} other{{count} lights on}}",
+  "@domain_lights_count_on": {
+    "description": "Count of lights that are on in a role group",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "domain_lights_all_off": "all off",
+  "@domain_lights_all_off": {
+    "description": "Text shown when all lights in a role group are off"
+  },
   "domain_climate": "Climate",
   "@domain_climate": {
     "description": "Title for climate domain view in room navigation"
