@@ -7,16 +7,16 @@ import { IntentStatus, IntentTargetStatus, IntentType } from '../intents.constan
  * Represents a target affected by an intent (device/channel/property)
  */
 export class IntentTarget {
-	@Expose()
+	@Expose({ name: 'device_id' })
 	@IsUUID()
 	deviceId: string;
 
-	@Expose()
+	@Expose({ name: 'channel_id' })
 	@IsOptional()
 	@IsUUID()
 	channelId?: string;
 
-	@Expose()
+	@Expose({ name: 'property_id' })
 	@IsOptional()
 	@IsUUID()
 	propertyId?: string;
@@ -26,16 +26,16 @@ export class IntentTarget {
  * Represents the result for a specific target after intent completion
  */
 export class IntentTargetResult {
-	@Expose()
+	@Expose({ name: 'device_id' })
 	@IsUUID()
 	deviceId: string;
 
-	@Expose()
+	@Expose({ name: 'channel_id' })
 	@IsOptional()
 	@IsUUID()
 	channelId?: string;
 
-	@Expose()
+	@Expose({ name: 'property_id' })
 	@IsOptional()
 	@IsUUID()
 	propertyId?: string;
@@ -54,17 +54,17 @@ export class IntentTargetResult {
  * Optional scope context for an intent (room, role, scene association)
  */
 export class IntentScope {
-	@Expose()
+	@Expose({ name: 'room_id' })
 	@IsOptional()
 	@IsUUID()
 	roomId?: string;
 
-	@Expose()
+	@Expose({ name: 'role_id' })
 	@IsOptional()
 	@IsUUID()
 	roleId?: string;
 
-	@Expose()
+	@Expose({ name: 'scene_id' })
 	@IsOptional()
 	@IsUUID()
 	sceneId?: string;
@@ -78,7 +78,7 @@ export class IntentRecord {
 	@IsUUID()
 	id: string;
 
-	@Expose()
+	@Expose({ name: 'request_id' })
 	@IsOptional()
 	@IsUUID()
 	requestId?: string;
@@ -106,20 +106,20 @@ export class IntentRecord {
 	@IsEnum(IntentStatus)
 	status: IntentStatus;
 
-	@Expose()
+	@Expose({ name: 'ttl_ms' })
 	ttlMs: number;
 
-	@Expose()
+	@Expose({ name: 'created_at' })
 	@IsDate()
 	@Type(() => Date)
 	createdAt: Date;
 
-	@Expose()
+	@Expose({ name: 'expires_at' })
 	@IsDate()
 	@Type(() => Date)
 	expiresAt: Date;
 
-	@Expose()
+	@Expose({ name: 'completed_at' })
 	@IsOptional()
 	@IsDate()
 	@Type(() => Date)
@@ -164,10 +164,10 @@ export class CreateIntentInput {
  * Payload for Socket.IO intent events
  */
 export class IntentEventPayload {
-	@Expose()
+	@Expose({ name: 'intent_id' })
 	intentId: string;
 
-	@Expose()
+	@Expose({ name: 'request_id' })
 	@IsOptional()
 	requestId?: string;
 
@@ -187,16 +187,16 @@ export class IntentEventPayload {
 	@Expose()
 	status: IntentStatus;
 
-	@Expose()
+	@Expose({ name: 'ttl_ms' })
 	ttlMs: number;
 
-	@Expose()
+	@Expose({ name: 'created_at' })
 	createdAt: string;
 
-	@Expose()
+	@Expose({ name: 'expires_at' })
 	expiresAt: string;
 
-	@Expose()
+	@Expose({ name: 'completed_at' })
 	@IsOptional()
 	completedAt?: string;
 

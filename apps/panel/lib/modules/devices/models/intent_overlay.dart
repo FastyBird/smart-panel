@@ -63,9 +63,9 @@ class IntentTarget {
 
   factory IntentTarget.fromJson(Map<String, dynamic> json) {
     return IntentTarget(
-      deviceId: json['deviceId'] as String,
-      channelId: json['channelId'] as String?,
-      propertyId: json['propertyId'] as String?,
+      deviceId: json['device_id'] as String,
+      channelId: json['channel_id'] as String?,
+      propertyId: json['property_id'] as String?,
     );
   }
 
@@ -91,9 +91,9 @@ class IntentTargetResult {
 
   factory IntentTargetResult.fromJson(Map<String, dynamic> json) {
     return IntentTargetResult(
-      deviceId: json['deviceId'] as String,
-      channelId: json['channelId'] as String?,
-      propertyId: json['propertyId'] as String?,
+      deviceId: json['device_id'] as String,
+      channelId: json['channel_id'] as String?,
+      propertyId: json['property_id'] as String?,
       status: parseIntentTargetStatus(json['status'] as String),
       error: json['error'] as String?,
     );
@@ -120,9 +120,9 @@ class IntentScope {
       return IntentScope();
     }
     return IntentScope(
-      roomId: json['roomId'] as String?,
-      roleId: json['roleId'] as String?,
-      sceneId: json['sceneId'] as String?,
+      roomId: json['room_id'] as String?,
+      roleId: json['role_id'] as String?,
+      sceneId: json['scene_id'] as String?,
     );
   }
 }
@@ -173,18 +173,18 @@ class IntentOverlay {
     }
 
     return IntentOverlay(
-      intentId: json['intentId'] as String,
-      requestId: json['requestId'] as String?,
+      intentId: json['intent_id'] as String,
+      requestId: json['request_id'] as String?,
       type: json['type'] as String,
       scope: IntentScope.fromJson(json['scope'] as Map<String, dynamic>?),
       targets: targets,
       value: json['value'],
       status: parseIntentStatus(json['status'] as String),
-      ttlMs: json['ttlMs'] as int,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      expiresAt: DateTime.parse(json['expiresAt'] as String),
-      completedAt: json['completedAt'] != null
-          ? DateTime.parse(json['completedAt'] as String)
+      ttlMs: json['ttl_ms'] as int,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      expiresAt: DateTime.parse(json['expires_at'] as String),
+      completedAt: json['completed_at'] != null
+          ? DateTime.parse(json['completed_at'] as String)
           : null,
       results: results,
     );

@@ -62,8 +62,8 @@ export class PropertyCommandService {
 			return { success: false, results: 'Invalid payload' };
 		}
 
-		// Extract requestId from payload for tracking
-		const requestId = (payload as { requestId?: string })?.requestId;
+		// Extract request_id from payload for tracking (snake_case from client)
+		const requestId = (payload as { request_id?: string })?.request_id;
 
 		// Build intent targets with UUIDs (deviceId, channelId, propertyId)
 		const targets: IntentTarget[] = dtoInstance.properties.map((prop) => ({
