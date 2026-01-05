@@ -14,13 +14,13 @@
  * Used for direct communication between adapter and service without event bus
  */
 export interface Z2mAdapterCallbacks {
-	onBridgeOnline?: () => void;
-	onBridgeOffline?: () => void;
-	onDevicesReceived?: (devices: Z2mDevice[]) => void;
-	onDeviceStateChanged?: (friendlyName: string, state: Record<string, unknown>) => void;
-	onDeviceAvailabilityChanged?: (friendlyName: string, available: boolean) => void;
-	onDeviceJoined?: (ieeeAddress: string, friendlyName: string) => void;
-	onDeviceLeft?: (ieeeAddress: string, friendlyName: string) => void;
+	onBridgeOnline?: () => void | Promise<void>;
+	onBridgeOffline?: () => void | Promise<void>;
+	onDevicesReceived?: (devices: Z2mDevice[]) => void | Promise<void>;
+	onDeviceStateChanged?: (friendlyName: string, state: Record<string, unknown>) => void | Promise<void>;
+	onDeviceAvailabilityChanged?: (friendlyName: string, available: boolean) => void | Promise<void>;
+	onDeviceJoined?: (ieeeAddress: string, friendlyName: string) => void | Promise<void>;
+	onDeviceLeft?: (ieeeAddress: string, friendlyName: string) => void | Promise<void>;
 }
 
 // =============================================================================

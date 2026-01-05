@@ -209,11 +209,10 @@ export class PropertyValueService {
 		switch (dataType) {
 			case DataTypeType.ENUM:
 				// For ENUM, format should be string[] of allowed values
-				if (format.every((item) => typeof item === 'string')) {
-					const allowedValues = format as string[];
+				if (format.every((item): item is string => typeof item === 'string')) {
 					const stringValue = String(value);
-					if (!allowedValues.includes(stringValue)) {
-						return `Value "${stringValue}" not in allowed values: [${allowedValues.join(', ')}]`;
+					if (!format.includes(stringValue)) {
+						return `Value "${stringValue}" not in allowed values: [${format.join(', ')}]`;
 					}
 				}
 				break;
