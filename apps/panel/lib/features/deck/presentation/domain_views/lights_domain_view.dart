@@ -266,11 +266,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     DevicesService devicesService,
   ) {
     final display = _deckService?.display;
-    final cols = display?.cols ?? 4;
+    // Ensure minimum of 2 columns for 2-per-row layout
+    final cols = (display?.cols ?? 4).clamp(2, 100);
 
     // For portrait mode: 2 tiles per row, square tiles (colSpan = rowSpan)
-    // Calculate tile size: each tile takes half the columns
-    final tileColSpan = (cols / 2).floor();
+    // Calculate tile size: each tile takes half the columns (minimum 1)
+    final tileColSpan = (cols / 2).floor().clamp(1, cols);
     final tileRowSpan = tileColSpan; // Square tiles
 
     // Calculate how many rows we need for the role tiles
@@ -499,10 +500,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     DevicesService devicesService,
   ) {
     final display = _deckService?.display;
-    final cols = display?.cols ?? 4;
+    // Ensure minimum of 2 columns for 2-per-row layout
+    final cols = (display?.cols ?? 4).clamp(2, 100);
 
     // Each tile spans half the columns (2 tiles per row) and 1 row height
-    final tileColSpan = (cols / 2).floor();
+    final tileColSpan = (cols / 2).floor().clamp(1, cols);
     final tileRowSpan = 1;
 
     // Calculate how many rows we need
