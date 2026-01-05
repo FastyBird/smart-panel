@@ -309,16 +309,9 @@ class IntentOverlayService extends ChangeNotifier {
   void _scheduleResultCleanup() {
     _cleanupTimer?.cancel();
     _cleanupTimer = Timer(_failureIndicatorDuration, () {
-      final now = DateTime.now();
-      final expiredDevices = <String>[];
-
-      // For simplicity, clear all results after the duration
-      // A more sophisticated approach would track timestamps per result
+      // Clear all results after the duration
       _recentResults.clear();
-
-      if (expiredDevices.isNotEmpty || _recentResults.isEmpty) {
-        notifyListeners();
-      }
+      notifyListeners();
     });
   }
 }
