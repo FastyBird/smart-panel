@@ -34,7 +34,7 @@ class IntentOverlayService extends ChangeNotifier {
   final Map<String, String> _targetIndex = {};
 
   /// Recent completion results for showing failure indicators
-  /// Key: deviceId, Value: IntentTargetResult
+  /// Key: "deviceId:channelId:propertyId" (using * for null values), Value: IntentTargetResult
   final Map<String, IntentTargetResult> _recentResults = {};
 
   /// Duration to keep failure indicators visible
@@ -119,19 +119,35 @@ class IntentOverlayService extends ChangeNotifier {
     return null;
   }
 
-  /// Get recent failure result for a device (for showing "not synced" indicators)
-  IntentTargetResult? getFailureResult(String deviceId) {
-    final result = _recentResults[deviceId];
-    if (result == null) return null;
+  /// Get recent failure result for a specific property or any property on a device.
+  ///
+  /// If [channelId] and [propertyId] are provided, looks up the specific property.
+  /// Otherwise, returns the first failure found for the device (for showing device-level indicators).
+  IntentTargetResult? getFailureResult(
+    String deviceId, [
+    String? channelId,
+    String? propertyId,
+  ]) {
+    // If specific property requested, look up by composite key
+    if (propertyId != null) {
+      final key = '$deviceId:${channelId ?? '*'}:$propertyId';
+      final result = _recentResults[key];
+      if (result != null && result.isFailure) {
+        return result;
+      }
+      return null;
+    }
 
-    // Only return if it's a failure
-    if (result.isFailure) {
-      return result;
+    // Otherwise, find any failure for this device
+    for (final entry in _recentResults.entries) {
+      if (entry.key.startsWith('$deviceId:') && entry.value.isFailure) {
+        return entry.value;
+      }
     }
     return null;
   }
 
-  /// Check if a device has a recent failure
+  /// Check if a device has a recent failure (any property)
   bool hasRecentFailure(String deviceId) {
     return getFailureResult(deviceId) != null;
   }
@@ -387,7 +403,10 @@ class IntentOverlayService extends ChangeNotifier {
       for (final result in payload['results'] as List) {
         try {
           final targetResult = IntentTargetResult.fromJson(result as Map<String, dynamic>);
-          _recentResults[targetResult.deviceId] = targetResult;
+          // Use composite key to avoid overwrites when multiple properties on same device
+          final key =
+              '${targetResult.deviceId}:${targetResult.channelId ?? '*'}:${targetResult.propertyId ?? '*'}';
+          _recentResults[key] = targetResult;
         } catch (e) {
           // Ignore parse errors for individual results
         }
