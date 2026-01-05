@@ -20,6 +20,28 @@ import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
+/// Strips room name from device name (case insensitive).
+/// Capitalizes first letter if it becomes lowercase after stripping.
+String _stripRoomName(String deviceName, String? roomName) {
+  if (roomName == null || roomName.isEmpty) return deviceName;
+
+  final lowerDevice = deviceName.toLowerCase();
+  final lowerRoom = roomName.toLowerCase();
+
+  if (lowerDevice.startsWith(lowerRoom)) {
+    String stripped = deviceName.substring(roomName.length).trim();
+    if (stripped.isEmpty) return deviceName;
+
+    // Capitalize first letter if it's lowercase
+    if (stripped[0].toLowerCase() == stripped[0] &&
+        stripped[0].toUpperCase() != stripped[0]) {
+      stripped = stripped[0].toUpperCase() + stripped.substring(1);
+    }
+    return stripped;
+  }
+  return deviceName;
+}
+
 /// Role group data for displaying in tiles
 class _RoleGroup {
   final LightTargetRole role;
@@ -620,6 +642,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final stateText = isOn ? localizations.light_state_on : localizations.light_state_off;
     final showBrightness = hasBrightness && isOn && brightness != null;
 
+    // Strip room name from device display name
+    final roomName = _spacesService?.getSpace(_roomId)?.name;
+    final displayName = _stripRoomName(target.displayName, roomName);
+
     return GestureDetector(
       onLongPress: () => _openDeviceDetail(context, device),
       child: ButtonTileBox(
@@ -647,7 +673,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   ButtonTileTitle(
-                    title: target.displayName,
+                    title: displayName,
                     isOn: isOn,
                     isLoading: isToggling,
                   ),
@@ -1495,6 +1521,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     List<LightTargetView> targets,
     DevicesService devicesService,
   ) {
+    // Get room name for stripping from device names
+    final roomName = _spacesService?.getSpace(widget.roomId)?.name;
+
     final items = targets.map((target) {
       final device = devicesService.getDevice(target.deviceId);
       if (device == null) return null;
@@ -1506,6 +1535,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           orElse: () => device.lightChannels.first,
         );
       }
+
+      // Strip room name from device name
+      final displayName = _stripRoomName(device.name, roomName);
 
       return Material(
         elevation: 0,
@@ -1525,7 +1557,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
                 : null,
           ),
           title: Text(
-            device.name,
+            displayName,
             style: TextStyle(
               fontSize: AppFontSize.extraSmall * 0.8,
               fontWeight: FontWeight.w600,
