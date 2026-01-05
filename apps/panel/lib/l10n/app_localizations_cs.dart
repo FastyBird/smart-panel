@@ -1,4 +1,4 @@
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' as intl;
 
 import 'app_localizations.dart';
 
@@ -936,14 +936,14 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String domain_lights_count_on(int count) {
-    return Intl.plural(
+    String _temp0 = intl.Intl.pluralLogic(
       count,
-      one: '1 světlo zapnuto',
-      few: '$count světla zapnuta',
+      locale: localeName,
       other: '$count světel zapnuto',
-      name: 'domain_lights_count_on',
-      args: [count],
+      few: '$count světla zapnuta',
+      one: '1 světlo zapnuto',
     );
+    return '$_temp0';
   }
 
   @override
