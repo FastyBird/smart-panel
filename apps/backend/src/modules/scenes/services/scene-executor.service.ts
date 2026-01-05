@@ -186,13 +186,24 @@ export class SceneExecutorService {
 			result.completedAt = new Date().toISOString();
 
 			// Complete intent with failure - map targets to failed results
-			const failedResults: IntentTargetResult[] = targets.map((target) => ({
-				deviceId: target.deviceId,
-				channelId: target.channelId,
-				propertyId: target.propertyId,
-				status: IntentTargetStatus.FAILED,
-				error: err.message,
-			}));
+			// If targets is empty (no device actions), create a synthetic scene-level failure
+			// to ensure the intent is marked as failed rather than incorrectly succeeding
+			const failedResults: IntentTargetResult[] =
+				targets.length > 0
+					? targets.map((target) => ({
+							deviceId: target.deviceId,
+							channelId: target.channelId,
+							propertyId: target.propertyId,
+							status: IntentTargetStatus.FAILED,
+							error: err.message,
+						}))
+					: [
+							{
+								deviceId: sceneId, // Use sceneId as synthetic device for scene-level failure
+								status: IntentTargetStatus.FAILED,
+								error: err.message,
+							},
+						];
 
 			this.intentsService.completeIntent(intent.id, failedResults);
 
