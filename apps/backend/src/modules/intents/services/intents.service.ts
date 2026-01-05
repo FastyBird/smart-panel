@@ -1,11 +1,9 @@
-import { instanceToPlain } from 'class-transformer';
 import { v4 as uuid } from 'uuid';
 
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	DEFAULT_TTL_DEVICE_COMMAND,
 	INTENTS_MODULE_NAME,
@@ -14,7 +12,7 @@ import {
 	IntentStatus,
 	IntentTargetStatus,
 } from '../intents.constants';
-import { CreateIntentInput, IntentEventPayload, IntentRecord, IntentTargetResult } from '../models/intent.model';
+import { CreateIntentInput, IntentRecord, IntentTargetResult } from '../models/intent.model';
 
 @Injectable()
 export class IntentsService implements OnModuleInit, OnModuleDestroy {
@@ -50,6 +48,7 @@ export class IntentsService implements OnModuleInit, OnModuleDestroy {
 			requestId: input.requestId,
 			type: input.type,
 			scope: input.scope,
+			context: input.context,
 			targets: input.targets,
 			value: input.value,
 			status: IntentStatus.PENDING,
@@ -114,7 +113,7 @@ export class IntentsService implements OnModuleInit, OnModuleDestroy {
 	/**
 	 * Find active (pending) intents matching query criteria
 	 */
-	findActiveIntents(query: { deviceId?: string; roomId?: string; sceneId?: string }): IntentRecord[] {
+	findActiveIntents(query: { deviceId?: string; spaceId?: string }): IntentRecord[] {
 		const results: IntentRecord[] = [];
 
 		for (const intent of this.intents.values()) {
@@ -133,15 +132,8 @@ export class IntentsService implements OnModuleInit, OnModuleDestroy {
 				}
 			}
 
-			// Match by roomId
-			if (query.roomId && intent.scope?.roomId === query.roomId) {
-				results.push(intent);
-
-				continue;
-			}
-
-			// Match by sceneId
-			if (query.sceneId && intent.scope?.sceneId === query.sceneId) {
+			// Match by spaceId (scope)
+			if (query.spaceId && intent.scope?.spaceId === query.spaceId) {
 				results.push(intent);
 			}
 		}
@@ -212,29 +204,63 @@ export class IntentsService implements OnModuleInit, OnModuleDestroy {
 
 	/**
 	 * Emit intent event to Socket.IO clients via EventEmitter2
+	 * Build the payload directly with snake_case keys for Socket.IO
 	 */
 	private emitIntentEvent(eventType: IntentEventType, intent: IntentRecord): void {
-		const payload = toInstance(IntentEventPayload, {
+		// Build payload directly with snake_case keys
+		// (class-transformer doesn't handle 'unknown' type properly)
+		const payload: Record<string, unknown> = {
 			intent_id: intent.id,
-			request_id: intent.requestId,
 			type: intent.type,
-			scope: intent.scope,
-			targets: intent.targets,
+			targets: intent.targets.map((t) => ({
+				device_id: t.deviceId,
+				...(t.channelId && { channel_id: t.channelId }),
+				...(t.propertyId && { property_id: t.propertyId }),
+			})),
 			value: intent.value,
 			status: intent.status,
 			ttl_ms: intent.ttlMs,
 			created_at: intent.createdAt.toISOString(),
 			expires_at: intent.expiresAt.toISOString(),
-			completed_at: intent.completedAt?.toISOString(),
-			results: intent.results,
-		});
+		};
 
-		// Transform to plain object with snake_case keys using @Expose decorators
-		const plainPayload = instanceToPlain(payload, {
-			excludeExtraneousValues: true,
-			exposeUnsetFields: false,
-		});
+		// Add optional fields only if present
+		if (intent.requestId) {
+			payload.request_id = intent.requestId;
+		}
 
-		this.eventEmitter.emit(eventType, plainPayload);
+		if (intent.scope?.spaceId) {
+			payload.scope = { space_id: intent.scope.spaceId };
+		}
+
+		if (intent.context) {
+			const ctx: Record<string, unknown> = {};
+
+			if (intent.context.origin) ctx.origin = intent.context.origin;
+			if (intent.context.displayId) ctx.display_id = intent.context.displayId;
+			if (intent.context.spaceId) ctx.space_id = intent.context.spaceId;
+			if (intent.context.roleKey) ctx.role_key = intent.context.roleKey;
+			if (intent.context.extra) ctx.extra = intent.context.extra;
+
+			if (Object.keys(ctx).length > 0) {
+				payload.context = ctx;
+			}
+		}
+
+		if (intent.completedAt) {
+			payload.completed_at = intent.completedAt.toISOString();
+		}
+
+		if (intent.results) {
+			payload.results = intent.results.map((r) => ({
+				device_id: r.deviceId,
+				...(r.channelId && { channel_id: r.channelId }),
+				...(r.propertyId && { property_id: r.propertyId }),
+				status: r.status,
+				...(r.error && { error: r.error }),
+			}));
+		}
+
+		this.eventEmitter.emit(eventType, payload);
 	}
 }

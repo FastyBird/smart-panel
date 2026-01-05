@@ -58,3 +58,32 @@ export const DEFAULT_TTL_SCENE = 5000; // 5 seconds for scene execution
  * Cleanup interval for expired intents
  */
 export const INTENT_CLEANUP_INTERVAL = 500; // Check every 500ms
+
+/**
+ * Intent origin - indicates where the intent was initiated from
+ */
+export type IntentOrigin =
+	| 'panel.system.room'
+	| 'panel.system.master'
+	| 'panel.system.entry'
+	| 'panel.dashboard.tiles'
+	| 'panel.dashboard.cards'
+	| 'panel.device'
+	| 'panel.scenes'
+	| 'admin'
+	| 'api';
+
+/**
+ * All valid intent origin values for validation
+ */
+export const INTENT_ORIGINS: IntentOrigin[] = [
+	'panel.system.room',
+	'panel.system.master',
+	'panel.system.entry',
+	'panel.dashboard.tiles',
+	'panel.dashboard.cards',
+	'panel.device',
+	'panel.scenes',
+	'admin',
+	'api',
+];

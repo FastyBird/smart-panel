@@ -99,11 +99,10 @@ export class SceneExecutorService {
 		const intent = this.intentsService.createIntent({
 			type: IntentType.SCENE_RUN,
 			scope: {
-				sceneId: scene.id,
-				roomId: scene.primarySpaceId || undefined,
+				spaceId: scene.primarySpaceId || undefined,
 			},
 			targets,
-			value: { sceneName: scene.name },
+			value: { sceneId: scene.id, sceneName: scene.name },
 			ttlMs: DEFAULT_TTL_SCENE,
 		});
 

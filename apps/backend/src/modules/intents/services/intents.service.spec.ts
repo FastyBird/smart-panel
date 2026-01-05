@@ -107,11 +107,22 @@ describe('IntentsService', () => {
 				type: IntentType.LIGHT_SET_BRIGHTNESS,
 				targets: [{ deviceId: 'device-1' }],
 				value: 50,
-				scope: { roomId: 'room-1', roleId: 'role-1' },
+				scope: { spaceId: 'space-1' },
 			});
 
-			expect(intent.scope?.roomId).toBe('room-1');
-			expect(intent.scope?.roleId).toBe('role-1');
+			expect(intent.scope?.spaceId).toBe('space-1');
+		});
+
+		it('should store intent with context', () => {
+			const intent = service.createIntent({
+				type: IntentType.LIGHT_SET_BRIGHTNESS,
+				targets: [{ deviceId: 'device-1' }],
+				value: 50,
+				context: { origin: 'admin', roleKey: 'main' },
+			});
+
+			expect(intent.context?.origin).toBe('admin');
+			expect(intent.context?.roleKey).toBe('main');
 		});
 	});
 
@@ -248,21 +259,21 @@ describe('IntentsService', () => {
 				type: IntentType.LIGHT_SET_BRIGHTNESS,
 				targets: [{ deviceId: 'device-1' }],
 				value: 50,
-				scope: { roomId: 'room-1' },
+				scope: { spaceId: 'space-1' },
 			});
 
 			service.createIntent({
 				type: IntentType.LIGHT_SET_COLOR,
 				targets: [{ deviceId: 'device-2' }],
 				value: '#FF0000',
-				scope: { roomId: 'room-2' },
+				scope: { spaceId: 'space-2' },
 			});
 
 			service.createIntent({
 				type: IntentType.SCENE_RUN,
 				targets: [{ deviceId: 'device-3' }],
 				value: {},
-				scope: { sceneId: 'scene-1' },
+				scope: { spaceId: 'space-3' },
 			});
 		});
 
@@ -273,18 +284,11 @@ describe('IntentsService', () => {
 			expect(results[0].targets[0].deviceId).toBe('device-1');
 		});
 
-		it('should find intents by roomId', () => {
-			const results = service.findActiveIntents({ roomId: 'room-1' });
+		it('should find intents by spaceId', () => {
+			const results = service.findActiveIntents({ spaceId: 'space-1' });
 
 			expect(results).toHaveLength(1);
-			expect(results[0].scope?.roomId).toBe('room-1');
-		});
-
-		it('should find intents by sceneId', () => {
-			const results = service.findActiveIntents({ sceneId: 'scene-1' });
-
-			expect(results).toHaveLength(1);
-			expect(results[0].scope?.sceneId).toBe('scene-1');
+			expect(results[0].scope?.spaceId).toBe('space-1');
 		});
 
 		it('should return empty array when no matches found', () => {

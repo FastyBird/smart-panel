@@ -6,7 +6,7 @@ import { createExtensionLogger } from '../../../common/logger/extension-logger.s
 import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { DEFAULT_TTL_DEVICE_COMMAND, IntentTargetStatus, IntentType } from '../../intents/intents.constants';
-import { IntentTarget, IntentTargetResult } from '../../intents/models/intent.model';
+import { IntentContext, IntentTarget, IntentTargetResult } from '../../intents/models/intent.model';
 import { IntentsService } from '../../intents/services/intents.service';
 import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../../websocket/dto/client-user.dto';
@@ -75,19 +75,33 @@ export class PropertyCommandService {
 		// Determine intent type based on the first property (could be enhanced to detect property type)
 		const intentType = IntentType.DEVICE_SET_PROPERTY;
 
-		// Build a map of "deviceId:propertyId" -> value for multi-property support
+		// Build a map of "deviceId:channelId:propertyId" -> value for multi-property support
 		// Using composite key to avoid collisions when multiple devices have same property
 		const valueMap: Record<string, unknown> = {};
 
 		for (const prop of dtoInstance.properties) {
-			const compositeKey = `${prop.device}:${prop.property}`;
+			const compositeKey = `${prop.device}:${prop.channel}:${prop.property}`;
 			valueMap[compositeKey] = prop.value;
+		}
+
+		// Transform context from DTO (snake_case) to IntentContext (camelCase)
+		let intentContext: IntentContext | undefined;
+
+		if (dtoInstance.context) {
+			intentContext = {
+				origin: dtoInstance.context.origin,
+				displayId: dtoInstance.context.display_id,
+				spaceId: dtoInstance.context.space_id,
+				roleKey: dtoInstance.context.role_key,
+				extra: dtoInstance.context.extra,
+			};
 		}
 
 		// Create the intent with the value map and optional requestId for tracking
 		const intent = this.intentsService.createIntent({
 			requestId,
 			type: intentType,
+			context: intentContext,
 			targets,
 			value: valueMap,
 			ttlMs: DEFAULT_TTL_DEVICE_COMMAND,

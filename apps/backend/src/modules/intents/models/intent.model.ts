@@ -1,7 +1,20 @@
 import { Expose, Type } from 'class-transformer';
-import { IsArray, IsDate, IsEnum, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
+import {
+	IsArray,
+	IsDate,
+	IsEnum,
+	IsIn,
+	IsInt,
+	IsISO8601,
+	IsObject,
+	IsOptional,
+	IsString,
+	IsUUID,
+	Min,
+	ValidateNested,
+} from 'class-validator';
 
-import { IntentStatus, IntentTargetStatus, IntentType } from '../intents.constants';
+import { INTENT_ORIGINS, IntentOrigin, IntentStatus, IntentTargetStatus, IntentType } from '../intents.constants';
 
 /**
  * Represents a target affected by an intent (device/channel/property)
@@ -51,23 +64,53 @@ export class IntentTargetResult {
 }
 
 /**
- * Optional scope context for an intent (room, role, scene association)
+ * Optional scope context for an intent.
+ * This is "where it applies" (room/zone). In SmartPanel this is always a Space.
  */
 export class IntentScope {
-	@Expose({ name: 'room_id' })
+	@Expose({ name: 'space_id' })
 	@IsOptional()
 	@IsUUID()
-	roomId?: string;
+	spaceId?: string;
+}
 
-	@Expose({ name: 'role_id' })
+/**
+ * Context information about where and how the intent was initiated.
+ * This is NOT authoritative business logic; it is metadata for UI/overlay/debugging.
+ */
+export class IntentContext {
+	@Expose()
 	@IsOptional()
-	@IsUUID()
-	roleId?: string;
+	@IsIn(INTENT_ORIGINS)
+	origin?: IntentOrigin;
 
-	@Expose({ name: 'scene_id' })
+	@Expose({ name: 'display_id' })
 	@IsOptional()
 	@IsUUID()
-	sceneId?: string;
+	displayId?: string;
+
+	/**
+	 * Optional hint for system pages: which space view initiated the action.
+	 * Not authoritative; can be omitted (e.g., dashboard tiles without room context).
+	 */
+	@Expose({ name: 'space_id' })
+	@IsOptional()
+	@IsUUID()
+	spaceId?: string;
+
+	/**
+	 * Optional domain hint (e.g., lighting role key: "main" | "ambient" | ...).
+	 * Keep as string (enum keys), NOT UUID.
+	 */
+	@Expose({ name: 'role_key' })
+	@IsOptional()
+	@IsString()
+	roleKey?: string;
+
+	@Expose()
+	@IsOptional()
+	@IsObject()
+	extra?: Record<string, unknown>;
 }
 
 /**
@@ -94,6 +137,12 @@ export class IntentRecord {
 	scope?: IntentScope;
 
 	@Expose()
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => IntentContext)
+	context?: IntentContext;
+
+	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => IntentTarget)
@@ -107,6 +156,8 @@ export class IntentRecord {
 	status: IntentStatus;
 
 	@Expose({ name: 'ttl_ms' })
+	@IsInt()
+	@Min(0)
 	ttlMs: number;
 
 	@Expose({ name: 'created_at' })
@@ -149,6 +200,11 @@ export class CreateIntentInput {
 	@Type(() => IntentScope)
 	scope?: IntentScope;
 
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => IntentContext)
+	context?: IntentContext;
+
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => IntentTarget)
@@ -157,6 +213,8 @@ export class CreateIntentInput {
 	value: unknown;
 
 	@IsOptional()
+	@IsInt()
+	@Min(0)
 	ttlMs?: number;
 }
 
@@ -165,13 +223,16 @@ export class CreateIntentInput {
  */
 export class IntentEventPayload {
 	@Expose({ name: 'intent_id' })
+	@IsUUID()
 	intentId: string;
 
 	@Expose({ name: 'request_id' })
 	@IsOptional()
+	@IsUUID()
 	requestId?: string;
 
 	@Expose()
+	@IsEnum(IntentType)
 	type: IntentType;
 
 	@Expose()
@@ -181,6 +242,12 @@ export class IntentEventPayload {
 	scope?: IntentScope;
 
 	@Expose()
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => IntentContext)
+	context?: IntentContext;
+
+	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => IntentTarget)
@@ -190,19 +257,25 @@ export class IntentEventPayload {
 	value: unknown;
 
 	@Expose()
+	@IsEnum(IntentStatus)
 	status: IntentStatus;
 
 	@Expose({ name: 'ttl_ms' })
+	@IsInt()
+	@Min(0)
 	ttlMs: number;
 
 	@Expose({ name: 'created_at' })
+	@IsISO8601()
 	createdAt: string;
 
 	@Expose({ name: 'expires_at' })
+	@IsISO8601()
 	expiresAt: string;
 
 	@Expose({ name: 'completed_at' })
 	@IsOptional()
+	@IsISO8601()
 	completedAt?: string;
 
 	@Expose()
