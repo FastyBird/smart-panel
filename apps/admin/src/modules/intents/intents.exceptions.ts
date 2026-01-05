@@ -1,9 +1,16 @@
-import { AppException } from '../../common';
+export class IntentsException extends Error {
+	public exception: Error | null;
 
-export class IntentsException extends AppException {}
+	constructor(message: string, exception: Error | null = null) {
+		super(message);
+		this.name = 'IntentsException';
+		this.exception = exception;
+	}
+}
 
 export class IntentsValidationException extends IntentsException {
-	constructor(message: string) {
-		super(message, 'intents-module/validation-error');
+	constructor(message: string, exception: Error | null = null) {
+		super(message, exception);
+		this.name = 'IntentsValidationException';
 	}
 }

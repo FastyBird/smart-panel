@@ -1,7 +1,6 @@
-import type { ZodType } from 'zod';
-
 import { camelCase, isArray, isObject, transform } from 'lodash';
 
+import { IntentSchema } from './intents.store.schemas';
 import type { IIntent } from './intents.store.types';
 
 /**
@@ -56,7 +55,7 @@ export interface IIntentRes {
 	}> | null;
 }
 
-export const transformIntentResponse = (response: IIntentRes, schema: ZodType<IIntent>): IIntent => {
+export const transformIntentResponse = (response: IIntentRes): IIntent => {
 	// Transform intent_id to id for consistency
 	const transformed = toCamelCase({
 		...response,
@@ -74,12 +73,12 @@ export const transformIntentResponse = (response: IIntentRes, schema: ZodType<II
 		transformed.context = { origin: null, displayId: null, spaceId: null, roleKey: null };
 	}
 
-	const parsed = schema.safeParse(transformed);
+	const parsed = IntentSchema.safeParse(transformed);
 
 	if (!parsed.success) {
 		console.error('[INTENTS] Schema validation failed:', parsed.error);
 		throw new Error('Failed to transform intent response');
 	}
 
-	return parsed.data;
+	return parsed.data as IIntent;
 };

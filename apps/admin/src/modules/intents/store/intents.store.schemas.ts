@@ -36,7 +36,7 @@ export const IntentSchema = z.object({
 	scope: IntentScopeSchema,
 	context: IntentContextSchema,
 	targets: z.array(IntentTargetSchema),
-	value: z.unknown(),
+	value: z.unknown().transform((val) => val ?? null),
 	status: z.nativeEnum(IntentStatus),
 	ttlMs: z.number(),
 	createdAt: z.coerce.date(),
@@ -44,3 +44,5 @@ export const IntentSchema = z.object({
 	completedAt: z.coerce.date().nullable(),
 	results: z.array(IntentTargetResultSchema).nullable(),
 });
+
+export type IntentSchemaType = z.infer<typeof IntentSchema>;

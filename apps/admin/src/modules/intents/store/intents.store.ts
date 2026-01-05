@@ -42,7 +42,7 @@ export const useIntentsStore = defineStore<'intents_module-intents', IntentsStor
 	const onEvent = (payload: IIntentsOnEventActionPayload): IIntent => {
 		return set({
 			id: payload.id,
-			data: transformIntentResponse(payload.data as unknown as IIntentRes, IntentSchema),
+			data: transformIntentResponse(payload.data as unknown as IIntentRes),
 		});
 	};
 
@@ -58,8 +58,9 @@ export const useIntentsStore = defineStore<'intents_module-intents', IntentsStor
 				throw new IntentsValidationException('Failed to update intent.');
 			}
 
-			data.value.set(parsed.data.id, parsed.data);
-			return parsed.data;
+			const intent = parsed.data as IIntent;
+			data.value.set(intent.id, intent);
+			return intent;
 		}
 
 		const parsed = IntentSchema.safeParse({ ...payload.data, id: payload.id });
@@ -70,8 +71,9 @@ export const useIntentsStore = defineStore<'intents_module-intents', IntentsStor
 			throw new IntentsValidationException('Failed to insert intent.');
 		}
 
-		data.value.set(parsed.data.id, parsed.data);
-		return parsed.data;
+		const intent = parsed.data as IIntent;
+		data.value.set(intent.id, intent);
+		return intent;
 	};
 
 	const unset = (payload: IIntentsUnsetActionPayload): void => {

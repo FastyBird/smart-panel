@@ -213,9 +213,10 @@ export class IntentsService implements OnModuleInit, OnModuleDestroy {
 			intent_id: intent.id,
 			type: intent.type,
 			targets: intent.targets.map((t) => ({
-				device_id: t.deviceId,
-				...(t.channelId && { channel_id: t.channelId }),
-				...(t.propertyId && { property_id: t.propertyId }),
+				device_id: t.deviceId ?? null,
+				channel_id: t.channelId ?? null,
+				property_id: t.propertyId ?? null,
+				scene_id: t.sceneId ?? null,
 			})),
 			value: intent.value,
 			status: intent.status,
@@ -253,9 +254,10 @@ export class IntentsService implements OnModuleInit, OnModuleDestroy {
 
 		if (intent.results) {
 			payload.results = intent.results.map((r) => ({
-				device_id: r.deviceId,
-				...(r.channelId && { channel_id: r.channelId }),
-				...(r.propertyId && { property_id: r.propertyId }),
+				device_id: r.deviceId ?? null,
+				channel_id: r.channelId ?? null,
+				property_id: r.propertyId ?? null,
+				scene_id: r.sceneId ?? null,
 				status: r.status,
 				...(r.error && { error: r.error }),
 			}));
