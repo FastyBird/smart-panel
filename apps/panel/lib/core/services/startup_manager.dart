@@ -44,6 +44,7 @@ import 'package:fastybird_smart_panel/modules/weather/repositories/current.dart'
 import 'package:fastybird_smart_panel/modules/weather/repositories/forecast.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/locations.dart';
 import 'package:fastybird_smart_panel/modules/weather/service.dart';
+import 'package:fastybird_smart_panel/modules/intents/export.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
@@ -296,6 +297,7 @@ class StartupManagerService {
         locator.get<DevicesModuleService>().initialize(),
         locator.get<SpacesModuleService>().initialize(),
         locator.get<ScenesModuleService>().initialize(),
+        locator.get<IntentsModuleService>().initialize(),
         locator.get<DashboardModuleService>().initialize(),
       ]);
     } catch (e) {
@@ -384,6 +386,11 @@ class StartupManagerService {
     if (locator.isRegistered<ScenesModuleService>()) {
       try {
         locator.unregister<ScenesModuleService>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<IntentsModuleService>()) {
+      try {
+        locator.unregister<IntentsModuleService>();
       } catch (_) {}
     }
 
@@ -521,6 +528,18 @@ class StartupManagerService {
       } catch (_) {}
     }
 
+    // Intents module repositories and services
+    if (locator.isRegistered<IntentsRepository>()) {
+      try {
+        locator.unregister<IntentsRepository>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<IntentOverlayService>()) {
+      try {
+        locator.unregister<IntentOverlayService>();
+      } catch (_) {}
+    }
+
     // Deck services
     if (locator.isRegistered<DeckService>()) {
       try {
@@ -613,6 +632,9 @@ class StartupManagerService {
       apiClient: _apiClient,
       socketService: _socketClient,
     );
+    var intentsModuleService = IntentsModuleService(
+      socketService: _socketClient,
+    );
 
     locator.registerSingleton(configModuleService);
     locator.registerSingleton(displaysModuleService);
@@ -622,6 +644,7 @@ class StartupManagerService {
     locator.registerSingleton(dashboardModuleService);
     locator.registerSingleton(spacesModuleService);
     locator.registerSingleton(scenesModuleService);
+    locator.registerSingleton(intentsModuleService);
 
     // Property timeseries service
     var propertyTimeseriesService = PropertyTimeseriesService(dio: _apiIoService);

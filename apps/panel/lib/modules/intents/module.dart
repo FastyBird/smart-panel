@@ -10,7 +10,7 @@ class IntentsModuleService {
   final SocketService _socketService;
 
   late IntentsRepository _intentsRepository;
-  late IntentsService _intentsService;
+  late IntentOverlayService _intentOverlayService;
 
   bool _isLoading = true;
 
@@ -19,18 +19,18 @@ class IntentsModuleService {
   }) : _socketService = socketService {
     _intentsRepository = IntentsRepository();
 
-    _intentsService = IntentsService(
+    _intentOverlayService = IntentOverlayService(
       intentsRepository: _intentsRepository,
     );
 
-    locator.registerSingleton(_intentsRepository);
-    locator.registerSingleton(_intentsService);
+    locator.registerSingleton<IntentsRepository>(_intentsRepository);
+    locator.registerSingleton<IntentOverlayService>(_intentOverlayService);
   }
 
   Future<void> initialize() async {
     _isLoading = true;
 
-    await _intentsService.initialize();
+    await _intentOverlayService.initialize();
 
     _isLoading = false;
 
@@ -59,7 +59,7 @@ class IntentsModuleService {
     _socketService.removeConnectionListener(_handleConnectionChange);
 
     _intentsRepository.dispose();
-    _intentsService.dispose();
+    _intentOverlayService.dispose();
   }
 
   /// Handle socket connection state changes

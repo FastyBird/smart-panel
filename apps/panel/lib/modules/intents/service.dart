@@ -5,19 +5,23 @@ import 'package:fastybird_smart_panel/modules/intents/models/intents/intent.dart
 import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/modules/intents/views/intents/view.dart';
 
-/// Service that provides the public interface for the intents module.
+/// Service that tracks active intents and provides overlay values for UI anti-jitter.
 ///
 /// Other modules should use this service to:
 /// - Check if properties/scenes are locked by active intents
 /// - Get overlay values for locked properties
 /// - Access recent failure results
 /// - Create local optimistic overlays
-class IntentsService extends ChangeNotifier {
+///
+/// When the user interacts with a device (e.g., changes brightness), an intent is created
+/// on the backend. This service tracks those intents and provides overlay values so the
+/// UI shows the intended value instead of outdated state, preventing jitter.
+class IntentOverlayService extends ChangeNotifier {
   final IntentsRepository _intentsRepository;
 
   Map<String, IntentView> _intents = {};
 
-  IntentsService({
+  IntentOverlayService({
     required IntentsRepository intentsRepository,
   }) : _intentsRepository = intentsRepository;
 
