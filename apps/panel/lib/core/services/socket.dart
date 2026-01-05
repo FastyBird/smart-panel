@@ -143,6 +143,7 @@ class SocketService {
 
   // Retry state for backend down scenarios
   int _retryAttempt = 0;
+  bool _reconnectInProgress = false;
   static const int _maxRetryIntervalSeconds = 300; // 5 minutes max
   static const int _initialRetryIntervalSeconds = 2;
   static const int _retryBackoffMultiplier = 2;
@@ -189,6 +190,7 @@ class SocketService {
 
     // Reset retry state on new initialization
     _retryAttempt = 0;
+    _reconnectInProgress = false;
 
     // Store callback for token invalidation
     _onTokenInvalid = onTokenInvalid;
@@ -224,6 +226,7 @@ class SocketService {
       }
       // Reset retry state on successful connection
       _retryAttempt = 0;
+      _reconnectInProgress = false;
       // Notify connection listeners
       _notifyConnectionListeners(true);
     });
@@ -427,6 +430,7 @@ class SocketService {
     _currentBackendUrl = null;
     _onTokenInvalid = null;
     _retryAttempt = 0;
+    _reconnectInProgress = false;
     _connectionListeners.clear();
   }
 
@@ -514,8 +518,19 @@ class SocketService {
       if (kDebugMode) {
         debugPrint('[SOCKETS] Already connected, skipping reconnection');
       }
+      _reconnectInProgress = false;
       return;
     }
+
+    // Prevent multiple concurrent reconnection attempts
+    if (_reconnectInProgress) {
+      if (kDebugMode) {
+        debugPrint('[SOCKETS] Reconnection already in progress, skipping');
+      }
+      return;
+    }
+
+    _reconnectInProgress = true;
 
     // Calculate dynamic retry interval with exponential backoff
     final baseInterval = _initialRetryIntervalSeconds;
@@ -534,6 +549,7 @@ class SocketService {
 
     Future.delayed(Duration(seconds: retryInterval), () {
       if (_socket == null || !_shouldReconnect) {
+        _reconnectInProgress = false;
         return;
       }
 
@@ -543,11 +559,15 @@ class SocketService {
         }
         // Reset retry state on successful connection
         _retryAttempt = 0;
+        _reconnectInProgress = false;
         return;
       }
 
       // Attempt to reconnect
       _socket!.connect();
+
+      // Allow next reconnection attempt after connect() is called
+      _reconnectInProgress = false;
 
       // Schedule next retry if still not connected after a short delay
       Future.delayed(Duration(seconds: 2), () {
