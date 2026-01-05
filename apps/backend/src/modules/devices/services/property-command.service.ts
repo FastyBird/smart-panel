@@ -5,6 +5,9 @@ import { Injectable } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType } from '../../auth/auth.constants';
+import { DEFAULT_TTL_DEVICE_COMMAND, IntentTargetStatus, IntentType } from '../../intents/intents.constants';
+import { IntentTarget, IntentTargetResult } from '../../intents/models/intent.model';
+import { IntentsService } from '../../intents/services/intents.service';
 import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../../websocket/dto/client-user.dto';
 import { WebsocketNotAllowedException } from '../../websocket/websocket.exceptions';
@@ -26,6 +29,7 @@ export class PropertyCommandService {
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly platformRegistryService: PlatformRegistryService,
+		private readonly intentsService: IntentsService,
 	) {}
 
 	async handleInternal(
@@ -58,6 +62,29 @@ export class PropertyCommandService {
 			return { success: false, results: 'Invalid payload' };
 		}
 
+		// Build intent targets from properties
+		const targets: IntentTarget[] = dtoInstance.properties.map((prop) => ({
+			deviceId: prop.device,
+			channelId: prop.channel,
+			propertyKey: prop.property,
+		}));
+
+		// Determine intent type based on the first property (could be enhanced to detect property type)
+		const intentType = IntentType.DEVICE_SET_PROPERTY;
+
+		// Get primary value for the intent (first property's value)
+		const primaryValue = dtoInstance.properties.length > 0 ? dtoInstance.properties[0].value : null;
+
+		// Create the intent
+		const intent = this.intentsService.createIntent({
+			type: intentType,
+			targets,
+			value: primaryValue,
+			ttlMs: DEFAULT_TTL_DEVICE_COMMAND,
+		});
+
+		this.logger.log(`Created intent ${intent.id} for ${targets.length} target(s)`);
+
 		// Group properties by device ID
 		const groupedProperties: Record<string, PropertyCommandValueDto[]> = {};
 
@@ -77,6 +104,18 @@ export class PropertyCommandService {
 
 			results.push(result);
 		}
+
+		// Map results to IntentTargetResult format
+		const intentResults: IntentTargetResult[] = results.map((r) => ({
+			deviceId: r.device,
+			status: r.success ? IntentTargetStatus.SUCCESS : IntentTargetStatus.FAILED,
+			error: r.reason,
+		}));
+
+		// Complete the intent with results
+		this.intentsService.completeIntent(intent.id, intentResults);
+
+		this.logger.log(`Completed intent ${intent.id} with ${intentResults.length} result(s)`);
 
 		// Determine overall success
 		const overallSuccess = results.every((r) => r.success);

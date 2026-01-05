@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { DevicesModule } from '../devices/devices.module';
+import { IntentsModule } from '../intents/intents.module';
 import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { SpacesModule } from '../spaces/spaces.module';
@@ -42,6 +43,7 @@ import { SceneExistsConstraintValidator } from './validators/scene-exists-constr
 		forwardRef(() => DevicesModule),
 		forwardRef(() => SpacesModule),
 		WebsocketModule,
+		IntentsModule,
 	],
 	controllers: [ScenesController, SceneActionsController],
 	providers: [

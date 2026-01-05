@@ -36,6 +36,7 @@ import { StatsModule } from './modules/stats/stats.module';
 import { SwaggerModule } from './modules/swagger/swagger.module';
 import { SYSTEM_MODULE_PREFIX } from './modules/system/system.constants';
 import { SystemModule } from './modules/system/system.module';
+import { IntentsModule } from './modules/intents/intents.module';
 import { USERS_MODULE_PREFIX } from './modules/users/users.constants';
 import { UsersModule } from './modules/users/users.module';
 import { WEATHER_MODULE_PREFIX } from './modules/weather/weather.constants';
@@ -244,6 +245,7 @@ export class AppModule {
 				WeatherModule,
 				WebsocketModule,
 				SwaggerModule,
+				IntentsModule,
 				MdnsModule,
 				DevicesThirdPartyPlugin,
 				DevicesHomeAssistantPlugin,
