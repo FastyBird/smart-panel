@@ -141,4 +141,175 @@ describe('PropertyValueService', () => {
 			);
 		});
 	});
+
+	describe('validation', () => {
+		it('should reject enum value not in allowed list', async () => {
+			const property: ChannelPropertyEntity = {
+				id: 'test-enum-property',
+				dataType: DataTypeType.ENUM,
+				format: ['on', 'off', 'auto'],
+			} as ChannelPropertyEntity;
+
+			const result = await service.write(property, 'invalid');
+
+			expect(result).toBe(false);
+			expect(influxDbService.writePoints).not.toHaveBeenCalled();
+		});
+
+		it('should accept enum value in allowed list', async () => {
+			const property: ChannelPropertyEntity = {
+				id: 'test-enum-property',
+				dataType: DataTypeType.ENUM,
+				format: ['on', 'off', 'auto'],
+			} as ChannelPropertyEntity;
+
+			const result = await service.write(property, 'on');
+
+			expect(result).toBe(true);
+			expect(influxDbService.writePoints).toHaveBeenCalled();
+		});
+
+		it('should reject numeric value below minimum', async () => {
+			const property: ChannelPropertyEntity = {
+				id: 'test-numeric-property',
+				dataType: DataTypeType.INT,
+				format: [0, 100],
+			} as ChannelPropertyEntity;
+
+			const result = await service.write(property, -5);
+
+			expect(result).toBe(false);
+			expect(influxDbService.writePoints).not.toHaveBeenCalled();
+		});
+
+		it('should reject numeric value above maximum', async () => {
+			const property: ChannelPropertyEntity = {
+				id: 'test-numeric-property',
+				dataType: DataTypeType.INT,
+				format: [0, 100],
+			} as ChannelPropertyEntity;
+
+			const result = await service.write(property, 150);
+
+			expect(result).toBe(false);
+			expect(influxDbService.writePoints).not.toHaveBeenCalled();
+		});
+
+		it('should accept numeric value within range', async () => {
+			const property: ChannelPropertyEntity = {
+				id: 'test-numeric-property',
+				dataType: DataTypeType.INT,
+				format: [0, 100],
+			} as ChannelPropertyEntity;
+
+			const result = await service.write(property, 50);
+
+			expect(result).toBe(true);
+			expect(influxDbService.writePoints).toHaveBeenCalled();
+		});
+
+		it('should accept any value when format is null', async () => {
+			const property: ChannelPropertyEntity = {
+				id: 'test-no-format-property',
+				dataType: DataTypeType.STRING,
+				format: null,
+			} as ChannelPropertyEntity;
+
+			const result = await service.write(property, 'any-value');
+
+			expect(result).toBe(true);
+			expect(influxDbService.writePoints).toHaveBeenCalled();
+		});
+
+		it('should accept boundary values for numeric range', async () => {
+			const property: ChannelPropertyEntity = {
+				id: 'test-boundary-property',
+				dataType: DataTypeType.FLOAT,
+				format: [0, 100],
+			} as ChannelPropertyEntity;
+
+			// Test min boundary
+			const resultMin = await service.write(property, 0);
+			expect(resultMin).toBe(true);
+
+			// Clear cache for next test
+			service['valuesMap'].clear();
+
+			// Test max boundary
+			const resultMax = await service.write(property, 100);
+			expect(resultMax).toBe(true);
+		});
+
+		it('should validate with only minimum defined [min, null]', async () => {
+			const property: ChannelPropertyEntity = {
+				id: 'test-min-only-property',
+				dataType: DataTypeType.INT,
+				format: [0, null] as unknown as number[],
+			} as ChannelPropertyEntity;
+
+			// Should reject below min
+			const resultBelow = await service.write(property, -5);
+			expect(resultBelow).toBe(false);
+
+			// Should accept at min
+			const resultAtMin = await service.write(property, 0);
+			expect(resultAtMin).toBe(true);
+
+			// Clear cache
+			service['valuesMap'].clear();
+
+			// Should accept above min (no max constraint)
+			const resultAbove = await service.write(property, 999999);
+			expect(resultAbove).toBe(true);
+		});
+
+		it('should validate with only maximum defined [null, max]', async () => {
+			const property: ChannelPropertyEntity = {
+				id: 'test-max-only-property',
+				dataType: DataTypeType.INT,
+				format: [null, 100] as unknown as number[],
+			} as ChannelPropertyEntity;
+
+			// Should accept below max (no min constraint)
+			const resultBelow = await service.write(property, -999999);
+			expect(resultBelow).toBe(true);
+
+			// Clear cache
+			service['valuesMap'].clear();
+
+			// Should accept at max
+			const resultAtMax = await service.write(property, 100);
+			expect(resultAtMax).toBe(true);
+
+			// Clear cache
+			service['valuesMap'].clear();
+
+			// Should reject above max
+			const resultAbove = await service.write(property, 101);
+			expect(resultAbove).toBe(false);
+		});
+
+		it('should validate with single element format [min]', async () => {
+			const property: ChannelPropertyEntity = {
+				id: 'test-single-element-property',
+				dataType: DataTypeType.INT,
+				format: [10],
+			} as ChannelPropertyEntity;
+
+			// Should reject below min
+			const resultBelow = await service.write(property, 5);
+			expect(resultBelow).toBe(false);
+
+			// Should accept at min
+			const resultAtMin = await service.write(property, 10);
+			expect(resultAtMin).toBe(true);
+
+			// Clear cache
+			service['valuesMap'].clear();
+
+			// Should accept above min (no max constraint)
+			const resultAbove = await service.write(property, 1000);
+			expect(resultAbove).toBe(true);
+		});
+	});
 });
