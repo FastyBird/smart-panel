@@ -1892,14 +1892,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         this.context,
         message: localizations?.action_failed ?? 'Failed to set brightness',
       );
-    } finally {
-      if (mounted) {
-        setState(() {
-          // Reset slider brightness so it reflects actual device state
-          _sliderBrightness = null;
-        });
-      }
     }
+    // Don't reset slider value here - keep it at user's set value
+    // It will be reset when external data update comes via _onSpacesDataChanged
   }
 
   /// Set hue for all devices in the role that support color
@@ -1952,13 +1947,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         this.context,
         message: localizations?.action_failed ?? 'Failed to set color',
       );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _sliderHue = null;
-        });
-      }
     }
+    // Don't reset slider value here - keep it at user's set value
+    // It will be reset when external data update comes via _onSpacesDataChanged
   }
 
   /// Set color temperature for all devices in the role that support it
@@ -2011,13 +2002,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         this.context,
         message: localizations?.action_failed ?? 'Failed to set temperature',
       );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _sliderTemperature = null;
-        });
-      }
     }
+    // Don't reset slider value here - keep it at user's set value
+    // It will be reset when external data update comes via _onSpacesDataChanged
   }
 
   /// Set white channel for all devices in the role that support it
@@ -2070,13 +2057,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         this.context,
         message: localizations?.action_failed ?? 'Failed to set white level',
       );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _sliderWhite = null;
-        });
-      }
     }
+    // Don't reset slider value here - keep it at user's set value
+    // It will be reset when external data update comes via _onSpacesDataChanged
   }
 
   /// Safely get color from a light channel
