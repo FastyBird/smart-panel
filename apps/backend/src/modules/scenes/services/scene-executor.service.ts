@@ -4,7 +4,6 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { DEFAULT_TTL_SCENE, IntentTargetStatus, IntentType } from '../../intents/intents.constants';
 import { IntentTargetResult } from '../../intents/models/intent.model';
 import { IntentsService } from '../../intents/services/intents.service';
-
 import { SceneActionEntity, SceneEntity } from '../entities/scenes.entity';
 import { ActionExecutionResultModel, SceneExecutionResultModel } from '../models/scenes.model';
 import { EventType, SceneExecutionStatus } from '../scenes.constants';
@@ -108,7 +107,9 @@ export class SceneExecutorService {
 			ttlMs: DEFAULT_TTL_SCENE,
 		});
 
-		this.logger.log(`[TRIGGER] Created intent ${intent.id} for scene ${sceneId} with ${deviceIds.length} device target(s)`);
+		this.logger.log(
+			`[TRIGGER] Created intent ${intent.id} for scene ${sceneId} with ${deviceIds.length} device target(s)`,
+		);
 
 		// Emit execution started event
 		this.eventEmitter.emit(EventType.SCENE_EXECUTION_STARTED, {

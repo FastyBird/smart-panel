@@ -69,13 +69,15 @@ describe('IntentsService', () => {
 		});
 
 		it('should emit intent.created event', () => {
+			const emitSpy = jest.spyOn(eventEmitter, 'emit');
+
 			service.createIntent({
 				type: IntentType.LIGHT_TOGGLE,
 				targets: [{ deviceId: 'device-1' }],
 				value: true,
 			});
 
-			expect(eventEmitter.emit).toHaveBeenCalledWith(
+			expect(emitSpy).toHaveBeenCalledWith(
 				IntentEventType.CREATED,
 				expect.objectContaining({
 					type: IntentType.LIGHT_TOGGLE,
@@ -162,6 +164,8 @@ describe('IntentsService', () => {
 		});
 
 		it('should emit intent.completed event', () => {
+			const emitSpy = jest.spyOn(eventEmitter, 'emit');
+
 			const intent = service.createIntent({
 				type: IntentType.LIGHT_TOGGLE,
 				targets: [{ deviceId: 'device-1' }],
@@ -170,7 +174,7 @@ describe('IntentsService', () => {
 
 			service.completeIntent(intent.id, [{ deviceId: 'device-1', status: IntentTargetStatus.SUCCESS }]);
 
-			expect(eventEmitter.emit).toHaveBeenCalledWith(
+			expect(emitSpy).toHaveBeenCalledWith(
 				IntentEventType.COMPLETED,
 				expect.objectContaining({
 					intentId: intent.id,
@@ -324,6 +328,8 @@ describe('IntentsService', () => {
 
 	describe('TTL expiration', () => {
 		it('should expire intents after TTL', async () => {
+			const emitSpy = jest.spyOn(eventEmitter, 'emit');
+
 			// Create intent with very short TTL
 			const intent = service.createIntent({
 				type: IntentType.LIGHT_TOGGLE,
@@ -339,7 +345,7 @@ describe('IntentsService', () => {
 
 			// Intent should be expired and removed
 			expect(service.getIntent(intent.id)).toBeUndefined();
-			expect(eventEmitter.emit).toHaveBeenCalledWith(
+			expect(emitSpy).toHaveBeenCalledWith(
 				IntentEventType.EXPIRED,
 				expect.objectContaining({
 					intentId: intent.id,
@@ -349,6 +355,8 @@ describe('IntentsService', () => {
 		});
 
 		it('should not expire completed intents', async () => {
+			const emitSpy = jest.spyOn(eventEmitter, 'emit');
+
 			const intent = service.createIntent({
 				type: IntentType.LIGHT_TOGGLE,
 				targets: [{ deviceId: 'device-1' }],
@@ -363,9 +371,11 @@ describe('IntentsService', () => {
 			await new Promise((resolve) => setTimeout(resolve, 700));
 
 			// Expired event should NOT have been emitted for this intent after completion
-			const expiredCalls = (eventEmitter.emit as jest.Mock).mock.calls.filter(
-				(call) => call[0] === IntentEventType.EXPIRED && call[1].intentId === intent.id,
-			);
+			const expiredCalls = emitSpy.mock.calls.filter((call: [string, unknown]) => {
+				const eventType = call[0];
+				const payload = call[1] as { intentId: string };
+				return eventType === (IntentEventType.EXPIRED as string) && payload.intentId === intent.id;
+			});
 
 			expect(expiredCalls).toHaveLength(0);
 		});

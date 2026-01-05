@@ -6,11 +6,11 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { createExtensionLogger } from '../../../common/logger';
 import {
 	DEFAULT_TTL_DEVICE_COMMAND,
+	INTENTS_MODULE_NAME,
 	INTENT_CLEANUP_INTERVAL,
 	IntentEventType,
 	IntentStatus,
 	IntentTargetStatus,
-	INTENTS_MODULE_NAME,
 } from '../intents.constants';
 import { CreateIntentInput, IntentEventPayload, IntentRecord, IntentTargetResult } from '../models/intent.model';
 

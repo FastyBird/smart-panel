@@ -4,12 +4,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../common/logger/extension-logger.service';
 import { ConfigModule } from '../config/config.module';
-import { IntentsModule } from '../intents/intents.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { InfluxDbService } from '../influxdb/services/influxdb.service';
+import { IntentsModule } from '../intents/intents.module';
 import { SeedModule } from '../seed/seeding.module';
 import { SeedRegistryService } from '../seed/services/seed-registry.service';
 import { SpaceEntity } from '../spaces/entities/space.entity';
