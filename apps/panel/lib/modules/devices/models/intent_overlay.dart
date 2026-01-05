@@ -53,34 +53,38 @@ IntentTargetStatus parseIntentTargetStatus(String status) {
 class IntentTarget {
   final String deviceId;
   final String? channelId;
-  final String? propertyKey;
+  final String? propertyId;
 
   IntentTarget({
     required this.deviceId,
     this.channelId,
-    this.propertyKey,
+    this.propertyId,
   });
 
   factory IntentTarget.fromJson(Map<String, dynamic> json) {
     return IntentTarget(
       deviceId: json['deviceId'] as String,
       channelId: json['channelId'] as String?,
-      propertyKey: json['propertyKey'] as String?,
+      propertyId: json['propertyId'] as String?,
     );
   }
 
   /// Create a unique key for indexing
-  String get key => '$deviceId:${propertyKey ?? '*'}';
+  String get key => '$deviceId:${propertyId ?? '*'}';
 }
 
 /// Represents the result for a specific target after intent completion
 class IntentTargetResult {
   final String deviceId;
+  final String? channelId;
+  final String? propertyId;
   final IntentTargetStatus status;
   final String? error;
 
   IntentTargetResult({
     required this.deviceId,
+    this.channelId,
+    this.propertyId,
     required this.status,
     this.error,
   });
@@ -88,6 +92,8 @@ class IntentTargetResult {
   factory IntentTargetResult.fromJson(Map<String, dynamic> json) {
     return IntentTargetResult(
       deviceId: json['deviceId'] as String,
+      channelId: json['channelId'] as String?,
+      propertyId: json['propertyId'] as String?,
       status: parseIntentTargetStatus(json['status'] as String),
       error: json['error'] as String?,
     );
@@ -124,6 +130,7 @@ class IntentScope {
 /// Represents an active intent from the backend
 class IntentOverlay {
   final String intentId;
+  final String? requestId;
   final String type;
   final IntentScope scope;
   final List<IntentTarget> targets;
@@ -137,6 +144,7 @@ class IntentOverlay {
 
   IntentOverlay({
     required this.intentId,
+    this.requestId,
     required this.type,
     required this.scope,
     required this.targets,
@@ -166,6 +174,7 @@ class IntentOverlay {
 
     return IntentOverlay(
       intentId: json['intentId'] as String,
+      requestId: json['requestId'] as String?,
       type: json['type'] as String,
       scope: IntentScope.fromJson(json['scope'] as Map<String, dynamic>?),
       targets: targets,
@@ -192,20 +201,20 @@ class IntentOverlay {
   /// Check if this intent fully succeeded
   bool get isFullySuccessful => status == IntentStatus.completedSuccess;
 
-  /// Get the value for a specific device and property key.
-  /// If value is a Map, looks up by "deviceId:propertyKey" composite key.
-  /// Falls back to propertyKey-only lookup for backwards compatibility.
+  /// Get the value for a specific device and property ID.
+  /// If value is a Map, looks up by "deviceId:propertyId" composite key.
+  /// Falls back to propertyId-only lookup for backwards compatibility.
   /// Otherwise returns the raw value.
-  dynamic getValueForProperty(String deviceId, String? propertyKey) {
-    if (value is Map<String, dynamic> && propertyKey != null) {
+  dynamic getValueForProperty(String deviceId, String? propertyId) {
+    if (value is Map<String, dynamic> && propertyId != null) {
       final valueMap = value as Map<String, dynamic>;
-      // First try composite key (deviceId:propertyKey)
-      final compositeKey = '$deviceId:$propertyKey';
+      // First try composite key (deviceId:propertyId)
+      final compositeKey = '$deviceId:$propertyId';
       if (valueMap.containsKey(compositeKey)) {
         return valueMap[compositeKey];
       }
-      // Fall back to propertyKey-only for backwards compatibility
-      return valueMap[propertyKey];
+      // Fall back to propertyId-only for backwards compatibility
+      return valueMap[propertyId];
     }
     return value;
   }

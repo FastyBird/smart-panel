@@ -45,6 +45,7 @@ export class IntentsService implements OnModuleInit, OnModuleDestroy {
 
 		const intent: IntentRecord = {
 			id: uuid(),
+			requestId: input.requestId,
 			type: input.type,
 			scope: input.scope,
 			targets: input.targets,
@@ -56,7 +57,9 @@ export class IntentsService implements OnModuleInit, OnModuleDestroy {
 		};
 
 		this.intents.set(intent.id, intent);
-		this.logger.debug(`Intent created: ${intent.id} (${intent.type})`);
+		this.logger.debug(
+			`Intent created: ${intent.id} (${intent.type})${input.requestId ? ` requestId=${input.requestId}` : ''}`,
+		);
 
 		this.emitIntentEvent(IntentEventType.CREATED, intent);
 
@@ -211,6 +214,7 @@ export class IntentsService implements OnModuleInit, OnModuleDestroy {
 	private emitIntentEvent(eventType: IntentEventType, intent: IntentRecord): void {
 		const payload: IntentEventPayload = {
 			intentId: intent.id,
+			requestId: intent.requestId,
 			type: intent.type,
 			scope: intent.scope,
 			targets: intent.targets,

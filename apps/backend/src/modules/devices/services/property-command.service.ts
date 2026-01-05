@@ -62,53 +62,40 @@ export class PropertyCommandService {
 			return { success: false, results: 'Invalid payload' };
 		}
 
-		// First, resolve property identifiers for all targets
-		// This is needed because the panel uses property identifiers (e.g., "brightness", "on")
-		// for the overlay index, not UUIDs
-		const propertyKeyMap = new Map<string, string>(); // property UUID -> property identifier
+		// Extract requestId from payload for tracking
+		const requestId = (payload as { requestId?: string })?.requestId;
 
-		for (const prop of dtoInstance.properties) {
-			const channel = await this.channelsService.findOne(prop.channel, prop.device);
-
-			if (channel) {
-				const property = await this.channelsPropertiesService.findOne(prop.property, channel.id);
-
-				if (property) {
-					// Use identifier if available, otherwise fall back to name or id
-					propertyKeyMap.set(prop.property, property.identifier || property.name || prop.property);
-				}
-			}
-		}
-
-		// Build intent targets with resolved property keys
+		// Build intent targets with UUIDs (deviceId, channelId, propertyId)
 		const targets: IntentTarget[] = dtoInstance.properties.map((prop) => ({
 			deviceId: prop.device,
 			channelId: prop.channel,
-			propertyKey: propertyKeyMap.get(prop.property) || prop.property,
+			propertyId: prop.property,
 		}));
 
 		// Determine intent type based on the first property (could be enhanced to detect property type)
 		const intentType = IntentType.DEVICE_SET_PROPERTY;
 
-		// Build a map of "deviceId:propertyKey" -> value for multi-property support
-		// Using composite key to avoid collisions when multiple devices have same property name
+		// Build a map of "deviceId:propertyId" -> value for multi-property support
+		// Using composite key to avoid collisions when multiple devices have same property
 		const valueMap: Record<string, unknown> = {};
 
 		for (const prop of dtoInstance.properties) {
-			const propertyKey = propertyKeyMap.get(prop.property) || prop.property;
-			const compositeKey = `${prop.device}:${propertyKey}`;
+			const compositeKey = `${prop.device}:${prop.property}`;
 			valueMap[compositeKey] = prop.value;
 		}
 
-		// Create the intent with the value map
+		// Create the intent with the value map and optional requestId for tracking
 		const intent = this.intentsService.createIntent({
+			requestId,
 			type: intentType,
 			targets,
 			value: valueMap,
 			ttlMs: DEFAULT_TTL_DEVICE_COMMAND,
 		});
 
-		this.logger.log(`Created intent ${intent.id} for ${targets.length} target(s)`);
+		this.logger.log(
+			`Created intent ${intent.id} for ${targets.length} target(s)${requestId ? ` requestId=${requestId}` : ''}`,
+		);
 
 		// Group properties by device ID
 		const groupedProperties: Record<string, PropertyCommandValueDto[]> = {};
@@ -131,12 +118,20 @@ export class PropertyCommandService {
 				results.push(result);
 			}
 
-			// Map results to IntentTargetResult format
-			const intentResults: IntentTargetResult[] = results.map((r) => ({
-				deviceId: r.device,
-				status: r.success ? IntentTargetStatus.SUCCESS : IntentTargetStatus.FAILED,
-				error: r.reason,
-			}));
+			// Map results to IntentTargetResult format - create a result for each property
+			const intentResults: IntentTargetResult[] = [];
+
+			for (const prop of dtoInstance.properties) {
+				const deviceResult = results.find((r) => r.device === prop.device);
+
+				intentResults.push({
+					deviceId: prop.device,
+					channelId: prop.channel,
+					propertyId: prop.property,
+					status: deviceResult?.success ? IntentTargetStatus.SUCCESS : IntentTargetStatus.FAILED,
+					error: deviceResult?.reason,
+				});
+			}
 
 			// Complete the intent with results
 			this.intentsService.completeIntent(intent.id, intentResults);
@@ -153,9 +148,11 @@ export class PropertyCommandService {
 				`Unexpected error processing commands: ${error instanceof Error ? error.message : String(error)}`,
 			);
 
-			// Build failure results for all targeted devices
-			const failedResults: IntentTargetResult[] = Object.keys(groupedProperties).map((deviceId) => ({
-				deviceId,
+			// Build failure results for all targeted properties
+			const failedResults: IntentTargetResult[] = dtoInstance.properties.map((prop) => ({
+				deviceId: prop.device,
+				channelId: prop.channel,
+				propertyId: prop.property,
 				status: IntentTargetStatus.FAILED,
 				error: 'Internal error',
 			}));

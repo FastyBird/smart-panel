@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsArray, IsDate, IsEnum, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsDate, IsEnum, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
 
 import { IntentStatus, IntentTargetStatus, IntentType } from '../intents.constants';
 
@@ -8,18 +8,18 @@ import { IntentStatus, IntentTargetStatus, IntentType } from '../intents.constan
  */
 export class IntentTarget {
 	@Expose()
-	@IsString()
+	@IsUUID()
 	deviceId: string;
 
 	@Expose()
 	@IsOptional()
-	@IsString()
+	@IsUUID()
 	channelId?: string;
 
 	@Expose()
 	@IsOptional()
-	@IsString()
-	propertyKey?: string;
+	@IsUUID()
+	propertyId?: string;
 }
 
 /**
@@ -27,8 +27,18 @@ export class IntentTarget {
  */
 export class IntentTargetResult {
 	@Expose()
-	@IsString()
+	@IsUUID()
 	deviceId: string;
+
+	@Expose()
+	@IsOptional()
+	@IsUUID()
+	channelId?: string;
+
+	@Expose()
+	@IsOptional()
+	@IsUUID()
+	propertyId?: string;
 
 	@Expose()
 	@IsEnum(IntentTargetStatus)
@@ -46,17 +56,17 @@ export class IntentTargetResult {
 export class IntentScope {
 	@Expose()
 	@IsOptional()
-	@IsString()
+	@IsUUID()
 	roomId?: string;
 
 	@Expose()
 	@IsOptional()
-	@IsString()
+	@IsUUID()
 	roleId?: string;
 
 	@Expose()
 	@IsOptional()
-	@IsString()
+	@IsUUID()
 	sceneId?: string;
 }
 
@@ -65,8 +75,13 @@ export class IntentScope {
  */
 export class IntentRecord {
 	@Expose()
-	@IsString()
+	@IsUUID()
 	id: string;
+
+	@Expose()
+	@IsOptional()
+	@IsUUID()
+	requestId?: string;
 
 	@Expose()
 	@IsEnum(IntentType)
@@ -122,6 +137,10 @@ export class IntentRecord {
  * Input for creating a new intent
  */
 export class CreateIntentInput {
+	@IsOptional()
+	@IsUUID()
+	requestId?: string;
+
 	@IsEnum(IntentType)
 	type: IntentType;
 
@@ -147,6 +166,10 @@ export class CreateIntentInput {
 export class IntentEventPayload {
 	@Expose()
 	intentId: string;
+
+	@Expose()
+	@IsOptional()
+	requestId?: string;
 
 	@Expose()
 	type: IntentType;

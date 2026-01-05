@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { DEFAULT_TTL_SCENE, IntentTargetStatus, IntentType } from '../../intents/intents.constants';
-import { IntentTargetResult } from '../../intents/models/intent.model';
+import { IntentTarget, IntentTargetResult } from '../../intents/models/intent.model';
 import { IntentsService } from '../../intents/services/intents.service';
 import { SceneActionEntity, SceneEntity } from '../entities/scenes.entity';
 import { ActionExecutionResultModel, SceneExecutionResultModel } from '../models/scenes.model';
@@ -92,8 +92,8 @@ export class SceneExecutorService {
 
 		const triggeredAt = new Date();
 
-		// Extract device IDs from scene actions for intent targets
-		const deviceIds = this.extractDeviceIds(scene.actions || []);
+		// Extract intent targets with full details from scene actions
+		const targets = this.extractIntentTargets(scene.actions || []);
 
 		// Create the intent for scene execution
 		const intent = this.intentsService.createIntent({
@@ -102,14 +102,12 @@ export class SceneExecutorService {
 				sceneId: scene.id,
 				roomId: scene.primarySpaceId || undefined,
 			},
-			targets: deviceIds.map((deviceId) => ({ deviceId })),
+			targets,
 			value: { sceneName: scene.name },
 			ttlMs: DEFAULT_TTL_SCENE,
 		});
 
-		this.logger.log(
-			`[TRIGGER] Created intent ${intent.id} for scene ${sceneId} with ${deviceIds.length} device target(s)`,
-		);
+		this.logger.log(`[TRIGGER] Created intent ${intent.id} for scene ${sceneId} with ${targets.length} target(s)`);
 
 		// Emit execution started event
 		this.eventEmitter.emit(EventType.SCENE_EXECUTION_STARTED, {
@@ -188,9 +186,11 @@ export class SceneExecutorService {
 			result.error = err.message;
 			result.completedAt = new Date().toISOString();
 
-			// Complete intent with failure
-			const failedResults: IntentTargetResult[] = deviceIds.map((deviceId) => ({
-				deviceId,
+			// Complete intent with failure - map targets to failed results
+			const failedResults: IntentTargetResult[] = targets.map((target) => ({
+				deviceId: target.deviceId,
+				channelId: target.channelId,
+				propertyId: target.propertyId,
 				status: IntentTargetStatus.FAILED,
 				error: err.message,
 			}));
@@ -224,44 +224,58 @@ export class SceneExecutorService {
 	}
 
 	/**
+	 * Extract intent targets with full details from scene actions
+	 */
+	private extractIntentTargets(actions: SceneActionEntity[]): IntentTarget[] {
+		const targets: IntentTarget[] = [];
+
+		for (const action of actions) {
+			const deviceId = action.configuration?.device_id;
+			const channelId = action.configuration?.channel_id;
+			const propertyId = action.configuration?.property_id;
+
+			if (typeof deviceId === 'string') {
+				targets.push({
+					deviceId,
+					channelId: typeof channelId === 'string' ? channelId : undefined,
+					propertyId: typeof propertyId === 'string' ? propertyId : undefined,
+				});
+			}
+		}
+
+		return targets;
+	}
+
+	/**
 	 * Map action execution results to intent target results
 	 */
 	private mapActionResultsToIntentResults(
 		actionResults: ActionExecutionResultModel[],
 		actions: SceneActionEntity[],
 	): IntentTargetResult[] {
-		const resultsByDevice = new Map<string, IntentTargetResult>();
+		const results: IntentTargetResult[] = [];
 
 		for (const actionResult of actionResults) {
-			// Find the corresponding action to get the device ID
+			// Find the corresponding action to get the target details
 			const action = actions.find((a) => a.id === actionResult.actionId);
 
-			// Device ID is stored in configuration.device_id for scene actions
+			// Extract IDs from configuration
 			const deviceId = action?.configuration?.device_id;
+			const channelId = action?.configuration?.channel_id;
+			const propertyId = action?.configuration?.property_id;
 
 			if (typeof deviceId === 'string') {
-				// If we already have a result for this device, update it only if the new result is a failure
-				// (we want to track if ANY action for a device failed)
-				const existing = resultsByDevice.get(deviceId);
-
-				if (!existing) {
-					resultsByDevice.set(deviceId, {
-						deviceId,
-						status: actionResult.success ? IntentTargetStatus.SUCCESS : IntentTargetStatus.FAILED,
-						error: actionResult.error || undefined,
-					});
-				} else if (!actionResult.success) {
-					// Update to failed if any action for this device fails
-					resultsByDevice.set(deviceId, {
-						deviceId,
-						status: IntentTargetStatus.FAILED,
-						error: actionResult.error || existing.error,
-					});
-				}
+				results.push({
+					deviceId,
+					channelId: typeof channelId === 'string' ? channelId : undefined,
+					propertyId: typeof propertyId === 'string' ? propertyId : undefined,
+					status: actionResult.success ? IntentTargetStatus.SUCCESS : IntentTargetStatus.FAILED,
+					error: actionResult.error || undefined,
+				});
 			}
 		}
 
-		return Array.from(resultsByDevice.values());
+		return results;
 	}
 
 	/**

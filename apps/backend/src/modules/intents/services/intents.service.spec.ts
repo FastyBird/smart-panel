@@ -44,7 +44,7 @@ describe('IntentsService', () => {
 		it('should create an intent with default TTL', () => {
 			const intent = service.createIntent({
 				type: IntentType.LIGHT_SET_BRIGHTNESS,
-				targets: [{ deviceId: 'device-1', channelId: 'channel-1', propertyKey: 'brightness' }],
+				targets: [{ deviceId: 'device-1', channelId: 'channel-1', propertyId: 'property-1' }],
 				value: 50,
 			});
 
