@@ -69,8 +69,8 @@ class IntentTarget {
     );
   }
 
-  /// Create a unique key for indexing
-  String get key => '$deviceId:${propertyId ?? '*'}';
+  /// Create a unique key for indexing (deviceId:channelId:propertyId)
+  String get key => '$deviceId:${channelId ?? '*'}:${propertyId ?? '*'}';
 }
 
 /// Represents the result for a specific target after intent completion
@@ -201,17 +201,28 @@ class IntentOverlay {
   /// Check if this intent fully succeeded
   bool get isFullySuccessful => status == IntentStatus.completedSuccess;
 
-  /// Get the value for a specific device and property ID.
-  /// If value is a Map, looks up by "deviceId:propertyId" composite key.
-  /// Falls back to propertyId-only lookup for backwards compatibility.
+  /// Get the value for a specific device, channel, and property ID.
+  /// If value is a Map, looks up by "deviceId:channelId:propertyId" composite key.
+  /// Falls back to two-part key (deviceId:propertyId) for local overlays.
   /// Otherwise returns the raw value.
-  dynamic getValueForProperty(String deviceId, String? propertyId) {
+  dynamic getValueForProperty(
+    String deviceId,
+    String? channelId,
+    String? propertyId,
+  ) {
     if (value is Map<String, dynamic> && propertyId != null) {
       final valueMap = value as Map<String, dynamic>;
-      // First try composite key (deviceId:propertyId)
-      final compositeKey = '$deviceId:$propertyId';
-      if (valueMap.containsKey(compositeKey)) {
-        return valueMap[compositeKey];
+      // First try three-part composite key (deviceId:channelId:propertyId)
+      if (channelId != null) {
+        final threePartKey = '$deviceId:$channelId:$propertyId';
+        if (valueMap.containsKey(threePartKey)) {
+          return valueMap[threePartKey];
+        }
+      }
+      // Fall back to two-part key (deviceId:propertyId) for local overlays
+      final twoPartKey = '$deviceId:$propertyId';
+      if (valueMap.containsKey(twoPartKey)) {
+        return valueMap[twoPartKey];
       }
       // Fall back to propertyId-only for backwards compatibility
       return valueMap[propertyId];

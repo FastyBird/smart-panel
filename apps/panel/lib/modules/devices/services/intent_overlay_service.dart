@@ -30,7 +30,7 @@ class IntentOverlayService extends ChangeNotifier {
   /// Active intents indexed by intentId
   final Map<String, IntentOverlay> _activeIntents = {};
 
-  /// Quick lookup: "deviceId:propertyId" -> intentId
+  /// Quick lookup: "deviceId:channelId:propertyId" -> intentId
   final Map<String, String> _targetIndex = {};
 
   /// Recent completion results for showing failure indicators
@@ -83,8 +83,8 @@ class IntentOverlayService extends ChangeNotifier {
   ///
   /// When locked, the UI should show the overlay value instead of the
   /// actual device state to prevent jitter.
-  bool isLocked(String deviceId, String? propertyId) {
-    final key = '$deviceId:${propertyId ?? '*'}';
+  bool isLocked(String deviceId, String? channelId, String? propertyId) {
+    final key = '$deviceId:${channelId ?? '*'}:${propertyId ?? '*'}';
     return _targetIndex.containsKey(key);
   }
 
@@ -97,16 +97,16 @@ class IntentOverlayService extends ChangeNotifier {
   ///
   /// Returns null if the property is not locked or has no overlay value.
   /// For multi-property intents, returns the specific value for the given propertyId.
-  dynamic getOverlayValue(String deviceId, String? propertyId) {
-    final key = '$deviceId:${propertyId ?? '*'}';
+  dynamic getOverlayValue(String deviceId, String? channelId, String? propertyId) {
+    final key = '$deviceId:${channelId ?? '*'}:${propertyId ?? '*'}';
     final intentId = _targetIndex[key];
     if (intentId == null) return null;
 
     final overlay = _activeIntents[intentId];
     if (overlay == null) return null;
 
-    // Use getValueForProperty with deviceId to support composite keys
-    return overlay.getValueForProperty(deviceId, propertyId);
+    // Use getValueForProperty with deviceId and channelId to support composite keys
+    return overlay.getValueForProperty(deviceId, channelId, propertyId);
   }
 
   /// Get the active intent affecting a device
@@ -142,6 +142,7 @@ class IntentOverlayService extends ChangeNotifier {
   /// responds instantly. The actual intent from the backend will replace this.
   void createLocalOverlay({
     required String deviceId,
+    required String? channelId,
     required String? propertyId,
     required dynamic value,
     int ttlMs = 3000,
@@ -149,14 +150,22 @@ class IntentOverlayService extends ChangeNotifier {
     final now = DateTime.now();
     final localIntentId = 'local_${deviceId}_${DateTime.now().millisecondsSinceEpoch}';
 
-    // Build value map for consistency with backend format (using composite key)
-    final valueMap = propertyId != null ? {'$deviceId:$propertyId': value} : value;
+    // Build value map for consistency with backend format (using three-part composite key)
+    final valueMap = propertyId != null
+        ? {'$deviceId:${channelId ?? '*'}:$propertyId': value}
+        : value;
 
     final overlay = IntentOverlay(
       intentId: localIntentId,
       type: 'device.setProperty',
       scope: IntentScope(),
-      targets: [IntentTarget(deviceId: deviceId, propertyId: propertyId)],
+      targets: [
+        IntentTarget(
+          deviceId: deviceId,
+          channelId: channelId,
+          propertyId: propertyId,
+        ),
+      ],
       value: valueMap,
       status: IntentStatus.pending,
       ttlMs: ttlMs,
@@ -167,7 +176,7 @@ class IntentOverlayService extends ChangeNotifier {
     _addIntent(overlay);
 
     if (kDebugMode) {
-      debugPrint('[INTENT_OVERLAY] Created local overlay $localIntentId for $deviceId:$propertyId');
+      debugPrint('[INTENT_OVERLAY] Created local overlay $localIntentId for $deviceId:$channelId:$propertyId');
     }
 
     // Schedule local expiration with a tracked timer
