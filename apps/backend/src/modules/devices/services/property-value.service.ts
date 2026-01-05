@@ -13,10 +13,14 @@ export class PropertyValueService {
 
 	constructor(private readonly influxDbService: InfluxDbService) {}
 
-	async write(property: ChannelPropertyEntity, value: string | boolean | number): Promise<void> {
+	/**
+	 * Write property value to storage
+	 * @returns true if value changed, false if value was the same
+	 */
+	async write(property: ChannelPropertyEntity, value: string | boolean | number): Promise<boolean> {
 		if (this.valuesMap.has(property.id) && this.valuesMap.get(property.id) === value) {
 			// no change → skip Influx write
-			return;
+			return false;
 		}
 
 		const formattedValue: { stringValue?: string; numberValue?: number } = {};
@@ -44,14 +48,14 @@ export class PropertyValueService {
 			default:
 				this.logger.error(`Unsupported data type dataType=${property.dataType} id=${property.id}`);
 
-				return;
+				return false;
 		}
 
 		// Update local cache regardless of InfluxDB availability
 		this.valuesMap.set(property.id, value);
 
 		if (!this.influxDbService.isConnected()) {
-			return;
+			return true; // Value changed in cache
 		}
 
 		try {
@@ -73,6 +77,8 @@ export class PropertyValueService {
 				err.stack,
 			);
 		}
+
+		return true; // Value changed
 	}
 
 	async readLatest(property: ChannelPropertyEntity): Promise<string | number | boolean | null> {
