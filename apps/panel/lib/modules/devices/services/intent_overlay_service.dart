@@ -287,7 +287,7 @@ class IntentOverlayService extends ChangeNotifier {
   /// Handle intent.completed event
   void _handleIntentCompleted(Map<String, dynamic> payload) {
     try {
-      final intentId = payload['intentId'] as String;
+      final intentId = payload['intent_id'] as String;
       final overlay = _activeIntents[intentId];
 
       if (overlay != null) {
@@ -312,7 +312,7 @@ class IntentOverlayService extends ChangeNotifier {
   /// Handle intent.expired event
   void _handleIntentExpired(Map<String, dynamic> payload) {
     try {
-      final intentId = payload['intentId'] as String;
+      final intentId = payload['intent_id'] as String;
 
       if (_activeIntents.containsKey(intentId)) {
         _clearIntent(intentId);
