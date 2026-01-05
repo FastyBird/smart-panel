@@ -192,11 +192,20 @@ class IntentOverlay {
   /// Check if this intent fully succeeded
   bool get isFullySuccessful => status == IntentStatus.completedSuccess;
 
-  /// Get the value for a specific property key.
-  /// If value is a Map, looks up by propertyKey. Otherwise returns the raw value.
-  dynamic getValueForProperty(String? propertyKey) {
+  /// Get the value for a specific device and property key.
+  /// If value is a Map, looks up by "deviceId:propertyKey" composite key.
+  /// Falls back to propertyKey-only lookup for backwards compatibility.
+  /// Otherwise returns the raw value.
+  dynamic getValueForProperty(String deviceId, String? propertyKey) {
     if (value is Map<String, dynamic> && propertyKey != null) {
-      return (value as Map<String, dynamic>)[propertyKey];
+      final valueMap = value as Map<String, dynamic>;
+      // First try composite key (deviceId:propertyKey)
+      final compositeKey = '$deviceId:$propertyKey';
+      if (valueMap.containsKey(compositeKey)) {
+        return valueMap[compositeKey];
+      }
+      // Fall back to propertyKey-only for backwards compatibility
+      return valueMap[propertyKey];
     }
     return value;
   }

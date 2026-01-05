@@ -212,9 +212,11 @@ export class SceneExecutorService {
 		const deviceIds = new Set<string>();
 
 		for (const action of actions) {
-			// Check if action has deviceId property (local scene actions)
-			if ('deviceId' in action && typeof action.deviceId === 'string') {
-				deviceIds.add(action.deviceId);
+			// Device ID is stored in configuration.device_id for scene actions
+			const deviceId = action.configuration?.device_id;
+
+			if (typeof deviceId === 'string') {
+				deviceIds.add(deviceId);
 			}
 		}
 
@@ -234,9 +236,10 @@ export class SceneExecutorService {
 			// Find the corresponding action to get the device ID
 			const action = actions.find((a) => a.id === actionResult.actionId);
 
-			if (action && 'deviceId' in action && typeof action.deviceId === 'string') {
-				const deviceId = action.deviceId;
+			// Device ID is stored in configuration.device_id for scene actions
+			const deviceId = action?.configuration?.device_id;
 
+			if (typeof deviceId === 'string') {
 				// If we already have a result for this device, update it only if the new result is a failure
 				// (we want to track if ANY action for a device failed)
 				const existing = resultsByDevice.get(deviceId);

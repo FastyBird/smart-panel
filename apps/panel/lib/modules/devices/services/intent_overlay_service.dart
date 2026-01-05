@@ -105,8 +105,8 @@ class IntentOverlayService extends ChangeNotifier {
     final overlay = _activeIntents[intentId];
     if (overlay == null) return null;
 
-    // Use getValueForProperty to support both single values and value maps
-    return overlay.getValueForProperty(propertyKey);
+    // Use getValueForProperty with deviceId to support composite keys
+    return overlay.getValueForProperty(deviceId, propertyKey);
   }
 
   /// Get the active intent affecting a device
