@@ -1,7 +1,6 @@
 import WebSocket from 'ws';
 
 import { Injectable } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import {
@@ -12,7 +11,7 @@ import {
 import { WledConnectionException } from '../devices-wled.exceptions';
 import {
 	RegisteredWledDevice,
-	WledAdapterEventType,
+	WledAdapterCallbacks,
 	WledDeviceContext,
 	WledInfo,
 	WledNightlightUpdate,
@@ -131,7 +130,14 @@ export class WledClientAdapterService {
 	private wsReconnectInterval = 5000;
 	private wsEnabled = false;
 
-	constructor(private readonly eventEmitter: EventEmitter2) {}
+	private callbacks: WledAdapterCallbacks = {};
+
+	/**
+	 * Set callbacks for adapter events
+	 */
+	setCallbacks(callbacks: WledAdapterCallbacks): void {
+		this.callbacks = callbacks;
+	}
 
 	/**
 	 * Configure WebSocket settings
@@ -165,8 +171,8 @@ export class WledClientAdapterService {
 
 			this.logger.log(`Successfully connected to WLED device at ${host} (${context.info.name})`);
 
-			// Emit connected event
-			this.eventEmitter.emit(WledAdapterEventType.DEVICE_CONNECTED, {
+			// Invoke connected callback
+			void this.callbacks.onDeviceConnected?.({
 				host,
 				info: context.info,
 			});
@@ -220,8 +226,8 @@ export class WledClientAdapterService {
 
 			this.logger.log(`Disconnected from WLED device at ${host}`);
 
-			// Emit disconnected event
-			this.eventEmitter.emit(WledAdapterEventType.DEVICE_DISCONNECTED, {
+			// Invoke disconnected callback
+			void this.callbacks.onDeviceDisconnected?.({
 				host,
 				identifier,
 				reason: 'manual disconnect',
@@ -299,8 +305,8 @@ export class WledClientAdapterService {
 			device.lastSeen = new Date();
 			device.connected = true;
 
-			// Emit state changed event
-			this.eventEmitter.emit(WledAdapterEventType.DEVICE_STATE_CHANGED, {
+			// Invoke state changed callback
+			void this.callbacks.onDeviceStateChanged?.({
 				host,
 				state,
 				previousState,
@@ -314,8 +320,8 @@ export class WledClientAdapterService {
 
 			device.connected = false;
 
-			// Emit error event
-			this.eventEmitter.emit(WledAdapterEventType.DEVICE_ERROR, {
+			// Invoke error callback
+			void this.callbacks.onDeviceError?.({
 				host,
 				error: error instanceof Error ? error : new Error(String(error)),
 			});
@@ -406,8 +412,8 @@ export class WledClientAdapterService {
 				device.context.state = newState;
 				device.lastSeen = new Date();
 
-				// Emit state changed event
-				this.eventEmitter.emit(WledAdapterEventType.DEVICE_STATE_CHANGED, {
+				// Invoke state changed callback
+				void this.callbacks.onDeviceStateChanged?.({
 					host,
 					state: newState,
 				});
@@ -419,8 +425,8 @@ export class WledClientAdapterService {
 				message: error instanceof Error ? error.message : String(error),
 			});
 
-			// Emit error event
-			this.eventEmitter.emit(WledAdapterEventType.DEVICE_ERROR, {
+			// Invoke error callback
+			void this.callbacks.onDeviceError?.({
 				host,
 				error: error instanceof Error ? error : new Error(String(error)),
 			});
@@ -585,7 +591,8 @@ export class WledClientAdapterService {
 				device.context.state = newState;
 				device.lastSeen = new Date();
 
-				this.eventEmitter.emit(WledAdapterEventType.DEVICE_STATE_CHANGED, {
+				// Invoke state changed callback
+				void this.callbacks.onDeviceStateChanged?.({
 					host,
 					state: newState,
 				});
@@ -597,7 +604,8 @@ export class WledClientAdapterService {
 				message: error instanceof Error ? error.message : String(error),
 			});
 
-			this.eventEmitter.emit(WledAdapterEventType.DEVICE_ERROR, {
+			// Invoke error callback
+			void this.callbacks.onDeviceError?.({
 				host,
 				error: error instanceof Error ? error : new Error(String(error)),
 			});
@@ -665,7 +673,8 @@ export class WledClientAdapterService {
 							device.context.state = newState;
 							device.lastSeen = new Date();
 
-							this.eventEmitter.emit(WledAdapterEventType.DEVICE_STATE_CHANGED, {
+							// Invoke state changed callback
+							void this.callbacks.onDeviceStateChanged?.({
 								host,
 								state: newState,
 								previousState,

@@ -1,7 +1,6 @@
 import si, { Systeminformation } from 'systeminformation';
 
 import { Injectable } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
@@ -11,7 +10,7 @@ import {
 	NormalizedDeviceChangeEvent,
 	NormalizedDeviceEvent,
 	RegisteredDevice,
-	ShelliesAdapterEventType,
+	ShelliesAdapterCallbacks,
 	ShelliesLibrary,
 	ShellyDevice,
 } from '../interfaces/shellies.interface';
@@ -36,10 +35,16 @@ export class ShelliesAdapterService {
 	 */
 	private readonly devicesRegistry = new Map<string, RegisteredDevice>();
 
-	constructor(
-		private readonly configService: ConfigService,
-		private readonly eventEmitter: EventEmitter2,
-	) {}
+	private callbacks: ShelliesAdapterCallbacks = {};
+
+	constructor(private readonly configService: ConfigService) {}
+
+	/**
+	 * Set callbacks for adapter events
+	 */
+	setCallbacks(callbacks: ShelliesAdapterCallbacks): void {
+		this.callbacks = callbacks;
+	}
 
 	/**
 	 * Start the shellies library and begin device discovery
@@ -83,7 +88,7 @@ export class ShelliesAdapterService {
 				stack: error instanceof Error ? error.stack : undefined,
 			});
 
-			this.eventEmitter.emit(ShelliesAdapterEventType.ERROR, error);
+			void this.callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
 
 			throw error;
 		}
@@ -207,14 +212,14 @@ export class ShelliesAdapterService {
 			this.handleDeviceRemoved(device);
 		});
 
-		// Normalize and emit the discovery event
+		// Normalize and invoke the discovery callback
 		const normalizedEvent: NormalizedDeviceEvent = {
 			id: device.id,
 			type: device.type,
 			host: device.host,
 			online: device.online,
 		};
-		this.eventEmitter.emit(ShelliesAdapterEventType.DEVICE_DISCOVERED, normalizedEvent);
+		void this.callbacks.onDeviceDiscovered?.(normalizedEvent);
 	}
 
 	/**
@@ -233,7 +238,7 @@ export class ShelliesAdapterService {
 			oldValue,
 		};
 
-		this.eventEmitter.emit(ShelliesAdapterEventType.DEVICE_CHANGED, normalizedEvent);
+		void this.callbacks.onDeviceChanged?.(normalizedEvent);
 	}
 
 	/**
@@ -247,7 +252,7 @@ export class ShelliesAdapterService {
 			online: false,
 		};
 
-		this.eventEmitter.emit(ShelliesAdapterEventType.DEVICE_OFFLINE, normalizedEvent);
+		void this.callbacks.onDeviceOffline?.(normalizedEvent);
 	}
 
 	/**
@@ -261,7 +266,7 @@ export class ShelliesAdapterService {
 			online: true,
 		};
 
-		this.eventEmitter.emit(ShelliesAdapterEventType.DEVICE_ONLINE, normalizedEvent);
+		void this.callbacks.onDeviceOnline?.(normalizedEvent);
 	}
 
 	/**

@@ -1,14 +1,13 @@
 /*
-eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method
+eslint-disable @typescript-eslint/require-await
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Logger } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 
-import { WledAdapterEventType } from '../interfaces/wled.interface';
+import { WledAdapterCallbacks } from '../interfaces/wled.interface';
 
 import { WledClientAdapterService } from './wled-client-adapter.service';
 
@@ -17,7 +16,12 @@ global.fetch = jest.fn();
 
 describe('WledClientAdapterService', () => {
 	let service: WledClientAdapterService;
-	let eventEmitter: EventEmitter2;
+	let callbacks: {
+		onDeviceConnected: jest.Mock;
+		onDeviceDisconnected: jest.Mock;
+		onDeviceStateChanged: jest.Mock;
+		onDeviceError: jest.Mock;
+	};
 
 	// Quiet logger noise
 	let logSpy: jest.SpyInstance;
@@ -41,9 +45,14 @@ describe('WledClientAdapterService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		eventEmitter = new EventEmitter2();
-		jest.spyOn(eventEmitter, 'emit');
-		service = new WledClientAdapterService(eventEmitter);
+		callbacks = {
+			onDeviceConnected: jest.fn(),
+			onDeviceDisconnected: jest.fn(),
+			onDeviceStateChanged: jest.fn(),
+			onDeviceError: jest.fn(),
+		};
+		service = new WledClientAdapterService();
+		service.setCallbacks(callbacks as WledAdapterCallbacks);
 	});
 
 	const mockWledState = {
@@ -148,7 +157,7 @@ describe('WledClientAdapterService', () => {
 	};
 
 	describe('connect', () => {
-		it('should connect to a WLED device and emit connected event', async () => {
+		it('should connect to a WLED device and invoke connected callback', async () => {
 			mockFetchMultiple([
 				{ data: mockWledState },
 				{ data: mockWledInfo },
@@ -158,8 +167,7 @@ describe('WledClientAdapterService', () => {
 
 			await service.connect('192.168.1.100', 'wled-test');
 
-			expect(eventEmitter.emit).toHaveBeenCalledWith(
-				WledAdapterEventType.DEVICE_CONNECTED,
+			expect(callbacks.onDeviceConnected).toHaveBeenCalledWith(
 				expect.objectContaining({
 					host: '192.168.1.100',
 				}),
@@ -179,7 +187,7 @@ describe('WledClientAdapterService', () => {
 	});
 
 	describe('disconnect', () => {
-		it('should disconnect a device and emit disconnected event', async () => {
+		it('should disconnect a device and invoke disconnected callback', async () => {
 			mockFetchMultiple([{ data: mockWledState }, { data: mockWledInfo }, { data: ['Solid'] }, { data: ['Default'] }]);
 
 			await service.connect('192.168.1.100', 'wled-test');
@@ -187,8 +195,7 @@ describe('WledClientAdapterService', () => {
 
 			service.disconnect('192.168.1.100');
 
-			expect(eventEmitter.emit).toHaveBeenCalledWith(
-				WledAdapterEventType.DEVICE_DISCONNECTED,
+			expect(callbacks.onDeviceDisconnected).toHaveBeenCalledWith(
 				expect.objectContaining({
 					host: '192.168.1.100',
 					identifier: 'wled-test',
@@ -202,7 +209,7 @@ describe('WledClientAdapterService', () => {
 		it('should do nothing if device is not registered', () => {
 			service.disconnect('192.168.1.100');
 
-			expect(eventEmitter.emit).not.toHaveBeenCalled();
+			expect(callbacks.onDeviceDisconnected).not.toHaveBeenCalled();
 		});
 	});
 
@@ -436,7 +443,7 @@ describe('WledClientAdapterService', () => {
 			jest.clearAllMocks();
 		});
 
-		it('should refresh state and emit state changed event', async () => {
+		it('should refresh state and invoke state changed callback', async () => {
 			mockFetchSuccess(mockWledState);
 
 			const state = await service.refreshState('192.168.1.100');
@@ -444,8 +451,7 @@ describe('WledClientAdapterService', () => {
 			expect(state).toBeDefined();
 			expect(state?.on).toBe(true);
 			expect(state?.brightness).toBe(128);
-			expect(eventEmitter.emit).toHaveBeenCalledWith(
-				WledAdapterEventType.DEVICE_STATE_CHANGED,
+			expect(callbacks.onDeviceStateChanged).toHaveBeenCalledWith(
 				expect.objectContaining({
 					host: '192.168.1.100',
 				}),

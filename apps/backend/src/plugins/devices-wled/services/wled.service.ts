@@ -1,5 +1,4 @@
 import { Inject, Injectable, forwardRef } from '@nestjs/common';
-import { OnEvent } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
@@ -16,13 +15,11 @@ import { PluginServiceManagerService } from '../../../modules/extensions/service
 import { DEVICES_WLED_PLUGIN_NAME, DEVICES_WLED_TYPE } from '../devices-wled.constants';
 import { WledDeviceEntity } from '../entities/devices-wled.entity';
 import {
-	WledAdapterEventType,
 	WledDeviceConnectedEvent,
 	WledDeviceDisconnectedEvent,
 	WledDeviceErrorEvent,
 	WledDeviceStateChangedEvent,
 	WledMdnsDiscoveredDevice,
-	WledMdnsEventType,
 } from '../interfaces/wled.interface';
 import { WledConfigModel } from '../models/config.model';
 
@@ -58,7 +55,20 @@ export class WledService implements IManagedPluginService {
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		@Inject(forwardRef(() => PluginServiceManagerService))
 		private readonly pluginServiceManager: PluginServiceManagerService,
-	) {}
+	) {
+		// Set up adapter callbacks
+		this.wledAdapter.setCallbacks({
+			onDeviceConnected: (event) => this.handleDeviceConnected(event),
+			onDeviceDisconnected: (event) => this.handleDeviceDisconnected(event),
+			onDeviceStateChanged: (event) => this.handleDeviceStateChanged(event),
+			onDeviceError: (event) => this.handleDeviceError(event),
+		});
+
+		// Set up mDNS discovery callbacks
+		this.mdnsDiscoverer.setCallbacks({
+			onDeviceDiscovered: (device) => this.handleMdnsDeviceDiscovered(device),
+		});
+	}
 
 	/**
 	 * Start the service.
@@ -298,8 +308,7 @@ export class WledService implements IManagedPluginService {
 	/**
 	 * Handle device connected event
 	 */
-	@OnEvent(WledAdapterEventType.DEVICE_CONNECTED)
-	async handleDeviceConnected(event: WledDeviceConnectedEvent): Promise<void> {
+	private async handleDeviceConnected(event: WledDeviceConnectedEvent): Promise<void> {
 		this.logger.log(`Device connected: ${event.host} (${event.info.name})`);
 
 		const device = this.wledAdapter.getDevice(event.host);
@@ -312,8 +321,7 @@ export class WledService implements IManagedPluginService {
 	/**
 	 * Handle device disconnected event
 	 */
-	@OnEvent(WledAdapterEventType.DEVICE_DISCONNECTED)
-	async handleDeviceDisconnected(event: WledDeviceDisconnectedEvent): Promise<void> {
+	private async handleDeviceDisconnected(event: WledDeviceDisconnectedEvent): Promise<void> {
 		this.logger.log(`Device disconnected: ${event.host} (${event.reason || 'unknown reason'})`);
 
 		await this.deviceMapper.setDeviceConnectionState(event.identifier, ConnectionState.DISCONNECTED);
@@ -322,8 +330,7 @@ export class WledService implements IManagedPluginService {
 	/**
 	 * Handle device state changed event
 	 */
-	@OnEvent(WledAdapterEventType.DEVICE_STATE_CHANGED)
-	async handleDeviceStateChanged(event: WledDeviceStateChangedEvent): Promise<void> {
+	private async handleDeviceStateChanged(event: WledDeviceStateChangedEvent): Promise<void> {
 		this.logger.debug(`Device state changed: ${event.host}`);
 
 		const device = this.wledAdapter.getDevice(event.host);
@@ -336,8 +343,7 @@ export class WledService implements IManagedPluginService {
 	/**
 	 * Handle device error event
 	 */
-	@OnEvent(WledAdapterEventType.DEVICE_ERROR)
-	handleDeviceError(event: WledDeviceErrorEvent): void {
+	private handleDeviceError(event: WledDeviceErrorEvent): void {
 		this.logger.error(`Device error: ${event.host}`, {
 			message: event.error.message,
 		});
@@ -431,8 +437,7 @@ export class WledService implements IManagedPluginService {
 	/**
 	 * Handle mDNS device discovered event
 	 */
-	@OnEvent(WledMdnsEventType.DEVICE_DISCOVERED)
-	async handleMdnsDeviceDiscovered(device: WledMdnsDiscoveredDevice): Promise<void> {
+	private async handleMdnsDeviceDiscovered(device: WledMdnsDiscoveredDevice): Promise<void> {
 		this.logger.log(`mDNS discovered device: ${device.name} at ${device.host}`);
 
 		// Check if we already have this device configured by hostname

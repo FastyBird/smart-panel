@@ -1,7 +1,6 @@
 import { instanceToPlain } from 'class-transformer';
 
 import { Injectable } from '@nestjs/common';
-import { OnEvent } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
@@ -32,11 +31,7 @@ import {
 	ShellyV1ChannelPropertyEntity,
 	ShellyV1DeviceEntity,
 } from '../entities/devices-shelly-v1.entity';
-import {
-	NormalizedDeviceChangeEvent,
-	NormalizedDeviceEvent,
-	ShelliesAdapterEventType,
-} from '../interfaces/shellies.interface';
+import { NormalizedDeviceChangeEvent, NormalizedDeviceEvent } from '../interfaces/shellies.interface';
 import { ShellyV1ConfigModel } from '../models/config.model';
 
 import { DeviceMapperService } from './device-mapper.service';
@@ -79,7 +74,16 @@ export class ShellyV1Service implements IManagedPluginService {
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly httpClient: ShellyV1HttpClientService,
-	) {}
+	) {
+		// Set up adapter callbacks
+		this.shelliesAdapter.setCallbacks({
+			onDeviceDiscovered: (event) => this.handleDeviceDiscovered(event),
+			onDeviceChanged: (event) => this.handleDeviceChanged(event),
+			onDeviceOffline: (event) => this.handleDeviceOffline(event),
+			onDeviceOnline: (event) => this.handleDeviceOnline(event),
+			onError: (error) => this.handleAdapterError(error),
+		});
+	}
 
 	/**
 	 * Start the service.
@@ -229,8 +233,7 @@ export class ShellyV1Service implements IManagedPluginService {
 	/**
 	 * Handle device discovered event from the shellies adapter
 	 */
-	@OnEvent(ShelliesAdapterEventType.DEVICE_DISCOVERED)
-	async handleDeviceDiscovered(event: NormalizedDeviceEvent): Promise<void> {
+	private async handleDeviceDiscovered(event: NormalizedDeviceEvent): Promise<void> {
 		this.logger.log(`Device discovered: ${event.id} (${event.type}) at ${event.host}`);
 
 		try {
@@ -267,8 +270,7 @@ export class ShellyV1Service implements IManagedPluginService {
 	/**
 	 * Handle device property change event from the shellies adapter
 	 */
-	@OnEvent(ShelliesAdapterEventType.DEVICE_CHANGED)
-	async handleDeviceChanged(event: NormalizedDeviceChangeEvent): Promise<void> {
+	private async handleDeviceChanged(event: NormalizedDeviceChangeEvent): Promise<void> {
 		this.logger.debug(`Device ${event.id} property changed: ${event.property} = ${JSON.stringify(event.newValue)}`);
 
 		try {
@@ -364,8 +366,7 @@ export class ShellyV1Service implements IManagedPluginService {
 	/**
 	 * Handle device offline event from the shellies adapter
 	 */
-	@OnEvent(ShelliesAdapterEventType.DEVICE_OFFLINE)
-	async handleDeviceOffline(event: NormalizedDeviceEvent): Promise<void> {
+	private async handleDeviceOffline(event: NormalizedDeviceEvent): Promise<void> {
 		this.logger.debug(`Device went offline: ${event.id}`);
 
 		try {
@@ -408,8 +409,7 @@ export class ShellyV1Service implements IManagedPluginService {
 	/**
 	 * Handle device online event from the shellies adapter
 	 */
-	@OnEvent(ShelliesAdapterEventType.DEVICE_ONLINE)
-	async handleDeviceOnline(event: NormalizedDeviceEvent): Promise<void> {
+	private async handleDeviceOnline(event: NormalizedDeviceEvent): Promise<void> {
 		this.logger.debug(`Device came online: ${event.id}`);
 
 		try {
@@ -579,8 +579,7 @@ export class ShellyV1Service implements IManagedPluginService {
 	/**
 	 * Handle error event from the shellies adapter
 	 */
-	@OnEvent(ShelliesAdapterEventType.ERROR)
-	handleAdapterError(error: Error): void {
+	private handleAdapterError(error: Error): void {
 		this.logger.error('Shellies adapter error', {
 			message: error instanceof Error ? error.message : String(error),
 			stack: error instanceof Error ? error.stack : undefined,

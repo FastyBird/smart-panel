@@ -1,11 +1,10 @@
 import Bonjour, { Browser, Service } from 'bonjour-service';
 
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { DEVICES_WLED_PLUGIN_NAME } from '../devices-wled.constants';
-import { WledMdnsDiscoveredDevice, WledMdnsEventType } from '../interfaces/wled.interface';
+import { WledMdnsCallbacks, WledMdnsDiscoveredDevice } from '../interfaces/wled.interface';
 
 /**
  * WLED mDNS Discoverer Service
@@ -22,7 +21,14 @@ export class WledMdnsDiscovererService implements OnModuleDestroy {
 	private discoveredDevices = new Map<string, WledMdnsDiscoveredDevice>();
 	private isRunning = false;
 
-	constructor(private readonly eventEmitter: EventEmitter2) {}
+	private callbacks: WledMdnsCallbacks = {};
+
+	/**
+	 * Set callbacks for mDNS discovery events
+	 */
+	setCallbacks(callbacks: WledMdnsCallbacks): void {
+		this.callbacks = callbacks;
+	}
 
 	/**
 	 * Start mDNS discovery for WLED devices
@@ -143,8 +149,8 @@ export class WledMdnsDiscovererService implements OnModuleDestroy {
 
 		this.logger.log(`Discovered WLED device: ${device.name} at ${host}${mac ? ` (MAC: ${mac})` : ''}`);
 
-		// Emit discovery event
-		this.eventEmitter.emit(WledMdnsEventType.DEVICE_DISCOVERED, device);
+		// Invoke discovery callback
+		void this.callbacks.onDeviceDiscovered?.(device);
 	}
 
 	/**

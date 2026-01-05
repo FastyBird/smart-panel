@@ -1,16 +1,14 @@
 /*
-eslint-disable @typescript-eslint/unbound-method,
-@typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unused-vars
+eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access,
+@typescript-eslint/no-unused-vars, @typescript-eslint/unbound-method
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Logger } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { PluginConfigModel } from '../../../modules/config/models/config.model';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { ConnectionState } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
@@ -24,7 +22,11 @@ import {
 	ShellyV1ChannelPropertyEntity,
 	ShellyV1DeviceEntity,
 } from '../entities/devices-shelly-v1.entity';
-import { NormalizedDeviceChangeEvent, NormalizedDeviceEvent } from '../interfaces/shellies.interface';
+import {
+	NormalizedDeviceChangeEvent,
+	NormalizedDeviceEvent,
+	ShelliesAdapterCallbacks,
+} from '../interfaces/shellies.interface';
 import { ShellyV1ConfigModel } from '../models/config.model';
 
 import { DeviceMapperService } from './device-mapper.service';
@@ -41,6 +43,7 @@ describe('ShellyV1Service', () => {
 	let deviceConnectivityService: jest.Mocked<DeviceConnectivityService>;
 	let deviceMapper: jest.Mocked<DeviceMapperService>;
 	let shelliesAdapter: jest.Mocked<ShelliesAdapterService>;
+	let adapterCallbacks: ShelliesAdapterCallbacks;
 
 	const mockDevice = {
 		id: 'device-uuid',
@@ -107,6 +110,9 @@ describe('ShellyV1Service', () => {
 							.mockReturnValue({ id: 'shelly1pm-ABC123', type: 'SHSW-PM', host: '192.168.1.100', enabled: true }),
 						getRegisteredDevices: jest.fn().mockReturnValue([]),
 						updateDeviceEnabledStatus: jest.fn(),
+						setCallbacks: jest.fn().mockImplementation((callbacks: ShelliesAdapterCallbacks) => {
+							adapterCallbacks = callbacks;
+						}),
 					},
 				},
 				{
@@ -149,12 +155,6 @@ describe('ShellyV1Service', () => {
 						getDeviceSettings: jest.fn(),
 					},
 				},
-				{
-					provide: EventEmitter2,
-					useValue: {
-						emit: jest.fn(),
-					},
-				},
 			],
 		}).compile();
 
@@ -171,7 +171,7 @@ describe('ShellyV1Service', () => {
 		jest.clearAllMocks();
 	});
 
-	describe('handleDeviceChanged', () => {
+	describe('handleDeviceChanged (via callbacks)', () => {
 		it('should update property value when device, channel, and property are found', async () => {
 			const changeEvent: NormalizedDeviceChangeEvent = {
 				id: 'shelly1pm-ABC123',
@@ -195,7 +195,7 @@ describe('ShellyV1Service', () => {
 				},
 			} as ShellyV1ChannelPropertyEntity);
 
-			await service.handleDeviceChanged(changeEvent);
+			await adapterCallbacks.onDeviceChanged?.(changeEvent);
 
 			expect(devicesService.findOneBy).toHaveBeenCalledWith('identifier', 'shelly1pm-ABC123', DEVICES_SHELLY_V1_TYPE);
 			expect(channelsService.findOneBy).toHaveBeenCalledWith(
@@ -238,7 +238,7 @@ describe('ShellyV1Service', () => {
 
 			devicesService.findOneBy.mockResolvedValue(null);
 
-			await service.handleDeviceChanged(changeEvent);
+			await adapterCallbacks.onDeviceChanged?.(changeEvent);
 
 			expect(devicesService.findOneBy).toHaveBeenCalledWith('identifier', 'unknown-device', DEVICES_SHELLY_V1_TYPE);
 			expect(channelsService.findOneBy).not.toHaveBeenCalled();
@@ -259,7 +259,7 @@ describe('ShellyV1Service', () => {
 				.mockResolvedValueOnce(null); // Second call for relay_0 - not found
 			channelsPropertiesService.findOneBy.mockResolvedValue(mockModelProperty); // For model property
 
-			await service.handleDeviceChanged(changeEvent);
+			await adapterCallbacks.onDeviceChanged?.(changeEvent);
 
 			expect(channelsService.findOneBy).toHaveBeenCalledWith(
 				'identifier',
@@ -286,7 +286,7 @@ describe('ShellyV1Service', () => {
 				.mockResolvedValueOnce(mockModelProperty) // First call for model property
 				.mockResolvedValueOnce(null); // Second call for power property - not found
 
-			await service.handleDeviceChanged(changeEvent);
+			await adapterCallbacks.onDeviceChanged?.(changeEvent);
 
 			expect(channelsPropertiesService.findOneBy).toHaveBeenCalledWith(
 				'identifier',
@@ -309,7 +309,7 @@ describe('ShellyV1Service', () => {
 			channelsService.findOneBy.mockResolvedValue(mockDeviceInfoChannel); // For device_information
 			channelsPropertiesService.findOneBy.mockResolvedValue(mockModelProperty); // For model property
 
-			await service.handleDeviceChanged(changeEvent);
+			await adapterCallbacks.onDeviceChanged?.(changeEvent);
 
 			// Should call to get device_information and model, but not the actual channel
 			expect(channelsService.findOneBy).toHaveBeenCalledWith(
@@ -331,11 +331,11 @@ describe('ShellyV1Service', () => {
 
 			devicesService.findOneBy.mockRejectedValue(new Error('Database error'));
 
-			await expect(service.handleDeviceChanged(changeEvent)).resolves.not.toThrow();
+			await expect(adapterCallbacks.onDeviceChanged?.(changeEvent)).resolves.not.toThrow();
 		});
 	});
 
-	describe('handleDeviceOffline', () => {
+	describe('handleDeviceOffline (via callbacks)', () => {
 		it('should mark device as offline when device is found', async () => {
 			const offlineEvent: NormalizedDeviceEvent = {
 				id: 'shelly1pm-ABC123',
@@ -346,7 +346,7 @@ describe('ShellyV1Service', () => {
 
 			devicesService.findOneBy.mockResolvedValue(mockDevice);
 
-			await service.handleDeviceOffline(offlineEvent);
+			await adapterCallbacks.onDeviceOffline?.(offlineEvent);
 
 			expect(devicesService.findOneBy).toHaveBeenCalledWith('identifier', 'shelly1pm-ABC123', DEVICES_SHELLY_V1_TYPE);
 			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith('device-uuid', {
@@ -364,7 +364,7 @@ describe('ShellyV1Service', () => {
 
 			devicesService.findOneBy.mockResolvedValue(null);
 
-			await service.handleDeviceOffline(offlineEvent);
+			await adapterCallbacks.onDeviceOffline?.(offlineEvent);
 
 			expect(deviceConnectivityService.setConnectionState).not.toHaveBeenCalled();
 		});
@@ -379,11 +379,11 @@ describe('ShellyV1Service', () => {
 
 			devicesService.findOneBy.mockRejectedValue(new Error('Database error'));
 
-			await expect(service.handleDeviceOffline(offlineEvent)).resolves.not.toThrow();
+			await expect(adapterCallbacks.onDeviceOffline?.(offlineEvent)).resolves.not.toThrow();
 		});
 	});
 
-	describe('handleDeviceOnline', () => {
+	describe('handleDeviceOnline (via callbacks)', () => {
 		it('should mark device as online when device is found', async () => {
 			const onlineEvent: NormalizedDeviceEvent = {
 				id: 'shelly1pm-ABC123',
@@ -394,7 +394,7 @@ describe('ShellyV1Service', () => {
 
 			devicesService.findOneBy.mockResolvedValue(mockDevice);
 
-			await service.handleDeviceOnline(onlineEvent);
+			await adapterCallbacks.onDeviceOnline?.(onlineEvent);
 
 			expect(devicesService.findOneBy).toHaveBeenCalledWith('identifier', 'shelly1pm-ABC123', DEVICES_SHELLY_V1_TYPE);
 			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith('device-uuid', {
@@ -412,7 +412,7 @@ describe('ShellyV1Service', () => {
 
 			devicesService.findOneBy.mockResolvedValue(null);
 
-			await service.handleDeviceOnline(onlineEvent);
+			await adapterCallbacks.onDeviceOnline?.(onlineEvent);
 
 			expect(deviceConnectivityService.setConnectionState).not.toHaveBeenCalled();
 		});
@@ -427,7 +427,7 @@ describe('ShellyV1Service', () => {
 
 			devicesService.findOneBy.mockRejectedValue(new Error('Database error'));
 
-			await expect(service.handleDeviceOnline(onlineEvent)).resolves.not.toThrow();
+			await expect(adapterCallbacks.onDeviceOnline?.(onlineEvent)).resolves.not.toThrow();
 		});
 	});
 
@@ -472,7 +472,7 @@ describe('ShellyV1Service', () => {
 		});
 	});
 
-	describe('Discovery enabled/disabled', () => {
+	describe('Discovery enabled/disabled (via callbacks)', () => {
 		it('should process new devices when discovery is enabled', async () => {
 			const discoveryEvent: NormalizedDeviceEvent = {
 				id: 'shelly1pm-NEW123',
@@ -485,7 +485,7 @@ describe('ShellyV1Service', () => {
 			devicesService.findOneBy.mockResolvedValue(null);
 			deviceMapper.mapDevice.mockResolvedValue(mockDevice);
 
-			await service.handleDeviceDiscovered(discoveryEvent);
+			await adapterCallbacks.onDeviceDiscovered?.(discoveryEvent);
 
 			// Discovery is enabled by default, should call mapDevice for new devices
 			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(discoveryEvent);
@@ -513,7 +513,7 @@ describe('ShellyV1Service', () => {
 			devicesService.findOneBy.mockResolvedValue(null);
 			deviceMapper.mapDevice.mockResolvedValue(mockDevice);
 
-			await service.handleDeviceDiscovered(discoveryEvent);
+			await adapterCallbacks.onDeviceDiscovered?.(discoveryEvent);
 
 			// Discovery is disabled, should NOT call mapDevice for new devices
 			expect(devicesService.findOneBy).toHaveBeenCalledWith('identifier', 'shelly1pm-NEW123', DEVICES_SHELLY_V1_TYPE);
@@ -542,7 +542,7 @@ describe('ShellyV1Service', () => {
 			devicesService.findOneBy.mockResolvedValue(mockDevice);
 			deviceMapper.mapDevice.mockResolvedValue(mockDevice);
 
-			await service.handleDeviceDiscovered(discoveryEvent);
+			await adapterCallbacks.onDeviceDiscovered?.(discoveryEvent);
 
 			// Discovery is disabled, but device exists, should still call mapDevice
 			expect(devicesService.findOneBy).toHaveBeenCalledWith('identifier', 'shelly1pm-ABC123', DEVICES_SHELLY_V1_TYPE);
@@ -550,7 +550,7 @@ describe('ShellyV1Service', () => {
 		});
 	});
 
-	describe('Exception handling', () => {
+	describe('Exception handling (via callbacks)', () => {
 		it('should handle DevicesShellyV1NotSupportedException when device type is not supported', async () => {
 			const discoveryEvent: NormalizedDeviceEvent = {
 				id: 'unsupported-device',
@@ -563,12 +563,12 @@ describe('ShellyV1Service', () => {
 				new DevicesShellyV1NotSupportedException('Unsupported device type: UNSUPPORTED_TYPE'),
 			);
 
-			await expect(service.handleDeviceDiscovered(discoveryEvent)).resolves.not.toThrow();
+			await expect(adapterCallbacks.onDeviceDiscovered?.(discoveryEvent)).resolves.not.toThrow();
 			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(discoveryEvent);
 		});
 	});
 
-	describe('Logging prefixes', () => {
+	describe('Logging prefixes (via callbacks)', () => {
 		it('should not use hardcoded prefixes in log messages', async () => {
 			const loggerSpy = jest.spyOn(Logger.prototype, 'log');
 			const discoveryEvent: NormalizedDeviceEvent = {
@@ -580,7 +580,7 @@ describe('ShellyV1Service', () => {
 
 			deviceMapper.mapDevice.mockResolvedValue(mockDevice);
 
-			await service.handleDeviceDiscovered(discoveryEvent);
+			await adapterCallbacks.onDeviceDiscovered?.(discoveryEvent);
 
 			expect(loggerSpy).toHaveBeenCalledWith(
 				expect.not.stringContaining('[SHELLY V1]'),
@@ -601,7 +601,7 @@ describe('ShellyV1Service', () => {
 			const testError = new Error('Test error');
 			deviceMapper.mapDevice.mockRejectedValue(testError);
 
-			await service.handleDeviceDiscovered(discoveryEvent);
+			await adapterCallbacks.onDeviceDiscovered?.(discoveryEvent);
 
 			expect(loggerErrorSpy).toHaveBeenCalledWith(
 				expect.not.stringContaining('[SHELLY V1]'),
