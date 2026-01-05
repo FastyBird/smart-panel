@@ -142,8 +142,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         icon: DomainType.lights.icon,
       ),
       body: SafeArea(
-        child: Builder(
-          builder: (context) {
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Capture body dimensions for grid calculations
+            final bodyHeight = constraints.maxHeight;
+
             if (spacesService == null || devicesService == null) {
               return _buildEmptyState(context);
             }
@@ -176,7 +179,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                 children: [
                   // Role tiles grid
                   if (definedRoles.isNotEmpty)
-                    _buildRoleTilesGrid(context, definedRoles, devicesService),
+                    _buildRoleTilesGrid(
+                      context,
+                      definedRoles,
+                      devicesService,
+                      bodyHeight,
+                    ),
 
                   // Spacer between sections
                   if (definedRoles.isNotEmpty &&
@@ -187,7 +195,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                   // "Other" devices section
                   if (otherGroup != null && otherGroup.targets.isNotEmpty)
                     _buildOtherDevicesSection(
-                        context, otherGroup, devicesService),
+                      context,
+                      otherGroup,
+                      devicesService,
+                      bodyHeight,
+                    ),
                 ],
               ),
             );
@@ -264,10 +276,16 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     BuildContext context,
     List<_RoleGroup> roleGroups,
     DevicesService devicesService,
+    double bodyHeight,
   ) {
     final display = _deckService?.display;
     // Ensure minimum of 2 columns for 2-per-row layout
     final cols = (display?.cols ?? 4).clamp(2, 100);
+    // Use display rows to calculate proper cell height
+    final displayRows = (display?.rows ?? 6).clamp(1, 100);
+
+    // Calculate cell height based on body height and display rows
+    final cellHeight = bodyHeight / displayRows;
 
     // For portrait mode: 2 tiles per row, square tiles (colSpan = rowSpan)
     // Calculate tile size: each tile takes half the columns (minimum 1)
@@ -296,21 +314,16 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       );
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Calculate height based on grid dimensions
-        final cellHeight = constraints.maxWidth / cols;
-        final gridHeight = gridRows * cellHeight;
+    // Calculate grid height based on cell height from display rows
+    final gridHeight = gridRows * cellHeight;
 
-        return SizedBox(
-          height: gridHeight,
-          child: FixedGridSizeGrid(
-            mainAxisSize: gridRows,
-            crossAxisSize: cols,
-            children: gridItems,
-          ),
-        );
-      },
+    return SizedBox(
+      height: gridHeight,
+      child: FixedGridSizeGrid(
+        mainAxisSize: gridRows,
+        crossAxisSize: cols,
+        children: gridItems,
+      ),
     );
   }
 
@@ -498,10 +511,16 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     BuildContext context,
     _RoleGroup group,
     DevicesService devicesService,
+    double bodyHeight,
   ) {
     final display = _deckService?.display;
     // Ensure minimum of 2 columns for 2-per-row layout
     final cols = (display?.cols ?? 4).clamp(2, 100);
+    // Use display rows to calculate proper cell height
+    final displayRows = (display?.rows ?? 6).clamp(1, 100);
+
+    // Calculate cell height based on body height and display rows
+    final cellHeight = bodyHeight / displayRows;
 
     // Each tile spans half the columns (2 tiles per row) and 1 row height
     final tileColSpan = (cols / 2).floor().clamp(1, cols);
@@ -535,6 +554,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     final localizations = AppLocalizations.of(context)!;
 
+    // Calculate grid height based on cell height from display rows
+    final gridHeight = gridRows * cellHeight;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -553,21 +575,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           ),
         ),
         // Device tiles grid - horizontal layout with 1 row height
-        LayoutBuilder(
-          builder: (context, constraints) {
-            // Calculate height based on grid dimensions
-            final cellHeight = constraints.maxWidth / cols;
-            final gridHeight = gridRows * cellHeight;
-
-            return SizedBox(
-              height: gridHeight,
-              child: FixedGridSizeGrid(
-                mainAxisSize: gridRows,
-                crossAxisSize: cols,
-                children: gridItems,
-              ),
-            );
-          },
+        SizedBox(
+          height: gridHeight,
+          child: FixedGridSizeGrid(
+            mainAxisSize: gridRows,
+            crossAxisSize: cols,
+            children: gridItems,
+          ),
         ),
       ],
     );
