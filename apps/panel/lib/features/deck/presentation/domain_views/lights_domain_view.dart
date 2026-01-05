@@ -642,9 +642,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final stateText = isOn ? localizations.light_state_on : localizations.light_state_off;
     final showBrightness = hasBrightness && isOn && brightness != null;
 
-    // Strip room name from device display name
+    // Strip room name from device name
     final roomName = _spacesService?.getSpace(_roomId)?.name;
-    final displayName = _stripRoomName(target.displayName, roomName);
+    final displayName = _stripRoomName(device.name, roomName);
 
     return GestureDetector(
       onLongPress: () => _openDeviceDetail(context, device),
