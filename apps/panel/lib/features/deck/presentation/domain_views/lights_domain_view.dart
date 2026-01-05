@@ -841,7 +841,6 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
   _LightRoleMode _currentMode = _LightRoleMode.off;
   final List<_LightRoleMode> _availableModes = [];
 
-  bool _isSettingBrightness = false;
   // Local slider value for visual feedback during drag
   double? _sliderBrightness;
   // Debounce timer for brightness slider
@@ -1038,7 +1037,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           if (_availableModes.length > 1)
             SafeArea(
               top: false,
-              child: _buildBottomNavigation(context, localizations, lightTargets, devicesService),
+              child: _buildBottomNavigation(context, localizations, lightTargets, devicesService, anyOn),
             ),
         ],
       ),
@@ -1370,13 +1369,6 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     double elementMaxSize,
     DevicesService devicesService,
   ) {
-    if (_isSettingBrightness) {
-      return SizedBox(
-        width: _screenService.scale(60, density: _visualDensityService.density),
-        child: const Center(child: CircularProgressIndicator()),
-      );
-    }
-
     return ColoredSlider(
       value: _sliderBrightness ?? currentBrightness.toDouble(),
       min: 0,
@@ -1593,6 +1585,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     AppLocalizations localizations,
     List<LightTargetView> targets,
     DevicesService devicesService,
+    bool anyOn,
   ) {
     final currentIndex = _availableModes.indexOf(_currentMode);
 
@@ -1620,9 +1613,10 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       items: _availableModes.map((mode) {
         switch (mode) {
           case _LightRoleMode.off:
+            // Show "On" when lights are off, "Off" when lights are on
             return AppBottomNavigationItem(
               icon: Icon(MdiIcons.power),
-              label: localizations.light_mode_off,
+              label: anyOn ? localizations.light_mode_off : localizations.light_mode_on,
             );
           case _LightRoleMode.brightness:
             return AppBottomNavigationItem(
@@ -1722,10 +1716,6 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
   ) async {
     final localizations = AppLocalizations.of(context);
 
-    setState(() {
-      _isSettingBrightness = true;
-    });
-
     try {
       int successCount = 0;
       int failCount = 0;
@@ -1774,7 +1764,6 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     } finally {
       if (mounted) {
         setState(() {
-          _isSettingBrightness = false;
           // Reset slider brightness so it reflects actual device state
           _sliderBrightness = null;
         });

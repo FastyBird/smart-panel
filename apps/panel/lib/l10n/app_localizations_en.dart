@@ -204,6 +204,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get light_mode_off => 'Off';
 
   @override
+  String get light_mode_on => 'On';
+
+  @override
   String get light_mode_brightness => 'Brightness';
 
   @override

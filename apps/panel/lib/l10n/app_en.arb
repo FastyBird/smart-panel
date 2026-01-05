@@ -260,6 +260,10 @@
   "@light_mode_off": {
     "description": "Mode when the light is off"
   },
+  "light_mode_on": "On",
+  "@light_mode_on": {
+    "description": "Mode when the light is on"
+  },
   "light_mode_brightness": "Brightness",
   "@light_mode_brightness": {
     "description": "Mode for adjusting brightness"

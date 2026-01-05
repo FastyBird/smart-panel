@@ -64,6 +64,7 @@
   "light_state_off_description": "Světlo je vypnuto.",
   "light_state_brightness_description": "Aktuální jas.",
   "light_mode_off": "Vypnuto",
+  "light_mode_on": "Zapnuto",
   "light_mode_brightness": "Jas",
   "light_mode_color": "Barva",
   "light_mode_temperature": "Teplota",
