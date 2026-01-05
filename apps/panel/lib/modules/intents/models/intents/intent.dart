@@ -351,7 +351,7 @@ class IntentModel extends Model {
     String? propertyId,
   ) {
     if (_value is Map<String, dynamic> && propertyId != null) {
-      final valueMap = _value as Map<String, dynamic>;
+      final valueMap = _value;
 
       // Try full composite key with device: prefix
       if (channelId != null) {
