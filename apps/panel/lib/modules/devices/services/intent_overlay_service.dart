@@ -393,6 +393,8 @@ class IntentOverlayService extends ChangeNotifier {
   void _scheduleResultCleanup() {
     _cleanupTimer?.cancel();
     _cleanupTimer = Timer(_failureIndicatorDuration, () {
+      if (_isDisposed) return;
+
       // Clear all results after the duration
       _recentResults.clear();
       notifyListeners();
