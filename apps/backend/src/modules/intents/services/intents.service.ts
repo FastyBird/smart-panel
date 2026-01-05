@@ -1,9 +1,11 @@
+import { instanceToPlain } from 'class-transformer';
 import { v4 as uuid } from 'uuid';
 
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	DEFAULT_TTL_DEVICE_COMMAND,
 	INTENTS_MODULE_NAME,
@@ -212,21 +214,27 @@ export class IntentsService implements OnModuleInit, OnModuleDestroy {
 	 * Emit intent event to Socket.IO clients via EventEmitter2
 	 */
 	private emitIntentEvent(eventType: IntentEventType, intent: IntentRecord): void {
-		const payload: IntentEventPayload = {
-			intentId: intent.id,
-			requestId: intent.requestId,
+		const payload = toInstance(IntentEventPayload, {
+			intent_id: intent.id,
+			request_id: intent.requestId,
 			type: intent.type,
 			scope: intent.scope,
 			targets: intent.targets,
 			value: intent.value,
 			status: intent.status,
-			ttlMs: intent.ttlMs,
-			createdAt: intent.createdAt.toISOString(),
-			expiresAt: intent.expiresAt.toISOString(),
-			completedAt: intent.completedAt?.toISOString(),
+			ttl_ms: intent.ttlMs,
+			created_at: intent.createdAt.toISOString(),
+			expires_at: intent.expiresAt.toISOString(),
+			completed_at: intent.completedAt?.toISOString(),
 			results: intent.results,
-		};
+		});
 
-		this.eventEmitter.emit(eventType, payload);
+		// Transform to plain object with snake_case keys using @Expose decorators
+		const plainPayload = instanceToPlain(payload, {
+			excludeExtraneousValues: true,
+			exposeUnsetFields: false,
+		});
+
+		this.eventEmitter.emit(eventType, plainPayload);
 	}
 }

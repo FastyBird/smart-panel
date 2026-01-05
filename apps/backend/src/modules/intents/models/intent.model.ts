@@ -176,9 +176,14 @@ export class IntentEventPayload {
 
 	@Expose()
 	@IsOptional()
+	@ValidateNested()
+	@Type(() => IntentScope)
 	scope?: IntentScope;
 
 	@Expose()
+	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => IntentTarget)
 	targets: IntentTarget[];
 
 	@Expose()
@@ -202,5 +207,8 @@ export class IntentEventPayload {
 
 	@Expose()
 	@IsOptional()
+	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => IntentTargetResult)
 	results?: IntentTargetResult[];
 }

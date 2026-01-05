@@ -177,7 +177,7 @@ describe('IntentsService', () => {
 			expect(emitSpy).toHaveBeenCalledWith(
 				IntentEventType.COMPLETED,
 				expect.objectContaining({
-					intentId: intent.id,
+					intent_id: intent.id,
 					status: IntentStatus.COMPLETED_SUCCESS,
 				}),
 			);
@@ -348,7 +348,7 @@ describe('IntentsService', () => {
 			expect(emitSpy).toHaveBeenCalledWith(
 				IntentEventType.EXPIRED,
 				expect.objectContaining({
-					intentId: intent.id,
+					intent_id: intent.id,
 					status: IntentStatus.EXPIRED,
 				}),
 			);
