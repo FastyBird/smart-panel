@@ -204,6 +204,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get light_mode_off => 'Vypnuto';
 
   @override
+  String get light_mode_on => 'Zapnuto';
+
+  @override
   String get light_mode_brightness => 'Jas';
 
   @override

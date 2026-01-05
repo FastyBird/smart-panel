@@ -485,6 +485,12 @@ abstract class AppLocalizations {
   /// **'Off'**
   String get light_mode_off;
 
+  /// Mode when the light is on
+  ///
+  /// In en, this message translates to:
+  /// **'On'**
+  String get light_mode_on;
+
   /// Mode for adjusting brightness
   ///
   /// In en, this message translates to:
