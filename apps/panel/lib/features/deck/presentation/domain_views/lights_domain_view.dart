@@ -8,6 +8,7 @@ import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/bottom_navigation.dart';
 import 'package:fastybird_smart_panel/core/widgets/colored_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/colored_switch.dart';
+import 'package:fastybird_smart_panel/core/widgets/fixed_grid_size_grid.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
@@ -61,6 +62,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
 
+  DeckService? _deckService;
   SpacesService? _spacesService;
   DevicesService? _devicesService;
 
@@ -76,6 +78,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   @override
   void initState() {
     super.initState();
+
+    try {
+      _deckService = locator<DeckService>();
+    } catch (_) {}
 
     try {
       _spacesService = locator<SpacesService>();
@@ -253,34 +259,55 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     return groups;
   }
 
-  /// Build grid of role tiles
+  /// Build grid of role tiles using FixedGridSizeGrid
   Widget _buildRoleTilesGrid(
     BuildContext context,
     List<_RoleGroup> roleGroups,
     DevicesService devicesService,
   ) {
+    final display = _deckService?.display;
+    final cols = display?.cols ?? 4;
+
+    // For portrait mode: 2 tiles per row, square tiles (colSpan = rowSpan)
+    // Calculate tile size: each tile takes half the columns
+    final tileColSpan = (cols / 2).floor();
+    final tileRowSpan = tileColSpan; // Square tiles
+
+    // Calculate how many rows we need for the role tiles
+    final tilesPerRow = 2;
+    final totalRows = (roleGroups.length / tilesPerRow).ceil();
+    final gridRows = totalRows * tileRowSpan;
+
+    // Build grid items
+    final List<FixedGridSizeGridItem> gridItems = [];
+    for (int i = 0; i < roleGroups.length; i++) {
+      final row = i ~/ tilesPerRow;
+      final col = i % tilesPerRow;
+
+      gridItems.add(
+        FixedGridSizeGridItem(
+          mainAxisIndex: row * tileRowSpan + 1,
+          crossAxisIndex: col * tileColSpan + 1,
+          mainAxisCellCount: tileRowSpan,
+          crossAxisCellCount: tileColSpan,
+          child: _buildRoleTile(context, roleGroups[i], devicesService),
+        ),
+      );
+    }
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        final tileWidth = _screenService.scale(
-          180,
-          density: _visualDensityService.density,
-        );
-        final crossAxisCount =
-            (constraints.maxWidth / tileWidth).floor().clamp(2, 3);
+        // Calculate height based on grid dimensions
+        final cellHeight = constraints.maxWidth / cols;
+        final gridHeight = gridRows * cellHeight;
 
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            crossAxisSpacing: AppSpacings.pMd,
-            mainAxisSpacing: AppSpacings.pMd,
-            childAspectRatio: 1.2,
+        return SizedBox(
+          height: gridHeight,
+          child: FixedGridSizeGrid(
+            mainAxisSize: gridRows,
+            crossAxisSize: cols,
+            children: gridItems,
           ),
-          itemCount: roleGroups.length,
-          itemBuilder: (context, index) {
-            return _buildRoleTile(context, roleGroups[index], devicesService);
-          },
         );
       },
     );
@@ -465,12 +492,45 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
   }
 
-  /// Build "Other" devices section
+  /// Build "Other" devices section using FixedGridSizeGrid
   Widget _buildOtherDevicesSection(
     BuildContext context,
     _RoleGroup group,
     DevicesService devicesService,
   ) {
+    final display = _deckService?.display;
+    final cols = display?.cols ?? 4;
+
+    // Each tile spans half the columns (2 tiles per row) and 1 row height
+    final tileColSpan = (cols / 2).floor();
+    final tileRowSpan = 1;
+
+    // Calculate how many rows we need
+    final tilesPerRow = 2;
+    final totalRows = (group.targets.length / tilesPerRow).ceil();
+    final gridRows = totalRows * tileRowSpan;
+
+    // Build grid items
+    final List<FixedGridSizeGridItem> gridItems = [];
+    for (int i = 0; i < group.targets.length; i++) {
+      final row = i ~/ tilesPerRow;
+      final col = i % tilesPerRow;
+
+      gridItems.add(
+        FixedGridSizeGridItem(
+          mainAxisIndex: row * tileRowSpan + 1,
+          crossAxisIndex: col * tileColSpan + 1,
+          mainAxisCellCount: tileRowSpan,
+          crossAxisCellCount: tileColSpan,
+          child: _buildOtherDeviceTile(
+            context,
+            group.targets[i],
+            devicesService,
+          ),
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -488,33 +548,20 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             ),
           ),
         ),
-        // Device tiles - horizontal layout with smaller height
+        // Device tiles grid - horizontal layout with 1 row height
         LayoutBuilder(
           builder: (context, constraints) {
-            final tileWidth = _screenService.scale(
-              200,
-              density: _visualDensityService.density,
-            );
-            final crossAxisCount =
-                (constraints.maxWidth / tileWidth).floor().clamp(1, 3);
+            // Calculate height based on grid dimensions
+            final cellHeight = constraints.maxWidth / cols;
+            final gridHeight = gridRows * cellHeight;
 
-            return GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: crossAxisCount,
-                crossAxisSpacing: AppSpacings.pSm,
-                mainAxisSpacing: AppSpacings.pSm,
-                childAspectRatio: 2.5,
+            return SizedBox(
+              height: gridHeight,
+              child: FixedGridSizeGrid(
+                mainAxisSize: gridRows,
+                crossAxisSize: cols,
+                children: gridItems,
               ),
-              itemCount: group.targets.length,
-              itemBuilder: (context, index) {
-                return _buildOtherDeviceTile(
-                  context,
-                  group.targets[index],
-                  devicesService,
-                );
-              },
             );
           },
         ),
