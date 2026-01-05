@@ -20,6 +20,8 @@ import 'package:fastybird_smart_panel/modules/devices/export.dart'
     as devices_module;
 import 'package:fastybird_smart_panel/modules/displays/export.dart'
     as displays_module;
+import 'package:fastybird_smart_panel/modules/intents/export.dart'
+    as intents_module;
 import 'package:fastybird_smart_panel/modules/system/export.dart'
     as system_module;
 import 'package:fastybird_smart_panel/modules/weather/export.dart'
@@ -386,7 +388,7 @@ class _MyAppState extends State<MyApp> {
           value: locator<devices_module.DevicesService>(),
         ),
         ChangeNotifierProvider.value(
-          value: locator<devices_module.IntentOverlayService>(),
+          value: locator<intents_module.IntentOverlayService>(),
         ),
         ChangeNotifierProvider.value(
           value: locator<dashboard_module.PagesRepository>(),

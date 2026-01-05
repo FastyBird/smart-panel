@@ -75,12 +75,12 @@ export class PropertyCommandService {
 		// Determine intent type based on the first property (could be enhanced to detect property type)
 		const intentType = IntentType.DEVICE_SET_PROPERTY;
 
-		// Build a map of "deviceId:channelId:propertyId" -> value for multi-property support
-		// Using composite key to avoid collisions when multiple devices have same property
+		// Build a map of "device:deviceId:channelId:propertyId" -> value for multi-property support
+		// Using composite key with "device:" prefix for consistency with intent target key format
 		const valueMap: Record<string, unknown> = {};
 
 		for (const prop of dtoInstance.properties) {
-			const compositeKey = `${prop.device}:${prop.channel}:${prop.property}`;
+			const compositeKey = `device:${prop.device}:${prop.channel}:${prop.property}`;
 			valueMap[compositeKey] = prop.value;
 		}
 

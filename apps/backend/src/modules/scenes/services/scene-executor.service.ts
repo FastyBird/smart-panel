@@ -92,8 +92,9 @@ export class SceneExecutorService {
 
 		const triggeredAt = new Date();
 
-		// Extract device targets from scene actions for granular tracking
-		const deviceTargets = this.extractIntentTargets(scene.actions || []);
+		// Extract device targets from enabled scene actions only for granular tracking
+		// Note: Must filter to enabled actions since executeActions() only runs enabled ones
+		const deviceTargets = this.extractIntentTargets((scene.actions || []).filter((a) => a.enabled));
 
 		// Build targets array: scene target first, then device targets
 		const targets: IntentTarget[] = [
