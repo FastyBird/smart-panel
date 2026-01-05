@@ -30,11 +30,13 @@ class IntentOverlayService extends ChangeNotifier {
   /// Active intents indexed by intentId
   final Map<String, IntentOverlay> _activeIntents = {};
 
-  /// Quick lookup: "deviceId:channelId:propertyId" -> intentId
+  /// Quick lookup: target key -> intentId
+  /// Device targets: "device:deviceId:channelId:propertyId" (using * for null values)
+  /// Scene targets: "scene:sceneId"
   final Map<String, String> _targetIndex = {};
 
   /// Recent completion results for showing failure indicators
-  /// Key: "deviceId:channelId:propertyId" (using * for null values), Value: IntentTargetResult
+  /// Uses same key format as _targetIndex
   final Map<String, IntentTargetResult> _recentResults = {};
 
   /// Duration to keep failure indicators visible
@@ -84,13 +86,19 @@ class IntentOverlayService extends ChangeNotifier {
   /// When locked, the UI should show the overlay value instead of the
   /// actual device state to prevent jitter.
   bool isLocked(String deviceId, String? channelId, String? propertyId) {
-    final key = '$deviceId:${channelId ?? '*'}:${propertyId ?? '*'}';
+    final key = 'device:$deviceId:${channelId ?? '*'}:${propertyId ?? '*'}';
+    return _targetIndex.containsKey(key);
+  }
+
+  /// Check if a scene is currently locked by an active intent
+  bool isSceneLocked(String sceneId) {
+    final key = 'scene:$sceneId';
     return _targetIndex.containsKey(key);
   }
 
   /// Check if any property on a device is locked
   bool isDeviceLocked(String deviceId) {
-    return _targetIndex.keys.any((key) => key.startsWith('$deviceId:'));
+    return _targetIndex.keys.any((key) => key.startsWith('device:$deviceId:'));
   }
 
   /// Get the overlay value for a locked property
@@ -98,7 +106,7 @@ class IntentOverlayService extends ChangeNotifier {
   /// Returns null if the property is not locked or has no overlay value.
   /// For multi-property intents, returns the specific value for the given propertyId.
   dynamic getOverlayValue(String deviceId, String? channelId, String? propertyId) {
-    final key = '$deviceId:${channelId ?? '*'}:${propertyId ?? '*'}';
+    final key = 'device:$deviceId:${channelId ?? '*'}:${propertyId ?? '*'}';
     final intentId = _targetIndex[key];
     if (intentId == null) return null;
 
@@ -119,6 +127,16 @@ class IntentOverlayService extends ChangeNotifier {
     return null;
   }
 
+  /// Get the active intent affecting a scene
+  IntentOverlay? getActiveSceneIntent(String sceneId) {
+    for (final intent in _activeIntents.values) {
+      if (intent.targets.any((t) => t.sceneId == sceneId)) {
+        return intent;
+      }
+    }
+    return null;
+  }
+
   /// Get recent failure result for a specific property or any property on a device.
   ///
   /// If [channelId] and [propertyId] are provided, looks up the specific property.
@@ -130,7 +148,7 @@ class IntentOverlayService extends ChangeNotifier {
   ]) {
     // If specific property requested, look up by composite key
     if (propertyId != null) {
-      final key = '$deviceId:${channelId ?? '*'}:$propertyId';
+      final key = 'device:$deviceId:${channelId ?? '*'}:$propertyId';
       final result = _recentResults[key];
       if (result != null && result.isFailure) {
         return result;
@@ -140,9 +158,19 @@ class IntentOverlayService extends ChangeNotifier {
 
     // Otherwise, find any failure for this device
     for (final entry in _recentResults.entries) {
-      if (entry.key.startsWith('$deviceId:') && entry.value.isFailure) {
+      if (entry.key.startsWith('device:$deviceId:') && entry.value.isFailure) {
         return entry.value;
       }
+    }
+    return null;
+  }
+
+  /// Get recent failure result for a scene
+  IntentTargetResult? getSceneFailureResult(String sceneId) {
+    final key = 'scene:$sceneId';
+    final result = _recentResults[key];
+    if (result != null && result.isFailure) {
+      return result;
     }
     return null;
   }
@@ -150,6 +178,11 @@ class IntentOverlayService extends ChangeNotifier {
   /// Check if a device has a recent failure (any property)
   bool hasRecentFailure(String deviceId) {
     return getFailureResult(deviceId) != null;
+  }
+
+  /// Check if a scene has a recent failure
+  bool hasSceneRecentFailure(String sceneId) {
+    return getSceneFailureResult(sceneId) != null;
   }
 
   /// Create a local optimistic overlay immediately when user interacts
@@ -166,9 +199,9 @@ class IntentOverlayService extends ChangeNotifier {
     final now = DateTime.now();
     final localIntentId = 'local_${deviceId}_${DateTime.now().millisecondsSinceEpoch}';
 
-    // Build value map for consistency with backend format (using three-part composite key)
+    // Build value map for consistency with backend format (using composite key with device: prefix)
     final valueMap = propertyId != null
-        ? {'$deviceId:${channelId ?? '*'}:$propertyId': value}
+        ? {'device:$deviceId:${channelId ?? '*'}:$propertyId': value}
         : value;
 
     final overlay = IntentOverlay(
@@ -192,7 +225,7 @@ class IntentOverlayService extends ChangeNotifier {
     _addIntent(overlay);
 
     if (kDebugMode) {
-      debugPrint('[INTENT_OVERLAY] Created local overlay $localIntentId for $deviceId:$channelId:$propertyId');
+      debugPrint('[INTENT_OVERLAY] Created local overlay $localIntentId for device:$deviceId:$channelId:$propertyId');
     }
 
     // Schedule local expiration with a tracked timer

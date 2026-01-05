@@ -49,58 +49,93 @@ IntentTargetStatus parseIntentTargetStatus(String status) {
   }
 }
 
-/// Represents a target device/channel/property affected by an intent
+/// Represents a target affected by an intent.
+/// Can be either a device target (deviceId/channelId/propertyId) or a scene target (sceneId).
 class IntentTarget {
-  final String deviceId;
+  final String? deviceId;
   final String? channelId;
   final String? propertyId;
+  final String? sceneId;
 
   IntentTarget({
-    required this.deviceId,
+    this.deviceId,
     this.channelId,
     this.propertyId,
+    this.sceneId,
   });
 
   factory IntentTarget.fromJson(Map<String, dynamic> json) {
     return IntentTarget(
-      deviceId: json['device_id'] as String,
+      deviceId: json['device_id'] as String?,
       channelId: json['channel_id'] as String?,
       propertyId: json['property_id'] as String?,
+      sceneId: json['scene_id'] as String?,
     );
   }
 
-  /// Create a unique key for indexing (deviceId:channelId:propertyId)
-  String get key => '$deviceId:${channelId ?? '*'}:${propertyId ?? '*'}';
+  /// Check if this is a device target
+  bool get isDeviceTarget => deviceId != null;
+
+  /// Check if this is a scene target
+  bool get isSceneTarget => sceneId != null;
+
+  /// Create a unique key for indexing.
+  /// For device targets: "device:deviceId:channelId:propertyId"
+  /// For scene targets: "scene:sceneId"
+  String get key {
+    if (sceneId != null) {
+      return 'scene:$sceneId';
+    }
+    return 'device:${deviceId ?? '*'}:${channelId ?? '*'}:${propertyId ?? '*'}';
+  }
 }
 
-/// Represents the result for a specific target after intent completion
+/// Represents the result for a specific target after intent completion.
+/// Mirrors IntentTarget structure - either device target or scene target.
 class IntentTargetResult {
-  final String deviceId;
+  final String? deviceId;
   final String? channelId;
   final String? propertyId;
+  final String? sceneId;
   final IntentTargetStatus status;
   final String? error;
 
   IntentTargetResult({
-    required this.deviceId,
+    this.deviceId,
     this.channelId,
     this.propertyId,
+    this.sceneId,
     required this.status,
     this.error,
   });
 
   factory IntentTargetResult.fromJson(Map<String, dynamic> json) {
     return IntentTargetResult(
-      deviceId: json['device_id'] as String,
+      deviceId: json['device_id'] as String?,
       channelId: json['channel_id'] as String?,
       propertyId: json['property_id'] as String?,
+      sceneId: json['scene_id'] as String?,
       status: parseIntentTargetStatus(json['status'] as String),
       error: json['error'] as String?,
     );
   }
 
+  /// Check if this is a device target result
+  bool get isDeviceTarget => deviceId != null;
+
+  /// Check if this is a scene target result
+  bool get isSceneTarget => sceneId != null;
+
   bool get isSuccess => status == IntentTargetStatus.success;
   bool get isFailure => status == IntentTargetStatus.failed || status == IntentTargetStatus.timeout;
+
+  /// Create a unique key for indexing (mirrors IntentTarget.key)
+  String get key {
+    if (sceneId != null) {
+      return 'scene:$sceneId';
+    }
+    return 'device:${deviceId ?? '*'}:${channelId ?? '*'}:${propertyId ?? '*'}';
+  }
 }
 
 /// Optional scope context for an intent.
@@ -197,8 +232,8 @@ class IntentOverlay {
   bool get isFullySuccessful => status == IntentStatus.completedSuccess;
 
   /// Get the value for a specific device, channel, and property ID.
-  /// If value is a Map, looks up by "deviceId:channelId:propertyId" composite key.
-  /// Falls back to wildcard key (deviceId:*:propertyId) for local overlays with null channelId.
+  /// If value is a Map, looks up by "device:deviceId:channelId:propertyId" composite key.
+  /// Falls back to wildcard key (device:deviceId:*:propertyId) for local overlays with null channelId.
   /// Otherwise returns the raw value.
   dynamic getValueForProperty(
     String deviceId,
@@ -208,17 +243,17 @@ class IntentOverlay {
     if (value is Map<String, dynamic> && propertyId != null) {
       final valueMap = value as Map<String, dynamic>;
 
-      // Try three-part composite key (deviceId:channelId:propertyId)
+      // Try full composite key with device: prefix (device:deviceId:channelId:propertyId)
       if (channelId != null) {
-        final threePartKey = '$deviceId:$channelId:$propertyId';
-        if (valueMap.containsKey(threePartKey)) {
-          return valueMap[threePartKey];
+        final fullKey = 'device:$deviceId:$channelId:$propertyId';
+        if (valueMap.containsKey(fullKey)) {
+          return valueMap[fullKey];
         }
       }
 
-      // Try three-part key with wildcard placeholder (deviceId:*:propertyId)
+      // Try key with wildcard placeholder (device:deviceId:*:propertyId)
       // This matches the format used by createLocalOverlay when channelId is null
-      final wildcardKey = '$deviceId:*:$propertyId';
+      final wildcardKey = 'device:$deviceId:*:$propertyId';
       if (valueMap.containsKey(wildcardKey)) {
         return valueMap[wildcardKey];
       }

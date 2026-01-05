@@ -92,8 +92,14 @@ export class SceneExecutorService {
 
 		const triggeredAt = new Date();
 
-		// Extract intent targets with full details from scene actions
-		const targets = this.extractIntentTargets(scene.actions || []);
+		// Extract device targets from scene actions for granular tracking
+		const deviceTargets = this.extractIntentTargets(scene.actions || []);
+
+		// Build targets array: scene target first, then device targets
+		const targets: IntentTarget[] = [
+			{ sceneId: scene.id }, // Primary scene target
+			...deviceTargets, // Device targets for granular UI overlays
+		];
 
 		// Create the intent for scene execution
 		const intent = this.intentsService.createIntent({
@@ -106,7 +112,9 @@ export class SceneExecutorService {
 			ttlMs: DEFAULT_TTL_SCENE,
 		});
 
-		this.logger.log(`[TRIGGER] Created intent ${intent.id} for scene ${sceneId} with ${targets.length} target(s)`);
+		this.logger.log(
+			`[TRIGGER] Created intent ${intent.id} for scene ${sceneId} with ${targets.length} target(s) (1 scene + ${deviceTargets.length} devices)`,
+		);
 
 		// Emit execution started event
 		this.eventEmitter.emit(EventType.SCENE_EXECUTION_STARTED, {
@@ -148,8 +156,8 @@ export class SceneExecutorService {
 
 			result.completedAt = new Date().toISOString();
 
-			// Map action results to intent results
-			const intentResults = this.mapActionResultsToIntentResults(actionResults, scene.actions || []);
+			// Map action results to intent results (includes scene-level result)
+			const intentResults = this.mapActionResultsToIntentResults(scene.id, actionResults, scene.actions || []);
 
 			// Complete the intent
 			this.intentsService.completeIntent(intent.id, intentResults);
@@ -186,24 +194,14 @@ export class SceneExecutorService {
 			result.completedAt = new Date().toISOString();
 
 			// Complete intent with failure - map targets to failed results
-			// If targets is empty (no device actions), create a synthetic scene-level failure
-			// to ensure the intent is marked as failed rather than incorrectly succeeding
-			const failedResults: IntentTargetResult[] =
-				targets.length > 0
-					? targets.map((target) => ({
-							deviceId: target.deviceId,
-							channelId: target.channelId,
-							propertyId: target.propertyId,
-							status: IntentTargetStatus.FAILED,
-							error: err.message,
-						}))
-					: [
-							{
-								deviceId: sceneId, // Use sceneId as synthetic device for scene-level failure
-								status: IntentTargetStatus.FAILED,
-								error: err.message,
-							},
-						];
+			const failedResults: IntentTargetResult[] = targets.map((target) => ({
+				deviceId: target.deviceId,
+				channelId: target.channelId,
+				propertyId: target.propertyId,
+				sceneId: target.sceneId,
+				status: IntentTargetStatus.FAILED,
+				error: err.message,
+			}));
 
 			this.intentsService.completeIntent(intent.id, failedResults);
 
@@ -260,11 +258,13 @@ export class SceneExecutorService {
 	 * Map action execution results to intent target results
 	 */
 	private mapActionResultsToIntentResults(
+		sceneId: string,
 		actionResults: ActionExecutionResultModel[],
 		actions: SceneActionEntity[],
 	): IntentTargetResult[] {
 		const results: IntentTargetResult[] = [];
 
+		// Add device-level results for each action
 		for (const actionResult of actionResults) {
 			// Find the corresponding action to get the target details
 			const action = actions.find((a) => a.id === actionResult.actionId);
@@ -284,6 +284,21 @@ export class SceneExecutorService {
 				});
 			}
 		}
+
+		// Add scene-level result based on overall outcome
+		const allSucceeded = actionResults.every((r) => r.success);
+		const anySucceeded = actionResults.some((r) => r.success);
+		const sceneStatus = allSucceeded
+			? IntentTargetStatus.SUCCESS
+			: anySucceeded
+				? IntentTargetStatus.SUCCESS // Partial success is still success for the scene target
+				: IntentTargetStatus.FAILED;
+
+		results.unshift({
+			sceneId,
+			status: sceneStatus,
+			error: allSucceeded ? undefined : 'Some actions failed',
+		});
 
 		return results;
 	}

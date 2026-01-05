@@ -17,12 +17,15 @@ import {
 import { INTENT_ORIGINS, IntentOrigin, IntentStatus, IntentTargetStatus, IntentType } from '../intents.constants';
 
 /**
- * Represents a target affected by an intent (device/channel/property)
+ * Represents a target affected by an intent.
+ * Can be either a device target (deviceId/channelId/propertyId) or a scene target (sceneId).
+ * At least one of deviceId or sceneId should be provided.
  */
 export class IntentTarget {
 	@Expose({ name: 'device_id' })
+	@IsOptional()
 	@IsUUID()
-	deviceId: string;
+	deviceId?: string;
 
 	@Expose({ name: 'channel_id' })
 	@IsOptional()
@@ -33,15 +36,22 @@ export class IntentTarget {
 	@IsOptional()
 	@IsUUID()
 	propertyId?: string;
+
+	@Expose({ name: 'scene_id' })
+	@IsOptional()
+	@IsUUID()
+	sceneId?: string;
 }
 
 /**
- * Represents the result for a specific target after intent completion
+ * Represents the result for a specific target after intent completion.
+ * Mirrors IntentTarget structure - either device target or scene target.
  */
 export class IntentTargetResult {
 	@Expose({ name: 'device_id' })
+	@IsOptional()
 	@IsUUID()
-	deviceId: string;
+	deviceId?: string;
 
 	@Expose({ name: 'channel_id' })
 	@IsOptional()
@@ -52,6 +62,11 @@ export class IntentTargetResult {
 	@IsOptional()
 	@IsUUID()
 	propertyId?: string;
+
+	@Expose({ name: 'scene_id' })
+	@IsOptional()
+	@IsUUID()
+	sceneId?: string;
 
 	@Expose()
 	@IsEnum(IntentTargetStatus)
