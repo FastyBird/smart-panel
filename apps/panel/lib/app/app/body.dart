@@ -43,6 +43,7 @@ class _AppBodyState extends State<AppBody> {
 
   Offset? _swipeStartPosition;
   bool _isSwipingVertically = false;
+  bool _swipeActionTriggered = false;
 
   @override
   void initState() {
@@ -162,7 +163,7 @@ class _AppBodyState extends State<AppBody> {
             _swipeStartPosition = details.globalPosition;
           },
           onPanUpdate: (details) {
-            if (_swipeStartPosition == null) return;
+            if (_swipeStartPosition == null || _swipeActionTriggered) return;
 
             final delta = details.globalPosition - _swipeStartPosition!;
             // Check if the swipe is vertical enough
@@ -173,7 +174,8 @@ class _AppBodyState extends State<AppBody> {
             // Once confirmed vertical, decide swipe direction
             if (_isSwipingVertically) {
               if (delta.dy > 20) {
-                // Swipe down detected
+                // Swipe down detected - only trigger once per gesture
+                _swipeActionTriggered = true;
                 _navigator.navigateTo(AppRouteNames.settings);
               } else if (delta.dy < -20) {
                 // Swipe up detected
@@ -183,6 +185,7 @@ class _AppBodyState extends State<AppBody> {
           onPanEnd: (_) {
             _swipeStartPosition = null;
             _isSwipingVertically = false;
+            _swipeActionTriggered = false;
           },
           child: child,
         );
