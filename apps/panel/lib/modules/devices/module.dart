@@ -9,6 +9,7 @@ import 'package:fastybird_smart_panel/modules/devices/repositories/device_contro
 import 'package:fastybird_smart_panel/modules/devices/repositories/devices.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/validation.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/intent_overlay_service.dart';
 import 'package:fastybird_smart_panel/plugins/devices-home-assistant/plugin.dart';
 import 'package:fastybird_smart_panel/plugins/devices-shelly-ng/plugin.dart';
 import 'package:fastybird_smart_panel/plugins/devices-shelly-v1/plugin.dart';
@@ -28,6 +29,7 @@ class DevicesModuleService {
   late DeviceValidationRepository _validationRepository;
 
   late DevicesService _devicesService;
+  late IntentOverlayService _intentOverlayService;
 
   bool _isLoading = true;
 
@@ -84,6 +86,10 @@ class DevicesModuleService {
       validationRepository: _validationRepository,
     );
 
+    _intentOverlayService = IntentOverlayService(
+      socketService: _socketService,
+    );
+
     locator.registerSingleton(_devicesRepository);
     locator.registerSingleton(_deviceControlsRepository);
 
@@ -93,12 +99,14 @@ class DevicesModuleService {
     locator.registerSingleton(_validationRepository);
 
     locator.registerSingleton(_devicesService);
+    locator.registerSingleton(_intentOverlayService);
   }
 
   Future<void> initialize() async {
     _isLoading = true;
 
     await _devicesService.initialize();
+    _intentOverlayService.initialize();
 
     _isLoading = false;
 

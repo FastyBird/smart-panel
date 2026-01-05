@@ -386,6 +386,9 @@ class _MyAppState extends State<MyApp> {
           value: locator<devices_module.DevicesService>(),
         ),
         ChangeNotifierProvider.value(
+          value: locator<devices_module.IntentOverlayService>(),
+        ),
+        ChangeNotifierProvider.value(
           value: locator<dashboard_module.PagesRepository>(),
         ),
         ChangeNotifierProvider.value(

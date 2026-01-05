@@ -20,3 +20,7 @@ export 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart
 
 // Service
 export 'package:fastybird_smart_panel/modules/devices/service.dart';
+
+// Intent overlay
+export 'package:fastybird_smart_panel/modules/devices/models/intent_overlay.dart';
+export 'package:fastybird_smart_panel/modules/devices/services/intent_overlay_service.dart';
