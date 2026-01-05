@@ -531,6 +531,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       );
     }
 
+    final localizations = AppLocalizations.of(context)!;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -538,7 +540,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
           child: Text(
-            'Other Lights',
+            localizations.domain_lights_other,
             style: TextStyle(
               fontSize: AppFontSize.base,
               fontWeight: FontWeight.w600,
@@ -575,6 +577,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     LightTargetView target,
     DevicesService devicesService,
   ) {
+    final localizations = AppLocalizations.of(context)!;
     final device = devicesService.getDevice(target.deviceId);
     if (device is! LightingDeviceView || device.lightChannels.isEmpty) {
       return const SizedBox.shrink();
@@ -593,7 +596,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     // Build subtitle with brightness or on/off state
     final subtitleText = hasBrightness && isOn && brightness != null
         ? '$brightness%'
-        : (isOn ? 'On' : 'Off');
+        : (isOn ? localizations.light_state_on : localizations.light_state_off);
 
     return GestureDetector(
       onLongPress: () => _openDeviceDetail(context, device),
@@ -696,6 +699,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   /// Build empty state
   Widget _buildEmptyState(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+
     return Center(
       child: Padding(
         padding: AppSpacings.paddingLg,
@@ -714,7 +719,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             ),
             AppSpacings.spacingMdVertical,
             Text(
-              'No Lights',
+              localizations.domain_lights_empty_title,
               style: TextStyle(
                 fontSize: AppFontSize.large,
                 fontWeight: FontWeight.w600,
@@ -726,7 +731,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             ),
             AppSpacings.spacingSmVertical,
             Text(
-              'No lighting devices found in this room',
+              localizations.domain_lights_empty_description,
               style: TextStyle(
                 fontSize: AppFontSize.small,
                 color: Theme.of(context).brightness == Brightness.light
@@ -1141,7 +1146,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            anyOn ? 'On' : localizations.light_state_off,
+            anyOn ? localizations.light_state_on : localizations.light_state_off,
             style: TextStyle(
               color: Theme.of(context).brightness == Brightness.light
                   ? AppTextColorLight.regular
@@ -1157,7 +1162,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           ),
           Text(
             anyOn
-                ? 'Light is on'
+                ? localizations.light_state_on_description
                 : localizations.light_state_off_description,
             style: TextStyle(
               color: Theme.of(context).brightness == Brightness.light

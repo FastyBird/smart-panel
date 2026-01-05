@@ -1,5 +1,3 @@
-import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -202,9 +200,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get light_mode_off => 'Off';
-
-  @override
-  String get light_mode_on => 'On';
 
   @override
   String get light_mode_brightness => 'Brightness';
@@ -936,20 +931,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get domain_lights_empty_description => 'No lighting devices found in this room';
-
-  @override
-  String domain_lights_count_on(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count lights on',
-      one: '1 light on',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get domain_lights_all_off => 'all off';
 
   @override
   String get domain_climate => 'Climate';

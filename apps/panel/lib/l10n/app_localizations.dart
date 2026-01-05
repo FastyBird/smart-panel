@@ -485,12 +485,6 @@ abstract class AppLocalizations {
   /// **'Off'**
   String get light_mode_off;
 
-  /// Mode when the light is on
-  ///
-  /// In en, this message translates to:
-  /// **'On'**
-  String get light_mode_on;
-
   /// Mode for adjusting brightness
   ///
   /// In en, this message translates to:
@@ -1936,18 +1930,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No lighting devices found in this room'**
   String get domain_lights_empty_description;
-
-  /// Count of lights that are on in a role group
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, =1{1 light on} other{{count} lights on}}'**
-  String domain_lights_count_on(int count);
-
-  /// Text shown when all lights in a role group are off
-  ///
-  /// In en, this message translates to:
-  /// **'all off'**
-  String get domain_lights_all_off;
 
   /// Title for climate domain view in room navigation
   ///

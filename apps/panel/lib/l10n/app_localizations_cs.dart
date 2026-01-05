@@ -1,5 +1,3 @@
-import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -202,9 +200,6 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get light_mode_off => 'Vypnuto';
-
-  @override
-  String get light_mode_on => 'Zapnuto';
 
   @override
   String get light_mode_brightness => 'Jas';
@@ -936,21 +931,6 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get domain_lights_empty_description => 'V této místnosti nebyla nalezena žádná světla';
-
-  @override
-  String domain_lights_count_on(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count světel zapnuto',
-      few: '$count světla zapnuta',
-      one: '1 světlo zapnuto',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get domain_lights_all_off => 'vše vypnuto';
 
   @override
   String get domain_climate => 'Klima';
