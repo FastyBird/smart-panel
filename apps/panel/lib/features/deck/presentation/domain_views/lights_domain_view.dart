@@ -14,6 +14,7 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/light.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
@@ -841,10 +842,17 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
   _LightRoleMode _currentMode = _LightRoleMode.off;
   final List<_LightRoleMode> _availableModes = [];
 
-  // Local slider value for visual feedback during drag
+  // Local slider values for visual feedback during drag
   double? _sliderBrightness;
-  // Debounce timer for brightness slider
+  double? _sliderHue;
+  double? _sliderTemperature;
+  double? _sliderWhite;
+
+  // Debounce timers for sliders
   Timer? _brightnessDebounceTimer;
+  Timer? _hueDebounceTimer;
+  Timer? _temperatureDebounceTimer;
+  Timer? _whiteDebounceTimer;
 
   @override
   void initState() {
@@ -867,6 +875,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
   @override
   void dispose() {
     _brightnessDebounceTimer?.cancel();
+    _hueDebounceTimer?.cancel();
+    _temperatureDebounceTimer?.cancel();
+    _whiteDebounceTimer?.cancel();
     _spacesService?.removeListener(_onSpacesDataChanged);
     _devicesService?.removeListener(_onDevicesDataChanged);
     super.dispose();
@@ -877,8 +888,11 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     if (mounted) {
       _updateAvailableModes();
       setState(() {
-        // Reset slider brightness so it reflects actual device state
+        // Reset slider values so they reflect actual device state
         _sliderBrightness = null;
+        _sliderHue = null;
+        _sliderTemperature = null;
+        _sliderWhite = null;
       });
     }
   }
@@ -1325,11 +1339,26 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           devicesService,
         );
       case _LightRoleMode.color:
-        return _buildColorSlider(context, elementMaxSize);
+        return _buildColorSlider(
+          context,
+          targets,
+          elementMaxSize,
+          devicesService,
+        );
       case _LightRoleMode.temperature:
-        return _buildTemperatureSlider(context, elementMaxSize);
+        return _buildTemperatureSlider(
+          context,
+          targets,
+          elementMaxSize,
+          devicesService,
+        );
       case _LightRoleMode.white:
-        return _buildWhiteSlider(context, elementMaxSize);
+        return _buildWhiteSlider(
+          context,
+          targets,
+          elementMaxSize,
+          devicesService,
+        );
       case _LightRoleMode.off:
         return _buildBrightnessSlider(
           context,
@@ -1406,17 +1435,50 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     );
   }
 
-  /// Build color slider (placeholder)
-  Widget _buildColorSlider(BuildContext context, double elementMaxSize) {
+  /// Build color (hue) slider
+  Widget _buildColorSlider(
+    BuildContext context,
+    List<LightTargetView> targets,
+    double elementMaxSize,
+    DevicesService devicesService,
+  ) {
+    // Calculate average hue from devices that are on
+    double totalHue = 0;
+    int hueCount = 0;
+
+    for (final target in targets) {
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+        final channel = device.lightChannels.firstWhere(
+          (c) => c.id == target.channelId,
+          orElse: () => device.lightChannels.first,
+        );
+        if (channel.hasHue && channel.on) {
+          totalHue += channel.hue;
+          hueCount++;
+        }
+      }
+    }
+
+    final avgHue = hueCount > 0 ? totalHue / hueCount : 180.0;
+
     return ColoredSlider(
-      value: 0.5,
+      value: _sliderHue ?? avgHue,
       min: 0.0,
-      max: 1.0,
+      max: 360.0,
       enabled: true,
       vertical: true,
       trackWidth: elementMaxSize,
       onValueChanged: (value) {
-        // TODO: Implement color control for all devices
+        setState(() {
+          _sliderHue = value;
+        });
+        // Debounce the API call
+        _hueDebounceTimer?.cancel();
+        _hueDebounceTimer = Timer(
+          const Duration(milliseconds: 300),
+          () => _setHueForAll(context, targets, value, devicesService),
+        );
       },
       background: const BoxDecoration(
         gradient: LinearGradient(
@@ -1436,17 +1498,53 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     );
   }
 
-  /// Build temperature slider (placeholder)
-  Widget _buildTemperatureSlider(BuildContext context, double elementMaxSize) {
+  /// Build temperature slider
+  Widget _buildTemperatureSlider(
+    BuildContext context,
+    List<LightTargetView> targets,
+    double elementMaxSize,
+    DevicesService devicesService,
+  ) {
+    // Calculate average temperature from devices that are on
+    double totalTemp = 0;
+    int tempCount = 0;
+
+    for (final target in targets) {
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+        final channel = device.lightChannels.firstWhere(
+          (c) => c.id == target.channelId,
+          orElse: () => device.lightChannels.first,
+        );
+        if (channel.hasTemperature && channel.on) {
+          final tempProp = channel.temperatureProp;
+          if (tempProp != null && tempProp.value is NumberValueType) {
+            totalTemp += (tempProp.value as NumberValueType).value.toDouble();
+            tempCount++;
+          }
+        }
+      }
+    }
+
+    final avgTemp = tempCount > 0 ? totalTemp / tempCount : 4000.0;
+
     return ColoredSlider(
-      value: 4000,
+      value: _sliderTemperature ?? avgTemp,
       min: 2700,
       max: 6500,
       enabled: true,
       vertical: true,
       trackWidth: elementMaxSize,
       onValueChanged: (value) {
-        // TODO: Implement temperature control for all devices
+        setState(() {
+          _sliderTemperature = value;
+        });
+        // Debounce the API call
+        _temperatureDebounceTimer?.cancel();
+        _temperatureDebounceTimer = Timer(
+          const Duration(milliseconds: 300),
+          () => _setTemperatureForAll(context, targets, value, devicesService),
+        );
       },
       background: const BoxDecoration(
         gradient: LinearGradient(
@@ -1475,10 +1573,35 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     );
   }
 
-  /// Build white slider (placeholder)
-  Widget _buildWhiteSlider(BuildContext context, double elementMaxSize) {
+  /// Build white channel slider
+  Widget _buildWhiteSlider(
+    BuildContext context,
+    List<LightTargetView> targets,
+    double elementMaxSize,
+    DevicesService devicesService,
+  ) {
+    // Calculate average white value from devices that are on
+    double totalWhite = 0;
+    int whiteCount = 0;
+
+    for (final target in targets) {
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+        final channel = device.lightChannels.firstWhere(
+          (c) => c.id == target.channelId,
+          orElse: () => device.lightChannels.first,
+        );
+        if (channel.hasColorWhite && channel.on) {
+          totalWhite += channel.colorWhite.toDouble();
+          whiteCount++;
+        }
+      }
+    }
+
+    final avgWhite = whiteCount > 0 ? totalWhite / whiteCount : 128.0;
+
     return ColoredSlider(
-      value: 128,
+      value: _sliderWhite ?? avgWhite,
       min: 0,
       max: 255,
       enabled: true,
@@ -1486,7 +1609,15 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       trackWidth: elementMaxSize,
       showThumb: false,
       onValueChanged: (value) {
-        // TODO: Implement white channel control for all devices
+        setState(() {
+          _sliderWhite = value;
+        });
+        // Debounce the API call
+        _whiteDebounceTimer?.cancel();
+        _whiteDebounceTimer = Timer(
+          const Duration(milliseconds: 300),
+          () => _setWhiteForAll(context, targets, value.round(), devicesService),
+        );
       },
       activeTrackColor: AppColors.white,
       inner: [
@@ -1766,6 +1897,183 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         setState(() {
           // Reset slider brightness so it reflects actual device state
           _sliderBrightness = null;
+        });
+      }
+    }
+  }
+
+  /// Set hue for all devices in the role that support color
+  Future<void> _setHueForAll(
+    BuildContext context,
+    List<LightTargetView> targets,
+    double hue,
+    DevicesService devicesService,
+  ) async {
+    final localizations = AppLocalizations.of(context);
+
+    try {
+      int successCount = 0;
+      int failCount = 0;
+
+      for (final target in targets) {
+        final device = devicesService.getDevice(target.deviceId);
+        if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+          final channel = device.lightChannels.firstWhere(
+            (c) => c.id == target.channelId,
+            orElse: () => device.lightChannels.first,
+          );
+
+          final hueProp = channel.hueProp;
+          if (hueProp != null) {
+            final success = await devicesService.setPropertyValue(
+              hueProp.id,
+              hue,
+            );
+            if (success) {
+              successCount++;
+            } else {
+              failCount++;
+            }
+          }
+        }
+      }
+
+      if (!mounted) return;
+
+      if (failCount > 0 && successCount == 0) {
+        AlertBar.showError(
+          this.context,
+          message: localizations?.action_failed ?? 'Failed to set color',
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      AlertBar.showError(
+        this.context,
+        message: localizations?.action_failed ?? 'Failed to set color',
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _sliderHue = null;
+        });
+      }
+    }
+  }
+
+  /// Set color temperature for all devices in the role that support it
+  Future<void> _setTemperatureForAll(
+    BuildContext context,
+    List<LightTargetView> targets,
+    double temperature,
+    DevicesService devicesService,
+  ) async {
+    final localizations = AppLocalizations.of(context);
+
+    try {
+      int successCount = 0;
+      int failCount = 0;
+
+      for (final target in targets) {
+        final device = devicesService.getDevice(target.deviceId);
+        if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+          final channel = device.lightChannels.firstWhere(
+            (c) => c.id == target.channelId,
+            orElse: () => device.lightChannels.first,
+          );
+
+          final tempProp = channel.temperatureProp;
+          if (tempProp != null) {
+            final success = await devicesService.setPropertyValue(
+              tempProp.id,
+              temperature.round(),
+            );
+            if (success) {
+              successCount++;
+            } else {
+              failCount++;
+            }
+          }
+        }
+      }
+
+      if (!mounted) return;
+
+      if (failCount > 0 && successCount == 0) {
+        AlertBar.showError(
+          this.context,
+          message: localizations?.action_failed ?? 'Failed to set temperature',
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      AlertBar.showError(
+        this.context,
+        message: localizations?.action_failed ?? 'Failed to set temperature',
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _sliderTemperature = null;
+        });
+      }
+    }
+  }
+
+  /// Set white channel for all devices in the role that support it
+  Future<void> _setWhiteForAll(
+    BuildContext context,
+    List<LightTargetView> targets,
+    int white,
+    DevicesService devicesService,
+  ) async {
+    final localizations = AppLocalizations.of(context);
+
+    try {
+      int successCount = 0;
+      int failCount = 0;
+
+      for (final target in targets) {
+        final device = devicesService.getDevice(target.deviceId);
+        if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+          final channel = device.lightChannels.firstWhere(
+            (c) => c.id == target.channelId,
+            orElse: () => device.lightChannels.first,
+          );
+
+          final whiteProp = channel.colorWhiteProp;
+          if (whiteProp != null) {
+            final success = await devicesService.setPropertyValue(
+              whiteProp.id,
+              white,
+            );
+            if (success) {
+              successCount++;
+            } else {
+              failCount++;
+            }
+          }
+        }
+      }
+
+      if (!mounted) return;
+
+      if (failCount > 0 && successCount == 0) {
+        AlertBar.showError(
+          this.context,
+          message: localizations?.action_failed ?? 'Failed to set white level',
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      AlertBar.showError(
+        this.context,
+        message: localizations?.action_failed ?? 'Failed to set white level',
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _sliderWhite = null;
         });
       }
     }
