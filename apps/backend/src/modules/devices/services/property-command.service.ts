@@ -62,24 +62,47 @@ export class PropertyCommandService {
 			return { success: false, results: 'Invalid payload' };
 		}
 
-		// Build intent targets from properties
+		// First, resolve property identifiers for all targets
+		// This is needed because the panel uses property identifiers (e.g., "brightness", "on")
+		// for the overlay index, not UUIDs
+		const propertyKeyMap = new Map<string, string>(); // property UUID -> property identifier
+
+		for (const prop of dtoInstance.properties) {
+			const channel = await this.channelsService.findOne(prop.channel, prop.device);
+
+			if (channel) {
+				const property = await this.channelsPropertiesService.findOne(prop.property, channel.id);
+
+				if (property) {
+					// Use identifier if available, otherwise fall back to name or id
+					propertyKeyMap.set(prop.property, property.identifier || property.name || prop.property);
+				}
+			}
+		}
+
+		// Build intent targets with resolved property keys
 		const targets: IntentTarget[] = dtoInstance.properties.map((prop) => ({
 			deviceId: prop.device,
 			channelId: prop.channel,
-			propertyKey: prop.property,
+			propertyKey: propertyKeyMap.get(prop.property) || prop.property,
 		}));
 
 		// Determine intent type based on the first property (could be enhanced to detect property type)
 		const intentType = IntentType.DEVICE_SET_PROPERTY;
 
-		// Get primary value for the intent (first property's value)
-		const primaryValue = dtoInstance.properties.length > 0 ? dtoInstance.properties[0].value : null;
+		// Build a map of propertyKey -> value for multi-property support
+		const valueMap: Record<string, unknown> = {};
 
-		// Create the intent
+		for (const prop of dtoInstance.properties) {
+			const propertyKey = propertyKeyMap.get(prop.property) || prop.property;
+			valueMap[propertyKey] = prop.value;
+		}
+
+		// Create the intent with the value map
 		const intent = this.intentsService.createIntent({
 			type: intentType,
 			targets,
-			value: primaryValue,
+			value: valueMap,
 			ttlMs: DEFAULT_TTL_DEVICE_COMMAND,
 		});
 
@@ -98,29 +121,50 @@ export class PropertyCommandService {
 
 		const results: Array<{ device: string; success: boolean; reason?: string }> = [];
 
-		// Process commands per device
-		for (const deviceId of Object.keys(groupedProperties)) {
-			const result = await this.processDeviceCommands(deviceId, groupedProperties[deviceId]);
+		try {
+			// Process commands per device
+			for (const deviceId of Object.keys(groupedProperties)) {
+				const result = await this.processDeviceCommands(deviceId, groupedProperties[deviceId]);
 
-			results.push(result);
+				results.push(result);
+			}
+
+			// Map results to IntentTargetResult format
+			const intentResults: IntentTargetResult[] = results.map((r) => ({
+				deviceId: r.device,
+				status: r.success ? IntentTargetStatus.SUCCESS : IntentTargetStatus.FAILED,
+				error: r.reason,
+			}));
+
+			// Complete the intent with results
+			this.intentsService.completeIntent(intent.id, intentResults);
+
+			this.logger.log(`Completed intent ${intent.id} with ${intentResults.length} result(s)`);
+
+			// Determine overall success
+			const overallSuccess = results.every((r) => r.success);
+
+			return { success: overallSuccess, results };
+		} catch (error) {
+			// Handle unexpected exceptions by completing the intent with failure
+			this.logger.error(
+				`Unexpected error processing commands: ${error instanceof Error ? error.message : String(error)}`,
+			);
+
+			// Build failure results for all targeted devices
+			const failedResults: IntentTargetResult[] = Object.keys(groupedProperties).map((deviceId) => ({
+				deviceId,
+				status: IntentTargetStatus.FAILED,
+				error: 'Internal error',
+			}));
+
+			// Complete the intent with failure status
+			this.intentsService.completeIntent(intent.id, failedResults);
+
+			this.logger.log(`Completed intent ${intent.id} with failure due to exception`);
+
+			return { success: false, results: 'Internal error' };
 		}
-
-		// Map results to IntentTargetResult format
-		const intentResults: IntentTargetResult[] = results.map((r) => ({
-			deviceId: r.device,
-			status: r.success ? IntentTargetStatus.SUCCESS : IntentTargetStatus.FAILED,
-			error: r.reason,
-		}));
-
-		// Complete the intent with results
-		this.intentsService.completeIntent(intent.id, intentResults);
-
-		this.logger.log(`Completed intent ${intent.id} with ${intentResults.length} result(s)`);
-
-		// Determine overall success
-		const overallSuccess = results.every((r) => r.success);
-
-		return { success: overallSuccess, results };
 	}
 
 	private async processDeviceCommands(

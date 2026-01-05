@@ -191,4 +191,13 @@ class IntentOverlay {
 
   /// Check if this intent fully succeeded
   bool get isFullySuccessful => status == IntentStatus.completedSuccess;
+
+  /// Get the value for a specific property key.
+  /// If value is a Map, looks up by propertyKey. Otherwise returns the raw value.
+  dynamic getValueForProperty(String? propertyKey) {
+    if (value is Map<String, dynamic> && propertyKey != null) {
+      return (value as Map<String, dynamic>)[propertyKey];
+    }
+    return value;
+  }
 }

@@ -153,6 +153,9 @@ class SocketService {
   final Map<String, List<void Function(String, Map<String, dynamic>)>>
       _eventCallbacks = {};
 
+  // Connection state listeners
+  final List<void Function(bool)> _connectionListeners = [];
+
   void initialize(
     String apiSecret,
     String backendUrl, {
@@ -221,12 +224,16 @@ class SocketService {
       }
       // Reset retry state on successful connection
       _retryAttempt = 0;
+      // Notify connection listeners
+      _notifyConnectionListeners(true);
     });
 
     _socket!.onDisconnect((_) {
       if (kDebugMode) {
         debugPrint('[SOCKETS] Disconnected from Socket.IO backend');
       }
+      // Notify connection listeners
+      _notifyConnectionListeners(false);
 
       // Only attempt reconnection if reconnection is enabled
       // This prevents reconnection attempts when display is deleted
@@ -383,6 +390,23 @@ class SocketService {
     }
   }
 
+  /// Add a listener for connection state changes
+  void addConnectionListener(void Function(bool isConnected) listener) {
+    _connectionListeners.add(listener);
+  }
+
+  /// Remove a connection state listener
+  void removeConnectionListener(void Function(bool isConnected) listener) {
+    _connectionListeners.remove(listener);
+  }
+
+  /// Notify all connection listeners of state change
+  void _notifyConnectionListeners(bool isConnected) {
+    for (final listener in _connectionListeners) {
+      listener(isConnected);
+    }
+  }
+
   void dispose() {
     // Disable reconnection before disposing to prevent reconnection attempts
     _shouldReconnect = false;
@@ -396,6 +420,7 @@ class SocketService {
     _currentBackendUrl = null;
     _onTokenInvalid = null;
     _retryAttempt = 0;
+    _connectionListeners.clear();
   }
 
   void _dispatchEvent(SocketEventModel event) {

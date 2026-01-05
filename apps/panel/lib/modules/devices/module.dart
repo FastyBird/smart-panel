@@ -129,6 +129,9 @@ class DevicesModuleService {
       DevicesModuleConstants.moduleWildcardEvent,
       _socketEventHandler,
     );
+
+    // Dispose the intent overlay service to clean up timers and listeners
+    _intentOverlayService.dispose();
   }
 
   /// ////////////////

@@ -43,6 +43,12 @@ class IntentOverlayService extends ChangeNotifier {
   /// Timer for cleaning up old failure indicators
   Timer? _cleanupTimer;
 
+  /// Timers for local intent expiration, keyed by intentId
+  final Map<String, Timer> _expirationTimers = {};
+
+  /// Track if the service has been disposed
+  bool _isDisposed = false;
+
   IntentOverlayService({
     required SocketService socketService,
   }) : _socketService = socketService;
@@ -54,8 +60,22 @@ class IntentOverlayService extends ChangeNotifier {
       _handleSocketEvent,
     );
 
+    // Listen for socket disconnects to clear stale intents
+    _socketService.addConnectionListener(_handleConnectionChange);
+
     if (kDebugMode) {
       debugPrint('[INTENT_OVERLAY] Service initialized');
+    }
+  }
+
+  /// Handle socket connection state changes
+  void _handleConnectionChange(bool isConnected) {
+    if (!isConnected) {
+      // Socket disconnected - clear all intents to prevent stale locks
+      if (kDebugMode) {
+        debugPrint('[INTENT_OVERLAY] Socket disconnected, clearing all intents');
+      }
+      clearAll();
     }
   }
 
@@ -76,12 +96,17 @@ class IntentOverlayService extends ChangeNotifier {
   /// Get the overlay value for a locked property
   ///
   /// Returns null if the property is not locked or has no overlay value.
+  /// For multi-property intents, returns the specific value for the given propertyKey.
   dynamic getOverlayValue(String deviceId, String? propertyKey) {
     final key = '$deviceId:${propertyKey ?? '*'}';
     final intentId = _targetIndex[key];
     if (intentId == null) return null;
 
-    return _activeIntents[intentId]?.value;
+    final overlay = _activeIntents[intentId];
+    if (overlay == null) return null;
+
+    // Use getValueForProperty to support both single values and value maps
+    return overlay.getValueForProperty(propertyKey);
   }
 
   /// Get the active intent affecting a device
@@ -124,12 +149,15 @@ class IntentOverlayService extends ChangeNotifier {
     final now = DateTime.now();
     final localIntentId = 'local_${deviceId}_${DateTime.now().millisecondsSinceEpoch}';
 
+    // Build value map for consistency with backend format
+    final valueMap = propertyKey != null ? {propertyKey: value} : value;
+
     final overlay = IntentOverlay(
       intentId: localIntentId,
       type: 'device.setProperty',
       scope: IntentScope(),
       targets: [IntentTarget(deviceId: deviceId, propertyKey: propertyKey)],
-      value: value,
+      value: valueMap,
       status: IntentStatus.pending,
       ttlMs: ttlMs,
       createdAt: now,
@@ -142,30 +170,70 @@ class IntentOverlayService extends ChangeNotifier {
       debugPrint('[INTENT_OVERLAY] Created local overlay $localIntentId for $deviceId:$propertyKey');
     }
 
-    // Schedule local expiration (backend intent will replace this if it arrives)
-    Future.delayed(Duration(milliseconds: ttlMs), () {
-      if (_activeIntents.containsKey(localIntentId)) {
-        _clearIntent(localIntentId);
+    // Schedule local expiration with a tracked timer
+    _scheduleExpiration(localIntentId, Duration(milliseconds: ttlMs));
+  }
+
+  /// Schedule expiration for an intent
+  void _scheduleExpiration(String intentId, Duration duration) {
+    // Cancel any existing timer for this intent
+    _expirationTimers[intentId]?.cancel();
+
+    _expirationTimers[intentId] = Timer(duration, () {
+      if (_isDisposed) return;
+
+      if (_activeIntents.containsKey(intentId)) {
+        if (kDebugMode) {
+          debugPrint('[INTENT_OVERLAY] Local expiration triggered for $intentId');
+        }
+        _clearIntent(intentId);
         notifyListeners();
       }
+
+      _expirationTimers.remove(intentId);
     });
+  }
+
+  /// Cancel expiration timer for an intent
+  void _cancelExpiration(String intentId) {
+    _expirationTimers[intentId]?.cancel();
+    _expirationTimers.remove(intentId);
   }
 
   /// Clear all active intents (e.g., on disconnect)
   void clearAll() {
+    // Cancel all expiration timers
+    for (final timer in _expirationTimers.values) {
+      timer.cancel();
+    }
+    _expirationTimers.clear();
+
     _activeIntents.clear();
     _targetIndex.clear();
     _recentResults.clear();
-    notifyListeners();
+
+    if (!_isDisposed) {
+      notifyListeners();
+    }
   }
 
   /// Dispose the service
   @override
   void dispose() {
+    _isDisposed = true;
+
     _socketService.unregisterEventHandler(
       IntentEventConstants.moduleWildcardEvent,
       _handleSocketEvent,
     );
+    _socketService.removeConnectionListener(_handleConnectionChange);
+
+    // Cancel all expiration timers
+    for (final timer in _expirationTimers.values) {
+      timer.cancel();
+    }
+    _expirationTimers.clear();
+
     _cleanupTimer?.cancel();
     super.dispose();
   }
@@ -190,6 +258,19 @@ class IntentOverlayService extends ChangeNotifier {
       _removeLocalOverlaysForTargets(overlay.targets);
 
       _addIntent(overlay);
+
+      // Schedule local expiration as a fallback in case the completion event is lost
+      // Add a small buffer (500ms) to the expiresAt time to allow for network latency
+      final now = DateTime.now();
+      final expirationDuration = overlay.expiresAt.difference(now) + const Duration(milliseconds: 500);
+
+      if (expirationDuration.inMilliseconds > 0) {
+        _scheduleExpiration(overlay.intentId, expirationDuration);
+
+        if (kDebugMode) {
+          debugPrint('[INTENT_OVERLAY] Scheduled local fallback expiration for ${overlay.intentId} in ${expirationDuration.inMilliseconds}ms');
+        }
+      }
 
       if (kDebugMode) {
         debugPrint('[INTENT_OVERLAY] Intent created: ${overlay.intentId}');
@@ -260,6 +341,9 @@ class IntentOverlayService extends ChangeNotifier {
 
   /// Clear an intent from the registry
   void _clearIntent(String intentId) {
+    // Cancel any pending expiration timer
+    _cancelExpiration(intentId);
+
     final overlay = _activeIntents.remove(intentId);
 
     if (overlay != null) {
