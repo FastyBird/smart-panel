@@ -7,6 +7,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType } from '../../auth/auth.constants';
+import { IntentsService } from '../../intents/services/intents.service';
 import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../../websocket/dto/client-user.dto';
 import {
@@ -175,6 +176,13 @@ describe('PropertyCommandService', () => {
 				{
 					provide: PlatformRegistryService,
 					useValue: { get: jest.fn() },
+				},
+				{
+					provide: IntentsService,
+					useValue: {
+						createIntent: jest.fn().mockReturnValue({ id: 'mock-intent-id' }),
+						completeIntent: jest.fn(),
+					},
 				},
 			],
 		}).compile();
