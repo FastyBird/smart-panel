@@ -51,6 +51,16 @@ export class PropertyCommandValueDto {
 }
 
 export class PropertyCommandDto {
+	@ApiProperty({
+		description: 'Request ID for tracking command responses',
+		type: 'string',
+		format: 'uuid',
+		example: 'b686bca7-2b5a-42b5-8fb2-94427764d087',
+	})
+	@Expose()
+	@IsUUID('4', { message: '[{"field":"request_id","reason":"Request ID must be a valid UUID (version 4)."}]' })
+	request_id: string;
+
 	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })
