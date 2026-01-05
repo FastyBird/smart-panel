@@ -236,6 +236,14 @@
   "@electrical_power_over_power_description": {
     "description": "Detailed description of over power warning"
   },
+  "light_state_on": "On",
+  "@light_state_on": {
+    "description": "State when the light is turned on"
+  },
+  "light_state_on_description": "Light is on",
+  "@light_state_on_description": {
+    "description": "Detailed description of the light being turned on"
+  },
   "light_state_off": "Off",
   "@light_state_off": {
     "description": "State when the light is turned off"
@@ -1231,6 +1239,18 @@
   "domain_lights": "Lights",
   "@domain_lights": {
     "description": "Title for lights domain view in room navigation"
+  },
+  "domain_lights_other": "Other Lights",
+  "@domain_lights_other": {
+    "description": "Section header for uncategorized lights in lights domain view"
+  },
+  "domain_lights_empty_title": "No Lights",
+  "@domain_lights_empty_title": {
+    "description": "Title shown when no lights are found in the room"
+  },
+  "domain_lights_empty_description": "No lighting devices found in this room",
+  "@domain_lights_empty_description": {
+    "description": "Description shown when no lights are found in the room"
   },
   "domain_climate": "Climate",
   "@domain_climate": {

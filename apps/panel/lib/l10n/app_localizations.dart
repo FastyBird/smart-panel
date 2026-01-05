@@ -449,6 +449,18 @@ abstract class AppLocalizations {
   /// **'Warning: Power consumption is too high'**
   String get electrical_power_over_power_description;
 
+  /// State when the light is turned on
+  ///
+  /// In en, this message translates to:
+  /// **'On'**
+  String get light_state_on;
+
+  /// Detailed description of the light being turned on
+  ///
+  /// In en, this message translates to:
+  /// **'Light is on'**
+  String get light_state_on_description;
+
   /// State when the light is turned off
   ///
   /// In en, this message translates to:
@@ -1900,6 +1912,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Lights'**
   String get domain_lights;
+
+  /// Section header for uncategorized lights in lights domain view
+  ///
+  /// In en, this message translates to:
+  /// **'Other Lights'**
+  String get domain_lights_other;
+
+  /// Title shown when no lights are found in the room
+  ///
+  /// In en, this message translates to:
+  /// **'No Lights'**
+  String get domain_lights_empty_title;
+
+  /// Description shown when no lights are found in the room
+  ///
+  /// In en, this message translates to:
+  /// **'No lighting devices found in this room'**
+  String get domain_lights_empty_description;
 
   /// Title for climate domain view in room navigation
   ///

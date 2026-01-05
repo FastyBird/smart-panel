@@ -184,6 +184,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get electrical_power_over_power_description => 'Warning: Power consumption is too high';
 
   @override
+  String get light_state_on => 'On';
+
+  @override
+  String get light_state_on_description => 'Light is on';
+
+  @override
   String get light_state_off => 'Off';
 
   @override
@@ -916,6 +922,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get domain_lights => 'Lights';
+
+  @override
+  String get domain_lights_other => 'Other Lights';
+
+  @override
+  String get domain_lights_empty_title => 'No Lights';
+
+  @override
+  String get domain_lights_empty_description => 'No lighting devices found in this room';
 
   @override
   String get domain_climate => 'Climate';

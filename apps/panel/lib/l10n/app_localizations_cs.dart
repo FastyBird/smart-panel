@@ -184,6 +184,12 @@ class AppLocalizationsCs extends AppLocalizations {
   String get electrical_power_over_power_description => 'Varování: Spotřeba energie je příliš vysoká.';
 
   @override
+  String get light_state_on => 'Zapnuto';
+
+  @override
+  String get light_state_on_description => 'Světlo svítí.';
+
+  @override
   String get light_state_off => 'Vypnuto';
 
   @override
@@ -916,6 +922,15 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get domain_lights => 'Světla';
+
+  @override
+  String get domain_lights_other => 'Ostatní světla';
+
+  @override
+  String get domain_lights_empty_title => 'Žádná světla';
+
+  @override
+  String get domain_lights_empty_description => 'V této místnosti nebyla nalezena žádná světla';
 
   @override
   String get domain_climate => 'Klima';
