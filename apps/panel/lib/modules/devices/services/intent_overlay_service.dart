@@ -436,10 +436,8 @@ class IntentOverlayService extends ChangeNotifier {
       for (final result in payload['results'] as List) {
         try {
           final targetResult = IntentTargetResult.fromJson(result as Map<String, dynamic>);
-          // Use composite key to avoid overwrites when multiple properties on same device
-          final key =
-              '${targetResult.deviceId}:${targetResult.channelId ?? '*'}:${targetResult.propertyId ?? '*'}';
-          _recentResults[key] = targetResult;
+          // Use the key getter which includes device:/scene: prefix for consistency
+          _recentResults[targetResult.key] = targetResult;
         } catch (e) {
           // Ignore parse errors for individual results
         }
