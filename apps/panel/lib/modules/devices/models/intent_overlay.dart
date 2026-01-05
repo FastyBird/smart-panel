@@ -103,16 +103,13 @@ class IntentTargetResult {
   bool get isFailure => status == IntentTargetStatus.failed || status == IntentTargetStatus.timeout;
 }
 
-/// Optional scope context for an intent
+/// Optional scope context for an intent.
+/// This represents "where it applies" - in SmartPanel this is always a Space.
 class IntentScope {
-  final String? roomId;
-  final String? roleId;
-  final String? sceneId;
+  final String? spaceId;
 
   IntentScope({
-    this.roomId,
-    this.roleId,
-    this.sceneId,
+    this.spaceId,
   });
 
   factory IntentScope.fromJson(Map<String, dynamic>? json) {
@@ -120,9 +117,7 @@ class IntentScope {
       return IntentScope();
     }
     return IntentScope(
-      roomId: json['room_id'] as String?,
-      roleId: json['role_id'] as String?,
-      sceneId: json['scene_id'] as String?,
+      spaceId: json['space_id'] as String?,
     );
   }
 }
