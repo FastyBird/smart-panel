@@ -1017,9 +1017,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           if (channel.hasColor && channel.on) {
             final color = _getChannelColorSafe(channel);
             if (color != null) {
-              r += color.r.toInt();
-              g += color.g.toInt();
-              b += color.b.toInt();
+              r += (color.r * 255).toInt();
+              g += (color.g * 255).toInt();
+              b += (color.b * 255).toInt();
               count++;
             }
           }
