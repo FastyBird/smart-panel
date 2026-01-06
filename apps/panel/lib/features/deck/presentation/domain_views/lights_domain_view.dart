@@ -1732,11 +1732,14 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
   /// Check if a device is out of sync with the role's target value
   /// Returns true if:
-  /// - User has set a target value (any state isLocked)
+  /// - State is MIXED (settling timed out but devices didn't converge)
   /// - AND this device's actual value differs from the target
+  ///
+  /// Note: We only show out-of-sync during MIXED state, not during PENDING/SETTLING
+  /// because during those states we're actively waiting for devices to respond.
   bool _isDeviceOutOfSync(LightChannelView channel) {
-    // Check brightness
-    if (_brightnessState.isLocked && _brightnessState.desiredValue != null) {
+    // Check brightness - only if in MIXED state (not PENDING or SETTLING)
+    if (_brightnessState.isMixed && _brightnessState.desiredValue != null) {
       if (channel.hasBrightness && channel.on) {
         final targetBrightness = _brightnessState.desiredValue!.round();
         if ((channel.brightness - targetBrightness).abs() > _brightnessTolerance) {
@@ -1745,8 +1748,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       }
     }
 
-    // Check hue (color)
-    if (_hueState.isLocked && _hueState.desiredValue != null) {
+    // Check hue (color) - only if in MIXED state
+    if (_hueState.isMixed && _hueState.desiredValue != null) {
       if (channel.hasHue && channel.on) {
         final targetHue = _hueState.desiredValue!;
         if ((channel.hue - targetHue).abs() > _hueTolerance) {
@@ -1755,8 +1758,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       }
     }
 
-    // Check temperature
-    if (_temperatureState.isLocked && _temperatureState.desiredValue != null) {
+    // Check temperature - only if in MIXED state
+    if (_temperatureState.isMixed && _temperatureState.desiredValue != null) {
       if (channel.hasTemperature && channel.on) {
         final tempProp = channel.temperatureProp;
         if (tempProp?.value is NumberValueType) {
@@ -1769,8 +1772,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       }
     }
 
-    // Check white
-    if (_whiteState.isLocked && _whiteState.desiredValue != null) {
+    // Check white - only if in MIXED state
+    if (_whiteState.isMixed && _whiteState.desiredValue != null) {
       if (channel.hasColorWhite && channel.on) {
         final targetWhite = _whiteState.desiredValue!.round();
         if ((channel.colorWhite - targetWhite).abs() > _whiteTolerance) {
