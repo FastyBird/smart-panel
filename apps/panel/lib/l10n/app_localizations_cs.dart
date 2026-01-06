@@ -201,6 +201,12 @@ class AppLocalizationsCs extends AppLocalizations {
   String get light_state_brightness_description => 'Aktuální jas.';
 
   @override
+  String get light_state_mixed_description => 'Zařízení mají různé hodnoty.';
+
+  @override
+  String get light_state_syncing_description => 'Synchronizace zařízení...';
+
+  @override
   String get light_mode_off => 'Vypnuto';
 
   @override

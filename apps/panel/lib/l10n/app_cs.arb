@@ -63,6 +63,8 @@
   "light_state_off": "Vypnuto",
   "light_state_off_description": "Světlo je vypnuto.",
   "light_state_brightness_description": "Aktuální jas.",
+  "light_state_mixed_description": "Zařízení mají různé hodnoty.",
+  "light_state_syncing_description": "Synchronizace zařízení...",
   "light_mode_off": "Vypnuto",
   "light_mode_on": "Zapnuto",
   "light_mode_brightness": "Jas",

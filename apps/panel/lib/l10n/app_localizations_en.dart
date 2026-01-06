@@ -201,6 +201,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get light_state_brightness_description => 'Current brightness';
 
   @override
+  String get light_state_mixed_description => 'Devices have different values';
+
+  @override
+  String get light_state_syncing_description => 'Syncing devices...';
+
+  @override
   String get light_mode_off => 'Off';
 
   @override

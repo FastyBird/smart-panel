@@ -479,6 +479,18 @@ abstract class AppLocalizations {
   /// **'Current brightness'**
   String get light_state_brightness_description;
 
+  /// Description when devices in a group have different brightness values
+  ///
+  /// In en, this message translates to:
+  /// **'Devices have different values'**
+  String get light_state_mixed_description;
+
+  /// Description shown while waiting for devices to sync after a command
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing devices...'**
+  String get light_state_syncing_description;
+
   /// Mode when the light is off
   ///
   /// In en, this message translates to:

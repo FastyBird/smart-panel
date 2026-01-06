@@ -256,6 +256,14 @@
   "@light_state_brightness_description": {
     "description": "Description of the current brightness level"
   },
+  "light_state_mixed_description": "Devices have different values",
+  "@light_state_mixed_description": {
+    "description": "Description when devices in a group have different brightness values"
+  },
+  "light_state_syncing_description": "Syncing devices...",
+  "@light_state_syncing_description": {
+    "description": "Description shown while waiting for devices to sync after a command"
+  },
   "light_mode_off": "Off",
   "@light_mode_off": {
     "description": "Mode when the light is off"

@@ -14,16 +14,109 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart'
     hide IntentOverlayService;
-import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/light.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
-import 'package:fastybird_smart_panel/modules/displays/export.dart';
-import 'package:fastybird_smart_panel/modules/intents/export.dart';
+import 'package:fastybird_smart_panel/modules/intents/service.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+
+// ============================================================================
+// Role UI State Machine
+// ============================================================================
+
+/// UI states for role-level aggregated controls
+enum RoleUIState {
+  /// Normal state - showing actual device values
+  idle,
+
+  /// User has initiated action, waiting for intent to be created/completed
+  pending,
+
+  /// Intent completed, waiting for devices to converge (settling window)
+  settling,
+
+  /// Settling window expired but devices have not converged
+  mixed,
+
+  /// Error state (optional, for future use)
+  error,
+}
+
+/// Control state for a single control type (brightness, hue, temperature, white)
+class RoleControlState {
+  /// Current UI state
+  final RoleUIState state;
+
+  /// The value the user set (persists through PENDING, SETTLING, MIXED)
+  final double? desiredValue;
+
+  /// Settling timer (active during SETTLING state)
+  final Timer? settlingTimer;
+
+  /// Timestamp when settling started
+  final DateTime? settlingStartedAt;
+
+  const RoleControlState({
+    this.state = RoleUIState.idle,
+    this.desiredValue,
+    this.settlingTimer,
+    this.settlingStartedAt,
+  });
+
+  /// Create a copy with updated fields
+  RoleControlState copyWith({
+    RoleUIState? state,
+    double? desiredValue,
+    Timer? settlingTimer,
+    DateTime? settlingStartedAt,
+    bool clearDesiredValue = false,
+    bool clearSettlingTimer = false,
+    bool clearSettlingStartedAt = false,
+  }) {
+    return RoleControlState(
+      state: state ?? this.state,
+      desiredValue: clearDesiredValue ? null : (desiredValue ?? this.desiredValue),
+      settlingTimer: clearSettlingTimer ? null : (settlingTimer ?? this.settlingTimer),
+      settlingStartedAt: clearSettlingStartedAt ? null : (settlingStartedAt ?? this.settlingStartedAt),
+    );
+  }
+
+  /// Whether the control is in a "locked" state where we show desired value
+  bool get isLocked => state == RoleUIState.pending || state == RoleUIState.settling || state == RoleUIState.mixed;
+
+  /// Whether we're actively waiting for devices to sync
+  bool get isSettling => state == RoleUIState.settling;
+
+  /// Whether devices are in mixed state
+  bool get isMixed => state == RoleUIState.mixed;
+
+  /// Cancel any active timer
+  void cancelTimer() {
+    settlingTimer?.cancel();
+  }
+}
+
+/// Settling window duration in milliseconds
+const int _settlingWindowMs = 2000;
+
+/// Tolerance for brightness comparison (±)
+const double _brightnessTolerance = 3.0;
+
+/// Tolerance for hue comparison (±)
+const double _hueTolerance = 5.0;
+
+/// Tolerance for temperature comparison (±)
+const double _temperatureTolerance = 100.0;
+
+/// Tolerance for white comparison (±)
+const double _whiteTolerance = 5.0;
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
 
 /// Strips room name from device name (case insensitive).
 /// Capitalizes first letter if it becomes lowercase after stripping.
@@ -460,8 +553,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       // If any device is on, turn all off. Otherwise turn all on.
       final newState = !group.isOn;
 
-      // Build list of properties to update
-      final List<PropertyCommandItem> properties = [];
+      int successCount = 0;
+      int failCount = 0;
 
       for (final target in group.targets) {
         final device = devicesService.getDevice(target.deviceId);
@@ -472,40 +565,21 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             orElse: () => device.lightChannels.first,
           );
 
-          properties.add(PropertyCommandItem(
-            deviceId: target.deviceId,
-            channelId: target.channelId,
-            propertyId: channel.onProp.id,
-            value: newState,
-          ));
+          final success = await devicesService.setPropertyValue(
+            channel.onProp.id,
+            newState,
+          );
+          if (success) {
+            successCount++;
+          } else {
+            failCount++;
+          }
         }
       }
 
-      if (properties.isEmpty) return;
-
-      // Get display ID for context
-      DisplayRepository? displayRepository;
-      try {
-        displayRepository = locator<DisplayRepository>();
-      } catch (_) {}
-
-      // Build context
-      final commandContext = PropertyCommandContext(
-        origin: 'panel.system.room',
-        displayId: displayRepository?.display?.id,
-        spaceId: _roomId,
-        roleKey: group.role.name,
-      );
-
-      // Send single command for all properties
-      final success = await devicesService.setMultiplePropertyValues(
-        properties: properties,
-        context: commandContext,
-      );
-
       if (!mounted) return;
 
-      if (!success) {
+      if (failCount > 0 && successCount == 0) {
         AlertBar.showError(
           this.context,
           message: localizations?.action_failed ?? 'Failed to toggle lights',
@@ -861,23 +935,25 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
   SpacesService? _spacesService;
   DevicesService? _devicesService;
   IntentOverlayService? _intentOverlayService;
-  DisplayRepository? _displayRepository;
 
   // Current mode for bottom navigation
   _LightRoleMode _currentMode = _LightRoleMode.off;
   final List<_LightRoleMode> _availableModes = [];
 
-  // Local slider values for visual feedback during drag
-  double? _sliderBrightness;
-  double? _sliderHue;
-  double? _sliderTemperature;
-  double? _sliderWhite;
+  // Role control states for each control type (replaces simple slider values)
+  RoleControlState _brightnessState = const RoleControlState();
+  RoleControlState _hueState = const RoleControlState();
+  RoleControlState _temperatureState = const RoleControlState();
+  RoleControlState _whiteState = const RoleControlState();
 
-  // Debounce timers for sliders
+  // Debounce timers for sliders (user input debounce, separate from settling)
   Timer? _brightnessDebounceTimer;
   Timer? _hueDebounceTimer;
   Timer? _temperatureDebounceTimer;
   Timer? _whiteDebounceTimer;
+
+  // Track the last intent count to detect when intents complete
+  int _lastIntentCount = 0;
 
   @override
   void initState() {
@@ -896,10 +972,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     try {
       _intentOverlayService = locator<IntentOverlayService>();
       _intentOverlayService?.addListener(_onIntentChanged);
-    } catch (_) {}
-
-    try {
-      _displayRepository = locator<DisplayRepository>();
+      _lastIntentCount = _intentOverlayService?.activeCount ?? 0;
     } catch (_) {}
 
     // Initialize available modes
@@ -912,24 +985,364 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     _hueDebounceTimer?.cancel();
     _temperatureDebounceTimer?.cancel();
     _whiteDebounceTimer?.cancel();
+    // Cancel any settling timers
+    _brightnessState.cancelTimer();
+    _hueState.cancelTimer();
+    _temperatureState.cancelTimer();
+    _whiteState.cancelTimer();
     _spacesService?.removeListener(_onSpacesDataChanged);
     _devicesService?.removeListener(_onDevicesDataChanged);
     _intentOverlayService?.removeListener(_onIntentChanged);
     super.dispose();
   }
 
+  // ============================================================================
+  // State Machine Helpers
+  // ============================================================================
+
+  /// Transition control to SETTLING state after intent completes
+  void _startSettlingState(
+    RoleControlState currentState,
+    void Function(RoleControlState) updateState,
+    List<LightTargetView> targets,
+    bool Function(List<LightTargetView>, double, double) convergenceCheck,
+    double tolerance,
+  ) {
+    if (currentState.state != RoleUIState.pending) return;
+    if (currentState.desiredValue == null) return;
+
+    currentState.cancelTimer();
+
+    // Check if already converged
+    if (convergenceCheck(targets, currentState.desiredValue!, tolerance)) {
+      updateState(const RoleControlState(state: RoleUIState.idle));
+      return;
+    }
+
+    // Start settling timer
+    final timer = Timer(const Duration(milliseconds: _settlingWindowMs), () {
+      if (!mounted) return;
+      _onSettlingTimeout(currentState, updateState, targets, convergenceCheck, tolerance);
+    });
+
+    updateState(currentState.copyWith(
+      state: RoleUIState.settling,
+      settlingTimer: timer,
+      settlingStartedAt: DateTime.now(),
+    ));
+  }
+
+  /// Called when settling timer expires
+  void _onSettlingTimeout(
+    RoleControlState currentState,
+    void Function(RoleControlState) updateState,
+    List<LightTargetView> targets,
+    bool Function(List<LightTargetView>, double, double) convergenceCheck,
+    double tolerance,
+  ) {
+    if (!mounted) return;
+    if (currentState.desiredValue == null) return;
+
+    // Check if devices have converged
+    if (convergenceCheck(targets, currentState.desiredValue!, tolerance)) {
+      // All devices converged - return to IDLE
+      setState(() {
+        updateState(const RoleControlState(state: RoleUIState.idle));
+      });
+    } else {
+      // Devices did not converge - enter MIXED state
+      // Keep the desired value so slider stays in place
+      setState(() {
+        updateState(currentState.copyWith(
+          state: RoleUIState.mixed,
+          clearSettlingTimer: true,
+          clearSettlingStartedAt: true,
+        ));
+      });
+    }
+  }
+
+  /// Check convergence during SETTLING state (called on device data changes)
+  void _checkConvergenceDuringSettling(
+    RoleControlState currentState,
+    void Function(RoleControlState) updateState,
+    List<LightTargetView> targets,
+    bool Function(List<LightTargetView>, double, double) convergenceCheck,
+    double tolerance,
+  ) {
+    if (currentState.state != RoleUIState.settling) return;
+    if (currentState.desiredValue == null) return;
+
+    // Check if all devices have converged to desired value
+    if (convergenceCheck(targets, currentState.desiredValue!, tolerance)) {
+      // All devices converged - return to IDLE immediately
+      currentState.cancelTimer();
+      updateState(const RoleControlState(state: RoleUIState.idle));
+    }
+    // If not converged, keep waiting for timer
+  }
+
+  // ============================================================================
+  // Intent Change Handler
+  // ============================================================================
+
+  /// Called when intent overlay service notifies of changes
+  void _onIntentChanged() {
+    if (!mounted) return;
+
+    final currentIntentCount = _intentOverlayService?.activeCount ?? 0;
+    final targets = _spacesService
+        ?.getLightTargetsForSpace(widget.roomId)
+        .where((t) => (t.role ?? LightTargetRole.other) == widget.role)
+        .toList() ?? [];
+
+    // Detect intent completion: count decreased and we have pending states
+    if (currentIntentCount < _lastIntentCount) {
+      // An intent completed - transition PENDING states to SETTLING
+      setState(() {
+        if (_brightnessState.state == RoleUIState.pending) {
+          _startSettlingState(
+            _brightnessState,
+            (s) => _brightnessState = s,
+            targets,
+            _allBrightnessMatch,
+            _brightnessTolerance,
+          );
+        }
+        if (_hueState.state == RoleUIState.pending) {
+          _startSettlingState(
+            _hueState,
+            (s) => _hueState = s,
+            targets,
+            _allHueMatch,
+            _hueTolerance,
+          );
+        }
+        if (_temperatureState.state == RoleUIState.pending) {
+          _startSettlingState(
+            _temperatureState,
+            (s) => _temperatureState = s,
+            targets,
+            _allTemperatureMatch,
+            _temperatureTolerance,
+          );
+        }
+        if (_whiteState.state == RoleUIState.pending) {
+          _startSettlingState(
+            _whiteState,
+            (s) => _whiteState = s,
+            targets,
+            _allWhiteMatch,
+            _whiteTolerance,
+          );
+        }
+      });
+    }
+
+    _lastIntentCount = currentIntentCount;
+
+    // Always rebuild UI to reflect any state changes
+    setState(() {});
+  }
+
   void _onSpacesDataChanged() {
     // SpacesService notification means data is already updated, just rebuild UI
     if (mounted) {
       _updateAvailableModes();
+
+      final targets = _spacesService
+          ?.getLightTargetsForSpace(widget.roomId)
+          .where((t) => (t.role ?? LightTargetRole.other) == widget.role)
+          .toList() ?? [];
+
       setState(() {
-        // Reset slider values so they reflect actual device state
-        _sliderBrightness = null;
-        _sliderHue = null;
-        _sliderTemperature = null;
-        _sliderWhite = null;
+        // Check convergence during SETTLING state
+        // If devices converge, state machine will transition to IDLE
+        _checkConvergenceDuringSettling(
+          _brightnessState,
+          (s) => _brightnessState = s,
+          targets,
+          _allBrightnessMatch,
+          _brightnessTolerance,
+        );
+        _checkConvergenceDuringSettling(
+          _hueState,
+          (s) => _hueState = s,
+          targets,
+          _allHueMatch,
+          _hueTolerance,
+        );
+        _checkConvergenceDuringSettling(
+          _temperatureState,
+          (s) => _temperatureState = s,
+          targets,
+          _allTemperatureMatch,
+          _temperatureTolerance,
+        );
+        _checkConvergenceDuringSettling(
+          _whiteState,
+          (s) => _whiteState = s,
+          targets,
+          _allWhiteMatch,
+          _whiteTolerance,
+        );
+
+        // Also check MIXED state - if user hasn't interacted and devices converge, return to IDLE
+        if (_brightnessState.state == RoleUIState.mixed &&
+            _brightnessState.desiredValue != null &&
+            _allBrightnessMatch(targets, _brightnessState.desiredValue!, _brightnessTolerance)) {
+          _brightnessState = const RoleControlState(state: RoleUIState.idle);
+        }
+        if (_hueState.state == RoleUIState.mixed &&
+            _hueState.desiredValue != null &&
+            _allHueMatch(targets, _hueState.desiredValue!, _hueTolerance)) {
+          _hueState = const RoleControlState(state: RoleUIState.idle);
+        }
+        if (_temperatureState.state == RoleUIState.mixed &&
+            _temperatureState.desiredValue != null &&
+            _allTemperatureMatch(targets, _temperatureState.desiredValue!, _temperatureTolerance)) {
+          _temperatureState = const RoleControlState(state: RoleUIState.idle);
+        }
+        if (_whiteState.state == RoleUIState.mixed &&
+            _whiteState.desiredValue != null &&
+            _allWhiteMatch(targets, _whiteState.desiredValue!, _whiteTolerance)) {
+          _whiteState = const RoleControlState(state: RoleUIState.idle);
+        }
       });
     }
+  }
+
+  /// Check if ALL devices have brightness within tolerance of target value
+  bool _allBrightnessMatch(List<LightTargetView> targets, double targetValue, double tolerance) {
+    int matchCount = 0;
+    int totalCount = 0;
+
+    for (final target in targets) {
+      if (!target.hasBrightness) continue;
+
+      final device = _devicesService?.getDevice(target.deviceId);
+      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+        final channel = device.lightChannels.firstWhere(
+          (c) => c.id == target.channelId,
+          orElse: () => device.lightChannels.first,
+        );
+        if (channel.hasBrightness) {
+          totalCount++;
+          // Check if this device's brightness is within tolerance of target
+          if ((channel.brightness - targetValue).abs() <= tolerance) {
+            matchCount++;
+          }
+        }
+      }
+    }
+
+    // All devices must match (or no devices with brightness)
+    return totalCount == 0 || matchCount == totalCount;
+  }
+
+  /// Check if brightness values are "mixed" (differ by more than threshold)
+  /// Returns (isMixed, minValue, maxValue)
+  (bool, int, int) _getBrightnessMixedState(List<LightTargetView> targets, {int threshold = 10}) {
+    int? minBrightness;
+    int? maxBrightness;
+
+    for (final target in targets) {
+      final device = _devicesService?.getDevice(target.deviceId);
+      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+        final channel = device.lightChannels.firstWhere(
+          (c) => c.id == target.channelId,
+          orElse: () => device.lightChannels.first,
+        );
+        if (channel.hasBrightness && channel.on) {
+          final brightness = channel.brightness;
+          minBrightness = minBrightness == null ? brightness : (brightness < minBrightness ? brightness : minBrightness);
+          maxBrightness = maxBrightness == null ? brightness : (brightness > maxBrightness ? brightness : maxBrightness);
+        }
+      }
+    }
+
+    if (minBrightness == null || maxBrightness == null) {
+      return (false, 0, 0);
+    }
+
+    final isMixed = (maxBrightness - minBrightness) > threshold;
+    return (isMixed, minBrightness, maxBrightness);
+  }
+
+  /// Check if ALL devices have hue within tolerance of target value
+  bool _allHueMatch(List<LightTargetView> targets, double targetValue, double tolerance) {
+    int matchCount = 0;
+    int totalCount = 0;
+
+    for (final target in targets) {
+      final device = _devicesService?.getDevice(target.deviceId);
+      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+        final channel = device.lightChannels.firstWhere(
+          (c) => c.id == target.channelId,
+          orElse: () => device.lightChannels.first,
+        );
+        if (channel.hasHue && channel.on) {
+          totalCount++;
+          if ((channel.hue - targetValue).abs() <= tolerance) {
+            matchCount++;
+          }
+        }
+      }
+    }
+
+    return totalCount == 0 || matchCount == totalCount;
+  }
+
+  /// Check if ALL devices have temperature within tolerance of target value
+  bool _allTemperatureMatch(List<LightTargetView> targets, double targetValue, double tolerance) {
+    int matchCount = 0;
+    int totalCount = 0;
+
+    for (final target in targets) {
+      final device = _devicesService?.getDevice(target.deviceId);
+      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+        final channel = device.lightChannels.firstWhere(
+          (c) => c.id == target.channelId,
+          orElse: () => device.lightChannels.first,
+        );
+        if (channel.hasTemperature && channel.on) {
+          final tempProp = channel.temperatureProp;
+          if (tempProp != null && tempProp.value is NumberValueType) {
+            totalCount++;
+            final temp = (tempProp.value as NumberValueType).value.toDouble();
+            if ((temp - targetValue).abs() <= tolerance) {
+              matchCount++;
+            }
+          }
+        }
+      }
+    }
+
+    return totalCount == 0 || matchCount == totalCount;
+  }
+
+  /// Check if ALL devices have white within tolerance of target value
+  bool _allWhiteMatch(List<LightTargetView> targets, double targetValue, double tolerance) {
+    int matchCount = 0;
+    int totalCount = 0;
+
+    for (final target in targets) {
+      final device = _devicesService?.getDevice(target.deviceId);
+      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+        final channel = device.lightChannels.firstWhere(
+          (c) => c.id == target.channelId,
+          orElse: () => device.lightChannels.first,
+        );
+        if (channel.hasColorWhite && channel.on) {
+          totalCount++;
+          if ((channel.colorWhite - targetValue).abs() <= tolerance) {
+            matchCount++;
+          }
+        }
+      }
+    }
+
+    return totalCount == 0 || matchCount == totalCount;
   }
 
   void _onDevicesDataChanged() {
@@ -937,20 +1350,6 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // Re-fetch light targets to get latest data
     if (mounted) {
       _spacesService?.fetchLightTargetsForSpace(widget.roomId);
-    }
-  }
-
-  void _onIntentChanged() {
-    // IntentOverlayService notification means intent state changed
-    // Reset local slider values when intent completes/expires
-    // The overlay service or actual device values will be used
-    if (mounted) {
-      setState(() {
-        _sliderBrightness = null;
-        _sliderHue = null;
-        _sliderTemperature = null;
-        _sliderWhite = null;
-      });
     }
   }
 
@@ -1178,7 +1577,14 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // Brightness or on/off display
-                            _buildStateDisplay(context, avgBrightness, anyOn, hasBrightness),
+                            // Check for mixed state when no local slider value is set
+                            _buildStateDisplay(
+                              context,
+                              avgBrightness,
+                              anyOn,
+                              hasBrightness,
+                              targets,
+                            ),
                             AppSpacings.spacingMdVertical,
                             // Color box for color-supported devices
                             if (hasColorSupport)
@@ -1263,7 +1669,13 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
   }
 
   /// Build state display (brightness percentage or on/off)
-  Widget _buildStateDisplay(BuildContext context, int brightness, bool anyOn, bool hasBrightness) {
+  Widget _buildStateDisplay(
+    BuildContext context,
+    int avgBrightness,
+    bool anyOn,
+    bool hasBrightness,
+    List<LightTargetView> targets,
+  ) {
     final localizations = AppLocalizations.of(context)!;
 
     // For simple on/off lights, show ON/OFF text
@@ -1301,38 +1713,57 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       );
     }
 
-    // For brightness-capable lights, show brightness percentage
+    // Determine what to display based on state machine:
+    // 1. If state is PENDING/SETTLING/MIXED, show the desired value with appropriate indicator
+    // 2. If state is IDLE and devices are mixed, show "Mixed" with range
+    // 3. If state is IDLE and devices are synced, show average brightness
+
+    final (devicesMixed, minBrightness, maxBrightness) = _getBrightnessMixedState(targets);
+    final isLocked = _brightnessState.isLocked;
+    final isSettling = _brightnessState.isSettling;
+    final isMixedState = _brightnessState.isMixed;
+
+    // Determine the display value
+    final displayBrightness = isLocked
+        ? (_brightnessState.desiredValue?.round() ?? avgBrightness)
+        : avgBrightness;
+
+    // Show mixed indicator when:
+    // - State is MIXED (settling timed out with partial convergence)
+    // - Or state is IDLE and devices have different values
+    final showMixed = (isMixedState || (devicesMixed && !isLocked)) && anyOn;
+
+    // Show settling indicator when actively waiting for devices
+    final showSettling = isSettling && anyOn;
+
+    // For brightness-capable lights, show brightness percentage or mixed indicator
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Text(
-              anyOn ? '$brightness' : localizations.light_state_off,
-              style: TextStyle(
+        if (showMixed)
+          // Show "Mixed" with an icon when devices have different values
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Icon(
+                MdiIcons.tuneVariant,
+                size: _screenService.scale(
+                  40,
+                  density: _visualDensityService.density,
+                ),
                 color: Theme.of(context).brightness == Brightness.light
                     ? AppTextColorLight.regular
                     : AppTextColorDark.regular,
-                fontSize: _screenService.scale(
-                  60,
-                  density: _visualDensityService.density,
-                ),
-                fontFamily: 'DIN1451',
-                fontWeight: FontWeight.w100,
-                height: 1.0,
               ),
-            ),
-            if (anyOn)
+              SizedBox(width: AppSpacings.pSm),
               Text(
-                '%',
+                '$minBrightness-$maxBrightness',
                 style: TextStyle(
                   color: Theme.of(context).brightness == Brightness.light
                       ? AppTextColorLight.regular
                       : AppTextColorDark.regular,
                   fontSize: _screenService.scale(
-                    25,
+                    45,
                     density: _visualDensityService.density,
                   ),
                   fontFamily: 'DIN1451',
@@ -1340,12 +1771,89 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
                   height: 1.0,
                 ),
               ),
-          ],
-        ),
+              Text(
+                '%',
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTextColorLight.regular
+                      : AppTextColorDark.regular,
+                  fontSize: _screenService.scale(
+                    20,
+                    density: _visualDensityService.density,
+                  ),
+                  fontFamily: 'DIN1451',
+                  fontWeight: FontWeight.w100,
+                  height: 1.0,
+                ),
+              ),
+            ],
+          )
+        else
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                anyOn ? '$displayBrightness' : localizations.light_state_off,
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTextColorLight.regular
+                      : AppTextColorDark.regular,
+                  fontSize: _screenService.scale(
+                    60,
+                    density: _visualDensityService.density,
+                  ),
+                  fontFamily: 'DIN1451',
+                  fontWeight: FontWeight.w100,
+                  height: 1.0,
+                ),
+              ),
+              if (anyOn)
+                Text(
+                  '%',
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? AppTextColorLight.regular
+                        : AppTextColorDark.regular,
+                    fontSize: _screenService.scale(
+                      25,
+                      density: _visualDensityService.density,
+                    ),
+                    fontFamily: 'DIN1451',
+                    fontWeight: FontWeight.w100,
+                    height: 1.0,
+                  ),
+                ),
+              if (showSettling)
+                Padding(
+                  padding: EdgeInsets.only(left: AppSpacings.pSm),
+                  child: SizedBox(
+                    width: _screenService.scale(
+                      20,
+                      density: _visualDensityService.density,
+                    ),
+                    height: _screenService.scale(
+                      20,
+                      density: _visualDensityService.density,
+                    ),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? AppTextColorLight.regular.withValues(alpha: 0.6)
+                          : AppTextColorDark.regular.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         Text(
-          anyOn
-              ? localizations.light_state_brightness_description
-              : localizations.light_state_off_description,
+          showSettling
+              ? localizations.light_state_syncing_description
+              : (showMixed
+                  ? localizations.light_state_mixed_description
+                  : (anyOn
+                      ? localizations.light_state_brightness_description
+                      : localizations.light_state_off_description)),
           style: TextStyle(
             color: Theme.of(context).brightness == Brightness.light
                 ? AppTextColorLight.regular
@@ -1447,8 +1955,15 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     double elementMaxSize,
     DevicesService devicesService,
   ) {
+    // Determine displayed value:
+    // - If state is locked (PENDING/SETTLING/MIXED), show desired value
+    // - Otherwise show actual device average
+    final displayValue = _brightnessState.isLocked
+        ? (_brightnessState.desiredValue ?? currentBrightness.toDouble())
+        : currentBrightness.toDouble();
+
     return ColoredSlider(
-      value: _sliderBrightness ?? currentBrightness.toDouble(),
+      value: displayValue,
       min: 0,
       max: 100,
       enabled: true,
@@ -1456,8 +1971,13 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       trackWidth: elementMaxSize,
       showThumb: false,
       onValueChanged: (value) {
+        // New user interaction cancels any SETTLING/MIXED state
         setState(() {
-          _sliderBrightness = value;
+          _brightnessState.cancelTimer();
+          _brightnessState = RoleControlState(
+            state: RoleUIState.pending,
+            desiredValue: value,
+          );
         });
         // Debounce the API call to prevent overwhelming the backend
         _brightnessDebounceTimer?.cancel();
@@ -1511,16 +2031,26 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
     final avgHue = hueCount > 0 ? totalHue / hueCount : 180.0;
 
+    // Determine displayed value based on state
+    final displayValue = _hueState.isLocked
+        ? (_hueState.desiredValue ?? avgHue)
+        : avgHue;
+
     return ColoredSlider(
-      value: _sliderHue ?? avgHue,
+      value: displayValue,
       min: 0.0,
       max: 360.0,
       enabled: true,
       vertical: true,
       trackWidth: elementMaxSize,
       onValueChanged: (value) {
+        // New user interaction cancels any SETTLING/MIXED state
         setState(() {
-          _sliderHue = value;
+          _hueState.cancelTimer();
+          _hueState = RoleControlState(
+            state: RoleUIState.pending,
+            desiredValue: value,
+          );
         });
         // Debounce the API call
         _hueDebounceTimer?.cancel();
@@ -1577,16 +2107,26 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
     final avgTemp = tempCount > 0 ? totalTemp / tempCount : 4000.0;
 
+    // Determine displayed value based on state
+    final displayValue = _temperatureState.isLocked
+        ? (_temperatureState.desiredValue ?? avgTemp)
+        : avgTemp;
+
     return ColoredSlider(
-      value: _sliderTemperature ?? avgTemp,
+      value: displayValue,
       min: 2700,
       max: 6500,
       enabled: true,
       vertical: true,
       trackWidth: elementMaxSize,
       onValueChanged: (value) {
+        // New user interaction cancels any SETTLING/MIXED state
         setState(() {
-          _sliderTemperature = value;
+          _temperatureState.cancelTimer();
+          _temperatureState = RoleControlState(
+            state: RoleUIState.pending,
+            desiredValue: value,
+          );
         });
         // Debounce the API call
         _temperatureDebounceTimer?.cancel();
@@ -1649,8 +2189,13 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
     final avgWhite = whiteCount > 0 ? totalWhite / whiteCount : 128.0;
 
+    // Determine displayed value based on state
+    final displayValue = _whiteState.isLocked
+        ? (_whiteState.desiredValue ?? avgWhite)
+        : avgWhite;
+
     return ColoredSlider(
-      value: _sliderWhite ?? avgWhite,
+      value: displayValue,
       min: 0,
       max: 255,
       enabled: true,
@@ -1658,8 +2203,13 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       trackWidth: elementMaxSize,
       showThumb: false,
       onValueChanged: (value) {
+        // New user interaction cancels any SETTLING/MIXED state
         setState(() {
-          _sliderWhite = value;
+          _whiteState.cancelTimer();
+          _whiteState = RoleControlState(
+            state: RoleUIState.pending,
+            desiredValue: value,
+          );
         });
         // Debounce the API call
         _whiteDebounceTimer?.cancel();
@@ -1850,8 +2400,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
       final newState = !anyOn;
 
-      // Build list of properties to update
-      final List<PropertyCommandItem> properties = [];
+      int successCount = 0;
+      int failCount = 0;
 
       for (final target in targets) {
         final device = devicesService.getDevice(target.deviceId);
@@ -1861,34 +2411,18 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
             orElse: () => device.lightChannels.first,
           );
           final onProp = channel.onProp;
-          properties.add(PropertyCommandItem(
-            deviceId: target.deviceId,
-            channelId: target.channelId,
-            propertyId: onProp.id,
-            value: newState,
-          ));
+          final success = await devicesService.setPropertyValue(onProp.id, newState);
+          if (success) {
+            successCount++;
+          } else {
+            failCount++;
+          }
         }
       }
 
-      if (properties.isEmpty) return;
-
-      // Build context
-      final commandContext = PropertyCommandContext(
-        origin: 'panel.system.room',
-        displayId: _displayRepository?.display?.id,
-        spaceId: widget.roomId,
-        roleKey: widget.role.name,
-      );
-
-      // Send single command for all properties
-      final success = await devicesService.setMultiplePropertyValues(
-        properties: properties,
-        context: commandContext,
-      );
-
       if (!mounted) return;
 
-      if (!success) {
+      if (failCount > 0 && successCount == 0) {
         AlertBar.showError(
           this.context,
           message: localizations?.action_failed ?? 'Failed to toggle lights',
@@ -1913,14 +2447,15 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     final localizations = AppLocalizations.of(context);
 
     try {
-      // Build list of properties to update
-      final List<PropertyCommandItem> properties = [];
+      int successCount = 0;
+      int failCount = 0;
 
       for (final target in targets) {
         if (!target.hasBrightness) continue;
 
         final device = devicesService.getDevice(target.deviceId);
-        if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+        if (device is LightingDeviceView &&
+            device.lightChannels.isNotEmpty) {
           final channel = device.lightChannels.firstWhere(
             (c) => c.id == target.channelId,
             orElse: () => device.lightChannels.first,
@@ -1928,38 +2463,26 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
           final brightnessProp = channel.brightnessProp;
           if (brightnessProp != null) {
-            properties.add(PropertyCommandItem(
-              deviceId: target.deviceId,
-              channelId: target.channelId,
-              propertyId: brightnessProp.id,
-              value: brightness,
-            ));
+            final success = await devicesService.setPropertyValue(
+              brightnessProp.id,
+              brightness,
+            );
+            if (success) {
+              successCount++;
+            } else {
+              failCount++;
+            }
           }
         }
       }
 
-      if (properties.isEmpty) return;
-
-      // Build context
-      final commandContext = PropertyCommandContext(
-        origin: 'panel.system.room',
-        displayId: _displayRepository?.display?.id,
-        spaceId: widget.roomId,
-        roleKey: widget.role.name,
-      );
-
-      // Send single command for all properties
-      final success = await devicesService.setMultiplePropertyValues(
-        properties: properties,
-        context: commandContext,
-      );
-
       if (!mounted) return;
 
-      if (!success) {
+      if (failCount > 0 && successCount == 0) {
         AlertBar.showError(
           this.context,
-          message: localizations?.action_failed ?? 'Failed to set brightness',
+          message:
+              localizations?.action_failed ?? 'Failed to set brightness',
         );
       }
     } catch (e) {
@@ -1969,8 +2492,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         message: localizations?.action_failed ?? 'Failed to set brightness',
       );
     }
-    // Don't reset slider value here - keep it at user's set value
-    // It will be reset when external data update comes via _onSpacesDataChanged
+    // Note: Don't reset _sliderBrightness here - let it persist until device state catches up
+    // The _onSpacesDataChanged callback will reset it when device state matches slider value
   }
 
   /// Set hue for all devices in the role that support color
@@ -1983,8 +2506,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     final localizations = AppLocalizations.of(context);
 
     try {
-      // Build list of properties to update
-      final List<PropertyCommandItem> properties = [];
+      int successCount = 0;
+      int failCount = 0;
 
       for (final target in targets) {
         final device = devicesService.getDevice(target.deviceId);
@@ -1996,35 +2519,22 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
           final hueProp = channel.hueProp;
           if (hueProp != null) {
-            properties.add(PropertyCommandItem(
-              deviceId: target.deviceId,
-              channelId: target.channelId,
-              propertyId: hueProp.id,
-              value: hue,
-            ));
+            final success = await devicesService.setPropertyValue(
+              hueProp.id,
+              hue,
+            );
+            if (success) {
+              successCount++;
+            } else {
+              failCount++;
+            }
           }
         }
       }
 
-      if (properties.isEmpty) return;
-
-      // Build context
-      final commandContext = PropertyCommandContext(
-        origin: 'panel.system.room',
-        displayId: _displayRepository?.display?.id,
-        spaceId: widget.roomId,
-        roleKey: widget.role.name,
-      );
-
-      // Send single command for all properties
-      final success = await devicesService.setMultiplePropertyValues(
-        properties: properties,
-        context: commandContext,
-      );
-
       if (!mounted) return;
 
-      if (!success) {
+      if (failCount > 0 && successCount == 0) {
         AlertBar.showError(
           this.context,
           message: localizations?.action_failed ?? 'Failed to set color',
@@ -2037,8 +2547,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         message: localizations?.action_failed ?? 'Failed to set color',
       );
     }
-    // Don't reset slider value here - keep it at user's set value
-    // It will be reset when external data update comes via _onSpacesDataChanged
+    // Note: Don't reset _sliderHue here - let it persist until device state catches up
   }
 
   /// Set color temperature for all devices in the role that support it
@@ -2051,8 +2560,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     final localizations = AppLocalizations.of(context);
 
     try {
-      // Build list of properties to update
-      final List<PropertyCommandItem> properties = [];
+      int successCount = 0;
+      int failCount = 0;
 
       for (final target in targets) {
         final device = devicesService.getDevice(target.deviceId);
@@ -2064,35 +2573,22 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
           final tempProp = channel.temperatureProp;
           if (tempProp != null) {
-            properties.add(PropertyCommandItem(
-              deviceId: target.deviceId,
-              channelId: target.channelId,
-              propertyId: tempProp.id,
-              value: temperature.round(),
-            ));
+            final success = await devicesService.setPropertyValue(
+              tempProp.id,
+              temperature.round(),
+            );
+            if (success) {
+              successCount++;
+            } else {
+              failCount++;
+            }
           }
         }
       }
 
-      if (properties.isEmpty) return;
-
-      // Build context
-      final commandContext = PropertyCommandContext(
-        origin: 'panel.system.room',
-        displayId: _displayRepository?.display?.id,
-        spaceId: widget.roomId,
-        roleKey: widget.role.name,
-      );
-
-      // Send single command for all properties
-      final success = await devicesService.setMultiplePropertyValues(
-        properties: properties,
-        context: commandContext,
-      );
-
       if (!mounted) return;
 
-      if (!success) {
+      if (failCount > 0 && successCount == 0) {
         AlertBar.showError(
           this.context,
           message: localizations?.action_failed ?? 'Failed to set temperature',
@@ -2105,8 +2601,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         message: localizations?.action_failed ?? 'Failed to set temperature',
       );
     }
-    // Don't reset slider value here - keep it at user's set value
-    // It will be reset when external data update comes via _onSpacesDataChanged
+    // Note: Don't reset _sliderTemperature here - let it persist until device state catches up
   }
 
   /// Set white channel for all devices in the role that support it
@@ -2119,8 +2614,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     final localizations = AppLocalizations.of(context);
 
     try {
-      // Build list of properties to update
-      final List<PropertyCommandItem> properties = [];
+      int successCount = 0;
+      int failCount = 0;
 
       for (final target in targets) {
         final device = devicesService.getDevice(target.deviceId);
@@ -2132,35 +2627,22 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
           final whiteProp = channel.colorWhiteProp;
           if (whiteProp != null) {
-            properties.add(PropertyCommandItem(
-              deviceId: target.deviceId,
-              channelId: target.channelId,
-              propertyId: whiteProp.id,
-              value: white,
-            ));
+            final success = await devicesService.setPropertyValue(
+              whiteProp.id,
+              white,
+            );
+            if (success) {
+              successCount++;
+            } else {
+              failCount++;
+            }
           }
         }
       }
 
-      if (properties.isEmpty) return;
-
-      // Build context
-      final commandContext = PropertyCommandContext(
-        origin: 'panel.system.room',
-        displayId: _displayRepository?.display?.id,
-        spaceId: widget.roomId,
-        roleKey: widget.role.name,
-      );
-
-      // Send single command for all properties
-      final success = await devicesService.setMultiplePropertyValues(
-        properties: properties,
-        context: commandContext,
-      );
-
       if (!mounted) return;
 
-      if (!success) {
+      if (failCount > 0 && successCount == 0) {
         AlertBar.showError(
           this.context,
           message: localizations?.action_failed ?? 'Failed to set white level',
@@ -2173,8 +2655,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         message: localizations?.action_failed ?? 'Failed to set white level',
       );
     }
-    // Don't reset slider value here - keep it at user's set value
-    // It will be reset when external data update comes via _onSpacesDataChanged
+    // Note: Don't reset _sliderWhite here - let it persist until device state catches up
   }
 
   /// Safely get color from a light channel
