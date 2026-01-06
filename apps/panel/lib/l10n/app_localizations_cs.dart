@@ -213,6 +213,12 @@ class AppLocalizationsCs extends AppLocalizations {
   String get light_state_not_synced_description => 'Zařízení nejsou synchronizována';
 
   @override
+  String get light_role_off_description => 'Světla jsou vypnuta.';
+
+  @override
+  String get light_role_not_synced_description => 'Světla nejsou synchronizována';
+
+  @override
   String get light_state_out_of_sync => 'Nesynchronizováno';
 
   @override

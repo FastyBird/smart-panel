@@ -67,6 +67,8 @@
   "light_state_mixed_description": "Zařízení mají různé hodnoty.",
   "light_state_syncing_description": "Synchronizace zařízení...",
   "light_state_not_synced_description": "Zařízení nejsou synchronizována",
+  "light_role_off_description": "Světla jsou vypnuta.",
+  "light_role_not_synced_description": "Světla nejsou synchronizována",
   "light_state_out_of_sync": "Nesynchronizováno",
   "light_mode_off": "Vypnuto",
   "light_mode_on": "Zapnuto",

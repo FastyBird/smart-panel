@@ -2201,10 +2201,10 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
             ),
           Text(
             showInitialMixedSimple
-                ? localizations.light_state_not_synced_description
+                ? localizations.light_role_not_synced_description
                 : (anyOn
                     ? localizations.light_state_on_description
-                    : localizations.light_state_off_description),
+                    : localizations.light_role_off_description),
             style: TextStyle(
               color: Theme.of(context).brightness == Brightness.light
                   ? AppTextColorLight.regular
@@ -2315,12 +2315,12 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           ),
         Text(
           showInitialMixed
-              ? localizations.light_state_not_synced_description
+              ? localizations.light_role_not_synced_description
               : (showSettling
                   ? localizations.light_state_syncing_description
                   : (anyOn
                       ? localizations.light_state_brightness_description
-                      : localizations.light_state_off_description)),
+                      : localizations.light_role_off_description)),
           style: TextStyle(
             color: Theme.of(context).brightness == Brightness.light
                 ? AppTextColorLight.regular

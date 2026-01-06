@@ -272,6 +272,14 @@
   "@light_state_not_synced_description": {
     "description": "Description shown when devices in a group are initially out of sync"
   },
+  "light_role_off_description": "Lights are turned off",
+  "@light_role_off_description": {
+    "description": "Description for role detail when all lights are off (plural)"
+  },
+  "light_role_not_synced_description": "Lights are not synced",
+  "@light_role_not_synced_description": {
+    "description": "Description for role detail when lights are out of sync (plural)"
+  },
   "light_state_out_of_sync": "Out of sync",
   "@light_state_out_of_sync": {
     "description": "Short label for a device that is out of sync with the target value"
