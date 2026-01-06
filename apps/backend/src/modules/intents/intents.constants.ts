@@ -1,5 +1,3 @@
-export const INTENTS_MODULE_PREFIX = 'intents';
-
 export const INTENTS_MODULE_NAME = 'intents-module';
 
 /**
