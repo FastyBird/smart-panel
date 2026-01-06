@@ -1,8 +1,11 @@
+library lights_domain_view;
+
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/color.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/bottom_navigation.dart';
@@ -14,186 +17,26 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart'
     hide IntentOverlayService;
+import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/light.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
+import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/intents/service.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
+import 'package:fastybird_smart_panel/features/deck/presentation/domain_views/lights_domain_constants.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
-// ============================================================================
-// Role UI State Machine
-// ============================================================================
-
-/// UI states for role-level aggregated controls
-enum RoleUIState {
-  /// Normal state - showing actual device values
-  idle,
-
-  /// User has initiated action, waiting for intent to be created/completed
-  pending,
-
-  /// Intent completed, waiting for devices to converge (settling window)
-  settling,
-
-  /// Settling window expired but devices have not converged
-  mixed,
-
-  /// Error state (optional, for future use)
-  error,
-}
-
-/// Control state for a single control type (brightness, hue, temperature, white)
-class RoleControlState {
-  /// Current UI state
-  final RoleUIState state;
-
-  /// The value the user set (persists through PENDING, SETTLING, MIXED)
-  final double? desiredValue;
-
-  /// Settling timer (active during SETTLING state)
-  final Timer? settlingTimer;
-
-  /// Timestamp when settling started
-  final DateTime? settlingStartedAt;
-
-  const RoleControlState({
-    this.state = RoleUIState.idle,
-    this.desiredValue,
-    this.settlingTimer,
-    this.settlingStartedAt,
-  });
-
-  /// Create a copy with updated fields
-  RoleControlState copyWith({
-    RoleUIState? state,
-    double? desiredValue,
-    Timer? settlingTimer,
-    DateTime? settlingStartedAt,
-    bool clearDesiredValue = false,
-    bool clearSettlingTimer = false,
-    bool clearSettlingStartedAt = false,
-  }) {
-    return RoleControlState(
-      state: state ?? this.state,
-      desiredValue: clearDesiredValue ? null : (desiredValue ?? this.desiredValue),
-      settlingTimer: clearSettlingTimer ? null : (settlingTimer ?? this.settlingTimer),
-      settlingStartedAt: clearSettlingStartedAt ? null : (settlingStartedAt ?? this.settlingStartedAt),
-    );
-  }
-
-  /// Whether the control is in a "locked" state where we show desired value
-  bool get isLocked => state == RoleUIState.pending || state == RoleUIState.settling || state == RoleUIState.mixed;
-
-  /// Whether we're actively waiting for devices to sync
-  bool get isSettling => state == RoleUIState.settling;
-
-  /// Whether devices are in mixed state
-  bool get isMixed => state == RoleUIState.mixed;
-
-  /// Cancel any active timer
-  void cancelTimer() {
-    settlingTimer?.cancel();
-  }
-}
-
-/// Settling window duration in milliseconds
-const int _settlingWindowMs = 2000;
-
-/// Tolerance for brightness comparison (±)
-const double _brightnessTolerance = 3.0;
-
-/// Tolerance for hue comparison (±)
-const double _hueTolerance = 5.0;
-
-/// Tolerance for temperature comparison (±)
-const double _temperatureTolerance = 100.0;
-
-/// Tolerance for white comparison (±)
-const double _whiteTolerance = 5.0;
-
-/// Threshold for detecting mixed state (difference must exceed this)
-const int _mixedThreshold = 10;
-
-/// Result of checking if a role's devices are synced or mixed
-class RoleMixedState {
-  /// True if on/off states differ across devices
-  final bool onStateMixed;
-
-  /// True if brightness values differ (among brightness-capable ON devices)
-  final bool brightnessMixed;
-
-  /// True if hue values differ (among color-capable ON devices)
-  final bool hueMixed;
-
-  /// True if temperature values differ (among temp-capable ON devices)
-  final bool temperatureMixed;
-
-  /// True if white values differ (among white-capable ON devices)
-  final bool whiteMixed;
-
-  /// Number of devices that are ON
-  final int onCount;
-
-  /// Number of devices that are OFF
-  final int offCount;
-
-  /// Min/max brightness among ON devices with brightness
-  final int? minBrightness;
-  final int? maxBrightness;
-
-  /// Min/max hue among ON devices with color
-  final double? minHue;
-  final double? maxHue;
-
-  /// Min/max temperature among ON devices with temp
-  final double? minTemperature;
-  final double? maxTemperature;
-
-  /// Min/max white among ON devices with white
-  final int? minWhite;
-  final int? maxWhite;
-
-  const RoleMixedState({
-    this.onStateMixed = false,
-    this.brightnessMixed = false,
-    this.hueMixed = false,
-    this.temperatureMixed = false,
-    this.whiteMixed = false,
-    this.onCount = 0,
-    this.offCount = 0,
-    this.minBrightness,
-    this.maxBrightness,
-    this.minHue,
-    this.maxHue,
-    this.minTemperature,
-    this.maxTemperature,
-    this.minWhite,
-    this.maxWhite,
-  });
-
-  /// True if ANY aspect is mixed (role is not synced)
-  bool get isMixed =>
-      onStateMixed || brightnessMixed || hueMixed || temperatureMixed || whiteMixed;
-
-  /// True if all devices are synced
-  bool get isSynced => !isMixed;
-
-  /// True if all devices are ON
-  bool get allOn => offCount == 0 && onCount > 0;
-
-  /// True if all devices are OFF
-  bool get allOff => onCount == 0 && offCount > 0;
-
-  /// True if at least one device is ON
-  bool get anyOn => onCount > 0;
-}
+part 'lights_domain_view_models.dart';
 
 // ============================================================================
 // Helper Functions
 // ============================================================================
+
+// Models/state helpers are in the part file: lights_domain_view_models.dart
 
 /// Strips room name from device name (case insensitive).
 /// Capitalizes first letter if it becomes lowercase after stripping.
@@ -215,27 +58,6 @@ String _stripRoomName(String deviceName, String? roomName) {
     return stripped;
   }
   return deviceName;
-}
-
-/// Role group data for displaying in tiles
-class _RoleGroup {
-  final LightTargetRole role;
-  final List<LightTargetView> targets;
-  final int onCount;
-  final int totalCount;
-  final bool hasBrightness;
-  final int? avgBrightness;
-
-  _RoleGroup({
-    required this.role,
-    required this.targets,
-    required this.onCount,
-    required this.totalCount,
-    required this.hasBrightness,
-    this.avgBrightness,
-  });
-
-  bool get isOn => onCount > 0;
 }
 
 /// Lights domain page - displays lighting devices grouped by role with quick controls.
@@ -1163,7 +985,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     }
 
     // Start settling timer
-    final timer = Timer(const Duration(milliseconds: _settlingWindowMs), () {
+    final timer = Timer(const Duration(milliseconds: LightsDomainConstants.settlingWindowMs), () {
       if (!mounted) return;
       _onSettlingTimeout(currentState, updateState, targets, convergenceCheck, tolerance);
     });
@@ -1375,7 +1197,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           (s) => _brightnessState = s,
           targets,
           _allBrightnessMatch,
-          _brightnessTolerance,
+          LightsDomainConstants.brightnessTolerance,
         );
       }
 
@@ -1387,7 +1209,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           (s) => _hueState = s,
           targets,
           _allHueMatch,
-          _hueTolerance,
+          LightsDomainConstants.hueTolerance,
         );
       }
 
@@ -1399,7 +1221,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           (s) => _temperatureState = s,
           targets,
           _allTemperatureMatch,
-          _temperatureTolerance,
+          LightsDomainConstants.temperatureTolerance,
         );
       }
 
@@ -1411,7 +1233,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           (s) => _whiteState = s,
           targets,
           _allWhiteMatch,
-          _whiteTolerance,
+          LightsDomainConstants.whiteTolerance,
         );
       }
     });
@@ -1441,49 +1263,49 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           (s) => _brightnessState = s,
           targets,
           _allBrightnessMatch,
-          _brightnessTolerance,
+          LightsDomainConstants.brightnessTolerance,
         );
         _checkConvergenceDuringSettling(
           _hueState,
           (s) => _hueState = s,
           targets,
           _allHueMatch,
-          _hueTolerance,
+          LightsDomainConstants.hueTolerance,
         );
         _checkConvergenceDuringSettling(
           _temperatureState,
           (s) => _temperatureState = s,
           targets,
           _allTemperatureMatch,
-          _temperatureTolerance,
+          LightsDomainConstants.temperatureTolerance,
         );
         _checkConvergenceDuringSettling(
           _whiteState,
           (s) => _whiteState = s,
           targets,
           _allWhiteMatch,
-          _whiteTolerance,
+          LightsDomainConstants.whiteTolerance,
         );
 
         // Also check MIXED state - if user hasn't interacted and devices converge, return to IDLE
         if (_brightnessState.state == RoleUIState.mixed &&
             _brightnessState.desiredValue != null &&
-            _allBrightnessMatch(targets, _brightnessState.desiredValue!, _brightnessTolerance)) {
+            _allBrightnessMatch(targets, _brightnessState.desiredValue!, LightsDomainConstants.brightnessTolerance)) {
           _brightnessState = const RoleControlState(state: RoleUIState.idle);
         }
         if (_hueState.state == RoleUIState.mixed &&
             _hueState.desiredValue != null &&
-            _allHueMatch(targets, _hueState.desiredValue!, _hueTolerance)) {
+            _allHueMatch(targets, _hueState.desiredValue!, LightsDomainConstants.hueTolerance)) {
           _hueState = const RoleControlState(state: RoleUIState.idle);
         }
         if (_temperatureState.state == RoleUIState.mixed &&
             _temperatureState.desiredValue != null &&
-            _allTemperatureMatch(targets, _temperatureState.desiredValue!, _temperatureTolerance)) {
+            _allTemperatureMatch(targets, _temperatureState.desiredValue!, LightsDomainConstants.temperatureTolerance)) {
           _temperatureState = const RoleControlState(state: RoleUIState.idle);
         }
         if (_whiteState.state == RoleUIState.mixed &&
             _whiteState.desiredValue != null &&
-            _allWhiteMatch(targets, _whiteState.desiredValue!, _whiteTolerance)) {
+            _allWhiteMatch(targets, _whiteState.desiredValue!, LightsDomainConstants.whiteTolerance)) {
           _whiteState = const RoleControlState(state: RoleUIState.idle);
         }
 
@@ -1856,19 +1678,19 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
     final brightnessMixed = minBrightness != null &&
         maxBrightness != null &&
-        (maxBrightness - minBrightness) > _mixedThreshold;
+        (maxBrightness - minBrightness) > LightsDomainConstants.mixedThreshold;
 
     final hueMixed = minHue != null &&
         maxHue != null &&
-        (maxHue - minHue) > _mixedThreshold;
+        (maxHue - minHue) > LightsDomainConstants.mixedThreshold;
 
     final temperatureMixed = minTemperature != null &&
         maxTemperature != null &&
-        (maxTemperature - minTemperature) > _mixedThreshold * 10; // temp uses larger threshold
+        (maxTemperature - minTemperature) > LightsDomainConstants.mixedThreshold * 10; // temp uses larger threshold
 
     final whiteMixed = minWhite != null &&
         maxWhite != null &&
-        (maxWhite - minWhite) > _mixedThreshold;
+        (maxWhite - minWhite) > LightsDomainConstants.mixedThreshold;
 
     return RoleMixedState(
       onStateMixed: onStateMixed,
@@ -1901,7 +1723,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     if (_brightnessState.isMixed && _brightnessState.desiredValue != null) {
       if (channel.hasBrightness && channel.on) {
         final targetBrightness = _brightnessState.desiredValue!.round();
-        if ((channel.brightness - targetBrightness).abs() > _brightnessTolerance) {
+        if ((channel.brightness - targetBrightness).abs() > LightsDomainConstants.brightnessTolerance) {
           return true;
         }
       }
@@ -1911,7 +1733,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     if (_hueState.isMixed && _hueState.desiredValue != null) {
       if (channel.hasHue && channel.on) {
         final targetHue = _hueState.desiredValue!;
-        if ((channel.hue - targetHue).abs() > _hueTolerance) {
+        if ((channel.hue - targetHue).abs() > LightsDomainConstants.hueTolerance) {
           return true;
         }
       }
@@ -1924,7 +1746,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         if (tempProp?.value is NumberValueType) {
           final actualTemp = (tempProp!.value as NumberValueType).value.toDouble();
           final targetTemp = _temperatureState.desiredValue!;
-          if ((actualTemp - targetTemp).abs() > _temperatureTolerance) {
+          if ((actualTemp - targetTemp).abs() > LightsDomainConstants.temperatureTolerance) {
             return true;
           }
         }
@@ -1935,7 +1757,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     if (_whiteState.isMixed && _whiteState.desiredValue != null) {
       if (channel.hasColorWhite && channel.on) {
         final targetWhite = _whiteState.desiredValue!.round();
-        if ((channel.colorWhite - targetWhite).abs() > _whiteTolerance) {
+        if ((channel.colorWhite - targetWhite).abs() > LightsDomainConstants.whiteTolerance) {
           return true;
         }
       }
@@ -1964,28 +1786,28 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           (s) => _brightnessState = s,
           targets,
           _allBrightnessMatch,
-          _brightnessTolerance,
+          LightsDomainConstants.brightnessTolerance,
         );
         _checkConvergenceDuringSettling(
           _hueState,
           (s) => _hueState = s,
           targets,
           _allHueMatch,
-          _hueTolerance,
+          LightsDomainConstants.hueTolerance,
         );
         _checkConvergenceDuringSettling(
           _temperatureState,
           (s) => _temperatureState = s,
           targets,
           _allTemperatureMatch,
-          _temperatureTolerance,
+          LightsDomainConstants.temperatureTolerance,
         );
         _checkConvergenceDuringSettling(
           _whiteState,
           (s) => _whiteState = s,
           targets,
           _allWhiteMatch,
-          _whiteTolerance,
+          LightsDomainConstants.whiteTolerance,
         );
 
         // Update cache if devices are now synced
@@ -2584,6 +2406,41 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // Get mixed state to determine what value to show
     final roleMixedState = _getRoleMixedState(targets);
 
+    // Check if any property is locked by an intent
+    bool hasLockedProperty = false;
+    double? overlayBrightness;
+
+    for (final target in targets) {
+      if (!target.hasBrightness) continue;
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+        final channel = device.lightChannels.firstWhere(
+          (c) => c.id == target.channelId,
+          orElse: () => device.lightChannels.first,
+        );
+        final brightnessProp = channel.brightnessProp;
+        if (brightnessProp != null) {
+          if (_intentOverlayService?.isPropertyLocked(
+                target.deviceId,
+                target.channelId,
+                brightnessProp.id,
+              ) == true) {
+            hasLockedProperty = true;
+            // Get overlay value from intent
+            final overlay = _intentOverlayService?.getOverlayValue(
+              target.deviceId,
+              target.channelId,
+              brightnessProp.id,
+            );
+            if (overlay is num) {
+              overlayBrightness = overlay.toDouble();
+              break; // Use first locked property's overlay value
+            }
+          }
+        }
+      }
+    }
+
     // Get first device's brightness for fallback (handles off lights with null brightness from HA)
     double? firstDeviceBrightness;
     for (final target in targets) {
@@ -2607,13 +2464,12 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // Check if any light is on
     final anyLightOn = roleMixedState.anyOn;
 
-    // Determine displayed value:
-    // - If state is locked (PENDING/SETTLING/MIXED from user action), show desired value
-    // - If devices are mixed in IDLE state (external change), show cached value or first device's value
-    // - If all lights are off and we have cached value, show cached (prevents jump to 0)
-    // - Otherwise show actual device value (average)
+    // Determine displayed value (priority: overlay > locked state > mixed/cached > actual)
     final double displayValue;
-    if (_brightnessState.isLocked) {
+    if (overlayBrightness != null) {
+      // Intent overlay value takes highest priority
+      displayValue = overlayBrightness;
+    } else if (_brightnessState.isLocked) {
       // User has interacted - show their intended value
       displayValue = _brightnessState.desiredValue ?? currentBrightness.toDouble();
     } else if (roleMixedState.brightnessMixed || roleMixedState.onStateMixed) {
@@ -2632,7 +2488,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       value: displayValue,
       min: 0,
       max: 100,
-      enabled: true,
+      enabled: !hasLockedProperty, // Disable during intent
       vertical: true,
       trackWidth: elementMaxSize,
       showThumb: false,
@@ -2682,6 +2538,40 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // Get mixed state to determine what value to show
     final roleMixedState = _getRoleMixedState(targets);
 
+    // Check if any property is locked by an intent
+    bool hasLockedProperty = false;
+    double? overlayHue;
+
+    for (final target in targets) {
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+        final channel = device.lightChannels.firstWhere(
+          (c) => c.id == target.channelId,
+          orElse: () => device.lightChannels.first,
+        );
+        final hueProp = channel.hueProp;
+        if (hueProp != null) {
+          if (_intentOverlayService?.isPropertyLocked(
+                target.deviceId,
+                target.channelId,
+                hueProp.id,
+              ) == true) {
+            hasLockedProperty = true;
+            // Get overlay value from intent
+            final overlay = _intentOverlayService?.getOverlayValue(
+              target.deviceId,
+              target.channelId,
+              hueProp.id,
+            );
+            if (overlay is num) {
+              overlayHue = overlay.toDouble();
+              break; // Use first locked property's overlay value
+            }
+          }
+        }
+      }
+    }
+
     // Calculate average hue and get first device's hue
     double totalHue = 0;
     int hueCount = 0;
@@ -2712,13 +2602,12 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // Check if any light is on
     final anyLightOn = roleMixedState.anyOn;
 
-    // Determine displayed value:
-    // - If state is locked (PENDING/SETTLING/MIXED from user action), show desired value
-    // - If devices are mixed in IDLE state (external change), show cached value or first device's value
-    // - If all lights are off and we have cached value, show cached
-    // - Otherwise show actual device value (average)
+    // Determine displayed value (priority: overlay > locked state > mixed/cached > actual)
     final double displayValue;
-    if (_hueState.isLocked) {
+    if (overlayHue != null) {
+      // Intent overlay value takes highest priority
+      displayValue = overlayHue;
+    } else if (_hueState.isLocked) {
       displayValue = _hueState.desiredValue ?? avgHue;
     } else if (roleMixedState.hueMixed || roleMixedState.onStateMixed) {
       // Devices are mixed due to external change - show cached or first device's value
@@ -2734,7 +2623,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       value: displayValue,
       min: 0.0,
       max: 360.0,
-      enabled: true,
+      enabled: !hasLockedProperty, // Disable during intent
       vertical: true,
       trackWidth: elementMaxSize,
       onValueChanged: (value) {
@@ -2783,6 +2672,40 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // Get mixed state to determine what value to show
     final roleMixedState = _getRoleMixedState(targets);
 
+    // Check if any property is locked by an intent
+    bool hasLockedProperty = false;
+    double? overlayTemperature;
+
+    for (final target in targets) {
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+        final channel = device.lightChannels.firstWhere(
+          (c) => c.id == target.channelId,
+          orElse: () => device.lightChannels.first,
+        );
+        final tempProp = channel.temperatureProp;
+        if (tempProp != null) {
+          if (_intentOverlayService?.isPropertyLocked(
+                target.deviceId,
+                target.channelId,
+                tempProp.id,
+              ) == true) {
+            hasLockedProperty = true;
+            // Get overlay value from intent
+            final overlay = _intentOverlayService?.getOverlayValue(
+              target.deviceId,
+              target.channelId,
+              tempProp.id,
+            );
+            if (overlay is num) {
+              overlayTemperature = overlay.toDouble();
+              break; // Use first locked property's overlay value
+            }
+          }
+        }
+      }
+    }
+
     // Calculate average temperature and get first device's temperature
     double totalTemp = 0;
     int tempCount = 0;
@@ -2817,13 +2740,12 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // Check if any light is on
     final anyLightOn = roleMixedState.anyOn;
 
-    // Determine displayed value:
-    // - If state is locked (PENDING/SETTLING/MIXED from user action), show desired value
-    // - If devices are mixed in IDLE state (external change), show cached value or first device's value
-    // - If all lights are off and we have cached value, show cached
-    // - Otherwise show actual device value (average)
+    // Determine displayed value (priority: overlay > locked state > mixed/cached > actual)
     final double displayValue;
-    if (_temperatureState.isLocked) {
+    if (overlayTemperature != null) {
+      // Intent overlay value takes highest priority
+      displayValue = overlayTemperature;
+    } else if (_temperatureState.isLocked) {
       displayValue = _temperatureState.desiredValue ?? avgTemp;
     } else if (roleMixedState.temperatureMixed || roleMixedState.onStateMixed) {
       // Devices are mixed due to external change - show cached or first device's value
@@ -2839,7 +2761,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       value: displayValue,
       min: 2700,
       max: 6500,
-      enabled: true,
+      enabled: !hasLockedProperty, // Disable during intent
       vertical: true,
       trackWidth: elementMaxSize,
       onValueChanged: (value) {
@@ -2897,6 +2819,40 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // Get mixed state to determine what value to show
     final roleMixedState = _getRoleMixedState(targets);
 
+    // Check if any property is locked by an intent
+    bool hasLockedProperty = false;
+    double? overlayWhite;
+
+    for (final target in targets) {
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+        final channel = device.lightChannels.firstWhere(
+          (c) => c.id == target.channelId,
+          orElse: () => device.lightChannels.first,
+        );
+        final whiteProp = channel.colorWhiteProp;
+        if (whiteProp != null) {
+          if (_intentOverlayService?.isPropertyLocked(
+                target.deviceId,
+                target.channelId,
+                whiteProp.id,
+              ) == true) {
+            hasLockedProperty = true;
+            // Get overlay value from intent
+            final overlay = _intentOverlayService?.getOverlayValue(
+              target.deviceId,
+              target.channelId,
+              whiteProp.id,
+            );
+            if (overlay is num) {
+              overlayWhite = overlay.toDouble();
+              break; // Use first locked property's overlay value
+            }
+          }
+        }
+      }
+    }
+
     // Calculate average white value and get first device's white
     double totalWhite = 0;
     int whiteCount = 0;
@@ -2927,13 +2883,12 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // Check if any light is on
     final anyLightOn = roleMixedState.anyOn;
 
-    // Determine displayed value:
-    // - If state is locked (PENDING/SETTLING/MIXED from user action), show desired value
-    // - If devices are mixed in IDLE state (external change), show cached value or first device's value
-    // - If all lights are off and we have cached value, show cached
-    // - Otherwise show actual device value (average)
+    // Determine displayed value (priority: overlay > locked state > mixed/cached > actual)
     final double displayValue;
-    if (_whiteState.isLocked) {
+    if (overlayWhite != null) {
+      // Intent overlay value takes highest priority
+      displayValue = overlayWhite;
+    } else if (_whiteState.isLocked) {
       displayValue = _whiteState.desiredValue ?? avgWhite;
     } else if (roleMixedState.whiteMixed || roleMixedState.onStateMixed) {
       // Devices are mixed due to external change - show cached or first device's value
@@ -2949,7 +2904,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       value: displayValue,
       min: 0,
       max: 255,
-      enabled: true,
+      enabled: !hasLockedProperty, // Disable during intent
       vertical: true,
       trackWidth: elementMaxSize,
       showThumb: false,
@@ -3163,8 +3118,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
       final newState = !anyOn;
 
-      int successCount = 0;
-      int failCount = 0;
+      // Build list of properties to update
+      final List<PropertyCommandItem> properties = [];
 
       for (final target in targets) {
         final device = devicesService.getDevice(target.deviceId);
@@ -3175,21 +3130,55 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           );
 
           // Skip if channel wasn't found (fallback was used) to avoid property/channel mismatch
-          if (channel.id != target.channelId) continue;
+          if (channel.id != target.channelId) {
+            if (kDebugMode) {
+              debugPrint(
+                '[LIGHTS DOMAIN] Channel fallback used for device ${target.deviceId}: '
+                'expected channel ${target.channelId}, using ${channel.id}',
+              );
+            }
+            continue;
+          }
 
           final onProp = channel.onProp;
-          final success = await devicesService.setPropertyValue(onProp.id, newState);
-          if (success) {
-            successCount++;
-          } else {
-            failCount++;
-          }
+          properties.add(PropertyCommandItem(
+            deviceId: target.deviceId,
+            channelId: target.channelId,
+            propertyId: onProp.id,
+            value: newState,
+          ));
         }
       }
 
+      if (properties.isEmpty) return;
+
+      // Get display ID from display repository
+      final displayRepository = locator<DisplayRepository>();
+      final displayId = displayRepository.display?.id;
+
+      // Build context
+      final commandContext = PropertyCommandContext(
+        origin: 'panel.system.room',
+        displayId: displayId,
+        spaceId: widget.roomId,
+        roleKey: widget.role.name,
+      );
+
+      // Send single batch command for all properties
+      final success = await devicesService.setMultiplePropertyValues(
+        properties: properties,
+        context: commandContext,
+      );
+
       if (!mounted) return;
 
-      if (failCount > 0 && successCount == 0) {
+      if (!success) {
+        if (kDebugMode) {
+          debugPrint(
+            '[LIGHTS DOMAIN] Failed to toggle lights for role ${widget.role.name} '
+            'in room ${widget.roomId}: ${properties.length} properties',
+          );
+        }
         AlertBar.showError(
           this.context,
           message: localizations?.action_failed ?? 'Failed to toggle lights',
@@ -3197,6 +3186,11 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       }
     } catch (e) {
       if (!mounted) return;
+      if (kDebugMode) {
+        debugPrint(
+          '[LIGHTS DOMAIN] Exception while toggling lights for role ${widget.role.name}: $e',
+        );
+      }
       AlertBar.showError(
         this.context,
         message: localizations?.action_failed ?? 'Failed to toggle lights',
@@ -3214,8 +3208,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     final localizations = AppLocalizations.of(context);
 
     try {
-      int successCount = 0;
-      int failCount = 0;
+      // Build list of properties to update
+      final List<PropertyCommandItem> properties = [];
 
       for (final target in targets) {
         if (!target.hasBrightness) continue;
@@ -3229,26 +3223,57 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           );
 
           // Skip if channel wasn't found (fallback was used) to avoid property/channel mismatch
-          if (channel.id != target.channelId) continue;
+          if (channel.id != target.channelId) {
+            if (kDebugMode) {
+              debugPrint(
+                '[LIGHTS DOMAIN] Channel fallback used for device ${target.deviceId}: '
+                'expected channel ${target.channelId}, using ${channel.id}',
+              );
+            }
+            continue;
+          }
 
           final brightnessProp = channel.brightnessProp;
           if (brightnessProp != null) {
-            final success = await devicesService.setPropertyValue(
-              brightnessProp.id,
-              brightness,
-            );
-            if (success) {
-              successCount++;
-            } else {
-              failCount++;
-            }
+            properties.add(PropertyCommandItem(
+              deviceId: target.deviceId,
+              channelId: target.channelId,
+              propertyId: brightnessProp.id,
+              value: brightness,
+            ));
           }
         }
       }
 
+      if (properties.isEmpty) return;
+
+      // Get display ID from display repository
+      final displayRepository = locator<DisplayRepository>();
+      final displayId = displayRepository.display?.id;
+
+      // Build context
+      final commandContext = PropertyCommandContext(
+        origin: 'panel.system.room',
+        displayId: displayId,
+        spaceId: widget.roomId,
+        roleKey: widget.role.name,
+      );
+
+      // Send single batch command for all properties
+      final success = await devicesService.setMultiplePropertyValues(
+        properties: properties,
+        context: commandContext,
+      );
+
       if (!mounted) return;
 
-      if (failCount > 0 && successCount == 0) {
+      if (!success) {
+        if (kDebugMode) {
+          debugPrint(
+            '[LIGHTS DOMAIN] Failed to set brightness for role ${widget.role.name} '
+            'in room ${widget.roomId}: ${properties.length} properties, value=$brightness',
+          );
+        }
         AlertBar.showError(
           this.context,
           message:
@@ -3257,6 +3282,11 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       }
     } catch (e) {
       if (!mounted) return;
+      if (kDebugMode) {
+        debugPrint(
+          '[LIGHTS DOMAIN] Exception while setting brightness for role ${widget.role.name}: $e',
+        );
+      }
       AlertBar.showError(
         this.context,
         message: localizations?.action_failed ?? 'Failed to set brightness',
@@ -3276,8 +3306,14 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     final localizations = AppLocalizations.of(context);
 
     try {
-      int successCount = 0;
-      int failCount = 0;
+      // Convert hue to Color (using full saturation and brightness)
+      // We use full saturation (100%) and brightness (100%) to get the pure color
+      final color = ColorUtils.fromHSV(hue, 100.0, 100.0);
+      final rgbValue = ColorUtils.toRGB(color);
+      final hsvValue = ColorUtils.toHSV(color);
+
+      // Build list of properties to update
+      final List<PropertyCommandItem> properties = [];
 
       for (final target in targets) {
         final device = devicesService.getDevice(target.deviceId);
@@ -3288,26 +3324,94 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           );
 
           // Skip if channel wasn't found (fallback was used) to avoid property/channel mismatch
-          if (channel.id != target.channelId) continue;
-
-          final hueProp = channel.hueProp;
-          if (hueProp != null) {
-            final success = await devicesService.setPropertyValue(
-              hueProp.id,
-              hue,
-            );
-            if (success) {
-              successCount++;
-            } else {
-              failCount++;
+          if (channel.id != target.channelId) {
+            if (kDebugMode) {
+              debugPrint(
+                '[LIGHTS DOMAIN] Channel fallback used for device ${target.deviceId}: '
+                'expected channel ${target.channelId}, using ${channel.id}',
+              );
             }
+            continue;
+          }
+
+          // Set RGB properties if available
+          if (channel.colorRedProp != null) {
+            properties.add(PropertyCommandItem(
+              deviceId: target.deviceId,
+              channelId: target.channelId,
+              propertyId: channel.colorRedProp!.id,
+              value: rgbValue.red,
+            ));
+          }
+
+          if (channel.colorGreenProp != null) {
+            properties.add(PropertyCommandItem(
+              deviceId: target.deviceId,
+              channelId: target.channelId,
+              propertyId: channel.colorGreenProp!.id,
+              value: rgbValue.green,
+            ));
+          }
+
+          if (channel.colorBlueProp != null) {
+            properties.add(PropertyCommandItem(
+              deviceId: target.deviceId,
+              channelId: target.channelId,
+              propertyId: channel.colorBlueProp!.id,
+              value: rgbValue.blue,
+            ));
+          }
+
+          // Set HSV properties if available
+          if (channel.hueProp != null) {
+            properties.add(PropertyCommandItem(
+              deviceId: target.deviceId,
+              channelId: target.channelId,
+              propertyId: channel.hueProp!.id,
+              value: hsvValue.hue,
+            ));
+          }
+
+          if (channel.saturationProp != null) {
+            properties.add(PropertyCommandItem(
+              deviceId: target.deviceId,
+              channelId: target.channelId,
+              propertyId: channel.saturationProp!.id,
+              value: hsvValue.saturation,
+            ));
           }
         }
       }
 
+      if (properties.isEmpty) return;
+
+      // Get display ID from display repository
+      final displayRepository = locator<DisplayRepository>();
+      final displayId = displayRepository.display?.id;
+
+      // Build context
+      final commandContext = PropertyCommandContext(
+        origin: 'panel.system.room',
+        displayId: displayId,
+        spaceId: widget.roomId,
+        roleKey: widget.role.name,
+      );
+
+      // Send single batch command for all properties
+      final success = await devicesService.setMultiplePropertyValues(
+        properties: properties,
+        context: commandContext,
+      );
+
       if (!mounted) return;
 
-      if (failCount > 0 && successCount == 0) {
+      if (!success) {
+        if (kDebugMode) {
+          debugPrint(
+            '[LIGHTS DOMAIN] Failed to set color for role ${widget.role.name} '
+            'in room ${widget.roomId}: ${properties.length} properties, hue=$hue',
+          );
+        }
         AlertBar.showError(
           this.context,
           message: localizations?.action_failed ?? 'Failed to set color',
@@ -3315,6 +3419,11 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       }
     } catch (e) {
       if (!mounted) return;
+      if (kDebugMode) {
+        debugPrint(
+          '[LIGHTS DOMAIN] Exception while setting color for role ${widget.role.name}: $e',
+        );
+      }
       AlertBar.showError(
         this.context,
         message: localizations?.action_failed ?? 'Failed to set color',
@@ -3333,8 +3442,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     final localizations = AppLocalizations.of(context);
 
     try {
-      int successCount = 0;
-      int failCount = 0;
+      // Build list of properties to update
+      final List<PropertyCommandItem> properties = [];
 
       for (final target in targets) {
         final device = devicesService.getDevice(target.deviceId);
@@ -3345,26 +3454,57 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           );
 
           // Skip if channel wasn't found (fallback was used) to avoid property/channel mismatch
-          if (channel.id != target.channelId) continue;
+          if (channel.id != target.channelId) {
+            if (kDebugMode) {
+              debugPrint(
+                '[LIGHTS DOMAIN] Channel fallback used for device ${target.deviceId}: '
+                'expected channel ${target.channelId}, using ${channel.id}',
+              );
+            }
+            continue;
+          }
 
           final tempProp = channel.temperatureProp;
           if (tempProp != null) {
-            final success = await devicesService.setPropertyValue(
-              tempProp.id,
-              temperature.round(),
-            );
-            if (success) {
-              successCount++;
-            } else {
-              failCount++;
-            }
+            properties.add(PropertyCommandItem(
+              deviceId: target.deviceId,
+              channelId: target.channelId,
+              propertyId: tempProp.id,
+              value: temperature.round(),
+            ));
           }
         }
       }
 
+      if (properties.isEmpty) return;
+
+      // Get display ID from display repository
+      final displayRepository = locator<DisplayRepository>();
+      final displayId = displayRepository.display?.id;
+
+      // Build context
+      final commandContext = PropertyCommandContext(
+        origin: 'panel.system.room',
+        displayId: displayId,
+        spaceId: widget.roomId,
+        roleKey: widget.role.name,
+      );
+
+      // Send single batch command for all properties
+      final success = await devicesService.setMultiplePropertyValues(
+        properties: properties,
+        context: commandContext,
+      );
+
       if (!mounted) return;
 
-      if (failCount > 0 && successCount == 0) {
+      if (!success) {
+        if (kDebugMode) {
+          debugPrint(
+            '[LIGHTS DOMAIN] Failed to set temperature for role ${widget.role.name} '
+            'in room ${widget.roomId}: ${properties.length} properties, value=$temperature',
+          );
+        }
         AlertBar.showError(
           this.context,
           message: localizations?.action_failed ?? 'Failed to set temperature',
@@ -3372,6 +3512,11 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       }
     } catch (e) {
       if (!mounted) return;
+      if (kDebugMode) {
+        debugPrint(
+          '[LIGHTS DOMAIN] Exception while setting temperature for role ${widget.role.name}: $e',
+        );
+      }
       AlertBar.showError(
         this.context,
         message: localizations?.action_failed ?? 'Failed to set temperature',
@@ -3390,8 +3535,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     final localizations = AppLocalizations.of(context);
 
     try {
-      int successCount = 0;
-      int failCount = 0;
+      // Build list of properties to update
+      final List<PropertyCommandItem> properties = [];
 
       for (final target in targets) {
         final device = devicesService.getDevice(target.deviceId);
@@ -3402,26 +3547,57 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           );
 
           // Skip if channel wasn't found (fallback was used) to avoid property/channel mismatch
-          if (channel.id != target.channelId) continue;
+          if (channel.id != target.channelId) {
+            if (kDebugMode) {
+              debugPrint(
+                '[LIGHTS DOMAIN] Channel fallback used for device ${target.deviceId}: '
+                'expected channel ${target.channelId}, using ${channel.id}',
+              );
+            }
+            continue;
+          }
 
           final whiteProp = channel.colorWhiteProp;
           if (whiteProp != null) {
-            final success = await devicesService.setPropertyValue(
-              whiteProp.id,
-              white,
-            );
-            if (success) {
-              successCount++;
-            } else {
-              failCount++;
-            }
+            properties.add(PropertyCommandItem(
+              deviceId: target.deviceId,
+              channelId: target.channelId,
+              propertyId: whiteProp.id,
+              value: white,
+            ));
           }
         }
       }
 
+      if (properties.isEmpty) return;
+
+      // Get display ID from display repository
+      final displayRepository = locator<DisplayRepository>();
+      final displayId = displayRepository.display?.id;
+
+      // Build context
+      final commandContext = PropertyCommandContext(
+        origin: 'panel.system.room',
+        displayId: displayId,
+        spaceId: widget.roomId,
+        roleKey: widget.role.name,
+      );
+
+      // Send single batch command for all properties
+      final success = await devicesService.setMultiplePropertyValues(
+        properties: properties,
+        context: commandContext,
+      );
+
       if (!mounted) return;
 
-      if (failCount > 0 && successCount == 0) {
+      if (!success) {
+        if (kDebugMode) {
+          debugPrint(
+            '[LIGHTS DOMAIN] Failed to set white level for role ${widget.role.name} '
+            'in room ${widget.roomId}: ${properties.length} properties, value=$white',
+          );
+        }
         AlertBar.showError(
           this.context,
           message: localizations?.action_failed ?? 'Failed to set white level',
@@ -3429,6 +3605,11 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       }
     } catch (e) {
       if (!mounted) return;
+      if (kDebugMode) {
+        debugPrint(
+          '[LIGHTS DOMAIN] Exception while setting white level for role ${widget.role.name}: $e',
+        );
+      }
       AlertBar.showError(
         this.context,
         message: localizations?.action_failed ?? 'Failed to set white level',
@@ -3483,13 +3664,4 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         return MdiIcons.lightbulbOutline;
     }
   }
-}
-
-/// Light role mode for bottom navigation
-enum _LightRoleMode {
-  off,
-  brightness,
-  color,
-  temperature,
-  white,
 }

@@ -19,6 +19,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/channels/light.dart'
 import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 import 'package:fastybird_smart_panel/modules/displays/export.dart';
+import 'package:fastybird_smart_panel/modules/intents/service.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -463,6 +464,9 @@ class LightSingleChannelDetail extends StatelessWidget {
       if (_mode == LightChannelModeType.brightness && brightnessProp != null) {
         controlElement = BrightnessChannel(
           channel: _channel,
+          deviceId: _device.id,
+          channelId: _channel.id,
+          propertyId: brightnessProp.id,
           vertical: true,
           elementMaxSize: elementMaxSize,
           onValueChanged: (double value) async {
@@ -480,59 +484,67 @@ class LightSingleChannelDetail extends StatelessWidget {
       if (_mode == LightChannelModeType.color && _channel.hasColor) {
         controlElement = ColorChannel(
           channel: _channel,
+          deviceId: _device.id,
+          channelId: _channel.id,
           vertical: true,
           elementMaxSize: elementMaxSize,
           onValueChanged: (Color value) async {
             final rgbValue = ColorUtils.toRGB(value);
             final hsvValue = ColorUtils.toHSV(value);
 
+            // Build list of all color properties to update in a single batch
+            final List<PropertyCommandItem> properties = [];
+
             if (_channel.colorRedProp != null) {
-              _valueHelper.setPropertyValue(
-                context,
-                _channel.colorRedProp!,
-                rgbValue.red,
+              properties.add(PropertyCommandItem(
                 deviceId: _device.id,
                 channelId: _channel.id,
-              );
+                propertyId: _channel.colorRedProp!.id,
+                value: rgbValue.red,
+              ));
             }
 
             if (_channel.colorGreenProp != null) {
-              _valueHelper.setPropertyValue(
-                context,
-                _channel.colorGreenProp!,
-                rgbValue.green,
+              properties.add(PropertyCommandItem(
                 deviceId: _device.id,
                 channelId: _channel.id,
-              );
+                propertyId: _channel.colorGreenProp!.id,
+                value: rgbValue.green,
+              ));
             }
 
             if (_channel.colorBlueProp != null) {
-              _valueHelper.setPropertyValue(
-                context,
-                _channel.colorBlueProp!,
-                rgbValue.blue,
+              properties.add(PropertyCommandItem(
                 deviceId: _device.id,
                 channelId: _channel.id,
-              );
+                propertyId: _channel.colorBlueProp!.id,
+                value: rgbValue.blue,
+              ));
             }
 
             if (_channel.hueProp != null) {
-              _valueHelper.setPropertyValue(
-                context,
-                _channel.hueProp!,
-                hsvValue.hue,
+              properties.add(PropertyCommandItem(
                 deviceId: _device.id,
                 channelId: _channel.id,
-              );
+                propertyId: _channel.hueProp!.id,
+                value: hsvValue.hue,
+              ));
             }
 
             if (_channel.saturationProp != null) {
-              _valueHelper.setPropertyValue(
-                context,
-                _channel.saturationProp!,
-                hsvValue.saturation,
+              properties.add(PropertyCommandItem(
                 deviceId: _device.id,
                 channelId: _channel.id,
+                propertyId: _channel.saturationProp!.id,
+                value: hsvValue.saturation,
+              ));
+            }
+
+            // Send all color properties in a single batch command
+            if (properties.isNotEmpty) {
+              await _valueHelper.setMultiplePropertyValues(
+                context,
+                properties,
               );
             }
           },
@@ -544,6 +556,9 @@ class LightSingleChannelDetail extends StatelessWidget {
       if (_mode == LightChannelModeType.temperature && tempProp != null) {
         controlElement = TemperatureChannel(
           channel: _channel,
+          deviceId: _device.id,
+          channelId: _channel.id,
+          propertyId: tempProp.id,
           vertical: true,
           elementMaxSize: elementMaxSize,
           onValueChanged: (double value) async {
@@ -563,6 +578,9 @@ class LightSingleChannelDetail extends StatelessWidget {
       if (_mode == LightChannelModeType.white && colorWhiteProp != null) {
         controlElement = WhiteChannel(
           channel: _channel,
+          deviceId: _device.id,
+          channelId: _channel.id,
+          propertyId: colorWhiteProp.id,
           vertical: true,
           elementMaxSize: elementMaxSize,
           onValueChanged: (double value) async {
@@ -640,6 +658,9 @@ class LightSingleChannelDetail extends StatelessWidget {
 
 class BrightnessChannel extends StatefulWidget {
   final LightChannelView _channel;
+  final String? _deviceId;
+  final String? _channelId;
+  final String? _propertyId;
   final double? _elementMaxSize;
   final bool _vertical;
   final bool _showValue;
@@ -649,11 +670,17 @@ class BrightnessChannel extends StatefulWidget {
   const BrightnessChannel({
     super.key,
     required LightChannelView channel,
+    String? deviceId,
+    String? channelId,
+    String? propertyId,
     double? elementMaxSize,
     bool vertical = false,
     bool showValue = false,
     ValueChanged<double>? onValueChanged,
   })  : _channel = channel,
+        _deviceId = deviceId,
+        _channelId = channelId,
+        _propertyId = propertyId,
         _elementMaxSize = elementMaxSize,
         _vertical = vertical,
         _showValue = showValue,
@@ -667,6 +694,7 @@ class _BrightnessChannelState extends State<BrightnessChannel> {
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
+  IntentOverlayService? _intentOverlayService;
 
   late ChannelPropertyView? _property;
 
@@ -675,8 +703,23 @@ class _BrightnessChannelState extends State<BrightnessChannel> {
   @override
   void initState() {
     super.initState();
-
+    try {
+      _intentOverlayService = locator<IntentOverlayService>();
+      _intentOverlayService?.addListener(_onIntentChanged);
+    } catch (_) {}
     _initializeWidget();
+  }
+
+  @override
+  void dispose() {
+    _intentOverlayService?.removeListener(_onIntentChanged);
+    super.dispose();
+  }
+
+  void _onIntentChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -714,11 +757,38 @@ class _BrightnessChannelState extends State<BrightnessChannel> {
       }
     }
 
+    // Check if property is locked by intent
+    final isLocked = widget._deviceId != null &&
+            widget._channelId != null &&
+            widget._propertyId != null
+        ? _intentOverlayService?.isPropertyLocked(
+              widget._deviceId!,
+              widget._channelId!,
+              widget._propertyId!,
+            ) ?? false
+        : false;
+
+    // Get overlay value if locked
+    final overlayValue = widget._deviceId != null &&
+            widget._channelId != null &&
+            widget._propertyId != null
+        ? _intentOverlayService?.getOverlayValue(
+              widget._deviceId!,
+              widget._channelId!,
+              widget._propertyId!,
+            )
+        : null;
+
+    // Use overlay value if available, otherwise use actual value
+    final displayValue = overlayValue is num
+        ? overlayValue.toDouble()
+        : (_brightness ?? min);
+
     return ColoredSlider(
-      value: _brightness ?? min,
+      value: displayValue,
       min: min,
       max: max,
-      enabled: widget._channel.on,
+      enabled: widget._channel.on && !isLocked,
       vertical: widget._vertical,
       trackWidth: widget._elementMaxSize,
       showThumb: false,
@@ -818,6 +888,8 @@ class _BrightnessChannelState extends State<BrightnessChannel> {
 
 class ColorChannel extends StatefulWidget {
   final LightChannelView _channel;
+  final String? _deviceId;
+  final String? _channelId;
   final double? _elementMaxSize;
   final bool _vertical;
 
@@ -826,10 +898,14 @@ class ColorChannel extends StatefulWidget {
   const ColorChannel({
     super.key,
     required LightChannelView channel,
+    String? deviceId,
+    String? channelId,
     double? elementMaxSize,
     bool vertical = false,
     ValueChanged<Color>? onValueChanged,
   })  : _channel = channel,
+        _deviceId = deviceId,
+        _channelId = channelId,
         _elementMaxSize = elementMaxSize,
         _vertical = vertical,
         _onValueChanged = onValueChanged;
@@ -839,13 +915,29 @@ class ColorChannel extends StatefulWidget {
 }
 
 class _ColorChannelState extends State<ColorChannel> {
+  IntentOverlayService? _intentOverlayService;
   late double _color;
 
   @override
   void initState() {
     super.initState();
-
+    try {
+      _intentOverlayService = locator<IntentOverlayService>();
+      _intentOverlayService?.addListener(_onIntentChanged);
+    } catch (_) {}
     _initializeWidget();
+  }
+
+  @override
+  void dispose() {
+    _intentOverlayService?.removeListener(_onIntentChanged);
+    super.dispose();
+  }
+
+  void _onIntentChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -861,11 +953,39 @@ class _ColorChannelState extends State<ColorChannel> {
 
   @override
   Widget build(BuildContext context) {
+    // Check if any color property is locked (hue is the main one)
+    final hueProp = widget._channel.hueProp;
+    final isLocked = widget._deviceId != null &&
+            widget._channelId != null &&
+            hueProp != null
+        ? _intentOverlayService?.isPropertyLocked(
+              widget._deviceId!,
+              widget._channelId!,
+              hueProp.id,
+            ) ?? false
+        : false;
+
+    // Get overlay hue value if locked
+    final overlayHue = widget._deviceId != null &&
+            widget._channelId != null &&
+            hueProp != null
+        ? _intentOverlayService?.getOverlayValue(
+              widget._deviceId!,
+              widget._channelId!,
+              hueProp.id,
+            )
+        : null;
+
+    // Use overlay value if available, otherwise use actual color
+    final displayValue = overlayHue is num
+        ? (overlayHue.toDouble() / 360.0).clamp(0.0, 1.0)
+        : _color;
+
     return ColoredSlider(
-      value: _color,
+      value: displayValue,
       min: 0.0,
       max: 1.0,
-      enabled: widget._channel.on,
+      enabled: widget._channel.on && !isLocked,
       vertical: widget._vertical,
       trackWidth: widget._elementMaxSize,
       onValueChanged: (double value) {
@@ -911,6 +1031,9 @@ class _ColorChannelState extends State<ColorChannel> {
 
 class TemperatureChannel extends StatefulWidget {
   final LightChannelView _channel;
+  final String? _deviceId;
+  final String? _channelId;
+  final String? _propertyId;
   final double? _elementMaxSize;
   final bool _vertical;
 
@@ -919,10 +1042,16 @@ class TemperatureChannel extends StatefulWidget {
   const TemperatureChannel({
     super.key,
     required LightChannelView channel,
+    String? deviceId,
+    String? channelId,
+    String? propertyId,
     double? elementMaxSize,
     bool vertical = false,
     ValueChanged<double>? onValueChanged,
   })  : _channel = channel,
+        _deviceId = deviceId,
+        _channelId = channelId,
+        _propertyId = propertyId,
         _elementMaxSize = elementMaxSize,
         _vertical = vertical,
         _onValueChanged = onValueChanged;
@@ -935,6 +1064,7 @@ class _TemperatureChannelState extends State<TemperatureChannel> {
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
+  IntentOverlayService? _intentOverlayService;
 
   late ChannelPropertyView? _property;
 
@@ -943,8 +1073,23 @@ class _TemperatureChannelState extends State<TemperatureChannel> {
   @override
   void initState() {
     super.initState();
-
+    try {
+      _intentOverlayService = locator<IntentOverlayService>();
+      _intentOverlayService?.addListener(_onIntentChanged);
+    } catch (_) {}
     _initializeWidget();
+  }
+
+  @override
+  void dispose() {
+    _intentOverlayService?.removeListener(_onIntentChanged);
+    super.dispose();
+  }
+
+  void _onIntentChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -980,11 +1125,38 @@ class _TemperatureChannelState extends State<TemperatureChannel> {
       }
     }
 
+    // Check if property is locked by intent
+    final isLocked = widget._deviceId != null &&
+            widget._channelId != null &&
+            widget._propertyId != null
+        ? _intentOverlayService?.isPropertyLocked(
+              widget._deviceId!,
+              widget._channelId!,
+              widget._propertyId!,
+            ) ?? false
+        : false;
+
+    // Get overlay value if locked
+    final overlayValue = widget._deviceId != null &&
+            widget._channelId != null &&
+            widget._propertyId != null
+        ? _intentOverlayService?.getOverlayValue(
+              widget._deviceId!,
+              widget._channelId!,
+              widget._propertyId!,
+            )
+        : null;
+
+    // Use overlay value if available, otherwise use actual value
+    final displayValue = overlayValue is num
+        ? overlayValue.toDouble()
+        : (_temperature ?? min);
+
     return ColoredSlider(
-      value: _temperature ?? min,
+      value: displayValue,
       min: min,
       max: max,
-      enabled: widget._channel.on,
+      enabled: widget._channel.on && !isLocked,
       vertical: widget._vertical,
       trackWidth: widget._elementMaxSize,
       onValueChanged: (double value) {
@@ -1034,6 +1206,9 @@ class _TemperatureChannelState extends State<TemperatureChannel> {
 
 class WhiteChannel extends StatefulWidget {
   final LightChannelView _channel;
+  final String? _deviceId;
+  final String? _channelId;
+  final String? _propertyId;
   final double? _elementMaxSize;
   final bool _vertical;
 
@@ -1042,10 +1217,16 @@ class WhiteChannel extends StatefulWidget {
   const WhiteChannel({
     super.key,
     required LightChannelView channel,
+    String? deviceId,
+    String? channelId,
+    String? propertyId,
     double? elementMaxSize,
     bool vertical = false,
     ValueChanged<double>? onValueChanged,
   })  : _channel = channel,
+        _deviceId = deviceId,
+        _channelId = channelId,
+        _propertyId = propertyId,
         _elementMaxSize = elementMaxSize,
         _vertical = vertical,
         _onValueChanged = onValueChanged;
@@ -1058,6 +1239,7 @@ class _WhiteChannelState extends State<WhiteChannel> {
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
+  IntentOverlayService? _intentOverlayService;
 
   late ChannelPropertyView? _property;
 
@@ -1066,8 +1248,23 @@ class _WhiteChannelState extends State<WhiteChannel> {
   @override
   void initState() {
     super.initState();
-
+    try {
+      _intentOverlayService = locator<IntentOverlayService>();
+      _intentOverlayService?.addListener(_onIntentChanged);
+    } catch (_) {}
     _initializeWidget();
+  }
+
+  @override
+  void dispose() {
+    _intentOverlayService?.removeListener(_onIntentChanged);
+    super.dispose();
+  }
+
+  void _onIntentChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -1103,11 +1300,38 @@ class _WhiteChannelState extends State<WhiteChannel> {
       }
     }
 
+    // Check if property is locked by intent
+    final isLocked = widget._deviceId != null &&
+            widget._channelId != null &&
+            widget._propertyId != null
+        ? _intentOverlayService?.isPropertyLocked(
+              widget._deviceId!,
+              widget._channelId!,
+              widget._propertyId!,
+            ) ?? false
+        : false;
+
+    // Get overlay value if locked
+    final overlayValue = widget._deviceId != null &&
+            widget._channelId != null &&
+            widget._propertyId != null
+        ? _intentOverlayService?.getOverlayValue(
+              widget._deviceId!,
+              widget._channelId!,
+              widget._propertyId!,
+            )
+        : null;
+
+    // Use overlay value if available, otherwise use actual value
+    final displayValue = overlayValue is num
+        ? overlayValue.toDouble()
+        : (_white ?? min);
+
     return ColoredSlider(
-      value: _white ?? min,
+      value: displayValue,
       min: min,
       max: max,
-      enabled: widget._channel.on,
+      enabled: widget._channel.on && !isLocked,
       vertical: widget._vertical,
       trackWidth: widget._elementMaxSize,
       showThumb: false,
@@ -1778,6 +2002,45 @@ class PropertyValueHelper {
       }
 
       return res;
+    } catch (e) {
+      if (!context.mounted) return false;
+
+      AlertBar.showError(
+        context,
+        message: localizations.action_failed,
+      );
+    }
+
+    return false;
+  }
+
+  Future<bool> setMultiplePropertyValues(
+    BuildContext context,
+    List<PropertyCommandItem> properties,
+  ) async {
+    final localizations = AppLocalizations.of(context)!;
+
+    try {
+      // Build context for batch command
+      final commandContext = PropertyCommandContext(
+        origin: 'panel.device',
+        displayId: _displayRepository?.display?.id,
+      );
+
+      // Send batch command
+      final success = await _service.setMultiplePropertyValues(
+        properties: properties,
+        context: commandContext,
+      );
+
+      if (!success && context.mounted) {
+        AlertBar.showError(
+          context,
+          message: localizations.action_failed,
+        );
+      }
+
+      return success;
     } catch (e) {
       if (!context.mounted) return false;
 

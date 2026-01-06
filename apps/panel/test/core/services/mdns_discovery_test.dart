@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fastybird_smart_panel/core/services/mdns_discovery.dart';
+import 'package:fastybird_smart_panel/core/models/discovered_backend.dart';
 
 void main() {
   group('MdnsDiscoveryService', () {
@@ -54,7 +55,13 @@ void main() {
       test('should return unmodifiable list', () {
         final backends = service.discoveredBackends;
         expect(
-          () => backends.add(null as dynamic),
+          () => backends.add(
+            const DiscoveredBackend(
+              name: 'Test',
+              host: '127.0.0.1',
+              port: 3000,
+            ),
+          ),
           throwsUnsupportedError,
         );
       });
