@@ -559,37 +559,57 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       }
     }
 
-    return GestureDetector(
-      onLongPress: () => _openRoleDetail(context, group, devicesService),
-      child: ButtonTileBox(
-        onTap: isToggling ? null : () => _toggleRole(context, group, devicesService),
-        isOn: isOn,
-        isDisabled: isToggling,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ButtonTileIcon(
-              icon: _getRoleIconData(group.role),
-              onTap: isToggling ? null : () => _toggleRole(context, group, devicesService),
-              isOn: isOn,
-              isLoading: isToggling,
-            ),
-            AppSpacings.spacingSmVertical,
-            ButtonTileTitle(
-              title: _getRoleName(context, group.role),
-              isOn: isOn,
-              isLoading: isToggling,
-            ),
-            AppSpacings.spacingXsVertical,
-            ButtonTileSubTitle(
-              subTitle: Text(subtitleText),
-              isOn: isOn,
-              isLoading: isToggling,
-            ),
-          ],
-        ),
+    return ButtonTileBox(
+      // Tap on tile (outside icon) opens detail
+      onTap: isToggling
+          ? null
+          : () => _openRoleTileDetail(context, group, devicesService),
+      isOn: isOn,
+      isDisabled: isToggling,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ButtonTileIcon(
+            icon: _getRoleIconData(group.role),
+            // Tap on icon toggles the role
+            onTap: isToggling ? null : () => _toggleRole(context, group, devicesService),
+            isOn: isOn,
+            isLoading: isToggling,
+          ),
+          AppSpacings.spacingSmVertical,
+          ButtonTileTitle(
+            title: _getRoleName(context, group.role),
+            isOn: isOn,
+            isLoading: isToggling,
+          ),
+          AppSpacings.spacingXsVertical,
+          ButtonTileSubTitle(
+            subTitle: Text(subtitleText),
+            isOn: isOn,
+            isLoading: isToggling,
+          ),
+        ],
       ),
     );
+  }
+
+  /// Open role detail or device detail based on number of devices in the group
+  void _openRoleTileDetail(
+    BuildContext context,
+    _RoleGroup group,
+    DevicesService devicesService,
+  ) {
+    if (group.targets.length == 1) {
+      // Single device - open device detail
+      final target = group.targets.first;
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is LightingDeviceView) {
+        _openDeviceDetail(context, device);
+      }
+    } else {
+      // Multiple devices - open role detail
+      _openRoleDetail(context, group, devicesService);
+    }
   }
 
   /// Get icon data for a role (used with ButtonTileIcon)
@@ -840,67 +860,64 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final roomName = _spacesService?.getSpace(_roomId)?.name;
     final displayName = _stripRoomName(device.name, roomName);
 
-    return GestureDetector(
-      onLongPress: () => _openDeviceDetail(context, device),
-      child: ButtonTileBox(
-        onTap: isToggling
-            ? null
-            : () => _toggleDevice(context, target, channel, devicesService),
-        isOn: isOn,
-        isDisabled: isToggling,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            ButtonTileIcon(
-              icon: hasFailure
-                  ? MdiIcons.alertCircleOutline
-                  : (isOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline),
-              onTap: isToggling
-                  ? null
-                  : () => _toggleDevice(context, target, channel, devicesService),
-              isOn: isOn,
-              isLoading: isToggling,
-              iconColor: hasFailure ? AppColorsLight.warning : null,
-            ),
-            AppSpacings.spacingMdHorizontal,
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ButtonTileTitle(
-                    title: displayName,
-                    isOn: isOn,
-                    isLoading: isToggling,
-                  ),
-                  AppSpacings.spacingXsVertical,
-                  ButtonTileSubTitle(
-                    subTitle: Row(
-                      children: [
-                        Text(stateText),
-                        if (showBrightness) ...[
-                          AppSpacings.spacingSmHorizontal,
-                          Icon(
-                            MdiIcons.brightnessPercent,
-                            size: AppFontSize.extraSmall,
-                            color: Theme.of(context).brightness == Brightness.light
-                                ? AppTextColorLight.placeholder
-                                : AppTextColorDark.placeholder,
-                          ),
-                          const SizedBox(width: 2),
-                          Text('$brightness%'),
-                        ],
+    return ButtonTileBox(
+      // Tap on tile (outside icon) opens device detail
+      onTap: isToggling ? null : () => _openDeviceDetail(context, device),
+      isOn: isOn,
+      isDisabled: isToggling,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          ButtonTileIcon(
+            icon: hasFailure
+                ? MdiIcons.alertCircleOutline
+                : (isOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline),
+            // Tap on icon toggles the device
+            onTap: isToggling
+                ? null
+                : () => _toggleDevice(context, target, channel, devicesService),
+            isOn: isOn,
+            isLoading: isToggling,
+            iconColor: hasFailure ? AppColorsLight.warning : null,
+          ),
+          AppSpacings.spacingMdHorizontal,
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ButtonTileTitle(
+                  title: displayName,
+                  isOn: isOn,
+                  isLoading: isToggling,
+                ),
+                AppSpacings.spacingXsVertical,
+                ButtonTileSubTitle(
+                  subTitle: Row(
+                    children: [
+                      Text(stateText),
+                      if (showBrightness) ...[
+                        AppSpacings.spacingSmHorizontal,
+                        Icon(
+                          MdiIcons.brightnessPercent,
+                          size: AppFontSize.extraSmall,
+                          color: Theme.of(context).brightness == Brightness.light
+                              ? AppTextColorLight.placeholder
+                              : AppTextColorDark.placeholder,
+                        ),
+                        const SizedBox(width: 2),
+                        Text('$brightness%'),
                       ],
-                    ),
-                    isOn: isOn,
-                    isLoading: isToggling,
+                    ],
                   ),
-                ],
-              ),
+                  isOn: isOn,
+                  isLoading: isToggling,
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
