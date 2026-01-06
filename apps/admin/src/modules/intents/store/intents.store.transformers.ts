@@ -62,10 +62,15 @@ export const transformIntentResponse = (response: IIntentRes): IIntent => {
 	// Remove intentId if present (we use id)
 	delete transformed.intentId;
 
-	// Ensure context has defaults
-	if (!transformed.context) {
-		transformed.context = { origin: null, displayId: null, spaceId: null, roleKey: null };
-	}
+	// Ensure context has all required fields with null defaults
+	// Backend only sends truthy values, so we need to fill in missing fields
+	const ctx = transformed.context as Record<string, unknown> | null | undefined;
+	transformed.context = {
+		origin: ctx?.origin ?? null,
+		displayId: ctx?.displayId ?? null,
+		spaceId: ctx?.spaceId ?? null,
+		roleKey: ctx?.roleKey ?? null,
+	};
 
 	const parsed = IntentSchema.safeParse(transformed);
 
