@@ -1,16 +1,28 @@
 import { Module, forwardRef } from '@nestjs/common';
 
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
+import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 
+import { IntentsController } from './controllers/intents.controller';
 import { UpdateIntentsConfigDto } from './dto/update-config.dto';
-import { INTENTS_MODULE_NAME } from './intents.constants';
+import {
+	INTENTS_MODULE_API_TAG_DESCRIPTION,
+	INTENTS_MODULE_API_TAG_NAME,
+	INTENTS_MODULE_NAME,
+} from './intents.constants';
 import { IntentsConfigModel } from './models/config.model';
 import { IntentsService } from './services/intents.service';
 
+@ApiTag({
+	tagName: INTENTS_MODULE_NAME,
+	displayName: INTENTS_MODULE_API_TAG_NAME,
+	description: INTENTS_MODULE_API_TAG_DESCRIPTION,
+})
 @Module({
 	imports: [forwardRef(() => ExtensionsModule)],
+	controllers: [IntentsController],
 	providers: [IntentsService],
 	exports: [IntentsService],
 })

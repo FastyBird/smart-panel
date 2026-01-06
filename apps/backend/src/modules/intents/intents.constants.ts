@@ -1,5 +1,10 @@
 export const INTENTS_MODULE_NAME = 'intents-module';
 
+export const INTENTS_MODULE_API_TAG_NAME = 'Intents module';
+
+export const INTENTS_MODULE_API_TAG_DESCRIPTION =
+	'Intent orchestration for coordinating UI updates across multiple clients, preventing anti-jitter issues and enabling optimistic updates.';
+
 /**
  * Socket.IO event types for intent lifecycle
  */

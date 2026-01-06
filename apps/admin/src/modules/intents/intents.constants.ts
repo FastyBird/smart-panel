@@ -24,7 +24,15 @@ export enum IntentTargetStatus {
 }
 
 export enum IntentType {
+	// Device operations
+	LIGHT_TOGGLE = 'light.toggle',
+	LIGHT_SET_BRIGHTNESS = 'light.setBrightness',
+	LIGHT_SET_COLOR = 'light.setColor',
+	LIGHT_SET_COLOR_TEMP = 'light.setColorTemp',
+	LIGHT_SET_WHITE = 'light.setWhite',
 	DEVICE_SET_PROPERTY = 'device.setProperty',
+
+	// Scene operations
 	SCENE_RUN = 'scene.run',
 }
 

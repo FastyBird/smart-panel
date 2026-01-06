@@ -112,12 +112,21 @@ export class IntentsService implements OnModuleInit, OnModuleDestroy {
 
 	/**
 	 * Find active (pending) intents matching query criteria
+	 * If no filters are provided, returns all active intents
 	 */
 	findActiveIntents(query: { deviceId?: string; spaceId?: string }): IntentRecord[] {
 		const results: IntentRecord[] = [];
+		const hasFilters = !!(query.deviceId || query.spaceId);
 
 		for (const intent of this.intents.values()) {
 			if (intent.status !== IntentStatus.PENDING) {
+				continue;
+			}
+
+			// If no filters, return all active intents
+			if (!hasFilters) {
+				results.push(intent);
+
 				continue;
 			}
 

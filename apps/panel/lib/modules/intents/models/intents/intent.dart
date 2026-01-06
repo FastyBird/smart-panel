@@ -20,16 +20,29 @@ enum IntentTargetStatus {
 
 /// Type of intent action
 enum IntentType {
+  // Device operations
+  lightToggle,
+  lightSetBrightness,
+  lightSetColor,
+  lightSetColorTemp,
+  lightSetWhite,
   deviceSetProperty,
+
+  // Scene operations
   sceneRun,
 }
 
 /// Origin of the intent (where it was initiated from)
 enum IntentOrigin {
-  panel,
+  panelSystemRoom,
+  panelSystemMaster,
+  panelSystemEntry,
+  panelDashboardTiles,
+  panelDashboardCards,
+  panelDevice,
+  panelScenes,
   admin,
   api,
-  system,
 }
 
 /// Parse IntentStatus from string
@@ -69,8 +82,21 @@ IntentTargetStatus parseIntentTargetStatus(String status) {
 /// Parse IntentType from string
 IntentType parseIntentType(String type) {
   switch (type) {
+    // Device operations
+    case 'light.toggle':
+      return IntentType.lightToggle;
+    case 'light.setBrightness':
+      return IntentType.lightSetBrightness;
+    case 'light.setColor':
+      return IntentType.lightSetColor;
+    case 'light.setColorTemp':
+      return IntentType.lightSetColorTemp;
+    case 'light.setWhite':
+      return IntentType.lightSetWhite;
     case 'device.setProperty':
       return IntentType.deviceSetProperty;
+
+    // Scene operations
     case 'scene.run':
       return IntentType.sceneRun;
     default:
@@ -82,14 +108,24 @@ IntentType parseIntentType(String type) {
 IntentOrigin? parseIntentOrigin(String? origin) {
   if (origin == null) return null;
   switch (origin) {
-    case 'panel':
-      return IntentOrigin.panel;
+    case 'panel.system.room':
+      return IntentOrigin.panelSystemRoom;
+    case 'panel.system.master':
+      return IntentOrigin.panelSystemMaster;
+    case 'panel.system.entry':
+      return IntentOrigin.panelSystemEntry;
+    case 'panel.dashboard.tiles':
+      return IntentOrigin.panelDashboardTiles;
+    case 'panel.dashboard.cards':
+      return IntentOrigin.panelDashboardCards;
+    case 'panel.device':
+      return IntentOrigin.panelDevice;
+    case 'panel.scenes':
+      return IntentOrigin.panelScenes;
     case 'admin':
       return IntentOrigin.admin;
     case 'api':
       return IntentOrigin.api;
-    case 'system':
-      return IntentOrigin.system;
     default:
       return null;
   }
@@ -427,7 +463,7 @@ class IntentModel extends Model {
       id: localIntentId,
       type: IntentType.deviceSetProperty,
       scope: IntentScope(),
-      context: IntentContext(origin: IntentOrigin.panel),
+      context: IntentContext(origin: IntentOrigin.panelDevice),
       targets: [
         IntentTarget(
           deviceId: deviceId,

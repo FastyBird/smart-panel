@@ -11,10 +11,12 @@ import {
 	IsString,
 	IsUUID,
 	Min,
+	Validate,
 	ValidateNested,
 } from 'class-validator';
 
 import { INTENT_ORIGINS, IntentOrigin, IntentStatus, IntentTargetStatus, IntentType } from '../intents.constants';
+import { IntentTargetValidator } from '../validators/intent-target.validator';
 
 /**
  * Represents a target affected by an intent.
@@ -222,6 +224,7 @@ export class CreateIntentInput {
 
 	@IsArray()
 	@ValidateNested({ each: true })
+	@Validate(IntentTargetValidator, { each: true })
 	@Type(() => IntentTarget)
 	targets: IntentTarget[];
 
