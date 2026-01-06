@@ -114,6 +114,83 @@ const double _temperatureTolerance = 100.0;
 /// Tolerance for white comparison (±)
 const double _whiteTolerance = 5.0;
 
+/// Threshold for detecting mixed state (difference must exceed this)
+const int _mixedThreshold = 10;
+
+/// Result of checking if a role's devices are synced or mixed
+class RoleMixedState {
+  /// True if on/off states differ across devices
+  final bool onStateMixed;
+
+  /// True if brightness values differ (among brightness-capable ON devices)
+  final bool brightnessMixed;
+
+  /// True if hue values differ (among color-capable ON devices)
+  final bool hueMixed;
+
+  /// True if temperature values differ (among temp-capable ON devices)
+  final bool temperatureMixed;
+
+  /// True if white values differ (among white-capable ON devices)
+  final bool whiteMixed;
+
+  /// Number of devices that are ON
+  final int onCount;
+
+  /// Number of devices that are OFF
+  final int offCount;
+
+  /// Min/max brightness among ON devices with brightness
+  final int? minBrightness;
+  final int? maxBrightness;
+
+  /// Min/max hue among ON devices with color
+  final double? minHue;
+  final double? maxHue;
+
+  /// Min/max temperature among ON devices with temp
+  final double? minTemperature;
+  final double? maxTemperature;
+
+  /// Min/max white among ON devices with white
+  final int? minWhite;
+  final int? maxWhite;
+
+  const RoleMixedState({
+    this.onStateMixed = false,
+    this.brightnessMixed = false,
+    this.hueMixed = false,
+    this.temperatureMixed = false,
+    this.whiteMixed = false,
+    this.onCount = 0,
+    this.offCount = 0,
+    this.minBrightness,
+    this.maxBrightness,
+    this.minHue,
+    this.maxHue,
+    this.minTemperature,
+    this.maxTemperature,
+    this.minWhite,
+    this.maxWhite,
+  });
+
+  /// True if ANY aspect is mixed (role is not synced)
+  bool get isMixed =>
+      onStateMixed || brightnessMixed || hueMixed || temperatureMixed || whiteMixed;
+
+  /// True if all devices are synced
+  bool get isSynced => !isMixed;
+
+  /// True if all devices are ON
+  bool get allOn => offCount == 0 && onCount > 0;
+
+  /// True if all devices are OFF
+  bool get allOff => onCount == 0 && offCount > 0;
+
+  /// True if at least one device is ON
+  bool get anyOn => onCount > 0;
+}
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -1262,35 +1339,6 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     return totalCount == 0 || matchCount == totalCount;
   }
 
-  /// Check if brightness values are "mixed" (differ by more than threshold)
-  /// Returns (isMixed, minValue, maxValue)
-  (bool, int, int) _getBrightnessMixedState(List<LightTargetView> targets, {int threshold = 10}) {
-    int? minBrightness;
-    int? maxBrightness;
-
-    for (final target in targets) {
-      final device = _devicesService?.getDevice(target.deviceId);
-      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
-        final channel = device.lightChannels.firstWhere(
-          (c) => c.id == target.channelId,
-          orElse: () => device.lightChannels.first,
-        );
-        if (channel.hasBrightness && channel.on) {
-          final brightness = channel.brightness;
-          minBrightness = minBrightness == null ? brightness : (brightness < minBrightness ? brightness : minBrightness);
-          maxBrightness = maxBrightness == null ? brightness : (brightness > maxBrightness ? brightness : maxBrightness);
-        }
-      }
-    }
-
-    if (minBrightness == null || maxBrightness == null) {
-      return (false, 0, 0);
-    }
-
-    final isMixed = (maxBrightness - minBrightness) > threshold;
-    return (isMixed, minBrightness, maxBrightness);
-  }
-
   /// Check if ALL devices have hue within tolerance of target value
   bool _allHueMatch(List<LightTargetView> targets, double targetValue, double tolerance) {
     int matchCount = 0;
@@ -1365,6 +1413,125 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     }
 
     return totalCount == 0 || matchCount == totalCount;
+  }
+
+  /// Get comprehensive mixed state for a role's devices
+  ///
+  /// Checks all capabilities and returns detailed info about what's mixed:
+  /// - On/off state: mixed if some devices are on and some off
+  /// - Brightness: mixed if values differ by more than threshold (among ON devices)
+  /// - Hue: mixed if values differ by more than threshold (among ON devices)
+  /// - Temperature: mixed if values differ by more than threshold (among ON devices)
+  /// - White: mixed if values differ by more than threshold (among ON devices)
+  RoleMixedState _getRoleMixedState(List<LightTargetView> targets) {
+    int onCount = 0;
+    int offCount = 0;
+
+    // Track min/max for each capability
+    int? minBrightness, maxBrightness;
+    double? minHue, maxHue;
+    double? minTemperature, maxTemperature;
+    int? minWhite, maxWhite;
+
+    for (final target in targets) {
+      final device = _devicesService?.getDevice(target.deviceId);
+      if (device is! LightingDeviceView || device.lightChannels.isEmpty) continue;
+
+      final channel = device.lightChannels.firstWhere(
+        (c) => c.id == target.channelId,
+        orElse: () => device.lightChannels.first,
+      );
+
+      // Count on/off state
+      if (channel.on) {
+        onCount++;
+      } else {
+        offCount++;
+      }
+
+      // Only check property values for ON devices
+      if (!channel.on) continue;
+
+      // Brightness
+      if (channel.hasBrightness) {
+        final brightness = channel.brightness;
+        minBrightness = minBrightness == null
+            ? brightness
+            : (brightness < minBrightness ? brightness : minBrightness);
+        maxBrightness = maxBrightness == null
+            ? brightness
+            : (brightness > maxBrightness ? brightness : maxBrightness);
+      }
+
+      // Hue (color)
+      if (channel.hasHue) {
+        final hue = channel.hue;
+        minHue = minHue == null ? hue : (hue < minHue ? hue : minHue);
+        maxHue = maxHue == null ? hue : (hue > maxHue ? hue : maxHue);
+      }
+
+      // Temperature
+      if (channel.hasTemperature) {
+        final tempProp = channel.temperatureProp;
+        if (tempProp?.value is NumberValueType) {
+          final temp = (tempProp!.value as NumberValueType).value.toDouble();
+          minTemperature = minTemperature == null
+              ? temp
+              : (temp < minTemperature ? temp : minTemperature);
+          maxTemperature = maxTemperature == null
+              ? temp
+              : (temp > maxTemperature ? temp : maxTemperature);
+        }
+      }
+
+      // White
+      if (channel.hasColorWhite) {
+        final white = channel.colorWhite;
+        minWhite = minWhite == null
+            ? white
+            : (white < minWhite ? white : minWhite);
+        maxWhite = maxWhite == null
+            ? white
+            : (white > maxWhite ? white : maxWhite);
+      }
+    }
+
+    // Determine mixed state for each capability
+    final onStateMixed = onCount > 0 && offCount > 0;
+
+    final brightnessMixed = minBrightness != null &&
+        maxBrightness != null &&
+        (maxBrightness - minBrightness) > _mixedThreshold;
+
+    final hueMixed = minHue != null &&
+        maxHue != null &&
+        (maxHue - minHue) > _mixedThreshold;
+
+    final temperatureMixed = minTemperature != null &&
+        maxTemperature != null &&
+        (maxTemperature - minTemperature) > _mixedThreshold * 10; // temp uses larger threshold
+
+    final whiteMixed = minWhite != null &&
+        maxWhite != null &&
+        (maxWhite - minWhite) > _mixedThreshold;
+
+    return RoleMixedState(
+      onStateMixed: onStateMixed,
+      brightnessMixed: brightnessMixed,
+      hueMixed: hueMixed,
+      temperatureMixed: temperatureMixed,
+      whiteMixed: whiteMixed,
+      onCount: onCount,
+      offCount: offCount,
+      minBrightness: minBrightness,
+      maxBrightness: maxBrightness,
+      minHue: minHue,
+      maxHue: maxHue,
+      minTemperature: minTemperature,
+      maxTemperature: maxTemperature,
+      minWhite: minWhite,
+      maxWhite: maxWhite,
+    );
   }
 
   void _onDevicesDataChanged() {
@@ -1700,8 +1867,60 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
   ) {
     final localizations = AppLocalizations.of(context)!;
 
-    // For simple on/off lights, show ON/OFF text
+    // Get comprehensive mixed state for the role
+    final roleMixedState = _getRoleMixedState(targets);
+
+    // For simple on/off lights, show ON/OFF text (but check for mixed on/off state)
     if (!hasBrightness) {
+      // Check if on/off states are mixed (some on, some off)
+      if (roleMixedState.onStateMixed) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Icon(
+                  MdiIcons.tuneVariant,
+                  size: _screenService.scale(
+                    40,
+                    density: _visualDensityService.density,
+                  ),
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTextColorLight.regular
+                      : AppTextColorDark.regular,
+                ),
+                SizedBox(width: AppSpacings.pSm),
+                Text(
+                  '${roleMixedState.onCount}/${roleMixedState.onCount + roleMixedState.offCount}',
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? AppTextColorLight.regular
+                        : AppTextColorDark.regular,
+                    fontSize: _screenService.scale(
+                      45,
+                      density: _visualDensityService.density,
+                    ),
+                    fontFamily: 'DIN1451',
+                    fontWeight: FontWeight.w100,
+                    height: 1.0,
+                  ),
+                ),
+              ],
+            ),
+            Text(
+              localizations.light_state_mixed_description,
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppTextColorLight.regular
+                    : AppTextColorDark.regular,
+                fontSize: AppFontSize.base,
+              ),
+            ),
+          ],
+        );
+      }
+
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1740,7 +1959,6 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // 2. If state is IDLE and devices are mixed, show "Mixed" with range
     // 3. If state is IDLE and devices are synced, show average brightness
 
-    final (devicesMixed, minBrightness, maxBrightness) = _getBrightnessMixedState(targets);
     final isLocked = _brightnessState.isLocked;
     final isSettling = _brightnessState.isSettling;
     final isMixedState = _brightnessState.isMixed;
@@ -1752,11 +1970,29 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
     // Show mixed indicator when:
     // - State is MIXED (settling timed out with partial convergence)
-    // - Or state is IDLE and devices have different values
-    final showMixed = (isMixedState || (devicesMixed && !isLocked)) && anyOn;
+    // - Or state is IDLE and devices have different values (on/off OR brightness)
+    final devicesMixed = roleMixedState.onStateMixed || roleMixedState.brightnessMixed;
+    final showMixed = (isMixedState || (devicesMixed && !isLocked)) && roleMixedState.anyOn;
 
     // Show settling indicator when actively waiting for devices
-    final showSettling = isSettling && anyOn;
+    final showSettling = isSettling && roleMixedState.anyOn;
+
+    // Determine what range to show for mixed state
+    final minBrightness = roleMixedState.minBrightness ?? 0;
+    final maxBrightness = roleMixedState.maxBrightness ?? 100;
+
+    // Determine mixed display text:
+    // - If on/off mixed: show "2/3" (on count / total)
+    // - If only brightness mixed: show "20-50%"
+    final String mixedDisplayText;
+    final String? mixedDisplaySuffix;
+    if (roleMixedState.onStateMixed) {
+      mixedDisplayText = '${roleMixedState.onCount}/${roleMixedState.onCount + roleMixedState.offCount}';
+      mixedDisplaySuffix = null;
+    } else {
+      mixedDisplayText = '$minBrightness-$maxBrightness';
+      mixedDisplaySuffix = '%';
+    }
 
     // For brightness-capable lights, show brightness percentage or mixed indicator
     return Column(
@@ -1779,7 +2015,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
               ),
               SizedBox(width: AppSpacings.pSm),
               Text(
-                '$minBrightness-$maxBrightness',
+                mixedDisplayText,
                 style: TextStyle(
                   color: Theme.of(context).brightness == Brightness.light
                       ? AppTextColorLight.regular
@@ -1793,21 +2029,22 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
                   height: 1.0,
                 ),
               ),
-              Text(
-                '%',
-                style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.light
-                      ? AppTextColorLight.regular
-                      : AppTextColorDark.regular,
-                  fontSize: _screenService.scale(
-                    20,
-                    density: _visualDensityService.density,
+              if (mixedDisplaySuffix != null)
+                Text(
+                  mixedDisplaySuffix,
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? AppTextColorLight.regular
+                        : AppTextColorDark.regular,
+                    fontSize: _screenService.scale(
+                      20,
+                      density: _visualDensityService.density,
+                    ),
+                    fontFamily: 'DIN1451',
+                    fontWeight: FontWeight.w100,
+                    height: 1.0,
                   ),
-                  fontFamily: 'DIN1451',
-                  fontWeight: FontWeight.w100,
-                  height: 1.0,
                 ),
-              ),
             ],
           )
         else
