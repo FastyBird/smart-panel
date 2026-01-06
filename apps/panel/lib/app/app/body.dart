@@ -187,6 +187,11 @@ class _AppBodyState extends State<AppBody> {
             _isSwipingVertically = false;
             _swipeActionTriggered = false;
           },
+          onPanCancel: () {
+            _swipeStartPosition = null;
+            _isSwipingVertically = false;
+            _swipeActionTriggered = false;
+          },
           child: child,
         );
       },
