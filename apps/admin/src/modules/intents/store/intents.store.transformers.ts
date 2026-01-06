@@ -24,9 +24,6 @@ export interface IIntentRes {
 	intent_id: string;
 	request_id: string | null;
 	type: string;
-	scope: {
-		space_id: string | null;
-	} | null;
 	context: {
 		origin: string | null;
 		display_id: string | null;
@@ -65,10 +62,7 @@ export const transformIntentResponse = (response: IIntentRes): IIntent => {
 	// Remove intentId if present (we use id)
 	delete transformed.intentId;
 
-	// Ensure scope and context have defaults
-	if (!transformed.scope) {
-		transformed.scope = { spaceId: null };
-	}
+	// Ensure context has defaults
 	if (!transformed.context) {
 		transformed.context = { origin: null, displayId: null, spaceId: null, roleKey: null };
 	}

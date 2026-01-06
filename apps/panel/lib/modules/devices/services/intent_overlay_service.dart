@@ -207,7 +207,7 @@ class IntentOverlayService extends ChangeNotifier {
     final overlay = IntentOverlay(
       intentId: localIntentId,
       type: 'device.setProperty',
-      scope: IntentScope(),
+      spaceId: null,
       targets: [
         IntentTarget(
           deviceId: deviceId,

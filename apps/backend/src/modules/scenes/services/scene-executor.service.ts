@@ -105,7 +105,7 @@ export class SceneExecutorService {
 		// Create the intent for scene execution
 		const intent = this.intentsService.createIntent({
 			type: IntentType.SCENE_RUN,
-			scope: {
+			context: {
 				spaceId: scene.primarySpaceId || undefined,
 			},
 			targets,

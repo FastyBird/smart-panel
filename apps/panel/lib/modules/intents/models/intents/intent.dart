@@ -247,29 +247,8 @@ class IntentTargetResult {
   }
 }
 
-/// Optional scope context for an intent.
-/// This represents "where it applies" - in SmartPanel this is always a Space.
-class IntentScope {
-  final String? _spaceId;
-
-  IntentScope({
-    String? spaceId,
-  }) : _spaceId = spaceId != null ? UuidUtils.validateUuid(spaceId) : null;
-
-  String? get spaceId => _spaceId;
-
-  factory IntentScope.fromJson(Map<String, dynamic>? json) {
-    if (json == null) {
-      return IntentScope();
-    }
-    return IntentScope(
-      spaceId: json['space_id'] as String?,
-    );
-  }
-}
-
 /// Context information about where and how the intent was initiated.
-/// This is NOT authoritative business logic; it is metadata for UI/overlay/debugging.
+/// Contains both authoritative business logic (spaceId) and metadata for UI/overlay/debugging.
 class IntentContext {
   final IntentOrigin? _origin;
   final String? _displayId;
@@ -292,6 +271,8 @@ class IntentContext {
 
   IntentOrigin? get origin => _origin;
   String? get displayId => _displayId;
+  /// Authoritative space identifier - "where it applies" (room/zone).
+  /// In SmartPanel this is always a Space. Used for filtering intents by space.
   String? get spaceId => _spaceId;
   String? get roleKey => _roleKey;
   Map<String, dynamic>? get extra => _extra;
@@ -314,7 +295,6 @@ class IntentContext {
 class IntentModel extends Model {
   final String? _requestId;
   final IntentType _type;
-  final IntentScope _scope;
   final IntentContext _context;
   final List<IntentTarget> _targets;
   final dynamic _value;
@@ -328,7 +308,6 @@ class IntentModel extends Model {
     required super.id,
     String? requestId,
     required IntentType type,
-    required IntentScope scope,
     required IntentContext context,
     required List<IntentTarget> targets,
     required dynamic value,
@@ -338,10 +317,9 @@ class IntentModel extends Model {
     required DateTime expiresAt,
     DateTime? completedAt,
     List<IntentTargetResult>? results,
-  })  : _requestId =
+  })  :         _requestId =
             requestId != null ? UuidUtils.validateUuid(requestId) : null,
         _type = type,
-        _scope = scope,
         _context = context,
         _targets = targets,
         _value = value,
@@ -353,7 +331,6 @@ class IntentModel extends Model {
 
   String? get requestId => _requestId;
   IntentType get type => _type;
-  IntentScope get scope => _scope;
   IntentContext get context => _context;
   List<IntentTarget> get targets => _targets;
   dynamic get value => _value;
@@ -428,7 +405,6 @@ class IntentModel extends Model {
       id: json['intent_id'] as String,
       requestId: json['request_id'] as String?,
       type: parseIntentType(json['type'] as String),
-      scope: IntentScope.fromJson(json['scope'] as Map<String, dynamic>?),
       context: IntentContext.fromJson(json['context'] as Map<String, dynamic>?),
       targets: targets,
       value: json['value'],
@@ -462,7 +438,6 @@ class IntentModel extends Model {
     return IntentModel(
       id: localIntentId,
       type: IntentType.deviceSetProperty,
-      scope: IntentScope(),
       context: IntentContext(origin: IntentOrigin.panelDevice),
       targets: [
         IntentTarget(

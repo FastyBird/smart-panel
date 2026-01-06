@@ -10,7 +10,6 @@ IntentView buildIntentView(IntentModel intent) {
     id: intent.id,
     requestId: intent.requestId,
     type: intent.type,
-    scope: intent.scope,
     context: intent.context,
     targets: intent.targets,
     value: intent.value,

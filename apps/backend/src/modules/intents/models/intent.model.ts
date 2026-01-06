@@ -81,19 +81,8 @@ export class IntentTargetResult {
 }
 
 /**
- * Optional scope context for an intent.
- * This is "where it applies" (room/zone). In SmartPanel this is always a Space.
- */
-export class IntentScope {
-	@Expose({ name: 'space_id' })
-	@IsOptional()
-	@IsUUID()
-	spaceId?: string;
-}
-
-/**
  * Context information about where and how the intent was initiated.
- * This is NOT authoritative business logic; it is metadata for UI/overlay/debugging.
+ * Contains both authoritative business logic (spaceId) and metadata for UI/overlay/debugging.
  */
 export class IntentContext {
 	@Expose()
@@ -107,8 +96,8 @@ export class IntentContext {
 	displayId?: string;
 
 	/**
-	 * Optional hint for system pages: which space view initiated the action.
-	 * Not authoritative; can be omitted (e.g., dashboard tiles without room context).
+	 * Authoritative space identifier - "where it applies" (room/zone).
+	 * In SmartPanel this is always a Space. Used for filtering intents by space.
 	 */
 	@Expose({ name: 'space_id' })
 	@IsOptional()
@@ -146,12 +135,6 @@ export class IntentRecord {
 	@Expose()
 	@IsEnum(IntentType)
 	type: IntentType;
-
-	@Expose()
-	@IsOptional()
-	@ValidateNested()
-	@Type(() => IntentScope)
-	scope?: IntentScope;
 
 	@Expose()
 	@IsOptional()
@@ -214,11 +197,6 @@ export class CreateIntentInput {
 
 	@IsOptional()
 	@ValidateNested()
-	@Type(() => IntentScope)
-	scope?: IntentScope;
-
-	@IsOptional()
-	@ValidateNested()
 	@Type(() => IntentContext)
 	context?: IntentContext;
 
@@ -252,12 +230,6 @@ export class IntentEventPayload {
 	@Expose()
 	@IsEnum(IntentType)
 	type: IntentType;
-
-	@Expose()
-	@IsOptional()
-	@ValidateNested()
-	@Type(() => IntentScope)
-	scope?: IntentScope;
 
 	@Expose()
 	@IsOptional()

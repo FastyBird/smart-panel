@@ -102,15 +102,15 @@ describe('IntentsService', () => {
 			expect(intent.expiresAt.getTime()).toBeLessThanOrEqual(afterCreate + 3000);
 		});
 
-		it('should store intent with scope', () => {
+		it('should store intent with context spaceId', () => {
 			const intent = service.createIntent({
 				type: IntentType.LIGHT_SET_BRIGHTNESS,
 				targets: [{ deviceId: 'device-1' }],
 				value: 50,
-				scope: { spaceId: 'space-1' },
+				context: { spaceId: 'space-1' },
 			});
 
-			expect(intent.scope?.spaceId).toBe('space-1');
+			expect(intent.context?.spaceId).toBe('space-1');
 		});
 
 		it('should store intent with context', () => {
@@ -259,21 +259,21 @@ describe('IntentsService', () => {
 				type: IntentType.LIGHT_SET_BRIGHTNESS,
 				targets: [{ deviceId: 'device-1' }],
 				value: 50,
-				scope: { spaceId: 'space-1' },
+				context: { spaceId: 'space-1' },
 			});
 
 			service.createIntent({
 				type: IntentType.LIGHT_SET_COLOR,
 				targets: [{ deviceId: 'device-2' }],
 				value: '#FF0000',
-				scope: { spaceId: 'space-2' },
+				context: { spaceId: 'space-2' },
 			});
 
 			service.createIntent({
 				type: IntentType.SCENE_RUN,
 				targets: [{ deviceId: 'device-3' }],
 				value: {},
-				scope: { spaceId: 'space-3' },
+				context: { spaceId: 'space-3' },
 			});
 		});
 
@@ -288,7 +288,7 @@ describe('IntentsService', () => {
 			const results = service.findActiveIntents({ spaceId: 'space-1' });
 
 			expect(results).toHaveLength(1);
-			expect(results[0].scope?.spaceId).toBe('space-1');
+			expect(results[0].context?.spaceId).toBe('space-1');
 		});
 
 		it('should return empty array when no matches found', () => {

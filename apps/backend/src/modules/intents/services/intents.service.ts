@@ -47,7 +47,6 @@ export class IntentsService implements OnModuleInit, OnModuleDestroy {
 			id: uuid(),
 			requestId: input.requestId,
 			type: input.type,
-			scope: input.scope,
 			context: input.context,
 			targets: input.targets,
 			value: input.value,
@@ -141,8 +140,8 @@ export class IntentsService implements OnModuleInit, OnModuleDestroy {
 				}
 			}
 
-			// Match by spaceId (scope)
-			if (query.spaceId && intent.scope?.spaceId === query.spaceId) {
+			// Match by spaceId (from context)
+			if (query.spaceId && intent.context?.spaceId === query.spaceId) {
 				results.push(intent);
 			}
 		}
@@ -239,16 +238,11 @@ export class IntentsService implements OnModuleInit, OnModuleDestroy {
 			payload.request_id = intent.requestId;
 		}
 
-		if (intent.scope?.spaceId) {
-			payload.scope = { space_id: intent.scope.spaceId };
-		}
-
 		if (intent.context) {
 			const ctx: Record<string, unknown> = {};
 
 			if (intent.context.origin) ctx.origin = intent.context.origin;
 			if (intent.context.displayId) ctx.display_id = intent.context.displayId;
-			if (intent.context.spaceId) ctx.space_id = intent.context.spaceId;
 			if (intent.context.roleKey) ctx.role_key = intent.context.roleKey;
 			if (intent.context.extra) ctx.extra = intent.context.extra;
 

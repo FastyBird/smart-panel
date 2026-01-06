@@ -138,31 +138,12 @@ class IntentTargetResult {
   }
 }
 
-/// Optional scope context for an intent.
-/// This represents "where it applies" - in SmartPanel this is always a Space.
-class IntentScope {
-  final String? spaceId;
-
-  IntentScope({
-    this.spaceId,
-  });
-
-  factory IntentScope.fromJson(Map<String, dynamic>? json) {
-    if (json == null) {
-      return IntentScope();
-    }
-    return IntentScope(
-      spaceId: json['space_id'] as String?,
-    );
-  }
-}
-
 /// Represents an active intent from the backend
 class IntentOverlay {
   final String intentId;
   final String? requestId;
   final String type;
-  final IntentScope scope;
+  final String? spaceId;
   final List<IntentTarget> targets;
   final dynamic value;
   final IntentStatus status;
@@ -176,7 +157,7 @@ class IntentOverlay {
     required this.intentId,
     this.requestId,
     required this.type,
-    required this.scope,
+    this.spaceId,
     required this.targets,
     required this.value,
     required this.status,
@@ -202,11 +183,18 @@ class IntentOverlay {
           .toList();
     }
 
+    // Extract spaceId from context (preferred) or scope (backwards compatibility)
+    final String? spaceId = json['context'] != null && json['context'] is Map
+        ? (json['context'] as Map<String, dynamic>)['space_id'] as String?
+        : json['scope'] != null && json['scope'] is Map
+            ? (json['scope'] as Map<String, dynamic>)['space_id'] as String?
+            : null;
+
     return IntentOverlay(
       intentId: json['intent_id'] as String,
       requestId: json['request_id'] as String?,
       type: json['type'] as String,
-      scope: IntentScope.fromJson(json['scope'] as Map<String, dynamic>?),
+      spaceId: spaceId,
       targets: targets,
       value: json['value'],
       status: parseIntentStatus(json['status'] as String),

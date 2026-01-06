@@ -18,10 +18,6 @@ export const IntentTargetResultSchema = z.object({
 	error: z.string().nullable(),
 });
 
-export const IntentScopeSchema = z.object({
-	spaceId: z.string().uuid().nullable(),
-});
-
 export const IntentContextSchema = z.object({
 	origin: z.enum(INTENT_ORIGINS as [string, ...string[]]).nullable(),
 	displayId: z.string().uuid().nullable(),
@@ -33,7 +29,6 @@ export const IntentSchema = z.object({
 	id: z.string().uuid(),
 	requestId: z.string().uuid().nullable(),
 	type: z.nativeEnum(IntentType),
-	scope: IntentScopeSchema,
 	context: IntentContextSchema,
 	targets: z.array(IntentTargetSchema),
 	value: z.unknown().transform((val) => val ?? null),

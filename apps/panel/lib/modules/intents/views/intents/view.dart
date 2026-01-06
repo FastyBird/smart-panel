@@ -5,7 +5,6 @@ class IntentView {
   final String _id;
   final String? _requestId;
   final IntentType _type;
-  final IntentScope _scope;
   final IntentContext _context;
   final List<IntentTarget> _targets;
   final dynamic _value;
@@ -21,7 +20,6 @@ class IntentView {
     required String id,
     String? requestId,
     required IntentType type,
-    required IntentScope scope,
     required IntentContext context,
     required List<IntentTarget> targets,
     required dynamic value,
@@ -35,7 +33,6 @@ class IntentView {
   })  : _id = id,
         _requestId = requestId,
         _type = type,
-        _scope = scope,
         _context = context,
         _targets = targets,
         _value = value,
@@ -50,7 +47,6 @@ class IntentView {
   String get id => _id;
   String? get requestId => _requestId;
   IntentType get type => _type;
-  IntentScope get scope => _scope;
   IntentContext get context => _context;
   List<IntentTarget> get targets => _targets;
   dynamic get value => _value;

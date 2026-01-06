@@ -18,10 +18,6 @@ export interface IIntentTargetResult {
 	error: string | null;
 }
 
-export interface IIntentScope {
-	spaceId: string | null;
-}
-
 export interface IIntentContext {
 	origin: IntentOrigin | null;
 	displayId: string | null;
@@ -33,7 +29,6 @@ export interface IIntent {
 	id: string;
 	requestId: string | null;
 	type: IntentType;
-	scope: IIntentScope;
 	context: IIntentContext;
 	targets: IIntentTarget[];
 	value: unknown;
