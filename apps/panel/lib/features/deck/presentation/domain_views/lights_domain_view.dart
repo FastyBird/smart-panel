@@ -676,6 +676,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             orElse: () => device.lightChannels.first,
           );
 
+          // Skip if channel wasn't found (fallback was used) to avoid property/channel mismatch
+          if (channel.id != target.channelId) continue;
+
           final success = await devicesService.setPropertyValue(
             channel.onProp.id,
             newState,
@@ -3031,6 +3034,10 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
             (c) => c.id == target.channelId,
             orElse: () => device.lightChannels.first,
           );
+
+          // Skip if channel wasn't found (fallback was used) to avoid property/channel mismatch
+          if (channel.id != target.channelId) continue;
+
           final onProp = channel.onProp;
           final success = await devicesService.setPropertyValue(onProp.id, newState);
           if (success) {
@@ -3081,6 +3088,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
             (c) => c.id == target.channelId,
             orElse: () => device.lightChannels.first,
           );
+
+          // Skip if channel wasn't found (fallback was used) to avoid property/channel mismatch
+          if (channel.id != target.channelId) continue;
 
           final brightnessProp = channel.brightnessProp;
           if (brightnessProp != null) {
@@ -3138,6 +3148,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
             orElse: () => device.lightChannels.first,
           );
 
+          // Skip if channel wasn't found (fallback was used) to avoid property/channel mismatch
+          if (channel.id != target.channelId) continue;
+
           final hueProp = channel.hueProp;
           if (hueProp != null) {
             final success = await devicesService.setPropertyValue(
@@ -3192,6 +3205,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
             orElse: () => device.lightChannels.first,
           );
 
+          // Skip if channel wasn't found (fallback was used) to avoid property/channel mismatch
+          if (channel.id != target.channelId) continue;
+
           final tempProp = channel.temperatureProp;
           if (tempProp != null) {
             final success = await devicesService.setPropertyValue(
@@ -3245,6 +3261,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
             (c) => c.id == target.channelId,
             orElse: () => device.lightChannels.first,
           );
+
+          // Skip if channel wasn't found (fallback was used) to avoid property/channel mismatch
+          if (channel.id != target.channelId) continue;
 
           final whiteProp = channel.colorWhiteProp;
           if (whiteProp != null) {
