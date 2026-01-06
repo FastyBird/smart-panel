@@ -243,6 +243,7 @@ export class IntentsService implements OnModuleInit, OnModuleDestroy {
 
 			if (intent.context.origin) ctx.origin = intent.context.origin;
 			if (intent.context.displayId) ctx.display_id = intent.context.displayId;
+			if (intent.context.spaceId) ctx.space_id = intent.context.spaceId;
 			if (intent.context.roleKey) ctx.role_key = intent.context.roleKey;
 			if (intent.context.extra) ctx.extra = intent.context.extra;
 
