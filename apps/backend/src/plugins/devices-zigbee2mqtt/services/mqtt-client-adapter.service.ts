@@ -1,7 +1,6 @@
 import * as mqtt from 'mqtt';
 
 import { Injectable } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import {
@@ -10,7 +9,7 @@ import {
 	Z2M_IGNORED_DEVICE_TYPES,
 } from '../devices-zigbee2mqtt.constants';
 import {
-	Z2mAdapterEventType,
+	Z2mAdapterCallbacks,
 	Z2mBridgeEvent,
 	Z2mBridgeState,
 	Z2mDevice,
@@ -47,7 +46,15 @@ export class Z2mMqttClientAdapterService {
 	// Used as the source of truth for current device values during adoption and preview
 	private readonly stateCache = new Map<string, Record<string, unknown>>();
 
-	constructor(private readonly eventEmitter: EventEmitter2) {}
+	// Callbacks for adapter events (set by the service)
+	private callbacks: Z2mAdapterCallbacks = {};
+
+	/**
+	 * Set callbacks for adapter events
+	 */
+	setCallbacks(callbacks: Z2mAdapterCallbacks): void {
+		this.callbacks = callbacks;
+	}
 
 	/**
 	 * Get the base topic
@@ -156,21 +163,12 @@ export class Z2mMqttClientAdapterService {
 					// Subscribe to all necessary topics
 					this.subscribeToTopics();
 
-					this.eventEmitter.emit(Z2mAdapterEventType.ADAPTER_CONNECTED, {
-						timestamp: new Date(),
-					});
-
 					resolve();
 				});
 
 				this.client.on('error', (error) => {
 					this.logger.error('MQTT client error', {
 						message: error.message,
-					});
-
-					this.eventEmitter.emit(Z2mAdapterEventType.ADAPTER_ERROR, {
-						error,
-						timestamp: new Date(),
 					});
 
 					if (!this.connected) {
@@ -186,11 +184,6 @@ export class Z2mMqttClientAdapterService {
 					this.logger.log('Disconnected from MQTT broker');
 
 					if (wasConnected) {
-						this.eventEmitter.emit(Z2mAdapterEventType.ADAPTER_DISCONNECTED, {
-							reason: 'connection closed',
-							timestamp: new Date(),
-						});
-
 						// Schedule reconnection
 						this.scheduleReconnect();
 					}
@@ -422,14 +415,10 @@ export class Z2mMqttClientAdapterService {
 
 			if (this.bridgeOnline && !wasOnline) {
 				this.logger.log('Zigbee2MQTT bridge is online');
-				this.eventEmitter.emit(Z2mAdapterEventType.BRIDGE_ONLINE, {
-					timestamp: new Date(),
-				});
+				this.callbacks.onBridgeOnline?.();
 			} else if (!this.bridgeOnline && wasOnline) {
 				this.logger.warn('Zigbee2MQTT bridge is offline');
-				this.eventEmitter.emit(Z2mAdapterEventType.BRIDGE_OFFLINE, {
-					timestamp: new Date(),
-				});
+				this.callbacks.onBridgeOffline?.();
 			}
 		} catch {
 			// Try legacy format (just "online" or "offline" string)
@@ -439,14 +428,10 @@ export class Z2mMqttClientAdapterService {
 			if (this.bridgeOnline !== wasOnline) {
 				if (this.bridgeOnline) {
 					this.logger.log('Zigbee2MQTT bridge is online');
-					this.eventEmitter.emit(Z2mAdapterEventType.BRIDGE_ONLINE, {
-						timestamp: new Date(),
-					});
+					this.callbacks.onBridgeOnline?.();
 				} else {
 					this.logger.warn('Zigbee2MQTT bridge is offline');
-					this.eventEmitter.emit(Z2mAdapterEventType.BRIDGE_OFFLINE, {
-						timestamp: new Date(),
-					});
+					this.callbacks.onBridgeOffline?.();
 				}
 			}
 		}
@@ -524,16 +509,14 @@ export class Z2mMqttClientAdapterService {
 			// This ensures we have initial values even if Z2M hasn't sent state updates
 			this.requestMissingStates();
 
-			// Emit event with all devices
-			this.eventEmitter.emit(Z2mAdapterEventType.DEVICES_RECEIVED, {
-				devices: devices.filter(
-					(d) =>
-						!Z2M_IGNORED_DEVICE_TYPES.includes(d.type as (typeof Z2M_IGNORED_DEVICE_TYPES)[number]) &&
-						d.supported &&
-						!d.disabled,
-				),
-				timestamp: new Date(),
-			});
+			// Invoke callback with filtered devices
+			const filteredDevices = devices.filter(
+				(d) =>
+					!Z2M_IGNORED_DEVICE_TYPES.includes(d.type as (typeof Z2M_IGNORED_DEVICE_TYPES)[number]) &&
+					d.supported &&
+					!d.disabled,
+			);
+			this.callbacks.onDevicesReceived?.(filteredDevices);
 		} catch (error) {
 			this.logger.error('Failed to parse bridge/devices message', {
 				message: error instanceof Error ? error.message : String(error),
@@ -568,11 +551,7 @@ export class Z2mMqttClientAdapterService {
 				case 'device_joined':
 				case 'device_announce':
 					this.logger.log(`Device joined: ${event.data.friendly_name}`);
-					this.eventEmitter.emit(Z2mAdapterEventType.DEVICE_JOINED, {
-						ieeeAddress: event.data.ieee_address,
-						friendlyName: event.data.friendly_name,
-						timestamp: new Date(),
-					});
+					this.callbacks.onDeviceJoined?.(event.data.ieee_address ?? '', event.data.friendly_name ?? '');
 					break;
 
 				case 'device_leave':
@@ -583,11 +562,7 @@ export class Z2mMqttClientAdapterService {
 						this.deviceRegistry.delete(event.data.friendly_name);
 					}
 
-					this.eventEmitter.emit(Z2mAdapterEventType.DEVICE_LEFT, {
-						ieeeAddress: event.data.ieee_address,
-						friendlyName: event.data.friendly_name,
-						timestamp: new Date(),
-					});
+					this.callbacks.onDeviceLeft?.(event.data.ieee_address ?? '', event.data.friendly_name ?? '');
 					break;
 
 				case 'device_interview':
@@ -629,12 +604,8 @@ export class Z2mMqttClientAdapterService {
 				this.logger.debug(`Updated cache for "${friendlyName}" (not yet in registry)`);
 			}
 
-			// Emit state changed event
-			this.eventEmitter.emit(Z2mAdapterEventType.DEVICE_STATE_CHANGED, {
-				friendlyName,
-				state,
-				timestamp: new Date(),
-			});
+			// Invoke callback for state change
+			this.callbacks.onDeviceStateChanged?.(friendlyName, state);
 		} catch (error) {
 			this.logger.warn(`Failed to parse state for device ${friendlyName}`, {
 				message: error instanceof Error ? error.message : String(error),
@@ -666,12 +637,8 @@ export class Z2mMqttClientAdapterService {
 				device.available = available;
 			}
 
-			// Emit availability changed event
-			this.eventEmitter.emit(Z2mAdapterEventType.DEVICE_AVAILABILITY_CHANGED, {
-				friendlyName,
-				available,
-				timestamp: new Date(),
-			});
+			// Invoke callback for availability change
+			this.callbacks.onDeviceAvailabilityChanged?.(friendlyName, available);
 		} catch (error) {
 			this.logger.warn(`Failed to parse availability for device ${friendlyName}`, {
 				message: error instanceof Error ? error.message : String(error),

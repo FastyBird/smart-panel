@@ -235,6 +235,18 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		this.server.emit('event', message);
 	}
 
+	// Internal event prefixes that should NOT be forwarded to WebSocket clients
+	// These are used for internal communication between adapter services
+	private static readonly INTERNAL_EVENT_PREFIXES = [
+		'z2m.', // Zigbee2MQTT adapter
+		'WledAdapter.', // WLED adapter
+		'WledMdns.', // WLED mDNS discovery
+		'shelly-v1:', // Shelly V1 adapter
+		'shelly-ng:', // Shelly NG adapter
+		'HaMdns.', // Home Assistant mDNS discovery
+		'ha.adapter.', // Home Assistant adapter
+	];
+
 	private handleBusEvent(event: string, payload: Record<string, any>): void {
 		if (!this.enabled) {
 			return;
@@ -243,6 +255,11 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		if (!this.server) {
 			this.logger.warn('WebSocket server is not initialized.');
 
+			return;
+		}
+
+		// Filter out internal adapter events that should not be sent to clients
+		if (WebsocketGateway.INTERNAL_EVENT_PREFIXES.some((prefix) => event.startsWith(prefix))) {
 			return;
 		}
 

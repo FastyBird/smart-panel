@@ -6,71 +6,21 @@
  */
 
 // =============================================================================
-// MQTT Adapter Events
+// MQTT Adapter Callbacks
 // =============================================================================
 
-export enum Z2mAdapterEventType {
-	BRIDGE_ONLINE = 'z2m.bridge.online',
-	BRIDGE_OFFLINE = 'z2m.bridge.offline',
-	DEVICES_RECEIVED = 'z2m.devices.received',
-	DEVICE_STATE_CHANGED = 'z2m.device.state_changed',
-	DEVICE_AVAILABILITY_CHANGED = 'z2m.device.availability_changed',
-	DEVICE_JOINED = 'z2m.device.joined',
-	DEVICE_LEFT = 'z2m.device.left',
-	ADAPTER_ERROR = 'z2m.adapter.error',
-	ADAPTER_CONNECTED = 'z2m.adapter.connected',
-	ADAPTER_DISCONNECTED = 'z2m.adapter.disconnected',
-}
-
-export interface Z2mBridgeOnlineEvent {
-	timestamp: Date;
-}
-
-export interface Z2mBridgeOfflineEvent {
-	timestamp: Date;
-}
-
-export interface Z2mDevicesReceivedEvent {
-	devices: Z2mDevice[];
-	timestamp: Date;
-}
-
-export interface Z2mDeviceStateChangedEvent {
-	friendlyName: string;
-	state: Record<string, unknown>;
-	timestamp: Date;
-}
-
-export interface Z2mDeviceAvailabilityChangedEvent {
-	friendlyName: string;
-	available: boolean;
-	timestamp: Date;
-}
-
-export interface Z2mDeviceJoinedEvent {
-	ieeeAddress: string;
-	friendlyName: string;
-	timestamp: Date;
-}
-
-export interface Z2mDeviceLeftEvent {
-	ieeeAddress: string;
-	friendlyName: string;
-	timestamp: Date;
-}
-
-export interface Z2mAdapterErrorEvent {
-	error: Error;
-	timestamp: Date;
-}
-
-export interface Z2mAdapterConnectedEvent {
-	timestamp: Date;
-}
-
-export interface Z2mAdapterDisconnectedEvent {
-	reason?: string;
-	timestamp: Date;
+/**
+ * Callback interface for MQTT adapter events
+ * Used for direct communication between adapter and service without event bus
+ */
+export interface Z2mAdapterCallbacks {
+	onBridgeOnline?: () => void | Promise<void>;
+	onBridgeOffline?: () => void | Promise<void>;
+	onDevicesReceived?: (devices: Z2mDevice[]) => void | Promise<void>;
+	onDeviceStateChanged?: (friendlyName: string, state: Record<string, unknown>) => void | Promise<void>;
+	onDeviceAvailabilityChanged?: (friendlyName: string, available: boolean) => void | Promise<void>;
+	onDeviceJoined?: (ieeeAddress: string, friendlyName: string) => void | Promise<void>;
+	onDeviceLeft?: (ieeeAddress: string, friendlyName: string) => void | Promise<void>;
 }
 
 // =============================================================================

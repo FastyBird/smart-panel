@@ -24,6 +24,7 @@ import { DISPLAYS_MODULE_PREFIX } from './modules/displays/displays.constants';
 import { DisplaysModule } from './modules/displays/displays.module';
 import { EXTENSIONS_MODULE_PREFIX } from './modules/extensions/extensions.constants';
 import { ExtensionsModule } from './modules/extensions/extensions.module';
+import { IntentsModule } from './modules/intents/intents.module';
 import { MdnsModule } from './modules/mdns/mdns.module';
 import { PlatformModule } from './modules/platform/platform.module';
 import { SCENES_MODULE_PREFIX } from './modules/scenes/scenes.constants';
@@ -244,6 +245,7 @@ export class AppModule {
 				WeatherModule,
 				WebsocketModule,
 				SwaggerModule,
+				IntentsModule,
 				MdnsModule,
 				DevicesThirdPartyPlugin,
 				DevicesHomeAssistantPlugin,

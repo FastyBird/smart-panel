@@ -10,6 +10,7 @@ import 'package:fastybird_smart_panel/modules/devices/repositories/channels.dart
 import 'package:fastybird_smart_panel/modules/devices/repositories/repository.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
 
 class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
   final SocketService _socketService;
@@ -206,9 +207,13 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
     ChannelPropertyModel property,
     Completer<bool> completer,
   ) async {
+    // Generate a unique request ID for tracking this command through the intent system
+    final requestId = const Uuid().v4();
+
     await _socketService.sendCommand(
       DevicesModuleConstants.channelPropertySetEvent,
       {
+        'request_id': requestId,
         'properties': [
           {
             'device': channel.device,
@@ -233,7 +238,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
         } else {
           if (kDebugMode) {
             debugPrint(
-              '[DEVICES MODULE][CHANNEL PROPERTIES] Successfully send command to backend for property: ${property.id}',
+              '[DEVICES MODULE][CHANNEL PROPERTIES] Successfully send command to backend for property: ${property.id}, requestId: $requestId',
             );
           }
 

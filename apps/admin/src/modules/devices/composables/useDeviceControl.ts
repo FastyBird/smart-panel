@@ -185,6 +185,9 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 					const result = await sendCommand(
 						EventType.CHANNEL_PROPERTY_SET,
 						{
+							context: {
+								origin: 'admin',
+							},
 							properties: [
 								{
 									device: id,

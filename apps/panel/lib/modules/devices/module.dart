@@ -84,6 +84,9 @@ class DevicesModuleService {
       validationRepository: _validationRepository,
     );
 
+    // Note: IntentOverlayService is now provided by the IntentsModule
+    // to avoid duplicate registrations and ensure single source of truth
+
     locator.registerSingleton(_devicesRepository);
     locator.registerSingleton(_deviceControlsRepository);
 

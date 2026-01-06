@@ -1,17 +1,17 @@
 /*
-eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/unbound-method,
+eslint-disable @typescript-eslint/no-unsafe-assignment,
 @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access,
-@typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-return
+@typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-return,
+@typescript-eslint/unbound-method
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Logger } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
-import { ShelliesAdapterEventType, ShellyDevice } from '../interfaces/shellies.interface';
+import { ShelliesAdapterCallbacks, ShellyDevice } from '../interfaces/shellies.interface';
 
 import { ShelliesAdapterService } from './shellies-adapter.service';
 
@@ -33,7 +33,13 @@ const mockShelliesLibrary = require('../lib/shellies');
 describe('ShelliesAdapterService', () => {
 	let service: ShelliesAdapterService;
 	let configService: jest.Mocked<ConfigService>;
-	let eventEmitter: jest.Mocked<EventEmitter2>;
+	let callbacks: {
+		onDeviceDiscovered: jest.Mock;
+		onDeviceChanged: jest.Mock;
+		onDeviceOffline: jest.Mock;
+		onDeviceOnline: jest.Mock;
+		onError: jest.Mock;
+	};
 
 	// Quiet logger noise
 	let logSpy: jest.SpyInstance;
@@ -71,12 +77,17 @@ describe('ShelliesAdapterService', () => {
 			}),
 		} as any;
 
-		// Mock EventEmitter2
-		eventEmitter = {
-			emit: jest.fn(),
-		} as any;
+		// Set up callbacks
+		callbacks = {
+			onDeviceDiscovered: jest.fn(),
+			onDeviceChanged: jest.fn(),
+			onDeviceOffline: jest.fn(),
+			onDeviceOnline: jest.fn(),
+			onError: jest.fn(),
+		};
 
-		service = new ShelliesAdapterService(configService, eventEmitter);
+		service = new ShelliesAdapterService(configService);
+		service.setCallbacks(callbacks as ShelliesAdapterCallbacks);
 	});
 
 	const makeShellyDevice = (id = 'shelly1pm-ABC123', type = 'SHSW-PM', host = '192.168.1.100'): Partial<ShellyDevice> =>
@@ -120,7 +131,7 @@ describe('ShelliesAdapterService', () => {
 			expect(mockShelliesLibrary.start).not.toHaveBeenCalled();
 		});
 
-		it('should emit error event if start fails', async () => {
+		it('should invoke error callback if start fails', async () => {
 			const error = new Error('Network error');
 			mockShelliesLibrary.start.mockImplementationOnce(() => {
 				throw error;
@@ -128,7 +139,7 @@ describe('ShelliesAdapterService', () => {
 
 			await expect(service.start()).rejects.toThrow('Network error');
 
-			expect(eventEmitter.emit).toHaveBeenCalledWith(ShelliesAdapterEventType.ERROR, error);
+			expect(callbacks.onError).toHaveBeenCalledWith(error);
 		});
 	});
 
@@ -176,7 +187,7 @@ describe('ShelliesAdapterService', () => {
 				enabled: true,
 			});
 
-			expect(eventEmitter.emit).toHaveBeenCalledWith(ShelliesAdapterEventType.DEVICE_DISCOVERED, {
+			expect(callbacks.onDeviceDiscovered).toHaveBeenCalledWith({
 				id: 'shelly1pm-ABC123',
 				type: 'SHSW-PM',
 				host: '192.168.1.100',
@@ -316,7 +327,7 @@ describe('ShelliesAdapterService', () => {
 	});
 
 	describe('Device event handlers', () => {
-		it('should emit change event when device property changes', async () => {
+		it('should invoke change callback when device property changes', async () => {
 			await service.start();
 
 			const device = makeShellyDevice('shelly1pm-ABC123');
@@ -328,7 +339,7 @@ describe('ShelliesAdapterService', () => {
 
 			changeHandler?.('relay0', true, false);
 
-			expect(eventEmitter.emit).toHaveBeenCalledWith(ShelliesAdapterEventType.DEVICE_CHANGED, {
+			expect(callbacks.onDeviceChanged).toHaveBeenCalledWith({
 				id: 'shelly1pm-ABC123',
 				property: 'relay0',
 				newValue: true,
@@ -336,7 +347,7 @@ describe('ShelliesAdapterService', () => {
 			});
 		});
 
-		it('should emit offline event when device goes offline', async () => {
+		it('should invoke offline callback when device goes offline', async () => {
 			await service.start();
 
 			const device = makeShellyDevice('shelly1pm-ABC123');
@@ -347,15 +358,14 @@ describe('ShelliesAdapterService', () => {
 
 			offlineHandler?.();
 
-			expect(eventEmitter.emit).toHaveBeenCalledWith(
-				ShelliesAdapterEventType.DEVICE_OFFLINE,
+			expect(callbacks.onDeviceOffline).toHaveBeenCalledWith(
 				expect.objectContaining({
 					id: 'shelly1pm-ABC123',
 				}),
 			);
 		});
 
-		it('should emit online event when device comes online', async () => {
+		it('should invoke online callback when device comes online', async () => {
 			await service.start();
 
 			const device = makeShellyDevice('shelly1pm-ABC123');
@@ -366,8 +376,7 @@ describe('ShelliesAdapterService', () => {
 
 			onlineHandler?.();
 
-			expect(eventEmitter.emit).toHaveBeenCalledWith(
-				ShelliesAdapterEventType.DEVICE_ONLINE,
+			expect(callbacks.onDeviceOnline).toHaveBeenCalledWith(
 				expect.objectContaining({
 					id: 'shelly1pm-ABC123',
 				}),

@@ -5,6 +5,9 @@ import { Injectable } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType } from '../../auth/auth.constants';
+import { DEFAULT_TTL_DEVICE_COMMAND, IntentTargetStatus, IntentType } from '../../intents/intents.constants';
+import { IntentContext, IntentTarget, IntentTargetResult } from '../../intents/models/intent.model';
+import { IntentsService } from '../../intents/services/intents.service';
 import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../../websocket/dto/client-user.dto';
 import { WebsocketNotAllowedException } from '../../websocket/websocket.exceptions';
@@ -26,6 +29,7 @@ export class PropertyCommandService {
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly platformRegistryService: PlatformRegistryService,
+		private readonly intentsService: IntentsService,
 	) {}
 
 	async handleInternal(
@@ -58,6 +62,55 @@ export class PropertyCommandService {
 			return { success: false, results: 'Invalid payload' };
 		}
 
+		// Extract request_id from payload for tracking (snake_case from client)
+		const requestId = (payload as { request_id?: string })?.request_id;
+
+		// Build intent targets with UUIDs (deviceId, channelId, propertyId)
+		const targets: IntentTarget[] = dtoInstance.properties.map((prop) => ({
+			deviceId: prop.device,
+			channelId: prop.channel,
+			propertyId: prop.property,
+		}));
+
+		// Determine intent type based on the first property (could be enhanced to detect property type)
+		const intentType = IntentType.DEVICE_SET_PROPERTY;
+
+		// Build a map of "device:deviceId:channelId:propertyId" -> value for multi-property support
+		// Using composite key with "device:" prefix for consistency with intent target key format
+		const valueMap: Record<string, unknown> = {};
+
+		for (const prop of dtoInstance.properties) {
+			const compositeKey = `device:${prop.device}:${prop.channel}:${prop.property}`;
+			valueMap[compositeKey] = prop.value;
+		}
+
+		// Transform context from DTO (snake_case) to IntentContext (camelCase)
+		let intentContext: IntentContext | undefined;
+
+		if (dtoInstance.context) {
+			intentContext = {
+				origin: dtoInstance.context.origin,
+				displayId: dtoInstance.context.display_id,
+				spaceId: dtoInstance.context.space_id,
+				roleKey: dtoInstance.context.role_key,
+				extra: dtoInstance.context.extra,
+			};
+		}
+
+		// Create the intent with the value map and optional requestId for tracking
+		const intent = this.intentsService.createIntent({
+			requestId,
+			type: intentType,
+			context: intentContext,
+			targets,
+			value: valueMap,
+			ttlMs: DEFAULT_TTL_DEVICE_COMMAND,
+		});
+
+		this.logger.log(
+			`Created intent ${intent.id} for ${targets.length} target(s)${requestId ? ` requestId=${requestId}` : ''}`,
+		);
+
 		// Group properties by device ID
 		const groupedProperties: Record<string, PropertyCommandValueDto[]> = {};
 
@@ -71,17 +124,60 @@ export class PropertyCommandService {
 
 		const results: Array<{ device: string; success: boolean; reason?: string }> = [];
 
-		// Process commands per device
-		for (const deviceId of Object.keys(groupedProperties)) {
-			const result = await this.processDeviceCommands(deviceId, groupedProperties[deviceId]);
+		try {
+			// Process commands per device
+			for (const deviceId of Object.keys(groupedProperties)) {
+				const result = await this.processDeviceCommands(deviceId, groupedProperties[deviceId]);
 
-			results.push(result);
+				results.push(result);
+			}
+
+			// Map results to IntentTargetResult format - create a result for each property
+			const intentResults: IntentTargetResult[] = [];
+
+			for (const prop of dtoInstance.properties) {
+				const deviceResult = results.find((r) => r.device === prop.device);
+
+				intentResults.push({
+					deviceId: prop.device,
+					channelId: prop.channel,
+					propertyId: prop.property,
+					status: deviceResult?.success ? IntentTargetStatus.SUCCESS : IntentTargetStatus.FAILED,
+					error: deviceResult?.reason,
+				});
+			}
+
+			// Complete the intent with results
+			this.intentsService.completeIntent(intent.id, intentResults);
+
+			this.logger.log(`Completed intent ${intent.id} with ${intentResults.length} result(s)`);
+
+			// Determine overall success
+			const overallSuccess = results.every((r) => r.success);
+
+			return { success: overallSuccess, results };
+		} catch (error) {
+			// Handle unexpected exceptions by completing the intent with failure
+			this.logger.error(
+				`Unexpected error processing commands: ${error instanceof Error ? error.message : String(error)}`,
+			);
+
+			// Build failure results for all targeted properties
+			const failedResults: IntentTargetResult[] = dtoInstance.properties.map((prop) => ({
+				deviceId: prop.device,
+				channelId: prop.channel,
+				propertyId: prop.property,
+				status: IntentTargetStatus.FAILED,
+				error: 'Internal error',
+			}));
+
+			// Complete the intent with failure status
+			this.intentsService.completeIntent(intent.id, failedResults);
+
+			this.logger.log(`Completed intent ${intent.id} with failure due to exception`);
+
+			return { success: false, results: 'Internal error' };
 		}
-
-		// Determine overall success
-		const overallSuccess = results.every((r) => r.success);
-
-		return { success: overallSuccess, results };
 	}
 
 	private async processDeviceCommands(

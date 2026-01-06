@@ -41,6 +41,7 @@ import { DevicesModule } from './modules/devices';
 import { DisplaysModule } from './modules/displays';
 import { ExtensionsModule, installRemoteExtensions, installStaticExtensions } from './modules/extensions';
 import { InfluxDbModule } from './modules/influxdb';
+import { IntentsModule } from './modules/intents';
 import { MdnsModule } from './modules/mdns';
 import { ScenesModule } from './modules/scenes';
 import { SpacesModule } from './modules/spaces';
@@ -143,6 +144,7 @@ app.use(WeatherModule, moduleOptions);
 app.use(MdnsModule, moduleOptions);
 app.use(ScenesModule, moduleOptions);
 app.use(InfluxDbModule, moduleOptions);
+app.use(IntentsModule, moduleOptions);
 
 // Plugins
 const pluginOptions: IModuleOptions = {

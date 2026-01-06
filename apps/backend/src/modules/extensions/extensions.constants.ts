@@ -4,6 +4,7 @@ import { DASHBOARD_MODULE_NAME } from '../dashboard/dashboard.constants';
 import { DEVICES_MODULE_NAME } from '../devices/devices.constants';
 import { DISPLAYS_MODULE_NAME } from '../displays/displays.constants';
 import { INFLUXDB_MODULE_NAME } from '../influxdb/influxdb.constants';
+import { INTENTS_MODULE_NAME } from '../intents/intents.constants';
 import { MDNS_MODULE_NAME } from '../mdns/mdns.constants';
 import { SCENES_MODULE_NAME } from '../scenes/scenes.constants';
 import { SPACES_MODULE_NAME } from '../spaces/spaces.constants';
@@ -39,6 +40,7 @@ export const NON_TOGGLEABLE_MODULES: readonly string[] = [
 	SYSTEM_MODULE_NAME,
 	USERS_MODULE_NAME,
 	WEATHER_MODULE_NAME,
+	INTENTS_MODULE_NAME,
 ] as const;
 
 export enum ExtensionKind {

@@ -6,6 +6,7 @@ import { ModulesTypeMapperService } from '../config/services/modules-type-mapper
 import { DevicesModule } from '../devices/devices.module';
 import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
+import { IntentsModule } from '../intents/intents.module';
 import { SpacesModule } from '../spaces/spaces.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
@@ -41,6 +42,7 @@ import { SceneExistsConstraintValidator } from './validators/scene-exists-constr
 		forwardRef(() => SystemModule),
 		forwardRef(() => DevicesModule),
 		forwardRef(() => SpacesModule),
+		forwardRef(() => IntentsModule),
 		WebsocketModule,
 	],
 	controllers: [ScenesController, SceneActionsController],

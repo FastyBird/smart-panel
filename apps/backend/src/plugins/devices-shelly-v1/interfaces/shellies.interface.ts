@@ -106,3 +106,15 @@ export enum ShelliesAdapterEventType {
 	DEVICE_ONLINE = 'shelly-v1:device:online',
 	ERROR = 'shelly-v1:error',
 }
+
+/**
+ * Callbacks for the Shellies adapter
+ * Used for internal plugin communication instead of event bus
+ */
+export interface ShelliesAdapterCallbacks {
+	onDeviceDiscovered?: (event: NormalizedDeviceEvent) => void | Promise<void>;
+	onDeviceChanged?: (event: NormalizedDeviceChangeEvent) => void | Promise<void>;
+	onDeviceOffline?: (event: NormalizedDeviceEvent) => void | Promise<void>;
+	onDeviceOnline?: (event: NormalizedDeviceEvent) => void | Promise<void>;
+	onError?: (error: Error) => void | Promise<void>;
+}

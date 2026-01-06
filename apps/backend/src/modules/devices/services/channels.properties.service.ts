@@ -250,12 +250,19 @@ export class ChannelsPropertiesService {
 
 		const repository: Repository<TProperty> = this.dataSource.getRepository(mapping.class);
 
+		// Check if any entity fields (non-value) are being changed
+		const entityFieldsChanged = Object.keys(omitBy(toInstance(mapping.class, dtoInstance), isUndefined)).some(
+			(key) => key !== 'value' && key !== 'type',
+		);
+
 		Object.assign(property, omitBy(toInstance(mapping.class, dtoInstance), isUndefined));
 
 		const raw = await repository.save(property as TProperty);
 
+		// Track if value actually changed
+		let valueChanged = false;
 		if (typeof updateDto.value !== 'undefined') {
-			await this.propertyValueService.write(raw, updateDto.value);
+			valueChanged = await this.propertyValueService.write(raw, updateDto.value);
 		}
 
 		let updatedProperty = (await this.getOneOrThrow(property.id)) as TProperty;
@@ -268,7 +275,10 @@ export class ChannelsPropertiesService {
 
 		this.logger.debug(`Successfully updated property with id=${updatedProperty.id}`);
 
-		this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_UPDATED, updatedProperty);
+		// Only emit event if entity fields changed or value actually changed
+		if (entityFieldsChanged || valueChanged) {
+			this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_UPDATED, updatedProperty);
+		}
 
 		return updatedProperty;
 	}

@@ -283,6 +283,14 @@ export class Z2mDeviceMapperService {
 					continue;
 				}
 
+				// Skip link_quality - handled separately with range normalization (Z2M 0-255 -> spec 0-100%)
+				if (
+					channel.category === ChannelCategory.DEVICE_INFORMATION &&
+					property.category === PropertyCategory.LINK_QUALITY
+				) {
+					continue;
+				}
+
 				const value = state[propertyIdentifier];
 
 				// Convert value to appropriate type based on property's data type

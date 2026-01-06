@@ -15,11 +15,7 @@ import { DevicesService } from '../../../modules/devices/services/devices.servic
 import { PluginServiceManagerService } from '../../../modules/extensions/services/plugin-service-manager.service';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME, DEVICES_ZIGBEE2MQTT_TYPE } from '../devices-zigbee2mqtt.constants';
 import { Zigbee2mqttDeviceEntity } from '../entities/devices-zigbee2mqtt.entity';
-import {
-	Z2mDeviceAvailabilityChangedEvent,
-	Z2mDeviceStateChangedEvent,
-	Z2mDevicesReceivedEvent,
-} from '../interfaces/zigbee2mqtt.interface';
+import { Z2mAdapterCallbacks, Z2mDevice } from '../interfaces/zigbee2mqtt.interface';
 import { Zigbee2mqttConfigModel } from '../models/config.model';
 
 import { Z2mDeviceMapperService } from './device-mapper.service';
@@ -34,6 +30,7 @@ describe('Zigbee2mqttService', () => {
 	let devicesService: jest.Mocked<DevicesService>;
 	let deviceConnectivityService: jest.Mocked<DeviceConnectivityService>;
 	let pluginServiceManager: jest.Mocked<PluginServiceManagerService>;
+	let capturedCallbacks: Z2mAdapterCallbacks;
 
 	// Quiet logger noise
 	let logSpy: jest.SpyInstance;
@@ -126,6 +123,9 @@ describe('Zigbee2mqttService', () => {
 						isConnected: jest.fn().mockReturnValue(false),
 						isBridgeOnline: jest.fn().mockReturnValue(false),
 						getRegisteredDevices: jest.fn().mockReturnValue([]),
+						setCallbacks: jest.fn().mockImplementation((callbacks: Z2mAdapterCallbacks) => {
+							capturedCallbacks = callbacks;
+						}),
 					},
 				},
 				{
@@ -321,34 +321,35 @@ describe('Zigbee2mqttService', () => {
 		});
 	});
 
-	describe('handleDevicesReceived', () => {
+	describe('callback: onDevicesReceived', () => {
 		it('should map devices when auto-add is enabled', async () => {
 			// Bridge must be online first for devices to be processed immediately
-			await service.handleBridgeOnline({ timestamp: new Date() });
+			capturedCallbacks.onBridgeOnline?.();
+			// Let the promise settle
+			await Promise.resolve();
 
-			const event: Z2mDevicesReceivedEvent = {
-				devices: [
-					{
-						ieee_address: '0x00158d00018255df',
-						type: 'Router',
-						friendly_name: 'living_room_light',
-						network_address: 12345,
-						supported: true,
-						disabled: false,
-						definition: {
-							model: 'LED1545G12',
-							vendor: 'IKEA',
-							description: 'TRADFRI LED bulb E26',
-							exposes: [{ type: 'light', features: [] }],
-						},
+			const devices: Z2mDevice[] = [
+				{
+					ieee_address: '0x00158d00018255df',
+					type: 'Router',
+					friendly_name: 'living_room_light',
+					network_address: 12345,
+					supported: true,
+					disabled: false,
+					definition: {
+						model: 'LED1545G12',
+						vendor: 'IKEA',
+						description: 'TRADFRI LED bulb E26',
+						exposes: [{ type: 'light', features: [] }],
 					},
-				],
-				timestamp: new Date(),
-			};
+				},
+			];
 
-			await service.handleDevicesReceived(event);
+			capturedCallbacks.onDevicesReceived?.(devices);
+			// Let the promise settle
+			await Promise.resolve();
 
-			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(event.devices[0], true);
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(devices[0], true);
 		});
 
 		it('should not map devices when auto-add is disabled and no sync pending', async () => {
@@ -358,69 +359,60 @@ describe('Zigbee2mqttService', () => {
 			} as unknown as Zigbee2mqttConfigModel);
 
 			// Bridge must be online first
-			await service.handleBridgeOnline({ timestamp: new Date() });
+			capturedCallbacks.onBridgeOnline?.();
+			// Let the promise settle
+			await Promise.resolve();
 
-			const event: Z2mDevicesReceivedEvent = {
-				devices: [
-					{
-						ieee_address: '0x00158d00018255df',
-						type: 'Router',
-						friendly_name: 'living_room_light',
-						network_address: 12345,
-						supported: true,
-						disabled: false,
-						definition: {
-							model: 'LED1545G12',
-							vendor: 'IKEA',
-							description: 'TRADFRI LED bulb E26',
-							exposes: [{ type: 'light', features: [] }],
-						},
+			const devices: Z2mDevice[] = [
+				{
+					ieee_address: '0x00158d00018255df',
+					type: 'Router',
+					friendly_name: 'living_room_light',
+					network_address: 12345,
+					supported: true,
+					disabled: false,
+					definition: {
+						model: 'LED1545G12',
+						vendor: 'IKEA',
+						description: 'TRADFRI LED bulb E26',
+						exposes: [{ type: 'light', features: [] }],
 					},
-				],
-				timestamp: new Date(),
-			};
+				},
+			];
 
-			await service.handleDevicesReceived(event);
+			capturedCallbacks.onDevicesReceived?.(devices);
+			// Let the promise settle
+			await Promise.resolve();
 
 			expect(deviceMapper.mapDevice).not.toHaveBeenCalled();
 		});
 	});
 
-	describe('handleDeviceStateChanged', () => {
+	describe('callback: onDeviceStateChanged', () => {
 		it('should update device state via mapper', async () => {
-			const event: Z2mDeviceStateChangedEvent = {
-				friendlyName: 'living_room_light',
-				state: { state: 'ON', brightness: 200 },
-				timestamp: new Date(),
-			};
+			const state = { state: 'ON', brightness: 200 };
 
-			await service.handleDeviceStateChanged(event);
+			capturedCallbacks.onDeviceStateChanged?.('living_room_light', state);
+			// Let the promise settle
+			await Promise.resolve();
 
-			expect(deviceMapper.updateDeviceState).toHaveBeenCalledWith('living_room_light', event.state);
+			expect(deviceMapper.updateDeviceState).toHaveBeenCalledWith('living_room_light', state);
 		});
 	});
 
-	describe('handleDeviceAvailabilityChanged', () => {
+	describe('callback: onDeviceAvailabilityChanged', () => {
 		it('should set device availability when online', async () => {
-			const event: Z2mDeviceAvailabilityChangedEvent = {
-				friendlyName: 'living_room_light',
-				available: true,
-				timestamp: new Date(),
-			};
-
-			await service.handleDeviceAvailabilityChanged(event);
+			capturedCallbacks.onDeviceAvailabilityChanged?.('living_room_light', true);
+			// Let the promise settle
+			await Promise.resolve();
 
 			expect(deviceMapper.setDeviceAvailability).toHaveBeenCalledWith('living_room_light', true);
 		});
 
 		it('should set device availability when offline', async () => {
-			const event: Z2mDeviceAvailabilityChangedEvent = {
-				friendlyName: 'living_room_light',
-				available: false,
-				timestamp: new Date(),
-			};
-
-			await service.handleDeviceAvailabilityChanged(event);
+			capturedCallbacks.onDeviceAvailabilityChanged?.('living_room_light', false);
+			// Let the promise settle
+			await Promise.resolve();
 
 			expect(deviceMapper.setDeviceAvailability).toHaveBeenCalledWith('living_room_light', false);
 		});

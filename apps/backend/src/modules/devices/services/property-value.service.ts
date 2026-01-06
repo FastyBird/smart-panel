@@ -13,10 +13,23 @@ export class PropertyValueService {
 
 	constructor(private readonly influxDbService: InfluxDbService) {}
 
-	async write(property: ChannelPropertyEntity, value: string | boolean | number): Promise<void> {
+	/**
+	 * Write property value to storage
+	 * @returns true if value changed, false if value was the same or invalid
+	 */
+	async write(property: ChannelPropertyEntity, value: string | boolean | number): Promise<boolean> {
 		if (this.valuesMap.has(property.id) && this.valuesMap.get(property.id) === value) {
 			// no change → skip Influx write
-			return;
+			return false;
+		}
+
+		// Validate value against format constraints
+		const validationError = this.validateValue(property, value);
+		if (validationError) {
+			this.logger.warn(
+				`Invalid value for property id=${property.id}: ${validationError}. Value=${JSON.stringify(value)}`,
+			);
+			return false;
 		}
 
 		const formattedValue: { stringValue?: string; numberValue?: number } = {};
@@ -44,14 +57,14 @@ export class PropertyValueService {
 			default:
 				this.logger.error(`Unsupported data type dataType=${property.dataType} id=${property.id}`);
 
-				return;
+				return false;
 		}
 
 		// Update local cache regardless of InfluxDB availability
 		this.valuesMap.set(property.id, value);
 
 		if (!this.influxDbService.isConnected()) {
-			return;
+			return true; // Value changed in cache
 		}
 
 		try {
@@ -73,6 +86,8 @@ export class PropertyValueService {
 				err.stack,
 			);
 		}
+
+		return true; // Value changed
 	}
 
 	async readLatest(property: ChannelPropertyEntity): Promise<string | number | boolean | null> {
@@ -177,5 +192,68 @@ export class PropertyValueService {
 				err.stack,
 			);
 		}
+	}
+
+	/**
+	 * Validate value against property format constraints
+	 * @returns error message if invalid, null if valid
+	 */
+	private validateValue(property: ChannelPropertyEntity, value: string | boolean | number): string | null {
+		const { dataType, format } = property;
+
+		// No format constraints defined - allow any value
+		if (!format || format.length === 0) {
+			return null;
+		}
+
+		switch (dataType) {
+			case DataTypeType.ENUM:
+				// For ENUM, format should be string[] of allowed values
+				if (format.every((item): item is string => typeof item === 'string')) {
+					const stringValue = String(value);
+					if (!format.includes(stringValue)) {
+						return `Value "${stringValue}" not in allowed values: [${format.join(', ')}]`;
+					}
+				}
+				break;
+
+			case DataTypeType.CHAR:
+			case DataTypeType.UCHAR:
+			case DataTypeType.SHORT:
+			case DataTypeType.USHORT:
+			case DataTypeType.INT:
+			case DataTypeType.UINT:
+			case DataTypeType.FLOAT: {
+				// For numeric types, format can be [min, max], [min, null], [null, max], or [min]
+				const numValue = Number(value);
+
+				if (isNaN(numValue)) {
+					return `Value "${value}" is not a valid number`;
+				}
+
+				const min = format.length >= 1 && typeof format[0] === 'number' ? format[0] : null;
+				const max = format.length >= 2 && typeof format[1] === 'number' ? format[1] : null;
+
+				if (min !== null && numValue < min) {
+					return `Value ${numValue} below minimum ${min}`;
+				}
+
+				if (max !== null && numValue > max) {
+					return `Value ${numValue} above maximum ${max}`;
+				}
+				break;
+			}
+
+			case DataTypeType.STRING:
+			case DataTypeType.BOOL:
+				// STRING and BOOL don't have format-based validation
+				break;
+
+			default:
+				// Unknown data type - skip validation
+				break;
+		}
+
+		return null;
 	}
 }

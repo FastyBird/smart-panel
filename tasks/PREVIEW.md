@@ -6,9 +6,9 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | Status | Count |
 |--------|-------|
-| Done | 79 |
+| Done | 80 |
 | Planned | 24 |
-| **Total** | **103** |
+| **Total** | **104** |
 
 ---
 
@@ -20,6 +20,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 |----|-------|-------|------|
 | EPIC-DISPLAY-ROLES-HOUSE-CONTROL | Display roles & House control | backend, admin, panel | large |
 | EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 | Display roles & House control v2 (refined specification) | backend, admin, panel | large |
+| EPIC-INTENTS-ORCHESTRATION | Backend Intent Orchestration + Panel Anti-Jitter | backend, admin, panel | large |
 | EPIC-PANEL-SPACES-DECK-INTENTS | Panel App Spaces + Deck + Intents architecture | panel | large |
 | EPIC-SCENES-MVP | Scenes module MVP (room-scoped scenes) | backend, admin, panel | large |
 | EPIC-SCENES-PLUGIN-MVP | Scenes module (plugin-based) MVP | backend, admin, panel | large |
@@ -184,6 +185,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | ID | Type | Status |
 |----|------|--------|
 | EPIC-DISPLAY-ROLES-HOUSE-CONTROL | epic | done |
+| EPIC-INTENTS-ORCHESTRATION | epic | done |
 | EPIC-SCENES-MVP | epic | done |
 | EPIC-SCENES-PLUGIN-MVP | epic | done |
 | EPIC-SPACES-FIRST-UX | epic | done |
@@ -251,6 +253,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | ID | Type | Status |
 |----|------|--------|
 | EPIC-DISPLAY-ROLES-HOUSE-CONTROL | epic | done |
+| EPIC-INTENTS-ORCHESTRATION | epic | done |
 | EPIC-SCENES-MVP | epic | done |
 | EPIC-SCENES-PLUGIN-MVP | epic | done |
 | EPIC-SPACES-FIRST-UX | epic | done |
@@ -300,6 +303,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | ID | Type | Status |
 |----|------|--------|
 | EPIC-DISPLAY-ROLES-HOUSE-CONTROL | epic | done |
+| EPIC-INTENTS-ORCHESTRATION | epic | done |
 | EPIC-SCENES-MVP | epic | done |
 | EPIC-SCENES-PLUGIN-MVP | epic | done |
 | EPIC-SPACES-FIRST-UX | epic | done |
@@ -505,7 +509,7 @@ tasks/
 │   ├── FEATURE-ONBOARDING-WIZARD.md
 │   ├── FEATURE-PANEL-IDLE-MODE-SPACE-AWARE.md
 │   ├── FEATURE-PANEL-SENSOR-DEVICE-PAGE.md
-│   ├── panel_room_system_pages_epic_and_tasks.md
+│   ├── PANEL-ROOM-SYSTEM-PAGES-EPIC-AND-TASKS.md
 │   ├── FEATURE-PLUGIN-HA-ADOPTION-IMPROVEMENTS.md
 │   ├── FEATURE-PLUGIN-HA-AUTO-MAP.md
 │   ├── FEATURE-PLUGIN-MATTER.md
@@ -562,4 +566,4 @@ tasks/
 
 ---
 
-*Last updated: 2026-01-04*
+*Last updated: 2026-01-06*

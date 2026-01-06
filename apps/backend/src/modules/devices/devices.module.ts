@@ -9,6 +9,7 @@ import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { InfluxDbService } from '../influxdb/services/influxdb.service';
+import { IntentsModule } from '../intents/intents.module';
 import { SeedModule } from '../seed/seeding.module';
 import { SeedRegistryService } from '../seed/services/seed-registry.service';
 import { SpaceEntity } from '../spaces/entities/space.entity';
@@ -100,6 +101,7 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		forwardRef(() => ConfigModule),
 		forwardRef(() => ExtensionsModule),
 		forwardRef(() => InfluxDbModule),
+		forwardRef(() => IntentsModule),
 		SeedModule,
 		forwardRef(() => SystemModule),
 		StatsModule,

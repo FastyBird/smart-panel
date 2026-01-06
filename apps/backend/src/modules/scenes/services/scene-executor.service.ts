@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { DEFAULT_TTL_SCENE, IntentTargetStatus, IntentType } from '../../intents/intents.constants';
+import { IntentTarget, IntentTargetResult } from '../../intents/models/intent.model';
+import { IntentsService } from '../../intents/services/intents.service';
 import { SceneActionEntity, SceneEntity } from '../entities/scenes.entity';
 import { ActionExecutionResultModel, SceneExecutionResultModel } from '../models/scenes.model';
 import { EventType, SceneExecutionStatus } from '../scenes.constants';
@@ -37,6 +40,7 @@ export class SceneExecutorService {
 	constructor(
 		private readonly scenesService: ScenesService,
 		private readonly eventEmitter: EventEmitter2,
+		private readonly intentsService: IntentsService,
 	) {}
 
 	/**
@@ -88,6 +92,31 @@ export class SceneExecutorService {
 
 		const triggeredAt = new Date();
 
+		// Extract device targets from enabled scene actions only for granular tracking
+		// Note: Must filter to enabled actions since executeActions() only runs enabled ones
+		const deviceTargets = this.extractIntentTargets((scene.actions || []).filter((a) => a.enabled));
+
+		// Build targets array: scene target first, then device targets
+		const targets: IntentTarget[] = [
+			{ sceneId: scene.id }, // Primary scene target
+			...deviceTargets, // Device targets for granular UI overlays
+		];
+
+		// Create the intent for scene execution
+		const intent = this.intentsService.createIntent({
+			type: IntentType.SCENE_RUN,
+			context: {
+				spaceId: scene.primarySpaceId || undefined,
+			},
+			targets,
+			value: { sceneId: scene.id, sceneName: scene.name },
+			ttlMs: DEFAULT_TTL_SCENE,
+		});
+
+		this.logger.log(
+			`[TRIGGER] Created intent ${intent.id} for scene ${sceneId} with ${targets.length} target(s) (1 scene + ${deviceTargets.length} devices)`,
+		);
+
 		// Emit execution started event
 		this.eventEmitter.emit(EventType.SCENE_EXECUTION_STARTED, {
 			sceneId,
@@ -128,6 +157,14 @@ export class SceneExecutorService {
 
 			result.completedAt = new Date().toISOString();
 
+			// Map action results to intent results (includes scene-level result)
+			const intentResults = this.mapActionResultsToIntentResults(scene.id, actionResults, scene.actions || []);
+
+			// Complete the intent
+			this.intentsService.completeIntent(intent.id, intentResults);
+
+			this.logger.log(`[TRIGGER] Completed intent ${intent.id} for scene ${sceneId}`);
+
 			// Update last triggered timestamp (non-critical, don't let it affect execution result)
 			try {
 				await this.scenesService.updateLastTriggered(sceneId);
@@ -157,12 +194,114 @@ export class SceneExecutorService {
 			result.error = err.message;
 			result.completedAt = new Date().toISOString();
 
+			// Complete intent with failure - map targets to failed results
+			const failedResults: IntentTargetResult[] = targets.map((target) => ({
+				deviceId: target.deviceId,
+				channelId: target.channelId,
+				propertyId: target.propertyId,
+				sceneId: target.sceneId,
+				status: IntentTargetStatus.FAILED,
+				error: err.message,
+			}));
+
+			this.intentsService.completeIntent(intent.id, failedResults);
+
 			this.logger.error(`[TRIGGER] Scene execution failed: ${err.message}`);
 
 			this.eventEmitter.emit(EventType.SCENE_EXECUTION_FAILED, result);
 
 			throw new ScenesExecutionException(`Scene execution failed: ${err.message}`);
 		}
+	}
+
+	/**
+	 * Extract unique device IDs from scene actions
+	 */
+	private extractDeviceIds(actions: SceneActionEntity[]): string[] {
+		const deviceIds = new Set<string>();
+
+		for (const action of actions) {
+			// Device ID is stored in configuration.device_id for scene actions
+			const deviceId = action.configuration?.device_id;
+
+			if (typeof deviceId === 'string') {
+				deviceIds.add(deviceId);
+			}
+		}
+
+		return Array.from(deviceIds);
+	}
+
+	/**
+	 * Extract intent targets with full details from scene actions
+	 */
+	private extractIntentTargets(actions: SceneActionEntity[]): IntentTarget[] {
+		const targets: IntentTarget[] = [];
+
+		for (const action of actions) {
+			const deviceId = action.configuration?.device_id;
+			const channelId = action.configuration?.channel_id;
+			const propertyId = action.configuration?.property_id;
+
+			if (typeof deviceId === 'string') {
+				targets.push({
+					deviceId,
+					channelId: typeof channelId === 'string' ? channelId : undefined,
+					propertyId: typeof propertyId === 'string' ? propertyId : undefined,
+				});
+			}
+		}
+
+		return targets;
+	}
+
+	/**
+	 * Map action execution results to intent target results
+	 */
+	private mapActionResultsToIntentResults(
+		sceneId: string,
+		actionResults: ActionExecutionResultModel[],
+		actions: SceneActionEntity[],
+	): IntentTargetResult[] {
+		const results: IntentTargetResult[] = [];
+
+		// Add device-level results for each action
+		for (const actionResult of actionResults) {
+			// Find the corresponding action to get the target details
+			const action = actions.find((a) => a.id === actionResult.actionId);
+
+			// Extract IDs from configuration
+			const deviceId = action?.configuration?.device_id;
+			const channelId = action?.configuration?.channel_id;
+			const propertyId = action?.configuration?.property_id;
+
+			if (typeof deviceId === 'string') {
+				results.push({
+					deviceId,
+					channelId: typeof channelId === 'string' ? channelId : undefined,
+					propertyId: typeof propertyId === 'string' ? propertyId : undefined,
+					status: actionResult.success ? IntentTargetStatus.SUCCESS : IntentTargetStatus.FAILED,
+					error: actionResult.error || undefined,
+				});
+			}
+		}
+
+		// Add scene-level result based on overall outcome
+		const allSucceeded = actionResults.every((r) => r.success);
+		const anySucceeded = actionResults.some((r) => r.success);
+		const sceneStatus = allSucceeded
+			? IntentTargetStatus.SUCCESS
+			: anySucceeded
+				? IntentTargetStatus.SUCCESS // Partial success is still success for the scene target
+				: IntentTargetStatus.FAILED;
+
+		results.unshift({
+			sceneId,
+			status: sceneStatus,
+			error: allSucceeded ? undefined : 'Some actions failed',
+		});
+
+		return results;
 	}
 
 	/**

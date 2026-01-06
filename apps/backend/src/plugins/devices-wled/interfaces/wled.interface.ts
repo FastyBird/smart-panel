@@ -250,3 +250,26 @@ export interface WledStateUpdateExtended extends WledStateUpdate {
 	udpSync?: WledUdpSyncUpdate;
 	liveOverride?: number; // 0=off, 1=until live data ends, 2=until reboot
 }
+
+// =============================================================================
+// Adapter Callbacks
+// =============================================================================
+
+/**
+ * Callback interface for WLED adapter events
+ * Used for direct communication between adapter and service without event bus
+ */
+export interface WledAdapterCallbacks {
+	onDeviceConnected?: (event: WledDeviceConnectedEvent) => void | Promise<void>;
+	onDeviceDisconnected?: (event: WledDeviceDisconnectedEvent) => void | Promise<void>;
+	onDeviceStateChanged?: (event: WledDeviceStateChangedEvent) => void | Promise<void>;
+	onDeviceError?: (event: WledDeviceErrorEvent) => void | Promise<void>;
+}
+
+/**
+ * Callback interface for WLED mDNS discovery events
+ * Used for direct communication between discoverer and service without event bus
+ */
+export interface WledMdnsCallbacks {
+	onDeviceDiscovered?: (device: WledMdnsDiscoveredDevice) => void | Promise<void>;
+}
