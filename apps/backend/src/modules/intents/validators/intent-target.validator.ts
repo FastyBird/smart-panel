@@ -1,8 +1,4 @@
-import {
-	ValidationArguments,
-	ValidatorConstraint,
-	ValidatorConstraintInterface,
-} from 'class-validator';
+import { ValidationArguments, ValidatorConstraint, ValidatorConstraintInterface } from 'class-validator';
 
 import { IntentTarget } from '../models/intent.model';
 
@@ -12,7 +8,7 @@ import { IntentTarget } from '../models/intent.model';
  */
 @ValidatorConstraint({ name: 'IntentTargetValid', async: false })
 export class IntentTargetValidator implements ValidatorConstraintInterface {
-	validate(value: unknown, args: ValidationArguments): boolean {
+	validate(value: unknown, _args: ValidationArguments): boolean {
 		if (!value || typeof value !== 'object') {
 			return false;
 		}

@@ -1,9 +1,9 @@
 import { Module, forwardRef } from '@nestjs/common';
 
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
-import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
+import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 
 import { IntentsController } from './controllers/intents.controller';
 import { UpdateIntentsConfigDto } from './dto/update-config.dto';

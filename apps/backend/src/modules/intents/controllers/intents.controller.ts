@@ -9,13 +9,10 @@ import {
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
+import { INTENTS_MODULE_API_TAG_NAME, INTENTS_MODULE_NAME } from '../intents.constants';
 import {
-	INTENTS_MODULE_API_TAG_NAME,
-	INTENTS_MODULE_NAME,
-} from '../intents.constants';
-import {
-	IntentsActiveCountResponseModel,
 	IntentResponseModel,
+	IntentsActiveCountResponseModel,
 	IntentsResponseModel,
 } from '../models/intents-response.model';
 import { IntentsService } from '../services/intents.service';
@@ -58,11 +55,10 @@ export class IntentsController {
 	@ApiForbiddenResponse('Authentication required')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
-	async findAll(
-		@Query('device_id') deviceId?: string,
-		@Query('space_id') spaceId?: string,
-	): Promise<IntentsResponseModel> {
-		this.logger.debug(`Fetching active intents${deviceId ? ` for deviceId=${deviceId}` : ''}${spaceId ? ` for spaceId=${spaceId}` : ''}`);
+	findAll(@Query('device_id') deviceId?: string, @Query('space_id') spaceId?: string): IntentsResponseModel {
+		this.logger.debug(
+			`Fetching active intents${deviceId ? ` for deviceId=${deviceId}` : ''}${spaceId ? ` for spaceId=${spaceId}` : ''}`,
+		);
 
 		const query: { deviceId?: string; spaceId?: string } = {};
 
@@ -90,14 +86,11 @@ export class IntentsController {
 		description: 'Retrieve the count of currently active (pending) intents. Useful for monitoring and debugging.',
 		operationId: 'get-intents-module-active-count',
 	})
-	@ApiSuccessResponse(
-		IntentsActiveCountResponseModel,
-		'Count of active intents retrieved successfully',
-	)
+	@ApiSuccessResponse(IntentsActiveCountResponseModel, 'Count of active intents retrieved successfully')
 	@ApiForbiddenResponse('Authentication required')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get('_active/count')
-	async getActiveCount(): Promise<IntentsActiveCountResponseModel> {
+	getActiveCount(): IntentsActiveCountResponseModel {
 		this.logger.debug('Fetching active intents count');
 
 		const count = this.intentsService.getActiveCount();
@@ -113,7 +106,8 @@ export class IntentsController {
 	@ApiOperation({
 		tags: [INTENTS_MODULE_API_TAG_NAME],
 		summary: 'Get intent by ID',
-		description: 'Retrieve a specific intent by its unique identifier. Returns the intent regardless of its status (pending, completed, or expired).',
+		description:
+			'Retrieve a specific intent by its unique identifier. Returns the intent regardless of its status (pending, completed, or expired).',
 		operationId: 'get-intents-module-intent',
 	})
 	@ApiParam({
@@ -129,7 +123,7 @@ export class IntentsController {
 	@ApiNotFoundResponse('Intent not found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':id')
-	async findOne(@Param('id') id: string): Promise<IntentResponseModel> {
+	findOne(@Param('id') id: string): IntentResponseModel {
 		this.logger.debug(`Fetching intent with id=${id}`);
 
 		const intent = this.intentsService.getIntent(id);
