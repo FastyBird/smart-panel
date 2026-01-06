@@ -2460,10 +2460,10 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     } else if (roleMixedState.brightnessMixed || roleMixedState.onStateMixed) {
       // Devices are mixed due to external change - show cached or first device's value
       displayValue = cachedBrightness ?? firstDeviceBrightness ?? currentBrightness.toDouble();
-    } else if (!anyLightOn && cachedBrightness != null) {
-      // All lights are off but we have a cached value - show it
+    } else if (!anyLightOn) {
+      // All lights are off - prefer cached value, then first device's brightness
       // This prevents slider jumping to 0 when HA returns null brightness for off lights
-      displayValue = cachedBrightness;
+      displayValue = cachedBrightness ?? firstDeviceBrightness ?? currentBrightness.toDouble();
     } else {
       // Devices are synced and on - show actual average value
       displayValue = currentBrightness.toDouble();
@@ -2564,9 +2564,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     } else if (roleMixedState.hueMixed || roleMixedState.onStateMixed) {
       // Devices are mixed due to external change - show cached or first device's value
       displayValue = cachedHue ?? firstDeviceHue ?? avgHue;
-    } else if (!anyLightOn && cachedHue != null) {
-      // All lights are off but we have a cached value - show it
-      displayValue = cachedHue;
+    } else if (!anyLightOn) {
+      // All lights are off - prefer cached value, then first device's hue
+      displayValue = cachedHue ?? firstDeviceHue ?? avgHue;
     } else {
       displayValue = avgHue;
     }
@@ -2669,9 +2669,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     } else if (roleMixedState.temperatureMixed || roleMixedState.onStateMixed) {
       // Devices are mixed due to external change - show cached or first device's value
       displayValue = cachedTemp ?? firstDeviceTemp ?? avgTemp;
-    } else if (!anyLightOn && cachedTemp != null) {
-      // All lights are off but we have a cached value - show it
-      displayValue = cachedTemp;
+    } else if (!anyLightOn) {
+      // All lights are off - prefer cached value, then first device's temperature
+      displayValue = cachedTemp ?? firstDeviceTemp ?? avgTemp;
     } else {
       displayValue = avgTemp;
     }
@@ -2779,9 +2779,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     } else if (roleMixedState.whiteMixed || roleMixedState.onStateMixed) {
       // Devices are mixed due to external change - show cached or first device's value
       displayValue = cachedWhite ?? firstDeviceWhite ?? avgWhite;
-    } else if (!anyLightOn && cachedWhite != null) {
-      // All lights are off but we have a cached value - show it
-      displayValue = cachedWhite;
+    } else if (!anyLightOn) {
+      // All lights are off - prefer cached value, then first device's white
+      displayValue = cachedWhite ?? firstDeviceWhite ?? avgWhite;
     } else {
       displayValue = avgWhite;
     }
