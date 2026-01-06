@@ -403,7 +403,14 @@ class SocketService {
   /// Notify all connection listeners of state change
   void _notifyConnectionListeners(bool isConnected) {
     for (final listener in _connectionListeners) {
-      listener(isConnected);
+      try {
+        listener(isConnected);
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('[SOCKETS] Connection listener threw exception: $e');
+        }
+        // Continue notifying other listeners even if one fails
+      }
     }
   }
 
