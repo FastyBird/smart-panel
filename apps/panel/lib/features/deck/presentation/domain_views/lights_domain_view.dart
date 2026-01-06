@@ -2445,9 +2445,13 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // Get cached brightness if available
     final cachedBrightness = _roleControlStateRepository?.get(_cacheKey)?.brightness;
 
+    // Check if any light is on
+    final anyLightOn = roleMixedState.anyOn;
+
     // Determine displayed value:
     // - If state is locked (PENDING/SETTLING/MIXED from user action), show desired value
     // - If devices are mixed in IDLE state (external change), show cached value or first device's value
+    // - If all lights are off and we have cached value, show cached (prevents jump to 0)
     // - Otherwise show actual device value (average)
     final double displayValue;
     if (_brightnessState.isLocked) {
@@ -2455,10 +2459,13 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       displayValue = _brightnessState.desiredValue ?? currentBrightness.toDouble();
     } else if (roleMixedState.brightnessMixed || roleMixedState.onStateMixed) {
       // Devices are mixed due to external change - show cached or first device's value
-      // This prevents slider jumping to 0 when devices become out of sync
       displayValue = cachedBrightness ?? firstDeviceBrightness ?? currentBrightness.toDouble();
+    } else if (!anyLightOn && cachedBrightness != null) {
+      // All lights are off but we have a cached value - show it
+      // This prevents slider jumping to 0 when HA returns null brightness for off lights
+      displayValue = cachedBrightness;
     } else {
-      // Devices are synced - show actual average value
+      // Devices are synced and on - show actual average value
       displayValue = currentBrightness.toDouble();
     }
 
@@ -2543,9 +2550,13 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // Get cached hue if available
     final cachedHue = _roleControlStateRepository?.get(_cacheKey)?.hue;
 
+    // Check if any light is on
+    final anyLightOn = roleMixedState.anyOn;
+
     // Determine displayed value:
     // - If state is locked (PENDING/SETTLING/MIXED from user action), show desired value
     // - If devices are mixed in IDLE state (external change), show cached value or first device's value
+    // - If all lights are off and we have cached value, show cached
     // - Otherwise show actual device value (average)
     final double displayValue;
     if (_hueState.isLocked) {
@@ -2553,6 +2564,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     } else if (roleMixedState.hueMixed || roleMixedState.onStateMixed) {
       // Devices are mixed due to external change - show cached or first device's value
       displayValue = cachedHue ?? firstDeviceHue ?? avgHue;
+    } else if (!anyLightOn && cachedHue != null) {
+      // All lights are off but we have a cached value - show it
+      displayValue = cachedHue;
     } else {
       displayValue = avgHue;
     }
@@ -2641,9 +2655,13 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // Get cached temperature if available
     final cachedTemp = _roleControlStateRepository?.get(_cacheKey)?.temperature;
 
+    // Check if any light is on
+    final anyLightOn = roleMixedState.anyOn;
+
     // Determine displayed value:
     // - If state is locked (PENDING/SETTLING/MIXED from user action), show desired value
     // - If devices are mixed in IDLE state (external change), show cached value or first device's value
+    // - If all lights are off and we have cached value, show cached
     // - Otherwise show actual device value (average)
     final double displayValue;
     if (_temperatureState.isLocked) {
@@ -2651,6 +2669,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     } else if (roleMixedState.temperatureMixed || roleMixedState.onStateMixed) {
       // Devices are mixed due to external change - show cached or first device's value
       displayValue = cachedTemp ?? firstDeviceTemp ?? avgTemp;
+    } else if (!anyLightOn && cachedTemp != null) {
+      // All lights are off but we have a cached value - show it
+      displayValue = cachedTemp;
     } else {
       displayValue = avgTemp;
     }
@@ -2744,9 +2765,13 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // Get cached white if available
     final cachedWhite = _roleControlStateRepository?.get(_cacheKey)?.white;
 
+    // Check if any light is on
+    final anyLightOn = roleMixedState.anyOn;
+
     // Determine displayed value:
     // - If state is locked (PENDING/SETTLING/MIXED from user action), show desired value
     // - If devices are mixed in IDLE state (external change), show cached value or first device's value
+    // - If all lights are off and we have cached value, show cached
     // - Otherwise show actual device value (average)
     final double displayValue;
     if (_whiteState.isLocked) {
@@ -2754,6 +2779,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     } else if (roleMixedState.whiteMixed || roleMixedState.onStateMixed) {
       // Devices are mixed due to external change - show cached or first device's value
       displayValue = cachedWhite ?? firstDeviceWhite ?? avgWhite;
+    } else if (!anyLightOn && cachedWhite != null) {
+      // All lights are off but we have a cached value - show it
+      displayValue = cachedWhite;
     } else {
       displayValue = avgWhite;
     }
