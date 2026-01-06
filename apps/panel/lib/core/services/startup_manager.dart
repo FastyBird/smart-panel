@@ -347,49 +347,67 @@ class StartupManagerService {
       );
     }
 
-    // Unregister all module services
+    // Unregister all module services - call dispose() first to clean up socket handlers
     if (locator.isRegistered<ConfigModuleService>()) {
       try {
+        final module = locator<ConfigModuleService>();
+        module.dispose();
         locator.unregister<ConfigModuleService>();
       } catch (_) {}
     }
     if (locator.isRegistered<DisplaysModuleService>()) {
       try {
+        final module = locator<DisplaysModuleService>();
+        module.dispose();
         locator.unregister<DisplaysModuleService>();
       } catch (_) {}
     }
     if (locator.isRegistered<SystemModuleService>()) {
       try {
+        final module = locator<SystemModuleService>();
+        module.dispose();
         locator.unregister<SystemModuleService>();
       } catch (_) {}
     }
     if (locator.isRegistered<WeatherModuleService>()) {
       try {
+        final module = locator<WeatherModuleService>();
+        module.dispose();
         locator.unregister<WeatherModuleService>();
       } catch (_) {}
     }
     if (locator.isRegistered<DevicesModuleService>()) {
       try {
+        final module = locator<DevicesModuleService>();
+        module.dispose();
         locator.unregister<DevicesModuleService>();
       } catch (_) {}
     }
     if (locator.isRegistered<DashboardModuleService>()) {
       try {
+        final module = locator<DashboardModuleService>();
+        module.dispose();
         locator.unregister<DashboardModuleService>();
       } catch (_) {}
     }
     if (locator.isRegistered<SpacesModuleService>()) {
       try {
+        final module = locator<SpacesModuleService>();
+        module.dispose();
         locator.unregister<SpacesModuleService>();
       } catch (_) {}
     }
     if (locator.isRegistered<ScenesModuleService>()) {
       try {
+        final module = locator<ScenesModuleService>();
+        module.dispose();
         locator.unregister<ScenesModuleService>();
       } catch (_) {}
     }
     if (locator.isRegistered<IntentsModuleService>()) {
       try {
+        final module = locator<IntentsModuleService>();
+        module.dispose();
         locator.unregister<IntentsModuleService>();
       } catch (_) {}
     }

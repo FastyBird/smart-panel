@@ -28,9 +28,32 @@ export enum IntentType {
 	SCENE_RUN = 'scene.run',
 }
 
-export enum IntentOrigin {
-	PANEL = 'panel',
-	ADMIN = 'admin',
-	API = 'api',
-	SYSTEM = 'system',
-}
+/**
+ * Intent origin - indicates where the intent was initiated from
+ * These match the detailed origin strings from the backend
+ */
+export type IntentOrigin =
+	| 'panel.system.room'
+	| 'panel.system.master'
+	| 'panel.system.entry'
+	| 'panel.dashboard.tiles'
+	| 'panel.dashboard.cards'
+	| 'panel.device'
+	| 'panel.scenes'
+	| 'admin'
+	| 'api';
+
+/**
+ * All valid intent origin values for validation
+ */
+export const INTENT_ORIGINS: IntentOrigin[] = [
+	'panel.system.room',
+	'panel.system.master',
+	'panel.system.entry',
+	'panel.dashboard.tiles',
+	'panel.dashboard.cards',
+	'panel.device',
+	'panel.scenes',
+	'admin',
+	'api',
+];

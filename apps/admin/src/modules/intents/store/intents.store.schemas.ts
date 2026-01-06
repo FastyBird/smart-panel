@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { IntentOrigin, IntentStatus, IntentTargetStatus, IntentType } from '../intents.constants';
+import { INTENT_ORIGINS, IntentStatus, IntentTargetStatus, IntentType } from '../intents.constants';
 
 export const IntentTargetSchema = z.object({
 	deviceId: z.string().uuid().nullable(),
@@ -23,7 +23,7 @@ export const IntentScopeSchema = z.object({
 });
 
 export const IntentContextSchema = z.object({
-	origin: z.nativeEnum(IntentOrigin).nullable(),
+	origin: z.enum(INTENT_ORIGINS as [string, ...string[]]).nullable(),
 	displayId: z.string().uuid().nullable(),
 	spaceId: z.string().uuid().nullable(),
 	roleKey: z.string().nullable(),
