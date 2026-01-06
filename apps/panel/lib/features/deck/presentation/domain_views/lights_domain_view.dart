@@ -1082,8 +1082,11 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
   Timer? _temperatureDebounceTimer;
   Timer? _whiteDebounceTimer;
 
-  // Track the last intent count to detect when intents complete
-  int _lastIntentCount = 0;
+  // Track which control types had active intents (for detecting intent completion)
+  bool _brightnessWasLocked = false;
+  bool _hueWasLocked = false;
+  bool _temperatureWasLocked = false;
+  bool _whiteWasLocked = false;
 
   @override
   void initState() {
@@ -1102,7 +1105,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     try {
       _intentOverlayService = locator<IntentOverlayService>();
       _intentOverlayService?.addListener(_onIntentChanged);
-      _lastIntentCount = _intentOverlayService?.activeCount ?? 0;
+      // Initialize lock tracking state
+      _updateLockTrackingState();
     } catch (_) {}
 
     try {
@@ -1222,66 +1226,201 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
   }
 
   // ============================================================================
-  // Intent Change Handler
+  // Intent Lock Tracking Helpers
   // ============================================================================
 
-  /// Called when intent overlay service notifies of changes
-  void _onIntentChanged() {
-    if (!mounted) return;
+  /// Check if any target's brightness property is currently locked by an intent
+  bool _anyBrightnessLocked(List<LightTargetView> targets) {
+    final service = _intentOverlayService;
+    final devicesService = _devicesService;
+    if (service == null || devicesService == null) return false;
 
-    final currentIntentCount = _intentOverlayService?.activeCount ?? 0;
+    for (final target in targets) {
+      if (!target.hasBrightness) continue;
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+        final channel = device.lightChannels.firstWhere(
+          (c) => c.id == target.channelId,
+          orElse: () => device.lightChannels.first,
+        );
+        if (channel.id != target.channelId) continue;
+        final brightnessProp = channel.brightnessProp;
+        if (brightnessProp != null &&
+            service.isPropertyLocked(target.deviceId, target.channelId, brightnessProp.id)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /// Check if any target's hue property is currently locked by an intent
+  bool _anyHueLocked(List<LightTargetView> targets) {
+    final service = _intentOverlayService;
+    final devicesService = _devicesService;
+    if (service == null || devicesService == null) return false;
+
+    for (final target in targets) {
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+        final channel = device.lightChannels.firstWhere(
+          (c) => c.id == target.channelId,
+          orElse: () => device.lightChannels.first,
+        );
+        if (channel.id != target.channelId) continue;
+        if (!channel.hasHue) continue;
+        final hueProp = channel.hueProp;
+        if (hueProp != null &&
+            service.isPropertyLocked(target.deviceId, target.channelId, hueProp.id)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /// Check if any target's temperature property is currently locked by an intent
+  bool _anyTemperatureLocked(List<LightTargetView> targets) {
+    final service = _intentOverlayService;
+    final devicesService = _devicesService;
+    if (service == null || devicesService == null) return false;
+
+    for (final target in targets) {
+      if (!target.hasColorTemp) continue;
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+        final channel = device.lightChannels.firstWhere(
+          (c) => c.id == target.channelId,
+          orElse: () => device.lightChannels.first,
+        );
+        if (channel.id != target.channelId) continue;
+        final tempProp = channel.temperatureProp;
+        if (tempProp != null &&
+            service.isPropertyLocked(target.deviceId, target.channelId, tempProp.id)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /// Check if any target's white property is currently locked by an intent
+  bool _anyWhiteLocked(List<LightTargetView> targets) {
+    final service = _intentOverlayService;
+    final devicesService = _devicesService;
+    if (service == null || devicesService == null) return false;
+
+    for (final target in targets) {
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+        final channel = device.lightChannels.firstWhere(
+          (c) => c.id == target.channelId,
+          orElse: () => device.lightChannels.first,
+        );
+        if (channel.id != target.channelId) continue;
+        if (!channel.hasColorWhite) continue;
+        final whiteProp = channel.colorWhiteProp;
+        if (whiteProp != null &&
+            service.isPropertyLocked(target.deviceId, target.channelId, whiteProp.id)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /// Update the lock tracking state based on current intent locks
+  void _updateLockTrackingState() {
     final targets = _spacesService
         ?.getLightTargetsForSpace(widget.roomId)
         .where((t) => (t.role ?? LightTargetRole.other) == widget.role)
         .toList() ?? [];
 
-    // Detect intent completion: count decreased and we have pending states
-    if (currentIntentCount < _lastIntentCount) {
-      // An intent completed - transition PENDING states to SETTLING
-      setState(() {
-        if (_brightnessState.state == RoleUIState.pending) {
-          _startSettlingState(
-            _brightnessState,
-            (s) => _brightnessState = s,
-            targets,
-            _allBrightnessMatch,
-            _brightnessTolerance,
-          );
-        }
-        if (_hueState.state == RoleUIState.pending) {
-          _startSettlingState(
-            _hueState,
-            (s) => _hueState = s,
-            targets,
-            _allHueMatch,
-            _hueTolerance,
-          );
-        }
-        if (_temperatureState.state == RoleUIState.pending) {
-          _startSettlingState(
-            _temperatureState,
-            (s) => _temperatureState = s,
-            targets,
-            _allTemperatureMatch,
-            _temperatureTolerance,
-          );
-        }
-        if (_whiteState.state == RoleUIState.pending) {
-          _startSettlingState(
-            _whiteState,
-            (s) => _whiteState = s,
-            targets,
-            _allWhiteMatch,
-            _whiteTolerance,
-          );
-        }
-      });
-    }
+    _brightnessWasLocked = _anyBrightnessLocked(targets);
+    _hueWasLocked = _anyHueLocked(targets);
+    _temperatureWasLocked = _anyTemperatureLocked(targets);
+    _whiteWasLocked = _anyWhiteLocked(targets);
+  }
 
-    _lastIntentCount = currentIntentCount;
+  // ============================================================================
+  // Intent Change Handler
+  // ============================================================================
 
-    // Always rebuild UI to reflect any state changes
-    setState(() {});
+  /// Called when intent overlay service notifies of changes
+  ///
+  /// Only transitions a control to SETTLING when its specific intent completes,
+  /// not when any global intent completes. This prevents incorrect state
+  /// transitions when multiple controls are adjusted in quick succession.
+  void _onIntentChanged() {
+    if (!mounted) return;
+
+    final targets = _spacesService
+        ?.getLightTargetsForSpace(widget.roomId)
+        .where((t) => (t.role ?? LightTargetRole.other) == widget.role)
+        .toList() ?? [];
+
+    // Check current lock state for each control type
+    final brightnessNowLocked = _anyBrightnessLocked(targets);
+    final hueNowLocked = _anyHueLocked(targets);
+    final temperatureNowLocked = _anyTemperatureLocked(targets);
+    final whiteNowLocked = _anyWhiteLocked(targets);
+
+    setState(() {
+      // Transition brightness to SETTLING only when its intent completes
+      // (was locked before, not locked now, and state is PENDING)
+      if (_brightnessWasLocked && !brightnessNowLocked &&
+          _brightnessState.state == RoleUIState.pending) {
+        _startSettlingState(
+          _brightnessState,
+          (s) => _brightnessState = s,
+          targets,
+          _allBrightnessMatch,
+          _brightnessTolerance,
+        );
+      }
+
+      // Transition hue to SETTLING only when its intent completes
+      if (_hueWasLocked && !hueNowLocked &&
+          _hueState.state == RoleUIState.pending) {
+        _startSettlingState(
+          _hueState,
+          (s) => _hueState = s,
+          targets,
+          _allHueMatch,
+          _hueTolerance,
+        );
+      }
+
+      // Transition temperature to SETTLING only when its intent completes
+      if (_temperatureWasLocked && !temperatureNowLocked &&
+          _temperatureState.state == RoleUIState.pending) {
+        _startSettlingState(
+          _temperatureState,
+          (s) => _temperatureState = s,
+          targets,
+          _allTemperatureMatch,
+          _temperatureTolerance,
+        );
+      }
+
+      // Transition white to SETTLING only when its intent completes
+      if (_whiteWasLocked && !whiteNowLocked &&
+          _whiteState.state == RoleUIState.pending) {
+        _startSettlingState(
+          _whiteState,
+          (s) => _whiteState = s,
+          targets,
+          _allWhiteMatch,
+          _whiteTolerance,
+        );
+      }
+    });
+
+    // Update lock tracking state for next comparison
+    _brightnessWasLocked = brightnessNowLocked;
+    _hueWasLocked = hueNowLocked;
+    _temperatureWasLocked = temperatureNowLocked;
+    _whiteWasLocked = whiteNowLocked;
   }
 
   void _onSpacesDataChanged() {
