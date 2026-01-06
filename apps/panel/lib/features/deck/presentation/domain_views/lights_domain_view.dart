@@ -2764,7 +2764,6 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     List<LightTargetView> targets,
     DevicesService devicesService,
   ) {
-    final localizations = AppLocalizations.of(context)!;
     // Get room name for stripping from device names
     final roomName = _spacesService?.getSpace(widget.roomId)?.name;
 
@@ -2814,20 +2813,15 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
               fontWeight: FontWeight.w600,
             ),
           ),
-          trailing: isOutOfSync
+          trailing: channel?.hasBrightness == true
               ? Text(
-                  localizations.light_state_out_of_sync,
+                  '${channel!.brightness}%',
                   style: TextStyle(
                     fontSize: AppFontSize.extraSmall,
-                    color: AppColorsLight.warning,
+                    color: isOutOfSync ? AppColorsLight.warning : null,
                   ),
                 )
-              : (channel?.hasBrightness == true
-                  ? Text(
-                      '${channel!.brightness}%',
-                      style: TextStyle(fontSize: AppFontSize.extraSmall),
-                    )
-                  : null),
+              : null,
           onTap: () {
             Navigator.push(
               context,
