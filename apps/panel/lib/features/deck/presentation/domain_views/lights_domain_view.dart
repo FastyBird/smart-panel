@@ -328,10 +328,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   void _onDevicesDataChanged() {
-    // DevicesService notification means device was updated (e.g., assigned/unassigned from space)
-    // Re-fetch light targets to get latest data
+    // DevicesService notification means device property values were updated
+    // Trigger UI rebuild to reflect the new values
     if (mounted) {
-      _spacesService?.fetchLightTargetsForSpace(_roomId);
+      setState(() {});
     }
   }
 
@@ -1786,10 +1786,52 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
   }
 
   void _onDevicesDataChanged() {
-    // DevicesService notification means device was updated (e.g., assigned/unassigned from space)
-    // Re-fetch light targets to get latest data
+    // DevicesService notification means device property values were updated
+    // Trigger UI rebuild to reflect the new values and check convergence
     if (mounted) {
-      _spacesService?.fetchLightTargetsForSpace(widget.roomId);
+      _updateAvailableModes();
+
+      final targets = _spacesService
+              ?.getLightTargetsForSpace(widget.roomId)
+              .where((t) => (t.role ?? LightTargetRole.other) == widget.role)
+              .toList() ??
+          [];
+
+      setState(() {
+        // Check convergence during SETTLING state
+        // If devices converge, state machine will transition to IDLE
+        _checkConvergenceDuringSettling(
+          _brightnessState,
+          (s) => _brightnessState = s,
+          targets,
+          _allBrightnessMatch,
+          _brightnessTolerance,
+        );
+        _checkConvergenceDuringSettling(
+          _hueState,
+          (s) => _hueState = s,
+          targets,
+          _allHueMatch,
+          _hueTolerance,
+        );
+        _checkConvergenceDuringSettling(
+          _temperatureState,
+          (s) => _temperatureState = s,
+          targets,
+          _allTemperatureMatch,
+          _temperatureTolerance,
+        );
+        _checkConvergenceDuringSettling(
+          _whiteState,
+          (s) => _whiteState = s,
+          targets,
+          _allWhiteMatch,
+          _whiteTolerance,
+        );
+
+        // Update cache if devices are now synced
+        _updateCacheIfSynced(targets);
+      });
     }
   }
 
