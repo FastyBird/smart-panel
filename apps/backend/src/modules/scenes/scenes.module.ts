@@ -42,8 +42,8 @@ import { SceneExistsConstraintValidator } from './validators/scene-exists-constr
 		forwardRef(() => SystemModule),
 		forwardRef(() => DevicesModule),
 		forwardRef(() => SpacesModule),
+		forwardRef(() => IntentsModule),
 		WebsocketModule,
-		IntentsModule,
 	],
 	controllers: [ScenesController, SceneActionsController],
 	providers: [

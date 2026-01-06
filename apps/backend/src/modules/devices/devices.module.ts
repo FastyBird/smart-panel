@@ -101,12 +101,12 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		forwardRef(() => ConfigModule),
 		forwardRef(() => ExtensionsModule),
 		forwardRef(() => InfluxDbModule),
+		forwardRef(() => IntentsModule),
 		SeedModule,
 		forwardRef(() => SystemModule),
 		StatsModule,
 		SwaggerModule,
 		WebsocketModule,
-		IntentsModule,
 	],
 	providers: [
 		DevicesTypeMapperService,

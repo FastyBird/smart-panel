@@ -1,5 +1,0 @@
-{
-	"texts": {
-		"aboutModule": "The Intents module provides intent orchestration for UI anti-jitter. When users interact with devices or scenes, intents track the expected state changes, preventing the UI from flickering between old and new values while waiting for device confirmation."
-	}
-}

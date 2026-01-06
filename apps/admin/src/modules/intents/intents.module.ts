@@ -1,12 +1,9 @@
 import type { App } from 'vue';
 
-import { defaultsDeep } from 'lodash';
-
 import type { IModuleOptions } from '../../app.types';
 import { type IModule, type ModuleInjectionKey, injectModulesManager, injectSockets, injectStoresManager } from '../../common';
 
 import { EventType, INTENTS_MODULE_EVENT_PREFIX, INTENTS_MODULE_NAME } from './intents.constants';
-import enUS from './locales/en-US.json';
 import { intentsStoreKey, registerIntentsStore } from './store/stores';
 
 const intentsAdminModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-Intents');
@@ -16,13 +13,6 @@ export default {
 		const storesManager = injectStoresManager(app);
 		const sockets = injectSockets(app);
 		const modulesManager = injectModulesManager(app);
-
-		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
-			const currentMessages = options.i18n.global.getLocaleMessage(locale);
-			const mergedMessages = defaultsDeep(currentMessages, { intentsModule: translations });
-
-			options.i18n.global.setLocaleMessage(locale, mergedMessages);
-		}
 
 		const intentsStore = registerIntentsStore(options.store);
 
