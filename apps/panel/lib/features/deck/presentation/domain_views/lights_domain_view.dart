@@ -2425,17 +2425,40 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // Get mixed state to determine what value to show
     final roleMixedState = _getRoleMixedState(targets);
 
+    // Get first device's brightness for fallback (handles off lights with null brightness from HA)
+    double? firstDeviceBrightness;
+    for (final target in targets) {
+      if (!target.hasBrightness) continue;
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+        final channel = device.lightChannels.firstWhere(
+          (c) => c.id == target.channelId,
+          orElse: () => device.lightChannels.first,
+        );
+        if (channel.hasBrightness) {
+          firstDeviceBrightness = channel.brightness.toDouble();
+          break;
+        }
+      }
+    }
+
+    // Get cached brightness if available
+    final cachedBrightness = _roleControlStateRepository?.get(_cacheKey)?.brightness;
+
     // Determine displayed value:
-    // - If state is locked (PENDING/SETTLING/MIXED), show desired value (user's intent)
-    // - If devices are mixed in IDLE state, show 0 (slider at bottom)
-    // - Otherwise show actual device value
+    // - If state is locked (PENDING/SETTLING/MIXED from user action), show desired value
+    // - If devices are mixed in IDLE state (external change), show cached value or first device's value
+    // - Otherwise show actual device value (average)
     final double displayValue;
     if (_brightnessState.isLocked) {
+      // User has interacted - show their intended value
       displayValue = _brightnessState.desiredValue ?? currentBrightness.toDouble();
     } else if (roleMixedState.brightnessMixed || roleMixedState.onStateMixed) {
-      // When initially mixed, show 0 (slider at bottom)
-      displayValue = 0;
+      // Devices are mixed due to external change - show cached or first device's value
+      // This prevents slider jumping to 0 when devices become out of sync
+      displayValue = cachedBrightness ?? firstDeviceBrightness ?? currentBrightness.toDouble();
     } else {
+      // Devices are synced - show actual average value
       displayValue = currentBrightness.toDouble();
     }
 
@@ -2493,9 +2516,10 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // Get mixed state to determine what value to show
     final roleMixedState = _getRoleMixedState(targets);
 
-    // Calculate average hue as fallback
+    // Calculate average hue and get first device's hue
     double totalHue = 0;
     int hueCount = 0;
+    double? firstDeviceHue;
 
     for (final target in targets) {
       final device = devicesService.getDevice(target.deviceId);
@@ -2504,25 +2528,31 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           (c) => c.id == target.channelId,
           orElse: () => device.lightChannels.first,
         );
-        if (channel.hasHue && channel.on) {
-          totalHue += channel.hue;
-          hueCount++;
+        if (channel.hasHue) {
+          firstDeviceHue ??= channel.hue;
+          if (channel.on) {
+            totalHue += channel.hue;
+            hueCount++;
+          }
         }
       }
     }
 
     final avgHue = hueCount > 0 ? totalHue / hueCount : 180.0;
 
+    // Get cached hue if available
+    final cachedHue = _roleControlStateRepository?.get(_cacheKey)?.hue;
+
     // Determine displayed value:
-    // - If state is locked (PENDING/SETTLING/MIXED), show desired value (user's intent)
-    // - If devices are mixed in IDLE state, show 0 (slider at bottom)
-    // - Otherwise show actual device value
+    // - If state is locked (PENDING/SETTLING/MIXED from user action), show desired value
+    // - If devices are mixed in IDLE state (external change), show cached value or first device's value
+    // - Otherwise show actual device value (average)
     final double displayValue;
     if (_hueState.isLocked) {
       displayValue = _hueState.desiredValue ?? avgHue;
     } else if (roleMixedState.hueMixed || roleMixedState.onStateMixed) {
-      // When initially mixed, show 0 (slider at bottom)
-      displayValue = 0;
+      // Devices are mixed due to external change - show cached or first device's value
+      displayValue = cachedHue ?? firstDeviceHue ?? avgHue;
     } else {
       displayValue = avgHue;
     }
@@ -2580,9 +2610,10 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // Get mixed state to determine what value to show
     final roleMixedState = _getRoleMixedState(targets);
 
-    // Calculate average temperature as fallback
+    // Calculate average temperature and get first device's temperature
     double totalTemp = 0;
     int tempCount = 0;
+    double? firstDeviceTemp;
 
     for (final target in targets) {
       final device = devicesService.getDevice(target.deviceId);
@@ -2591,11 +2622,15 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           (c) => c.id == target.channelId,
           orElse: () => device.lightChannels.first,
         );
-        if (channel.hasTemperature && channel.on) {
+        if (channel.hasTemperature) {
           final tempProp = channel.temperatureProp;
           if (tempProp != null && tempProp.value is NumberValueType) {
-            totalTemp += (tempProp.value as NumberValueType).value.toDouble();
-            tempCount++;
+            final tempValue = (tempProp.value as NumberValueType).value.toDouble();
+            firstDeviceTemp ??= tempValue;
+            if (channel.on) {
+              totalTemp += tempValue;
+              tempCount++;
+            }
           }
         }
       }
@@ -2603,16 +2638,19 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
     final avgTemp = tempCount > 0 ? totalTemp / tempCount : 4000.0;
 
+    // Get cached temperature if available
+    final cachedTemp = _roleControlStateRepository?.get(_cacheKey)?.temperature;
+
     // Determine displayed value:
-    // - If state is locked (PENDING/SETTLING/MIXED), show desired value (user's intent)
-    // - If devices are mixed in IDLE state, show min value (2700K = slider at bottom)
-    // - Otherwise show actual device value
+    // - If state is locked (PENDING/SETTLING/MIXED from user action), show desired value
+    // - If devices are mixed in IDLE state (external change), show cached value or first device's value
+    // - Otherwise show actual device value (average)
     final double displayValue;
     if (_temperatureState.isLocked) {
       displayValue = _temperatureState.desiredValue ?? avgTemp;
     } else if (roleMixedState.temperatureMixed || roleMixedState.onStateMixed) {
-      // When initially mixed, show 2700 (slider at bottom = warmest)
-      displayValue = 2700;
+      // Devices are mixed due to external change - show cached or first device's value
+      displayValue = cachedTemp ?? firstDeviceTemp ?? avgTemp;
     } else {
       displayValue = avgTemp;
     }
@@ -2679,9 +2717,10 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // Get mixed state to determine what value to show
     final roleMixedState = _getRoleMixedState(targets);
 
-    // Calculate average white value as fallback
+    // Calculate average white value and get first device's white
     double totalWhite = 0;
     int whiteCount = 0;
+    double? firstDeviceWhite;
 
     for (final target in targets) {
       final device = devicesService.getDevice(target.deviceId);
@@ -2690,25 +2729,31 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           (c) => c.id == target.channelId,
           orElse: () => device.lightChannels.first,
         );
-        if (channel.hasColorWhite && channel.on) {
-          totalWhite += channel.colorWhite.toDouble();
-          whiteCount++;
+        if (channel.hasColorWhite) {
+          firstDeviceWhite ??= channel.colorWhite.toDouble();
+          if (channel.on) {
+            totalWhite += channel.colorWhite.toDouble();
+            whiteCount++;
+          }
         }
       }
     }
 
     final avgWhite = whiteCount > 0 ? totalWhite / whiteCount : 128.0;
 
+    // Get cached white if available
+    final cachedWhite = _roleControlStateRepository?.get(_cacheKey)?.white;
+
     // Determine displayed value:
-    // - If state is locked (PENDING/SETTLING/MIXED), show desired value (user's intent)
-    // - If devices are mixed in IDLE state, show 0 (slider at bottom)
-    // - Otherwise show actual device value
+    // - If state is locked (PENDING/SETTLING/MIXED from user action), show desired value
+    // - If devices are mixed in IDLE state (external change), show cached value or first device's value
+    // - Otherwise show actual device value (average)
     final double displayValue;
     if (_whiteState.isLocked) {
       displayValue = _whiteState.desiredValue ?? avgWhite;
     } else if (roleMixedState.whiteMixed || roleMixedState.onStateMixed) {
-      // When initially mixed, show 0 (slider at bottom)
-      displayValue = 0;
+      // Devices are mixed due to external change - show cached or first device's value
+      displayValue = cachedWhite ?? firstDeviceWhite ?? avgWhite;
     } else {
       displayValue = avgWhite;
     }
