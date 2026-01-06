@@ -210,6 +210,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get light_state_syncing_description => 'Syncing devices...';
 
   @override
+  String get light_state_not_synced_description => 'Devices are not synced';
+
+  @override
+  String get light_state_out_of_sync => 'Out of sync';
+
+  @override
   String get light_mode_off => 'Off';
 
   @override

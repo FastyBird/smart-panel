@@ -497,6 +497,18 @@ abstract class AppLocalizations {
   /// **'Syncing devices...'**
   String get light_state_syncing_description;
 
+  /// Description shown when devices in a group are initially out of sync
+  ///
+  /// In en, this message translates to:
+  /// **'Devices are not synced'**
+  String get light_state_not_synced_description;
+
+  /// Short label for a device that is out of sync with the target value
+  ///
+  /// In en, this message translates to:
+  /// **'Out of sync'**
+  String get light_state_out_of_sync;
+
   /// Mode when the light is off
   ///
   /// In en, this message translates to:
