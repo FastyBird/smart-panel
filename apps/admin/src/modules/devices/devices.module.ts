@@ -161,6 +161,7 @@ export default {
 
 				case EventType.CHANNEL_PROPERTY_CREATED:
 				case EventType.CHANNEL_PROPERTY_UPDATED:
+				case EventType.CHANNEL_PROPERTY_VALUE_SET:
 					channelsPropertiesStore.onEvent({
 						id: data.payload.id,
 						type: get(data.payload, 'type', 'unknown'),

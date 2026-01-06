@@ -275,9 +275,15 @@ export class ChannelsPropertiesService {
 
 		this.logger.debug(`Successfully updated property with id=${updatedProperty.id}`);
 
-		// Only emit event if entity fields changed or value actually changed
-		if (entityFieldsChanged || valueChanged) {
+		// Emit separate events for structural changes vs value-only changes
+		// This allows listeners to differentiate between metadata updates (which may require cache invalidation)
+		// and value updates (which don't need cache invalidation)
+		if (entityFieldsChanged) {
+			// Metadata changed - emit CHANNEL_PROPERTY_UPDATED (covers both metadata and value changes)
 			this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_UPDATED, updatedProperty);
+		} else if (valueChanged) {
+			// Only value changed - emit CHANNEL_PROPERTY_VALUE_SET
+			this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_VALUE_SET, updatedProperty);
 		}
 
 		return updatedProperty;

@@ -46,6 +46,11 @@ export enum EventType {
 	CHANNEL_PROPERTY_DELETED = 'DevicesModule.ChannelProperty.Deleted',
 	CHANNEL_PROPERTY_RESET = 'DevicesModule.ChannelProperty.Reset',
 	CHANNEL_PROPERTY_SET = 'DevicesModule.ChannelProperty.Set',
+	/**
+	 * Emitted when only the property value changes (not metadata).
+	 * Use this for reacting to value changes without triggering cache invalidation.
+	 */
+	CHANNEL_PROPERTY_VALUE_SET = 'DevicesModule.ChannelProperty.ValueSet',
 	MODULE_RESET = 'DevicesModule.All.Reset',
 }
 
