@@ -42,28 +42,28 @@ export default {
 				return;
 			}
 
-			switch (data.event) {
-				case EventType.INTENT_CREATED:
-					try {
+			try {
+				switch (data.event) {
+					case EventType.INTENT_CREATED:
 						intentsStore.onEvent({
 							id: payload.intent_id,
 							data: payload,
 						});
-					} catch (error) {
-						console.warn(`[INTENTS] Failed to process ${data.event} event:`, error);
-					}
-					break;
+						break;
 
-				case EventType.INTENT_COMPLETED:
-				case EventType.INTENT_EXPIRED:
-					intentsStore.unset({
-						id: payload.intent_id,
-					});
-					break;
+					case EventType.INTENT_COMPLETED:
+					case EventType.INTENT_EXPIRED:
+						intentsStore.unset({
+							id: payload.intent_id,
+						});
+						break;
 
-				default:
-					// Ignore other events
-					break;
+					default:
+						// Ignore other events
+						break;
+				}
+			} catch (error) {
+				console.warn(`[INTENTS] Failed to process ${data.event} event:`, error);
 			}
 		});
 
