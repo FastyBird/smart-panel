@@ -9,14 +9,16 @@ import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/bottom_navigation.dart';
 import 'package:fastybird_smart_panel/core/widgets/colored_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/colored_switch.dart';
-import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
+import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/light.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
+import 'package:fastybird_smart_panel/modules/displays/export.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -228,6 +230,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
             context,
             _channels[_selectedChannel].onProp,
             _channels[_selectedChannel].on ? false : true,
+            deviceId: widget._device.id,
+            channelId: _channels[_selectedChannel].id,
           );
         } else {
           setState(() {
@@ -240,6 +244,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
               context,
               _channels[_selectedChannel].onProp,
               true,
+              deviceId: widget._device.id,
+              channelId: _channels[_selectedChannel].id,
             );
           }
         }
@@ -340,6 +346,8 @@ class LightSimpleDetail extends StatelessWidget {
                                 context,
                                 brightnessProp,
                                 value,
+                                deviceId: _device.id,
+                                channelId: lightCapability.id,
                               );
                             },
                           ),
@@ -351,6 +359,8 @@ class LightSimpleDetail extends StatelessWidget {
                                 context,
                                 lightCapability.onProp,
                                 state,
+                                deviceId: _device.id,
+                                channelId: lightCapability.id,
                               );
                             },
                           ),
@@ -379,6 +389,8 @@ class LightSimpleDetail extends StatelessWidget {
                             context,
                             lightCapability.onProp,
                             state,
+                            deviceId: _device.id,
+                            channelId: lightCapability.id,
                           );
                         },
                       ),
@@ -458,6 +470,8 @@ class LightSingleChannelDetail extends StatelessWidget {
               context,
               brightnessProp,
               value,
+              deviceId: _device.id,
+              channelId: _channel.id,
             );
           },
         );
@@ -477,6 +491,8 @@ class LightSingleChannelDetail extends StatelessWidget {
                 context,
                 _channel.colorRedProp!,
                 rgbValue.red,
+                deviceId: _device.id,
+                channelId: _channel.id,
               );
             }
 
@@ -485,6 +501,8 @@ class LightSingleChannelDetail extends StatelessWidget {
                 context,
                 _channel.colorGreenProp!,
                 rgbValue.green,
+                deviceId: _device.id,
+                channelId: _channel.id,
               );
             }
 
@@ -493,6 +511,8 @@ class LightSingleChannelDetail extends StatelessWidget {
                 context,
                 _channel.colorBlueProp!,
                 rgbValue.blue,
+                deviceId: _device.id,
+                channelId: _channel.id,
               );
             }
 
@@ -501,6 +521,8 @@ class LightSingleChannelDetail extends StatelessWidget {
                 context,
                 _channel.hueProp!,
                 hsvValue.hue,
+                deviceId: _device.id,
+                channelId: _channel.id,
               );
             }
 
@@ -509,6 +531,8 @@ class LightSingleChannelDetail extends StatelessWidget {
                 context,
                 _channel.saturationProp!,
                 hsvValue.saturation,
+                deviceId: _device.id,
+                channelId: _channel.id,
               );
             }
           },
@@ -527,6 +551,8 @@ class LightSingleChannelDetail extends StatelessWidget {
               context,
               tempProp,
               value,
+              deviceId: _device.id,
+              channelId: _channel.id,
             );
           },
         );
@@ -544,6 +570,8 @@ class LightSingleChannelDetail extends StatelessWidget {
               context,
               colorWhiteProp,
               value,
+              deviceId: _device.id,
+              channelId: _channel.id,
             );
           },
         );
@@ -1696,19 +1724,51 @@ enum LightChannelModeType {
 
 class PropertyValueHelper {
   final DevicesService _service = locator<DevicesService>();
+  final DisplayRepository? _displayRepository;
+
+  PropertyValueHelper() : _displayRepository = _tryGetDisplayRepository();
+
+  static DisplayRepository? _tryGetDisplayRepository() {
+    try {
+      return locator<DisplayRepository>();
+    } catch (_) {
+      return null;
+    }
+  }
 
   Future<bool> setPropertyValue(
     BuildContext context,
     ChannelPropertyView property,
-    dynamic value,
-  ) async {
+    dynamic value, {
+    String? deviceId,
+    String? channelId,
+  }) async {
     final localizations = AppLocalizations.of(context)!;
 
     try {
-      bool res = await _service.setPropertyValue(
-        property.id,
-        value,
-      );
+      bool res;
+
+      // Use context-aware method if we have device and channel IDs
+      if (deviceId != null && channelId != null) {
+        final commandContext = PropertyCommandContext(
+          origin: 'panel.device',
+          displayId: _displayRepository?.display?.id,
+        );
+
+        res = await _service.setPropertyValueWithContext(
+          deviceId: deviceId,
+          channelId: channelId,
+          propertyId: property.id,
+          value: value,
+          context: commandContext,
+        );
+      } else {
+        // Fallback to simple method without context
+        res = await _service.setPropertyValue(
+          property.id,
+          value,
+        );
+      }
 
       if (!res && context.mounted) {
         AlertBar.showError(

@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/property.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:flutter/foundation.dart';
 
 class DevicesService extends ChangeNotifier {
@@ -150,6 +151,40 @@ class DevicesService extends ChangeNotifier {
 
   Future<bool> setPropertyValue(String id, dynamic value) async {
     return await _channelPropertiesRepository.setValue(id, value);
+  }
+
+  /// Set a single property value with context
+  /// This wraps setMultiplePropertyValues for convenience
+  Future<bool> setPropertyValueWithContext({
+    required String deviceId,
+    required String channelId,
+    required String propertyId,
+    required dynamic value,
+    PropertyCommandContext? context,
+  }) async {
+    return await _channelPropertiesRepository.setMultipleValues(
+      properties: [
+        PropertyCommandItem(
+          deviceId: deviceId,
+          channelId: channelId,
+          propertyId: propertyId,
+          value: value,
+        ),
+      ],
+      context: context,
+    );
+  }
+
+  /// Set multiple property values in a single command
+  /// This creates a single intent on the backend for all properties
+  Future<bool> setMultiplePropertyValues({
+    required List<PropertyCommandItem> properties,
+    PropertyCommandContext? context,
+  }) async {
+    return await _channelPropertiesRepository.setMultipleValues(
+      properties: properties,
+      context: context,
+    );
   }
 
   void _updateData() {

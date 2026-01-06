@@ -6,6 +6,7 @@ import 'package:fastybird_smart_panel/modules/devices/constants.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/property.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/channels/channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/properties/properties.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/channels.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/repository.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
@@ -246,6 +247,65 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
         }
       },
     );
+  }
+
+  /// Set multiple property values in a single command
+  /// This creates a single intent on the backend for all properties
+  Future<bool> setMultipleValues({
+    required List<PropertyCommandItem> properties,
+    PropertyCommandContext? context,
+  }) async {
+    if (properties.isEmpty) {
+      return true;
+    }
+
+    // Generate single request ID for tracking
+    final requestId = const Uuid().v4();
+
+    // Build properties payload
+    final propertiesPayload = properties.map((prop) => prop.toJson()).toList();
+
+    // Build context payload if provided
+    Map<String, dynamic>? contextPayload;
+    if (context != null) {
+      contextPayload = context.toJson();
+    }
+
+    final completer = Completer<bool>();
+
+    // Build command payload
+    final payload = <String, dynamic>{
+      'request_id': requestId,
+      'properties': propertiesPayload,
+    };
+    if (contextPayload != null && contextPayload.isNotEmpty) {
+      payload['context'] = contextPayload;
+    }
+
+    await _socketService.sendCommand(
+      DevicesModuleConstants.channelPropertySetEvent,
+      payload,
+      DevicesModuleEventHandlerName.internalSetProperty,
+      onAck: (SocketCommandResponseModel? response) {
+        if (response == null || response.status == false) {
+          if (kDebugMode) {
+            debugPrint(
+              '[DEVICES MODULE][CHANNEL PROPERTIES] Failed batch command for ${properties.length} properties, reason: ${response?.message ?? 'N/A'}',
+            );
+          }
+          completer.complete(false);
+        } else {
+          if (kDebugMode) {
+            debugPrint(
+              '[DEVICES MODULE][CHANNEL PROPERTIES] Successfully sent batch command for ${properties.length} properties, requestId: $requestId',
+            );
+          }
+          completer.complete(true);
+        }
+      },
+    );
+
+    return completer.future;
   }
 
   void _revertValue({required String id}) {

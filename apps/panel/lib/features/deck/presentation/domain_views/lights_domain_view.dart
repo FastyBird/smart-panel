@@ -13,10 +13,13 @@ import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/light.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
+import 'package:fastybird_smart_panel/modules/displays/export.dart';
+import 'package:fastybird_smart_panel/modules/intents/export.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -456,8 +459,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       // If any device is on, turn all off. Otherwise turn all on.
       final newState = !group.isOn;
 
-      int successCount = 0;
-      int failCount = 0;
+      // Build list of properties to update
+      final List<PropertyCommandItem> properties = [];
 
       for (final target in group.targets) {
         final device = devicesService.getDevice(target.deviceId);
@@ -468,21 +471,40 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             orElse: () => device.lightChannels.first,
           );
 
-          final success = await devicesService.setPropertyValue(
-            channel.onProp.id,
-            newState,
-          );
-          if (success) {
-            successCount++;
-          } else {
-            failCount++;
-          }
+          properties.add(PropertyCommandItem(
+            deviceId: target.deviceId,
+            channelId: target.channelId,
+            propertyId: channel.onProp.id,
+            value: newState,
+          ));
         }
       }
 
+      if (properties.isEmpty) return;
+
+      // Get display ID for context
+      DisplayRepository? displayRepository;
+      try {
+        displayRepository = locator<DisplayRepository>();
+      } catch (_) {}
+
+      // Build context
+      final commandContext = PropertyCommandContext(
+        origin: 'panel.system.room',
+        displayId: displayRepository?.display?.id,
+        spaceId: _roomId,
+        roleKey: group.role.name,
+      );
+
+      // Send single command for all properties
+      final success = await devicesService.setMultiplePropertyValues(
+        properties: properties,
+        context: commandContext,
+      );
+
       if (!mounted) return;
 
-      if (failCount > 0 && successCount == 0) {
+      if (!success) {
         AlertBar.showError(
           this.context,
           message: localizations?.action_failed ?? 'Failed to toggle lights',
@@ -837,6 +859,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
   SpacesService? _spacesService;
   DevicesService? _devicesService;
+  IntentOverlayService? _intentOverlayService;
+  DisplayRepository? _displayRepository;
 
   // Current mode for bottom navigation
   _LightRoleMode _currentMode = _LightRoleMode.off;
@@ -868,6 +892,15 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       _devicesService?.addListener(_onDevicesDataChanged);
     } catch (_) {}
 
+    try {
+      _intentOverlayService = locator<IntentOverlayService>();
+      _intentOverlayService?.addListener(_onIntentChanged);
+    } catch (_) {}
+
+    try {
+      _displayRepository = locator<DisplayRepository>();
+    } catch (_) {}
+
     // Initialize available modes
     _updateAvailableModes();
   }
@@ -880,6 +913,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     _whiteDebounceTimer?.cancel();
     _spacesService?.removeListener(_onSpacesDataChanged);
     _devicesService?.removeListener(_onDevicesDataChanged);
+    _intentOverlayService?.removeListener(_onIntentChanged);
     super.dispose();
   }
 
@@ -902,6 +936,20 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // Re-fetch light targets to get latest data
     if (mounted) {
       _spacesService?.fetchLightTargetsForSpace(widget.roomId);
+    }
+  }
+
+  void _onIntentChanged() {
+    // IntentOverlayService notification means intent state changed
+    // Reset local slider values when intent completes/expires
+    // The overlay service or actual device values will be used
+    if (mounted) {
+      setState(() {
+        _sliderBrightness = null;
+        _sliderHue = null;
+        _sliderTemperature = null;
+        _sliderWhite = null;
+      });
     }
   }
 
@@ -1801,8 +1849,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
       final newState = !anyOn;
 
-      int successCount = 0;
-      int failCount = 0;
+      // Build list of properties to update
+      final List<PropertyCommandItem> properties = [];
 
       for (final target in targets) {
         final device = devicesService.getDevice(target.deviceId);
@@ -1812,18 +1860,34 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
             orElse: () => device.lightChannels.first,
           );
           final onProp = channel.onProp;
-          final success = await devicesService.setPropertyValue(onProp.id, newState);
-          if (success) {
-            successCount++;
-          } else {
-            failCount++;
-          }
+          properties.add(PropertyCommandItem(
+            deviceId: target.deviceId,
+            channelId: target.channelId,
+            propertyId: onProp.id,
+            value: newState,
+          ));
         }
       }
 
+      if (properties.isEmpty) return;
+
+      // Build context
+      final commandContext = PropertyCommandContext(
+        origin: 'panel.system.room',
+        displayId: _displayRepository?.display?.id,
+        spaceId: widget.roomId,
+        roleKey: widget.role.name,
+      );
+
+      // Send single command for all properties
+      final success = await devicesService.setMultiplePropertyValues(
+        properties: properties,
+        context: commandContext,
+      );
+
       if (!mounted) return;
 
-      if (failCount > 0 && successCount == 0) {
+      if (!success) {
         AlertBar.showError(
           this.context,
           message: localizations?.action_failed ?? 'Failed to toggle lights',
@@ -1848,15 +1912,14 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     final localizations = AppLocalizations.of(context);
 
     try {
-      int successCount = 0;
-      int failCount = 0;
+      // Build list of properties to update
+      final List<PropertyCommandItem> properties = [];
 
       for (final target in targets) {
         if (!target.hasBrightness) continue;
 
         final device = devicesService.getDevice(target.deviceId);
-        if (device is LightingDeviceView &&
-            device.lightChannels.isNotEmpty) {
+        if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
           final channel = device.lightChannels.firstWhere(
             (c) => c.id == target.channelId,
             orElse: () => device.lightChannels.first,
@@ -1864,26 +1927,38 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
           final brightnessProp = channel.brightnessProp;
           if (brightnessProp != null) {
-            final success = await devicesService.setPropertyValue(
-              brightnessProp.id,
-              brightness,
-            );
-            if (success) {
-              successCount++;
-            } else {
-              failCount++;
-            }
+            properties.add(PropertyCommandItem(
+              deviceId: target.deviceId,
+              channelId: target.channelId,
+              propertyId: brightnessProp.id,
+              value: brightness,
+            ));
           }
         }
       }
 
+      if (properties.isEmpty) return;
+
+      // Build context
+      final commandContext = PropertyCommandContext(
+        origin: 'panel.system.room',
+        displayId: _displayRepository?.display?.id,
+        spaceId: widget.roomId,
+        roleKey: widget.role.name,
+      );
+
+      // Send single command for all properties
+      final success = await devicesService.setMultiplePropertyValues(
+        properties: properties,
+        context: commandContext,
+      );
+
       if (!mounted) return;
 
-      if (failCount > 0 && successCount == 0) {
+      if (!success) {
         AlertBar.showError(
           this.context,
-          message:
-              localizations?.action_failed ?? 'Failed to set brightness',
+          message: localizations?.action_failed ?? 'Failed to set brightness',
         );
       }
     } catch (e) {
@@ -1907,8 +1982,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     final localizations = AppLocalizations.of(context);
 
     try {
-      int successCount = 0;
-      int failCount = 0;
+      // Build list of properties to update
+      final List<PropertyCommandItem> properties = [];
 
       for (final target in targets) {
         final device = devicesService.getDevice(target.deviceId);
@@ -1920,22 +1995,35 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
           final hueProp = channel.hueProp;
           if (hueProp != null) {
-            final success = await devicesService.setPropertyValue(
-              hueProp.id,
-              hue,
-            );
-            if (success) {
-              successCount++;
-            } else {
-              failCount++;
-            }
+            properties.add(PropertyCommandItem(
+              deviceId: target.deviceId,
+              channelId: target.channelId,
+              propertyId: hueProp.id,
+              value: hue,
+            ));
           }
         }
       }
 
+      if (properties.isEmpty) return;
+
+      // Build context
+      final commandContext = PropertyCommandContext(
+        origin: 'panel.system.room',
+        displayId: _displayRepository?.display?.id,
+        spaceId: widget.roomId,
+        roleKey: widget.role.name,
+      );
+
+      // Send single command for all properties
+      final success = await devicesService.setMultiplePropertyValues(
+        properties: properties,
+        context: commandContext,
+      );
+
       if (!mounted) return;
 
-      if (failCount > 0 && successCount == 0) {
+      if (!success) {
         AlertBar.showError(
           this.context,
           message: localizations?.action_failed ?? 'Failed to set color',
@@ -1962,8 +2050,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     final localizations = AppLocalizations.of(context);
 
     try {
-      int successCount = 0;
-      int failCount = 0;
+      // Build list of properties to update
+      final List<PropertyCommandItem> properties = [];
 
       for (final target in targets) {
         final device = devicesService.getDevice(target.deviceId);
@@ -1975,22 +2063,35 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
           final tempProp = channel.temperatureProp;
           if (tempProp != null) {
-            final success = await devicesService.setPropertyValue(
-              tempProp.id,
-              temperature.round(),
-            );
-            if (success) {
-              successCount++;
-            } else {
-              failCount++;
-            }
+            properties.add(PropertyCommandItem(
+              deviceId: target.deviceId,
+              channelId: target.channelId,
+              propertyId: tempProp.id,
+              value: temperature.round(),
+            ));
           }
         }
       }
 
+      if (properties.isEmpty) return;
+
+      // Build context
+      final commandContext = PropertyCommandContext(
+        origin: 'panel.system.room',
+        displayId: _displayRepository?.display?.id,
+        spaceId: widget.roomId,
+        roleKey: widget.role.name,
+      );
+
+      // Send single command for all properties
+      final success = await devicesService.setMultiplePropertyValues(
+        properties: properties,
+        context: commandContext,
+      );
+
       if (!mounted) return;
 
-      if (failCount > 0 && successCount == 0) {
+      if (!success) {
         AlertBar.showError(
           this.context,
           message: localizations?.action_failed ?? 'Failed to set temperature',
@@ -2017,8 +2118,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     final localizations = AppLocalizations.of(context);
 
     try {
-      int successCount = 0;
-      int failCount = 0;
+      // Build list of properties to update
+      final List<PropertyCommandItem> properties = [];
 
       for (final target in targets) {
         final device = devicesService.getDevice(target.deviceId);
@@ -2030,22 +2131,35 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
           final whiteProp = channel.colorWhiteProp;
           if (whiteProp != null) {
-            final success = await devicesService.setPropertyValue(
-              whiteProp.id,
-              white,
-            );
-            if (success) {
-              successCount++;
-            } else {
-              failCount++;
-            }
+            properties.add(PropertyCommandItem(
+              deviceId: target.deviceId,
+              channelId: target.channelId,
+              propertyId: whiteProp.id,
+              value: white,
+            ));
           }
         }
       }
 
+      if (properties.isEmpty) return;
+
+      // Build context
+      final commandContext = PropertyCommandContext(
+        origin: 'panel.system.room',
+        displayId: _displayRepository?.display?.id,
+        spaceId: widget.roomId,
+        roleKey: widget.role.name,
+      );
+
+      // Send single command for all properties
+      final success = await devicesService.setMultiplePropertyValues(
+        properties: properties,
+        context: commandContext,
+      );
+
       if (!mounted) return;
 
-      if (failCount > 0 && successCount == 0) {
+      if (!success) {
         AlertBar.showError(
           this.context,
           message: localizations?.action_failed ?? 'Failed to set white level',
