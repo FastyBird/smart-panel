@@ -195,6 +195,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get light_state_off => 'Vypnuto';
 
   @override
+  String get light_state_failed => 'Selhalo';
+
+  @override
   String get light_state_off_description => 'Světlo je vypnuto.';
 
   @override

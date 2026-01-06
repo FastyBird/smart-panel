@@ -248,6 +248,10 @@
   "@light_state_off": {
     "description": "State when the light is turned off"
   },
+  "light_state_failed": "Failed",
+  "@light_state_failed": {
+    "description": "State when the light command failed"
+  },
   "light_state_off_description": "Light is turned off",
   "@light_state_off_description": {
     "description": "Detailed description of the light being turned off"

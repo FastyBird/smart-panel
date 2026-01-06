@@ -185,6 +185,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   DeckService? _deckService;
   SpacesService? _spacesService;
   DevicesService? _devicesService;
+  IntentOverlayService? _intentOverlayService;
 
   // Track which roles are currently being toggled
   final Set<LightTargetRole> _togglingRoles = {};
@@ -213,6 +214,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       _devicesService?.addListener(_onDevicesDataChanged);
     } catch (_) {}
 
+    try {
+      _intentOverlayService = locator<IntentOverlayService>();
+      _intentOverlayService?.addListener(_onIntentDataChanged);
+    } catch (_) {}
+
     // Fetch light targets for this space
     _fetchLightTargets();
   }
@@ -233,6 +239,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   void dispose() {
     _spacesService?.removeListener(_onSpacesDataChanged);
     _devicesService?.removeListener(_onDevicesDataChanged);
+    _intentOverlayService?.removeListener(_onIntentDataChanged);
     super.dispose();
   }
 
@@ -248,6 +255,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     // Re-fetch light targets to get latest data
     if (mounted) {
       _spacesService?.fetchLightTargetsForSpace(_roomId);
+    }
+  }
+
+  void _onIntentDataChanged() {
+    // Intent overlay service changed - rebuild to show/hide failure indicators
+    if (mounted) {
+      setState(() {});
     }
   }
 
@@ -736,9 +750,14 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final hasBrightness = channel.hasBrightness;
     final brightness = hasBrightness ? channel.brightness : null;
 
+    // Check for recent failure
+    final hasFailure = _intentOverlayService?.hasRecentFailure(target.deviceId) ?? false;
+
     // Build subtitle: On/Off state, with brightness icon if supported
-    final stateText = isOn ? localizations.light_state_on : localizations.light_state_off;
-    final showBrightness = hasBrightness && isOn && brightness != null;
+    final stateText = hasFailure
+        ? localizations.light_state_failed
+        : (isOn ? localizations.light_state_on : localizations.light_state_off);
+    final showBrightness = hasBrightness && isOn && brightness != null && !hasFailure;
 
     // Strip room name from device name
     final roomName = _spacesService?.getSpace(_roomId)?.name;
@@ -757,12 +776,15 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             ButtonTileIcon(
-              icon: isOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline,
+              icon: hasFailure
+                  ? MdiIcons.alertCircleOutline
+                  : (isOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline),
               onTap: isToggling
                   ? null
                   : () => _toggleDevice(context, target, channel, devicesService),
               isOn: isOn,
               isLoading: isToggling,
+              iconColor: hasFailure ? AppColorsLight.warning : null,
             ),
             AppSpacings.spacingMdHorizontal,
             Expanded(

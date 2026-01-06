@@ -195,6 +195,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get light_state_off => 'Off';
 
   @override
+  String get light_state_failed => 'Failed';
+
+  @override
   String get light_state_off_description => 'Light is turned off';
 
   @override

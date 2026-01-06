@@ -61,6 +61,7 @@
   "light_state_on": "Zapnuto",
   "light_state_on_description": "Světlo svítí.",
   "light_state_off": "Vypnuto",
+  "light_state_failed": "Selhalo",
   "light_state_off_description": "Světlo je vypnuto.",
   "light_state_brightness_description": "Aktuální jas.",
   "light_state_mixed_description": "Zařízení mají různé hodnoty.",

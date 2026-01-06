@@ -467,6 +467,12 @@ abstract class AppLocalizations {
   /// **'Off'**
   String get light_state_off;
 
+  /// State when the light command failed
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get light_state_failed;
+
   /// Detailed description of the light being turned off
   ///
   /// In en, this message translates to:

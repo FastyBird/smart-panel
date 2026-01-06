@@ -191,6 +191,7 @@ class ButtonTileIcon extends StatelessWidget {
   final bool isOn;
   final bool isLoading;
   final bool isDisabled;
+  final Color? iconColor;
 
   ButtonTileIcon({
     super.key,
@@ -199,6 +200,7 @@ class ButtonTileIcon extends StatelessWidget {
     required this.isOn,
     this.isLoading = false,
     this.isDisabled = false,
+    this.iconColor,
   });
 
   @override
@@ -294,19 +296,21 @@ class ButtonTileIcon extends StatelessWidget {
                           24,
                           density: _visualDensityService.density,
                         ),
-                        color: isDisabled
-                            ? (Theme.of(context).brightness == Brightness.light
-                                ? AppColorsLight.infoLight5
-                                : AppColorsDark.infoLight5)
-                            : (isOn
+                        color: iconColor ??
+                            (isDisabled
                                 ? (Theme.of(context).brightness ==
                                         Brightness.light
-                                    ? AppColorsLight.primary
-                                    : AppColorsDark.primary)
-                                : (Theme.of(context).brightness ==
-                                        Brightness.light
-                                    ? AppColorsLight.info
-                                    : AppColorsDark.info)),
+                                    ? AppColorsLight.infoLight5
+                                    : AppColorsDark.infoLight5)
+                                : (isOn
+                                    ? (Theme.of(context).brightness ==
+                                            Brightness.light
+                                        ? AppColorsLight.primary
+                                        : AppColorsDark.primary)
+                                    : (Theme.of(context).brightness ==
+                                            Brightness.light
+                                        ? AppColorsLight.info
+                                        : AppColorsDark.info))),
                       ),
                     ),
             ),
