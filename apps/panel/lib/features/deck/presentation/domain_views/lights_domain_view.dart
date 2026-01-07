@@ -1155,6 +1155,10 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
   bool _temperatureWasLocked = false;
   bool _whiteWasLocked = false;
 
+  // Memoization cache for _getRoleMixedState
+  RoleMixedState? _cachedMixedState;
+  String? _mixedStateCacheKey;
+
   @override
   void initState() {
     super.initState();
@@ -1874,7 +1878,15 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
   /// - Hue: mixed if values differ by more than threshold (among ON devices)
   /// - Temperature: mixed if values differ by more than threshold (among ON devices)
   /// - White: mixed if values differ by more than threshold (among ON devices)
+  ///
+  /// Uses memoization to avoid recalculating during the same build cycle.
   RoleMixedState _getRoleMixedState(List<LightTargetView> targets) {
+    // Build cache key from targets and their current device states
+    final cacheKey = _buildMixedStateCacheKey(targets);
+    if (cacheKey == _mixedStateCacheKey && _cachedMixedState != null) {
+      return _cachedMixedState!;
+    }
+
     int onCount = 0;
     int offCount = 0;
 
@@ -1966,7 +1978,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         maxWhite != null &&
         (maxWhite - minWhite) > LightingConstants.mixedThreshold;
 
-    return RoleMixedState(
+    final result = RoleMixedState(
       onStateMixed: onStateMixed,
       brightnessMixed: brightnessMixed,
       hueMixed: hueMixed,
@@ -1983,6 +1995,38 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       minWhite: minWhite,
       maxWhite: maxWhite,
     );
+
+    // Cache the result
+    _mixedStateCacheKey = cacheKey;
+    _cachedMixedState = result;
+
+    return result;
+  }
+
+  /// Build a cache key for mixed state calculation based on targets and their device states
+  String _buildMixedStateCacheKey(List<LightTargetView> targets) {
+    final buffer = StringBuffer();
+    for (final target in targets) {
+      final device = _devicesService?.getDevice(target.deviceId);
+      if (device is! LightingDeviceView) continue;
+
+      final channel = findLightChannel(device, target.channelId);
+      if (channel == null) continue;
+
+      // Include target ID and relevant state values in the key
+      buffer.write('${target.deviceId}:${target.channelId}:');
+      buffer.write('${channel.on}:${channel.brightness}:');
+      if (channel.hasColor) {
+        buffer.write('${channel.hue}:${channel.saturation}:');
+      }
+      if (channel.hasTemperature) {
+        buffer.write('${channel.temperatureProp?.value}:');
+      }
+      if (channel.hasColorWhite) {
+        buffer.write('${channel.colorWhite}:');
+      }
+    }
+    return buffer.toString();
   }
 
   /// Check if a device is out of sync with the role's target value
