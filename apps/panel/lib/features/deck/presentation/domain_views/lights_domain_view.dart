@@ -264,6 +264,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             orElse: () => device.lightChannels.first,
           );
 
+          // Skip if channel wasn't found (fallback was used) to avoid incorrect state
+          if (channel.id != target.channelId) continue;
+
           // Check if ON property is locked by intent to get overlay value for instant feedback
           bool isOn = channel.on;
           if (_intentOverlayService != null) {
@@ -1825,6 +1828,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         (c) => c.id == target.channelId,
         orElse: () => device.lightChannels.first,
       );
+
+      // Skip if channel wasn't found (fallback was used) to avoid incorrect state
+      if (channel.id != target.channelId) continue;
 
       // Count on/off state
       if (channel.on) {

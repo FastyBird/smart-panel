@@ -265,26 +265,29 @@ export class DevicesService {
 		const updateFields = omitBy(toInstance(mapping.class, dtoInstance), isUndefined);
 
 		// Check if any entity fields are actually being changed by comparing with existing values
-		const entityFieldsChanged = Object.keys(updateFields).some((key) => {
-			const newValue = (updateFields as Record<string, unknown>)[key];
-			const existingValue = (device as unknown as Record<string, unknown>)[key];
+		const entityFieldsChanged =
+			Object.keys(updateFields).some((key) => {
+				const newValue = (updateFields as Record<string, unknown>)[key];
+				const existingValue = (device as unknown as Record<string, unknown>)[key];
 
-			// Deep comparison for arrays/objects
-			if (Array.isArray(newValue) && Array.isArray(existingValue)) {
-				return JSON.stringify(newValue) !== JSON.stringify(existingValue);
-			}
+				// Deep comparison for arrays/objects
+				if (Array.isArray(newValue) && Array.isArray(existingValue)) {
+					return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+				}
 
-			// Handle null/undefined comparison
-			if (newValue === null && existingValue === null) {
-				return false;
-			}
-			if (newValue === null || existingValue === null) {
-				return true;
-			}
+				// Handle null/undefined comparison
+				if (newValue === null && existingValue === null) {
+					return false;
+				}
+				if (newValue === null || existingValue === null) {
+					return true;
+				}
 
-			// Simple value comparison
-			return newValue !== existingValue;
-		});
+				// Simple value comparison
+				return newValue !== existingValue;
+			}) ||
+			// Explicit check for room_id being set to null (toInstance drops null values)
+			(dtoInstance.room_id !== undefined && device.roomId !== (dtoInstance.room_id ?? null));
 
 		Object.assign(device, updateFields);
 
