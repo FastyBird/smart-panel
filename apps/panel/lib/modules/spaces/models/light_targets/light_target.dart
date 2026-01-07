@@ -58,6 +58,36 @@ class LightTargetModel {
   /// Unique identifier for this light target (combination of device and channel)
   String get id => '$_deviceId:$_channelId';
 
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is LightTargetModel &&
+        other._deviceId == _deviceId &&
+        other._channelId == _channelId &&
+        other._deviceName == _deviceName &&
+        other._channelName == _channelName &&
+        other._priority == _priority &&
+        other._hasBrightness == _hasBrightness &&
+        other._hasColorTemp == _hasColorTemp &&
+        other._hasColor == _hasColor &&
+        other._role == _role &&
+        other._spaceId == _spaceId;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        _deviceId,
+        _channelId,
+        _deviceName,
+        _channelName,
+        _priority,
+        _hasBrightness,
+        _hasColorTemp,
+        _hasColor,
+        _role,
+        _spaceId,
+      );
+
   factory LightTargetModel.fromJson(
     Map<String, dynamic> json, {
     required String spaceId,

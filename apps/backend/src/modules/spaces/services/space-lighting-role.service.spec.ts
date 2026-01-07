@@ -2,6 +2,7 @@
 import { Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
@@ -141,6 +142,12 @@ describe('SpaceLightingRoleService', () => {
 					useValue: {
 						getOneOrThrow: jest.fn().mockResolvedValue(mockSpace),
 						findDevicesBySpace: jest.fn().mockResolvedValue([mockDevice]),
+					},
+				},
+				{
+					provide: EventEmitter2,
+					useValue: {
+						emit: jest.fn(),
 					},
 				},
 			],

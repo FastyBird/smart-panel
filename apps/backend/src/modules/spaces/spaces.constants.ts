@@ -9,6 +9,9 @@ export enum EventType {
 	SPACE_CREATED = 'SpacesModule.Space.Created',
 	SPACE_UPDATED = 'SpacesModule.Space.Updated',
 	SPACE_DELETED = 'SpacesModule.Space.Deleted',
+	LIGHT_TARGET_CREATED = 'SpacesModule.LightTarget.Created',
+	LIGHT_TARGET_UPDATED = 'SpacesModule.LightTarget.Updated',
+	LIGHT_TARGET_DELETED = 'SpacesModule.LightTarget.Deleted',
 }
 
 export enum SpaceType {
