@@ -24,3 +24,8 @@ export 'package:fastybird_smart_panel/modules/deck/events/navigate_to_deck_item.
 
 // Presentation
 export 'package:fastybird_smart_panel/modules/deck/presentation/widgets/button_tile.dart';
+
+// Domain Views - Lighting
+export 'package:fastybird_smart_panel/modules/deck/domain_views/lighting/lighting_constants.dart';
+export 'package:fastybird_smart_panel/modules/deck/domain_views/lighting/lighting_models.dart';
+export 'package:fastybird_smart_panel/modules/deck/domain_views/lighting/lighting_utils.dart';

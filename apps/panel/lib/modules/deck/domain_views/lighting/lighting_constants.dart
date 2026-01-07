@@ -1,7 +1,7 @@
 // Centralized constants for Lights Domain view behavior and thresholds
 // Keeping these in one place makes it easier to tune UX without touching logic.
 
-class LightsDomainConstants {
+class LightingConstants {
   // Settling window after an intent completes (ms)
   static const int settlingWindowMs = 2000;
 
@@ -14,4 +14,3 @@ class LightsDomainConstants {
   // Threshold for detecting "mixed" states across devices
   static const int mixedThreshold = 10;
 }
-

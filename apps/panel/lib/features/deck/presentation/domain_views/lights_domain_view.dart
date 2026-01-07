@@ -25,8 +25,6 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dar
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/intents/service.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
-import 'package:fastybird_smart_panel/features/deck/presentation/domain_views/lights_domain_constants.dart';
-import 'package:fastybird_smart_panel/features/deck/presentation/domain_views/lights_domain_utils.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -37,8 +35,8 @@ part 'lights_domain_view_models.dart';
 // Helper Functions
 // ============================================================================
 
-// Models/state helpers are in the part file: lights_domain_view_models.dart
-// Shared utilities are in: lights_domain_utils.dart
+// Private UI models are in the part file: lights_domain_view_models.dart
+// Public models, constants, and utilities are in: modules/deck/domain_views/lighting/
 
 /// Lights domain page - displays lighting devices grouped by role with quick controls.
 ///
@@ -944,7 +942,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     }
 
     // Start settling timer
-    final timer = Timer(const Duration(milliseconds: LightsDomainConstants.settlingWindowMs), () {
+    final timer = Timer(const Duration(milliseconds: LightingConstants.settlingWindowMs), () {
       if (!mounted) return;
       _onSettlingTimeout(currentState, updateState, targets, convergenceCheck, tolerance);
     });
@@ -1156,7 +1154,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           (s) => _brightnessState = s,
           targets,
           _allBrightnessMatch,
-          LightsDomainConstants.brightnessTolerance,
+          LightingConstants.brightnessTolerance,
         );
       }
 
@@ -1168,7 +1166,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           (s) => _hueState = s,
           targets,
           _allHueMatch,
-          LightsDomainConstants.hueTolerance,
+          LightingConstants.hueTolerance,
         );
       }
 
@@ -1180,7 +1178,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           (s) => _temperatureState = s,
           targets,
           _allTemperatureMatch,
-          LightsDomainConstants.temperatureTolerance,
+          LightingConstants.temperatureTolerance,
         );
       }
 
@@ -1192,7 +1190,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           (s) => _whiteState = s,
           targets,
           _allWhiteMatch,
-          LightsDomainConstants.whiteTolerance,
+          LightingConstants.whiteTolerance,
         );
       }
     });
@@ -1222,49 +1220,49 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           (s) => _brightnessState = s,
           targets,
           _allBrightnessMatch,
-          LightsDomainConstants.brightnessTolerance,
+          LightingConstants.brightnessTolerance,
         );
         _checkConvergenceDuringSettling(
           _hueState,
           (s) => _hueState = s,
           targets,
           _allHueMatch,
-          LightsDomainConstants.hueTolerance,
+          LightingConstants.hueTolerance,
         );
         _checkConvergenceDuringSettling(
           _temperatureState,
           (s) => _temperatureState = s,
           targets,
           _allTemperatureMatch,
-          LightsDomainConstants.temperatureTolerance,
+          LightingConstants.temperatureTolerance,
         );
         _checkConvergenceDuringSettling(
           _whiteState,
           (s) => _whiteState = s,
           targets,
           _allWhiteMatch,
-          LightsDomainConstants.whiteTolerance,
+          LightingConstants.whiteTolerance,
         );
 
         // Also check MIXED state - if user hasn't interacted and devices converge, return to IDLE
         if (_brightnessState.state == RoleUIState.mixed &&
             _brightnessState.desiredValue != null &&
-            _allBrightnessMatch(targets, _brightnessState.desiredValue!, LightsDomainConstants.brightnessTolerance)) {
+            _allBrightnessMatch(targets, _brightnessState.desiredValue!, LightingConstants.brightnessTolerance)) {
           _brightnessState = const RoleControlState(state: RoleUIState.idle);
         }
         if (_hueState.state == RoleUIState.mixed &&
             _hueState.desiredValue != null &&
-            _allHueMatch(targets, _hueState.desiredValue!, LightsDomainConstants.hueTolerance)) {
+            _allHueMatch(targets, _hueState.desiredValue!, LightingConstants.hueTolerance)) {
           _hueState = const RoleControlState(state: RoleUIState.idle);
         }
         if (_temperatureState.state == RoleUIState.mixed &&
             _temperatureState.desiredValue != null &&
-            _allTemperatureMatch(targets, _temperatureState.desiredValue!, LightsDomainConstants.temperatureTolerance)) {
+            _allTemperatureMatch(targets, _temperatureState.desiredValue!, LightingConstants.temperatureTolerance)) {
           _temperatureState = const RoleControlState(state: RoleUIState.idle);
         }
         if (_whiteState.state == RoleUIState.mixed &&
             _whiteState.desiredValue != null &&
-            _allWhiteMatch(targets, _whiteState.desiredValue!, LightsDomainConstants.whiteTolerance)) {
+            _allWhiteMatch(targets, _whiteState.desiredValue!, LightingConstants.whiteTolerance)) {
           _whiteState = const RoleControlState(state: RoleUIState.idle);
         }
 
@@ -1637,19 +1635,19 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
     final brightnessMixed = minBrightness != null &&
         maxBrightness != null &&
-        (maxBrightness - minBrightness) > LightsDomainConstants.mixedThreshold;
+        (maxBrightness - minBrightness) > LightingConstants.mixedThreshold;
 
     final hueMixed = minHue != null &&
         maxHue != null &&
-        (maxHue - minHue) > LightsDomainConstants.mixedThreshold;
+        (maxHue - minHue) > LightingConstants.mixedThreshold;
 
     final temperatureMixed = minTemperature != null &&
         maxTemperature != null &&
-        (maxTemperature - minTemperature) > LightsDomainConstants.mixedThreshold * 10; // temp uses larger threshold
+        (maxTemperature - minTemperature) > LightingConstants.mixedThreshold * 10; // temp uses larger threshold
 
     final whiteMixed = minWhite != null &&
         maxWhite != null &&
-        (maxWhite - minWhite) > LightsDomainConstants.mixedThreshold;
+        (maxWhite - minWhite) > LightingConstants.mixedThreshold;
 
     return RoleMixedState(
       onStateMixed: onStateMixed,
@@ -1682,7 +1680,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     if (_brightnessState.isMixed && _brightnessState.desiredValue != null) {
       if (channel.hasBrightness && channel.on) {
         final targetBrightness = _brightnessState.desiredValue!.round();
-        if ((channel.brightness - targetBrightness).abs() > LightsDomainConstants.brightnessTolerance) {
+        if ((channel.brightness - targetBrightness).abs() > LightingConstants.brightnessTolerance) {
           return true;
         }
       }
@@ -1692,7 +1690,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     if (_hueState.isMixed && _hueState.desiredValue != null) {
       if (channel.hasHue && channel.on) {
         final targetHue = _hueState.desiredValue!;
-        if ((channel.hue - targetHue).abs() > LightsDomainConstants.hueTolerance) {
+        if ((channel.hue - targetHue).abs() > LightingConstants.hueTolerance) {
           return true;
         }
       }
@@ -1705,7 +1703,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         if (tempProp?.value is NumberValueType) {
           final actualTemp = (tempProp!.value as NumberValueType).value.toDouble();
           final targetTemp = _temperatureState.desiredValue!;
-          if ((actualTemp - targetTemp).abs() > LightsDomainConstants.temperatureTolerance) {
+          if ((actualTemp - targetTemp).abs() > LightingConstants.temperatureTolerance) {
             return true;
           }
         }
@@ -1716,7 +1714,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     if (_whiteState.isMixed && _whiteState.desiredValue != null) {
       if (channel.hasColorWhite && channel.on) {
         final targetWhite = _whiteState.desiredValue!.round();
-        if ((channel.colorWhite - targetWhite).abs() > LightsDomainConstants.whiteTolerance) {
+        if ((channel.colorWhite - targetWhite).abs() > LightingConstants.whiteTolerance) {
           return true;
         }
       }
@@ -1745,28 +1743,28 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           (s) => _brightnessState = s,
           targets,
           _allBrightnessMatch,
-          LightsDomainConstants.brightnessTolerance,
+          LightingConstants.brightnessTolerance,
         );
         _checkConvergenceDuringSettling(
           _hueState,
           (s) => _hueState = s,
           targets,
           _allHueMatch,
-          LightsDomainConstants.hueTolerance,
+          LightingConstants.hueTolerance,
         );
         _checkConvergenceDuringSettling(
           _temperatureState,
           (s) => _temperatureState = s,
           targets,
           _allTemperatureMatch,
-          LightsDomainConstants.temperatureTolerance,
+          LightingConstants.temperatureTolerance,
         );
         _checkConvergenceDuringSettling(
           _whiteState,
           (s) => _whiteState = s,
           targets,
           _allWhiteMatch,
-          LightsDomainConstants.whiteTolerance,
+          LightingConstants.whiteTolerance,
         );
 
         // Update cache if devices are now synced
