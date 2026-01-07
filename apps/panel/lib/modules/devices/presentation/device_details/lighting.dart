@@ -6,11 +6,14 @@ import 'package:fastybird_smart_panel/core/utils/enum.dart';
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
-import 'package:fastybird_smart_panel/core/widgets/bottom_navigation.dart';
+import 'package:fastybird_smart_panel/core/widgets/button_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/colored_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/colored_switch.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/components/light_channel_detail.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/components/light_mode_navigation.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/components/light_state_display.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
@@ -26,8 +29,6 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 class LightingDeviceDetail extends StatefulWidget {
   final LightingDeviceView _device;
 
-  final bool _supportSwatches = false;
-
   const LightingDeviceDetail({
     super.key,
     required LightingDeviceView device,
@@ -38,261 +39,310 @@ class LightingDeviceDetail extends StatefulWidget {
 }
 
 class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
-  LightChannelModeType _colorMode = LightChannelModeType.off;
   final PropertyValueHelper _valueHelper = PropertyValueHelper();
-  final List<LightChannelModeType> _lightModes = [];
 
-  late int _currentModeIndex;
-  late int _selectedChannel;
-
+  late List<LightMode> _availableModes;
+  late LightMode _currentMode;
   late List<LightChannelView> _channels;
+
+  // Track which channels are being toggled
+  final Set<String> _togglingChannels = {};
 
   @override
   void initState() {
     super.initState();
-
     _initializeWidget();
-
-    _selectedChannel = 0;
-
-    _lightModes.add(LightChannelModeType.off);
-
-    if (widget._device.hasBrightness) {
-      _lightModes.add(LightChannelModeType.brightness);
-    }
-    if (widget._device.hasColor) {
-      _lightModes.add(LightChannelModeType.color);
-    }
-    if (widget._device.hasTemperature) {
-      _lightModes.add(LightChannelModeType.temperature);
-    }
-    if (widget._device.hasWhite) {
-      _lightModes.add(LightChannelModeType.white);
-    }
-    if (widget._supportSwatches) {
-      _lightModes.add(LightChannelModeType.swatches);
-    }
-
-    if (_lightModes.length >= 2) {
-      _colorMode = _lightModes[1];
-    }
-
-    if (_channels.isNotEmpty) {
-      _currentModeIndex = _channels[_selectedChannel].on ? 1 : 0;
-    } else {
-      _currentModeIndex = 0;
-    }
   }
 
   @override
   void didUpdateWidget(covariant LightingDeviceDetail oldWidget) {
     super.didUpdateWidget(oldWidget);
-
     _initializeWidget();
   }
 
   void _initializeWidget() {
     _channels = widget._device.lightChannels;
+
+    _availableModes = LightModeNavigation.createModesList(
+      hasBrightness: widget._device.hasBrightness,
+      hasColor: widget._device.hasColor,
+      hasTemperature: widget._device.hasTemperature,
+      hasWhite: widget._device.hasWhite,
+    );
+
+    // Start with brightness mode if available
+    if (_availableModes.contains(LightMode.brightness)) {
+      _currentMode = LightMode.brightness;
+    } else if (_availableModes.length > 1) {
+      _currentMode = _availableModes[1];
+    } else {
+      _currentMode = LightMode.off;
+    }
   }
+
+  bool get _isSimple => widget._device.isSimpleLight;
+  bool get _isMultiChannel => _channels.length > 1;
 
   @override
   Widget build(BuildContext context) {
-    if (!widget._device.isSimpleLight &&
-        !widget._device.isSingleBrightness &&
-        _channels.length > 1) {
-      return DefaultTabController(
-        initialIndex: 0,
-        length: _channels.length,
-        child: Column(
-          children: [
-            Material(
-              color: Theme.of(context).appBarTheme.backgroundColor,
-              child: SafeArea(
-                bottom: false,
-                child: TabBar(
-                  tabs: _channels
-                      .map(
-                        (channel) => Tab(
-                          text: channel.name,
-                        ),
-                      )
-                      .toList(),
-                ),
-              ),
-            ),
-            Expanded(
-              child: Builder(
-                builder: (BuildContext context) {
-                  final TabController tabController = DefaultTabController.of(
-                    context,
-                  );
-
-                  tabController.addListener(() {
-                    if (!tabController.indexIsChanging) {
-                      setState(() {
-                        _selectedChannel = tabController.index;
-                      });
-                    }
-                  });
-
-                  return TabBarView(
-                    children: _channels
-                        .map(
-                          (channel) => LightSingleChannelDetail(
-                            device: widget._device,
-                            channel: channel,
-                            mode: _colorMode,
-                          ),
-                        )
-                        .toList(),
-                  );
-                },
-              ),
-            ),
-            if (_renderBottomNavigation(context, _channels) != null)
-              SafeArea(
-                top: false,
-                child: _renderBottomNavigation(context, _channels)!,
-              ),
-          ],
-        ),
-      );
+    // Multi-channel device: tiles grid
+    if (_isMultiChannel) {
+      return _buildMultiChannelLayout(context);
     }
+
+    // Simple device with single channel: just ON/OFF
+    if (_isSimple) {
+      return _buildSimpleDeviceLayout(context);
+    }
+
+    // Single channel with capabilities
+    return _buildSingleChannelLayout(context);
+  }
+
+  /// Layout for simple ON/OFF devices with single channel - two-column with large switch
+  Widget _buildSimpleDeviceLayout(BuildContext context) {
+    final channel = _channels.first;
+
+    return SafeArea(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final elementMaxSize = constraints.maxHeight - 2 * AppSpacings.pMd;
+
+          return Padding(
+            padding: AppSpacings.paddingMd,
+            child: Row(
+              children: [
+                // Left: State display
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(right: AppSpacings.pLg),
+                    child: LightStateDisplay(
+                      brightness: 0,
+                      anyOn: channel.on,
+                      hasBrightness: false,
+                      useSingular: true,
+                    ),
+                  ),
+                ),
+                // Right: Large switch
+                ColoredSwitch(
+                  switchState: channel.on,
+                  iconOn: MdiIcons.power,
+                  iconOff: MdiIcons.power,
+                  trackWidth: elementMaxSize,
+                  vertical: true,
+                  onChanged: (value) => _toggleChannel(channel, value),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Layout for single channel devices with capabilities
+  Widget _buildSingleChannelLayout(BuildContext context) {
+    final channel = _channels.first;
 
     return Column(
       children: [
         Expanded(
           child: SafeArea(
             bottom: false,
-            child: LayoutBuilder(builder: (
-              BuildContext context,
-              BoxConstraints constraints,
-            ) {
-              if (widget._device.isSimpleLight ||
-                  (widget._device.isSingleBrightness && _channels.length >= 2)) {
-                return LightSimpleDetail(
-                  device: widget._device,
-                  withBrightness:
-                      widget._device.isSingleBrightness && _channels.length >= 2,
-                );
-              }
-
-              final channel = _channels.first;
-
-              return LightSingleChannelDetail(
-                device: widget._device,
-                channel: channel,
-                mode: _colorMode,
-              );
-            }),
+            child: LightSingleChannelDetail(
+              device: widget._device,
+              channel: channel,
+              mode: _lightModeToChannelMode(_currentMode),
+            ),
           ),
         ),
-        if (_renderBottomNavigation(context, _channels) != null)
+        if (_availableModes.length > 1)
           SafeArea(
             top: false,
-            child: _renderBottomNavigation(context, _channels)!,
+            child: LightModeNavigation(
+              availableModes: _availableModes,
+              currentMode: _currentMode,
+              anyOn: channel.on,
+              onModeSelected: (mode) {
+                setState(() {
+                  _currentMode = mode;
+                });
+                // Turn on if selecting a control mode while off
+                if (!channel.on && mode != LightMode.off) {
+                  _toggleChannel(channel, true);
+                }
+              },
+              onPowerToggle: () => _toggleChannel(channel, !channel.on),
+            ),
           ),
       ],
     );
   }
 
-  Widget? _renderBottomNavigation(
-    BuildContext context,
-    List<LightChannelView> channelCapabilities,
-  ) {
+  /// Layout for multi-channel devices - tiles grid only
+  Widget _buildMultiChannelLayout(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    if (widget._device.isSimpleLight ||
-        (widget._device.isSingleBrightness &&
-            channelCapabilities.length >= 2)) {
-      return null;
-    }
+    return SafeArea(
+      child: Padding(
+        padding: AppSpacings.paddingMd,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // 2 tiles per row with spacing
+            final spacing = AppSpacings.pMd;
+            final tilesPerRow = 2;
 
-    if (_lightModes.length <= 1) return null;
+            return GridView.builder(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: tilesPerRow,
+                crossAxisSpacing: spacing,
+                mainAxisSpacing: spacing,
+                childAspectRatio: 1.0,
+              ),
+              itemCount: _channels.length,
+              itemBuilder: (context, index) {
+                final channel = _channels[index];
+                final isOn = channel.on;
+                final isToggling = _togglingChannels.contains(channel.id);
+                final hasBrightness = channel.hasBrightness;
+                final brightness = hasBrightness ? channel.brightness : null;
 
-    return AppBottomNavigationBar(
-      currentIndex: _currentModeIndex,
-      enableFloatingNavBar: false,
-      onTap: (int index) async {
-        if (_lightModes[index] == LightChannelModeType.off) {
-          if (_channels[_selectedChannel].on) {
-            setState(() {
-              _currentModeIndex = 0;
-              _colorMode = _lightModes[1];
-            });
-          } else {
-            setState(() {
-              _currentModeIndex = 1;
-              _colorMode = _lightModes[1];
-            });
-          }
+                // Build subtitle: On/Off state with optional brightness
+                final stateText =
+                    isOn ? localizations.light_state_on : localizations.light_state_off;
+                final showBrightness = hasBrightness && isOn && brightness != null;
 
-          _valueHelper.setPropertyValue(
-            context,
-            _channels[_selectedChannel].onProp,
-            _channels[_selectedChannel].on ? false : true,
-            deviceId: widget._device.id,
-            channelId: _channels[_selectedChannel].id,
-          );
-        } else {
-          setState(() {
-            _currentModeIndex = index;
-            _colorMode = _lightModes[index];
-          });
-
-          if (_channels[_selectedChannel].on == false) {
-            _valueHelper.setPropertyValue(
-              context,
-              _channels[_selectedChannel].onProp,
-              true,
-              deviceId: widget._device.id,
-              channelId: _channels[_selectedChannel].id,
+                return ButtonTileBox(
+                  onTap: isToggling
+                      ? null
+                      : () => _openChannelDetail(context, channel),
+                  isOn: isOn,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          ButtonTileIcon(
+                            icon: isOn
+                                ? MdiIcons.lightbulbOn
+                                : MdiIcons.lightbulbOutline,
+                            onTap: isToggling
+                                ? null
+                                : () => _toggleChannel(channel, !isOn),
+                            isOn: isOn,
+                            isLoading: isToggling,
+                          ),
+                          // Offline indicator badge
+                          if (!widget._device.isOnline)
+                            Positioned(
+                              right: -2,
+                              bottom: -2,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).scaffoldBackgroundColor,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  MdiIcons.alert,
+                                  size: AppFontSize.extraSmall,
+                                  color: AppColorsLight.warning,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      AppSpacings.spacingSmVertical,
+                      ButtonTileTitle(
+                        title: channel.name,
+                        isOn: isOn,
+                      ),
+                      AppSpacings.spacingXsVertical,
+                      ButtonTileSubTitle(
+                        subTitle: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(stateText),
+                            if (showBrightness) ...[
+                              AppSpacings.spacingSmHorizontal,
+                              Icon(
+                                MdiIcons.weatherSunny,
+                                size: AppFontSize.extraSmall,
+                                color: Theme.of(context).brightness == Brightness.light
+                                    ? AppTextColorLight.placeholder
+                                    : AppTextColorDark.placeholder,
+                              ),
+                              const SizedBox(width: 2),
+                              Text('$brightness%'),
+                            ],
+                          ],
+                        ),
+                        isOn: isOn,
+                      ),
+                    ],
+                  ),
+                );
+              },
             );
-          }
-        }
-      },
-      // dotIndicatorColor: Colors.black,
-      items: _lightModes
-          .map((mode) {
-            switch (mode) {
-              case LightChannelModeType.off:
-                // Show "On" when light is off, "Off" when light is on
-                return AppBottomNavigationItem(
-                  icon: Icon(MdiIcons.power),
-                  label: _channels[_selectedChannel].on
-                      ? localizations.light_mode_off
-                      : localizations.light_mode_on,
-                );
-              case LightChannelModeType.brightness:
-                return AppBottomNavigationItem(
-                  icon: Icon(MdiIcons.weatherSunny),
-                  label: localizations.light_mode_brightness,
-                );
-              case LightChannelModeType.color:
-                return AppBottomNavigationItem(
-                  icon: Icon(MdiIcons.paletteOutline),
-                  label: localizations.light_mode_color,
-                );
-              case LightChannelModeType.temperature:
-                return AppBottomNavigationItem(
-                  icon: Icon(MdiIcons.thermometer),
-                  label: localizations.light_mode_temperature,
-                );
-              case LightChannelModeType.white:
-                return AppBottomNavigationItem(
-                  icon: Icon(MdiIcons.lightbulbOutline),
-                  label: localizations.light_mode_white,
-                );
-              case LightChannelModeType.swatches:
-                return AppBottomNavigationItem(
-                  icon: Icon(MdiIcons.paletteSwatchOutline),
-                  label: localizations.light_mode_swatches,
-                );
-            }
-          })
-          .whereType<AppBottomNavigationItem>()
-          .toList(),
+          },
+        ),
+      ),
     );
+  }
+
+  /// Open channel detail page
+  void _openChannelDetail(BuildContext context, LightChannelView channel) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LightChannelDetailPage(
+          device: widget._device,
+          channel: channel,
+        ),
+      ),
+    );
+  }
+
+  /// Toggle a single channel
+  Future<void> _toggleChannel(LightChannelView channel, bool newState) async {
+    setState(() {
+      _togglingChannels.add(channel.id);
+    });
+
+    try {
+      await _valueHelper.setPropertyValue(
+        context,
+        channel.onProp,
+        newState,
+        deviceId: widget._device.id,
+        channelId: channel.id,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _togglingChannels.remove(channel.id);
+        });
+      }
+    }
+  }
+
+  /// Convert LightMode to LightChannelModeType for compatibility
+  LightChannelModeType _lightModeToChannelMode(LightMode mode) {
+    switch (mode) {
+      case LightMode.off:
+        return LightChannelModeType.off;
+      case LightMode.brightness:
+        return LightChannelModeType.brightness;
+      case LightMode.color:
+        return LightChannelModeType.color;
+      case LightMode.temperature:
+        return LightChannelModeType.temperature;
+      case LightMode.white:
+        return LightChannelModeType.white;
+    }
   }
 }
 
