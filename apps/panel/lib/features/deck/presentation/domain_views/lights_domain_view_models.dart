@@ -156,7 +156,8 @@ class _RoleGroup {
   final int onCount;
   final int totalCount;
   final bool hasBrightness;
-  final int? avgBrightness;
+  /// First ON device's brightness (or first device's if all off)
+  final int? brightness;
 
   _RoleGroup({
     required this.role,
@@ -164,7 +165,7 @@ class _RoleGroup {
     required this.onCount,
     required this.totalCount,
     required this.hasBrightness,
-    this.avgBrightness,
+    this.brightness,
   });
 
   bool get isOn => onCount > 0;

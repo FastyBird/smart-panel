@@ -261,9 +261,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       if (roleTargets.isEmpty) continue;
 
       int onCount = 0;
-      int totalBrightness = 0;
-      int brightnessCount = 0;
       bool hasBrightness = false;
+      int? firstOnBrightness;
+      int? firstDeviceBrightness;
 
       for (final target in roleTargets) {
         final device = devicesService.getDevice(target.deviceId);
@@ -281,9 +281,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
           if (channel.hasBrightness) {
             hasBrightness = true;
-            if (channel.on) {
-              totalBrightness += channel.brightness;
-              brightnessCount++;
+            // Capture first device's brightness (for when all are off)
+            firstDeviceBrightness ??= channel.brightness;
+            // Capture first ON device's brightness
+            if (channel.on && firstOnBrightness == null) {
+              firstOnBrightness = channel.brightness;
             }
           }
         }
@@ -295,9 +297,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         onCount: onCount,
         totalCount: roleTargets.length,
         hasBrightness: hasBrightness,
-        avgBrightness: brightnessCount > 0
-            ? (totalBrightness / brightnessCount).round()
-            : null,
+        brightness: firstOnBrightness ?? firstDeviceBrightness,
       ));
     }
 
@@ -371,15 +371,15 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final isOn = group.isOn;
 
     // Build subtitle: "X light(s) on" or "all off", with optional brightness
-    String subtitleText;
+    final String countText;
     if (group.onCount == 0) {
-      subtitleText = localizations.domain_lights_all_off;
+      countText = localizations.domain_lights_all_off;
     } else {
-      subtitleText = localizations.domain_lights_count_on(group.onCount);
-      if (group.hasBrightness && group.avgBrightness != null) {
-        subtitleText = '$subtitleText • ${group.avgBrightness}%';
-      }
+      countText = localizations.domain_lights_count_on(group.onCount);
     }
+
+    // Build subtitle widget with brightness icon if available
+    final bool showBrightness = group.hasBrightness && group.brightness != null && group.onCount > 0;
 
     return ButtonTileBox(
       // Tap on tile (outside icon) opens detail
@@ -406,7 +406,22 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           ),
           AppSpacings.spacingXsVertical,
           ButtonTileSubTitle(
-            subTitle: Text(subtitleText),
+            subTitle: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(countText),
+                if (showBrightness) ...[
+                  Text(' • '),
+                  Icon(
+                    MdiIcons.brightnessPercent,
+                    size: AppFontSize.extraSmall,
+                  ),
+                  const SizedBox(width: 2),
+                  Text('${group.brightness}%'),
+                ],
+              ],
+            ),
             isOn: isOn,
             isLoading: isToggling,
           ),
