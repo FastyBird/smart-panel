@@ -259,53 +259,62 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
       return true;
     }
 
-    // Generate single request ID for tracking
-    final requestId = const Uuid().v4();
+    try {
+      // Generate single request ID for tracking
+      final requestId = const Uuid().v4();
 
-    // Build properties payload
-    final propertiesPayload = properties.map((prop) => prop.toJson()).toList();
+      // Build properties payload
+      final propertiesPayload = properties.map((prop) => prop.toJson()).toList();
 
-    // Build context payload if provided
-    Map<String, dynamic>? contextPayload;
-    if (context != null) {
-      contextPayload = context.toJson();
-    }
+      // Build context payload if provided
+      Map<String, dynamic>? contextPayload;
+      if (context != null) {
+        contextPayload = context.toJson();
+      }
 
-    final completer = Completer<bool>();
+      final completer = Completer<bool>();
 
-    // Build command payload
-    final payload = <String, dynamic>{
-      'request_id': requestId,
-      'properties': propertiesPayload,
-    };
-    if (contextPayload != null && contextPayload.isNotEmpty) {
-      payload['context'] = contextPayload;
-    }
+      // Build command payload
+      final payload = <String, dynamic>{
+        'request_id': requestId,
+        'properties': propertiesPayload,
+      };
+      if (contextPayload != null && contextPayload.isNotEmpty) {
+        payload['context'] = contextPayload;
+      }
 
-    await _socketService.sendCommand(
-      DevicesModuleConstants.channelPropertySetEvent,
-      payload,
-      DevicesModuleEventHandlerName.internalSetProperty,
-      onAck: (SocketCommandResponseModel? response) {
-        if (response == null || response.status == false) {
-          if (kDebugMode) {
-            debugPrint(
-              '[DEVICES MODULE][CHANNEL PROPERTIES] Failed batch command for ${properties.length} properties, reason: ${response?.message ?? 'N/A'}',
-            );
+      await _socketService.sendCommand(
+        DevicesModuleConstants.channelPropertySetEvent,
+        payload,
+        DevicesModuleEventHandlerName.internalSetProperty,
+        onAck: (SocketCommandResponseModel? response) {
+          if (response == null || response.status == false) {
+            if (kDebugMode) {
+              debugPrint(
+                '[DEVICES MODULE][CHANNEL PROPERTIES] Failed batch command for ${properties.length} properties, reason: ${response?.message ?? 'N/A'}',
+              );
+            }
+            completer.complete(false);
+          } else {
+            if (kDebugMode) {
+              debugPrint(
+                '[DEVICES MODULE][CHANNEL PROPERTIES] Successfully sent batch command for ${properties.length} properties, requestId: $requestId',
+              );
+            }
+            completer.complete(true);
           }
-          completer.complete(false);
-        } else {
-          if (kDebugMode) {
-            debugPrint(
-              '[DEVICES MODULE][CHANNEL PROPERTIES] Successfully sent batch command for ${properties.length} properties, requestId: $requestId',
-            );
-          }
-          completer.complete(true);
-        }
-      },
-    );
+        },
+      );
 
-    return completer.future;
+      return completer.future;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[DEVICES MODULE][CHANNEL PROPERTIES] Exception in batch command: ${e.toString()}',
+        );
+      }
+      return false;
+    }
   }
 
   void _revertValue({required String id}) {

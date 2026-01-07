@@ -429,12 +429,10 @@ export class LightEntityMapperService extends EntityMapper {
 		);
 
 		if (brightnessProp && values.has(brightnessProp.id) && typeof values.get(brightnessProp.id) === 'number') {
-			if (typeof values.get(brightnessProp.id) === 'number') {
-				attributes.set(
-					LightEntityAttribute.BRIGHTNESS,
-					Math.round((Number(values.get(brightnessProp.id)) / 100) * 255),
-				);
-			}
+			attributes.set(
+				LightEntityAttribute.BRIGHTNESS,
+				Math.round((Number(values.get(brightnessProp.id)) / 100) * 255),
+			);
 		}
 
 		const brightnessPctProp = await this.getValidProperty(
@@ -445,9 +443,7 @@ export class LightEntityMapperService extends EntityMapper {
 		);
 
 		if (brightnessPctProp && values.has(brightnessPctProp.id) && typeof values.get(brightnessPctProp.id) === 'number') {
-			if (typeof values.get(brightnessPctProp.id) === 'number') {
-				attributes.set(LightEntityAttribute.BRIGHTNESS_PCT, values.get(brightnessPctProp.id));
-			}
+			attributes.set(LightEntityAttribute.BRIGHTNESS_PCT, values.get(brightnessPctProp.id));
 		}
 
 		this.logger.debug('[LIGHT ENTITY MAPPER] Received properties were mapped to Home Assistant entity state');

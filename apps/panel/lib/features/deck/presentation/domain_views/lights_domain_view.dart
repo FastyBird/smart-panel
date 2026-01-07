@@ -253,7 +253,27 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             orElse: () => device.lightChannels.first,
           );
 
-          if (channel.on) {
+          // Check if ON property is locked by intent to get overlay value for instant feedback
+          bool isOn = channel.on;
+          if (_intentOverlayService != null) {
+            final onProp = channel.onProp;
+            if (_intentOverlayService!.isPropertyLocked(
+                  target.deviceId,
+                  target.channelId,
+                  onProp.id,
+                )) {
+              final overlayValue = _intentOverlayService!.getOverlayValue(
+                target.deviceId,
+                target.channelId,
+                onProp.id,
+              );
+              if (overlayValue is bool) {
+                isOn = overlayValue;
+              }
+            }
+          }
+
+          if (isOn) {
             onCount++;
           }
 
@@ -262,7 +282,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             // Capture first device's brightness (for when all are off)
             firstDeviceBrightness ??= channel.brightness;
             // Capture first ON device's brightness
-            if (channel.on && firstOnBrightness == null) {
+            if (isOn && firstOnBrightness == null) {
               firstOnBrightness = channel.brightness;
             }
           }
@@ -392,7 +412,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                 if (showBrightness) ...[
                   Text(' • '),
                   Icon(
-                    MdiIcons.brightnessPercent,
+                    MdiIcons.weatherSunny,
                     size: AppFontSize.extraSmall,
                   ),
                   const SizedBox(width: 2),
@@ -470,6 +490,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       if (properties.isEmpty) return;
 
       // Get display ID from display repository
+      // Note: displayId may be null if display is not yet registered, which is acceptable
       final displayRepository = locator<DisplayRepository>();
       final displayId = displayRepository.display?.id;
 
@@ -480,6 +501,19 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         spaceId: _roomId,
         roleKey: group.role.name,
       );
+
+      // Create local optimistic overlays for instant UI feedback
+      // The overlay service will notify listeners, triggering _onIntentDataChanged
+      // which will rebuild the UI with the optimistic state
+      for (final property in properties) {
+        _intentOverlayService?.createLocalOverlay(
+          deviceId: property.deviceId,
+          channelId: property.channelId,
+          propertyId: property.propertyId,
+          value: property.value,
+          ttlMs: 5000, // 5 second TTL - should be replaced by real intent before this expires
+        );
+      }
 
       // Send single batch command for all properties
       final success = await devicesService.setMultiplePropertyValues(
@@ -704,7 +738,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                       if (showBrightness) ...[
                         AppSpacings.spacingSmHorizontal,
                         Icon(
-                          MdiIcons.brightnessPercent,
+                          MdiIcons.weatherSunny,
                           size: AppFontSize.extraSmall,
                           color: Theme.of(context).brightness == Brightness.light
                               ? AppTextColorLight.placeholder
@@ -741,6 +775,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     try {
       // Get display ID from display repository
+      // Note: displayId may be null if display is not yet registered, which is acceptable
       final displayRepository = locator<DisplayRepository>();
       final displayId = displayRepository.display?.id;
 
@@ -752,6 +787,19 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         roleKey: 'other',
       );
 
+      final newOnValue = !channel.on;
+
+      // Create local optimistic overlay for instant UI feedback
+      // The overlay service will notify listeners, triggering _onIntentDataChanged
+      // which will rebuild the UI with the optimistic state
+      _intentOverlayService?.createLocalOverlay(
+        deviceId: target.deviceId,
+        channelId: target.channelId,
+        propertyId: channel.onProp.id,
+        value: newOnValue,
+        ttlMs: 5000, // 5 second TTL - should be replaced by real intent before this expires
+      );
+
       // Use batch command even for single device for consistency with intents
       final success = await devicesService.setMultiplePropertyValues(
         properties: [
@@ -759,7 +807,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             deviceId: target.deviceId,
             channelId: target.channelId,
             propertyId: channel.onProp.id,
-            value: !channel.on,
+            value: newOnValue,
           ),
         ],
         context: commandContext,
@@ -1939,7 +1987,27 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           orElse: () => device.lightChannels.first,
         );
 
-        if (channel.on) {
+        // Check if ON property is locked by intent to get overlay value for instant feedback
+        bool isOn = channel.on;
+        if (_intentOverlayService != null) {
+          final onProp = channel.onProp;
+          if (_intentOverlayService!.isPropertyLocked(
+                target.deviceId,
+                target.channelId,
+                onProp.id,
+              )) {
+            final overlayValue = _intentOverlayService!.getOverlayValue(
+              target.deviceId,
+              target.channelId,
+              onProp.id,
+            );
+            if (overlayValue is bool) {
+              isOn = overlayValue;
+            }
+          }
+        }
+
+        if (isOn) {
           onCount++;
           if (channel.hasBrightness) {
             totalBrightness += channel.brightness;
@@ -2234,7 +2302,6 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // 3. If state is IDLE and devices are synced, show actual brightness
 
     final isLocked = _brightnessState.isLocked;
-    final isSettling = _brightnessState.isSettling;
 
     // Determine the display value
     final displayBrightness = isLocked
@@ -2247,9 +2314,6 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // Show sync-off icon when:
     // - User hasn't interacted yet (IDLE state) AND devices have different values
     final showInitialMixed = !isLocked && devicesMixed;
-
-    // Show settling indicator when actively waiting for devices
-    final showSettling = isSettling && roleMixedState.anyOn;
 
     // For brightness-capable lights, show brightness percentage or sync-off icon
     return Column(
@@ -2303,36 +2367,14 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
                     height: 1.0,
                   ),
                 ),
-              if (showSettling)
-                Padding(
-                  padding: EdgeInsets.only(left: AppSpacings.pSm),
-                  child: SizedBox(
-                    width: _screenService.scale(
-                      20,
-                      density: _visualDensityService.density,
-                    ),
-                    height: _screenService.scale(
-                      20,
-                      density: _visualDensityService.density,
-                    ),
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Theme.of(context).brightness == Brightness.light
-                          ? AppTextColorLight.regular.withValues(alpha: 0.6)
-                          : AppTextColorDark.regular.withValues(alpha: 0.6),
-                    ),
-                  ),
-                ),
             ],
           ),
         Text(
           showInitialMixed
               ? localizations.light_role_not_synced_description
-              : (showSettling
-                  ? localizations.light_state_syncing_description
-                  : (anyOn
-                      ? localizations.light_state_brightness_description
-                      : localizations.light_role_off_description)),
+              : (anyOn
+                  ? localizations.light_state_brightness_description
+                  : localizations.light_role_off_description),
           style: TextStyle(
             color: Theme.of(context).brightness == Brightness.light
                 ? AppTextColorLight.regular
@@ -2437,8 +2479,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // Get mixed state to determine what value to show
     final roleMixedState = _getRoleMixedState(targets);
 
-    // Check if any property is locked by an intent
-    bool hasLockedProperty = false;
+    // Check if any property is locked by an intent to get overlay value
     double? overlayBrightness;
 
     for (final target in targets) {
@@ -2456,7 +2497,6 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
                 target.channelId,
                 brightnessProp.id,
               ) == true) {
-            hasLockedProperty = true;
             // Get overlay value from intent
             final overlay = _intentOverlayService?.getOverlayValue(
               target.deviceId,
@@ -2519,7 +2559,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       value: displayValue,
       min: 0,
       max: 100,
-      enabled: !hasLockedProperty, // Disable during intent
+      enabled: true, // Always enabled - don't disable during intent to prevent blinking
       vertical: true,
       trackWidth: elementMaxSize,
       showThumb: false,
@@ -2538,7 +2578,10 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         _brightnessDebounceTimer?.cancel();
         _brightnessDebounceTimer = Timer(
           const Duration(milliseconds: 300),
-          () => _setBrightnessForAll(context, targets, value.round(), devicesService),
+          () {
+            if (!mounted) return;
+            _setBrightnessForAll(context, targets, value.round(), devicesService);
+          },
         );
       },
       inner: [
@@ -2569,8 +2612,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // Get mixed state to determine what value to show
     final roleMixedState = _getRoleMixedState(targets);
 
-    // Check if any property is locked by an intent
-    bool hasLockedProperty = false;
+    // Check if any property is locked by an intent to get overlay value
     double? overlayHue;
 
     for (final target in targets) {
@@ -2589,7 +2631,6 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
                 target.channelId,
                 hueProp.id,
               ) == true) {
-            hasLockedProperty = true;
             // Get overlay value from intent
             final overlay = _intentOverlayService?.getOverlayValue(
               target.deviceId,
@@ -2615,7 +2656,6 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
                     target.channelId,
                     redProp.id,
                   ) == true) {
-            hasLockedProperty = true;
             // Get RGB overlay values and convert to hue
             final overlayR = _intentOverlayService?.getOverlayValue(
               target.deviceId,
@@ -2708,7 +2748,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       value: displayValue,
       min: 0.0,
       max: 360.0,
-      enabled: !hasLockedProperty, // Disable during intent
+      enabled: true, // Always enabled - don't disable during intent to prevent blinking
       vertical: true,
       trackWidth: elementMaxSize,
       onValueChanged: (value) {
@@ -2726,7 +2766,10 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         _hueDebounceTimer?.cancel();
         _hueDebounceTimer = Timer(
           const Duration(milliseconds: 300),
-          () => _setHueForAll(context, targets, value, devicesService),
+          () {
+            if (!mounted) return;
+            _setHueForAll(context, targets, value, devicesService);
+          },
         );
       },
       background: const BoxDecoration(
@@ -2757,8 +2800,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // Get mixed state to determine what value to show
     final roleMixedState = _getRoleMixedState(targets);
 
-    // Check if any property is locked by an intent
-    bool hasLockedProperty = false;
+    // Check if any property is locked by an intent to get overlay value
     double? overlayTemperature;
 
     for (final target in targets) {
@@ -2775,7 +2817,6 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
                 target.channelId,
                 tempProp.id,
               ) == true) {
-            hasLockedProperty = true;
             // Get overlay value from intent
             final overlay = _intentOverlayService?.getOverlayValue(
               target.deviceId,
@@ -2847,7 +2888,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       value: displayValue,
       min: 2700,
       max: 6500,
-      enabled: !hasLockedProperty, // Disable during intent
+      enabled: true, // Always enabled - don't disable during intent to prevent blinking
       vertical: true,
       trackWidth: elementMaxSize,
       onValueChanged: (value) {
@@ -2865,7 +2906,10 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         _temperatureDebounceTimer?.cancel();
         _temperatureDebounceTimer = Timer(
           const Duration(milliseconds: 300),
-          () => _setTemperatureForAll(context, targets, value, devicesService),
+          () {
+            if (!mounted) return;
+            _setTemperatureForAll(context, targets, value, devicesService);
+          },
         );
       },
       background: const BoxDecoration(
@@ -2905,8 +2949,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // Get mixed state to determine what value to show
     final roleMixedState = _getRoleMixedState(targets);
 
-    // Check if any property is locked by an intent
-    bool hasLockedProperty = false;
+    // Check if any property is locked by an intent to get overlay value
     double? overlayWhite;
 
     for (final target in targets) {
@@ -2923,7 +2966,6 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
                 target.channelId,
                 whiteProp.id,
               ) == true) {
-            hasLockedProperty = true;
             // Get overlay value from intent
             final overlay = _intentOverlayService?.getOverlayValue(
               target.deviceId,
@@ -2991,7 +3033,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       value: displayValue,
       min: 0,
       max: 255,
-      enabled: !hasLockedProperty, // Disable during intent
+      enabled: true, // Always enabled - don't disable during intent to prevent blinking
       vertical: true,
       trackWidth: elementMaxSize,
       showThumb: false,
@@ -3010,7 +3052,10 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         _whiteDebounceTimer?.cancel();
         _whiteDebounceTimer = Timer(
           const Duration(milliseconds: 300),
-          () => _setWhiteForAll(context, targets, value.round(), devicesService),
+          () {
+            if (!mounted) return;
+            _setWhiteForAll(context, targets, value.round(), devicesService);
+          },
         );
       },
       activeTrackColor: AppColors.white,
@@ -3059,6 +3104,63 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       // Check if device is out of sync with role's target value
       final isOutOfSync = channel != null ? _isDeviceOutOfSync(channel) : false;
 
+      // Check if this device's property is locked by an intent (based on current mode)
+      bool isPropertyLocked = false;
+      if (channel != null && _intentOverlayService != null) {
+        switch (_currentMode) {
+          case _LightRoleMode.brightness:
+            final brightnessProp = channel.brightnessProp;
+            if (brightnessProp != null) {
+              isPropertyLocked = _intentOverlayService!.isPropertyLocked(
+                target.deviceId,
+                target.channelId,
+                brightnessProp.id,
+              );
+            }
+            break;
+          case _LightRoleMode.color:
+            final hueProp = channel.hueProp;
+            if (hueProp != null) {
+              isPropertyLocked = _intentOverlayService!.isPropertyLocked(
+                target.deviceId,
+                target.channelId,
+                hueProp.id,
+              );
+            } else if (channel.colorRedProp != null) {
+              // Check RGB properties if HSV not available
+              isPropertyLocked = _intentOverlayService!.isPropertyLocked(
+                target.deviceId,
+                target.channelId,
+                channel.colorRedProp!.id,
+              );
+            }
+            break;
+          case _LightRoleMode.temperature:
+            final tempProp = channel.temperatureProp;
+            if (tempProp != null) {
+              isPropertyLocked = _intentOverlayService!.isPropertyLocked(
+                target.deviceId,
+                target.channelId,
+                tempProp.id,
+              );
+            }
+            break;
+          case _LightRoleMode.white:
+            final whiteProp = channel.colorWhiteProp;
+            if (whiteProp != null) {
+              isPropertyLocked = _intentOverlayService!.isPropertyLocked(
+                target.deviceId,
+                target.channelId,
+                whiteProp.id,
+              );
+            }
+            break;
+          case _LightRoleMode.off:
+            // No property to check for off mode
+            break;
+        }
+      }
+
       return Material(
         elevation: 0,
         color: Colors.transparent,
@@ -3067,18 +3169,34 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
             25,
             density: _visualDensityService.density,
           ),
-          leading: Icon(
-            isOutOfSync
-                ? MdiIcons.syncOff
-                : (channel?.on == true ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline),
-            size: AppFontSize.large,
-            color: isOutOfSync
-                ? AppColorsLight.warning
-                : (channel?.on == true
-                    ? (channel!.hasColor
-                        ? (_getChannelColorSafe(channel) ?? Theme.of(context).primaryColor)
-                        : Theme.of(context).primaryColor)
-                    : null),
+          leading: SizedBox(
+            width: AppFontSize.large,
+            height: AppFontSize.large,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(
+                  isOutOfSync
+                      ? MdiIcons.syncOff
+                      : (channel?.on == true ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline),
+                  size: AppFontSize.large,
+                  color: isOutOfSync
+                      ? AppColorsLight.warning
+                      : (channel?.on == true
+                          ? (channel!.hasColor
+                              ? (_getChannelColorSafe(channel) ?? Theme.of(context).primaryColor)
+                              : Theme.of(context).primaryColor)
+                          : null),
+                ),
+                if (isPropertyLocked)
+                  CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? AppTextColorLight.regular.withValues(alpha: 0.6)
+                        : AppTextColorDark.regular.withValues(alpha: 0.6),
+                  ),
+              ],
+            ),
           ),
           title: Text(
             displayName,
@@ -3250,6 +3368,19 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         spaceId: widget.roomId,
         roleKey: widget.role.name,
       );
+
+      // Create local optimistic overlays for instant UI feedback
+      // The overlay service will notify listeners, triggering _onIntentDataChanged
+      // which will rebuild the UI with the optimistic state
+      for (final property in properties) {
+        _intentOverlayService?.createLocalOverlay(
+          deviceId: property.deviceId,
+          channelId: property.channelId,
+          propertyId: property.propertyId,
+          value: property.value,
+          ttlMs: 5000, // 5 second TTL - should be replaced by real intent before this expires
+        );
+      }
 
       // Send single batch command for all properties
       final success = await devicesService.setMultiplePropertyValues(

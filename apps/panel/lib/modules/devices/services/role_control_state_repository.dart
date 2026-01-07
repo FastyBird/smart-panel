@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 /// Cache entry for role control state.
@@ -97,6 +99,9 @@ class RoleControlStateRepository extends ChangeNotifier {
   /// Default TTL for cache entries
   static const Duration defaultTtl = Duration(minutes: 30);
 
+  /// Periodic cleanup timer for expired entries
+  Timer? _cleanupTimer;
+
   /// Track if disposed
   bool _isDisposed = false;
 
@@ -129,6 +134,22 @@ class RoleControlStateRepository extends ChangeNotifier {
     return entry;
   }
 
+  /// Start periodic cleanup of expired entries
+  /// Called automatically when repository is first used
+  void _startPeriodicCleanup() {
+    if (_cleanupTimer != null || _isDisposed) return;
+
+    // Clean up expired entries every 5 minutes
+    _cleanupTimer = Timer.periodic(const Duration(minutes: 5), (_) {
+      if (_isDisposed) {
+        _cleanupTimer?.cancel();
+        _cleanupTimer = null;
+        return;
+      }
+      cleanupExpired();
+    });
+  }
+
   /// Get cached entry using components
   RoleCacheEntry? getByComponents(String spaceId, String domain, String roleKey) {
     return get(generateKey(spaceId, domain, roleKey));
@@ -146,6 +167,9 @@ class RoleControlStateRepository extends ChangeNotifier {
     double? temperature,
     double? white,
   }) {
+    // Start periodic cleanup on first use
+    _startPeriodicCleanup();
+
     final existing = _cache[key];
 
     if (existing != null) {
@@ -324,6 +348,8 @@ class RoleControlStateRepository extends ChangeNotifier {
   @override
   void dispose() {
     _isDisposed = true;
+    _cleanupTimer?.cancel();
+    _cleanupTimer = null;
     _cache.clear();
     super.dispose();
   }
