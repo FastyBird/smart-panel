@@ -379,6 +379,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   /// Build grid of role tiles using FixedGridSizeGrid
+  /// Responsive to orientation: portrait shows 2 per row, landscape shows 3-4
   Widget _buildRoleTilesGrid(
     BuildContext context,
     List<_RoleGroup> roleGroups,
@@ -386,21 +387,34 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     double bodyHeight,
   ) {
     final display = _deckService?.display;
-    // Ensure minimum of 2 columns for 2-per-row layout
     final cols = (display?.cols ?? 4).clamp(2, 100);
-    // Use display rows to calculate proper cell height
     final displayRows = (display?.rows ?? 6).clamp(1, 100);
 
     // Calculate cell height based on body height and display rows
     final cellHeight = bodyHeight / displayRows;
 
-    // For portrait mode: 2 tiles per row, square tiles (colSpan = rowSpan)
-    // Calculate tile size: each tile takes half the columns (minimum 1)
-    final tileColSpan = (cols / 2).floor().clamp(1, cols);
-    final tileRowSpan = tileColSpan; // Square tiles
+    // Responsive layout based on orientation
+    final isLandscape = _screenService.isLandscape;
+
+    // Calculate tiles per row and spans based on orientation
+    final int tilesPerRow;
+    final int tileColSpan;
+    final int tileRowSpan;
+
+    if (isLandscape) {
+      // Landscape: more tiles per row (3-4), tiles wider than tall
+      tilesPerRow = (cols >= 6) ? 4 : 3;
+      tileColSpan = (cols / tilesPerRow).floor().clamp(1, cols);
+      // Tiles are shorter in height - use 2/3 of colSpan for row span
+      tileRowSpan = ((tileColSpan * 2) / 3).ceil().clamp(1, displayRows);
+    } else {
+      // Portrait: 2 tiles per row, square tiles
+      tilesPerRow = 2;
+      tileColSpan = (cols / 2).floor().clamp(1, cols);
+      tileRowSpan = tileColSpan; // Square tiles
+    }
 
     // Calculate how many rows we need for the role tiles
-    final tilesPerRow = 2;
     final totalRows = (roleGroups.length / tilesPerRow).ceil();
     final gridRows = totalRows * tileRowSpan;
 
@@ -704,6 +718,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   /// Build "Other" channels section using FixedGridSizeGrid
+  /// Responsive to orientation: portrait shows 2 per row, landscape shows 3-4
   Widget _buildOtherChannelsSection(
     BuildContext context,
     _RoleGroup group,
@@ -711,20 +726,33 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     double bodyHeight,
   ) {
     final display = _deckService?.display;
-    // Ensure minimum of 2 columns for 2-per-row layout
     final cols = (display?.cols ?? 4).clamp(2, 100);
-    // Use display rows to calculate proper cell height
     final displayRows = (display?.rows ?? 6).clamp(1, 100);
 
     // Calculate cell height based on body height and display rows
     final cellHeight = bodyHeight / displayRows;
 
-    // Each tile spans half the columns (2 tiles per row) and 1 row height
-    final tileColSpan = (cols / 2).floor().clamp(1, cols);
-    final tileRowSpan = 1;
+    // Responsive layout based on orientation
+    final isLandscape = _screenService.isLandscape;
+
+    // Calculate tiles per row and spans based on orientation
+    final int tilesPerRow;
+    final int tileColSpan;
+
+    if (isLandscape) {
+      // Landscape: more tiles per row (3-4)
+      tilesPerRow = (cols >= 6) ? 4 : 3;
+      tileColSpan = (cols / tilesPerRow).floor().clamp(1, cols);
+    } else {
+      // Portrait: 2 tiles per row
+      tilesPerRow = 2;
+      tileColSpan = (cols / 2).floor().clamp(1, cols);
+    }
+
+    // Each tile is 1 row height for compact display
+    const tileRowSpan = 1;
 
     // Calculate how many rows we need
-    final tilesPerRow = 2;
     final totalRows = (group.targets.length / tilesPerRow).ceil();
     final gridRows = totalRows * tileRowSpan;
 
@@ -877,6 +905,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                     : () => _toggleDevice(context, target, channel, devicesService),
                 isOn: isOn,
                 iconColor: hasFailure ? AppColorsLight.warning : null,
+                iconSize: 20,
               ),
               // Offline indicator badge
               if (!device.isOnline)

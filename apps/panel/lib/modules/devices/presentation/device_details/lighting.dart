@@ -9,6 +9,7 @@ import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/button_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/colored_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/colored_switch.dart';
+import 'package:fastybird_smart_panel/core/widgets/fixed_grid_size_grid.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/light_channel_detail.dart';
@@ -39,6 +40,7 @@ class LightingDeviceDetail extends StatefulWidget {
 }
 
 class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
+  final ScreenService _screenService = locator<ScreenService>();
   final PropertyValueHelper _valueHelper = PropertyValueHelper();
 
   late List<LightMode> _availableModes;
@@ -180,7 +182,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     );
   }
 
-  /// Layout for multi-channel devices - tiles grid only
+  /// Layout for multi-channel devices - tiles grid using FixedGridSizeGrid
+  /// Responsive to orientation: portrait shows 2 per row, landscape shows 3-4
   Widget _buildMultiChannelLayout(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
@@ -189,106 +192,155 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         padding: AppSpacings.paddingMd,
         child: LayoutBuilder(
           builder: (context, constraints) {
-            // 2 tiles per row with spacing
-            final spacing = AppSpacings.pMd;
-            final tilesPerRow = 2;
+            final bodyHeight = constraints.maxHeight;
 
-            return GridView.builder(
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: tilesPerRow,
-                crossAxisSpacing: spacing,
-                mainAxisSpacing: spacing,
-                childAspectRatio: 1.0,
+            // Use screen service columns or default
+            final cols = _screenService.columns.clamp(2, 100);
+            final displayRows = _screenService.rows.clamp(1, 100);
+
+            // Calculate cell height based on body height and display rows
+            final cellHeight = bodyHeight / displayRows;
+
+            // Responsive layout based on orientation
+            final isLandscape = _screenService.isLandscape;
+
+            // Calculate tiles per row and spans based on orientation
+            final int tilesPerRow;
+            final int tileColSpan;
+            final int tileRowSpan;
+
+            if (isLandscape) {
+              // Landscape: more tiles per row (3-4), tiles wider than tall
+              tilesPerRow = (cols >= 6) ? 4 : 3;
+              tileColSpan = (cols / tilesPerRow).floor().clamp(1, cols);
+              // Tiles are shorter in height - use 2/3 of colSpan for row span
+              tileRowSpan = ((tileColSpan * 2) / 3).ceil().clamp(1, displayRows);
+            } else {
+              // Portrait: 2 tiles per row, square tiles
+              tilesPerRow = 2;
+              tileColSpan = (cols / 2).floor().clamp(1, cols);
+              tileRowSpan = tileColSpan; // Square tiles
+            }
+
+            // Calculate how many rows we need for the channel tiles
+            final totalRows = (_channels.length / tilesPerRow).ceil();
+            final gridRows = totalRows * tileRowSpan;
+
+            // Build grid items
+            final List<FixedGridSizeGridItem> gridItems = [];
+            for (int i = 0; i < _channels.length; i++) {
+              final row = i ~/ tilesPerRow;
+              final col = i % tilesPerRow;
+              final channel = _channels[i];
+
+              gridItems.add(
+                FixedGridSizeGridItem(
+                  mainAxisIndex: row * tileRowSpan + 1,
+                  crossAxisIndex: col * tileColSpan + 1,
+                  mainAxisCellCount: tileRowSpan,
+                  crossAxisCellCount: tileColSpan,
+                  child: _buildChannelTile(context, channel, localizations),
+                ),
+              );
+            }
+
+            // Calculate grid height based on cell height from display rows
+            final gridHeight = gridRows * cellHeight;
+
+            return SizedBox(
+              height: gridHeight,
+              child: FixedGridSizeGrid(
+                mainAxisSize: gridRows,
+                crossAxisSize: cols,
+                children: gridItems,
               ),
-              itemCount: _channels.length,
-              itemBuilder: (context, index) {
-                final channel = _channels[index];
-                final isOn = channel.on;
-                final isToggling = _togglingChannels.contains(channel.id);
-                final hasBrightness = channel.hasBrightness;
-                final brightness = hasBrightness ? channel.brightness : null;
-
-                // Build subtitle: On/Off state with optional brightness
-                final stateText =
-                    isOn ? localizations.light_state_on : localizations.light_state_off;
-                final showBrightness = hasBrightness && isOn && brightness != null;
-
-                return ButtonTileBox(
-                  onTap: isToggling
-                      ? null
-                      : () => _openChannelDetail(context, channel),
-                  isOn: isOn,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          ButtonTileIcon(
-                            icon: isOn
-                                ? MdiIcons.lightbulbOn
-                                : MdiIcons.lightbulbOutline,
-                            onTap: isToggling
-                                ? null
-                                : () => _toggleChannel(channel, !isOn),
-                            isOn: isOn,
-                            isLoading: isToggling,
-                          ),
-                          // Offline indicator badge
-                          if (!widget._device.isOnline)
-                            Positioned(
-                              right: -2,
-                              bottom: -2,
-                              child: Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).scaffoldBackgroundColor,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  MdiIcons.alert,
-                                  size: AppFontSize.extraSmall,
-                                  color: AppColorsLight.warning,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      AppSpacings.spacingSmVertical,
-                      ButtonTileTitle(
-                        title: channel.name,
-                        isOn: isOn,
-                      ),
-                      AppSpacings.spacingXsVertical,
-                      ButtonTileSubTitle(
-                        subTitle: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(stateText),
-                            if (showBrightness) ...[
-                              AppSpacings.spacingSmHorizontal,
-                              Icon(
-                                MdiIcons.weatherSunny,
-                                size: AppFontSize.extraSmall,
-                                color: Theme.of(context).brightness == Brightness.light
-                                    ? AppTextColorLight.placeholder
-                                    : AppTextColorDark.placeholder,
-                              ),
-                              const SizedBox(width: 2),
-                              Text('$brightness%'),
-                            ],
-                          ],
-                        ),
-                        isOn: isOn,
-                      ),
-                    ],
-                  ),
-                );
-              },
             );
           },
         ),
+      ),
+    );
+  }
+
+  /// Build a single channel tile for multi-channel layout
+  Widget _buildChannelTile(
+    BuildContext context,
+    LightChannelView channel,
+    AppLocalizations localizations,
+  ) {
+    final isOn = channel.on;
+    final isToggling = _togglingChannels.contains(channel.id);
+    final hasBrightness = channel.hasBrightness;
+    final brightness = hasBrightness ? channel.brightness : null;
+
+    // Build subtitle: On/Off state with optional brightness
+    final stateText =
+        isOn ? localizations.light_state_on : localizations.light_state_off;
+    final showBrightness = hasBrightness && isOn && brightness != null;
+
+    return ButtonTileBox(
+      onTap: isToggling ? null : () => _openChannelDetail(context, channel),
+      isOn: isOn,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              ButtonTileIcon(
+                icon: isOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline,
+                onTap: isToggling ? null : () => _toggleChannel(channel, !isOn),
+                isOn: isOn,
+                isLoading: isToggling,
+              ),
+              // Offline indicator badge
+              if (!widget._device.isOnline)
+                Positioned(
+                  right: -2,
+                  bottom: -2,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).scaffoldBackgroundColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      MdiIcons.alert,
+                      size: AppFontSize.extraSmall,
+                      color: AppColorsLight.warning,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          AppSpacings.spacingSmVertical,
+          ButtonTileTitle(
+            title: channel.name,
+            isOn: isOn,
+          ),
+          AppSpacings.spacingXsVertical,
+          ButtonTileSubTitle(
+            subTitle: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(stateText),
+                if (showBrightness) ...[
+                  AppSpacings.spacingSmHorizontal,
+                  Icon(
+                    MdiIcons.weatherSunny,
+                    size: AppFontSize.extraSmall,
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? AppTextColorLight.placeholder
+                        : AppTextColorDark.placeholder,
+                  ),
+                  const SizedBox(width: 2),
+                  Text('$brightness%'),
+                ],
+              ],
+            ),
+            isOn: isOn,
+          ),
+        ],
       ),
     );
   }
