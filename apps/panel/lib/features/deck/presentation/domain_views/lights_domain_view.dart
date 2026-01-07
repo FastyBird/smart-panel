@@ -236,9 +236,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     List<LightTargetView> targets,
     DevicesService devicesService,
   ) {
-    // Group targets by role
+    // Group targets by role, filtering out targets whose devices are disabled/not found
     final Map<LightTargetRole, List<LightTargetView>> grouped = {};
     for (final target in targets) {
+      // Skip targets whose devices are disabled (not in devicesService)
+      final device = devicesService.getDevice(target.deviceId);
+      if (device == null) continue;
+
       final role = target.role ?? LightTargetRole.other;
       grouped.putIfAbsent(role, () => []).add(target);
     }
