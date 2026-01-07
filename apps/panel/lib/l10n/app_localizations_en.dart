@@ -126,6 +126,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get message_error_no_device_detail_preparing_description => 'For selected device detail page is not ready yet.';
 
   @override
+  String get device_status_offline => 'offline';
+
+  @override
   String get message_error_page_not_found_title => 'Page Not Found!';
 
   @override

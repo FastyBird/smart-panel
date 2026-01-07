@@ -29,6 +29,8 @@ class ValveDeviceView extends DeviceView
     super.roomId,
     super.zoneIds,
     required super.channels,
+    super.enabled,
+    super.isOnline,
     super.isValid,
     super.validationIssues,
   });

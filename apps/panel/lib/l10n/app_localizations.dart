@@ -329,6 +329,12 @@ abstract class AppLocalizations {
   /// **'For selected device detail page is not ready yet.'**
   String get message_error_no_device_detail_preparing_description;
 
+  /// Label shown when a device is offline/disconnected
+  ///
+  /// In en, this message translates to:
+  /// **'offline'**
+  String get device_status_offline;
+
   /// Title for error when a requested page cannot be found
   ///
   /// In en, this message translates to:

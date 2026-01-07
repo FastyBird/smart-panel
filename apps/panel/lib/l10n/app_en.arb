@@ -156,6 +156,10 @@
   "@message_error_no_device_detail_preparing_description": {
     "description": "Indicates that the selected device has no detailed page available"
   },
+  "device_status_offline": "offline",
+  "@device_status_offline": {
+    "description": "Label shown when a device is offline/disconnected"
+  },
   "message_error_page_not_found_title": "Page Not Found!",
   "@message_error_page_not_found_title": {
     "description": "Title for error when a requested page cannot be found"

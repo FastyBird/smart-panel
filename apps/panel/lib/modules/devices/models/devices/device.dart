@@ -17,6 +17,9 @@ abstract class DeviceModel extends Model {
   final List<String> _controls;
   final List<String> _channels;
 
+  final bool _enabled;
+  final bool _isOnline;
+
   DeviceModel({
     required super.id,
     required String type,
@@ -28,6 +31,8 @@ abstract class DeviceModel extends Model {
     List<String> zoneIds = const [],
     List<String> controls = const [],
     List<String> channels = const [],
+    bool enabled = true,
+    bool isOnline = false,
     super.createdAt,
     super.updatedAt,
   })  : _type = type,
@@ -38,7 +43,9 @@ abstract class DeviceModel extends Model {
         _roomId = roomId,
         _zoneIds = zoneIds,
         _controls = controls,
-        _channels = channels;
+        _channels = channels,
+        _enabled = enabled,
+        _isOnline = isOnline;
 
   String get type => _type;
 
@@ -57,4 +64,8 @@ abstract class DeviceModel extends Model {
   List<String> get controls => _controls;
 
   List<String> get channels => _channels;
+
+  bool get enabled => _enabled;
+
+  bool get isOnline => _isOnline;
 }

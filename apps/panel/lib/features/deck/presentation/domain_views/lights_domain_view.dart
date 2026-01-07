@@ -839,16 +839,39 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          ButtonTileIcon(
-            icon: hasFailure
-                ? MdiIcons.alertCircleOutline
-                : (isOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline),
-            // Tap on icon toggles the device
-            onTap: isToggling
-                ? null
-                : () => _toggleDevice(context, target, channel, devicesService),
-            isOn: isOn,
-            iconColor: hasFailure ? AppColorsLight.warning : null,
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              ButtonTileIcon(
+                icon: hasFailure
+                    ? MdiIcons.alertCircleOutline
+                    : (isOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline),
+                // Tap on icon toggles the device
+                onTap: isToggling
+                    ? null
+                    : () => _toggleDevice(context, target, channel, devicesService),
+                isOn: isOn,
+                iconColor: hasFailure ? AppColorsLight.warning : null,
+              ),
+              // Offline indicator badge
+              if (!device.isOnline)
+                Positioned(
+                  right: -2,
+                  bottom: -2,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).scaffoldBackgroundColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      MdiIcons.alert,
+                      size: AppFontSize.extraSmall,
+                      color: AppColorsLight.warning,
+                    ),
+                  ),
+                ),
+            ],
           ),
           AppSpacings.spacingMdHorizontal,
           Expanded(
@@ -3347,17 +3370,22 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
               alignment: Alignment.center,
               children: [
                 Icon(
-                  isOutOfSync
-                      ? MdiIcons.syncOff
-                      : (channel?.on == true ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline),
+                  // Show alert icon when device is offline
+                  !device.isOnline
+                      ? MdiIcons.alert
+                      : (isOutOfSync
+                          ? MdiIcons.syncOff
+                          : (channel?.on == true ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline)),
                   size: AppFontSize.large,
-                  color: isOutOfSync
+                  color: !device.isOnline
                       ? AppColorsLight.warning
-                      : (channel?.on == true
-                          ? (channel!.hasColor
-                              ? (_getChannelColorSafe(channel) ?? Theme.of(context).primaryColor)
-                              : Theme.of(context).primaryColor)
-                          : null),
+                      : (isOutOfSync
+                          ? AppColorsLight.warning
+                          : (channel?.on == true
+                              ? (channel!.hasColor
+                                  ? (_getChannelColorSafe(channel) ?? Theme.of(context).primaryColor)
+                                  : Theme.of(context).primaryColor)
+                              : null)),
                 ),
                 if (isPropertyLocked)
                   CircularProgressIndicator(

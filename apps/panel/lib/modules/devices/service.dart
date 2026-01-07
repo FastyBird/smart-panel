@@ -243,6 +243,11 @@ class DevicesService extends ChangeNotifier {
     Map<String, DeviceView> newDevicesViews = {};
 
     for (var device in devices) {
+      // Skip disabled devices - they should not be visible or controllable
+      if (!device.enabled) {
+        continue;
+      }
+
       final List<ChannelView> deviceChannels = newChannelsViews.entries
           .where((entry) => device.channels.contains(entry.key))
           .map((entry) => entry.value)

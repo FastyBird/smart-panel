@@ -36,6 +36,7 @@
   "message_error_no_device_detail_description": "Pro vybrané zařízení není k dispozici stránka s podrobnostmi.",
   "message_error_no_device_detail_preparing_title": "Podrobnosti o zařízení nejsou připraveny!",
   "message_error_no_device_detail_preparing_description": "Pro vybrané zařízení stránka s podrobnostmi ještě není připravena.",
+  "device_status_offline": "offline",
   "message_error_page_not_found_title": "Stránka nenalezena!",
   "message_error_page_not_found_description": "Požadovaná stránka nebyla nalezena v aplikaci.",
   "message_error_cards_not_configured_title": "Žádné karty nejsou nakonfigurovány!",
