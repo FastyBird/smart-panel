@@ -22,6 +22,7 @@ import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
 import {
 	BulkAssignmentResponseModel,
 	BulkAssignmentResultDataModel,
+	BulkLightingRoleResultItemModel,
 	BulkLightingRolesResponseModel,
 	BulkLightingRolesResultDataModel,
 	CategoryTemplateDataModel,
@@ -660,11 +661,22 @@ export class SpacesController {
 	): Promise<BulkLightingRolesResponseModel> {
 		this.logger.debug(`Bulk setting lighting roles for space with id=${id}`);
 
-		const updatedCount = await this.spaceLightingRoleService.bulkSetRoles(id, body.data.roles);
+		const result = await this.spaceLightingRoleService.bulkSetRoles(id, body.data.roles);
 
 		const resultData = new BulkLightingRolesResultDataModel();
-		resultData.success = true;
-		resultData.rolesUpdated = updatedCount;
+		resultData.success = result.success;
+		resultData.totalCount = result.totalCount;
+		resultData.successCount = result.successCount;
+		resultData.failureCount = result.failureCount;
+		resultData.results = result.results.map((item) => {
+			const resultItem = new BulkLightingRoleResultItemModel();
+			resultItem.deviceId = item.deviceId;
+			resultItem.channelId = item.channelId;
+			resultItem.success = item.success;
+			resultItem.role = item.role;
+			resultItem.error = item.error;
+			return resultItem;
+		});
 
 		const response = new BulkLightingRolesResponseModel();
 		response.data = resultData;
@@ -690,11 +702,22 @@ export class SpacesController {
 		this.logger.debug(`Applying default lighting roles for space with id=${id}`);
 
 		const defaultRoles = await this.spaceLightingRoleService.inferDefaultLightingRoles(id);
-		const updatedCount = await this.spaceLightingRoleService.bulkSetRoles(id, defaultRoles);
+		const result = await this.spaceLightingRoleService.bulkSetRoles(id, defaultRoles);
 
 		const resultData = new BulkLightingRolesResultDataModel();
-		resultData.success = true;
-		resultData.rolesUpdated = updatedCount;
+		resultData.success = result.success;
+		resultData.totalCount = result.totalCount;
+		resultData.successCount = result.successCount;
+		resultData.failureCount = result.failureCount;
+		resultData.results = result.results.map((item) => {
+			const resultItem = new BulkLightingRoleResultItemModel();
+			resultItem.deviceId = item.deviceId;
+			resultItem.channelId = item.channelId;
+			resultItem.success = item.success;
+			resultItem.role = item.role;
+			resultItem.error = item.error;
+			return resultItem;
+		});
 
 		const response = new BulkLightingRolesResponseModel();
 		response.data = resultData;

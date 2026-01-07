@@ -299,15 +299,25 @@ describe('SpaceLightingRoleService', () => {
 
 			const result = await service.bulkSetRoles(mockSpace.id, roles);
 
-			expect(result).toBe(1);
+			expect(result.success).toBe(true);
+			expect(result.totalCount).toBe(1);
+			expect(result.successCount).toBe(1);
+			expect(result.failureCount).toBe(0);
+			expect(result.results).toHaveLength(1);
+			expect(result.results[0].success).toBe(true);
+			expect(result.results[0].deviceId).toBe(mockDevice.id);
+			expect(result.results[0].channelId).toBe(mockChannel.id);
+			expect(result.results[0].role).toBe(LightingRole.MAIN);
 		});
 
-		it('should continue on errors and return count of successful updates', async () => {
+		it('should continue on errors and return detailed results', async () => {
 			// First call succeeds (device found, findOne returns role)
 			// Second call fails (device not found)
 			deviceRepository.findOne.mockResolvedValueOnce(mockDevice).mockResolvedValueOnce(null);
 			roleRepository.findOne.mockResolvedValue(mockRole);
 
+			const failingDeviceId = uuid();
+			const failingChannelId = uuid();
 			const roles = [
 				{
 					deviceId: mockDevice.id,
@@ -315,15 +325,24 @@ describe('SpaceLightingRoleService', () => {
 					role: LightingRole.MAIN,
 				},
 				{
-					deviceId: uuid(), // This one will fail
-					channelId: uuid(),
+					deviceId: failingDeviceId, // This one will fail
+					channelId: failingChannelId,
 					role: LightingRole.AMBIENT,
 				},
 			];
 
 			const result = await service.bulkSetRoles(mockSpace.id, roles);
 
-			expect(result).toBe(1);
+			expect(result.success).toBe(false);
+			expect(result.totalCount).toBe(2);
+			expect(result.successCount).toBe(1);
+			expect(result.failureCount).toBe(1);
+			expect(result.results).toHaveLength(2);
+			expect(result.results[0].success).toBe(true);
+			expect(result.results[0].role).toBe(LightingRole.MAIN);
+			expect(result.results[1].success).toBe(false);
+			expect(result.results[1].deviceId).toBe(failingDeviceId);
+			expect(result.results[1].error).toBeDefined();
 		});
 	});
 

@@ -27,6 +27,28 @@ export interface LightTargetInfo {
 }
 
 /**
+ * Result of a single role operation in bulk update
+ */
+export interface BulkRoleResultItem {
+	deviceId: string;
+	channelId: string;
+	success: boolean;
+	role: LightingRole | null;
+	error: string | null;
+}
+
+/**
+ * Result of bulk role update operation
+ */
+export interface BulkRoleResult {
+	success: boolean;
+	totalCount: number;
+	successCount: number;
+	failureCount: number;
+	results: BulkRoleResultItem[];
+}
+
+/**
  * Event payload for light target websocket events
  * Uses snake_case to match API conventions
  */
@@ -173,23 +195,46 @@ export class SpaceLightingRoleService {
 
 	/**
 	 * Bulk set/update lighting role assignments
+	 * Returns detailed results for each role operation
 	 */
-	async bulkSetRoles(spaceId: string, roles: SetLightingRoleDto[]): Promise<number> {
+	async bulkSetRoles(spaceId: string, roles: SetLightingRoleDto[]): Promise<BulkRoleResult> {
 		// Verify space exists
 		await this.spacesService.getOneOrThrow(spaceId);
 
-		let updatedCount = 0;
+		const results: BulkRoleResultItem[] = [];
 
 		for (const dto of roles) {
 			try {
 				await this.setRole(spaceId, dto);
-				updatedCount++;
+				results.push({
+					deviceId: dto.deviceId,
+					channelId: dto.channelId,
+					success: true,
+					role: dto.role,
+					error: null,
+				});
 			} catch (error) {
-				this.logger.warn(`Failed to set role for device=${dto.deviceId} channel=${dto.channelId}: ${error}`);
+				const err = error as Error;
+				this.logger.warn(`Failed to set role for device=${dto.deviceId} channel=${dto.channelId}: ${err.message}`);
+				results.push({
+					deviceId: dto.deviceId,
+					channelId: dto.channelId,
+					success: false,
+					role: null,
+					error: err.message,
+				});
 			}
 		}
 
-		return updatedCount;
+		const successCount = results.filter((r) => r.success).length;
+
+		return {
+			success: successCount === results.length,
+			totalCount: results.length,
+			successCount,
+			failureCount: results.length - successCount,
+			results,
+		};
 	}
 
 	/**

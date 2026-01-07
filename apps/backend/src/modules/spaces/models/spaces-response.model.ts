@@ -514,12 +514,64 @@ export class LightingRolesResponseModel extends BaseSuccessResponseModel<SpaceLi
 }
 
 /**
+ * Individual result for a lighting role operation
+ */
+@ApiSchema({ name: 'SpacesModuleDataBulkLightingRoleItem' })
+export class BulkLightingRoleResultItemModel {
+	@ApiProperty({
+		name: 'device_id',
+		description: 'ID of the device',
+		type: 'string',
+		format: 'uuid',
+		example: 'a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7',
+	})
+	@Expose({ name: 'device_id' })
+	deviceId: string;
+
+	@ApiProperty({
+		name: 'channel_id',
+		description: 'ID of the channel',
+		type: 'string',
+		format: 'uuid',
+		example: 'c3d29eb4-632f-5e8c-c4af-ded8b9e6c0f8',
+	})
+	@Expose({ name: 'channel_id' })
+	channelId: string;
+
+	@ApiProperty({
+		description: 'Whether this role was set successfully',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	success: boolean;
+
+	@ApiPropertyOptional({
+		description: 'The role that was set (null if failed)',
+		enum: LightingRole,
+		nullable: true,
+		example: LightingRole.MAIN,
+	})
+	@Expose()
+	role: LightingRole | null;
+
+	@ApiPropertyOptional({
+		description: 'Error message if the operation failed',
+		type: 'string',
+		nullable: true,
+		example: null,
+	})
+	@Expose()
+	error: string | null;
+}
+
+/**
  * Bulk lighting role update result data model
  */
 @ApiSchema({ name: 'SpacesModuleDataBulkLightingRolesResult' })
 export class BulkLightingRolesResultDataModel {
 	@ApiProperty({
-		description: 'Whether the bulk update was successful',
+		description: 'Whether all operations were successful',
 		type: 'boolean',
 		example: true,
 	})
@@ -527,13 +579,39 @@ export class BulkLightingRolesResultDataModel {
 	success: boolean;
 
 	@ApiProperty({
-		name: 'roles_updated',
-		description: 'Number of roles created or updated',
+		name: 'total_count',
+		description: 'Total number of roles in the request',
 		type: 'integer',
 		example: 3,
 	})
-	@Expose({ name: 'roles_updated' })
-	rolesUpdated: number;
+	@Expose({ name: 'total_count' })
+	totalCount: number;
+
+	@ApiProperty({
+		name: 'success_count',
+		description: 'Number of roles successfully created or updated',
+		type: 'integer',
+		example: 3,
+	})
+	@Expose({ name: 'success_count' })
+	successCount: number;
+
+	@ApiProperty({
+		name: 'failure_count',
+		description: 'Number of roles that failed to update',
+		type: 'integer',
+		example: 0,
+	})
+	@Expose({ name: 'failure_count' })
+	failureCount: number;
+
+	@ApiProperty({
+		description: 'Detailed results for each role operation',
+		type: () => [BulkLightingRoleResultItemModel],
+	})
+	@Expose()
+	@Type(() => BulkLightingRoleResultItemModel)
+	results: BulkLightingRoleResultItemModel[];
 }
 
 /**
