@@ -2480,8 +2480,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       // This prevents slider jumping to 0 when HA returns null brightness for off lights
       displayValue = cachedBrightness ?? firstDeviceBrightness ?? currentBrightness.toDouble();
     } else {
-      // Devices are synced and on - show actual average value
-      displayValue = currentBrightness.toDouble();
+      // Devices are synced and on - show first device's value (same as all others when synced)
+      displayValue = firstDeviceBrightness ?? currentBrightness.toDouble();
     }
 
     return ColoredSlider(
@@ -2616,7 +2616,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       // All lights are off - prefer cached value, then first device's hue
       displayValue = cachedHue ?? firstDeviceHue ?? avgHue;
     } else {
-      displayValue = avgHue;
+      // Devices are synced and on - show first device's value (same as all others when synced)
+      displayValue = firstDeviceHue ?? avgHue;
     }
 
     return ColoredSlider(
@@ -2754,7 +2755,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       // All lights are off - prefer cached value, then first device's temperature
       displayValue = cachedTemp ?? firstDeviceTemp ?? avgTemp;
     } else {
-      displayValue = avgTemp;
+      // Devices are synced and on - show first device's value (same as all others when synced)
+      displayValue = firstDeviceTemp ?? avgTemp;
     }
 
     return ColoredSlider(
@@ -2897,7 +2899,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       // All lights are off - prefer cached value, then first device's white
       displayValue = cachedWhite ?? firstDeviceWhite ?? avgWhite;
     } else {
-      displayValue = avgWhite;
+      // Devices are synced and on - show first device's value (same as all others when synced)
+      displayValue = firstDeviceWhite ?? avgWhite;
     }
 
     return ColoredSlider(
