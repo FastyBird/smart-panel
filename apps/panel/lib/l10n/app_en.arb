@@ -280,6 +280,30 @@
   "@light_state_not_synced_description": {
     "description": "Description shown when devices in a group are initially out of sync"
   },
+  "light_role_main": "Main",
+  "@light_role_main": {
+    "description": "Name for main lighting role (ceiling lights, primary illumination)"
+  },
+  "light_role_task": "Task",
+  "@light_role_task": {
+    "description": "Name for task lighting role (desk lamps, reading lights)"
+  },
+  "light_role_ambient": "Ambient",
+  "@light_role_ambient": {
+    "description": "Name for ambient lighting role (wall sconces, mood lighting)"
+  },
+  "light_role_accent": "Accent",
+  "@light_role_accent": {
+    "description": "Name for accent lighting role (floor lamps, decorative lights)"
+  },
+  "light_role_night": "Night",
+  "@light_role_night": {
+    "description": "Name for night lighting role (nightlights, low-level lighting)"
+  },
+  "light_role_other": "Other",
+  "@light_role_other": {
+    "description": "Name for other/uncategorized lighting role"
+  },
   "light_role_on_description": "Lights are on",
   "@light_role_on_description": {
     "description": "Description for role detail when lights are on (plural)"

@@ -219,6 +219,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get light_state_not_synced_description => 'Devices are not synced';
 
   @override
+  String get light_role_main => 'Main';
+
+  @override
+  String get light_role_task => 'Task';
+
+  @override
+  String get light_role_ambient => 'Ambient';
+
+  @override
+  String get light_role_accent => 'Accent';
+
+  @override
+  String get light_role_night => 'Night';
+
+  @override
+  String get light_role_other => 'Other';
+
+  @override
   String get light_role_on_description => 'Lights are on';
 
   @override

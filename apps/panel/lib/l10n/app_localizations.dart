@@ -515,6 +515,42 @@ abstract class AppLocalizations {
   /// **'Devices are not synced'**
   String get light_state_not_synced_description;
 
+  /// Name for main lighting role (ceiling lights, primary illumination)
+  ///
+  /// In en, this message translates to:
+  /// **'Main'**
+  String get light_role_main;
+
+  /// Name for task lighting role (desk lamps, reading lights)
+  ///
+  /// In en, this message translates to:
+  /// **'Task'**
+  String get light_role_task;
+
+  /// Name for ambient lighting role (wall sconces, mood lighting)
+  ///
+  /// In en, this message translates to:
+  /// **'Ambient'**
+  String get light_role_ambient;
+
+  /// Name for accent lighting role (floor lamps, decorative lights)
+  ///
+  /// In en, this message translates to:
+  /// **'Accent'**
+  String get light_role_accent;
+
+  /// Name for night lighting role (nightlights, low-level lighting)
+  ///
+  /// In en, this message translates to:
+  /// **'Night'**
+  String get light_role_night;
+
+  /// Name for other/uncategorized lighting role
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get light_role_other;
+
   /// Description for role detail when lights are on (plural)
   ///
   /// In en, this message translates to:

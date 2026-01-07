@@ -219,6 +219,24 @@ class AppLocalizationsCs extends AppLocalizations {
   String get light_state_not_synced_description => 'Zařízení nejsou synchronizována';
 
   @override
+  String get light_role_main => 'Hlavní';
+
+  @override
+  String get light_role_task => 'Pracovní';
+
+  @override
+  String get light_role_ambient => 'Okolní';
+
+  @override
+  String get light_role_accent => 'Akcentové';
+
+  @override
+  String get light_role_night => 'Noční';
+
+  @override
+  String get light_role_other => 'Ostatní';
+
+  @override
   String get light_role_on_description => 'Světla svítí';
 
   @override
