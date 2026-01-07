@@ -245,6 +245,39 @@ describe('SpaceLightingRoleService', () => {
 			expect(transactionalUpsert).toHaveBeenCalled();
 		});
 
+		it('should handle update with no value changes', async () => {
+			// Configure mocks: role exists with same values, upsert returns same role
+			transactionalFindOne
+				.mockReset()
+				.mockResolvedValueOnce(mockRole) // First call: exists (update case)
+				.mockResolvedValue(mockRole); // Second call: fetch after upsert (unchanged)
+
+			const dto = {
+				deviceId: mockDevice.id,
+				channelId: mockChannel.id,
+				role: mockRole.role, // Same role as existing
+				priority: mockRole.priority, // Same priority as existing
+			};
+
+			const result = await service.setRole(mockSpace.id, dto);
+
+			// Should succeed and return the existing role
+			expect(result.role).toBe(mockRole.role);
+			expect(result.priority).toBe(mockRole.priority);
+
+			// Upsert should still be called with skipUpdateIfNoValuesChanged option
+			expect(transactionalUpsert).toHaveBeenCalledWith(
+				SpaceLightingRoleEntity,
+				expect.objectContaining({
+					role: mockRole.role,
+					priority: mockRole.priority,
+				}),
+				expect.objectContaining({
+					skipUpdateIfNoValuesChanged: true,
+				}),
+			);
+		});
+
 		it('should throw validation exception when device not found', async () => {
 			deviceRepository.findOne.mockResolvedValue(null);
 
