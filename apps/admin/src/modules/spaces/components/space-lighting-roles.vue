@@ -231,7 +231,7 @@ const onApplyDefaults = async (): Promise<void> => {
 		// Reload the targets to reflect the new roles
 		await loadLightTargets();
 
-		flashMessage.success(`Applied ${responseData.data?.roles_updated ?? 0} default role(s)`);
+		flashMessage.success(`Applied ${responseData.data?.success_count ?? 0} default role(s)`);
 	} finally {
 		applyingDefaults.value = false;
 	}

@@ -123,7 +123,8 @@ describe('SpaceLightingRoleService', () => {
 
 		// Initialize transactional manager mocks
 		// Default: first findOne returns null (create case), second returns mockRole
-		transactionalFindOne = jest.fn()
+		transactionalFindOne = jest
+			.fn()
 			.mockResolvedValueOnce(null) // First call: check if exists (returns null = create)
 			.mockResolvedValue(mockRole); // Second call: fetch after upsert
 		transactionalUpsert = jest.fn().mockResolvedValue(undefined);
@@ -141,13 +142,22 @@ describe('SpaceLightingRoleService', () => {
 						upsert: jest.fn().mockResolvedValue(undefined),
 						remove: jest.fn().mockResolvedValue(undefined),
 						manager: {
-							transaction: jest.fn().mockImplementation(async (callback) => {
-								const transactionalManager = {
-									findOne: transactionalFindOne,
-									upsert: transactionalUpsert,
-								};
-								return callback(transactionalManager);
-							}),
+							transaction: jest
+								.fn()
+								.mockImplementation(
+									(
+										callback: (manager: {
+											findOne: typeof transactionalFindOne;
+											upsert: typeof transactionalUpsert;
+										}) => Promise<void>,
+									) => {
+										const transactionalManager = {
+											findOne: transactionalFindOne,
+											upsert: transactionalUpsert,
+										};
+										return callback(transactionalManager);
+									},
+								),
 						},
 					},
 				},
