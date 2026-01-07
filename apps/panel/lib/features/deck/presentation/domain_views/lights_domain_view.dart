@@ -26,6 +26,7 @@ import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart
 import 'package:fastybird_smart_panel/modules/intents/service.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 import 'package:fastybird_smart_panel/features/deck/presentation/domain_views/lights_domain_constants.dart';
+import 'package:fastybird_smart_panel/features/deck/presentation/domain_views/lights_domain_utils.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -37,28 +38,7 @@ part 'lights_domain_view_models.dart';
 // ============================================================================
 
 // Models/state helpers are in the part file: lights_domain_view_models.dart
-
-/// Strips room name from device name (case insensitive).
-/// Capitalizes first letter if it becomes lowercase after stripping.
-String _stripRoomName(String deviceName, String? roomName) {
-  if (roomName == null || roomName.isEmpty) return deviceName;
-
-  final lowerDevice = deviceName.toLowerCase();
-  final lowerRoom = roomName.toLowerCase();
-
-  if (lowerDevice.startsWith(lowerRoom)) {
-    String stripped = deviceName.substring(roomName.length).trim();
-    if (stripped.isEmpty) return deviceName;
-
-    // Capitalize first letter if it's lowercase
-    if (stripped[0].toLowerCase() == stripped[0] &&
-        stripped[0].toUpperCase() != stripped[0]) {
-      stripped = stripped[0].toUpperCase() + stripped.substring(1);
-    }
-    return stripped;
-  }
-  return deviceName;
-}
+// Shared utilities are in: lights_domain_utils.dart
 
 /// Lights domain page - displays lighting devices grouped by role with quick controls.
 ///
@@ -392,7 +372,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           ButtonTileIcon(
-            icon: _getRoleIconData(group.role),
+            icon: getLightRoleIcon(group.role),
             // Tap on icon toggles the role
             onTap: isToggling ? null : () => _toggleRole(context, group, devicesService),
             isOn: isOn,
@@ -400,7 +380,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           ),
           AppSpacings.spacingSmVertical,
           ButtonTileTitle(
-            title: _getRoleName(context, group.role),
+            title: getLightRoleName(context, group.role),
             isOn: isOn,
             isLoading: isToggling,
           ),
@@ -446,42 +426,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     } else {
       // Multiple devices - open role detail
       _openRoleDetail(context, group, devicesService);
-    }
-  }
-
-  /// Get icon data for a role (used with ButtonTileIcon)
-  IconData _getRoleIconData(LightTargetRole role) {
-    switch (role) {
-      case LightTargetRole.main:
-        return MdiIcons.ceilingLight;
-      case LightTargetRole.task:
-        return MdiIcons.deskLamp;
-      case LightTargetRole.ambient:
-        return MdiIcons.wallSconce;
-      case LightTargetRole.accent:
-        return MdiIcons.floorLamp;
-      case LightTargetRole.night:
-        return MdiIcons.weatherNight;
-      case LightTargetRole.other:
-        return MdiIcons.lightbulbOutline;
-    }
-  }
-
-  /// Get display name for a role
-  String _getRoleName(BuildContext context, LightTargetRole role) {
-    switch (role) {
-      case LightTargetRole.main:
-        return 'Main';
-      case LightTargetRole.task:
-        return 'Task';
-      case LightTargetRole.ambient:
-        return 'Ambient';
-      case LightTargetRole.accent:
-        return 'Accent';
-      case LightTargetRole.night:
-        return 'Night';
-      case LightTargetRole.other:
-        return 'Other';
     }
   }
 
@@ -698,7 +642,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     // Strip room name from device name
     final roomName = _spacesService?.getSpace(_roomId)?.name;
-    final displayName = _stripRoomName(device.name, roomName);
+    final displayName = stripRoomNameFromDevice(device.name, roomName);
 
     return ButtonTileBox(
       // Tap on tile (outside icon) opens device detail
@@ -1883,8 +1827,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     if (spacesService == null || devicesService == null) {
       return Scaffold(
         appBar: AppTopBar(
-          title: _getRoleName(widget.role),
-          icon: _getRoleIcon(widget.role),
+          title: getLightRoleName(context, widget.role),
+          icon: getLightRoleIcon(widget.role),
           actions: [
             GestureDetector(
               onTap: () => Navigator.pop(context),
@@ -1941,8 +1885,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
     return Scaffold(
       appBar: AppTopBar(
-        title: _getRoleName(widget.role),
-        icon: _getRoleIcon(widget.role),
+        title: getLightRoleName(context, widget.role),
+        icon: getLightRoleIcon(widget.role),
         actions: [
           GestureDetector(
             onTap: () => Navigator.pop(context),
@@ -2985,7 +2929,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       }
 
       // Strip room name from device name
-      final displayName = _stripRoomName(device.name, roomName);
+      final displayName = stripRoomNameFromDevice(device.name, roomName);
 
       // Check if device is out of sync with role's target value
       final isOutOfSync = channel != null ? _isDeviceOutOfSync(channel) : false;
@@ -3644,42 +3588,6 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     } catch (_) {
       // Channel has partial color properties but not enough for a valid color
       return null;
-    }
-  }
-
-  /// Get display name for a role
-  String _getRoleName(LightTargetRole role) {
-    switch (role) {
-      case LightTargetRole.main:
-        return 'Main';
-      case LightTargetRole.task:
-        return 'Task';
-      case LightTargetRole.ambient:
-        return 'Ambient';
-      case LightTargetRole.accent:
-        return 'Accent';
-      case LightTargetRole.night:
-        return 'Night';
-      case LightTargetRole.other:
-        return 'Other';
-    }
-  }
-
-  /// Get icon for a role
-  IconData _getRoleIcon(LightTargetRole role) {
-    switch (role) {
-      case LightTargetRole.main:
-        return MdiIcons.ceilingLight;
-      case LightTargetRole.task:
-        return MdiIcons.deskLamp;
-      case LightTargetRole.ambient:
-        return MdiIcons.wallSconce;
-      case LightTargetRole.accent:
-        return MdiIcons.floorLamp;
-      case LightTargetRole.night:
-        return MdiIcons.weatherNight;
-      case LightTargetRole.other:
-        return MdiIcons.lightbulbOutline;
     }
   }
 }
