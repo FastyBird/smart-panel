@@ -239,10 +239,14 @@ export class PagesService {
 		const updateFields = dtoInstanceWithoutDisplays;
 
 		// Check if any entity fields are actually being changed by comparing with existing values
-		// Also check if displays changed (use Array.isArray since displays can be string[] | null | undefined)
+		// Also check if displays changed
 		const displaysChanged =
-			Array.isArray(dtoInstance.displays) &&
-			JSON.stringify(page.displays?.map((d) => d.id).sort()) !== JSON.stringify(dtoInstance.displays.sort());
+			// Case 1: displays is an array - compare with existing displays
+			// Use spread to copy array before sorting to avoid mutating the original DTO
+			(Array.isArray(dtoInstance.displays) &&
+				JSON.stringify(page.displays?.map((d) => d.id).sort()) !== JSON.stringify([...dtoInstance.displays].sort())) ||
+			// Case 2: displays is explicitly null - check if we're clearing existing displays
+			(dtoInstance.displays === null && (page.displays?.length ?? 0) > 0);
 		const entityFieldsChanged =
 			displaysChanged ||
 			Object.keys(updateFields).some((key) => {

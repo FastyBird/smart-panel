@@ -191,6 +191,12 @@ class SocketService {
       _socket = null;
     }
 
+    // Cancel any pending reconnection timers from previous connection
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+    _reconnectCheckTimer?.cancel();
+    _reconnectCheckTimer = null;
+
     // Enable reconnection for new initialization
     _shouldReconnect = true;
 
