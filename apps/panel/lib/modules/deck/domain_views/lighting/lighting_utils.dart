@@ -1,5 +1,4 @@
-import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/modules/spaces/types/types.dart';
+import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -26,22 +25,21 @@ String stripRoomNameFromDevice(String deviceName, String? roomName) {
 }
 
 /// Get localized name for a light role
+/// TODO: Add proper localization strings (light_role_main, light_role_ambient, etc.)
 String getLightRoleName(BuildContext context, LightTargetRole role) {
-  final localizations = AppLocalizations.of(context);
-
   switch (role) {
     case LightTargetRole.main:
-      return localizations?.light_role_main ?? 'Main';
+      return 'Main';
     case LightTargetRole.ambient:
-      return localizations?.light_role_ambient ?? 'Ambient';
+      return 'Ambient';
     case LightTargetRole.task:
-      return localizations?.light_role_task ?? 'Task';
+      return 'Task';
     case LightTargetRole.accent:
-      return localizations?.light_role_accent ?? 'Accent';
+      return 'Accent';
     case LightTargetRole.night:
-      return localizations?.light_role_night ?? 'Night';
+      return 'Night';
     case LightTargetRole.other:
-      return localizations?.light_role_other ?? 'Other';
+      return 'Other';
   }
 }
 
