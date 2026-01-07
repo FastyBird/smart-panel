@@ -194,6 +194,9 @@ export class PagesService {
 
 		const dtoInstance = await this.validateDto<TUpdateDTO>(mapping.updateDto, updateDto);
 
+		// Capture original displays before modification for change detection
+		const originalDisplayIds = page.displays?.map((d) => d.id) ?? [];
+
 		// Handle display assignments if provided
 		if (dtoInstance.displays !== undefined && dtoInstance.displays !== null) {
 			if (dtoInstance.displays.length > 0) {
@@ -239,14 +242,14 @@ export class PagesService {
 		const updateFields = dtoInstanceWithoutDisplays;
 
 		// Check if any entity fields are actually being changed by comparing with existing values
-		// Also check if displays changed
+		// Also check if displays changed (use originalDisplayIds captured before modification)
 		const displaysChanged =
-			// Case 1: displays is an array - compare with existing displays
+			// Case 1: displays is an array - compare with original displays
 			// Use spread to copy array before sorting to avoid mutating the original DTO
 			(Array.isArray(dtoInstance.displays) &&
-				JSON.stringify(page.displays?.map((d) => d.id).sort()) !== JSON.stringify([...dtoInstance.displays].sort())) ||
+				JSON.stringify([...originalDisplayIds].sort()) !== JSON.stringify([...dtoInstance.displays].sort())) ||
 			// Case 2: displays is explicitly null - check if we're clearing existing displays
-			(dtoInstance.displays === null && (page.displays?.length ?? 0) > 0);
+			(dtoInstance.displays === null && originalDisplayIds.length > 0);
 		const entityFieldsChanged =
 			displaysChanged ||
 			Object.keys(updateFields).some((key) => {
