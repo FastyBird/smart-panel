@@ -106,27 +106,29 @@ export class DisplaysService {
 		const updateFields = omitBy(toInstance(DisplayEntity, dtoInstance), isUndefined);
 
 		// Check if any entity fields are actually being changed by comparing with existing values
-		const entityFieldsChanged = Object.keys(updateFields).some((key) => {
-			const newValue = (updateFields as Record<string, unknown>)[key];
-			const existingValue = (display as unknown as Record<string, unknown>)[key];
+		const entityFieldsChanged =
+			Object.keys(updateFields).some((key) => {
+				const newValue = (updateFields as Record<string, unknown>)[key];
+				const existingValue = (display as unknown as Record<string, unknown>)[key];
 
-			// Deep comparison for arrays/objects
-			if (Array.isArray(newValue) && Array.isArray(existingValue)) {
-				return JSON.stringify(newValue) !== JSON.stringify(existingValue);
-			}
+				// Deep comparison for arrays/objects
+				if (Array.isArray(newValue) && Array.isArray(existingValue)) {
+					return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+				}
 
-			// Handle null/undefined comparison
-			if (newValue === null && existingValue === null) {
-				return false;
-			}
-			if (newValue === null || existingValue === null) {
-				return true;
-			}
+				// Handle null/undefined comparison
+				if (newValue === null && existingValue === null) {
+					return false;
+				}
+				if (newValue === null || existingValue === null) {
+					return true;
+				}
 
-			// Simple value comparison
-			return newValue !== existingValue;
-		}) || (dtoInstance.room_id !== undefined && display.roomId !== (dtoInstance.room_id ?? null)) ||
-		(dtoInstance.home_page_id !== undefined && display.homePageId !== (dtoInstance.home_page_id ?? null));
+				// Simple value comparison
+				return newValue !== existingValue;
+			}) ||
+			(dtoInstance.room_id !== undefined && display.roomId !== (dtoInstance.room_id ?? null)) ||
+			(dtoInstance.home_page_id !== undefined && display.homePageId !== (dtoInstance.home_page_id ?? null));
 
 		Object.assign(display, updateFields);
 

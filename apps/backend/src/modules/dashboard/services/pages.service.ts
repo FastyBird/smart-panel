@@ -240,27 +240,31 @@ export class PagesService {
 
 		// Check if any entity fields are actually being changed by comparing with existing values
 		// Also check if displays changed
-		const displaysChanged = dtoInstance.displays !== undefined && JSON.stringify(page.displays?.map((d) => d.id).sort()) !== JSON.stringify(dtoInstance.displays.sort());
-		const entityFieldsChanged = displaysChanged || Object.keys(updateFields).some((key) => {
-			const newValue = (updateFields as Record<string, unknown>)[key];
-			const existingValue = (page as unknown as Record<string, unknown>)[key];
+		const displaysChanged =
+			dtoInstance.displays !== undefined &&
+			JSON.stringify(page.displays?.map((d) => d.id).sort()) !== JSON.stringify(dtoInstance.displays.sort());
+		const entityFieldsChanged =
+			displaysChanged ||
+			Object.keys(updateFields).some((key) => {
+				const newValue = (updateFields as Record<string, unknown>)[key];
+				const existingValue = (page as unknown as Record<string, unknown>)[key];
 
-			// Deep comparison for arrays/objects
-			if (Array.isArray(newValue) && Array.isArray(existingValue)) {
-				return JSON.stringify(newValue) !== JSON.stringify(existingValue);
-			}
+				// Deep comparison for arrays/objects
+				if (Array.isArray(newValue) && Array.isArray(existingValue)) {
+					return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+				}
 
-			// Handle null/undefined comparison
-			if (newValue === null && existingValue === null) {
-				return false;
-			}
-			if (newValue === null || existingValue === null) {
-				return true;
-			}
+				// Handle null/undefined comparison
+				if (newValue === null && existingValue === null) {
+					return false;
+				}
+				if (newValue === null || existingValue === null) {
+					return true;
+				}
 
-			// Simple value comparison
-			return newValue !== existingValue;
-		});
+				// Simple value comparison
+				return newValue !== existingValue;
+			});
 
 		Object.assign(page, updateFields);
 

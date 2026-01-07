@@ -429,10 +429,7 @@ export class LightEntityMapperService extends EntityMapper {
 		);
 
 		if (brightnessProp && values.has(brightnessProp.id) && typeof values.get(brightnessProp.id) === 'number') {
-			attributes.set(
-				LightEntityAttribute.BRIGHTNESS,
-				Math.round((Number(values.get(brightnessProp.id)) / 100) * 255),
-			);
+			attributes.set(LightEntityAttribute.BRIGHTNESS, Math.round((Number(values.get(brightnessProp.id)) / 100) * 255));
 		}
 
 		const brightnessPctProp = await this.getValidProperty(
