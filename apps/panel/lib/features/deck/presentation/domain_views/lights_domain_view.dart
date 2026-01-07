@@ -863,7 +863,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
   // Track which control types had active intents (for detecting intent completion)
   bool _brightnessWasLocked = false;
-  bool _hueWasLocked = false;
+  bool _colorWasLocked = false;
   bool _temperatureWasLocked = false;
   bool _whiteWasLocked = false;
 
@@ -1033,8 +1033,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     return false;
   }
 
-  /// Check if any target's hue property is currently locked by an intent
-  bool _anyHueLocked(List<LightTargetView> targets) {
+  /// Check if any target's color property is currently locked by an intent
+  /// Supports both HSV (hue) and RGB color properties
+  bool _anyColorLocked(List<LightTargetView> targets) {
     final service = _intentOverlayService;
     final devicesService = _devicesService;
     if (service == null || devicesService == null) return false;
@@ -1047,10 +1048,29 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           orElse: () => device.lightChannels.first,
         );
         if (channel.id != target.channelId) continue;
-        if (!channel.hasHue) continue;
+        if (!channel.hasColor) continue;
+
+        // Check HSV hue property
         final hueProp = channel.hueProp;
         if (hueProp != null &&
             service.isPropertyLocked(target.deviceId, target.channelId, hueProp.id)) {
+          return true;
+        }
+
+        // Check RGB properties
+        final redProp = channel.colorRedProp;
+        if (redProp != null &&
+            service.isPropertyLocked(target.deviceId, target.channelId, redProp.id)) {
+          return true;
+        }
+        final greenProp = channel.colorGreenProp;
+        if (greenProp != null &&
+            service.isPropertyLocked(target.deviceId, target.channelId, greenProp.id)) {
+          return true;
+        }
+        final blueProp = channel.colorBlueProp;
+        if (blueProp != null &&
+            service.isPropertyLocked(target.deviceId, target.channelId, blueProp.id)) {
           return true;
         }
       }
@@ -1116,7 +1136,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         .toList() ?? [];
 
     _brightnessWasLocked = _anyBrightnessLocked(targets);
-    _hueWasLocked = _anyHueLocked(targets);
+    _colorWasLocked = _anyColorLocked(targets);
     _temperatureWasLocked = _anyTemperatureLocked(targets);
     _whiteWasLocked = _anyWhiteLocked(targets);
   }
@@ -1140,7 +1160,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
     // Check current lock state for each control type
     final brightnessNowLocked = _anyBrightnessLocked(targets);
-    final hueNowLocked = _anyHueLocked(targets);
+    final hueNowLocked = _anyColorLocked(targets);
     final temperatureNowLocked = _anyTemperatureLocked(targets);
     final whiteNowLocked = _anyWhiteLocked(targets);
 
@@ -1159,7 +1179,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       }
 
       // Transition hue to SETTLING only when its intent completes
-      if (_hueWasLocked && !hueNowLocked &&
+      if (_colorWasLocked && !hueNowLocked &&
           _hueState.state == RoleUIState.pending) {
         _startSettlingState(
           _hueState,
@@ -1197,7 +1217,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
     // Update lock tracking state for next comparison
     _brightnessWasLocked = brightnessNowLocked;
-    _hueWasLocked = hueNowLocked;
+    _colorWasLocked = hueNowLocked;
     _temperatureWasLocked = temperatureNowLocked;
     _whiteWasLocked = whiteNowLocked;
   }
@@ -1316,8 +1336,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         if (initialBrightness == null && channel.hasBrightness) {
           initialBrightness = channel.brightness.toDouble();
         }
-        if (initialHue == null && channel.hasHue) {
-          initialHue = channel.hue;
+        if (initialHue == null && channel.hasColor) {
+          initialHue = _getChannelHue(channel);
         }
         if (initialTemperature == null && channel.hasTemperature) {
           final tempProp = channel.temperatureProp;
@@ -1414,8 +1434,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
             if (channel.hasBrightness) {
               commonBrightness = channel.brightness.toDouble();
             }
-            if (channel.hasHue) {
-              commonHue = channel.hue;
+            if (channel.hasColor) {
+              commonHue = _getChannelHue(channel);
             }
             if (channel.hasTemperature) {
               final tempProp = channel.temperatureProp;
@@ -1485,10 +1505,13 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           (c) => c.id == target.channelId,
           orElse: () => device.lightChannels.first,
         );
-        if (channel.hasHue && channel.on) {
-          totalCount++;
-          if ((channel.hue - targetValue).abs() <= tolerance) {
-            matchCount++;
+        if (channel.hasColor && channel.on) {
+          final hue = _getChannelHue(channel);
+          if (hue != null) {
+            totalCount++;
+            if ((hue - targetValue).abs() <= tolerance) {
+              matchCount++;
+            }
           }
         }
       }
@@ -1597,11 +1620,13 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
             : (brightness > maxBrightness ? brightness : maxBrightness);
       }
 
-      // Hue (color)
-      if (channel.hasHue) {
-        final hue = channel.hue;
-        minHue = minHue == null ? hue : (hue < minHue ? hue : minHue);
-        maxHue = maxHue == null ? hue : (hue > maxHue ? hue : maxHue);
+      // Hue (color) - supports both HSV and RGB-only lights
+      if (channel.hasColor) {
+        final hue = _getChannelHue(channel);
+        if (hue != null) {
+          minHue = minHue == null ? hue : (hue < minHue ? hue : minHue);
+          maxHue = maxHue == null ? hue : (hue > maxHue ? hue : maxHue);
+        }
       }
 
       // Temperature
@@ -1687,11 +1712,15 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     }
 
     // Check hue (color) - only if in MIXED state
+    // Supports both HSV and RGB-only lights
     if (_hueState.isMixed && _hueState.desiredValue != null) {
-      if (channel.hasHue && channel.on) {
-        final targetHue = _hueState.desiredValue!;
-        if ((channel.hue - targetHue).abs() > LightingConstants.hueTolerance) {
-          return true;
+      if (channel.hasColor && channel.on) {
+        final channelHue = _getChannelHue(channel);
+        if (channelHue != null) {
+          final targetHue = _hueState.desiredValue!;
+          if ((channelHue - targetHue).abs() > LightingConstants.hueTolerance) {
+            return true;
+          }
         }
       }
     }
@@ -2506,6 +2535,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           (c) => c.id == target.channelId,
           orElse: () => device.lightChannels.first,
         );
+
+        // Check HSV hue property first
         final hueProp = channel.hueProp;
         if (hueProp != null) {
           if (_intentOverlayService?.isPropertyLocked(
@@ -2526,10 +2557,57 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
             }
           }
         }
+
+        // For RGB-only lights, check if RGB properties are locked
+        if (hueProp == null && channel.hasColorRed) {
+          final redProp = channel.colorRedProp;
+          final greenProp = channel.colorGreenProp;
+          final blueProp = channel.colorBlueProp;
+
+          if (redProp != null &&
+              _intentOverlayService?.isPropertyLocked(
+                    target.deviceId,
+                    target.channelId,
+                    redProp.id,
+                  ) == true) {
+            hasLockedProperty = true;
+            // Get RGB overlay values and convert to hue
+            final overlayR = _intentOverlayService?.getOverlayValue(
+              target.deviceId,
+              target.channelId,
+              redProp.id,
+            );
+            final overlayG = greenProp != null
+                ? _intentOverlayService?.getOverlayValue(
+                    target.deviceId,
+                    target.channelId,
+                    greenProp.id,
+                  )
+                : null;
+            final overlayB = blueProp != null
+                ? _intentOverlayService?.getOverlayValue(
+                    target.deviceId,
+                    target.channelId,
+                    blueProp.id,
+                  )
+                : null;
+
+            if (overlayR is num && overlayG is num && overlayB is num) {
+              final color = ColorUtils.fromRGB(
+                overlayR.toInt(),
+                overlayG.toInt(),
+                overlayB.toInt(),
+              );
+              overlayHue = ColorUtils.toHSV(color).hue;
+              break; // Use first locked property's overlay value
+            }
+          }
+        }
       }
     }
 
     // Calculate average hue and get first device's hue
+    // Supports both HSV (hasHue) and RGB-only lights (convert RGB to HSV)
     double totalHue = 0;
     int hueCount = 0;
     double? firstDeviceHue;
@@ -2541,11 +2619,15 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           (c) => c.id == target.channelId,
           orElse: () => device.lightChannels.first,
         );
-        if (channel.hasHue) {
-          firstDeviceHue ??= channel.hue;
-          if (channel.on) {
-            totalHue += channel.hue;
-            hueCount++;
+        if (channel.hasColor) {
+          // Get hue value - either directly from HSV or convert from RGB
+          final hueValue = _getChannelHue(channel);
+          if (hueValue != null) {
+            firstDeviceHue ??= hueValue;
+            if (channel.on) {
+              totalHue += hueValue;
+              hueCount++;
+            }
           }
         }
       }
@@ -3587,5 +3669,22 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       // Channel has partial color properties but not enough for a valid color
       return null;
     }
+  }
+
+  /// Get hue value from a light channel
+  /// Supports both HSV (hasHue) and RGB-only lights (converts RGB to HSV)
+  /// Returns null if the channel doesn't have valid color properties
+  double? _getChannelHue(LightChannelView channel) {
+    // First try direct hue property (HSV lights)
+    if (channel.hasHue) {
+      return channel.hue;
+    }
+    // For RGB-only lights, convert color to HSV to get hue
+    final color = _getChannelColorSafe(channel);
+    if (color != null) {
+      final hsv = ColorUtils.toHSV(color);
+      return hsv.hue;
+    }
+    return null;
   }
 }
