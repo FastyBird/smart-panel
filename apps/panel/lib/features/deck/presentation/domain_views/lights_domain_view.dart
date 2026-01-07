@@ -2563,7 +2563,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
             showInitialMixedSimple
                 ? localizations.light_role_not_synced_description
                 : (displayAnyOn
-                    ? localizations.light_state_on_description
+                    ? localizations.light_role_on_description
                     : localizations.light_role_off_description),
             style: TextStyle(
               color: Theme.of(context).brightness == Brightness.light

@@ -195,7 +195,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get light_state_on => 'Zapnuto';
 
   @override
-  String get light_state_on_description => 'Světlo svítí.';
+  String get light_state_on_description => 'Světlo svítí';
 
   @override
   String get light_state_off => 'Vypnuto';
@@ -204,7 +204,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get light_state_failed => 'Selhalo';
 
   @override
-  String get light_state_off_description => 'Světlo je vypnuto.';
+  String get light_state_off_description => 'Světlo nesvítí';
 
   @override
   String get light_state_brightness_description => 'Aktuální jas.';
@@ -219,7 +219,10 @@ class AppLocalizationsCs extends AppLocalizations {
   String get light_state_not_synced_description => 'Zařízení nejsou synchronizována';
 
   @override
-  String get light_role_off_description => 'Světla jsou vypnuta.';
+  String get light_role_on_description => 'Světla svítí';
+
+  @override
+  String get light_role_off_description => 'Světla nesvítí';
 
   @override
   String get light_role_not_synced_description => 'Světla nejsou synchronizována';

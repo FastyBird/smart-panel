@@ -260,9 +260,9 @@
   "@light_state_failed": {
     "description": "State when the light command failed"
   },
-  "light_state_off_description": "Light is turned off",
+  "light_state_off_description": "Light is off",
   "@light_state_off_description": {
-    "description": "Detailed description of the light being turned off"
+    "description": "Detailed description of the light being off (singular)"
   },
   "light_state_brightness_description": "Current brightness",
   "@light_state_brightness_description": {
@@ -280,7 +280,11 @@
   "@light_state_not_synced_description": {
     "description": "Description shown when devices in a group are initially out of sync"
   },
-  "light_role_off_description": "Lights are turned off",
+  "light_role_on_description": "Lights are on",
+  "@light_role_on_description": {
+    "description": "Description for role detail when lights are on (plural)"
+  },
+  "light_role_off_description": "Lights are off",
   "@light_role_off_description": {
     "description": "Description for role detail when all lights are off (plural)"
   },

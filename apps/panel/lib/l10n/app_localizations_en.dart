@@ -204,7 +204,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get light_state_failed => 'Failed';
 
   @override
-  String get light_state_off_description => 'Light is turned off';
+  String get light_state_off_description => 'Light is off';
 
   @override
   String get light_state_brightness_description => 'Current brightness';
@@ -219,7 +219,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get light_state_not_synced_description => 'Devices are not synced';
 
   @override
-  String get light_role_off_description => 'Lights are turned off';
+  String get light_role_on_description => 'Lights are on';
+
+  @override
+  String get light_role_off_description => 'Lights are off';
 
   @override
   String get light_role_not_synced_description => 'Lights are not synced';

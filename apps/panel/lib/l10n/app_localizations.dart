@@ -485,10 +485,10 @@ abstract class AppLocalizations {
   /// **'Failed'**
   String get light_state_failed;
 
-  /// Detailed description of the light being turned off
+  /// Detailed description of the light being off (singular)
   ///
   /// In en, this message translates to:
-  /// **'Light is turned off'**
+  /// **'Light is off'**
   String get light_state_off_description;
 
   /// Description of the current brightness level
@@ -515,10 +515,16 @@ abstract class AppLocalizations {
   /// **'Devices are not synced'**
   String get light_state_not_synced_description;
 
+  /// Description for role detail when lights are on (plural)
+  ///
+  /// In en, this message translates to:
+  /// **'Lights are on'**
+  String get light_role_on_description;
+
   /// Description for role detail when all lights are off (plural)
   ///
   /// In en, this message translates to:
-  /// **'Lights are turned off'**
+  /// **'Lights are off'**
   String get light_role_off_description;
 
   /// Description for role detail when lights are out of sync (plural)

@@ -118,7 +118,9 @@ class LightStateDisplay extends StatelessWidget {
           isMixed
               ? localizations.light_role_not_synced_description
               : (displayAnyOn
-                  ? localizations.light_state_on_description
+                  ? (useSingular
+                      ? localizations.light_state_on_description
+                      : localizations.light_role_on_description)
                   : (useSingular
                       ? localizations.light_state_off_description
                       : localizations.light_role_off_description)),
