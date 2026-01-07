@@ -44,6 +44,7 @@ class _AppBodyState extends State<AppBody> {
   Offset? _swipeStartPosition;
   bool _isSwipingVertically = false;
   bool _swipeActionTriggered = false;
+  bool _isSettingsOpen = false;
 
   @override
   void initState() {
@@ -153,6 +154,17 @@ class _AppBodyState extends State<AppBody> {
             _resetInactivityTimer();
           },
         ),
+        SettingsScreenObserver(
+          onSettingsPushed: () {
+            // Track that settings is open
+            _isSettingsOpen = true;
+          },
+          onSettingsPopped: () {
+            // Reset swipe action flag and track that settings is closed
+            _swipeActionTriggered = false;
+            _isSettingsOpen = false;
+          },
+        ),
       ],
       builder: (context, child) {
         return GestureDetector(
@@ -160,6 +172,8 @@ class _AppBodyState extends State<AppBody> {
           onTap: () => _resetInactivityTimer(),
           onPanDown: (DragDownDetails details) => _resetInactivityTimer(),
           onPanStart: (details) {
+            // Reset flag at the start of each new gesture
+            _swipeActionTriggered = false;
             _swipeStartPosition = details.globalPosition;
           },
           onPanUpdate: (details) {
@@ -177,9 +191,8 @@ class _AppBodyState extends State<AppBody> {
                 // Swipe down detected - only trigger once per gesture
                 // Set flag immediately to prevent multiple triggers
                 _swipeActionTriggered = true;
-                // Check if we're already on settings route to prevent multiple navigations
-                final currentRoute = _navigator.getCurrentRouteName();
-                if (currentRoute != AppRouteNames.settings) {
+                // Check if settings is already open to prevent multiple navigations
+                if (!_isSettingsOpen) {
                   _navigator.navigateTo(AppRouteNames.settings);
                 }
               } else if (delta.dy < -20) {
@@ -264,6 +277,34 @@ class OverlayScreenObserver extends NavigatorObserver {
     if (route.settings.name != null &&
         ['reboot', 'power_off', 'reset'].contains(route.settings.name)) {
       onOverlayScreenPopped();
+    }
+
+    super.didPop(route, previousRoute);
+  }
+}
+
+class SettingsScreenObserver extends NavigatorObserver {
+  final VoidCallback onSettingsPushed;
+  final VoidCallback onSettingsPopped;
+
+  SettingsScreenObserver({
+    required this.onSettingsPushed,
+    required this.onSettingsPopped,
+  });
+
+  @override
+  void didPush(Route route, Route? previousRoute) {
+    if (route.settings.name == AppRouteNames.settings) {
+      onSettingsPushed();
+    }
+
+    super.didPush(route, previousRoute);
+  }
+
+  @override
+  void didPop(Route route, Route? previousRoute) {
+    if (route.settings.name == AppRouteNames.settings) {
+      onSettingsPopped();
     }
 
     super.didPop(route, previousRoute);
