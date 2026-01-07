@@ -22,6 +22,10 @@ describe('SpaceLightingRoleService', () => {
 	let deviceRepository: jest.Mocked<Repository<DeviceEntity>>;
 	let spacesService: jest.Mocked<SpacesService>;
 
+	// Mock functions for transactional manager - configurable per test
+	let transactionalFindOne: jest.Mock;
+	let transactionalUpsert: jest.Mock;
+
 	const mockSpace: SpaceEntity = {
 		id: uuid(),
 		name: 'Living Room',
@@ -117,6 +121,13 @@ describe('SpaceLightingRoleService', () => {
 		mockRole.role = LightingRole.MAIN;
 		mockRole.priority = 0;
 
+		// Initialize transactional manager mocks
+		// Default: first findOne returns null (create case), second returns mockRole
+		transactionalFindOne = jest.fn()
+			.mockResolvedValueOnce(null) // First call: check if exists (returns null = create)
+			.mockResolvedValue(mockRole); // Second call: fetch after upsert
+		transactionalUpsert = jest.fn().mockResolvedValue(undefined);
+
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				SpaceLightingRoleService,
@@ -129,6 +140,15 @@ describe('SpaceLightingRoleService', () => {
 						save: jest.fn().mockImplementation((entity: SpaceLightingRoleEntity) => entity),
 						upsert: jest.fn().mockResolvedValue(undefined),
 						remove: jest.fn().mockResolvedValue(undefined),
+						manager: {
+							transaction: jest.fn().mockImplementation(async (callback) => {
+								const transactionalManager = {
+									findOne: transactionalFindOne,
+									upsert: transactionalUpsert,
+								};
+								return callback(transactionalManager);
+							}),
+						},
 					},
 				},
 				{
@@ -174,8 +194,8 @@ describe('SpaceLightingRoleService', () => {
 
 	describe('setRole', () => {
 		it('should create a new role assignment', async () => {
-			// After upsert, findOne returns the created role
-			roleRepository.findOne.mockResolvedValue(mockRole);
+			// Default mocks: first findOne returns null (create), second returns mockRole
+			// This is already set up in beforeEach
 
 			const dto = {
 				deviceId: mockDevice.id,
@@ -187,7 +207,8 @@ describe('SpaceLightingRoleService', () => {
 			const result = await service.setRole(mockSpace.id, dto);
 
 			expect(result.role).toBe(LightingRole.MAIN);
-			expect(roleRepository.upsert).toHaveBeenCalledWith(
+			expect(transactionalUpsert).toHaveBeenCalledWith(
+				SpaceLightingRoleEntity,
 				{
 					spaceId: mockSpace.id,
 					deviceId: dto.deviceId,
@@ -204,7 +225,12 @@ describe('SpaceLightingRoleService', () => {
 
 		it('should update an existing role assignment', async () => {
 			const updatedRole = { ...mockRole, role: LightingRole.AMBIENT, priority: 1 };
-			roleRepository.findOne.mockResolvedValue(updatedRole);
+
+			// Configure mocks for update case: first findOne returns existing role, second returns updated role
+			transactionalFindOne
+				.mockReset()
+				.mockResolvedValueOnce(mockRole) // First call: exists (update case)
+				.mockResolvedValue(updatedRole); // Second call: fetch after upsert
 
 			const dto = {
 				deviceId: mockDevice.id,
@@ -216,7 +242,7 @@ describe('SpaceLightingRoleService', () => {
 			const result = await service.setRole(mockSpace.id, dto);
 
 			expect(result.role).toBe(LightingRole.AMBIENT);
-			expect(roleRepository.upsert).toHaveBeenCalled();
+			expect(transactionalUpsert).toHaveBeenCalled();
 		});
 
 		it('should throw validation exception when device not found', async () => {
@@ -460,8 +486,12 @@ describe('SpaceLightingRoleService', () => {
 			];
 
 			for (const role of validRoles) {
-				// Mock findOne to return a role with the current role value
-				roleRepository.findOne.mockResolvedValue({ ...mockRole, role });
+				// Reset and configure transactional mock for each role
+				const roleWithValue = { ...mockRole, role };
+				transactionalFindOne
+					.mockReset()
+					.mockResolvedValueOnce(null) // First call: check if exists
+					.mockResolvedValue(roleWithValue); // Second call: fetch after upsert
 
 				const dto = {
 					deviceId: mockDevice.id,
