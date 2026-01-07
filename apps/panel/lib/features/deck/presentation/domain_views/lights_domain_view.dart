@@ -359,6 +359,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   /// Build a single role tile using existing ButtonTileBox components
+  /// Uses optimistic UI updates via overlay service - no loader needed
   Widget _buildRoleTile(
     BuildContext context,
     _RoleGroup group,
@@ -385,7 +386,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           ? null
           : () => _openRoleTileDetail(context, group, devicesService),
       isOn: isOn,
-      isDisabled: isToggling,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -394,13 +394,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             // Tap on icon toggles the role
             onTap: isToggling ? null : () => _toggleRole(context, group, devicesService),
             isOn: isOn,
-            isLoading: isToggling,
           ),
           AppSpacings.spacingSmVertical,
           ButtonTileTitle(
             title: getLightRoleName(context, group.role),
             isOn: isOn,
-            isLoading: isToggling,
           ),
           AppSpacings.spacingXsVertical,
           ButtonTileSubTitle(
@@ -421,7 +419,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
               ],
             ),
             isOn: isOn,
-            isLoading: isToggling,
           ),
         ],
       ),
@@ -447,7 +444,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     }
   }
 
-  /// Toggle all devices in a role using batch commands
+  /// Toggle all devices in a role using batch commands with optimistic UI updates
   Future<void> _toggleRole(
     BuildContext context,
     _RoleGroup group,
@@ -455,40 +452,51 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   ) async {
     final localizations = AppLocalizations.of(context);
 
-    setState(() {
-      _togglingRoles.add(group.role);
-    });
+    // If any device is on, turn all off. Otherwise turn all on.
+    final newState = !group.isOn;
+
+    // Build list of properties to update
+    final List<PropertyCommandItem> properties = [];
+
+    for (final target in group.targets) {
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is LightingDeviceView &&
+          device.lightChannels.isNotEmpty) {
+        final channel = device.lightChannels.firstWhere(
+          (c) => c.id == target.channelId,
+          orElse: () => device.lightChannels.first,
+        );
+
+        // Skip if channel wasn't found (fallback was used) to avoid property/channel mismatch
+        if (channel.id != target.channelId) continue;
+
+        properties.add(PropertyCommandItem(
+          deviceId: target.deviceId,
+          channelId: target.channelId,
+          propertyId: channel.onProp.id,
+          value: newState,
+        ));
+      }
+    }
+
+    if (properties.isEmpty) return;
+
+    // Create local optimistic overlays FIRST for instant UI feedback
+    // This triggers _onIntentDataChanged which rebuilds UI with optimistic state
+    for (final property in properties) {
+      _intentOverlayService?.createLocalOverlay(
+        deviceId: property.deviceId,
+        channelId: property.channelId,
+        propertyId: property.propertyId,
+        value: property.value,
+        ttlMs: 5000, // 5 second TTL - should be replaced by real intent before this expires
+      );
+    }
+
+    // Mark role as toggling to prevent double-taps (but don't show loader)
+    _togglingRoles.add(group.role);
 
     try {
-      // If any device is on, turn all off. Otherwise turn all on.
-      final newState = !group.isOn;
-
-      // Build list of properties to update
-      final List<PropertyCommandItem> properties = [];
-
-      for (final target in group.targets) {
-        final device = devicesService.getDevice(target.deviceId);
-        if (device is LightingDeviceView &&
-            device.lightChannels.isNotEmpty) {
-          final channel = device.lightChannels.firstWhere(
-            (c) => c.id == target.channelId,
-            orElse: () => device.lightChannels.first,
-          );
-
-          // Skip if channel wasn't found (fallback was used) to avoid property/channel mismatch
-          if (channel.id != target.channelId) continue;
-
-          properties.add(PropertyCommandItem(
-            deviceId: target.deviceId,
-            channelId: target.channelId,
-            propertyId: channel.onProp.id,
-            value: newState,
-          ));
-        }
-      }
-
-      if (properties.isEmpty) return;
-
       // Get display ID from display repository
       // Note: displayId may be null if display is not yet registered, which is acceptable
       final displayRepository = locator<DisplayRepository>();
@@ -501,19 +509,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         spaceId: _roomId,
         roleKey: group.role.name,
       );
-
-      // Create local optimistic overlays for instant UI feedback
-      // The overlay service will notify listeners, triggering _onIntentDataChanged
-      // which will rebuild the UI with the optimistic state
-      for (final property in properties) {
-        _intentOverlayService?.createLocalOverlay(
-          deviceId: property.deviceId,
-          channelId: property.channelId,
-          propertyId: property.propertyId,
-          value: property.value,
-          ttlMs: 5000, // 5 second TTL - should be replaced by real intent before this expires
-        );
-      }
 
       // Send single batch command for all properties
       final success = await devicesService.setMultiplePropertyValues(
@@ -536,11 +531,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         message: localizations?.action_failed ?? 'Failed to toggle lights',
       );
     } finally {
-      if (mounted) {
-        setState(() {
-          _togglingRoles.remove(group.role);
-        });
-      }
+      _togglingRoles.remove(group.role);
     }
   }
 
@@ -680,7 +671,26 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       return const SizedBox.shrink();
     }
 
-    final isOn = channel.on;
+    // Check if ON property is locked by intent to get overlay value for instant feedback
+    bool isOn = channel.on;
+    if (_intentOverlayService != null) {
+      final onProp = channel.onProp;
+      if (_intentOverlayService!.isPropertyLocked(
+            target.deviceId,
+            target.channelId,
+            onProp.id,
+          )) {
+        final overlayValue = _intentOverlayService!.getOverlayValue(
+          target.deviceId,
+          target.channelId,
+          onProp.id,
+        );
+        if (overlayValue is bool) {
+          isOn = overlayValue;
+        }
+      }
+    }
+
     final isToggling = _togglingDevices.contains(target.id);
     final hasBrightness = channel.hasBrightness;
     final brightness = hasBrightness ? channel.brightness : null;
@@ -698,11 +708,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final roomName = _spacesService?.getSpace(_roomId)?.name;
     final displayName = stripRoomNameFromDevice(device.name, roomName);
 
+    // Uses optimistic UI updates via overlay service - no loader needed
     return ButtonTileBox(
       // Tap on tile (outside icon) opens device detail
       onTap: isToggling ? null : () => _openDeviceDetail(context, device),
       isOn: isOn,
-      isDisabled: isToggling,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -716,7 +726,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                 ? null
                 : () => _toggleDevice(context, target, channel, devicesService),
             isOn: isOn,
-            isLoading: isToggling,
             iconColor: hasFailure ? AppColorsLight.warning : null,
           ),
           AppSpacings.spacingMdHorizontal,
@@ -728,7 +737,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                 ButtonTileTitle(
                   title: displayName,
                   isOn: isOn,
-                  isLoading: isToggling,
                 ),
                 AppSpacings.spacingXsVertical,
                 ButtonTileSubTitle(
@@ -750,7 +758,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                     ],
                   ),
                   isOn: isOn,
-                  isLoading: isToggling,
                 ),
               ],
             ),
@@ -760,7 +767,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
   }
 
-  /// Toggle a single device using batch command with context
+  /// Toggle a single device using batch command with optimistic UI updates
   Future<void> _toggleDevice(
     BuildContext context,
     LightTargetView target,
@@ -768,10 +775,20 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     DevicesService devicesService,
   ) async {
     final localizations = AppLocalizations.of(context);
+    final newOnValue = !channel.on;
 
-    setState(() {
-      _togglingDevices.add(target.id);
-    });
+    // Create local optimistic overlay FIRST for instant UI feedback
+    // This triggers _onIntentDataChanged which rebuilds UI with optimistic state
+    _intentOverlayService?.createLocalOverlay(
+      deviceId: target.deviceId,
+      channelId: target.channelId,
+      propertyId: channel.onProp.id,
+      value: newOnValue,
+      ttlMs: 5000, // 5 second TTL - should be replaced by real intent before this expires
+    );
+
+    // Mark device as toggling to prevent double-taps (but don't show loader)
+    _togglingDevices.add(target.id);
 
     try {
       // Get display ID from display repository
@@ -785,19 +802,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         displayId: displayId,
         spaceId: _roomId,
         roleKey: 'other',
-      );
-
-      final newOnValue = !channel.on;
-
-      // Create local optimistic overlay for instant UI feedback
-      // The overlay service will notify listeners, triggering _onIntentDataChanged
-      // which will rebuild the UI with the optimistic state
-      _intentOverlayService?.createLocalOverlay(
-        deviceId: target.deviceId,
-        channelId: target.channelId,
-        propertyId: channel.onProp.id,
-        value: newOnValue,
-        ttlMs: 5000, // 5 second TTL - should be replaced by real intent before this expires
       );
 
       // Use batch command even for single device for consistency with intents
@@ -829,11 +833,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         message: localizations?.action_failed ?? 'Failed to toggle device',
       );
     } finally {
-      if (mounted) {
-        setState(() {
-          _togglingDevices.remove(target.id);
-        });
-      }
+      _togglingDevices.remove(target.id);
     }
   }
 
