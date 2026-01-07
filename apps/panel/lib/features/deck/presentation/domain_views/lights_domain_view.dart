@@ -214,9 +214,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                       otherGroup.targets.isNotEmpty)
                     AppSpacings.spacingLgVertical,
 
-                  // "Other" devices section
+                  // "Other" channels section
                   if (otherGroup != null && otherGroup.targets.isNotEmpty)
-                    _buildOtherDevicesSection(
+                    _buildOtherChannelsSection(
                       context,
                       otherGroup,
                       devicesService,
@@ -690,8 +690,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
   }
 
-  /// Build "Other" devices section using FixedGridSizeGrid
-  Widget _buildOtherDevicesSection(
+  /// Build "Other" channels section using FixedGridSizeGrid
+  Widget _buildOtherChannelsSection(
     BuildContext context,
     _RoleGroup group,
     DevicesService devicesService,
@@ -727,7 +727,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           crossAxisIndex: col * tileColSpan + 1,
           mainAxisCellCount: tileRowSpan,
           crossAxisCellCount: tileColSpan,
-          child: _buildOtherDeviceTile(
+          child: _buildOtherChannelTile(
             context,
             group.targets[i],
             devicesService,
@@ -758,7 +758,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             ),
           ),
         ),
-        // Device tiles grid - horizontal layout with 1 row height
+        // Channel tiles grid - horizontal layout with 1 row height
         SizedBox(
           height: gridHeight,
           child: FixedGridSizeGrid(
@@ -771,8 +771,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
   }
 
-  /// Build a small device tile for "Other" devices using horizontal layout
-  Widget _buildOtherDeviceTile(
+  /// Build a small channel tile for "Other" channels using horizontal layout
+  Widget _buildOtherChannelTile(
     BuildContext context,
     LightTargetView target,
     DevicesService devicesService,
@@ -826,9 +826,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         : (isOn ? localizations.light_state_on : localizations.light_state_off);
     final showBrightness = hasBrightness && isOn && brightness != null && !hasFailure;
 
-    // Strip room name from device name
+    // Strip room name from channel name
     final roomName = _spacesService?.getSpace(_roomId)?.name;
-    final displayName = stripRoomNameFromDevice(device.name, roomName);
+    final displayName = stripRoomNameFromDevice(target.channelName, roomName);
 
     // Uses optimistic UI updates via overlay service - no loader needed
     return ButtonTileBox(
@@ -2266,7 +2266,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           padding: AppSpacings.paddingMd,
           child: Row(
             children: [
-              // Left side - info and device list
+              // Left side - info and channels list
               Expanded(
                 child: Padding(
                   padding: EdgeInsets.only(right: AppSpacings.pLg),
@@ -2305,7 +2305,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
                       Flexible(
                         flex: 1,
                         child: SingleChildScrollView(
-                          child: _buildDevicesList(context, targets, devicesService),
+                          child: _buildChannelsList(context, targets, devicesService),
                         ),
                       ),
                     ],
@@ -3240,13 +3240,16 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     );
   }
 
-  /// Build devices list
-  Widget _buildDevicesList(
+  /// Build channels list for the role
+  ///
+  /// Each target represents a lighting channel (not a device). A device can have
+  /// multiple lighting channels that appear in different roles.
+  Widget _buildChannelsList(
     BuildContext context,
     List<LightTargetView> targets,
     DevicesService devicesService,
   ) {
-    // Get room name for stripping from device names
+    // Get room name for stripping from names
     final roomName = _spacesService?.getSpace(widget.roomId)?.name;
 
     final items = targets.map((target) {
@@ -3261,8 +3264,13 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         );
       }
 
-      // Strip room name from device name
-      final displayName = stripRoomNameFromDevice(device.name, roomName);
+      // Skip if channel wasn't found (fallback was used) to avoid property/channel mismatch
+      if (channel != null && channel.id != target.channelId) {
+        return null;
+      }
+
+      // Use channel name - each target represents a lighting channel
+      final displayName = stripRoomNameFromDevice(target.channelName, roomName);
 
       // Check if device is out of sync with role's target value
       final isOutOfSync = channel != null ? _isDeviceOutOfSync(channel) : false;
@@ -3363,6 +3371,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           ),
           title: Text(
             displayName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: AppFontSize.extraSmall * 0.8,
               fontWeight: FontWeight.w600,
