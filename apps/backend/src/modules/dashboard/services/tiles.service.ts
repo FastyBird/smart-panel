@@ -233,7 +233,32 @@ export class TilesService {
 
 		const repository: Repository<TTile> = this.dataSource.getRepository(mapping.class);
 
-		Object.assign(tile, omitBy(toInstance(mapping.class, dtoInstance), isUndefined));
+		// Get the fields to update from DTO (excluding undefined values)
+		const updateFields = omitBy(toInstance(mapping.class, dtoInstance), isUndefined);
+
+		// Check if any entity fields are actually being changed by comparing with existing values
+		const entityFieldsChanged = Object.keys(updateFields).some((key) => {
+			const newValue = (updateFields as Record<string, unknown>)[key];
+			const existingValue = (tile as unknown as Record<string, unknown>)[key];
+
+			// Deep comparison for arrays/objects
+			if (Array.isArray(newValue) && Array.isArray(existingValue)) {
+				return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+			}
+
+			// Handle null/undefined comparison
+			if (newValue === null && existingValue === null) {
+				return false;
+			}
+			if (newValue === null || existingValue === null) {
+				return true;
+			}
+
+			// Simple value comparison
+			return newValue !== existingValue;
+		});
+
+		Object.assign(tile, updateFields);
 
 		await repository.save(tile);
 
@@ -241,7 +266,9 @@ export class TilesService {
 
 		this.logger.debug(`Successfully updated tile with id=${updatedTile.id}`);
 
-		this.eventEmitter.emit(EventType.TILE_UPDATED, updatedTile);
+		if (entityFieldsChanged) {
+			this.eventEmitter.emit(EventType.TILE_UPDATED, updatedTile);
+		}
 
 		return updatedTile;
 	}

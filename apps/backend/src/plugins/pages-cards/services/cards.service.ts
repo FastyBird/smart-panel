@@ -171,7 +171,32 @@ export class CardsService {
 
 		const dtoInstance = await this.validateDto<UpdateCardDto>(UpdateCardDto, updateDto);
 
-		Object.assign(card, omitBy(toInstance(CardEntity, dtoInstance), isUndefined));
+		// Get the fields to update from DTO (excluding undefined values)
+		const updateFields = omitBy(toInstance(CardEntity, dtoInstance), isUndefined);
+
+		// Check if any entity fields are actually being changed by comparing with existing values
+		const entityFieldsChanged = Object.keys(updateFields).some((key) => {
+			const newValue = (updateFields as Record<string, unknown>)[key];
+			const existingValue = (card as unknown as Record<string, unknown>)[key];
+
+			// Deep comparison for arrays/objects
+			if (Array.isArray(newValue) && Array.isArray(existingValue)) {
+				return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+			}
+
+			// Handle null/undefined comparison
+			if (newValue === null && existingValue === null) {
+				return false;
+			}
+			if (newValue === null || existingValue === null) {
+				return true;
+			}
+
+			// Simple value comparison
+			return newValue !== existingValue;
+		});
+
+		Object.assign(card, updateFields);
 
 		await this.repository.save(card);
 
@@ -179,7 +204,9 @@ export class CardsService {
 
 		this.logger.debug(`[PAGES CARDS][CARDS SERVICE] Successfully updated card with id=${updatedCard.id}`);
 
-		this.eventEmitter.emit(EventType.CARD_UPDATED, updatedCard);
+		if (entityFieldsChanged) {
+			this.eventEmitter.emit(EventType.CARD_UPDATED, updatedCard);
+		}
 
 		return updatedCard;
 	}

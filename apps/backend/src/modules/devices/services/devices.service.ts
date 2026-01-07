@@ -261,7 +261,32 @@ export class DevicesService {
 
 		const repository: Repository<TDevice> = this.dataSource.getRepository(mapping.class);
 
-		Object.assign(device, omitBy(toInstance(mapping.class, dtoInstance), isUndefined));
+		// Get the fields to update from DTO (excluding undefined values)
+		const updateFields = omitBy(toInstance(mapping.class, dtoInstance), isUndefined);
+
+		// Check if any entity fields are actually being changed by comparing with existing values
+		const entityFieldsChanged = Object.keys(updateFields).some((key) => {
+			const newValue = (updateFields as Record<string, unknown>)[key];
+			const existingValue = (device as unknown as Record<string, unknown>)[key];
+
+			// Deep comparison for arrays/objects
+			if (Array.isArray(newValue) && Array.isArray(existingValue)) {
+				return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+			}
+
+			// Handle null/undefined comparison
+			if (newValue === null && existingValue === null) {
+				return false;
+			}
+			if (newValue === null || existingValue === null) {
+				return true;
+			}
+
+			// Simple value comparison
+			return newValue !== existingValue;
+		});
+
+		Object.assign(device, updateFields);
 
 		// Explicitly handle room_id being set to null (toInstance with exposeUnsetFields:false drops null values)
 		if (dtoInstance.room_id === null) {
@@ -285,7 +310,9 @@ export class DevicesService {
 
 		this.logger.debug(`Successfully updated device with id=${updatedDevice.id}`);
 
-		this.eventEmitter.emit(EventType.DEVICE_UPDATED, updatedDevice);
+		if (entityFieldsChanged) {
+			this.eventEmitter.emit(EventType.DEVICE_UPDATED, updatedDevice);
+		}
 
 		return updatedDevice;
 	}

@@ -132,7 +132,32 @@ export class LocationsService {
 
 		const repository: Repository<TLocation> = this.dataSource.getRepository(mapping.class);
 
-		Object.assign(location, omitBy(toInstance(mapping.class, dtoInstance), isUndefined));
+		// Get the fields to update from DTO (excluding undefined values)
+		const updateFields = omitBy(toInstance(mapping.class, dtoInstance), isUndefined);
+
+		// Check if any entity fields are actually being changed by comparing with existing values
+		const entityFieldsChanged = Object.keys(updateFields).some((key) => {
+			const newValue = (updateFields as Record<string, unknown>)[key];
+			const existingValue = (location as unknown as Record<string, unknown>)[key];
+
+			// Deep comparison for arrays/objects
+			if (Array.isArray(newValue) && Array.isArray(existingValue)) {
+				return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+			}
+
+			// Handle null/undefined comparison
+			if (newValue === null && existingValue === null) {
+				return false;
+			}
+			if (newValue === null || existingValue === null) {
+				return true;
+			}
+
+			// Simple value comparison
+			return newValue !== existingValue;
+		});
+
+		Object.assign(location, updateFields);
 
 		await repository.save(location as TLocation);
 
@@ -146,7 +171,9 @@ export class LocationsService {
 
 		this.logger.debug(`Successfully updated location with id=${updatedLocation.id}`);
 
-		this.eventEmitter.emit(EventType.LOCATION_UPDATED, updatedLocation);
+		if (entityFieldsChanged) {
+			this.eventEmitter.emit(EventType.LOCATION_UPDATED, updatedLocation);
+		}
 
 		return updatedLocation;
 	}

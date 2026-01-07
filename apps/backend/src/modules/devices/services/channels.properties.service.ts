@@ -250,12 +250,36 @@ export class ChannelsPropertiesService {
 
 		const repository: Repository<TProperty> = this.dataSource.getRepository(mapping.class);
 
-		// Check if any entity fields (non-value) are being changed
-		const entityFieldsChanged = Object.keys(omitBy(toInstance(mapping.class, dtoInstance), isUndefined)).some(
-			(key) => key !== 'value' && key !== 'type',
-		);
+		// Get the fields to update from DTO (excluding undefined values)
+		const updateFields = omitBy(toInstance(mapping.class, dtoInstance), isUndefined);
 
-		Object.assign(property, omitBy(toInstance(mapping.class, dtoInstance), isUndefined));
+		// Check if any entity fields (non-value) are actually being changed by comparing with existing values
+		const entityFieldsChanged = Object.keys(updateFields).some((key) => {
+			if (key === 'value' || key === 'type') {
+				return false;
+			}
+
+			const newValue = (updateFields as Record<string, unknown>)[key];
+			const existingValue = (property as unknown as Record<string, unknown>)[key];
+
+			// Deep comparison for arrays/objects (like format)
+			if (Array.isArray(newValue) && Array.isArray(existingValue)) {
+				return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+			}
+
+			// Handle null/undefined comparison
+			if (newValue === null && existingValue === null) {
+				return false;
+			}
+			if (newValue === null || existingValue === null) {
+				return true;
+			}
+
+			// Simple value comparison
+			return newValue !== existingValue;
+		});
+
+		Object.assign(property, updateFields);
 
 		const raw = await repository.save(property as TProperty);
 
