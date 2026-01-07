@@ -2237,7 +2237,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
             ),
           ],
         ),
-        body: const Center(child: Text('Services not available')),
+        body: Center(child: Text(localizations.services_not_available)),
       );
     }
 

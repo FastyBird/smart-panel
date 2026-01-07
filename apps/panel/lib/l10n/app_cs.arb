@@ -6,6 +6,7 @@
   "warning": "Varování",
   "error": "Chyba",
   "action_failed": "Akci se nepodařilo zpracovat",
+  "services_not_available": "Služby nejsou k dispozici",
   "button_ok": "OK",
   "button_cancel": "Zrušit",
   "button_close": "Zavřít",

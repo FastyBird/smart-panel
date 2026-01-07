@@ -137,6 +137,12 @@ abstract class AppLocalizations {
   /// **'Action could not be processed'**
   String get action_failed;
 
+  /// Displayed when required services are not initialized
+  ///
+  /// In en, this message translates to:
+  /// **'Services not available'**
+  String get services_not_available;
+
   /// Text for OK button
   ///
   /// In en, this message translates to:

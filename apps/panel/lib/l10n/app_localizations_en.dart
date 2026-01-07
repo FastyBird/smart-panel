@@ -30,6 +30,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get action_failed => 'Action could not be processed';
 
   @override
+  String get services_not_available => 'Services not available';
+
+  @override
   String get button_ok => 'Ok';
 
   @override

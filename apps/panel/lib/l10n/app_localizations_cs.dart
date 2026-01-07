@@ -30,6 +30,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get action_failed => 'Akci se nepodařilo zpracovat';
 
   @override
+  String get services_not_available => 'Služby nejsou k dispozici';
+
+  @override
   String get button_ok => 'OK';
 
   @override

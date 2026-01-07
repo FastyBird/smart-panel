@@ -28,6 +28,10 @@
   "@action_failed": {
     "description": "Error message when an action fails"
   },
+  "services_not_available": "Services not available",
+  "@services_not_available": {
+    "description": "Displayed when required services are not initialized"
+  },
   "button_ok": "Ok",
   "@button_ok": {
     "description": "Text for OK button"
