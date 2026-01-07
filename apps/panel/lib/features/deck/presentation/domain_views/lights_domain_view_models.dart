@@ -36,3 +36,11 @@ enum _LightRoleMode {
   temperature,
   white,
 }
+
+/// Property types for simple (single-property) setters
+/// Note: Color/hue is excluded because it requires setting multiple RGB/HSV properties
+enum _SimplePropertyType {
+  brightness,
+  temperature,
+  white,
+}

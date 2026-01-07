@@ -249,11 +249,17 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     List<LightTargetView> targets,
     DevicesService devicesService,
   ) {
+    // Cache device lookups to avoid repeated calls (O(n) instead of O(n*m))
+    final Map<String, DeviceView?> deviceCache = {};
+    DeviceView? getDevice(String deviceId) {
+      return deviceCache.putIfAbsent(deviceId, () => devicesService.getDevice(deviceId));
+    }
+
     // Group targets by role, filtering out targets whose devices are disabled/not found
     final Map<LightTargetRole, List<LightTargetView>> grouped = {};
     for (final target in targets) {
       // Skip targets whose devices are disabled (not in devicesService)
-      final device = devicesService.getDevice(target.deviceId);
+      final device = getDevice(target.deviceId);
       if (device == null) continue;
 
       final role = target.role ?? LightTargetRole.other;
@@ -272,7 +278,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       int? firstDeviceBrightness;
 
       for (final target in roleTargets) {
-        final device = devicesService.getDevice(target.deviceId);
+        final device = getDevice(target.deviceId);
         if (device is LightingDeviceView) {
           final channel = findLightChannel(device, target.channelId);
           if (channel == null) continue;
@@ -321,7 +327,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
       if (controlStateService != null) {
         for (final target in roleTargets) {
-          final device = devicesService.getDevice(target.deviceId);
+          final device = getDevice(target.deviceId);
           if (device is LightingDeviceView) {
             final channel = findLightChannel(device, target.channelId);
             if (channel == null) continue;
@@ -2787,7 +2793,13 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           const Duration(milliseconds: 300),
           () {
             if (!mounted) return;
-            _setBrightnessForAll(context, targets, value.round(), devicesService);
+            _setSimplePropertyForAll(
+              context: context,
+              targets: targets,
+              propertyType: _SimplePropertyType.brightness,
+              value: value.round(),
+              devicesService: devicesService,
+            );
           },
         );
       },
@@ -3121,7 +3133,13 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           const Duration(milliseconds: 300),
           () {
             if (!mounted) return;
-            _setTemperatureForAll(context, targets, value, devicesService);
+            _setSimplePropertyForAll(
+              context: context,
+              targets: targets,
+              propertyType: _SimplePropertyType.temperature,
+              value: value,
+              devicesService: devicesService,
+            );
           },
         );
       },
@@ -3270,7 +3288,13 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           const Duration(milliseconds: 300),
           () {
             if (!mounted) return;
-            _setWhiteForAll(context, targets, value.round(), devicesService);
+            _setSimplePropertyForAll(
+              context: context,
+              targets: targets,
+              propertyType: _SimplePropertyType.white,
+              value: value.round(),
+              devicesService: devicesService,
+            );
           },
         );
       },
@@ -3707,34 +3731,49 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     }
   }
 
-  /// Set brightness for all devices in the role
-  Future<void> _setBrightnessForAll(
-    BuildContext context,
-    List<LightTargetView> targets,
-    int brightness,
-    DevicesService devicesService,
-  ) async {
+  /// Set a simple property (brightness, temperature, or white) for all devices in the role
+  /// This consolidates _setBrightnessForAll, _setTemperatureForAll, and _setWhiteForAll
+  Future<void> _setSimplePropertyForAll({
+    required BuildContext context,
+    required List<LightTargetView> targets,
+    required _SimplePropertyType propertyType,
+    required num value,
+    required DevicesService devicesService,
+  }) async {
     final localizations = AppLocalizations.of(context);
+    final propertyName = propertyType.name;
 
     try {
       // Build list of properties to update
       final List<PropertyCommandItem> properties = [];
 
       for (final target in targets) {
-        if (!target.hasBrightness) continue;
+        // Check target capability based on property type
+        final hasCapability = switch (propertyType) {
+          _SimplePropertyType.brightness => target.hasBrightness,
+          _SimplePropertyType.temperature => target.hasColorTemp,
+          _SimplePropertyType.white => true, // No specific check for white
+        };
+        if (!hasCapability) continue;
 
         final device = devicesService.getDevice(target.deviceId);
         if (device is LightingDeviceView) {
           final channel = findLightChannel(device, target.channelId);
           if (channel == null) continue;
 
-          final brightnessProp = channel.brightnessProp;
-          if (brightnessProp != null) {
+          // Get the appropriate property from channel
+          final prop = switch (propertyType) {
+            _SimplePropertyType.brightness => channel.brightnessProp,
+            _SimplePropertyType.temperature => channel.temperatureProp,
+            _SimplePropertyType.white => channel.colorWhiteProp,
+          };
+
+          if (prop != null) {
             properties.add(PropertyCommandItem(
               deviceId: target.deviceId,
               channelId: target.channelId,
-              propertyId: brightnessProp.id,
-              value: brightness,
+              propertyId: prop.id,
+              value: value is double ? value.round() : value,
             ));
           }
         }
@@ -3765,30 +3804,27 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       if (!success) {
         if (kDebugMode) {
           debugPrint(
-            '[LIGHTS DOMAIN] Failed to set brightness for role ${widget.role.name} '
-            'in room ${widget.roomId}: ${properties.length} properties, value=$brightness',
+            '[LIGHTS DOMAIN] Failed to set $propertyName for role ${widget.role.name} '
+            'in room ${widget.roomId}: ${properties.length} properties, value=$value',
           );
         }
         AlertBar.showError(
           this.context,
-          message:
-              localizations?.action_failed ?? 'Failed to set brightness',
+          message: localizations?.action_failed ?? 'Failed to set $propertyName',
         );
       }
     } catch (e) {
       if (!mounted) return;
       if (kDebugMode) {
         debugPrint(
-          '[LIGHTS DOMAIN] Exception while setting brightness for role ${widget.role.name}: $e',
+          '[LIGHTS DOMAIN] Exception while setting $propertyName for role ${widget.role.name}: $e',
         );
       }
       AlertBar.showError(
         this.context,
-        message: localizations?.action_failed ?? 'Failed to set brightness',
+        message: localizations?.action_failed ?? 'Failed to set $propertyName',
       );
     }
-    // Note: Don't reset _sliderBrightness here - let it persist until device state catches up
-    // The _onSpacesDataChanged callback will reset it when device state matches slider value
   }
 
   /// Set hue for all devices in the role that support color
@@ -3912,166 +3948,6 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       );
     }
     // Note: Don't reset _sliderHue here - let it persist until device state catches up
-  }
-
-  /// Set color temperature for all devices in the role that support it
-  Future<void> _setTemperatureForAll(
-    BuildContext context,
-    List<LightTargetView> targets,
-    double temperature,
-    DevicesService devicesService,
-  ) async {
-    final localizations = AppLocalizations.of(context);
-
-    try {
-      // Build list of properties to update
-      final List<PropertyCommandItem> properties = [];
-
-      for (final target in targets) {
-        final device = devicesService.getDevice(target.deviceId);
-        if (device is LightingDeviceView) {
-          final channel = findLightChannel(device, target.channelId);
-          if (channel == null) continue;
-
-          final tempProp = channel.temperatureProp;
-          if (tempProp != null) {
-            properties.add(PropertyCommandItem(
-              deviceId: target.deviceId,
-              channelId: target.channelId,
-              propertyId: tempProp.id,
-              value: temperature.round(),
-            ));
-          }
-        }
-      }
-
-      if (properties.isEmpty) return;
-
-      // Get display ID from display repository
-      final displayRepository = locator<DisplayRepository>();
-      final displayId = displayRepository.display?.id;
-
-      // Build context
-      final commandContext = PropertyCommandContext(
-        origin: 'panel.system.room',
-        displayId: displayId,
-        spaceId: widget.roomId,
-        roleKey: widget.role.name,
-      );
-
-      // Send single batch command for all properties
-      final success = await devicesService.setMultiplePropertyValues(
-        properties: properties,
-        context: commandContext,
-      );
-
-      if (!mounted) return;
-
-      if (!success) {
-        if (kDebugMode) {
-          debugPrint(
-            '[LIGHTS DOMAIN] Failed to set temperature for role ${widget.role.name} '
-            'in room ${widget.roomId}: ${properties.length} properties, value=$temperature',
-          );
-        }
-        AlertBar.showError(
-          this.context,
-          message: localizations?.action_failed ?? 'Failed to set temperature',
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      if (kDebugMode) {
-        debugPrint(
-          '[LIGHTS DOMAIN] Exception while setting temperature for role ${widget.role.name}: $e',
-        );
-      }
-      AlertBar.showError(
-        this.context,
-        message: localizations?.action_failed ?? 'Failed to set temperature',
-      );
-    }
-    // Note: Don't reset _sliderTemperature here - let it persist until device state catches up
-  }
-
-  /// Set white channel for all devices in the role that support it
-  Future<void> _setWhiteForAll(
-    BuildContext context,
-    List<LightTargetView> targets,
-    int white,
-    DevicesService devicesService,
-  ) async {
-    final localizations = AppLocalizations.of(context);
-
-    try {
-      // Build list of properties to update
-      final List<PropertyCommandItem> properties = [];
-
-      for (final target in targets) {
-        final device = devicesService.getDevice(target.deviceId);
-        if (device is LightingDeviceView) {
-          final channel = findLightChannel(device, target.channelId);
-          if (channel == null) continue;
-
-          final whiteProp = channel.colorWhiteProp;
-          if (whiteProp != null) {
-            properties.add(PropertyCommandItem(
-              deviceId: target.deviceId,
-              channelId: target.channelId,
-              propertyId: whiteProp.id,
-              value: white,
-            ));
-          }
-        }
-      }
-
-      if (properties.isEmpty) return;
-
-      // Get display ID from display repository
-      final displayRepository = locator<DisplayRepository>();
-      final displayId = displayRepository.display?.id;
-
-      // Build context
-      final commandContext = PropertyCommandContext(
-        origin: 'panel.system.room',
-        displayId: displayId,
-        spaceId: widget.roomId,
-        roleKey: widget.role.name,
-      );
-
-      // Send single batch command for all properties
-      final success = await devicesService.setMultiplePropertyValues(
-        properties: properties,
-        context: commandContext,
-      );
-
-      if (!mounted) return;
-
-      if (!success) {
-        if (kDebugMode) {
-          debugPrint(
-            '[LIGHTS DOMAIN] Failed to set white level for role ${widget.role.name} '
-            'in room ${widget.roomId}: ${properties.length} properties, value=$white',
-          );
-        }
-        AlertBar.showError(
-          this.context,
-          message: localizations?.action_failed ?? 'Failed to set white level',
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      if (kDebugMode) {
-        debugPrint(
-          '[LIGHTS DOMAIN] Exception while setting white level for role ${widget.role.name}: $e',
-        );
-      }
-      AlertBar.showError(
-        this.context,
-        message: localizations?.action_failed ?? 'Failed to set white level',
-      );
-    }
-    // Note: Don't reset _sliderWhite here - let it persist until device state catches up
   }
 
   /// Safely get color from a light channel
