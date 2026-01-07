@@ -427,7 +427,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     }
   }
 
-  /// Toggle all devices in a role
+  /// Toggle all devices in a role using batch commands
   Future<void> _toggleRole(
     BuildContext context,
     _RoleGroup group,
@@ -443,8 +443,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       // If any device is on, turn all off. Otherwise turn all on.
       final newState = !group.isOn;
 
-      int successCount = 0;
-      int failCount = 0;
+      // Build list of properties to update
+      final List<PropertyCommandItem> properties = [];
 
       for (final target in group.targets) {
         final device = devicesService.getDevice(target.deviceId);
@@ -458,21 +458,38 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           // Skip if channel wasn't found (fallback was used) to avoid property/channel mismatch
           if (channel.id != target.channelId) continue;
 
-          final success = await devicesService.setPropertyValue(
-            channel.onProp.id,
-            newState,
-          );
-          if (success) {
-            successCount++;
-          } else {
-            failCount++;
-          }
+          properties.add(PropertyCommandItem(
+            deviceId: target.deviceId,
+            channelId: target.channelId,
+            propertyId: channel.onProp.id,
+            value: newState,
+          ));
         }
       }
 
+      if (properties.isEmpty) return;
+
+      // Get display ID from display repository
+      final displayRepository = locator<DisplayRepository>();
+      final displayId = displayRepository.display?.id;
+
+      // Build context for intent tracking
+      final commandContext = PropertyCommandContext(
+        origin: 'panel.system.room',
+        displayId: displayId,
+        spaceId: _roomId,
+        roleKey: group.role.name,
+      );
+
+      // Send single batch command for all properties
+      final success = await devicesService.setMultiplePropertyValues(
+        properties: properties,
+        context: commandContext,
+      );
+
       if (!mounted) return;
 
-      if (failCount > 0 && successCount == 0) {
+      if (!success) {
         AlertBar.showError(
           this.context,
           message: localizations?.action_failed ?? 'Failed to toggle lights',
@@ -624,6 +641,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       orElse: () => device.lightChannels.first,
     );
 
+    // Skip if channel wasn't found (fallback was used) to avoid property/channel mismatch
+    if (channel.id != target.channelId) {
+      return const SizedBox.shrink();
+    }
+
     final isOn = channel.on;
     final isToggling = _togglingDevices.contains(target.id);
     final hasBrightness = channel.hasBrightness;
@@ -704,7 +726,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
   }
 
-  /// Toggle a single device
+  /// Toggle a single device using batch command with context
   Future<void> _toggleDevice(
     BuildContext context,
     LightTargetView target,
@@ -718,9 +740,29 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     });
 
     try {
-      final success = await devicesService.setPropertyValue(
-        channel.onProp.id,
-        !channel.on,
+      // Get display ID from display repository
+      final displayRepository = locator<DisplayRepository>();
+      final displayId = displayRepository.display?.id;
+
+      // Build context for intent tracking
+      final commandContext = PropertyCommandContext(
+        origin: 'panel.system.room',
+        displayId: displayId,
+        spaceId: _roomId,
+        roleKey: 'other',
+      );
+
+      // Use batch command even for single device for consistency with intents
+      final success = await devicesService.setMultiplePropertyValues(
+        properties: [
+          PropertyCommandItem(
+            deviceId: target.deviceId,
+            channelId: target.channelId,
+            propertyId: channel.onProp.id,
+            value: !channel.on,
+          ),
+        ],
+        context: commandContext,
       );
 
       if (!mounted) return;
@@ -1358,6 +1400,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     }
 
     // Use cached values if available, otherwise use values from first device
+    // Check mounted since this may be called from addPostFrameCallback
+    if (!mounted) return;
+
     setState(() {
       final brightness = cached?.brightness ?? initialBrightness;
       if (brightness != null) {
