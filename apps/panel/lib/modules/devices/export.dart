@@ -27,3 +27,6 @@ export 'package:fastybird_smart_panel/modules/devices/services/intent_overlay_se
 
 // Role control state cache
 export 'package:fastybird_smart_panel/modules/devices/services/role_control_state_repository.dart';
+
+// Device control state (optimistic UI)
+export 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';

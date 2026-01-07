@@ -64,15 +64,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   SpacesService? _spacesService;
   DevicesService? _devicesService;
   IntentOverlayService? _intentOverlayService;
+  DeviceControlStateService? _deviceControlStateService;
 
   // Track which roles are currently being toggled (prevents double-taps)
   final Set<LightTargetRole> _togglingRoles = {};
   // Track which individual devices are being toggled
   final Set<String> _togglingDevices = {};
-
-  // Role control states for on/off per role - uses same state machine as detail page
-  // Tracks: pending → settling → idle/mixed states with proper settling window
-  final Map<LightTargetRole, RoleControlState> _roleOnOffStates = {};
 
   bool _isLoading = true;
 
@@ -101,6 +98,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       _intentOverlayService?.addListener(_onIntentDataChanged);
     } catch (_) {}
 
+    try {
+      _deviceControlStateService = locator<DeviceControlStateService>();
+      _deviceControlStateService?.addListener(_onControlStateChanged);
+    } catch (_) {}
+
     // Fetch light targets for this space
     _fetchLightTargets();
   }
@@ -122,12 +124,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     _spacesService?.removeListener(_onSpacesDataChanged);
     _devicesService?.removeListener(_onDevicesDataChanged);
     _intentOverlayService?.removeListener(_onIntentDataChanged);
-
-    // Cancel all role on/off state timers
-    for (final state in _roleOnOffStates.values) {
-      state.cancelTimer();
-    }
-    _roleOnOffStates.clear();
+    _deviceControlStateService?.removeListener(_onControlStateChanged);
 
     super.dispose();
   }
@@ -149,6 +146,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   void _onIntentDataChanged() {
     // Intent overlay service changed - rebuild to show/hide failure indicators
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _onControlStateChanged() {
+    // Device control state changed - rebuild to reflect optimistic UI state
     if (mounted) {
       setState(() {});
     }
@@ -308,17 +312,49 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         }
       }
 
-      // Check role on/off state machine for optimistic UI
-      // When state is locked (pending/settling/mixed), use the desired value
-      final roleState = _roleOnOffStates[role];
-      final isRoleLocked = roleState?.isLocked ?? false;
-      final desiredOn = roleState?.desiredValue != null && roleState!.desiredValue! > 0.5;
+      // Check device control state service for optimistic UI
+      // When any property in the role is locked, use its desired value
+      bool isRoleLocked = false;
+      bool desiredOn = false;
+      final controlStateService = _deviceControlStateService;
+
+      if (controlStateService != null) {
+        for (final target in roleTargets) {
+          final device = devicesService.getDevice(target.deviceId);
+          if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+            final channel = device.lightChannels.firstWhere(
+              (c) => c.id == target.channelId,
+              orElse: () => device.lightChannels.first,
+            );
+            if (channel.id != target.channelId) continue;
+
+            if (controlStateService.isLocked(
+              target.deviceId,
+              target.channelId,
+              channel.onProp.id,
+            )) {
+              isRoleLocked = true;
+              final desiredValue = controlStateService.getDesiredValue(
+                target.deviceId,
+                target.channelId,
+                channel.onProp.id,
+              );
+              if (desiredValue is bool) {
+                desiredOn = desiredValue;
+              } else if (desiredValue is num) {
+                desiredOn = desiredValue > 0.5;
+              }
+              break;
+            }
+          }
+        }
+      }
 
       final effectiveOnCount = isRoleLocked
           ? (desiredOn ? roleTargets.length : 0) // All on or all off based on desired state
           : onCount;
 
-      if (kDebugMode && _roleOnOffStates.isNotEmpty) {
+      if (kDebugMode && isRoleLocked) {
         debugPrint(
           '[LIGHTS DOMAIN] _buildRoleGroups: role=$role, isLocked=$isRoleLocked, '
           'desiredOn=$desiredOn, onCount=$onCount, effectiveOnCount=$effectiveOnCount',
@@ -395,7 +431,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   /// Build a single role tile using existing ButtonTileBox components
-  /// Uses optimistic UI updates via overlay service - no loader needed
+  /// Uses optimistic UI updates via device control state service
   Widget _buildRoleTile(
     BuildContext context,
     _RoleGroup group,
@@ -403,12 +439,51 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   ) {
     final localizations = AppLocalizations.of(context)!;
     final isToggling = _togglingRoles.contains(group.role);
-    final isOn = group.isOn;
+
+    // Check device control state service for optimistic state
+    // If any property in the role is locked, use the service's desired value
+    bool isOn = group.isOn;
+    final controlStateService = _deviceControlStateService;
+    if (controlStateService != null) {
+      for (final target in group.targets) {
+        final device = devicesService.getDevice(target.deviceId);
+        if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+          final channel = device.lightChannels.firstWhere(
+            (c) => c.id == target.channelId,
+            orElse: () => device.lightChannels.first,
+          );
+          // Skip if channel wasn't found (fallback was used)
+          if (channel.id != target.channelId) continue;
+
+          if (controlStateService.isLocked(
+            target.deviceId,
+            target.channelId,
+            channel.onProp.id,
+          )) {
+            // Role has locked properties - derive isOn from desired value
+            final desiredValue = controlStateService.getDesiredValue(
+              target.deviceId,
+              target.channelId,
+              channel.onProp.id,
+            );
+            if (desiredValue is bool) {
+              isOn = desiredValue;
+            } else if (desiredValue is num) {
+              isOn = desiredValue > 0.5;
+            }
+            break; // Found a locked property, use its desired state
+          }
+        }
+      }
+    }
 
     // Build subtitle: "X light(s) on" or "all off", with optional brightness
     final String countText;
-    if (group.onCount == 0) {
+    if (group.onCount == 0 && !isOn) {
       countText = localizations.domain_lights_all_off;
+    } else if (isOn && group.onCount == 0) {
+      // Optimistic state: turning on but actual count is still 0
+      countText = localizations.domain_lights_count_on(group.totalCount);
     } else {
       countText = localizations.domain_lights_count_on(group.onCount);
     }
@@ -481,7 +556,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   /// Toggle all devices in a role using batch commands with optimistic UI updates
-  /// Uses RoleControlState state machine: pending → settling → idle/mixed
+  /// Uses DeviceControlStateService for property-level state tracking
   Future<void> _toggleRole(
     BuildContext context,
     _RoleGroup group,
@@ -489,6 +564,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   ) async {
     final localizations = AppLocalizations.of(context);
     final role = group.role;
+    final controlStateService = _deviceControlStateService;
 
     // If any device is on, turn all off. Otherwise turn all on.
     final newState = !group.isOn;
@@ -519,18 +595,19 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     if (properties.isEmpty) return;
 
-    // Cancel any existing state timer for this role
-    _roleOnOffStates[role]?.cancelTimer();
-
-    // Set state machine to PENDING - this locks the UI to show desired state
+    // Set state machine to PENDING for all properties - locks UI to show desired state
     if (kDebugMode) {
       debugPrint('[LIGHTS DOMAIN] _toggleRole: Setting PENDING state for $role to $newState');
     }
-    setState(() {
-      _roleOnOffStates[role] = RoleControlState(
-        state: RoleUIState.pending,
-        desiredValue: newState ? 1.0 : 0.0,
+    for (final property in properties) {
+      controlStateService?.setPending(
+        property.deviceId,
+        property.channelId,
+        property.propertyId,
+        newState,
       );
+    }
+    setState(() {
       _togglingRoles.add(role);
     });
 
@@ -579,85 +656,22 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         message: localizations?.action_failed ?? 'Failed to toggle lights',
       );
     } finally {
-      // Transition to SETTLING state - suppresses mixed icon while devices sync
-      _togglingRoles.remove(role);
+      // Transition to SETTLING state for all properties
+      setState(() {
+        _togglingRoles.remove(role);
+      });
 
-      if (!mounted) {
-        _roleOnOffStates.remove(role);
-      } else {
-        // Create settling timer (3 seconds - same as detail page)
-        final currentState = _roleOnOffStates[role];
-        final desiredValue = currentState?.desiredValue ?? (newState ? 1.0 : 0.0);
-
-        final settlingTimer = Timer(const Duration(seconds: 3), () {
-          if (!mounted) {
-            _roleOnOffStates.remove(role);
-            return;
-          }
-
-          if (kDebugMode) {
-            debugPrint('[LIGHTS DOMAIN] _toggleRole: Settling timer fired for $role');
-          }
-
-          // Check if all devices are now synced
-          final spacesService = _spacesService;
-          if (spacesService == null) {
-            setState(() {
-              _roleOnOffStates.remove(role);
-            });
-            return;
-          }
-
-          final targets = spacesService
-              .getLightTargetsForSpace(_roomId)
-              .where((t) => t.role == role)
-              .toList();
-
-          // Check mixed state by counting on/off devices
-          int onCount = 0;
-          int offCount = 0;
-          for (final target in targets) {
-            final device = devicesService.getDevice(target.deviceId);
-            if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
-              final channel = device.lightChannels.firstWhere(
-                (c) => c.id == target.channelId,
-                orElse: () => device.lightChannels.first,
-              );
-              if (channel.on) {
-                onCount++;
-              } else {
-                offCount++;
-              }
-            }
-          }
-          final isMixed = onCount > 0 && offCount > 0;
-
-          setState(() {
-            if (isMixed) {
-              // Devices still not synced - transition to MIXED state
-              _roleOnOffStates[role] = RoleControlState(
-                state: RoleUIState.mixed,
-                desiredValue: desiredValue,
-              );
-            } else {
-              // Devices synced - transition to IDLE (remove state)
-              _roleOnOffStates.remove(role);
-            }
-          });
-        });
-
+      if (mounted) {
         if (kDebugMode) {
           debugPrint('[LIGHTS DOMAIN] _toggleRole: Transitioning to SETTLING state for $role');
         }
-
-        setState(() {
-          _roleOnOffStates[role] = RoleControlState(
-            state: RoleUIState.settling,
-            desiredValue: desiredValue,
-            settlingTimer: settlingTimer,
-            settlingStartedAt: DateTime.now(),
+        for (final property in properties) {
+          controlStateService?.setSettling(
+            property.deviceId,
+            property.channelId,
+            property.propertyId,
           );
-        });
+        }
       }
     }
   }
@@ -798,10 +812,27 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       return const SizedBox.shrink();
     }
 
-    // Check if ON property is locked by intent to get overlay value for instant feedback
+    // Check device control state service first (local optimistic state, most reliable)
+    // When state is locked (pending/settling), use the desired value
     bool isOn = channel.on;
-    if (_intentOverlayService != null) {
-      final onProp = channel.onProp;
+    final controlStateService = _deviceControlStateService;
+    final onProp = channel.onProp;
+
+    if (controlStateService != null &&
+        controlStateService.isLocked(target.deviceId, target.channelId, onProp.id)) {
+      // Use desired value from control state service (immediate, no listener delay)
+      final desiredValue = controlStateService.getDesiredValue(
+        target.deviceId,
+        target.channelId,
+        onProp.id,
+      );
+      if (desiredValue is bool) {
+        isOn = desiredValue;
+      } else if (desiredValue is num) {
+        isOn = desiredValue > 0.5;
+      }
+    } else if (_intentOverlayService != null) {
+      // Fall back to overlay service (for failures, backend intents, etc.)
       if (_intentOverlayService!.isPropertyLocked(
             target.deviceId,
             target.channelId,
@@ -918,6 +949,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   /// Toggle a single device using batch command with optimistic UI updates
+  /// Uses DeviceControlStateService for property-level state tracking
   Future<void> _toggleDevice(
     BuildContext context,
     LightTargetView target,
@@ -926,9 +958,20 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   ) async {
     final localizations = AppLocalizations.of(context);
     final newOnValue = !channel.on;
+    final controlStateService = _deviceControlStateService;
 
-    // Create local optimistic overlay FIRST for instant UI feedback
-    // This triggers _onIntentDataChanged which rebuilds UI with optimistic state
+    // Set state machine to PENDING - this locks the UI to show desired state
+    controlStateService?.setPending(
+      target.deviceId,
+      target.channelId,
+      channel.onProp.id,
+      newOnValue,
+    );
+    setState(() {
+      _togglingDevices.add(target.id);
+    });
+
+    // Also create overlay for intent tracking (for failure detection etc)
     _intentOverlayService?.createLocalOverlay(
       deviceId: target.deviceId,
       channelId: target.channelId,
@@ -936,9 +979,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       value: newOnValue,
       ttlMs: 5000, // 5 second TTL - should be replaced by real intent before this expires
     );
-
-    // Mark device as toggling to prevent double-taps (but don't show loader)
-    _togglingDevices.add(target.id);
 
     try {
       // Get display ID from display repository
@@ -983,7 +1023,18 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         message: localizations?.action_failed ?? 'Failed to toggle device',
       );
     } finally {
-      _togglingDevices.remove(target.id);
+      // Transition to SETTLING state - suppresses state changes while device syncs
+      setState(() {
+        _togglingDevices.remove(target.id);
+      });
+
+      if (mounted) {
+        controlStateService?.setSettling(
+          target.deviceId,
+          target.channelId,
+          channel.onProp.id,
+        );
+      }
     }
   }
 
