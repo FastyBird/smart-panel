@@ -262,8 +262,18 @@ export class ChannelsPropertiesService {
 			const newValue = (updateFields as Record<string, unknown>)[key];
 			const existingValue = (property as unknown as Record<string, unknown>)[key];
 
-			// Deep comparison for arrays/objects (like format)
+			// Deep comparison for arrays (like format)
 			if (Array.isArray(newValue) && Array.isArray(existingValue)) {
+				return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+			}
+
+			// Deep comparison for plain objects
+			if (
+				typeof newValue === 'object' &&
+				typeof existingValue === 'object' &&
+				newValue !== null &&
+				existingValue !== null
+			) {
 				return JSON.stringify(newValue) !== JSON.stringify(existingValue);
 			}
 
