@@ -113,28 +113,40 @@ export class SpaceLightingRoleService {
 			throw new SpacesValidationException(`Channel with id=${dto.channelId} not found on device ${dto.deviceId}`);
 		}
 
-		// Check if this is an update or create
-		const existingRole = await this.findOne(spaceId, dto.deviceId, dto.channelId);
-		const isUpdate = existingRole !== null;
+		let roleEntity: SpaceLightingRoleEntity | null = null;
+		let isUpdate = false;
 
-		// Use upsert to atomically insert or update, avoiding race conditions
-		// that could cause unique constraint violations with concurrent requests
-		await this.repository.upsert(
-			{
-				spaceId,
-				deviceId: dto.deviceId,
-				channelId: dto.channelId,
-				role: dto.role,
-				priority: dto.priority ?? 0,
-			},
-			{
-				conflictPaths: ['spaceId', 'deviceId', 'channelId'],
-				skipUpdateIfNoValuesChanged: true,
-			},
-		);
+		// Use a transaction to atomically check existence and upsert
+		// This prevents race conditions where concurrent requests could both see
+		// existingRole = null, causing both to emit LIGHT_TARGET_CREATED
+		await this.repository.manager.transaction(async (transactionalManager) => {
+			// Check if this is an update or create within the transaction
+			const existingRole = await transactionalManager.findOne(SpaceLightingRoleEntity, {
+				where: { spaceId, deviceId: dto.deviceId, channelId: dto.channelId },
+			});
+			isUpdate = existingRole !== null;
 
-		// Fetch the saved entity to return
-		const roleEntity = await this.findOne(spaceId, dto.deviceId, dto.channelId);
+			// Upsert within the same transaction to maintain atomicity
+			await transactionalManager.upsert(
+				SpaceLightingRoleEntity,
+				{
+					spaceId,
+					deviceId: dto.deviceId,
+					channelId: dto.channelId,
+					role: dto.role,
+					priority: dto.priority ?? 0,
+				},
+				{
+					conflictPaths: ['spaceId', 'deviceId', 'channelId'],
+					skipUpdateIfNoValuesChanged: true,
+				},
+			);
+
+			// Fetch the saved entity within the transaction
+			roleEntity = await transactionalManager.findOne(SpaceLightingRoleEntity, {
+				where: { spaceId, deviceId: dto.deviceId, channelId: dto.channelId },
+			});
+		});
 
 		if (!roleEntity) {
 			throw new SpacesValidationException(
