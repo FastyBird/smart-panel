@@ -23,7 +23,7 @@ export 'package:fastybird_smart_panel/modules/deck/intents/intents_service.dart'
 export 'package:fastybird_smart_panel/modules/deck/events/navigate_to_deck_item.dart';
 
 // Presentation
-export 'package:fastybird_smart_panel/modules/deck/presentation/widgets/button_tile.dart';
+export 'package:fastybird_smart_panel/core/widgets/button_tile.dart';
 
 // Domain Views - Lighting
 export 'package:fastybird_smart_panel/modules/deck/domain_views/lighting/lighting_constants.dart';

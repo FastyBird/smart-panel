@@ -3,8 +3,8 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/button_tile.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/data_source.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/presentation/widgets/tiles/button.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/presentation/widgets/tiles/tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/plugins/tiles-device-preview/views/view.dart';
@@ -38,7 +38,8 @@ class DevicePreviewTileWidget extends TileWidget<DevicePreviewTileView> {
       }
 
       return ButtonTileWidget(
-        tile: tile,
+        rowSpan: tile.rowSpan,
+        colSpan: tile.colSpan,
         onTap: () {
           if (kDebugMode) {
             debugPrint('Open detail for device: ${device.name}');

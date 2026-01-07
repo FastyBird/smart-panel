@@ -5,6 +5,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
+/// Container box for button tiles with on/off state styling
 class ButtonTileBox extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
@@ -83,6 +84,7 @@ class ButtonTileBox extends StatelessWidget {
   }
 }
 
+/// Title text widget for button tiles
 class ButtonTileTitle extends StatelessWidget {
   final String title;
   final bool isOn;
@@ -123,6 +125,7 @@ class ButtonTileTitle extends StatelessWidget {
   }
 }
 
+/// Subtitle widget for button tiles (supports custom widget content)
 class ButtonTileSubTitle extends StatelessWidget {
   final Widget? subTitle;
   final bool isOn;
@@ -181,6 +184,135 @@ class ButtonTileSubTitle extends StatelessWidget {
   }
 }
 
+/// Composite button tile widget with automatic layout based on dimensions
+class ButtonTileWidget extends StatelessWidget {
+  final GestureTapCallback? onTap;
+  final GestureTapCallback? onIconTap;
+  final String title;
+  final Widget? subTitle;
+  final IconData? icon;
+  final bool isOn;
+  final bool isLoading;
+  final bool isDisabled;
+  final int rowSpan;
+  final int colSpan;
+
+  const ButtonTileWidget({
+    super.key,
+    required this.onTap,
+    required this.onIconTap,
+    required this.title,
+    required this.subTitle,
+    this.icon,
+    required this.isOn,
+    this.isLoading = false,
+    this.isDisabled = false,
+    this.rowSpan = 1,
+    this.colSpan = 1,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    bool isSquare = rowSpan == colSpan;
+    bool isButton = rowSpan == 1 && colSpan == 1;
+
+    return ButtonTileBox(
+      onTap: onTap,
+      isOn: isOn,
+      isDisabled: isDisabled,
+      child: isSquare
+          ? LayoutBuilder(builder: (context, constraints) {
+              List<Widget> parts = [];
+
+              parts.add(ButtonTileIcon(
+                icon: icon,
+                onTap: onIconTap,
+                isOn: isOn,
+                isLoading: isLoading,
+                isDisabled: isDisabled,
+              ));
+
+              if (!isButton) {
+                parts.add(
+                  Column(
+                    children: [
+                      AppSpacings.spacingMdVertical,
+                      ButtonTileTitle(
+                        title: title,
+                        isOn: isOn,
+                        isLoading: isLoading,
+                        isDisabled: isDisabled,
+                      ),
+                      AppSpacings.spacingSmVertical,
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: ButtonTileSubTitle(
+                          subTitle: subTitle,
+                          isOn: isOn,
+                          isLoading: isLoading,
+                          isDisabled: isDisabled,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: parts,
+              );
+            })
+          : LayoutBuilder(builder: (context, constraints) {
+              List<Widget> parts = [];
+
+              parts.add(ButtonTileIcon(
+                icon: icon,
+                onTap: onIconTap,
+                isOn: isOn,
+                isLoading: isLoading,
+                isDisabled: isDisabled,
+              ));
+
+              if (!isButton) {
+                parts.add(AppSpacings.spacingMdHorizontal);
+                parts.add(Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ButtonTileTitle(
+                        title: title,
+                        isOn: isOn,
+                        isLoading: isLoading,
+                        isDisabled: isDisabled,
+                      ),
+                      AppSpacings.spacingSmVertical,
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: ButtonTileSubTitle(
+                          subTitle: subTitle,
+                          isOn: isOn,
+                          isLoading: isLoading,
+                          isDisabled: isDisabled,
+                        ),
+                      ),
+                    ],
+                  ),
+                ));
+              }
+
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: parts,
+              );
+            }),
+    );
+  }
+}
+
+/// Circular icon button for button tiles
 class ButtonTileIcon extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
