@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
@@ -147,6 +149,10 @@ class SocketService {
   static const int _maxRetryIntervalSeconds = 300; // 5 minutes max
   static const int _initialRetryIntervalSeconds = 2;
   static const int _retryBackoffMultiplier = 2;
+
+  // Timers for reconnection - tracked for proper cleanup on dispose
+  Timer? _reconnectTimer;
+  Timer? _reconnectCheckTimer;
 
   // Callback for token invalidation
   void Function()? _onTokenInvalid;
@@ -421,6 +427,12 @@ class SocketService {
     // Disable reconnection before disposing to prevent reconnection attempts
     _shouldReconnect = false;
 
+    // Cancel any pending reconnection timers
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+    _reconnectCheckTimer?.cancel();
+    _reconnectCheckTimer = null;
+
     if (_socket != null) {
       _socket!.disconnect();
       _socket!.dispose();
@@ -547,7 +559,11 @@ class SocketService {
       );
     }
 
-    Future.delayed(Duration(seconds: retryInterval), () {
+    // Cancel any existing timers before creating new ones
+    _reconnectTimer?.cancel();
+    _reconnectCheckTimer?.cancel();
+
+    _reconnectTimer = Timer(Duration(seconds: retryInterval), () {
       if (_socket == null || !_shouldReconnect) {
         _reconnectInProgress = false;
         return;
@@ -570,7 +586,7 @@ class SocketService {
       _reconnectInProgress = false;
 
       // Schedule next retry if still not connected after a short delay
-      Future.delayed(Duration(seconds: 2), () {
+      _reconnectCheckTimer = Timer(Duration(seconds: 2), () {
         if (_socket != null && !_socket!.connected && _shouldReconnect) {
           _attemptReconnectWithBackoff();
         }

@@ -64,10 +64,14 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   DevicesService? _devicesService;
   IntentOverlayService? _intentOverlayService;
 
-  // Track which roles are currently being toggled
+  // Track which roles are currently being toggled (prevents double-taps)
   final Set<LightTargetRole> _togglingRoles = {};
   // Track which individual devices are being toggled
   final Set<String> _togglingDevices = {};
+
+  // Role control states for on/off per role - uses same state machine as detail page
+  // Tracks: pending → settling → idle/mixed states with proper settling window
+  final Map<LightTargetRole, RoleControlState> _roleOnOffStates = {};
 
   bool _isLoading = true;
 
@@ -117,6 +121,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     _spacesService?.removeListener(_onSpacesDataChanged);
     _devicesService?.removeListener(_onDevicesDataChanged);
     _intentOverlayService?.removeListener(_onIntentDataChanged);
+
+    // Cancel all role on/off state timers
+    for (final state in _roleOnOffStates.values) {
+      state.cancelTimer();
+    }
+    _roleOnOffStates.clear();
+
     super.dispose();
   }
 
@@ -289,10 +300,27 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         }
       }
 
+      // Check role on/off state machine for optimistic UI
+      // When state is locked (pending/settling/mixed), use the desired value
+      final roleState = _roleOnOffStates[role];
+      final isRoleLocked = roleState?.isLocked ?? false;
+      final desiredOn = roleState?.desiredValue != null && roleState!.desiredValue! > 0.5;
+
+      final effectiveOnCount = isRoleLocked
+          ? (desiredOn ? roleTargets.length : 0) // All on or all off based on desired state
+          : onCount;
+
+      if (kDebugMode && _roleOnOffStates.isNotEmpty) {
+        debugPrint(
+          '[LIGHTS DOMAIN] _buildRoleGroups: role=$role, isLocked=$isRoleLocked, '
+          'desiredOn=$desiredOn, onCount=$onCount, effectiveOnCount=$effectiveOnCount',
+        );
+      }
+
       groups.add(_RoleGroup(
         role: role,
         targets: roleTargets,
-        onCount: onCount,
+        onCount: effectiveOnCount,
         totalCount: roleTargets.length,
         hasBrightness: hasBrightness,
         brightness: firstOnBrightness ?? firstDeviceBrightness,
@@ -445,12 +473,14 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   /// Toggle all devices in a role using batch commands with optimistic UI updates
+  /// Uses RoleControlState state machine: pending → settling → idle/mixed
   Future<void> _toggleRole(
     BuildContext context,
     _RoleGroup group,
     DevicesService devicesService,
   ) async {
     final localizations = AppLocalizations.of(context);
+    final role = group.role;
 
     // If any device is on, turn all off. Otherwise turn all on.
     final newState = !group.isOn;
@@ -481,24 +511,34 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     if (properties.isEmpty) return;
 
-    // Create local optimistic overlays FIRST for instant UI feedback
-    // This triggers _onIntentDataChanged which rebuilds UI with optimistic state
+    // Cancel any existing state timer for this role
+    _roleOnOffStates[role]?.cancelTimer();
+
+    // Set state machine to PENDING - this locks the UI to show desired state
+    if (kDebugMode) {
+      debugPrint('[LIGHTS DOMAIN] _toggleRole: Setting PENDING state for $role to $newState');
+    }
+    setState(() {
+      _roleOnOffStates[role] = RoleControlState(
+        state: RoleUIState.pending,
+        desiredValue: newState ? 1.0 : 0.0,
+      );
+      _togglingRoles.add(role);
+    });
+
+    // Create local optimistic overlays for intent tracking
     for (final property in properties) {
       _intentOverlayService?.createLocalOverlay(
         deviceId: property.deviceId,
         channelId: property.channelId,
         propertyId: property.propertyId,
         value: property.value,
-        ttlMs: 5000, // 5 second TTL - should be replaced by real intent before this expires
+        ttlMs: 5000, // 5 second TTL
       );
     }
 
-    // Mark role as toggling to prevent double-taps (but don't show loader)
-    _togglingRoles.add(group.role);
-
     try {
       // Get display ID from display repository
-      // Note: displayId may be null if display is not yet registered, which is acceptable
       final displayRepository = locator<DisplayRepository>();
       final displayId = displayRepository.display?.id;
 
@@ -507,7 +547,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         origin: 'panel.system.room',
         displayId: displayId,
         spaceId: _roomId,
-        roleKey: group.role.name,
+        roleKey: role.name,
       );
 
       // Send single batch command for all properties
@@ -531,7 +571,86 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         message: localizations?.action_failed ?? 'Failed to toggle lights',
       );
     } finally {
-      _togglingRoles.remove(group.role);
+      // Transition to SETTLING state - suppresses mixed icon while devices sync
+      _togglingRoles.remove(role);
+
+      if (!mounted) {
+        _roleOnOffStates.remove(role);
+      } else {
+        // Create settling timer (3 seconds - same as detail page)
+        final currentState = _roleOnOffStates[role];
+        final desiredValue = currentState?.desiredValue ?? (newState ? 1.0 : 0.0);
+
+        final settlingTimer = Timer(const Duration(seconds: 3), () {
+          if (!mounted) {
+            _roleOnOffStates.remove(role);
+            return;
+          }
+
+          if (kDebugMode) {
+            debugPrint('[LIGHTS DOMAIN] _toggleRole: Settling timer fired for $role');
+          }
+
+          // Check if all devices are now synced
+          final spacesService = _spacesService;
+          if (spacesService == null) {
+            setState(() {
+              _roleOnOffStates.remove(role);
+            });
+            return;
+          }
+
+          final targets = spacesService
+              .getLightTargetsForSpace(_roomId)
+              .where((t) => t.role == role)
+              .toList();
+
+          // Check mixed state by counting on/off devices
+          int onCount = 0;
+          int offCount = 0;
+          for (final target in targets) {
+            final device = devicesService.getDevice(target.deviceId);
+            if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+              final channel = device.lightChannels.firstWhere(
+                (c) => c.id == target.channelId,
+                orElse: () => device.lightChannels.first,
+              );
+              if (channel.on) {
+                onCount++;
+              } else {
+                offCount++;
+              }
+            }
+          }
+          final isMixed = onCount > 0 && offCount > 0;
+
+          setState(() {
+            if (isMixed) {
+              // Devices still not synced - transition to MIXED state
+              _roleOnOffStates[role] = RoleControlState(
+                state: RoleUIState.mixed,
+                desiredValue: desiredValue,
+              );
+            } else {
+              // Devices synced - transition to IDLE (remove state)
+              _roleOnOffStates.remove(role);
+            }
+          });
+        });
+
+        if (kDebugMode) {
+          debugPrint('[LIGHTS DOMAIN] _toggleRole: Transitioning to SETTLING state for $role');
+        }
+
+        setState(() {
+          _roleOnOffStates[role] = RoleControlState(
+            state: RoleUIState.settling,
+            desiredValue: desiredValue,
+            settlingTimer: settlingTimer,
+            settlingStartedAt: DateTime.now(),
+          );
+        });
+      }
     }
   }
 
@@ -934,6 +1053,14 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
   RoleControlState _hueState = const RoleControlState();
   RoleControlState _temperatureState = const RoleControlState();
   RoleControlState _whiteState = const RoleControlState();
+  RoleControlState _onOffState = const RoleControlState(); // For on/off settling
+
+  // Pending on/off state for optimistic UI (fallback when overlay timing issues)
+  // desiredValue: 1.0 = on, 0.0 = off (stored in _onOffState.desiredValue)
+  bool? _pendingOnState;
+
+  // Timer for delayed clearing of pending on/off state
+  Timer? _pendingOnStateClearTimer;
 
   // Cache key for this role
   String get _cacheKey => RoleControlStateRepository.generateKey(
@@ -997,11 +1124,13 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     _hueDebounceTimer?.cancel();
     _temperatureDebounceTimer?.cancel();
     _whiteDebounceTimer?.cancel();
+    _pendingOnStateClearTimer?.cancel();
     // Cancel any settling timers
     _brightnessState.cancelTimer();
     _hueState.cancelTimer();
     _temperatureState.cancelTimer();
     _whiteState.cancelTimer();
+    _onOffState.cancelTimer();
     _spacesService?.removeListener(_onSpacesDataChanged);
     _devicesService?.removeListener(_onDevicesDataChanged);
     _intentOverlayService?.removeListener(_onIntentChanged);
@@ -1052,18 +1181,23 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     bool Function(List<LightTargetView>, double, double) convergenceCheck,
     double tolerance,
   ) {
+    // Early exit if widget is disposed
     if (!mounted) return;
     if (currentState.desiredValue == null) return;
 
     // Check if devices have converged
     if (convergenceCheck(targets, currentState.desiredValue!, tolerance)) {
       // All devices converged - return to IDLE
+      // Re-check mounted before setState to handle race condition
+      if (!mounted) return;
       setState(() {
         updateState(const RoleControlState(state: RoleUIState.idle));
       });
     } else {
       // Devices did not converge - enter MIXED state
       // Keep the desired value so slider stays in place
+      // Re-check mounted before setState to handle race condition
+      if (!mounted) return;
       setState(() {
         updateState(currentState.copyWith(
           state: RoleUIState.mixed,
@@ -2020,7 +2154,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     final avgBrightness = brightnessCount > 0
         ? (totalBrightness / brightnessCount).round()
         : 0;
-    final anyOn = onCount > 0;
+    // Use pending state as fallback for optimistic UI (in case overlay lookup has timing issues)
+    final anyOn = _pendingOnState ?? (onCount > 0);
     final hasBrightness = _availableModes.contains(_LightRoleMode.brightness);
 
     return Scaffold(
@@ -2246,7 +2381,14 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // For simple on/off lights, show ON/OFF text (but check for mixed on/off state)
     if (!hasBrightness) {
       // Check if on/off states are mixed (some on, some off) and user hasn't interacted
-      final showInitialMixedSimple = roleMixedState.onStateMixed;
+      // Only show mixed icon when state is IDLE - during PENDING/SETTLING/MIXED, show user's desired state
+      final isOnOffLocked = _onOffState.isLocked;
+      final showInitialMixedSimple = !isOnOffLocked && roleMixedState.onStateMixed;
+
+      // When locked, show the user's desired state; otherwise show actual state
+      final displayAnyOn = isOnOffLocked
+          ? (_onOffState.desiredValue != null && _onOffState.desiredValue! > 0.5)
+          : anyOn;
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2265,7 +2407,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
             )
           else
             Text(
-              anyOn ? localizations.light_state_on : localizations.light_state_off,
+              displayAnyOn ? localizations.light_state_on : localizations.light_state_off,
               style: TextStyle(
                 color: Theme.of(context).brightness == Brightness.light
                     ? AppTextColorLight.regular
@@ -2282,7 +2424,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           Text(
             showInitialMixedSimple
                 ? localizations.light_role_not_synced_description
-                : (anyOn
+                : (displayAnyOn
                     ? localizations.light_state_on_description
                     : localizations.light_role_off_description),
             style: TextStyle(
@@ -2302,6 +2444,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // 3. If state is IDLE and devices are synced, show actual brightness
 
     final isLocked = _brightnessState.isLocked;
+    final isOnOffLocked = _onOffState.isLocked;
 
     // Determine the display value
     final displayBrightness = isLocked
@@ -2309,7 +2452,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         : avgBrightness;
 
     // Check if devices are mixed (on/off OR brightness)
-    final devicesMixed = roleMixedState.onStateMixed || roleMixedState.brightnessMixed;
+    // But suppress on/off mixed state if on/off is currently settling
+    final onStateMixedForDisplay = !isOnOffLocked && roleMixedState.onStateMixed;
+    final devicesMixed = onStateMixedForDisplay || roleMixedState.brightnessMixed;
 
     // Show sync-off icon when:
     // - User hasn't interacted yet (IDLE state) AND devices have different values
@@ -2535,6 +2680,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // Check if any light is on
     final anyLightOn = roleMixedState.anyOn;
 
+    // Check on/off mixed state (but suppress if on/off is settling)
+    final effectiveOnStateMixed = !_onOffState.isLocked && roleMixedState.onStateMixed;
+
     // Determine displayed value (priority: overlay > locked state > mixed/cached > actual)
     final double displayValue;
     if (overlayBrightness != null) {
@@ -2543,7 +2691,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     } else if (_brightnessState.isLocked) {
       // User has interacted - show their intended value
       displayValue = _brightnessState.desiredValue ?? currentBrightness.toDouble();
-    } else if (roleMixedState.brightnessMixed || roleMixedState.onStateMixed) {
+    } else if (roleMixedState.brightnessMixed || effectiveOnStateMixed) {
       // Devices are mixed due to external change - show cached or first device's value
       displayValue = cachedBrightness ?? firstDeviceBrightness ?? currentBrightness.toDouble();
     } else if (!anyLightOn) {
@@ -2726,6 +2874,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // Check if any light is on
     final anyLightOn = roleMixedState.anyOn;
 
+    // Check on/off mixed state (but suppress if on/off is settling)
+    final effectiveOnStateMixed = !_onOffState.isLocked && roleMixedState.onStateMixed;
+
     // Determine displayed value (priority: overlay > locked state > mixed/cached > actual)
     final double displayValue;
     if (overlayHue != null) {
@@ -2733,7 +2884,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       displayValue = overlayHue;
     } else if (_hueState.isLocked) {
       displayValue = _hueState.desiredValue ?? avgHue;
-    } else if (roleMixedState.hueMixed || roleMixedState.onStateMixed) {
+    } else if (roleMixedState.hueMixed || effectiveOnStateMixed) {
       // Devices are mixed due to external change - show cached or first device's value
       displayValue = cachedHue ?? firstDeviceHue ?? avgHue;
     } else if (!anyLightOn) {
@@ -2866,6 +3017,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // Check if any light is on
     final anyLightOn = roleMixedState.anyOn;
 
+    // Check on/off mixed state (but suppress if on/off is settling)
+    final effectiveOnStateMixed = !_onOffState.isLocked && roleMixedState.onStateMixed;
+
     // Determine displayed value (priority: overlay > locked state > mixed/cached > actual)
     final double displayValue;
     if (overlayTemperature != null) {
@@ -2873,7 +3027,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       displayValue = overlayTemperature;
     } else if (_temperatureState.isLocked) {
       displayValue = _temperatureState.desiredValue ?? avgTemp;
-    } else if (roleMixedState.temperatureMixed || roleMixedState.onStateMixed) {
+    } else if (roleMixedState.temperatureMixed || effectiveOnStateMixed) {
       // Devices are mixed due to external change - show cached or first device's value
       displayValue = cachedTemp ?? firstDeviceTemp ?? avgTemp;
     } else if (!anyLightOn) {
@@ -3011,6 +3165,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     // Check if any light is on
     final anyLightOn = roleMixedState.anyOn;
 
+    // Check on/off mixed state (but suppress if on/off is settling)
+    final effectiveOnStateMixed = !_onOffState.isLocked && roleMixedState.onStateMixed;
+
     // Determine displayed value (priority: overlay > locked state > mixed/cached > actual)
     final double displayValue;
     if (overlayWhite != null) {
@@ -3018,7 +3175,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       displayValue = overlayWhite;
     } else if (_whiteState.isLocked) {
       displayValue = _whiteState.desiredValue ?? avgWhite;
-    } else if (roleMixedState.whiteMixed || roleMixedState.onStateMixed) {
+    } else if (roleMixedState.whiteMixed || effectiveOnStateMixed) {
       // Devices are mixed due to external change - show cached or first device's value
       displayValue = cachedWhite ?? firstDeviceWhite ?? avgWhite;
     } else if (!anyLightOn) {
@@ -3357,6 +3514,21 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
       if (properties.isEmpty) return;
 
+      // Cancel any existing timers
+      _pendingOnStateClearTimer?.cancel();
+      _pendingOnStateClearTimer = null;
+      _onOffState.cancelTimer();
+
+      // Set pending state and state machine FIRST for optimistic UI
+      // Use state machine to suppress mixed icon during settling
+      setState(() {
+        _pendingOnState = newState;
+        _onOffState = RoleControlState(
+          state: RoleUIState.pending,
+          desiredValue: newState ? 1.0 : 0.0,
+        );
+      });
+
       // Get display ID from display repository
       final displayRepository = locator<DisplayRepository>();
       final displayId = displayRepository.display?.id;
@@ -3369,9 +3541,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         roleKey: widget.role.name,
       );
 
-      // Create local optimistic overlays for instant UI feedback
-      // The overlay service will notify listeners, triggering _onIntentDataChanged
-      // which will rebuild the UI with the optimistic state
+      // Create local optimistic overlays for intent tracking
+      // These trigger rebuilds via _onIntentDataChanged, but pending state is already set
       for (final property in properties) {
         _intentOverlayService?.createLocalOverlay(
           deviceId: property.deviceId,
@@ -3413,6 +3584,68 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         this.context,
         message: localizations?.action_failed ?? 'Failed to toggle lights',
       );
+    } finally {
+      // Transition to SETTLING state - this suppresses the mixed icon while devices sync
+      // After settling window (3 seconds), check if devices are synced or still mixed
+      if (mounted) {
+        _onOffState.cancelTimer();
+
+        final settlingTimer = Timer(const Duration(seconds: 3), () {
+          if (!mounted) {
+            _pendingOnState = null;
+            _onOffState = const RoleControlState();
+            return;
+          }
+
+          if (kDebugMode) {
+            debugPrint('[LIGHTS DOMAIN DETAIL] On/off settling timer fired');
+          }
+
+          // Check if all devices are now synced (all on or all off)
+          final spacesService = _spacesService;
+          final devicesService = _devicesService;
+          if (spacesService == null || devicesService == null) {
+            setState(() {
+              _pendingOnState = null;
+              _onOffState = const RoleControlState();
+            });
+            return;
+          }
+
+          final targets = spacesService
+              .getLightTargetsForSpace(widget.roomId)
+              .where((t) => t.role == widget.role)
+              .toList();
+
+          final roleMixedState = _getRoleMixedState(targets);
+
+          setState(() {
+            _pendingOnState = null;
+            if (roleMixedState.onStateMixed) {
+              // Devices still not synced - transition to MIXED state
+              _onOffState = RoleControlState(
+                state: RoleUIState.mixed,
+                desiredValue: _onOffState.desiredValue,
+              );
+            } else {
+              // Devices synced - transition to IDLE
+              _onOffState = const RoleControlState();
+            }
+          });
+        });
+
+        setState(() {
+          _onOffState = RoleControlState(
+            state: RoleUIState.settling,
+            desiredValue: _onOffState.desiredValue,
+            settlingTimer: settlingTimer,
+            settlingStartedAt: DateTime.now(),
+          );
+        });
+      } else {
+        _pendingOnState = null;
+        _onOffState = const RoleControlState();
+      }
     }
   }
 

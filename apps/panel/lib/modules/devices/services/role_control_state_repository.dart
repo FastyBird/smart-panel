@@ -99,6 +99,9 @@ class RoleControlStateRepository extends ChangeNotifier {
   /// Default TTL for cache entries
   static const Duration defaultTtl = Duration(minutes: 30);
 
+  /// Maximum number of cache entries to prevent unbounded growth
+  static const int maxCacheSize = 100;
+
   /// Periodic cleanup timer for expired entries
   Timer? _cleanupTimer;
 
@@ -159,6 +162,7 @@ class RoleControlStateRepository extends ChangeNotifier {
   ///
   /// Only updates the provided values, preserving other cached values.
   /// Resets the timestamp on each update.
+  /// Evicts oldest entries if cache exceeds maxCacheSize.
   void set(
     String key, {
     bool? isOn,
@@ -183,6 +187,9 @@ class RoleControlStateRepository extends ChangeNotifier {
         timestamp: DateTime.now(),
       );
     } else {
+      // Evict oldest entries if cache is at capacity before adding new entry
+      _evictIfNeeded();
+
       // Create new entry
       _cache[key] = RoleCacheEntry(
         isOn: isOn,
@@ -200,6 +207,24 @@ class RoleControlStateRepository extends ChangeNotifier {
 
     if (!_isDisposed) {
       notifyListeners();
+    }
+  }
+
+  /// Evict oldest entries if cache exceeds max size (LRU eviction)
+  void _evictIfNeeded() {
+    if (_cache.length < maxCacheSize) return;
+
+    // Sort entries by timestamp (oldest first)
+    final sortedEntries = _cache.entries.toList()
+      ..sort((a, b) => a.value.timestamp.compareTo(b.value.timestamp));
+
+    // Remove oldest 10% of entries to avoid frequent eviction
+    final entriesToRemove = (maxCacheSize * 0.1).ceil();
+    for (var i = 0; i < entriesToRemove && i < sortedEntries.length; i++) {
+      _cache.remove(sortedEntries[i].key);
+      if (kDebugMode) {
+        debugPrint('[ROLE_CACHE] Evicted oldest entry: ${sortedEntries[i].key}');
+      }
     }
   }
 

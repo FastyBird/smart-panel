@@ -77,9 +77,29 @@ class RoleControlState {
   /// Whether devices are in mixed state
   bool get isMixed => state == RoleUIState.mixed;
 
-  /// Cancel any active timer
+  /// Cancel any active timer.
+  ///
+  /// Note: This is a side-effect method on an otherwise immutable class.
+  /// Use this when you need to cancel the timer before replacing the state
+  /// with a new instance. Example:
+  /// ```dart
+  /// _brightnessState.cancelTimer();
+  /// _brightnessState = RoleControlState(...);
+  /// ```
   void cancelTimer() {
     settlingTimer?.cancel();
+  }
+
+  /// Cancel timer and return a new state with timer cleared.
+  ///
+  /// Use this when you want to cancel the timer and keep the rest of the state.
+  /// This is the preferred immutable pattern. Example:
+  /// ```dart
+  /// _brightnessState = _brightnessState.withTimerCancelled();
+  /// ```
+  RoleControlState withTimerCancelled() {
+    settlingTimer?.cancel();
+    return copyWith(clearSettlingTimer: true, clearSettlingStartedAt: true);
   }
 }
 

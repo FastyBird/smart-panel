@@ -175,8 +175,13 @@ class _AppBodyState extends State<AppBody> {
             if (_isSwipingVertically) {
               if (delta.dy > 20) {
                 // Swipe down detected - only trigger once per gesture
+                // Set flag immediately to prevent multiple triggers
                 _swipeActionTriggered = true;
-                _navigator.navigateTo(AppRouteNames.settings);
+                // Check if we're already on settings route to prevent multiple navigations
+                final currentRoute = _navigator.getCurrentRouteName();
+                if (currentRoute != AppRouteNames.settings) {
+                  _navigator.navigateTo(AppRouteNames.settings);
+                }
               } else if (delta.dy < -20) {
                 // Swipe up detected
               }

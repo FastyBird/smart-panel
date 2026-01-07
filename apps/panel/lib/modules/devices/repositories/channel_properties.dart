@@ -170,12 +170,13 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
 
       // Start new debounce timer
       _debounceTimers[id] = Timer(const Duration(milliseconds: 300), () async {
+        // Send command and wait for result
         await _sendCommandToBackend(channel, property!, completer);
 
         _debounceTimers.remove(id);
 
-        /// Clearing of backup value
-        _valueBackup.remove(id);
+        // Note: _valueBackup is cleared in _sendCommandToBackend on success,
+        // or used for revert on failure. Don't clear here as ack is async.
       });
 
       if (kDebugMode) {
@@ -235,6 +236,9 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
 
           _revertValue(id: property.id);
 
+          // Clear backup after revert
+          _valueBackup.remove(property.id);
+
           completer.complete(false);
         } else {
           if (kDebugMode) {
@@ -242,6 +246,9 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
               '[DEVICES MODULE][CHANNEL PROPERTIES] Successfully send command to backend for property: ${property.id}, requestId: $requestId',
             );
           }
+
+          // Clear backup on success - server now has the new value
+          _valueBackup.remove(property.id);
 
           completer.complete(true);
         }
