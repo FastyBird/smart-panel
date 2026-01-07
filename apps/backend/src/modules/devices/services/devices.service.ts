@@ -259,6 +259,10 @@ export class DevicesService {
 		const zoneIds = dtoInstance.zone_ids;
 		delete dtoInstance.zone_ids;
 
+		// Get current zone IDs before update (for change detection)
+		const currentZones = zoneIds !== undefined ? await this.deviceZonesService.getDeviceZones(device.id) : [];
+		const currentZoneIds = currentZones.map((z) => z.id).sort();
+
 		const repository: Repository<TDevice> = this.dataSource.getRepository(mapping.class);
 
 		// Get the fields to update from DTO (excluding undefined values)
@@ -287,7 +291,9 @@ export class DevicesService {
 				return newValue !== existingValue;
 			}) ||
 			// Explicit check for room_id being set to null (toInstance drops null values)
-			(dtoInstance.room_id !== undefined && device.roomId !== (dtoInstance.room_id ?? null));
+			(dtoInstance.room_id !== undefined && device.roomId !== (dtoInstance.room_id ?? null)) ||
+			// Explicit check for zone_ids changes (zone_ids is deleted from dtoInstance before updateFields is computed)
+			(zoneIds !== undefined && JSON.stringify(currentZoneIds) !== JSON.stringify([...(zoneIds ?? [])].sort()));
 
 		Object.assign(device, updateFields);
 

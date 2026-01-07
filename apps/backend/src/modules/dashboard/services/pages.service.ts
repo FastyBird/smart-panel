@@ -239,9 +239,9 @@ export class PagesService {
 		const updateFields = dtoInstanceWithoutDisplays;
 
 		// Check if any entity fields are actually being changed by comparing with existing values
-		// Also check if displays changed
+		// Also check if displays changed (use Array.isArray since displays can be string[] | null | undefined)
 		const displaysChanged =
-			dtoInstance.displays !== undefined &&
+			Array.isArray(dtoInstance.displays) &&
 			JSON.stringify(page.displays?.map((d) => d.id).sort()) !== JSON.stringify(dtoInstance.displays.sort());
 		const entityFieldsChanged =
 			displaysChanged ||
