@@ -395,6 +395,8 @@ class IntentOverlayService extends ChangeNotifier {
     for (final target in overlay.targets) {
       _targetIndex[target.key] = overlay.intentId;
     }
+
+    notifyListeners();
   }
 
   /// Clear an intent from the registry
