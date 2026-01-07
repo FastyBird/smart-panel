@@ -337,12 +337,21 @@ class ButtonTileIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: isDisabled ? null : onTap,
-      borderRadius: BorderRadius.circular(100),
-      child: Container(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
+    // Total size: icon (24) + border (4*2) + padding (4*2) = 40 scaled
+    final double iconSize = _screenService.scale(
+      40,
+      density: _visualDensityService.density,
+    );
+
+    return SizedBox(
+      width: iconSize,
+      height: iconSize,
+      child: InkWell(
+        onTap: isDisabled ? null : onTap,
+        borderRadius: BorderRadius.circular(100),
+        child: Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
           color: isDisabled
               ? (Theme.of(context).brightness == Brightness.light
                   ? AppColors.white
@@ -448,6 +457,7 @@ class ButtonTileIcon extends StatelessWidget {
             ),
           ),
         ),
+      ),
       ),
     );
   }
