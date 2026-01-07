@@ -1,6 +1,36 @@
+import 'package:fastybird_smart_panel/modules/devices/views/channels/light.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+
+/// Finds the light channel matching the target channel ID.
+/// Returns null if the device has no light channels or the channel is not found.
+///
+/// This helper eliminates the duplicated channel lookup pattern:
+/// ```dart
+/// final channel = device.lightChannels.firstWhere(
+///   (c) => c.id == target.channelId,
+///   orElse: () => device.lightChannels.first,
+/// );
+/// if (channel.id != target.channelId) continue;
+/// ```
+LightChannelView? findLightChannel(
+  LightingDeviceView device,
+  String targetChannelId,
+) {
+  if (device.lightChannels.isEmpty) return null;
+
+  final channel = device.lightChannels.firstWhere(
+    (c) => c.id == targetChannelId,
+    orElse: () => device.lightChannels.first,
+  );
+
+  // Return null if fallback was used (target channel not found)
+  if (channel.id != targetChannelId) return null;
+
+  return channel;
+}
 
 /// Strips room name from device name (case insensitive).
 /// Capitalizes first letter if it becomes lowercase after stripping.

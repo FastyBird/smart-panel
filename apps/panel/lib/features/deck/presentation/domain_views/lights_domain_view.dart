@@ -1,5 +1,3 @@
-library lights_domain_view;
-
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
@@ -81,27 +79,37 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     try {
       _deckService = locator<DeckService>();
-    } catch (_) {}
+    } catch (e) {
+      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get DeckService: $e');
+    }
 
     try {
       _spacesService = locator<SpacesService>();
       _spacesService?.addListener(_onSpacesDataChanged);
-    } catch (_) {}
+    } catch (e) {
+      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get SpacesService: $e');
+    }
 
     try {
       _devicesService = locator<DevicesService>();
       _devicesService?.addListener(_onDevicesDataChanged);
-    } catch (_) {}
+    } catch (e) {
+      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get DevicesService: $e');
+    }
 
     try {
       _intentOverlayService = locator<IntentOverlayService>();
       _intentOverlayService?.addListener(_onIntentDataChanged);
-    } catch (_) {}
+    } catch (e) {
+      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get IntentOverlayService: $e');
+    }
 
     try {
       _deviceControlStateService = locator<DeviceControlStateService>();
       _deviceControlStateService?.addListener(_onControlStateChanged);
-    } catch (_) {}
+    } catch (e) {
+      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get DeviceControlStateService: $e');
+    }
 
     // Fetch light targets for this space
     _fetchLightTargets();
@@ -265,16 +273,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
       for (final target in roleTargets) {
         final device = devicesService.getDevice(target.deviceId);
-        if (device is LightingDeviceView &&
-            device.lightChannels.isNotEmpty) {
-          // Find matching channel
-          final channel = device.lightChannels.firstWhere(
-            (c) => c.id == target.channelId,
-            orElse: () => device.lightChannels.first,
-          );
-
-          // Skip if channel wasn't found (fallback was used) to avoid incorrect state
-          if (channel.id != target.channelId) continue;
+        if (device is LightingDeviceView) {
+          final channel = findLightChannel(device, target.channelId);
+          if (channel == null) continue;
 
           // Check if ON property is locked by intent to get overlay value for instant feedback
           bool isOn = channel.on;
@@ -321,12 +322,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       if (controlStateService != null) {
         for (final target in roleTargets) {
           final device = devicesService.getDevice(target.deviceId);
-          if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
-            final channel = device.lightChannels.firstWhere(
-              (c) => c.id == target.channelId,
-              orElse: () => device.lightChannels.first,
-            );
-            if (channel.id != target.channelId) continue;
+          if (device is LightingDeviceView) {
+            final channel = findLightChannel(device, target.channelId);
+            if (channel == null) continue;
 
             if (controlStateService.isLocked(
               target.deviceId,
@@ -447,13 +445,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     if (controlStateService != null) {
       for (final target in group.targets) {
         final device = devicesService.getDevice(target.deviceId);
-        if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
-          final channel = device.lightChannels.firstWhere(
-            (c) => c.id == target.channelId,
-            orElse: () => device.lightChannels.first,
-          );
-          // Skip if channel wasn't found (fallback was used)
-          if (channel.id != target.channelId) continue;
+        if (device is LightingDeviceView) {
+          final channel = findLightChannel(device, target.channelId);
+          if (channel == null) continue;
 
           if (controlStateService.isLocked(
             target.deviceId,
@@ -574,15 +568,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     for (final target in group.targets) {
       final device = devicesService.getDevice(target.deviceId);
-      if (device is LightingDeviceView &&
-          device.lightChannels.isNotEmpty) {
-        final channel = device.lightChannels.firstWhere(
-          (c) => c.id == target.channelId,
-          orElse: () => device.lightChannels.first,
-        );
-
-        // Skip if channel wasn't found (fallback was used) to avoid property/channel mismatch
-        if (channel.id != target.channelId) continue;
+      if (device is LightingDeviceView) {
+        final channel = findLightChannel(device, target.channelId);
+        if (channel == null) continue;
 
         properties.add(PropertyCommandItem(
           deviceId: target.deviceId,
@@ -798,17 +786,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   ) {
     final localizations = AppLocalizations.of(context)!;
     final device = devicesService.getDevice(target.deviceId);
-    if (device is! LightingDeviceView || device.lightChannels.isEmpty) {
+    if (device is! LightingDeviceView) {
       return const SizedBox.shrink();
     }
 
-    final channel = device.lightChannels.firstWhere(
-      (c) => c.id == target.channelId,
-      orElse: () => device.lightChannels.first,
-    );
-
-    // Skip if channel wasn't found (fallback was used) to avoid property/channel mismatch
-    if (channel.id != target.channelId) {
+    final channel = findLightChannel(device, target.channelId);
+    if (channel == null) {
       return const SizedBox.shrink();
     }
 
@@ -1173,23 +1156,31 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     try {
       _spacesService = locator<SpacesService>();
       _spacesService?.addListener(_onSpacesDataChanged);
-    } catch (_) {}
+    } catch (e) {
+      if (kDebugMode) debugPrint('[LightRoleDetail] Failed to get SpacesService: $e');
+    }
 
     try {
       _devicesService = locator<DevicesService>();
       _devicesService?.addListener(_onDevicesDataChanged);
-    } catch (_) {}
+    } catch (e) {
+      if (kDebugMode) debugPrint('[LightRoleDetail] Failed to get DevicesService: $e');
+    }
 
     try {
       _intentOverlayService = locator<IntentOverlayService>();
       _intentOverlayService?.addListener(_onIntentChanged);
       // Initialize lock tracking state
       _updateLockTrackingState();
-    } catch (_) {}
+    } catch (e) {
+      if (kDebugMode) debugPrint('[LightRoleDetail] Failed to get IntentOverlayService: $e');
+    }
 
     try {
       _roleControlStateRepository = locator<RoleControlStateRepository>();
-    } catch (_) {}
+    } catch (e) {
+      if (kDebugMode) debugPrint('[LightRoleDetail] Failed to get RoleControlStateRepository: $e');
+    }
 
     // Initialize available modes
     _updateAvailableModes();
@@ -1323,12 +1314,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     for (final target in targets) {
       if (!target.hasBrightness) continue;
       final device = devicesService.getDevice(target.deviceId);
-      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
-        final channel = device.lightChannels.firstWhere(
-          (c) => c.id == target.channelId,
-          orElse: () => device.lightChannels.first,
-        );
-        if (channel.id != target.channelId) continue;
+      if (device is LightingDeviceView) {
+        final channel = findLightChannel(device, target.channelId);
+        if (channel == null) continue;
         final brightnessProp = channel.brightnessProp;
         if (brightnessProp != null &&
             service.isPropertyLocked(target.deviceId, target.channelId, brightnessProp.id)) {
@@ -1348,12 +1336,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
     for (final target in targets) {
       final device = devicesService.getDevice(target.deviceId);
-      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
-        final channel = device.lightChannels.firstWhere(
-          (c) => c.id == target.channelId,
-          orElse: () => device.lightChannels.first,
-        );
-        if (channel.id != target.channelId) continue;
+      if (device is LightingDeviceView) {
+        final channel = findLightChannel(device, target.channelId);
+        if (channel == null) continue;
         if (!channel.hasColor) continue;
 
         // Check HSV hue property
@@ -1393,12 +1378,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     for (final target in targets) {
       if (!target.hasColorTemp) continue;
       final device = devicesService.getDevice(target.deviceId);
-      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
-        final channel = device.lightChannels.firstWhere(
-          (c) => c.id == target.channelId,
-          orElse: () => device.lightChannels.first,
-        );
-        if (channel.id != target.channelId) continue;
+      if (device is LightingDeviceView) {
+        final channel = findLightChannel(device, target.channelId);
+        if (channel == null) continue;
         final tempProp = channel.temperatureProp;
         if (tempProp != null &&
             service.isPropertyLocked(target.deviceId, target.channelId, tempProp.id)) {
@@ -1417,12 +1399,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
     for (final target in targets) {
       final device = devicesService.getDevice(target.deviceId);
-      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
-        final channel = device.lightChannels.firstWhere(
-          (c) => c.id == target.channelId,
-          orElse: () => device.lightChannels.first,
-        );
-        if (channel.id != target.channelId) continue;
+      if (device is LightingDeviceView) {
+        final channel = findLightChannel(device, target.channelId);
+        if (channel == null) continue;
         if (!channel.hasColorWhite) continue;
         final whiteProp = channel.colorWhiteProp;
         if (whiteProp != null &&
@@ -1901,15 +1880,10 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
     for (final target in targets) {
       final device = _devicesService?.getDevice(target.deviceId);
-      if (device is! LightingDeviceView || device.lightChannels.isEmpty) continue;
+      if (device is! LightingDeviceView) continue;
 
-      final channel = device.lightChannels.firstWhere(
-        (c) => c.id == target.channelId,
-        orElse: () => device.lightChannels.first,
-      );
-
-      // Skip if channel wasn't found (fallback was used) to avoid incorrect state
-      if (channel.id != target.channelId) continue;
+      final channel = findLightChannel(device, target.channelId);
+      if (channel == null) continue;
 
       // Count on/off state
       if (channel.on) {
@@ -3566,12 +3540,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       bool anyOn = false;
       for (final target in targets) {
         final device = devicesService.getDevice(target.deviceId);
-        if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
-          final channel = device.lightChannels.firstWhere(
-            (c) => c.id == target.channelId,
-            orElse: () => device.lightChannels.first,
-          );
-          if (channel.on) {
+        if (device is LightingDeviceView) {
+          final channel = findLightChannel(device, target.channelId);
+          if (channel != null && channel.on) {
             anyOn = true;
             break;
           }
@@ -3585,22 +3556,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
       for (final target in targets) {
         final device = devicesService.getDevice(target.deviceId);
-        if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
-          final channel = device.lightChannels.firstWhere(
-            (c) => c.id == target.channelId,
-            orElse: () => device.lightChannels.first,
-          );
-
-          // Skip if channel wasn't found (fallback was used) to avoid property/channel mismatch
-          if (channel.id != target.channelId) {
-            if (kDebugMode) {
-              debugPrint(
-                '[LIGHTS DOMAIN] Channel fallback used for device ${target.deviceId}: '
-                'expected channel ${target.channelId}, using ${channel.id}',
-              );
-            }
-            continue;
-          }
+        if (device is LightingDeviceView) {
+          final channel = findLightChannel(device, target.channelId);
+          if (channel == null) continue;
 
           final onProp = channel.onProp;
           properties.add(PropertyCommandItem(
@@ -3766,23 +3724,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         if (!target.hasBrightness) continue;
 
         final device = devicesService.getDevice(target.deviceId);
-        if (device is LightingDeviceView &&
-            device.lightChannels.isNotEmpty) {
-          final channel = device.lightChannels.firstWhere(
-            (c) => c.id == target.channelId,
-            orElse: () => device.lightChannels.first,
-          );
-
-          // Skip if channel wasn't found (fallback was used) to avoid property/channel mismatch
-          if (channel.id != target.channelId) {
-            if (kDebugMode) {
-              debugPrint(
-                '[LIGHTS DOMAIN] Channel fallback used for device ${target.deviceId}: '
-                'expected channel ${target.channelId}, using ${channel.id}',
-              );
-            }
-            continue;
-          }
+        if (device is LightingDeviceView) {
+          final channel = findLightChannel(device, target.channelId);
+          if (channel == null) continue;
 
           final brightnessProp = channel.brightnessProp;
           if (brightnessProp != null) {
@@ -3868,22 +3812,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
       for (final target in targets) {
         final device = devicesService.getDevice(target.deviceId);
-        if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
-          final channel = device.lightChannels.firstWhere(
-            (c) => c.id == target.channelId,
-            orElse: () => device.lightChannels.first,
-          );
-
-          // Skip if channel wasn't found (fallback was used) to avoid property/channel mismatch
-          if (channel.id != target.channelId) {
-            if (kDebugMode) {
-              debugPrint(
-                '[LIGHTS DOMAIN] Channel fallback used for device ${target.deviceId}: '
-                'expected channel ${target.channelId}, using ${channel.id}',
-              );
-            }
-            continue;
-          }
+        if (device is LightingDeviceView) {
+          final channel = findLightChannel(device, target.channelId);
+          if (channel == null) continue;
 
           // Set RGB properties if available
           if (channel.colorRedProp != null) {
@@ -3998,22 +3929,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
       for (final target in targets) {
         final device = devicesService.getDevice(target.deviceId);
-        if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
-          final channel = device.lightChannels.firstWhere(
-            (c) => c.id == target.channelId,
-            orElse: () => device.lightChannels.first,
-          );
-
-          // Skip if channel wasn't found (fallback was used) to avoid property/channel mismatch
-          if (channel.id != target.channelId) {
-            if (kDebugMode) {
-              debugPrint(
-                '[LIGHTS DOMAIN] Channel fallback used for device ${target.deviceId}: '
-                'expected channel ${target.channelId}, using ${channel.id}',
-              );
-            }
-            continue;
-          }
+        if (device is LightingDeviceView) {
+          final channel = findLightChannel(device, target.channelId);
+          if (channel == null) continue;
 
           final tempProp = channel.temperatureProp;
           if (tempProp != null) {
@@ -4091,22 +4009,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
       for (final target in targets) {
         final device = devicesService.getDevice(target.deviceId);
-        if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
-          final channel = device.lightChannels.firstWhere(
-            (c) => c.id == target.channelId,
-            orElse: () => device.lightChannels.first,
-          );
-
-          // Skip if channel wasn't found (fallback was used) to avoid property/channel mismatch
-          if (channel.id != target.channelId) {
-            if (kDebugMode) {
-              debugPrint(
-                '[LIGHTS DOMAIN] Channel fallback used for device ${target.deviceId}: '
-                'expected channel ${target.channelId}, using ${channel.id}',
-              );
-            }
-            continue;
-          }
+        if (device is LightingDeviceView) {
+          final channel = findLightChannel(device, target.channelId);
+          if (channel == null) continue;
 
           final whiteProp = channel.colorWhiteProp;
           if (whiteProp != null) {

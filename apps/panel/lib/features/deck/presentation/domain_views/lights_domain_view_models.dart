@@ -1,4 +1,4 @@
-part of lights_domain_view;
+part of 'lights_domain_view.dart';
 
 // ============================================================================
 // Private UI models for Lights Domain View
