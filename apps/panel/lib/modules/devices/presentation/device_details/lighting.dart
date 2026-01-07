@@ -256,9 +256,12 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
           .map((mode) {
             switch (mode) {
               case LightChannelModeType.off:
+                // Show "On" when light is off, "Off" when light is on
                 return AppBottomNavigationItem(
                   icon: Icon(MdiIcons.power),
-                  label: localizations.light_mode_off,
+                  label: _channels[_selectedChannel].on
+                      ? localizations.light_mode_off
+                      : localizations.light_mode_on,
                 );
               case LightChannelModeType.brightness:
                 return AppBottomNavigationItem(
