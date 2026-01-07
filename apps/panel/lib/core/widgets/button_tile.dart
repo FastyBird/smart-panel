@@ -323,6 +323,7 @@ class ButtonTileIcon extends StatelessWidget {
   final bool isOn;
   final bool isLoading;
   final bool isDisabled;
+  final double? iconSize;
   final Color? iconColor;
 
   ButtonTileIcon({
@@ -332,6 +333,7 @@ class ButtonTileIcon extends StatelessWidget {
     required this.isOn,
     this.isLoading = false,
     this.isDisabled = false,
+    this.iconSize,
     this.iconColor,
   });
 
@@ -339,7 +341,7 @@ class ButtonTileIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     // Total size: icon (24) + border (4*2) + padding (4*2) = 40 scaled
     final double iconSize = _screenService.scale(
-      40,
+      this.iconSize ?? 40,
       density: _visualDensityService.density,
     );
 
