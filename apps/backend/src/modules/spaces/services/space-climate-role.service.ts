@@ -337,9 +337,9 @@ export class SpaceClimateRoleService {
 
 				// Check for properties
 				const properties = channel.properties ?? [];
-				const hasTemperature = properties.some((p) => p.category === PropertyCategory.TARGET_TEMPERATURE);
-				const hasHumidity = properties.some((p) => p.category === PropertyCategory.TARGET_HUMIDITY);
-				const hasMode = properties.some((p) => p.category === PropertyCategory.HVAC_MODE);
+				const hasTemperature = properties.some((p) => p.category === PropertyCategory.TEMPERATURE);
+				const hasHumidity = properties.some((p) => p.category === PropertyCategory.HUMIDITY);
+				const hasMode = properties.some((p) => p.category === PropertyCategory.MODE);
 
 				// Get existing role assignment if any
 				const roleKey = `${device.id}:${channel.id}`;
@@ -467,9 +467,9 @@ export class SpaceClimateRoleService {
 		}
 
 		const properties = channel.properties ?? [];
-		const hasTemperature = properties.some((p) => p.category === PropertyCategory.TARGET_TEMPERATURE);
-		const hasHumidity = properties.some((p) => p.category === PropertyCategory.TARGET_HUMIDITY);
-		const hasMode = properties.some((p) => p.category === PropertyCategory.HVAC_MODE);
+		const hasTemperature = properties.some((p) => p.category === PropertyCategory.TEMPERATURE);
+		const hasHumidity = properties.some((p) => p.category === PropertyCategory.HUMIDITY);
+		const hasMode = properties.some((p) => p.category === PropertyCategory.MODE);
 
 		return {
 			id: `${deviceId}:${channelId}`,
