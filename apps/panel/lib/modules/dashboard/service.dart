@@ -203,13 +203,7 @@ class DashboardService extends ChangeNotifier {
             .toList();
 
         newCardsViews[card.id] = CardView(
-          id: card.id,
-          title: card.title,
-          icon: card.icon,
-          order: card.order,
-          page: card.page,
-          tilesIds: card.tiles,
-          dataSourceIds: card.dataSource,
+          model: card,
           tiles: cardTiles,
           dataSources: cardDataSources,
         );

@@ -18,16 +18,7 @@ void registerDataSourcesDeviceChannelPlugin() {
       throw ArgumentError('Data source model is not valid for Device channel data source view.');
     }
 
-    return DeviceChannelDataSourceView(
-      id: dataSource.id,
-      type: dataSource.type,
-      parentType: dataSource.parentType,
-      parentId: dataSource.parentId,
-      device: dataSource.device,
-      channel: dataSource.channel,
-      property: dataSource.property,
-      icon: dataSource.icon,
-    );
+    return DeviceChannelDataSourceView(model: dataSource);
   });
 
   // Register widget mapper

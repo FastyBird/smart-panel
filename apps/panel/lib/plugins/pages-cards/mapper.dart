@@ -24,13 +24,7 @@ void registerPagesCardsPlugin() {
       }
 
       return CardsPageView(
-        id: page.id,
-        type: page.type,
-        title: page.title,
-        icon: page.icon,
-        order: page.order,
-        showTopBar: page.showTopBar,
-        displays: page.displays,
+        model: page,
         tiles: tiles,
         cards: cards,
         dataSources: dataSources,

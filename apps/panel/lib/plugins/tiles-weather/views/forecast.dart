@@ -1,21 +1,13 @@
 import 'package:fastybird_smart_panel/modules/dashboard/views/tiles/view.dart';
+import 'package:fastybird_smart_panel/plugins/tiles-weather/models/model.dart';
 
 class ForecastWeatherTileView extends TileView {
-  final String? _locationId;
-
   ForecastWeatherTileView({
-    required super.id,
-    required super.type,
-    required super.parentType,
-    required super.parentId,
-    super.dataSource,
-    required super.row,
-    required super.col,
-    super.rowSpan,
-    super.colSpan,
+    required ForecastWeatherTileModel model,
     super.dataSources,
-    String? locationId,
-  }) : _locationId = locationId;
+  }) : super(model: model);
 
-  String? get locationId => _locationId;
+  ForecastWeatherTileModel get _typedModel => model as ForecastWeatherTileModel;
+
+  String? get locationId => _typedModel.locationId;
 }

@@ -1,22 +1,16 @@
+import 'package:fastybird_smart_panel/modules/dashboard/models/pages/generic_page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/view.dart';
 
 /// Generic page view for unknown/unregistered page types.
 class GenericPageView extends DashboardPageView {
-  final Map<String, dynamic> _configuration;
-
   GenericPageView({
-    required super.id,
-    required super.type,
-    required super.title,
-    super.icon,
-    super.order,
-    super.showTopBar,
-    super.displays,
+    required GenericPageModel model,
     super.tiles,
     super.cards,
     super.dataSources,
-    Map<String, dynamic> configuration = const {},
-  }) : _configuration = configuration;
+  }) : super(model: model);
 
-  Map<String, dynamic> get configuration => _configuration;
+  GenericPageModel get _typedModel => model as GenericPageModel;
+
+  Map<String, dynamic> get configuration => _typedModel.configuration;
 }

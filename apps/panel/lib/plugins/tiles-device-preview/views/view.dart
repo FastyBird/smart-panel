@@ -1,27 +1,16 @@
 import 'package:fastybird_smart_panel/modules/dashboard/views/tiles/view.dart';
+import 'package:fastybird_smart_panel/plugins/tiles-device-preview/models/model.dart';
 import 'package:flutter/material.dart';
 
 class DevicePreviewTileView extends TileView {
-  final String _device;
-  final IconData? _icon;
-
   DevicePreviewTileView({
-    required super.id,
-    required super.type,
-    required super.parentType,
-    required super.parentId,
-    super.dataSource,
-    required super.row,
-    required super.col,
-    super.rowSpan,
-    super.colSpan,
+    required DevicePreviewTileModel model,
     super.dataSources,
-    required String device,
-    IconData? icon,
-  })  : _device = device,
-        _icon = icon;
+  }) : super(model: model);
 
-  String get device => _device;
+  DevicePreviewTileModel get _typedModel => model as DevicePreviewTileModel;
 
-  IconData? get icon => _icon;
+  String get device => _typedModel.device;
+
+  IconData? get icon => _typedModel.icon;
 }

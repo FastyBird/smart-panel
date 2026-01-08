@@ -19,20 +19,7 @@ void registerTilesDevicePreviewPlugin() {
       throw ArgumentError('Tile model is not valid for Device preview tile view.');
     }
 
-    return DevicePreviewTileView(
-      id: tile.id,
-      type: tile.type,
-      parentType: tile.parentType,
-      parentId: tile.parentId,
-      dataSource: tile.dataSource,
-      row: tile.row,
-      col: tile.col,
-      rowSpan: tile.rowSpan,
-      colSpan: tile.colSpan,
-      dataSources: dataSources,
-      device: tile.device,
-      icon: tile.icon,
-    );
+    return DevicePreviewTileView(model: tile, dataSources: dataSources);
   });
 
   // Register widget mapper

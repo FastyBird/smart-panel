@@ -1,37 +1,23 @@
-import 'package:fastybird_smart_panel/plugins/data-sources-weather/types/weather_data_field.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/data_sources/view.dart';
+import 'package:fastybird_smart_panel/plugins/data-sources-weather/models/weather_forecast_day.dart';
+import 'package:fastybird_smart_panel/plugins/data-sources-weather/types/weather_data_field.dart';
 import 'package:flutter/material.dart';
 
 class WeatherForecastDayDataSourceView extends DataSourceView {
-  final String? _locationId;
-  final int _dayOffset;
-  final WeatherDataField _field;
-  final IconData? _icon;
-  final String? _unit;
+  WeatherForecastDayDataSourceView(
+      {required WeatherForecastDayDataSourceModel model})
+      : super(model: model);
 
-  WeatherForecastDayDataSourceView({
-    required super.id,
-    required super.type,
-    required super.parentType,
-    required super.parentId,
-    String? locationId,
-    required int dayOffset,
-    required WeatherDataField field,
-    IconData? icon,
-    String? unit,
-  })  : _locationId = locationId,
-        _dayOffset = dayOffset,
-        _field = field,
-        _icon = icon,
-        _unit = unit;
+  WeatherForecastDayDataSourceModel get _typedModel =>
+      model as WeatherForecastDayDataSourceModel;
 
-  String? get locationId => _locationId;
+  String? get locationId => _typedModel.locationId;
 
-  int get dayOffset => _dayOffset;
+  int get dayOffset => _typedModel.dayOffset;
 
-  WeatherDataField get field => _field;
+  WeatherDataField get field => _typedModel.field;
 
-  IconData? get icon => _icon;
+  IconData? get icon => _typedModel.icon;
 
-  String? get unit => _unit;
+  String? get unit => _typedModel.unit;
 }

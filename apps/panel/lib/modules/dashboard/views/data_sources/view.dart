@@ -1,24 +1,17 @@
+import 'package:fastybird_smart_panel/modules/dashboard/models/data_sources/data_source.dart';
+
 abstract class DataSourceView {
-  final String _id;
-  final String _type;
-  final String _parentType;
-  final String _parentId;
+  final DataSourceModel _model;
 
-  DataSourceView({
-    required String id,
-    required String type,
-    required String parentType,
-    required String parentId,
-  })  : _id = id,
-        _type = type,
-        _parentType = parentType,
-        _parentId = parentId;
+  DataSourceView({required DataSourceModel model}) : _model = model;
 
-  String get id => _id;
+  DataSourceModel get model => _model;
 
-  String get type => _type;
+  String get id => _model.id;
 
-  String get parentType => _parentType;
+  String get type => _model.type;
 
-  String get parentId => _parentId;
+  String get parentType => _model.parentType;
+
+  String get parentId => _model.parentId;
 }

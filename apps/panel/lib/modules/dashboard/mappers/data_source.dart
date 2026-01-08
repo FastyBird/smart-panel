@@ -44,18 +44,13 @@ DataSourceView buildDataSourceView(
   if (builder != null) {
     return builder(dataSource);
   } else {
-    final Map<String, dynamic> configuration =
-        dataSource is GenericDataSourceModel
-            ? dataSource.configuration
-            : <String, dynamic>{};
+    if (dataSource is! GenericDataSourceModel) {
+      throw ArgumentError(
+        'Cannot create generic view for non-generic model type: ${dataSource.type}',
+      );
+    }
 
-    return GenericDataSourceView(
-      id: dataSource.id,
-      type: dataSource.type,
-      parentType: dataSource.parentType,
-      parentId: dataSource.parentId,
-      configuration: configuration,
-    );
+    return GenericDataSourceView(model: dataSource);
   }
 }
 

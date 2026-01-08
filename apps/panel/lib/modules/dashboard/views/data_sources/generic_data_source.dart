@@ -1,16 +1,12 @@
+import 'package:fastybird_smart_panel/modules/dashboard/models/data_sources/generic_data_source.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/data_sources/view.dart';
 
 /// Generic data source view for unknown/unregistered data source types.
 class GenericDataSourceView extends DataSourceView {
-  final Map<String, dynamic> _configuration;
+  GenericDataSourceView({required GenericDataSourceModel model})
+      : super(model: model);
 
-  GenericDataSourceView({
-    required super.id,
-    required super.type,
-    required super.parentType,
-    required super.parentId,
-    Map<String, dynamic> configuration = const {},
-  }) : _configuration = configuration;
+  GenericDataSourceModel get _typedModel => model as GenericDataSourceModel;
 
-  Map<String, dynamic> get configuration => _configuration;
+  Map<String, dynamic> get configuration => _typedModel.configuration;
 }

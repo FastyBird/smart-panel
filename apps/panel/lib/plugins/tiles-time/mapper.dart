@@ -19,18 +19,7 @@ void registerTilesTimePlugin() {
       throw ArgumentError('Tile model is not valid for Time tile view.');
     }
 
-    return TimeTileView(
-      id: tile.id,
-      type: tile.type,
-      parentType: tile.parentType,
-      parentId: tile.parentId,
-      dataSource: tile.dataSource,
-      row: tile.row,
-      col: tile.col,
-      rowSpan: tile.rowSpan,
-      colSpan: tile.colSpan,
-      dataSources: dataSources,
-    );
+    return TimeTileView(model: tile, dataSources: dataSources);
   });
 
   // Register widget mapper

@@ -19,23 +19,7 @@ void registerTilesScenePlugin() {
       throw ArgumentError('Tile model is not valid for Scene tile view.');
     }
 
-    return SceneTileView(
-      id: tile.id,
-      type: tile.type,
-      parentType: tile.parentType,
-      parentId: tile.parentId,
-      dataSource: tile.dataSource,
-      row: tile.row,
-      col: tile.col,
-      rowSpan: tile.rowSpan,
-      colSpan: tile.colSpan,
-      dataSources: dataSources,
-      scene: tile.scene,
-      icon: tile.icon,
-      label: tile.label,
-      status: tile.status,
-      isOn: tile.isOn,
-    );
+    return SceneTileView(model: tile, dataSources: dataSources);
   });
 
   // Register widget mapper

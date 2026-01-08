@@ -1,51 +1,36 @@
+import 'package:fastybird_smart_panel/modules/dashboard/models/cards/card.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/data_sources/view.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/tiles/view.dart';
 import 'package:flutter/material.dart';
 
 class CardView {
-  final String _id;
-  final String _title;
-  final IconData? _icon;
-  final int _order;
-  final String _page;
-  final List<String> _tilesIds;
-  final List<String> _dataSourceIds;
+  final CardModel _model;
   final List<TileView> _tiles;
   final List<DataSourceView> _dataSources;
 
   CardView({
-    required String id,
-    required String title,
-    IconData? icon,
-    required int order,
-    required String page,
-    List<String> tilesIds = const [],
-    List<String> dataSourceIds = const [],
+    required CardModel model,
     List<TileView> tiles = const [],
     List<DataSourceView> dataSources = const [],
-  })  : _id = id,
-        _title = title,
-        _icon = icon,
-        _order = order,
-        _page = page,
-        _tilesIds = tilesIds,
-        _dataSourceIds = dataSourceIds,
+  })  : _model = model,
         _tiles = tiles,
         _dataSources = dataSources;
 
-  String get id => _id;
+  CardModel get model => _model;
 
-  String get title => _title;
+  String get id => _model.id;
 
-  IconData? get icon => _icon;
+  String get title => _model.title;
 
-  int get order => _order;
+  IconData? get icon => _model.icon;
 
-  String get page => _page;
+  int get order => _model.order;
 
-  List<String> get tilesIds => _tilesIds;
+  String get page => _model.page;
 
-  List<String> get dataSourceIds => _dataSourceIds;
+  List<String> get tilesIds => _model.tiles;
+
+  List<String> get dataSourceIds => _model.dataSource;
 
   List<TileView> get tiles => _tiles;
 

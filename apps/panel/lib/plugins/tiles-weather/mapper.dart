@@ -26,19 +26,7 @@ void registerTilesWeatherPlugin() {
       throw ArgumentError('Tile model is not valid for Day weather tile view.');
     }
 
-    return DayWeatherTileView(
-      id: tile.id,
-      type: tile.type,
-      parentType: tile.parentType,
-      parentId: tile.parentId,
-      dataSource: tile.dataSource,
-      row: tile.row,
-      col: tile.col,
-      rowSpan: tile.rowSpan,
-      colSpan: tile.colSpan,
-      dataSources: dataSources,
-      locationId: tile.locationId,
-    );
+    return DayWeatherTileView(model: tile, dataSources: dataSources);
   });
 
   registerTileViewMapper(tilesWeatherForecastType, (TileModel tile, List<DataSourceView> dataSources) {
@@ -46,19 +34,7 @@ void registerTilesWeatherPlugin() {
       throw ArgumentError('Tile model is not valid for Forecast weather tile view.');
     }
 
-    return ForecastWeatherTileView(
-      id: tile.id,
-      type: tile.type,
-      parentType: tile.parentType,
-      parentId: tile.parentId,
-      dataSource: tile.dataSource,
-      row: tile.row,
-      col: tile.col,
-      rowSpan: tile.rowSpan,
-      colSpan: tile.colSpan,
-      dataSources: dataSources,
-      locationId: tile.locationId,
-    );
+    return ForecastWeatherTileView(model: tile, dataSources: dataSources);
   });
 
   // Register widget mappers
