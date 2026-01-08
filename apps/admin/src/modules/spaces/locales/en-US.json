@@ -35,6 +35,7 @@
 				"hint": "Optional settings to improve smart behavior and intent-based control.",
 				"climateOverrides": "Climate device overrides",
 				"lightingRoles": "Lighting roles",
+				"climateRoles": "Climate roles",
 				"smartSuggestions": "Smart suggestions"
 			}
 		}
@@ -206,6 +207,17 @@
 				"applyDefaults": "Apply defaults",
 				"applyDefaultsHint": "Sets first light as Main, others as Ambient"
 			},
+			"climateRoles": {
+				"title": "Climate roles",
+				"description": "Assign roles to climate devices to help the panel understand how each device controls temperature and air quality",
+				"noDevices": "No climate devices found in this space",
+				"role": {
+					"title": "Role",
+					"placeholder": "Select a role"
+				},
+				"applyDefaults": "Apply defaults",
+				"applyDefaultsHint": "Sets thermostat as Primary, heaters/AC as Auxiliary, fans as Ventilation"
+			},
 			"suggestions": {
 				"title": "Smart suggestions"
 			},
@@ -232,6 +244,23 @@
 			"night": "Low-level lighting for nighttime navigation and safety.",
 			"other": "Lighting that doesn't fit into standard categories.",
 			"hidden": "Hidden lights are excluded from the panel UI and intent-based control."
+		}
+	},
+	"climateRoles": {
+		"primary": "Primary",
+		"auxiliary": "Auxiliary",
+		"ventilation": "Ventilation",
+		"humidity": "Humidity",
+		"other": "Other",
+		"hidden": "Hidden",
+		"unassigned": "Unassigned",
+		"descriptions": {
+			"primary": "Main temperature regulation device for the space, typically the primary thermostat or HVAC controller.",
+			"auxiliary": "Secondary heating or cooling devices that supplement the primary climate control.",
+			"ventilation": "Air circulation devices like fans and air exchangers for fresh air and comfort.",
+			"humidity": "Humidity control devices including humidifiers and dehumidifiers.",
+			"other": "Climate devices that don't fit into standard categories.",
+			"hidden": "Hidden devices are excluded from the panel UI and intent-based control."
 		}
 	},
 	"filters": {
@@ -308,6 +337,10 @@
 		"lightingRoles": {
 			"title": "Lighting roles",
 			"lightsAssigned": "Lights assigned"
+		},
+		"climateRoles": {
+			"title": "Climate roles",
+			"devicesAssigned": "Devices assigned"
 		},
 		"climateOverrides": {
 			"title": "Climate",
