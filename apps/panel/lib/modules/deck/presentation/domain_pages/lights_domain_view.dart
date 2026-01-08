@@ -619,7 +619,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     } else if (isOn && group.onCount == 0) {
       // Optimistic state: turning on but actual count is still 0
       countText = localizations.domain_lights_all_on;
-    } else if (group.onCount == group.totalCount) {
+    } else if (group.onCount == group.totalCount && isOn) {
       countText = localizations.domain_lights_all_on;
     } else {
       countText = localizations.domain_lights_count_on(group.onCount);
