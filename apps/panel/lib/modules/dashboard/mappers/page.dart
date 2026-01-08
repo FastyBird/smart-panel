@@ -50,22 +50,17 @@ DashboardPageView buildPageView(
   if (builder != null) {
     return builder(page, tiles, cards, dataSources);
   } else {
-    final Map<String, dynamic> configuration = page is GenericPageModel
-        ? page.configuration
-        : <String, dynamic>{};
+    if (page is! GenericPageModel) {
+      throw ArgumentError(
+        'Cannot create generic view for non-generic model type: ${page.type}',
+      );
+    }
 
     return GenericPageView(
-      id: page.id,
-      type: page.type,
-      title: page.title,
-      icon: page.icon,
-      order: page.order,
-      showTopBar: page.showTopBar,
-      displays: page.displays,
+      model: page,
       tiles: tiles,
       cards: cards,
       dataSources: dataSources,
-      configuration: configuration,
     );
   }
 }

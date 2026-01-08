@@ -23,18 +23,7 @@ SpaceView buildSpaceView(SpaceModel space) {
       spacesService.getLightTargetsForSpace(space.id);
 
   return SpaceView(
-    id: space.id,
-    type: space.type,
-    name: space.name,
-    description: space.description,
-    category: space.category,
-    parentId: space.parentId,
-    displayOrder: space.displayOrder,
-    suggestionsEnabled: space.suggestionsEnabled,
-    icon: space.icon,
-    primaryThermostatId: space.primaryThermostatId,
-    primaryTemperatureSensorId: space.primaryTemperatureSensorId,
-    lastActivityAt: space.lastActivityAt,
+    model: space,
     children: children,
     lightTargets: lightTargets,
   );

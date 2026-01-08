@@ -121,7 +121,13 @@ describe('SpacesController', () => {
 						findBySpace: jest.fn().mockResolvedValue([]),
 						findOne: jest.fn().mockResolvedValue(null),
 						setRole: jest.fn().mockResolvedValue({}),
-						bulkSetRoles: jest.fn().mockResolvedValue(0),
+						bulkSetRoles: jest.fn().mockResolvedValue({
+							success: true,
+							totalCount: 0,
+							successCount: 0,
+							failureCount: 0,
+							results: [],
+						}),
 						deleteRole: jest.fn().mockResolvedValue(undefined),
 						getLightTargetsInSpace: jest.fn().mockResolvedValue([]),
 						inferDefaultLightingRoles: jest.fn().mockResolvedValue([]),
@@ -762,14 +768,43 @@ describe('SpacesController', () => {
 		});
 
 		it('should bulk set lighting roles', async () => {
-			jest.spyOn(spaceLightingRoleService, 'bulkSetRoles').mockResolvedValue(3);
+			const mockDeviceId1 = uuid();
+			const mockChannelId1 = uuid();
+			const mockDeviceId2 = uuid();
+			const mockChannelId2 = uuid();
+			const mockDeviceId3 = uuid();
+			const mockChannelId3 = uuid();
+
+			jest.spyOn(spaceLightingRoleService, 'bulkSetRoles').mockResolvedValue({
+				success: true,
+				totalCount: 3,
+				successCount: 3,
+				failureCount: 0,
+				results: [
+					{ deviceId: mockDeviceId1, channelId: mockChannelId1, success: true, role: LightingRole.MAIN, error: null },
+					{
+						deviceId: mockDeviceId2,
+						channelId: mockChannelId2,
+						success: true,
+						role: LightingRole.AMBIENT,
+						error: null,
+					},
+					{
+						deviceId: mockDeviceId3,
+						channelId: mockChannelId3,
+						success: true,
+						role: LightingRole.ACCENT,
+						error: null,
+					},
+				],
+			});
 
 			const rolesDto = {
 				data: {
 					roles: [
-						{ deviceId: uuid(), channelId: uuid(), role: LightingRole.MAIN },
-						{ deviceId: uuid(), channelId: uuid(), role: LightingRole.AMBIENT },
-						{ deviceId: uuid(), channelId: uuid(), role: LightingRole.ACCENT },
+						{ deviceId: mockDeviceId1, channelId: mockChannelId1, role: LightingRole.MAIN },
+						{ deviceId: mockDeviceId2, channelId: mockChannelId2, role: LightingRole.AMBIENT },
+						{ deviceId: mockDeviceId3, channelId: mockChannelId3, role: LightingRole.ACCENT },
 					],
 				},
 			};
@@ -777,7 +812,10 @@ describe('SpacesController', () => {
 			const result = await controller.bulkSetLightingRoles(mockSpace.id, rolesDto as any);
 
 			expect(result.data.success).toBe(true);
-			expect(result.data.rolesUpdated).toBe(3);
+			expect(result.data.totalCount).toBe(3);
+			expect(result.data.successCount).toBe(3);
+			expect(result.data.failureCount).toBe(0);
+			expect(result.data.results).toHaveLength(3);
 		});
 	});
 
@@ -789,17 +827,40 @@ describe('SpacesController', () => {
 		});
 
 		it('should apply default lighting roles', async () => {
+			const mockDeviceId1 = uuid();
+			const mockChannelId1 = uuid();
+			const mockDeviceId2 = uuid();
+			const mockChannelId2 = uuid();
+
 			const defaultRoles = [
-				{ deviceId: uuid(), channelId: uuid(), role: LightingRole.MAIN },
-				{ deviceId: uuid(), channelId: uuid(), role: LightingRole.AMBIENT },
+				{ deviceId: mockDeviceId1, channelId: mockChannelId1, role: LightingRole.MAIN },
+				{ deviceId: mockDeviceId2, channelId: mockChannelId2, role: LightingRole.AMBIENT },
 			];
 			jest.spyOn(spaceLightingRoleService, 'inferDefaultLightingRoles').mockResolvedValue(defaultRoles);
-			jest.spyOn(spaceLightingRoleService, 'bulkSetRoles').mockResolvedValue(2);
+			jest.spyOn(spaceLightingRoleService, 'bulkSetRoles').mockResolvedValue({
+				success: true,
+				totalCount: 2,
+				successCount: 2,
+				failureCount: 0,
+				results: [
+					{ deviceId: mockDeviceId1, channelId: mockChannelId1, success: true, role: LightingRole.MAIN, error: null },
+					{
+						deviceId: mockDeviceId2,
+						channelId: mockChannelId2,
+						success: true,
+						role: LightingRole.AMBIENT,
+						error: null,
+					},
+				],
+			});
 
 			const result = await controller.applyDefaultLightingRoles(mockSpace.id);
 
 			expect(result.data.success).toBe(true);
-			expect(result.data.rolesUpdated).toBe(2);
+			expect(result.data.totalCount).toBe(2);
+			expect(result.data.successCount).toBe(2);
+			expect(result.data.failureCount).toBe(0);
+			expect(result.data.results).toHaveLength(2);
 			expect(spaceLightingRoleService.inferDefaultLightingRoles).toHaveBeenCalledWith(mockSpace.id);
 		});
 	});

@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/property.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:flutter/foundation.dart';
 
 class DevicesService extends ChangeNotifier {
@@ -152,6 +153,40 @@ class DevicesService extends ChangeNotifier {
     return await _channelPropertiesRepository.setValue(id, value);
   }
 
+  /// Set a single property value with context
+  /// This wraps setMultiplePropertyValues for convenience
+  Future<bool> setPropertyValueWithContext({
+    required String deviceId,
+    required String channelId,
+    required String propertyId,
+    required dynamic value,
+    PropertyCommandContext? context,
+  }) async {
+    return await _channelPropertiesRepository.setMultipleValues(
+      properties: [
+        PropertyCommandItem(
+          deviceId: deviceId,
+          channelId: channelId,
+          propertyId: propertyId,
+          value: value,
+        ),
+      ],
+      context: context,
+    );
+  }
+
+  /// Set multiple property values in a single command
+  /// This creates a single intent on the backend for all properties
+  Future<bool> setMultiplePropertyValues({
+    required List<PropertyCommandItem> properties,
+    PropertyCommandContext? context,
+  }) async {
+    return await _channelPropertiesRepository.setMultipleValues(
+      properties: properties,
+      context: context,
+    );
+  }
+
   void _updateData() {
     final devices = _devicesRepository.getItems();
     final channels = _channelsRepository.getItems();
@@ -208,6 +243,11 @@ class DevicesService extends ChangeNotifier {
     Map<String, DeviceView> newDevicesViews = {};
 
     for (var device in devices) {
+      // Skip disabled devices - they should not be visible or controllable
+      if (!device.enabled) {
+        continue;
+      }
+
       final List<ChannelView> deviceChannels = newChannelsViews.entries
           .where((entry) => device.channels.contains(entry.key))
           .map((entry) => entry.value)

@@ -5,7 +5,9 @@ import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_type.d
 import 'package:fastybird_smart_panel/modules/deck/services/room_overview_model_builder.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
+import 'package:fastybird_smart_panel/modules/scenes/models/scenes/scene.dart';
 import 'package:fastybird_smart_panel/modules/scenes/views/scenes/view.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/spaces/space.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/spaces/view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -41,27 +43,46 @@ DisplayModel createDisplay({
   );
 }
 
+// UUID constants for testing
+const _roomUuid = 'a0000000-0000-4000-8000-000000000001';
+const _sceneUuid = 'b0000000-0000-4000-8000-000000000001';
+const _scene1Uuid = 'b0000000-0000-4000-8000-000000000001';
+const _scene2Uuid = 'b0000000-0000-4000-8000-000000000002';
+const _scene3Uuid = 'b0000000-0000-4000-8000-000000000003';
+const _scene4Uuid = 'b0000000-0000-4000-8000-000000000004';
+const _scene5Uuid = 'b0000000-0000-4000-8000-000000000005';
+const _movieSceneUuid = 'c0000000-0000-4000-8000-000000000001';
+const _relaxSceneUuid = 'c0000000-0000-4000-8000-000000000002';
+const _workSceneUuid = 'c0000000-0000-4000-8000-000000000003';
+const _nightSceneUuid = 'c0000000-0000-4000-8000-000000000004';
+const _partySceneUuid = 'c0000000-0000-4000-8000-000000000005';
+const _morningSceneUuid = 'c0000000-0000-4000-8000-000000000006';
+const _movie1Uuid = 'd0000000-0000-4000-8000-000000000001';
+const _movie2Uuid = 'd0000000-0000-4000-8000-000000000002';
+
 // Helper to create a room (space)
 SpaceView createRoom({
-  String id = 'room-1',
+  String id = _roomUuid,
   String name = 'Living Room',
   String? icon = 'living-room',
 }) {
   return SpaceView(
-    id: id,
-    type: SpacesModuleDataSpaceType.room,
-    category: SpacesModuleDataSpaceCategory.livingRoom,
-    name: name,
-    icon: icon,
-    displayOrder: 0,
-    suggestionsEnabled: true,
-    parentId: null,
+    model: SpaceModel(
+      id: id,
+      type: SpacesModuleDataSpaceType.room,
+      category: SpacesModuleDataSpaceCategory.livingRoom,
+      name: name,
+      icon: icon,
+      displayOrder: 0,
+      suggestionsEnabled: true,
+      parentId: null,
+    ),
   );
 }
 
 // Helper to create a scene
 SceneView createScene({
-  String id = 'scene-1',
+  String id = _sceneUuid,
   String name = 'Scene',
   ScenesModuleDataSceneCategory category = ScenesModuleDataSceneCategory.generic,
   bool enabled = true,
@@ -69,15 +90,17 @@ SceneView createScene({
   int order = 0,
 }) {
   return SceneView(
-    id: id,
-    name: name,
-    description: null,
-    enabled: enabled,
-    triggerable: triggerable,
-    editable: true,
-    order: order,
-    category: category,
-    actions: const [],
+    model: SceneModel(
+      id: id,
+      name: name,
+      description: null,
+      enabled: enabled,
+      triggerable: triggerable,
+      editable: true,
+      order: order,
+      category: category,
+      actions: const [],
+    ),
   );
 }
 
@@ -264,8 +287,8 @@ void main() {
           room: createRoom(),
           deviceCategories: [],
           scenes: [
-            createScene(id: '1', enabled: true, triggerable: true),
-            createScene(id: '2', enabled: false, triggerable: true),
+            createScene(id: _scene1Uuid, enabled: true, triggerable: true),
+            createScene(id: _scene2Uuid, enabled: false, triggerable: true),
           ],
           now: DateTime(2024, 6, 15, 12, 0),
         );
@@ -273,7 +296,7 @@ void main() {
         final model = buildRoomOverviewModel(input);
 
         expect(model.quickScenes.length, 1);
-        expect(model.quickScenes[0].sceneId, '1');
+        expect(model.quickScenes[0].sceneId, _scene1Uuid);
       });
 
       test('should filter out non-triggerable scenes', () {
@@ -282,8 +305,8 @@ void main() {
           room: createRoom(),
           deviceCategories: [],
           scenes: [
-            createScene(id: '1', triggerable: true),
-            createScene(id: '2', triggerable: false),
+            createScene(id: _scene1Uuid, triggerable: true),
+            createScene(id: _scene2Uuid, triggerable: false),
           ],
           now: DateTime(2024, 6, 15, 12, 0),
         );
@@ -291,7 +314,7 @@ void main() {
         final model = buildRoomOverviewModel(input);
 
         expect(model.quickScenes.length, 1);
-        expect(model.quickScenes[0].sceneId, '1');
+        expect(model.quickScenes[0].sceneId, _scene1Uuid);
       });
 
       test('should limit to 4 quick scenes', () {
@@ -300,11 +323,16 @@ void main() {
           room: createRoom(),
           deviceCategories: [],
           scenes: [
-            createScene(id: '1', category: ScenesModuleDataSceneCategory.movie),
-            createScene(id: '2', category: ScenesModuleDataSceneCategory.relax),
-            createScene(id: '3', category: ScenesModuleDataSceneCategory.night),
-            createScene(id: '4', category: ScenesModuleDataSceneCategory.work),
-            createScene(id: '5', category: ScenesModuleDataSceneCategory.party),
+            createScene(
+                id: _scene1Uuid, category: ScenesModuleDataSceneCategory.movie),
+            createScene(
+                id: _scene2Uuid, category: ScenesModuleDataSceneCategory.relax),
+            createScene(
+                id: _scene3Uuid, category: ScenesModuleDataSceneCategory.night),
+            createScene(
+                id: _scene4Uuid, category: ScenesModuleDataSceneCategory.work),
+            createScene(
+                id: _scene5Uuid, category: ScenesModuleDataSceneCategory.party),
           ],
           now: DateTime(2024, 6, 15, 12, 0),
         );
@@ -320,9 +348,15 @@ void main() {
           room: createRoom(),
           deviceCategories: [],
           scenes: [
-            createScene(id: 'work', category: ScenesModuleDataSceneCategory.work),
-            createScene(id: 'movie', category: ScenesModuleDataSceneCategory.movie),
-            createScene(id: 'relax', category: ScenesModuleDataSceneCategory.relax),
+            createScene(
+                id: _workSceneUuid,
+                category: ScenesModuleDataSceneCategory.work),
+            createScene(
+                id: _movieSceneUuid,
+                category: ScenesModuleDataSceneCategory.movie),
+            createScene(
+                id: _relaxSceneUuid,
+                category: ScenesModuleDataSceneCategory.relax),
           ],
           now: DateTime(2024, 6, 15, 12, 0),
         );
@@ -330,9 +364,9 @@ void main() {
         final model = buildRoomOverviewModel(input);
 
         expect(model.quickScenes.length, 3);
-        expect(model.quickScenes[0].sceneId, 'movie'); // priority 0
-        expect(model.quickScenes[1].sceneId, 'relax'); // priority 1
-        expect(model.quickScenes[2].sceneId, 'work'); // priority 3
+        expect(model.quickScenes[0].sceneId, _movieSceneUuid); // priority 0
+        expect(model.quickScenes[1].sceneId, _relaxSceneUuid); // priority 1
+        expect(model.quickScenes[2].sceneId, _workSceneUuid); // priority 3
       });
 
       test('should use scene order as tiebreaker', () {
@@ -342,11 +376,11 @@ void main() {
           deviceCategories: [],
           scenes: [
             createScene(
-                id: 'movie-2',
+                id: _movie2Uuid,
                 category: ScenesModuleDataSceneCategory.movie,
                 order: 2),
             createScene(
-                id: 'movie-1',
+                id: _movie1Uuid,
                 category: ScenesModuleDataSceneCategory.movie,
                 order: 1),
           ],
@@ -355,8 +389,8 @@ void main() {
 
         final model = buildRoomOverviewModel(input);
 
-        expect(model.quickScenes[0].sceneId, 'movie-1');
-        expect(model.quickScenes[1].sceneId, 'movie-2');
+        expect(model.quickScenes[0].sceneId, _movie1Uuid);
+        expect(model.quickScenes[1].sceneId, _movie2Uuid);
       });
     });
 
@@ -429,7 +463,7 @@ void main() {
           ],
           scenes: [
             createScene(
-              id: 'movie-scene',
+              id: _movieSceneUuid,
               category: ScenesModuleDataSceneCategory.movie,
             ),
           ],
@@ -439,7 +473,8 @@ void main() {
         final model = buildRoomOverviewModel(input);
 
         // Movie is in quick scenes, so movie-mode should NOT be suggested
-        expect(model.quickScenes.any((s) => s.sceneId == 'movie-scene'), true);
+        expect(
+            model.quickScenes.any((s) => s.sceneId == _movieSceneUuid), true);
         expect(model.suggestedActions.any((a) => a.id == 'movie-mode'), false);
       });
 
@@ -453,7 +488,7 @@ void main() {
           ],
           scenes: [
             createScene(
-              id: 'movie-scene',
+              id: _movieSceneUuid,
               category: ScenesModuleDataSceneCategory.movie,
             ),
           ],
@@ -463,7 +498,8 @@ void main() {
         final model = buildRoomOverviewModel(input);
 
         // Movie scene is in quick scenes (first 4), so movie-mode should not be suggested
-        expect(model.quickScenes.any((s) => s.sceneId == 'movie-scene'), true);
+        expect(
+            model.quickScenes.any((s) => s.sceneId == _movieSceneUuid), true);
         expect(model.suggestedActions.any((a) => a.id == 'movie-mode'), false);
       });
 
@@ -478,14 +514,15 @@ void main() {
           deviceCategories: [],
           scenes: [
             createScene(
-                id: 's1', category: ScenesModuleDataSceneCategory.movie),
+                id: _scene1Uuid, category: ScenesModuleDataSceneCategory.movie),
             createScene(
-                id: 's2', category: ScenesModuleDataSceneCategory.relax),
-            createScene(id: 's3', category: ScenesModuleDataSceneCategory.work),
+                id: _scene2Uuid, category: ScenesModuleDataSceneCategory.relax),
             createScene(
-                id: 's4', category: ScenesModuleDataSceneCategory.party),
+                id: _scene3Uuid, category: ScenesModuleDataSceneCategory.work),
             createScene(
-              id: 'night-scene',
+                id: _scene4Uuid, category: ScenesModuleDataSceneCategory.party),
+            createScene(
+              id: _nightSceneUuid,
               category: ScenesModuleDataSceneCategory.night,
             ),
           ],
@@ -503,7 +540,7 @@ void main() {
         // Since night (priority 2) comes before work (priority 3) and party (priority 4),
         // night WILL be in quick scenes and won't be suggested
         final isNightInQuickScenes =
-            model.quickScenes.any((s) => s.sceneId == 'night-scene');
+            model.quickScenes.any((s) => s.sceneId == _nightSceneUuid);
         if (isNightInQuickScenes) {
           expect(
               model.suggestedActions.any((a) => a.id == 'night-mode'), false);
@@ -511,7 +548,7 @@ void main() {
           expect(model.suggestedActions.any((a) => a.id == 'night-mode'), true);
           final action =
               model.suggestedActions.firstWhere((a) => a.id == 'night-mode');
-          expect(action.sceneId, 'night-scene');
+          expect(action.sceneId, _nightSceneUuid);
         }
       });
 
@@ -523,7 +560,7 @@ void main() {
           deviceCategories: [],
           scenes: [
             createScene(
-              id: 'night-scene',
+              id: _nightSceneUuid,
               category: ScenesModuleDataSceneCategory.night,
             ),
           ],
@@ -533,7 +570,8 @@ void main() {
         final model = buildRoomOverviewModel(input);
 
         // Night scene is in quick scenes (only 1 scene), so it won't be suggested
-        expect(model.quickScenes.any((s) => s.sceneId == 'night-scene'), true);
+        expect(
+            model.quickScenes.any((s) => s.sceneId == _nightSceneUuid), true);
         expect(model.suggestedActions.any((a) => a.id == 'night-mode'), false);
       });
 
@@ -544,7 +582,7 @@ void main() {
           deviceCategories: [],
           scenes: [
             createScene(
-              id: 'night-scene',
+              id: _nightSceneUuid,
               category: ScenesModuleDataSceneCategory.night,
             ),
           ],
@@ -566,21 +604,26 @@ void main() {
           ],
           scenes: [
             createScene(
-              id: 'movie-scene',
+              id: _movieSceneUuid,
               category: ScenesModuleDataSceneCategory.movie,
             ),
             createScene(
-              id: 'night-scene',
+              id: _nightSceneUuid,
               category: ScenesModuleDataSceneCategory.night,
             ),
             // Add scenes to push movie and night out of quick scenes
             createScene(
-                id: 's1', category: ScenesModuleDataSceneCategory.relax),
-            createScene(id: 's2', category: ScenesModuleDataSceneCategory.work),
+                id: _relaxSceneUuid,
+                category: ScenesModuleDataSceneCategory.relax),
             createScene(
-                id: 's3', category: ScenesModuleDataSceneCategory.party),
+                id: _workSceneUuid,
+                category: ScenesModuleDataSceneCategory.work),
             createScene(
-                id: 's4', category: ScenesModuleDataSceneCategory.morning),
+                id: _partySceneUuid,
+                category: ScenesModuleDataSceneCategory.party),
+            createScene(
+                id: _morningSceneUuid,
+                category: ScenesModuleDataSceneCategory.morning),
           ],
           now: DateTime(2024, 6, 15, 22, 0), // Night hours
           lightsOnCount: 5, // Lights are on

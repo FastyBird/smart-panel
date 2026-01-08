@@ -1294,11 +1294,15 @@ class _WindowCoveringWarnings extends StatelessWidget {
 }
 
 class _WarningTile extends StatelessWidget {
+  final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
+
   final IconData _icon;
   final String _message;
   final Color _color;
 
-  const _WarningTile({
+  _WarningTile({
     required IconData icon,
     required String message,
     required Color color,
@@ -1319,7 +1323,10 @@ class _WarningTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(
           color: _color.withValues(alpha: 0.3),
-          width: 1,
+          width: _screenService.scale(
+            1,
+            density: _visualDensityService.density,
+          ),
         ),
       ),
       child: Row(

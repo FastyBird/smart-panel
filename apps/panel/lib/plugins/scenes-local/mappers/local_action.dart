@@ -13,16 +13,5 @@ LocalActionView buildLocalActionView(ActionModel action) {
     );
   }
 
-  return LocalActionView(
-    id: action.id,
-    type: action.type,
-    scene: action.scene,
-    order: action.order,
-    enabled: action.enabled,
-    configuration: action.configuration,
-    deviceId: action.deviceId,
-    channelId: action.channelId,
-    propertyId: action.propertyId,
-    value: action.value,
-  );
+  return LocalActionView(model: action);
 }

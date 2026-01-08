@@ -323,6 +323,14 @@ class RoundedRectTrackShape extends SliderTrackShape {
       offset: offset,
     );
 
+    // Calculate consistent padding - round to avoid sub-pixel rendering issues
+    final double padding = screenService
+        .scale(
+          3,
+          density: _visualDensityService.density,
+        )
+        .roundToDouble();
+
     // Draw inactive track (background)
     canvas.drawRRect(
       RRect.fromRectAndRadius(
@@ -335,33 +343,37 @@ class RoundedRectTrackShape extends SliderTrackShape {
             : sliderTheme.disabledInactiveTrackColor!,
     );
 
-    // Draw active track (filled area)
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTRB(
-          trackRect.left +
-              screenService.scale(
-                3,
-                density: _visualDensityService.density,
-              ),
-          trackRect.top +
-              screenService.scale(
-                3,
-                density: _visualDensityService.density,
-              ),
-          thumbCenter.dx,
-          trackRect.bottom -
-              screenService.scale(
-                3,
-                density: _visualDensityService.density,
-              ),
+    // Calculate active track bounds with consistent padding on all sides
+    final double activeLeft = (trackRect.left + padding).roundToDouble();
+    final double activeTop = (trackRect.top + padding).roundToDouble();
+    final double activeBottom = (trackRect.bottom - padding).roundToDouble();
+
+    // Calculate active track right edge - clamp to ensure padding at 100%
+    final double activeRight = (thumbCenter.dx - padding)
+        .clamp(activeLeft, trackRect.right - padding)
+        .roundToDouble();
+
+    // Calculate inner border radius (reduced by padding to maintain visual consistency)
+    final double innerBorderRadius = (borderRadius - padding).clamp(0, borderRadius);
+
+    // Only draw active track if there's something to draw
+    if (activeRight > activeLeft) {
+      // Draw active track (filled area)
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTRB(
+            activeLeft,
+            activeTop,
+            activeRight,
+            activeBottom,
+          ),
+          Radius.circular(innerBorderRadius),
         ),
-        Radius.circular(borderRadius),
-      ),
-      Paint()
-        ..color = isEnabled
-            ? sliderTheme.activeTrackColor!
-            : sliderTheme.disabledActiveTrackColor!,
-    );
+        Paint()
+          ..color = isEnabled
+              ? sliderTheme.activeTrackColor!
+              : sliderTheme.disabledActiveTrackColor!,
+      );
+    }
   }
 }

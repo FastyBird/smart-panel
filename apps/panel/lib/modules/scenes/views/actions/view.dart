@@ -1,36 +1,23 @@
+import 'package:fastybird_smart_panel/modules/scenes/models/actions/action.dart';
+
 class ActionView {
-  final String _id;
-  final String _type;
-  final String _scene;
-  final int _order;
-  final bool _enabled;
-  final Map<String, dynamic> _configuration;
+  final ActionModel _model;
 
-  ActionView({
-    required String id,
-    required String type,
-    required String scene,
-    required int order,
-    required bool enabled,
-    Map<String, dynamic> configuration = const {},
-  })  : _id = id,
-        _type = type,
-        _scene = scene,
-        _order = order,
-        _enabled = enabled,
-        _configuration = configuration;
+  ActionView({required ActionModel model}) : _model = model;
 
-  String get id => _id;
+  ActionModel get model => _model;
+
+  String get id => _model.id;
 
   /// Action type identifier (e.g., "scenes-local")
-  String get type => _type;
+  String get type => _model.type;
 
-  String get scene => _scene;
+  String get scene => _model.scene;
 
-  int get order => _order;
+  int get order => _model.order;
 
-  bool get enabled => _enabled;
+  bool get enabled => _model.enabled;
 
   /// Raw configuration for actions
-  Map<String, dynamic> get configuration => _configuration;
+  Map<String, dynamic> get configuration => _model.configuration;
 }

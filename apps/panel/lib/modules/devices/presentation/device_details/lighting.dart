@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
@@ -6,24 +8,32 @@ import 'package:fastybird_smart_panel/core/utils/enum.dart';
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
-import 'package:fastybird_smart_panel/core/widgets/bottom_navigation.dart';
+import 'package:fastybird_smart_panel/core/widgets/button_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/colored_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/colored_switch.dart';
-import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
+import 'package:fastybird_smart_panel/core/widgets/fixed_grid_size_grid.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/light_channel_detail.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/light_mode_navigation.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/light_state_display.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart'
+    show DeviceControlStateService, ControlUIState;
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
+import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/light.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
+import 'package:fastybird_smart_panel/modules/displays/export.dart';
+import 'package:fastybird_smart_panel/modules/intents/service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class LightingDeviceDetail extends StatefulWidget {
   final LightingDeviceView _device;
-
-  final bool _supportSwatches = false;
 
   const LightingDeviceDetail({
     super.key,
@@ -35,125 +45,188 @@ class LightingDeviceDetail extends StatefulWidget {
 }
 
 class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
-  LightChannelModeType _colorMode = LightChannelModeType.off;
+  final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
   final PropertyValueHelper _valueHelper = PropertyValueHelper();
-  final List<LightChannelModeType> _lightModes = [];
 
-  late int _currentModeIndex;
-  late int _selectedChannel;
+  DeviceControlStateService? _deviceControlStateService;
+  IntentOverlayService? _intentOverlayService;
 
+  late List<LightMode> _availableModes;
+  late LightMode _currentMode;
   late List<LightChannelView> _channels;
+
+  // Track which channels are being toggled (prevents double-taps)
+  final Set<String> _togglingChannels = {};
 
   @override
   void initState() {
     super.initState();
 
+    try {
+      _deviceControlStateService = locator<DeviceControlStateService>();
+      _deviceControlStateService?.addListener(_onControlStateChanged);
+    } catch (e) {
+      if (kDebugMode) debugPrint('[LightingDeviceDetail] Failed to get DeviceControlStateService: $e');
+    }
+
+    try {
+      _intentOverlayService = locator<IntentOverlayService>();
+      _intentOverlayService?.addListener(_onIntentChanged);
+    } catch (e) {
+      if (kDebugMode) debugPrint('[LightingDeviceDetail] Failed to get IntentOverlayService: $e');
+    }
+
     _initializeWidget();
+  }
 
-    _selectedChannel = 0;
+  @override
+  void dispose() {
+    _deviceControlStateService?.removeListener(_onControlStateChanged);
+    _intentOverlayService?.removeListener(_onIntentChanged);
+    super.dispose();
+  }
 
-    _lightModes.add(LightChannelModeType.off);
+  void _onControlStateChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
 
-    if (widget._device.hasBrightness) {
-      _lightModes.add(LightChannelModeType.brightness);
-    }
-    if (widget._device.hasColor) {
-      _lightModes.add(LightChannelModeType.color);
-    }
-    if (widget._device.hasTemperature) {
-      _lightModes.add(LightChannelModeType.temperature);
-    }
-    if (widget._device.hasWhite) {
-      _lightModes.add(LightChannelModeType.white);
-    }
-    if (widget._supportSwatches) {
-      _lightModes.add(LightChannelModeType.swatches);
-    }
-
-    if (_lightModes.length >= 2) {
-      _colorMode = _lightModes[1];
-    }
-
-    if (_channels.isNotEmpty) {
-      _currentModeIndex = _channels[_selectedChannel].on ? 1 : 0;
-    } else {
-      _currentModeIndex = 0;
+  void _onIntentChanged() {
+    if (mounted) {
+      setState(() {});
     }
   }
 
   @override
   void didUpdateWidget(covariant LightingDeviceDetail oldWidget) {
     super.didUpdateWidget(oldWidget);
-
     _initializeWidget();
   }
 
   void _initializeWidget() {
     _channels = widget._device.lightChannels;
+
+    _availableModes = LightModeNavigation.createModesList(
+      hasBrightness: widget._device.hasBrightness,
+      hasColor: widget._device.hasColor,
+      hasTemperature: widget._device.hasTemperature,
+      hasWhite: widget._device.hasWhite,
+    );
+
+    // Start with brightness mode if available
+    if (_availableModes.contains(LightMode.brightness)) {
+      _currentMode = LightMode.brightness;
+    } else if (_availableModes.length > 1) {
+      _currentMode = _availableModes[1];
+    } else {
+      _currentMode = LightMode.off;
+    }
   }
+
+  bool get _isSimple => widget._device.isSimpleLight;
+  bool get _isMultiChannel => _channels.length > 1;
 
   @override
   Widget build(BuildContext context) {
-    if (!widget._device.isSimpleLight &&
-        !widget._device.isSingleBrightness &&
-        _channels.length > 1) {
-      return DefaultTabController(
-        initialIndex: 0,
-        length: _channels.length,
-        child: Column(
-          children: [
-            Material(
-              color: Theme.of(context).appBarTheme.backgroundColor,
-              child: SafeArea(
-                bottom: false,
-                child: TabBar(
-                  tabs: _channels
-                      .map(
-                        (channel) => Tab(
-                          text: channel.name,
-                        ),
-                      )
-                      .toList(),
+    // Multi-channel device: tiles grid
+    if (_isMultiChannel) {
+      return _buildMultiChannelLayout(context);
+    }
+
+    // Simple device with single channel: just ON/OFF
+    if (_isSimple) {
+      return _buildSimpleDeviceLayout(context);
+    }
+
+    // Single channel with capabilities
+    return _buildSingleChannelLayout(context);
+  }
+
+  /// Layout for simple ON/OFF devices with single channel - two-column with large switch
+  Widget _buildSimpleDeviceLayout(BuildContext context) {
+    final channel = _channels.first;
+
+    return SafeArea(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final elementMaxSize = constraints.maxHeight - 2 * AppSpacings.pMd;
+
+          return Padding(
+            padding: AppSpacings.paddingMd,
+            child: Row(
+              children: [
+                // Left: State display
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(right: AppSpacings.pLg),
+                    child: LightStateDisplay(
+                      brightness: 0,
+                      anyOn: channel.on,
+                      hasBrightness: false,
+                      useSingular: true,
+                    ),
+                  ),
                 ),
-              ),
+                // Right: Large switch
+                ColoredSwitch(
+                  switchState: channel.on,
+                  iconOn: MdiIcons.power,
+                  iconOff: MdiIcons.power,
+                  trackWidth: elementMaxSize,
+                  vertical: true,
+                  onChanged: (value) => _toggleChannel(channel, value),
+                ),
+              ],
             ),
-            Expanded(
-              child: Builder(
-                builder: (BuildContext context) {
-                  final TabController tabController = DefaultTabController.of(
-                    context,
-                  );
+          );
+        },
+      ),
+    );
+  }
 
-                  tabController.addListener(() {
-                    if (!tabController.indexIsChanging) {
-                      setState(() {
-                        _selectedChannel = tabController.index;
-                      });
-                    }
-                  });
+  /// Layout for single channel devices with capabilities
+  Widget _buildSingleChannelLayout(BuildContext context) {
+    final channel = _channels.first;
 
-                  return TabBarView(
-                    children: _channels
-                        .map(
-                          (channel) => LightSingleChannelDetail(
-                            device: widget._device,
-                            channel: channel,
-                            mode: _colorMode,
-                          ),
-                        )
-                        .toList(),
-                  );
-                },
-              ),
-            ),
-            if (_renderBottomNavigation(context, _channels) != null)
-              SafeArea(
-                top: false,
-                child: _renderBottomNavigation(context, _channels)!,
-              ),
-          ],
-        ),
+    // Check control state service for optimistic on/off state
+    bool isOn = channel.on;
+    final controlStateService = _deviceControlStateService;
+    final deviceId = widget._device.id;
+    final channelId = channel.id;
+    final onProp = channel.onProp;
+
+    if (controlStateService != null &&
+        controlStateService.isLocked(deviceId, channelId, onProp.id)) {
+      // Use desired value from control state service (immediate, no listener delay)
+      final desiredValue = controlStateService.getDesiredValue(
+        deviceId,
+        channelId,
+        onProp.id,
       );
+      if (desiredValue is bool) {
+        isOn = desiredValue;
+      } else if (desiredValue is num) {
+        isOn = desiredValue > 0.5;
+      }
+    } else if (_intentOverlayService != null) {
+      // Fall back to overlay service (for failures, backend intents, etc.)
+      if (_intentOverlayService!.isPropertyLocked(
+            deviceId,
+            channelId,
+            onProp.id,
+          )) {
+        final overlayValue = _intentOverlayService!.getOverlayValue(
+          deviceId,
+          channelId,
+          onProp.id,
+        );
+        if (overlayValue is bool) {
+          isOn = overlayValue;
+        }
+      }
     }
 
     return Column(
@@ -161,128 +234,450 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         Expanded(
           child: SafeArea(
             bottom: false,
-            child: LayoutBuilder(builder: (
-              BuildContext context,
-              BoxConstraints constraints,
-            ) {
-              if (widget._device.isSimpleLight ||
-                  (widget._device.isSingleBrightness && _channels.length >= 2)) {
-                return LightSimpleDetail(
-                  device: widget._device,
-                  withBrightness:
-                      widget._device.isSingleBrightness && _channels.length >= 2,
-                );
-              }
-
-              final channel = _channels.first;
-
-              return LightSingleChannelDetail(
-                device: widget._device,
-                channel: channel,
-                mode: _colorMode,
-              );
-            }),
+            child: LightSingleChannelDetail(
+              device: widget._device,
+              channel: channel,
+              mode: _lightModeToChannelMode(_currentMode),
+            ),
           ),
         ),
-        if (_renderBottomNavigation(context, _channels) != null)
+        if (_availableModes.length > 1)
           SafeArea(
             top: false,
-            child: _renderBottomNavigation(context, _channels)!,
+            child: LightModeNavigation(
+              availableModes: _availableModes,
+              currentMode: _currentMode,
+              anyOn: isOn, // Use optimistic state
+              onModeSelected: (mode) {
+                setState(() {
+                  _currentMode = mode;
+                });
+                // Turn on if selecting a control mode while off
+                if (!isOn && mode != LightMode.off) {
+                  _toggleChannel(channel, true);
+                }
+              },
+              onPowerToggle: () => _toggleChannel(channel, !isOn),
+            ),
           ),
       ],
     );
   }
 
-  Widget? _renderBottomNavigation(
-    BuildContext context,
-    List<LightChannelView> channelCapabilities,
-  ) {
+  /// Layout for multi-channel devices - tiles grid using FixedGridSizeGrid
+  /// Channel tile sizing: 2x2 default, 3x2 if cols=3
+  Widget _buildMultiChannelLayout(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    if (widget._device.isSimpleLight ||
-        (widget._device.isSingleBrightness &&
-            channelCapabilities.length >= 2)) {
-      return null;
+    return SafeArea(
+      child: Padding(
+        padding: AppSpacings.paddingMd,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final bodyHeight = constraints.maxHeight;
+
+            // Use screen service columns or default
+            final cols = _screenService.columns.clamp(2, 100);
+            final rows = _screenService.rows.clamp(1, 100);
+
+            // Calculate cell height based on body height and display rows
+            final cellHeight = bodyHeight / rows;
+
+            // Channel tile sizing: 2x2 default, 3x2 if cols=3
+            final int tileColSpan;
+            final int tileRowSpan;
+            final int tilesPerRow;
+
+            if (cols == 3) {
+              // Full width 3x2 rectangle
+              tileColSpan = 3;
+              tileRowSpan = 2;
+              tilesPerRow = 1;
+            } else {
+              // 2x2 square tiles
+              tileColSpan = 2;
+              tileRowSpan = 2;
+              tilesPerRow = (cols / 2).floor().clamp(1, cols);
+            }
+
+            // Calculate how many rows we need for the channel tiles
+            final totalRows = (_channels.length / tilesPerRow).ceil();
+            final gridRows = totalRows * tileRowSpan;
+
+            // Build grid items
+            final List<FixedGridSizeGridItem> gridItems = [];
+            for (int i = 0; i < _channels.length; i++) {
+              final row = i ~/ tilesPerRow;
+              final col = i % tilesPerRow;
+              final channel = _channels[i];
+
+              gridItems.add(
+                FixedGridSizeGridItem(
+                  mainAxisIndex: row * tileRowSpan + 1,
+                  crossAxisIndex: col * tileColSpan + 1,
+                  mainAxisCellCount: tileRowSpan,
+                  crossAxisCellCount: tileColSpan,
+                  child: _buildChannelTile(
+                    context,
+                    channel,
+                    localizations,
+                    rowSpan: tileRowSpan,
+                    colSpan: tileColSpan,
+                  ),
+                ),
+              );
+            }
+
+            // Calculate grid height based on cell height from display rows
+            final gridHeight = gridRows * cellHeight;
+
+            return SizedBox(
+              height: gridHeight,
+              child: FixedGridSizeGrid(
+                mainAxisSize: gridRows,
+                crossAxisSize: cols,
+                children: gridItems,
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  /// Build a single channel tile for multi-channel layout
+  /// Layout adapts based on rowSpan/colSpan: square=vertical, rectangle=horizontal, 1x1=icon only
+  /// Uses LayoutBuilder for dynamic icon sizing based on tile dimensions
+  Widget _buildChannelTile(
+    BuildContext context,
+    LightChannelView channel,
+    AppLocalizations localizations, {
+    required int rowSpan,
+    required int colSpan,
+  }) {
+    final deviceId = widget._device.id;
+    final channelId = channel.id;
+    final onProp = channel.onProp;
+
+    // Check device control state service first (local optimistic state, most reliable)
+    // When state is locked (pending/settling), use the desired value
+    bool isOn = channel.on;
+    final controlStateService = _deviceControlStateService;
+
+    if (controlStateService != null &&
+        controlStateService.isLocked(deviceId, channelId, onProp.id)) {
+      // Use desired value from control state service (immediate, no listener delay)
+      final desiredValue = controlStateService.getDesiredValue(
+        deviceId,
+        channelId,
+        onProp.id,
+      );
+      if (desiredValue is bool) {
+        isOn = desiredValue;
+      } else if (desiredValue is num) {
+        isOn = desiredValue > 0.5;
+      }
+    } else if (_intentOverlayService != null) {
+      // Fall back to overlay service (for failures, backend intents, etc.)
+      if (_intentOverlayService!.isPropertyLocked(
+            deviceId,
+            channelId,
+            onProp.id,
+          )) {
+        final overlayValue = _intentOverlayService!.getOverlayValue(
+          deviceId,
+          channelId,
+          onProp.id,
+        );
+        if (overlayValue is bool) {
+          isOn = overlayValue;
+        }
+      }
     }
 
-    if (_lightModes.length <= 1) return null;
+    final isToggling = _togglingChannels.contains(channel.id);
+    final hasBrightness = channel.hasBrightness;
+    final brightness = hasBrightness ? channel.brightness : null;
 
-    return AppBottomNavigationBar(
-      currentIndex: _currentModeIndex,
-      enableFloatingNavBar: false,
-      onTap: (int index) async {
-        if (_lightModes[index] == LightChannelModeType.off) {
-          if (_channels[_selectedChannel].on) {
-            setState(() {
-              _currentModeIndex = 0;
-              _colorMode = _lightModes[1];
-            });
-          } else {
-            setState(() {
-              _currentModeIndex = 1;
-              _colorMode = _lightModes[1];
-            });
-          }
+    // Check for recent failure
+    final hasFailure = _intentOverlayService?.hasRecentFailure(deviceId) ?? false;
 
-          _valueHelper.setPropertyValue(
-            context,
-            _channels[_selectedChannel].onProp,
-            _channels[_selectedChannel].on ? false : true,
-          );
-        } else {
-          setState(() {
-            _currentModeIndex = index;
-            _colorMode = _lightModes[index];
-          });
+    // Determine tile shape for layout
+    final bool isSquare = rowSpan == colSpan;
+    final bool isIconOnly = rowSpan == 1 && colSpan == 1;
 
-          if (_channels[_selectedChannel].on == false) {
-            _valueHelper.setPropertyValue(
-              context,
-              _channels[_selectedChannel].onProp,
-              true,
-            );
-          }
-        }
-      },
-      // dotIndicatorColor: Colors.black,
-      items: _lightModes
-          .map((mode) {
-            switch (mode) {
-              case LightChannelModeType.off:
-                return AppBottomNavigationItem(
-                  icon: Icon(MdiIcons.power),
-                  label: localizations.light_mode_off,
-                );
-              case LightChannelModeType.brightness:
-                return AppBottomNavigationItem(
-                  icon: Icon(MdiIcons.weatherSunny),
-                  label: localizations.light_mode_brightness,
-                );
-              case LightChannelModeType.color:
-                return AppBottomNavigationItem(
-                  icon: Icon(MdiIcons.paletteOutline),
-                  label: localizations.light_mode_color,
-                );
-              case LightChannelModeType.temperature:
-                return AppBottomNavigationItem(
-                  icon: Icon(MdiIcons.thermometer),
-                  label: localizations.light_mode_temperature,
-                );
-              case LightChannelModeType.white:
-                return AppBottomNavigationItem(
-                  icon: Icon(MdiIcons.lightbulbOutline),
-                  label: localizations.light_mode_white,
-                );
-              case LightChannelModeType.swatches:
-                return AppBottomNavigationItem(
-                  icon: Icon(MdiIcons.paletteSwatchOutline),
-                  label: localizations.light_mode_swatches,
-                );
-            }
-          })
-          .whereType<AppBottomNavigationItem>()
-          .toList(),
+    // Build subtitle: On/Off state with optional brightness
+    final stateText = hasFailure
+        ? localizations.light_state_failed
+        : (isOn ? localizations.light_state_on : localizations.light_state_off);
+    final showBrightness = hasBrightness && isOn && brightness != null && !hasFailure;
+
+    // Helper to build icon widget with dynamic size
+    Widget buildIconWidget(double iconSize) {
+      return ButtonTileIcon(
+        icon: hasFailure
+            ? MdiIcons.alertCircleOutline
+            : (isOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline),
+        onTap: isToggling ? null : () => _toggleChannel(channel, !isOn),
+        isOn: isOn,
+        iconColor: hasFailure ? AppColorsLight.warning : null,
+        rawIconSize: iconSize,
+        showAlert: !widget._device.isOnline,
+      );
+    }
+
+    // Scaled spacing for icon-to-text gap
+    final scaledIconTextGap = _screenService.scale(
+      2,
+      density: _visualDensityService.density,
     );
+
+    // Text style for measuring (matches ButtonTileSubTitle)
+    final subtitleStyle = TextStyle(
+      fontFamily: 'DIN1451',
+      fontSize: AppFontSize.extraSmall,
+    );
+
+    // Helper to measure text width
+    double measureText(String text) {
+      final textPainter = TextPainter(
+        text: TextSpan(text: text, style: subtitleStyle),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      return textPainter.width;
+    }
+
+    // Helper to build subtitle widget with optional width constraint for overflow detection
+    Widget buildSubTitleWidget({double? availableWidth}) {
+      // Calculate widths if we need to check for overflow
+      bool showStateText = true;
+      if (availableWidth != null && showBrightness) {
+        final stateWidth = measureText(stateText);
+        final brightnessText = '$brightness%';
+        final brightnessWidth = measureText(brightnessText);
+        final iconWidth = AppFontSize.extraSmall;
+        final spacing = AppSpacings.pSm + scaledIconTextGap;
+
+        final fullWidth = stateWidth + spacing + iconWidth + scaledIconTextGap + brightnessWidth;
+        final brightnessOnlyWidth = iconWidth + scaledIconTextGap + brightnessWidth;
+
+        // If full content doesn't fit but brightness does, hide state text
+        if (fullWidth > availableWidth && brightnessOnlyWidth <= availableWidth) {
+          showStateText = false;
+        }
+      }
+
+      return Row(
+        mainAxisAlignment: isSquare ? MainAxisAlignment.center : MainAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (showStateText) Text(stateText),
+          if (showBrightness) ...[
+            if (showStateText) AppSpacings.spacingSmHorizontal,
+            Icon(
+              MdiIcons.weatherSunny,
+              size: AppFontSize.extraSmall,
+            ),
+            SizedBox(width: scaledIconTextGap),
+            Text('$brightness%'),
+          ],
+        ],
+      );
+    }
+
+    // Icon-only tile (1x1): icon fills tile with padding, tap toggles, long press opens detail
+    if (isIconOnly) {
+      return ButtonTileBox(
+        onTap: isToggling ? null : () => _toggleChannel(channel, !isOn),
+        isOn: isOn,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Icon fills tile with padding
+            final availableSize = constraints.maxWidth < constraints.maxHeight
+                ? constraints.maxWidth
+                : constraints.maxHeight;
+            final iconSize = availableSize - AppSpacings.pSm;
+
+            return GestureDetector(
+              onLongPress: isToggling ? null : () => _openChannelDetail(context, channel),
+              child: Center(child: buildIconWidget(iconSize)),
+            );
+          },
+        ),
+      );
+    }
+
+    // Square tile: vertical layout [icon] [label] [state]
+    // Icon takes upper half, text takes bottom half
+    if (isSquare) {
+      return ButtonTileBox(
+        onTap: isToggling ? null : () => _openChannelDetail(context, channel),
+        isOn: isOn,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Icon area is upper half minus some spacing for text
+            final iconSize = (constraints.maxHeight / 2) - AppSpacings.pSm;
+
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                buildIconWidget(iconSize),
+                AppSpacings.spacingSmVertical,
+                ButtonTileTitle(
+                  title: channel.name,
+                  isOn: isOn,
+                ),
+                AppSpacings.spacingXsVertical,
+                ButtonTileSubTitle(
+                  subTitle: buildSubTitleWidget(availableWidth: constraints.maxWidth),
+                  isOn: isOn,
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    }
+
+    // Rectangle tile: horizontal layout - icon on left (1/3 width), content on right
+    return ButtonTileBox(
+      onTap: isToggling ? null : () => _openChannelDetail(context, channel),
+      isOn: isOn,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Icon takes left 1/3 of width, but limited by height
+          final maxIconWidth = constraints.maxWidth / 3;
+          final maxIconHeight = constraints.maxHeight - AppSpacings.pSm;
+          final iconSize = maxIconWidth < maxIconHeight ? maxIconWidth : maxIconHeight;
+
+          // Calculate available width for subtitle (after icon and spacing)
+          final subtitleAvailableWidth = constraints.maxWidth - iconSize - AppSpacings.pMd;
+
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              buildIconWidget(iconSize),
+              AppSpacings.spacingMdHorizontal,
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ButtonTileTitle(
+                      title: channel.name,
+                      isOn: isOn,
+                      small: true,
+                    ),
+                    AppSpacings.spacingXsVertical,
+                    ButtonTileSubTitle(
+                      subTitle: buildSubTitleWidget(availableWidth: subtitleAvailableWidth),
+                      isOn: isOn,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  /// Open channel detail page
+  void _openChannelDetail(BuildContext context, LightChannelView channel) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LightChannelDetailPage(
+          device: widget._device,
+          channel: channel,
+        ),
+      ),
+    );
+  }
+
+  /// Toggle a single channel with optimistic UI
+  Future<void> _toggleChannel(LightChannelView channel, bool newState) async {
+    final localizations = AppLocalizations.of(context);
+    final controlStateService = _deviceControlStateService;
+    final deviceId = widget._device.id;
+    final channelId = channel.id;
+    final propertyId = channel.onProp.id;
+
+    // Set state machine to PENDING - this locks the UI to show desired state
+    controlStateService?.setPending(
+      deviceId,
+      channelId,
+      propertyId,
+      newState,
+    );
+    setState(() {
+      _togglingChannels.add(channel.id);
+    });
+
+    // Also create overlay for intent tracking (for failure detection etc)
+    _intentOverlayService?.createLocalOverlay(
+      deviceId: deviceId,
+      channelId: channelId,
+      propertyId: propertyId,
+      value: newState,
+      ttlMs: 5000, // 5 second TTL
+    );
+
+    try {
+      final success = await _valueHelper.setPropertyValue(
+        context,
+        channel.onProp,
+        newState,
+        deviceId: deviceId,
+        channelId: channelId,
+      );
+
+      if (!mounted) return;
+
+      if (!success) {
+        AlertBar.showError(
+          context,
+          message: localizations?.action_failed ?? 'Failed to toggle device',
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      AlertBar.showError(
+        context,
+        message: localizations?.action_failed ?? 'Failed to toggle device',
+      );
+    } finally {
+      // Transition to SETTLING state - suppresses state changes while device syncs
+      setState(() {
+        _togglingChannels.remove(channel.id);
+      });
+
+      if (mounted) {
+        controlStateService?.setSettling(
+          deviceId,
+          channelId,
+          propertyId,
+        );
+      }
+    }
+  }
+
+  /// Convert LightMode to LightChannelModeType for compatibility
+  LightChannelModeType _lightModeToChannelMode(LightMode mode) {
+    switch (mode) {
+      case LightMode.off:
+        return LightChannelModeType.off;
+      case LightMode.brightness:
+        return LightChannelModeType.brightness;
+      case LightMode.color:
+        return LightChannelModeType.color;
+      case LightMode.temperature:
+        return LightChannelModeType.temperature;
+      case LightMode.white:
+        return LightChannelModeType.white;
+    }
   }
 }
 
@@ -340,6 +735,8 @@ class LightSimpleDetail extends StatelessWidget {
                                 context,
                                 brightnessProp,
                                 value,
+                                deviceId: _device.id,
+                                channelId: lightCapability.id,
                               );
                             },
                           ),
@@ -351,6 +748,8 @@ class LightSimpleDetail extends StatelessWidget {
                                 context,
                                 lightCapability.onProp,
                                 state,
+                                deviceId: _device.id,
+                                channelId: lightCapability.id,
                               );
                             },
                           ),
@@ -379,6 +778,8 @@ class LightSimpleDetail extends StatelessWidget {
                             context,
                             lightCapability.onProp,
                             state,
+                            deviceId: _device.id,
+                            channelId: lightCapability.id,
                           );
                         },
                       ),
@@ -451,13 +852,29 @@ class LightSingleChannelDetail extends StatelessWidget {
       if (_mode == LightChannelModeType.brightness && brightnessProp != null) {
         controlElement = BrightnessChannel(
           channel: _channel,
+          deviceId: _device.id,
+          channelId: _channel.id,
+          propertyId: brightnessProp.id,
           vertical: true,
           elementMaxSize: elementMaxSize,
           onValueChanged: (double value) async {
-            _valueHelper.setPropertyValue(
+            // If device is off, turn it on first
+            if (!_channel.on) {
+              await _valueHelper.setPropertyValue(
+                context,
+                _channel.onProp,
+                true,
+                deviceId: _device.id,
+                channelId: _channel.id,
+              );
+            }
+            // Set brightness value
+            await _valueHelper.setPropertyValue(
               context,
               brightnessProp,
               value,
+              deviceId: _device.id,
+              channelId: _channel.id,
             );
           },
         );
@@ -466,49 +883,77 @@ class LightSingleChannelDetail extends StatelessWidget {
       if (_mode == LightChannelModeType.color && _channel.hasColor) {
         controlElement = ColorChannel(
           channel: _channel,
+          deviceId: _device.id,
+          channelId: _channel.id,
           vertical: true,
           elementMaxSize: elementMaxSize,
           onValueChanged: (Color value) async {
             final rgbValue = ColorUtils.toRGB(value);
             final hsvValue = ColorUtils.toHSV(value);
 
+            // Build list of all color properties to update in a single batch
+            final List<PropertyCommandItem> properties = [];
+
+            // If device is off, turn it on first
+            if (!_channel.on) {
+              properties.add(PropertyCommandItem(
+                deviceId: _device.id,
+                channelId: _channel.id,
+                propertyId: _channel.onProp.id,
+                value: true,
+              ));
+            }
+
             if (_channel.colorRedProp != null) {
-              _valueHelper.setPropertyValue(
-                context,
-                _channel.colorRedProp!,
-                rgbValue.red,
-              );
+              properties.add(PropertyCommandItem(
+                deviceId: _device.id,
+                channelId: _channel.id,
+                propertyId: _channel.colorRedProp!.id,
+                value: rgbValue.red,
+              ));
             }
 
             if (_channel.colorGreenProp != null) {
-              _valueHelper.setPropertyValue(
-                context,
-                _channel.colorGreenProp!,
-                rgbValue.green,
-              );
+              properties.add(PropertyCommandItem(
+                deviceId: _device.id,
+                channelId: _channel.id,
+                propertyId: _channel.colorGreenProp!.id,
+                value: rgbValue.green,
+              ));
             }
 
             if (_channel.colorBlueProp != null) {
-              _valueHelper.setPropertyValue(
-                context,
-                _channel.colorBlueProp!,
-                rgbValue.blue,
-              );
+              properties.add(PropertyCommandItem(
+                deviceId: _device.id,
+                channelId: _channel.id,
+                propertyId: _channel.colorBlueProp!.id,
+                value: rgbValue.blue,
+              ));
             }
 
             if (_channel.hueProp != null) {
-              _valueHelper.setPropertyValue(
-                context,
-                _channel.hueProp!,
-                hsvValue.hue,
-              );
+              properties.add(PropertyCommandItem(
+                deviceId: _device.id,
+                channelId: _channel.id,
+                propertyId: _channel.hueProp!.id,
+                value: hsvValue.hue,
+              ));
             }
 
             if (_channel.saturationProp != null) {
-              _valueHelper.setPropertyValue(
+              properties.add(PropertyCommandItem(
+                deviceId: _device.id,
+                channelId: _channel.id,
+                propertyId: _channel.saturationProp!.id,
+                value: hsvValue.saturation,
+              ));
+            }
+
+            // Send all properties in a single batch command
+            if (properties.isNotEmpty) {
+              await _valueHelper.setMultiplePropertyValues(
                 context,
-                _channel.saturationProp!,
-                hsvValue.saturation,
+                properties,
               );
             }
           },
@@ -520,13 +965,29 @@ class LightSingleChannelDetail extends StatelessWidget {
       if (_mode == LightChannelModeType.temperature && tempProp != null) {
         controlElement = TemperatureChannel(
           channel: _channel,
+          deviceId: _device.id,
+          channelId: _channel.id,
+          propertyId: tempProp.id,
           vertical: true,
           elementMaxSize: elementMaxSize,
           onValueChanged: (double value) async {
-            _valueHelper.setPropertyValue(
+            // If device is off, turn it on first
+            if (!_channel.on) {
+              await _valueHelper.setPropertyValue(
+                context,
+                _channel.onProp,
+                true,
+                deviceId: _device.id,
+                channelId: _channel.id,
+              );
+            }
+            // Set temperature value
+            await _valueHelper.setPropertyValue(
               context,
               tempProp,
               value,
+              deviceId: _device.id,
+              channelId: _channel.id,
             );
           },
         );
@@ -537,13 +998,29 @@ class LightSingleChannelDetail extends StatelessWidget {
       if (_mode == LightChannelModeType.white && colorWhiteProp != null) {
         controlElement = WhiteChannel(
           channel: _channel,
+          deviceId: _device.id,
+          channelId: _channel.id,
+          propertyId: colorWhiteProp.id,
           vertical: true,
           elementMaxSize: elementMaxSize,
           onValueChanged: (double value) async {
-            _valueHelper.setPropertyValue(
+            // If device is off, turn it on first
+            if (!_channel.on) {
+              await _valueHelper.setPropertyValue(
+                context,
+                _channel.onProp,
+                true,
+                deviceId: _device.id,
+                channelId: _channel.id,
+              );
+            }
+            // Set white channel value
+            await _valueHelper.setPropertyValue(
               context,
               colorWhiteProp,
               value,
+              deviceId: _device.id,
+              channelId: _channel.id,
             );
           },
         );
@@ -570,6 +1047,8 @@ class LightSingleChannelDetail extends StatelessWidget {
                           if (_channel.hasBrightness)
                             ChannelActualBrightness(
                               channel: _channel,
+                              deviceId: _device.id,
+                              channelId: _channel.id,
                             ),
                           AppSpacings.spacingMdVertical,
                           Wrap(
@@ -612,6 +1091,9 @@ class LightSingleChannelDetail extends StatelessWidget {
 
 class BrightnessChannel extends StatefulWidget {
   final LightChannelView _channel;
+  final String? _deviceId;
+  final String? _channelId;
+  final String? _propertyId;
   final double? _elementMaxSize;
   final bool _vertical;
   final bool _showValue;
@@ -621,11 +1103,17 @@ class BrightnessChannel extends StatefulWidget {
   const BrightnessChannel({
     super.key,
     required LightChannelView channel,
+    String? deviceId,
+    String? channelId,
+    String? propertyId,
     double? elementMaxSize,
     bool vertical = false,
     bool showValue = false,
     ValueChanged<double>? onValueChanged,
   })  : _channel = channel,
+        _deviceId = deviceId,
+        _channelId = channelId,
+        _propertyId = propertyId,
         _elementMaxSize = elementMaxSize,
         _vertical = vertical,
         _showValue = showValue,
@@ -639,16 +1127,85 @@ class _BrightnessChannelState extends State<BrightnessChannel> {
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
+  IntentOverlayService? _intentOverlayService;
+  DeviceControlStateService? _deviceControlStateService;
 
   late ChannelPropertyView? _property;
 
   late num? _brightness;
 
+  // Debounce timer for API calls (prevents overwhelming backend during rapid dragging)
+  Timer? _debounceTimer;
+
+  // Track previous intent lock state to detect when command completes
+  bool _wasIntentLocked = false;
+
   @override
   void initState() {
     super.initState();
-
+    try {
+      _intentOverlayService = locator<IntentOverlayService>();
+      _intentOverlayService?.addListener(_onIntentChanged);
+    } catch (_) {}
+    try {
+      _deviceControlStateService = locator<DeviceControlStateService>();
+      _deviceControlStateService?.addListener(_onControlStateChanged);
+    } catch (_) {}
     _initializeWidget();
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _intentOverlayService?.removeListener(_onIntentChanged);
+    _deviceControlStateService?.removeListener(_onControlStateChanged);
+    super.dispose();
+  }
+
+  void _onIntentChanged() {
+    if (!mounted) return;
+
+    final propertyId = widget._propertyId;
+    if (propertyId == null ||
+        widget._deviceId == null ||
+        widget._channelId == null) {
+      setState(() {});
+      return;
+    }
+
+    // Check current intent lock state
+    final isIntentLocked = _intentOverlayService?.isPropertyLocked(
+          widget._deviceId!,
+          widget._channelId!,
+          propertyId,
+        ) ?? false;
+
+    setState(() {
+      // If intent was locked and is now unlocked, command completed - transition to settling
+      if (_wasIntentLocked && !isIntentLocked) {
+        final state = _deviceControlStateService?.getState(
+          widget._deviceId!,
+          widget._channelId!,
+          propertyId,
+        );
+        if (state?.state == ControlUIState.pending) {
+          // Command completed, transition to settling
+          _deviceControlStateService?.setSettling(
+            widget._deviceId!,
+            widget._channelId!,
+            propertyId,
+          );
+        }
+      }
+
+      _wasIntentLocked = isIntentLocked;
+    });
+  }
+
+  void _onControlStateChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -670,8 +1227,6 @@ class _BrightnessChannelState extends State<BrightnessChannel> {
 
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-
     num min = 0;
     num max = 255;
 
@@ -686,20 +1241,121 @@ class _BrightnessChannelState extends State<BrightnessChannel> {
       }
     }
 
+    // Check if property is locked by control state service (state machine)
+    final isControlStateLocked = widget._deviceId != null &&
+            widget._channelId != null &&
+            widget._propertyId != null
+        ? (_deviceControlStateService?.isLocked(
+              widget._deviceId!,
+              widget._channelId!,
+              widget._propertyId!,
+            ) ?? false)
+        : false;
+
+    // Check if property is locked by intent overlay
+    final isIntentLocked = widget._deviceId != null &&
+            widget._channelId != null &&
+            widget._propertyId != null
+        ? _intentOverlayService?.isPropertyLocked(
+              widget._deviceId!,
+              widget._channelId!,
+              widget._propertyId!,
+            ) ?? false
+        : false;
+
+    // Get desired value from control state service if locked
+    final controlStateValue = isControlStateLocked && widget._deviceId != null &&
+            widget._channelId != null &&
+            widget._propertyId != null
+        ? _deviceControlStateService?.getDesiredValue(
+              widget._deviceId!,
+              widget._channelId!,
+              widget._propertyId!,
+            )
+        : null;
+
+    // Get overlay value if locked by intent
+    final overlayValue = isIntentLocked && widget._deviceId != null &&
+            widget._channelId != null &&
+            widget._propertyId != null
+        ? _intentOverlayService?.getOverlayValue(
+              widget._deviceId!,
+              widget._channelId!,
+              widget._propertyId!,
+            )
+        : null;
+
+    // Priority: control state desired value > overlay value > actual value
+    final displayValue = controlStateValue is num
+        ? controlStateValue.toDouble()
+        : (overlayValue is num
+            ? overlayValue.toDouble()
+            : (_brightness ?? min));
+
     return ColoredSlider(
-      value: _brightness ?? min,
+      value: displayValue,
       min: min,
       max: max,
-      enabled: widget._channel.on,
+      enabled: true, // Always enabled - don't disable during state machine to prevent blinking
       vertical: widget._vertical,
       trackWidth: widget._elementMaxSize,
       showThumb: false,
       onValueChanged: (double value) {
+        // Cancel any existing debounce timer
+        _debounceTimer?.cancel();
+
+        // Update state immediately for instant UI feedback (including brightness display)
         setState(() {
           _brightness = value;
         });
 
-        widget._onValueChanged?.call(value);
+        // Set pending state in control state service for optimistic UI
+        // This ensures the brightness display updates immediately
+        if (widget._deviceId != null &&
+            widget._channelId != null &&
+            widget._propertyId != null) {
+          // Cancel any existing settling timer
+          final currentState = _deviceControlStateService?.getState(
+            widget._deviceId!,
+            widget._channelId!,
+            widget._propertyId!,
+          );
+          currentState?.cancelTimer();
+
+          _deviceControlStateService?.setPending(
+            widget._deviceId!,
+            widget._channelId!,
+            widget._propertyId!,
+            value,
+          );
+
+          // If device is off, also set on/off state to pending for optimistic UI
+          if (!widget._channel.on) {
+            final onProp = widget._channel.onProp;
+            final onState = _deviceControlStateService?.getState(
+              widget._deviceId!,
+              widget._channelId!,
+              onProp.id,
+            );
+            onState?.cancelTimer();
+
+            _deviceControlStateService?.setPending(
+              widget._deviceId!,
+              widget._channelId!,
+              onProp.id,
+              true,
+            );
+          }
+        }
+
+        // Debounce the API call to prevent overwhelming the backend
+        _debounceTimer = Timer(
+          const Duration(milliseconds: 300),
+          () {
+            if (!mounted) return;
+            widget._onValueChanged?.call(value);
+          },
+        );
       },
       inner: [
         widget._showValue
@@ -719,7 +1375,7 @@ class _BrightnessChannelState extends State<BrightnessChannel> {
                           text: (property != null
                                   ? ValueUtils.formatValue(property)
                                   : null) ??
-                              localizations.value_not_available,
+                              '-',
                           style: TextStyle(
                             color:
                                 Theme.of(context).brightness == Brightness.light
@@ -790,6 +1446,8 @@ class _BrightnessChannelState extends State<BrightnessChannel> {
 
 class ColorChannel extends StatefulWidget {
   final LightChannelView _channel;
+  final String? _deviceId;
+  final String? _channelId;
   final double? _elementMaxSize;
   final bool _vertical;
 
@@ -798,10 +1456,14 @@ class ColorChannel extends StatefulWidget {
   const ColorChannel({
     super.key,
     required LightChannelView channel,
+    String? deviceId,
+    String? channelId,
     double? elementMaxSize,
     bool vertical = false,
     ValueChanged<Color>? onValueChanged,
   })  : _channel = channel,
+        _deviceId = deviceId,
+        _channelId = channelId,
         _elementMaxSize = elementMaxSize,
         _vertical = vertical,
         _onValueChanged = onValueChanged;
@@ -811,13 +1473,83 @@ class ColorChannel extends StatefulWidget {
 }
 
 class _ColorChannelState extends State<ColorChannel> {
+  IntentOverlayService? _intentOverlayService;
+  DeviceControlStateService? _deviceControlStateService;
   late double _color;
+
+  // Debounce timer for API calls
+  Timer? _debounceTimer;
+
+  // Track previous intent lock state to detect when command completes
+  bool _wasIntentLocked = false;
 
   @override
   void initState() {
     super.initState();
-
+    try {
+      _intentOverlayService = locator<IntentOverlayService>();
+      _intentOverlayService?.addListener(_onIntentChanged);
+    } catch (_) {}
+    try {
+      _deviceControlStateService = locator<DeviceControlStateService>();
+      _deviceControlStateService?.addListener(_onControlStateChanged);
+    } catch (_) {}
     _initializeWidget();
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _intentOverlayService?.removeListener(_onIntentChanged);
+    _deviceControlStateService?.removeListener(_onControlStateChanged);
+    super.dispose();
+  }
+
+  void _onIntentChanged() {
+    if (!mounted) return;
+
+    final hueProp = widget._channel.hueProp;
+    if (hueProp == null ||
+        widget._deviceId == null ||
+        widget._channelId == null) {
+      setState(() {});
+      return;
+    }
+
+    // Check current intent lock state
+    final isIntentLocked = _intentOverlayService?.isPropertyLocked(
+          widget._deviceId!,
+          widget._channelId!,
+          hueProp.id,
+        ) ?? false;
+
+    setState(() {
+      // If intent was locked and is now unlocked, command completed - transition to settling
+      if (_wasIntentLocked && !isIntentLocked) {
+        final isPending = _deviceControlStateService?.getState(
+              widget._deviceId!,
+              widget._channelId!,
+              hueProp.id,
+            )?.state == ControlUIState.pending;
+
+        if (isPending) {
+          // Command completed, transition to settling
+          _deviceControlStateService?.setSettling(
+            widget._deviceId!,
+            widget._channelId!,
+            hueProp.id,
+          );
+        }
+      }
+
+      _wasIntentLocked = isIntentLocked;
+    });
+  }
+
+  void _onControlStateChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -833,19 +1565,133 @@ class _ColorChannelState extends State<ColorChannel> {
 
   @override
   Widget build(BuildContext context) {
+    // Check if any color property is locked (hue is the main one)
+    final hueProp = widget._channel.hueProp;
+    
+    // Check if property is locked by control state service (state machine)
+    final isControlStateLocked = widget._deviceId != null &&
+            widget._channelId != null &&
+            hueProp != null
+        ? (_deviceControlStateService?.isLocked(
+              widget._deviceId!,
+              widget._channelId!,
+              hueProp.id,
+            ) ?? false)
+        : false;
+
+    // Check if property is locked by intent overlay
+    final isIntentLocked = widget._deviceId != null &&
+            widget._channelId != null &&
+            hueProp != null
+        ? _intentOverlayService?.isPropertyLocked(
+              widget._deviceId!,
+              widget._channelId!,
+              hueProp.id,
+            ) ?? false
+        : false;
+
+    // Get desired value from control state service if locked
+    // Note: isControlStateLocked already ensures hueProp is non-null
+    final controlStateHue = isControlStateLocked
+        ? _deviceControlStateService?.getDesiredValue(
+              widget._deviceId!,
+              widget._channelId!,
+              hueProp.id,
+            )
+        : null;
+
+    // Get overlay hue value if locked by intent
+    // Note: isIntentLocked already ensures hueProp is non-null
+    final overlayHue = isIntentLocked
+        ? _intentOverlayService?.getOverlayValue(
+              widget._deviceId!,
+              widget._channelId!,
+              hueProp.id,
+            )
+        : null;
+
+    // Priority: control state desired value > overlay value > actual color
+    final displayValue = controlStateHue is num
+        ? (controlStateHue.toDouble() / 360.0).clamp(0.0, 1.0)
+        : (overlayHue is num
+            ? (overlayHue.toDouble() / 360.0).clamp(0.0, 1.0)
+            : _color);
+
     return ColoredSlider(
-      value: _color,
+      value: displayValue,
       min: 0.0,
       max: 1.0,
-      enabled: widget._channel.on,
+      enabled: true, // Always enabled - don't disable during state machine to prevent blinking
       vertical: widget._vertical,
       trackWidth: widget._elementMaxSize,
       onValueChanged: (double value) {
+        final hueProp = widget._channel.hueProp;
+        
+        // Cancel any existing debounce timer
+        _debounceTimer?.cancel();
+
+        // Update state immediately for instant UI feedback
         setState(() {
           _color = value;
         });
 
-        widget._onValueChanged?.call(_getColorFromValue(value));
+        // Set pending state in control state service for optimistic UI
+        if (widget._deviceId != null &&
+            widget._channelId != null &&
+            hueProp != null) {
+          // Convert slider value (0-1) to hue (0-360)
+          final hueValue = value * 360.0;
+          
+          // Cancel any existing settling timer
+          final currentState = _deviceControlStateService?.getState(
+            widget._deviceId!,
+            widget._channelId!,
+            hueProp.id,
+          );
+          currentState?.cancelTimer();
+
+          _deviceControlStateService?.setPending(
+            widget._deviceId!,
+            widget._channelId!,
+            hueProp.id,
+            hueValue,
+          );
+
+          // If device is off, also set on/off state to pending for optimistic UI
+          if (!widget._channel.on) {
+            final onProp = widget._channel.onProp;
+            final onState = _deviceControlStateService?.getState(
+              widget._deviceId!,
+              widget._channelId!,
+              onProp.id,
+            );
+            onState?.cancelTimer();
+
+            _deviceControlStateService?.setPending(
+              widget._deviceId!,
+              widget._channelId!,
+              onProp.id,
+              true,
+            );
+          }
+
+          // Update intent lock tracking state
+          final isIntentLocked = _intentOverlayService?.isPropertyLocked(
+                widget._deviceId!,
+                widget._channelId!,
+                hueProp.id,
+              ) ?? false;
+          _wasIntentLocked = isIntentLocked;
+        }
+
+        // Debounce the API call
+        _debounceTimer = Timer(
+          const Duration(milliseconds: 300),
+          () {
+            if (!mounted) return;
+            widget._onValueChanged?.call(_getColorFromValue(value));
+          },
+        );
       },
       background: BoxDecoration(
         gradient: const LinearGradient(
@@ -883,6 +1729,9 @@ class _ColorChannelState extends State<ColorChannel> {
 
 class TemperatureChannel extends StatefulWidget {
   final LightChannelView _channel;
+  final String? _deviceId;
+  final String? _channelId;
+  final String? _propertyId;
   final double? _elementMaxSize;
   final bool _vertical;
 
@@ -891,10 +1740,16 @@ class TemperatureChannel extends StatefulWidget {
   const TemperatureChannel({
     super.key,
     required LightChannelView channel,
+    String? deviceId,
+    String? channelId,
+    String? propertyId,
     double? elementMaxSize,
     bool vertical = false,
     ValueChanged<double>? onValueChanged,
   })  : _channel = channel,
+        _deviceId = deviceId,
+        _channelId = channelId,
+        _propertyId = propertyId,
         _elementMaxSize = elementMaxSize,
         _vertical = vertical,
         _onValueChanged = onValueChanged;
@@ -907,16 +1762,86 @@ class _TemperatureChannelState extends State<TemperatureChannel> {
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
+  IntentOverlayService? _intentOverlayService;
+  DeviceControlStateService? _deviceControlStateService;
 
   late ChannelPropertyView? _property;
 
   late num? _temperature;
 
+  // Debounce timer for API calls
+  Timer? _debounceTimer;
+
+  // Track previous intent lock state to detect when command completes
+  bool _wasIntentLocked = false;
+
   @override
   void initState() {
     super.initState();
-
+    try {
+      _intentOverlayService = locator<IntentOverlayService>();
+      _intentOverlayService?.addListener(_onIntentChanged);
+    } catch (_) {}
+    try {
+      _deviceControlStateService = locator<DeviceControlStateService>();
+      _deviceControlStateService?.addListener(_onControlStateChanged);
+    } catch (_) {}
     _initializeWidget();
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _intentOverlayService?.removeListener(_onIntentChanged);
+    _deviceControlStateService?.removeListener(_onControlStateChanged);
+    super.dispose();
+  }
+
+  void _onIntentChanged() {
+    if (!mounted) return;
+
+    final propertyId = widget._propertyId;
+    if (propertyId == null ||
+        widget._deviceId == null ||
+        widget._channelId == null) {
+      setState(() {});
+      return;
+    }
+
+    // Check current intent lock state
+    final isIntentLocked = _intentOverlayService?.isPropertyLocked(
+          widget._deviceId!,
+          widget._channelId!,
+          propertyId,
+        ) ?? false;
+
+    setState(() {
+      // If intent was locked and is now unlocked, command completed - transition to settling
+      if (_wasIntentLocked && !isIntentLocked) {
+        final isPending = _deviceControlStateService?.getState(
+              widget._deviceId!,
+              widget._channelId!,
+              propertyId,
+            )?.state == ControlUIState.pending;
+
+        if (isPending) {
+          // Command completed, transition to settling
+          _deviceControlStateService?.setSettling(
+            widget._deviceId!,
+            widget._channelId!,
+            propertyId,
+          );
+        }
+      }
+
+      _wasIntentLocked = isIntentLocked;
+    });
+  }
+
+  void _onControlStateChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -952,19 +1877,127 @@ class _TemperatureChannelState extends State<TemperatureChannel> {
       }
     }
 
+    // Check if property is locked by control state service (state machine)
+    final isControlStateLocked = widget._deviceId != null &&
+            widget._channelId != null &&
+            widget._propertyId != null
+        ? (_deviceControlStateService?.isLocked(
+              widget._deviceId!,
+              widget._channelId!,
+              widget._propertyId!,
+            ) ?? false)
+        : false;
+
+    // Check if property is locked by intent overlay
+    final isIntentLocked = widget._deviceId != null &&
+            widget._channelId != null &&
+            widget._propertyId != null
+        ? _intentOverlayService?.isPropertyLocked(
+              widget._deviceId!,
+              widget._channelId!,
+              widget._propertyId!,
+            ) ?? false
+        : false;
+
+    // Get desired value from control state service if locked
+    final controlStateValue = isControlStateLocked && widget._deviceId != null &&
+            widget._channelId != null &&
+            widget._propertyId != null
+        ? _deviceControlStateService?.getDesiredValue(
+              widget._deviceId!,
+              widget._channelId!,
+              widget._propertyId!,
+            )
+        : null;
+
+    // Get overlay value if locked by intent
+    final overlayValue = isIntentLocked && widget._deviceId != null &&
+            widget._channelId != null &&
+            widget._propertyId != null
+        ? _intentOverlayService?.getOverlayValue(
+              widget._deviceId!,
+              widget._channelId!,
+              widget._propertyId!,
+            )
+        : null;
+
+    // Priority: control state desired value > overlay value > actual value
+    final displayValue = controlStateValue is num
+        ? controlStateValue.toDouble()
+        : (overlayValue is num
+            ? overlayValue.toDouble()
+            : (_temperature ?? min));
+
     return ColoredSlider(
-      value: _temperature ?? min,
+      value: displayValue,
       min: min,
       max: max,
-      enabled: widget._channel.on,
+      enabled: true, // Always enabled - don't disable during state machine to prevent blinking
       vertical: widget._vertical,
       trackWidth: widget._elementMaxSize,
       onValueChanged: (double value) {
+        // Cancel any existing debounce timer
+        _debounceTimer?.cancel();
+
+        // Update state immediately for instant UI feedback
         setState(() {
           _temperature = value;
         });
 
-        widget._onValueChanged?.call(value);
+        // Set pending state in control state service for optimistic UI
+        if (widget._deviceId != null &&
+            widget._channelId != null &&
+            widget._propertyId != null) {
+          // Cancel any existing settling timer
+          final currentState = _deviceControlStateService?.getState(
+            widget._deviceId!,
+            widget._channelId!,
+            widget._propertyId!,
+          );
+          currentState?.cancelTimer();
+
+          _deviceControlStateService?.setPending(
+            widget._deviceId!,
+            widget._channelId!,
+            widget._propertyId!,
+            value,
+          );
+
+          // If device is off, also set on/off state to pending for optimistic UI
+          if (!widget._channel.on) {
+            final onProp = widget._channel.onProp;
+            final onState = _deviceControlStateService?.getState(
+              widget._deviceId!,
+              widget._channelId!,
+              onProp.id,
+            );
+            onState?.cancelTimer();
+
+            _deviceControlStateService?.setPending(
+              widget._deviceId!,
+              widget._channelId!,
+              onProp.id,
+              true,
+            );
+          }
+
+          // Update intent lock tracking state
+          final isIntentLocked = _intentOverlayService?.isPropertyLocked(
+                widget._deviceId!,
+                widget._channelId!,
+                widget._propertyId!,
+              ) ?? false;
+          _wasIntentLocked = isIntentLocked;
+        }
+
+        // Debounce the API call
+        _debounceTimer = Timer(
+          const Duration(milliseconds: 300),
+          () {
+            if (!mounted) return;
+            widget._onValueChanged?.call(value);
+          },
+        );
       },
       background: BoxDecoration(
         gradient: const LinearGradient(
@@ -1006,6 +2039,9 @@ class _TemperatureChannelState extends State<TemperatureChannel> {
 
 class WhiteChannel extends StatefulWidget {
   final LightChannelView _channel;
+  final String? _deviceId;
+  final String? _channelId;
+  final String? _propertyId;
   final double? _elementMaxSize;
   final bool _vertical;
 
@@ -1014,10 +2050,16 @@ class WhiteChannel extends StatefulWidget {
   const WhiteChannel({
     super.key,
     required LightChannelView channel,
+    String? deviceId,
+    String? channelId,
+    String? propertyId,
     double? elementMaxSize,
     bool vertical = false,
     ValueChanged<double>? onValueChanged,
   })  : _channel = channel,
+        _deviceId = deviceId,
+        _channelId = channelId,
+        _propertyId = propertyId,
         _elementMaxSize = elementMaxSize,
         _vertical = vertical,
         _onValueChanged = onValueChanged;
@@ -1030,16 +2072,86 @@ class _WhiteChannelState extends State<WhiteChannel> {
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
+  IntentOverlayService? _intentOverlayService;
+  DeviceControlStateService? _deviceControlStateService;
 
   late ChannelPropertyView? _property;
 
   late num? _white;
 
+  // Debounce timer for API calls
+  Timer? _debounceTimer;
+
+  // Track previous intent lock state to detect when command completes
+  bool _wasIntentLocked = false;
+
   @override
   void initState() {
     super.initState();
-
+    try {
+      _intentOverlayService = locator<IntentOverlayService>();
+      _intentOverlayService?.addListener(_onIntentChanged);
+    } catch (_) {}
+    try {
+      _deviceControlStateService = locator<DeviceControlStateService>();
+      _deviceControlStateService?.addListener(_onControlStateChanged);
+    } catch (_) {}
     _initializeWidget();
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _intentOverlayService?.removeListener(_onIntentChanged);
+    _deviceControlStateService?.removeListener(_onControlStateChanged);
+    super.dispose();
+  }
+
+  void _onIntentChanged() {
+    if (!mounted) return;
+
+    final propertyId = widget._propertyId;
+    if (propertyId == null ||
+        widget._deviceId == null ||
+        widget._channelId == null) {
+      setState(() {});
+      return;
+    }
+
+    // Check current intent lock state
+    final isIntentLocked = _intentOverlayService?.isPropertyLocked(
+          widget._deviceId!,
+          widget._channelId!,
+          propertyId,
+        ) ?? false;
+
+    setState(() {
+      // If intent was locked and is now unlocked, command completed - transition to settling
+      if (_wasIntentLocked && !isIntentLocked) {
+        final isPending = _deviceControlStateService?.getState(
+              widget._deviceId!,
+              widget._channelId!,
+              propertyId,
+            )?.state == ControlUIState.pending;
+
+        if (isPending) {
+          // Command completed, transition to settling
+          _deviceControlStateService?.setSettling(
+            widget._deviceId!,
+            widget._channelId!,
+            propertyId,
+          );
+        }
+      }
+
+      _wasIntentLocked = isIntentLocked;
+    });
+  }
+
+  void _onControlStateChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -1075,20 +2187,128 @@ class _WhiteChannelState extends State<WhiteChannel> {
       }
     }
 
+    // Check if property is locked by control state service (state machine)
+    final isControlStateLocked = widget._deviceId != null &&
+            widget._channelId != null &&
+            widget._propertyId != null
+        ? (_deviceControlStateService?.isLocked(
+              widget._deviceId!,
+              widget._channelId!,
+              widget._propertyId!,
+            ) ?? false)
+        : false;
+
+    // Check if property is locked by intent overlay
+    final isIntentLocked = widget._deviceId != null &&
+            widget._channelId != null &&
+            widget._propertyId != null
+        ? _intentOverlayService?.isPropertyLocked(
+              widget._deviceId!,
+              widget._channelId!,
+              widget._propertyId!,
+            ) ?? false
+        : false;
+
+    // Get desired value from control state service if locked
+    final controlStateValue = isControlStateLocked && widget._deviceId != null &&
+            widget._channelId != null &&
+            widget._propertyId != null
+        ? _deviceControlStateService?.getDesiredValue(
+              widget._deviceId!,
+              widget._channelId!,
+              widget._propertyId!,
+            )
+        : null;
+
+    // Get overlay value if locked by intent
+    final overlayValue = isIntentLocked && widget._deviceId != null &&
+            widget._channelId != null &&
+            widget._propertyId != null
+        ? _intentOverlayService?.getOverlayValue(
+              widget._deviceId!,
+              widget._channelId!,
+              widget._propertyId!,
+            )
+        : null;
+
+    // Priority: control state desired value > overlay value > actual value
+    final displayValue = controlStateValue is num
+        ? controlStateValue.toDouble()
+        : (overlayValue is num
+            ? overlayValue.toDouble()
+            : (_white ?? min));
+
     return ColoredSlider(
-      value: _white ?? min,
+      value: displayValue,
       min: min,
       max: max,
-      enabled: widget._channel.on,
+      enabled: true, // Always enabled - don't disable during state machine to prevent blinking
       vertical: widget._vertical,
       trackWidth: widget._elementMaxSize,
       showThumb: false,
       onValueChanged: (double value) {
+        // Cancel any existing debounce timer
+        _debounceTimer?.cancel();
+
+        // Update state immediately for instant UI feedback
         setState(() {
           _white = value;
         });
 
-        widget._onValueChanged?.call(value);
+        // Set pending state in control state service for optimistic UI
+        if (widget._deviceId != null &&
+            widget._channelId != null &&
+            widget._propertyId != null) {
+          // Cancel any existing settling timer
+          final currentState = _deviceControlStateService?.getState(
+            widget._deviceId!,
+            widget._channelId!,
+            widget._propertyId!,
+          );
+          currentState?.cancelTimer();
+
+          _deviceControlStateService?.setPending(
+            widget._deviceId!,
+            widget._channelId!,
+            widget._propertyId!,
+            value,
+          );
+
+          // If device is off, also set on/off state to pending for optimistic UI
+          if (!widget._channel.on) {
+            final onProp = widget._channel.onProp;
+            final onState = _deviceControlStateService?.getState(
+              widget._deviceId!,
+              widget._channelId!,
+              onProp.id,
+            );
+            onState?.cancelTimer();
+
+            _deviceControlStateService?.setPending(
+              widget._deviceId!,
+              widget._channelId!,
+              onProp.id,
+              true,
+            );
+          }
+
+          // Update intent lock tracking state
+          final isIntentLocked = _intentOverlayService?.isPropertyLocked(
+                widget._deviceId!,
+                widget._channelId!,
+                widget._propertyId!,
+              ) ?? false;
+          _wasIntentLocked = isIntentLocked;
+        }
+
+        // Debounce the API call
+        _debounceTimer = Timer(
+          const Duration(milliseconds: 300),
+          () {
+            if (!mounted) return;
+            widget._onValueChanged?.call(value);
+          },
+        );
       },
       activeTrackColor: AppColors.white,
       inner: [
@@ -1217,26 +2437,143 @@ class _ChannelSwitchState extends State<ChannelSwitch> {
   }
 }
 
-class ChannelActualBrightness extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
+class ChannelActualBrightness extends StatefulWidget {
   final LightChannelView _channel;
+  final String? _deviceId;
+  final String? _channelId;
   final bool _showName;
 
   ChannelActualBrightness({
     super.key,
     required LightChannelView channel,
+    String? deviceId,
+    String? channelId,
     showName = false,
   })  : _channel = channel,
+        _deviceId = deviceId,
+        _channelId = channelId,
         _showName = showName;
+
+  @override
+  State<ChannelActualBrightness> createState() => _ChannelActualBrightnessState();
+}
+
+class _ChannelActualBrightnessState extends State<ChannelActualBrightness> {
+  final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
+  DeviceControlStateService? _deviceControlStateService;
+
+  @override
+  void initState() {
+    super.initState();
+    try {
+      _deviceControlStateService = locator<DeviceControlStateService>();
+      _deviceControlStateService?.addListener(_onControlStateChanged);
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    _deviceControlStateService?.removeListener(_onControlStateChanged);
+    super.dispose();
+  }
+
+  void _onControlStateChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    final ChannelPropertyView? property = _channel.brightnessProp;
+    final ChannelPropertyView? property = widget._channel.brightnessProp;
+
+    // Check if property is locked by control state service
+    final isLocked = widget._deviceId != null &&
+            widget._channelId != null &&
+            property != null
+        ? (_deviceControlStateService?.isLocked(
+              widget._deviceId!,
+              widget._channelId!,
+              property.id,
+            ) ?? false)
+        : false;
+
+    // Get desired value from control state service if locked
+    // Note: isLocked already ensures property is non-null
+    final desiredValue = isLocked
+        ? _deviceControlStateService?.getDesiredValue(
+              widget._deviceId!,
+              widget._channelId!,
+              property.id,
+            )
+        : null;
+
+    // Check on/off state with optimistic UI
+    bool isOn = widget._channel.on;
+    final onProp = widget._channel.onProp;
+    
+    if (widget._deviceId != null && widget._channelId != null) {
+      // Check control state service first (most reliable for optimistic UI)
+      final isOnOffLocked = _deviceControlStateService?.isLocked(
+            widget._deviceId!,
+            widget._channelId!,
+            onProp.id,
+          ) ?? false;
+
+      if (isOnOffLocked) {
+        // Use desired value from control state service for optimistic on/off state
+        final onOffDesiredValue = _deviceControlStateService?.getDesiredValue(
+              widget._deviceId!,
+              widget._channelId!,
+              onProp.id,
+            );
+        if (onOffDesiredValue is bool) {
+          isOn = onOffDesiredValue;
+        } else if (onOffDesiredValue is num) {
+          isOn = onOffDesiredValue > 0.5;
+        }
+      } else {
+        // Check intent overlay as fallback
+        try {
+          final intentOverlayService = locator<IntentOverlayService>();
+          if (intentOverlayService.isPropertyLocked(
+                widget._deviceId!,
+                widget._channelId!,
+                onProp.id,
+              )) {
+            final overlayValue = intentOverlayService.getOverlayValue(
+              widget._deviceId!,
+              widget._channelId!,
+              onProp.id,
+            );
+            if (overlayValue is bool) {
+              isOn = overlayValue;
+            }
+          }
+        } catch (_) {
+          // IntentOverlayService not available, use actual state
+        }
+      }
+    }
+
+    // Determine display value: desired value if locked, otherwise actual property value
+    final String displayText;
+    if (isOn) {
+      if (isLocked && desiredValue is num) {
+        // Show desired value immediately when user is dragging
+        displayText = desiredValue.round().toString();
+      } else if (property != null) {
+        displayText = ValueUtils.formatValue(property) ?? '-';
+      } else {
+        displayText = '-';
+      }
+    } else {
+      displayText = localizations.light_state_off;
+    }
 
     return ConstrainedBox(
       constraints: BoxConstraints(
@@ -1254,12 +2591,7 @@ class ChannelActualBrightness extends StatelessWidget {
             children: [
               RichText(
                 text: TextSpan(
-                  text: _channel.on
-                      ? (property != null
-                              ? ValueUtils.formatValue(property)
-                              : null) ??
-                          localizations.value_not_available
-                      : localizations.light_state_off,
+                  text: displayText,
                   style: TextStyle(
                     color: Theme.of(context).brightness == Brightness.light
                         ? AppTextColorLight.regular
@@ -1275,7 +2607,7 @@ class ChannelActualBrightness extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-              _channel.on
+              isOn
                   ? RichText(
                       text: TextSpan(
                         text: '%',
@@ -1299,9 +2631,9 @@ class ChannelActualBrightness extends StatelessWidget {
             ].whereType<Widget>().toList(),
           ),
           Text(
-            _showName
-                ? _channel.name
-                : _channel.on
+            widget._showName
+                ? widget._channel.name
+                : isOn
                     ? localizations.light_state_brightness_description
                     : localizations.light_state_off_description,
             style: TextStyle(
@@ -1696,19 +3028,51 @@ enum LightChannelModeType {
 
 class PropertyValueHelper {
   final DevicesService _service = locator<DevicesService>();
+  final DisplayRepository? _displayRepository;
+
+  PropertyValueHelper() : _displayRepository = _tryGetDisplayRepository();
+
+  static DisplayRepository? _tryGetDisplayRepository() {
+    try {
+      return locator<DisplayRepository>();
+    } catch (_) {
+      return null;
+    }
+  }
 
   Future<bool> setPropertyValue(
     BuildContext context,
     ChannelPropertyView property,
-    dynamic value,
-  ) async {
+    dynamic value, {
+    String? deviceId,
+    String? channelId,
+  }) async {
     final localizations = AppLocalizations.of(context)!;
 
     try {
-      bool res = await _service.setPropertyValue(
-        property.id,
-        value,
-      );
+      bool res;
+
+      // Use context-aware method if we have device and channel IDs
+      if (deviceId != null && channelId != null) {
+        final commandContext = PropertyCommandContext(
+          origin: 'panel.device',
+          displayId: _displayRepository?.display?.id,
+        );
+
+        res = await _service.setPropertyValueWithContext(
+          deviceId: deviceId,
+          channelId: channelId,
+          propertyId: property.id,
+          value: value,
+          context: commandContext,
+        );
+      } else {
+        // Fallback to simple method without context
+        res = await _service.setPropertyValue(
+          property.id,
+          value,
+        );
+      }
 
       if (!res && context.mounted) {
         AlertBar.showError(
@@ -1718,6 +3082,45 @@ class PropertyValueHelper {
       }
 
       return res;
+    } catch (e) {
+      if (!context.mounted) return false;
+
+      AlertBar.showError(
+        context,
+        message: localizations.action_failed,
+      );
+    }
+
+    return false;
+  }
+
+  Future<bool> setMultiplePropertyValues(
+    BuildContext context,
+    List<PropertyCommandItem> properties,
+  ) async {
+    final localizations = AppLocalizations.of(context)!;
+
+    try {
+      // Build context for batch command
+      final commandContext = PropertyCommandContext(
+        origin: 'panel.device',
+        displayId: _displayRepository?.display?.id,
+      );
+
+      // Send batch command
+      final success = await _service.setMultiplePropertyValues(
+        properties: properties,
+        context: commandContext,
+      );
+
+      if (!success && context.mounted) {
+        AlertBar.showError(
+          context,
+          message: localizations.action_failed,
+        );
+      }
+
+      return success;
     } catch (e) {
       if (!context.mounted) return false;
 

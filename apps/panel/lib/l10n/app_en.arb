@@ -28,6 +28,10 @@
   "@action_failed": {
     "description": "Error message when an action fails"
   },
+  "services_not_available": "Services not available",
+  "@services_not_available": {
+    "description": "Displayed when required services are not initialized"
+  },
   "button_ok": "Ok",
   "@button_ok": {
     "description": "Text for OK button"
@@ -156,6 +160,10 @@
   "@message_error_no_device_detail_preparing_description": {
     "description": "Indicates that the selected device has no detailed page available"
   },
+  "device_status_offline": "offline",
+  "@device_status_offline": {
+    "description": "Label shown when a device is offline/disconnected"
+  },
   "message_error_page_not_found_title": "Page Not Found!",
   "@message_error_page_not_found_title": {
     "description": "Title for error when a requested page cannot be found"
@@ -236,21 +244,93 @@
   "@electrical_power_over_power_description": {
     "description": "Detailed description of over power warning"
   },
+  "light_state_on": "On",
+  "@light_state_on": {
+    "description": "State when the light is turned on"
+  },
+  "light_state_on_description": "Light is on",
+  "@light_state_on_description": {
+    "description": "Detailed description of the light being turned on"
+  },
   "light_state_off": "Off",
   "@light_state_off": {
     "description": "State when the light is turned off"
   },
-  "light_state_off_description": "Light is turned off",
+  "light_state_failed": "Failed",
+  "@light_state_failed": {
+    "description": "State when the light command failed"
+  },
+  "light_state_off_description": "Light is off",
   "@light_state_off_description": {
-    "description": "Detailed description of the light being turned off"
+    "description": "Detailed description of the light being off (singular)"
   },
   "light_state_brightness_description": "Current brightness",
   "@light_state_brightness_description": {
     "description": "Description of the current brightness level"
   },
+  "light_state_mixed_description": "Devices have different values",
+  "@light_state_mixed_description": {
+    "description": "Description when devices in a group have different brightness values"
+  },
+  "light_state_syncing_description": "Syncing devices...",
+  "@light_state_syncing_description": {
+    "description": "Description shown while waiting for devices to sync after a command"
+  },
+  "light_state_not_synced_description": "Devices are not synced",
+  "@light_state_not_synced_description": {
+    "description": "Description shown when devices in a group are initially out of sync"
+  },
+  "light_role_main": "Main",
+  "@light_role_main": {
+    "description": "Name for main lighting role (ceiling lights, primary illumination)"
+  },
+  "light_role_task": "Task",
+  "@light_role_task": {
+    "description": "Name for task lighting role (desk lamps, reading lights)"
+  },
+  "light_role_ambient": "Ambient",
+  "@light_role_ambient": {
+    "description": "Name for ambient lighting role (wall sconces, mood lighting)"
+  },
+  "light_role_accent": "Accent",
+  "@light_role_accent": {
+    "description": "Name for accent lighting role (floor lamps, decorative lights)"
+  },
+  "light_role_night": "Night",
+  "@light_role_night": {
+    "description": "Name for night lighting role (nightlights, low-level lighting)"
+  },
+  "light_role_other": "Other",
+  "@light_role_other": {
+    "description": "Name for other/uncategorized lighting role"
+  },
+  "light_role_hidden": "Hidden",
+  "@light_role_hidden": {
+    "description": "Name for hidden lighting role (excluded from UI)"
+  },
+  "light_role_on_description": "Lights are on",
+  "@light_role_on_description": {
+    "description": "Description for role detail when lights are on (plural)"
+  },
+  "light_role_off_description": "Lights are off",
+  "@light_role_off_description": {
+    "description": "Description for role detail when all lights are off (plural)"
+  },
+  "light_role_not_synced_description": "Lights are not synced",
+  "@light_role_not_synced_description": {
+    "description": "Description for role detail when lights are out of sync (plural)"
+  },
+  "light_state_out_of_sync": "Out of sync",
+  "@light_state_out_of_sync": {
+    "description": "Short label for a device that is out of sync with the target value"
+  },
   "light_mode_off": "Off",
   "@light_mode_off": {
     "description": "Mode when the light is off"
+  },
+  "light_mode_on": "On",
+  "@light_mode_on": {
+    "description": "Mode when the light is on"
   },
   "light_mode_brightness": "Brightness",
   "@light_mode_brightness": {
@@ -1231,6 +1311,31 @@
   "domain_lights": "Lights",
   "@domain_lights": {
     "description": "Title for lights domain view in room navigation"
+  },
+  "domain_lights_other": "Other Lights",
+  "@domain_lights_other": {
+    "description": "Section header for uncategorized lights in lights domain view"
+  },
+  "domain_lights_empty_title": "No Lights",
+  "@domain_lights_empty_title": {
+    "description": "Title shown when no lights are found in the room"
+  },
+  "domain_lights_empty_description": "No lighting devices found in this room",
+  "@domain_lights_empty_description": {
+    "description": "Description shown when no lights are found in the room"
+  },
+  "domain_lights_count_on": "{count, plural, =1{1 light on} other{{count} lights on}}",
+  "@domain_lights_count_on": {
+    "description": "Count of lights that are on in a role group",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "domain_lights_all_off": "all off",
+  "@domain_lights_all_off": {
+    "description": "Text shown when all lights in a role group are off"
   },
   "domain_climate": "Climate",
   "@domain_climate": {

@@ -1,6 +1,3 @@
-import 'package:fastybird_smart_panel/features/deck/presentation/system_views/entry_overview.dart';
-import 'package:fastybird_smart_panel/features/deck/presentation/system_views/master_overview.dart';
-import 'package:fastybird_smart_panel/features/deck/presentation/system_views/room_overview.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:flutter/material.dart';
 

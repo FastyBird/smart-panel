@@ -13,6 +13,8 @@ class GenericDeviceView extends DeviceView with DeviceDeviceInformationMixin {
     super.roomId,
     super.zoneIds,
     required super.channels,
+    super.enabled,
+    super.isOnline,
     super.isValid,
     super.validationIssues,
   });

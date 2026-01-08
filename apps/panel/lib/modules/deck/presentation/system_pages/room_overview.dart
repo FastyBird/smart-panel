@@ -70,6 +70,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
     try {
       _devicesService = locator<DevicesService>();
+      _devicesService?.addListener(_onDevicesDataChanged);
     } catch (_) {}
 
     try {
@@ -78,6 +79,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
     try {
       _spacesService = locator<SpacesService>();
+      _spacesService?.addListener(_onSpacesDataChanged);
     } catch (_) {}
 
     // Listen for DeckService changes (e.g., when device categories are loaded)
@@ -97,9 +99,33 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
     }
   }
 
+  void _onDevicesDataChanged() {
+    // Devices updated (e.g., light on/off state changed, device assigned/unassigned)
+    // Refresh live device data and rebuild UI
+    if (mounted) {
+      _refreshLiveData();
+    }
+  }
+
+  void _onSpacesDataChanged() {
+    // Spaces data updated, refresh live data
+    if (mounted) {
+      _refreshLiveData();
+    }
+  }
+
+  Future<void> _refreshLiveData() async {
+    await _fetchLiveDeviceData();
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   @override
   void dispose() {
     _deckService.removeListener(_onDeckServiceChanged);
+    _devicesService?.removeListener(_onDevicesDataChanged);
+    _spacesService?.removeListener(_onSpacesDataChanged);
     super.dispose();
   }
 
@@ -327,8 +353,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
   }
 
   Future<void> _turnOffAllLights() async {
-    final localizations = AppLocalizations.of(context);
-
     // Get all lighting devices in this room
     final lightDevices =
         _devicesService?.getDevicesForRoomByCategory(_roomId, DevicesModuleDeviceCategory.lighting) ?? [];
@@ -354,9 +378,13 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
     // Refresh live data
     await _fetchLiveDeviceData();
+
+    if (!mounted) return;
+
     setState(() {});
 
-    // Show feedback
+    // Show feedback - get localizations after mounted check
+    final feedbackLocalizations = AppLocalizations.of(context);
     if (failCount == 0 && successCount > 0) {
       AlertBar.showSuccess(
         context,
@@ -370,7 +398,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
     } else if (failCount > 0) {
       AlertBar.showError(
         context,
-        message: localizations?.action_failed ?? 'Failed to turn off lights',
+        message: feedbackLocalizations?.action_failed ?? 'Failed to turn off lights',
       );
     }
   }

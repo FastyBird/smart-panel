@@ -1,6 +1,7 @@
 import { Repository } from 'typeorm';
 
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
@@ -8,7 +9,7 @@ import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { SetLightingRoleDto } from '../dto/lighting-role.dto';
 import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
-import { LightingRole, SPACES_MODULE_NAME } from '../spaces.constants';
+import { EventType, LightingRole, SPACES_MODULE_NAME } from '../spaces.constants';
 import { SpacesValidationException } from '../spaces.exceptions';
 
 import { SpacesService } from './spaces.service';
@@ -25,6 +26,46 @@ export interface LightTargetInfo {
 	hasColor: boolean;
 }
 
+/**
+ * Result of a single role operation in bulk update
+ */
+export interface BulkRoleResultItem {
+	deviceId: string;
+	channelId: string;
+	success: boolean;
+	role: LightingRole | null;
+	error: string | null;
+}
+
+/**
+ * Result of bulk role update operation
+ */
+export interface BulkRoleResult {
+	success: boolean;
+	totalCount: number;
+	successCount: number;
+	failureCount: number;
+	results: BulkRoleResultItem[];
+}
+
+/**
+ * Event payload for light target websocket events
+ * Uses snake_case to match API conventions
+ */
+export interface LightTargetEventPayload {
+	id: string;
+	space_id: string;
+	device_id: string;
+	device_name: string;
+	channel_id: string;
+	channel_name: string;
+	role: LightingRole | null;
+	priority: number;
+	has_brightness: boolean;
+	has_color_temp: boolean;
+	has_color: boolean;
+}
+
 @Injectable()
 export class SpaceLightingRoleService {
 	private readonly logger = createExtensionLogger(SPACES_MODULE_NAME, 'SpaceLightingRoleService');
@@ -35,6 +76,7 @@ export class SpaceLightingRoleService {
 		@InjectRepository(DeviceEntity)
 		private readonly deviceRepository: Repository<DeviceEntity>,
 		private readonly spacesService: SpacesService,
+		private readonly eventEmitter: EventEmitter2,
 	) {}
 
 	/**
@@ -93,24 +135,51 @@ export class SpaceLightingRoleService {
 			throw new SpacesValidationException(`Channel with id=${dto.channelId} not found on device ${dto.deviceId}`);
 		}
 
-		// Use upsert to atomically insert or update, avoiding race conditions
-		// that could cause unique constraint violations with concurrent requests
-		await this.repository.upsert(
-			{
-				spaceId,
-				deviceId: dto.deviceId,
-				channelId: dto.channelId,
-				role: dto.role,
-				priority: dto.priority ?? 0,
-			},
-			{
-				conflictPaths: ['spaceId', 'deviceId', 'channelId'],
-				skipUpdateIfNoValuesChanged: true,
-			},
-		);
+		let roleEntity: SpaceLightingRoleEntity | null = null;
+		let isUpdate = false;
+		let hasChanges = false;
 
-		// Fetch the saved entity to return
-		const roleEntity = await this.findOne(spaceId, dto.deviceId, dto.channelId);
+		const newRole = dto.role;
+		const newPriority = dto.priority ?? 0;
+
+		// Use a transaction to atomically check existence and upsert
+		// This prevents race conditions where concurrent requests could both see
+		// existingRole = null, causing both to emit LIGHT_TARGET_CREATED
+		await this.repository.manager.transaction(async (transactionalManager) => {
+			// Check if this is an update or create within the transaction
+			const existingRole = await transactionalManager.findOne(SpaceLightingRoleEntity, {
+				where: { spaceId, deviceId: dto.deviceId, channelId: dto.channelId },
+			});
+			isUpdate = existingRole !== null;
+
+			// Detect actual changes to avoid spurious events
+			if (existingRole) {
+				hasChanges = existingRole.role !== newRole || existingRole.priority !== newPriority;
+			} else {
+				hasChanges = true; // New record is always a change
+			}
+
+			// Upsert within the same transaction to maintain atomicity
+			await transactionalManager.upsert(
+				SpaceLightingRoleEntity,
+				{
+					spaceId,
+					deviceId: dto.deviceId,
+					channelId: dto.channelId,
+					role: newRole,
+					priority: newPriority,
+				},
+				{
+					conflictPaths: ['spaceId', 'deviceId', 'channelId'],
+					skipUpdateIfNoValuesChanged: true,
+				},
+			);
+
+			// Fetch the saved entity within the transaction
+			roleEntity = await transactionalManager.findOne(SpaceLightingRoleEntity, {
+				where: { spaceId, deviceId: dto.deviceId, channelId: dto.channelId },
+			});
+		});
 
 		if (!roleEntity) {
 			throw new SpacesValidationException(
@@ -118,28 +187,68 @@ export class SpaceLightingRoleService {
 			);
 		}
 
+		// Only emit event if values actually changed
+		if (hasChanges) {
+			// Emit event for websocket clients with full light target info
+			const eventPayload = await this.buildLightTargetEventPayload(
+				spaceId,
+				dto.deviceId,
+				dto.channelId,
+				dto.role,
+				dto.priority ?? 0,
+			);
+
+			if (eventPayload) {
+				const eventType = isUpdate ? EventType.LIGHT_TARGET_UPDATED : EventType.LIGHT_TARGET_CREATED;
+				this.eventEmitter.emit(eventType, eventPayload);
+			}
+		}
+
 		return roleEntity;
 	}
 
 	/**
 	 * Bulk set/update lighting role assignments
+	 * Returns detailed results for each role operation
 	 */
-	async bulkSetRoles(spaceId: string, roles: SetLightingRoleDto[]): Promise<number> {
+	async bulkSetRoles(spaceId: string, roles: SetLightingRoleDto[]): Promise<BulkRoleResult> {
 		// Verify space exists
 		await this.spacesService.getOneOrThrow(spaceId);
 
-		let updatedCount = 0;
+		const results: BulkRoleResultItem[] = [];
 
 		for (const dto of roles) {
 			try {
 				await this.setRole(spaceId, dto);
-				updatedCount++;
+				results.push({
+					deviceId: dto.deviceId,
+					channelId: dto.channelId,
+					success: true,
+					role: dto.role,
+					error: null,
+				});
 			} catch (error) {
-				this.logger.warn(`Failed to set role for device=${dto.deviceId} channel=${dto.channelId}: ${error}`);
+				const err = error as Error;
+				this.logger.warn(`Failed to set role for device=${dto.deviceId} channel=${dto.channelId}: ${err.message}`);
+				results.push({
+					deviceId: dto.deviceId,
+					channelId: dto.channelId,
+					success: false,
+					role: null,
+					error: err.message,
+				});
 			}
 		}
 
-		return updatedCount;
+		const successCount = results.filter((r) => r.success).length;
+
+		return {
+			success: successCount === results.length,
+			totalCount: results.length,
+			successCount,
+			failureCount: results.length - successCount,
+			results,
+		};
 	}
 
 	/**
@@ -153,6 +262,14 @@ export class SpaceLightingRoleService {
 
 		if (role) {
 			await this.repository.remove(role);
+
+			// Emit event for websocket clients with the light target ID
+			this.eventEmitter.emit(EventType.LIGHT_TARGET_DELETED, {
+				id: `${deviceId}:${channelId}`,
+				space_id: spaceId,
+				device_id: deviceId,
+				channel_id: channelId,
+			});
 		}
 	}
 
@@ -279,5 +396,55 @@ export class SpaceLightingRoleService {
 		}
 
 		return map;
+	}
+
+	/**
+	 * Build event payload for a light target with all required fields
+	 */
+	private async buildLightTargetEventPayload(
+		spaceId: string,
+		deviceId: string,
+		channelId: string,
+		role: LightingRole | null,
+		priority: number,
+	): Promise<LightTargetEventPayload | null> {
+		// Fetch device with channels and properties
+		const device = await this.deviceRepository.findOne({
+			where: { id: deviceId },
+			relations: ['channels', 'channels.properties'],
+		});
+
+		if (!device) {
+			this.logger.warn(`Device ${deviceId} not found when building event payload`);
+			return null;
+		}
+
+		const channel = device.channels?.find((ch) => ch.id === channelId);
+
+		if (!channel) {
+			this.logger.warn(`Channel ${channelId} not found when building event payload`);
+			return null;
+		}
+
+		const properties = channel.properties ?? [];
+		const hasBrightness = properties.some((p) => p.category === PropertyCategory.BRIGHTNESS);
+		const hasColorTemp = properties.some((p) => p.category === PropertyCategory.COLOR_TEMPERATURE);
+		const hasColor =
+			properties.some((p) => p.category === PropertyCategory.HUE) ||
+			properties.some((p) => p.category === PropertyCategory.SATURATION);
+
+		return {
+			id: `${deviceId}:${channelId}`,
+			space_id: spaceId,
+			device_id: deviceId,
+			device_name: device.name,
+			channel_id: channelId,
+			channel_name: channel.name,
+			role,
+			priority,
+			has_brightness: hasBrightness,
+			has_color_temp: hasColorTemp,
+			has_color: hasColor,
+		};
 	}
 }

@@ -1,6 +1,4 @@
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/page.dart';
-import 'package:fastybird_smart_panel/features/deck/mappers/system_view.dart';
-import 'package:fastybird_smart_panel/features/deck/presentation/domain_views/domain_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:flutter/material.dart';
 
@@ -13,8 +11,21 @@ Widget buildDeckItemWidget(DeckItem item) {
     case SystemViewItem systemView:
       return buildSystemViewWidget(systemView);
     case DomainViewItem domainView:
-      return DomainViewPage(viewItem: domainView);
+      return _buildDomainViewWidget(domainView);
     case DashboardPageItem pageItem:
       return buildPageWidget(pageItem.pageView);
+  }
+}
+
+/// Builds the appropriate widget for a domain view based on its type.
+Widget _buildDomainViewWidget(DomainViewItem domainView) {
+  switch (domainView.domainType) {
+    case DomainType.lights:
+      return LightsDomainViewPage(viewItem: domainView);
+    case DomainType.climate:
+    case DomainType.media:
+    case DomainType.sensors:
+      // Use placeholder for other domains (to be implemented)
+      return DomainViewPage(viewItem: domainView);
   }
 }

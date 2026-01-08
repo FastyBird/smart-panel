@@ -157,6 +157,38 @@ export class SceneActionsService {
 
 		const filteredUpdate = omitBy(dtoInstance, isUndefined);
 
+		// Check if any entity fields are actually being changed by comparing with existing values
+		const entityFieldsChanged = Object.keys(filteredUpdate).some((key) => {
+			const newValue = (filteredUpdate as Record<string, unknown>)[key];
+			const existingValue = (existingAction as unknown as Record<string, unknown>)[key];
+
+			// Deep comparison for arrays
+			if (Array.isArray(newValue) && Array.isArray(existingValue)) {
+				return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+			}
+
+			// Deep comparison for plain objects
+			if (
+				typeof newValue === 'object' &&
+				typeof existingValue === 'object' &&
+				newValue !== null &&
+				existingValue !== null
+			) {
+				return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+			}
+
+			// Handle null/undefined comparison
+			if (newValue === null && existingValue === null) {
+				return false;
+			}
+			if (newValue === null || existingValue === null) {
+				return true;
+			}
+
+			// Simple value comparison
+			return newValue !== existingValue;
+		});
+
 		const mergedAction = repository.merge(existingAction, filteredUpdate as any);
 		mergedAction.updatedAt = new Date();
 
@@ -164,7 +196,9 @@ export class SceneActionsService {
 
 		const result = await this.getOneOrThrow<TAction>(savedAction.id);
 
-		this.eventEmitter.emit(EventType.SCENE_ACTION_UPDATED, result);
+		if (entityFieldsChanged) {
+			this.eventEmitter.emit(EventType.SCENE_ACTION_UPDATED, result);
+		}
 
 		return result;
 	}

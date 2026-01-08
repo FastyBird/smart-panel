@@ -137,6 +137,12 @@ abstract class AppLocalizations {
   /// **'Action could not be processed'**
   String get action_failed;
 
+  /// Displayed when required services are not initialized
+  ///
+  /// In en, this message translates to:
+  /// **'Services not available'**
+  String get services_not_available;
+
   /// Text for OK button
   ///
   /// In en, this message translates to:
@@ -329,6 +335,12 @@ abstract class AppLocalizations {
   /// **'For selected device detail page is not ready yet.'**
   String get message_error_no_device_detail_preparing_description;
 
+  /// Label shown when a device is offline/disconnected
+  ///
+  /// In en, this message translates to:
+  /// **'offline'**
+  String get device_status_offline;
+
   /// Title for error when a requested page cannot be found
   ///
   /// In en, this message translates to:
@@ -449,16 +461,34 @@ abstract class AppLocalizations {
   /// **'Warning: Power consumption is too high'**
   String get electrical_power_over_power_description;
 
+  /// State when the light is turned on
+  ///
+  /// In en, this message translates to:
+  /// **'On'**
+  String get light_state_on;
+
+  /// Detailed description of the light being turned on
+  ///
+  /// In en, this message translates to:
+  /// **'Light is on'**
+  String get light_state_on_description;
+
   /// State when the light is turned off
   ///
   /// In en, this message translates to:
   /// **'Off'**
   String get light_state_off;
 
-  /// Detailed description of the light being turned off
+  /// State when the light command failed
   ///
   /// In en, this message translates to:
-  /// **'Light is turned off'**
+  /// **'Failed'**
+  String get light_state_failed;
+
+  /// Detailed description of the light being off (singular)
+  ///
+  /// In en, this message translates to:
+  /// **'Light is off'**
   String get light_state_off_description;
 
   /// Description of the current brightness level
@@ -467,11 +497,101 @@ abstract class AppLocalizations {
   /// **'Current brightness'**
   String get light_state_brightness_description;
 
+  /// Description when devices in a group have different brightness values
+  ///
+  /// In en, this message translates to:
+  /// **'Devices have different values'**
+  String get light_state_mixed_description;
+
+  /// Description shown while waiting for devices to sync after a command
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing devices...'**
+  String get light_state_syncing_description;
+
+  /// Description shown when devices in a group are initially out of sync
+  ///
+  /// In en, this message translates to:
+  /// **'Devices are not synced'**
+  String get light_state_not_synced_description;
+
+  /// Name for main lighting role (ceiling lights, primary illumination)
+  ///
+  /// In en, this message translates to:
+  /// **'Main'**
+  String get light_role_main;
+
+  /// Name for task lighting role (desk lamps, reading lights)
+  ///
+  /// In en, this message translates to:
+  /// **'Task'**
+  String get light_role_task;
+
+  /// Name for ambient lighting role (wall sconces, mood lighting)
+  ///
+  /// In en, this message translates to:
+  /// **'Ambient'**
+  String get light_role_ambient;
+
+  /// Name for accent lighting role (floor lamps, decorative lights)
+  ///
+  /// In en, this message translates to:
+  /// **'Accent'**
+  String get light_role_accent;
+
+  /// Name for night lighting role (nightlights, low-level lighting)
+  ///
+  /// In en, this message translates to:
+  /// **'Night'**
+  String get light_role_night;
+
+  /// Name for other/uncategorized lighting role
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get light_role_other;
+
+  /// Name for hidden lighting role (excluded from UI)
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden'**
+  String get light_role_hidden;
+
+  /// Description for role detail when lights are on (plural)
+  ///
+  /// In en, this message translates to:
+  /// **'Lights are on'**
+  String get light_role_on_description;
+
+  /// Description for role detail when all lights are off (plural)
+  ///
+  /// In en, this message translates to:
+  /// **'Lights are off'**
+  String get light_role_off_description;
+
+  /// Description for role detail when lights are out of sync (plural)
+  ///
+  /// In en, this message translates to:
+  /// **'Lights are not synced'**
+  String get light_role_not_synced_description;
+
+  /// Short label for a device that is out of sync with the target value
+  ///
+  /// In en, this message translates to:
+  /// **'Out of sync'**
+  String get light_state_out_of_sync;
+
   /// Mode when the light is off
   ///
   /// In en, this message translates to:
   /// **'Off'**
   String get light_mode_off;
+
+  /// Mode when the light is on
+  ///
+  /// In en, this message translates to:
+  /// **'On'**
+  String get light_mode_on;
 
   /// Mode for adjusting brightness
   ///
@@ -1900,6 +2020,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Lights'**
   String get domain_lights;
+
+  /// Section header for uncategorized lights in lights domain view
+  ///
+  /// In en, this message translates to:
+  /// **'Other Lights'**
+  String get domain_lights_other;
+
+  /// Title shown when no lights are found in the room
+  ///
+  /// In en, this message translates to:
+  /// **'No Lights'**
+  String get domain_lights_empty_title;
+
+  /// Description shown when no lights are found in the room
+  ///
+  /// In en, this message translates to:
+  /// **'No lighting devices found in this room'**
+  String get domain_lights_empty_description;
+
+  /// Count of lights that are on in a role group
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 light on} other{{count} lights on}}'**
+  String domain_lights_count_on(int count);
+
+  /// Text shown when all lights in a role group are off
+  ///
+  /// In en, this message translates to:
+  /// **'all off'**
+  String get domain_lights_all_off;
 
   /// Title for climate domain view in room navigation
   ///

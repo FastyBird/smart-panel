@@ -38,3 +38,7 @@ var/data/extensions.ts
 var/db/database.sqlite
 var/db/database.sqlite-journal
 logs/smart-panel-*
+
+# Auto Claude data directory
+.auto-claude/
+.claude_settings.json

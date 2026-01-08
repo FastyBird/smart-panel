@@ -259,9 +259,53 @@ export class DevicesService {
 		const zoneIds = dtoInstance.zone_ids;
 		delete dtoInstance.zone_ids;
 
+		// Get current zone IDs before update (for change detection)
+		const currentZones = zoneIds !== undefined ? await this.deviceZonesService.getDeviceZones(device.id) : [];
+		const currentZoneIds = currentZones.map((z) => z.id).sort();
+
 		const repository: Repository<TDevice> = this.dataSource.getRepository(mapping.class);
 
-		Object.assign(device, omitBy(toInstance(mapping.class, dtoInstance), isUndefined));
+		// Get the fields to update from DTO (excluding undefined values)
+		const updateFields = omitBy(toInstance(mapping.class, dtoInstance), isUndefined);
+
+		// Check if any entity fields are actually being changed by comparing with existing values
+		const entityFieldsChanged =
+			Object.keys(updateFields).some((key) => {
+				const newValue = (updateFields as Record<string, unknown>)[key];
+				const existingValue = (device as unknown as Record<string, unknown>)[key];
+
+				// Deep comparison for arrays
+				if (Array.isArray(newValue) && Array.isArray(existingValue)) {
+					return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+				}
+
+				// Deep comparison for plain objects
+				if (
+					typeof newValue === 'object' &&
+					typeof existingValue === 'object' &&
+					newValue !== null &&
+					existingValue !== null
+				) {
+					return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+				}
+
+				// Handle null/undefined comparison
+				if (newValue === null && existingValue === null) {
+					return false;
+				}
+				if (newValue === null || existingValue === null) {
+					return true;
+				}
+
+				// Simple value comparison
+				return newValue !== existingValue;
+			}) ||
+			// Explicit check for room_id being set to null (toInstance drops null values)
+			(dtoInstance.room_id !== undefined && device.roomId !== (dtoInstance.room_id ?? null)) ||
+			// Explicit check for zone_ids changes (zone_ids is deleted from dtoInstance before updateFields is computed)
+			(zoneIds !== undefined && JSON.stringify(currentZoneIds) !== JSON.stringify([...(zoneIds ?? [])].sort()));
+
+		Object.assign(device, updateFields);
 
 		// Explicitly handle room_id being set to null (toInstance with exposeUnsetFields:false drops null values)
 		if (dtoInstance.room_id === null) {
@@ -285,7 +329,9 @@ export class DevicesService {
 
 		this.logger.debug(`Successfully updated device with id=${updatedDevice.id}`);
 
-		this.eventEmitter.emit(EventType.DEVICE_UPDATED, updatedDevice);
+		if (entityFieldsChanged) {
+			this.eventEmitter.emit(EventType.DEVICE_UPDATED, updatedDevice);
+		}
 
 		return updatedDevice;
 	}

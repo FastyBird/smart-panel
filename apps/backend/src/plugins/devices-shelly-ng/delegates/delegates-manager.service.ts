@@ -403,7 +403,7 @@ export class DelegatesManagerService {
 						return;
 					}
 
-					await comp.goToPosition(clampNumber(n, 0, 100));
+					await comp.goToPosition(Math.round(clampNumber(n, 0, 100)));
 
 					return true;
 				},
@@ -524,7 +524,7 @@ export class DelegatesManagerService {
 							return;
 						}
 
-						await comp.set(comp.output, clampNumber(n, 0, 100));
+						await comp.set(true, Math.round(clampNumber(n, 0, 100)));
 
 						return true;
 					},
@@ -616,7 +616,7 @@ export class DelegatesManagerService {
 							return;
 						}
 
-						await comp.set(comp.output, clampNumber(n, 0, 100));
+						await comp.set(true, Math.round(clampNumber(n, 0, 100)));
 
 						return true;
 					},
@@ -688,7 +688,7 @@ export class DelegatesManagerService {
 							return;
 						}
 
-						await comp.set(comp.output, comp.brightness, [clampNumber(n, 0, 255), comp.rgb[1], comp.rgb[2]]);
+						await comp.set(true, comp.brightness, [Math.round(clampNumber(n, 0, 255)), comp.rgb[1], comp.rgb[2]]);
 
 						return true;
 					},
@@ -707,7 +707,7 @@ export class DelegatesManagerService {
 							return;
 						}
 
-						await comp.set(comp.output, comp.brightness, [comp.rgb[0], clampNumber(n, 0, 255), comp.rgb[2]]);
+						await comp.set(true, comp.brightness, [comp.rgb[0], Math.round(clampNumber(n, 0, 255)), comp.rgb[2]]);
 
 						return true;
 					},
@@ -726,7 +726,7 @@ export class DelegatesManagerService {
 							return;
 						}
 
-						await comp.set(comp.output, comp.brightness, [comp.rgb[0], comp.rgb[1], clampNumber(n, 0, 255)]);
+						await comp.set(true, comp.brightness, [comp.rgb[0], comp.rgb[1], Math.round(clampNumber(n, 0, 255))]);
 
 						return true;
 					},
@@ -740,7 +740,13 @@ export class DelegatesManagerService {
 				const colorGreenUpdate = updates.find((u) => u.property.identifier === 'rgb:green');
 				const colorBlueUpdate = updates.find((u) => u.property.identifier === 'rgb:blue');
 
-				const outputValue = outputUpdate ? coerceBooleanSafe(outputUpdate.val) : coerceBooleanSafe(comp.output);
+				// If brightness or color is being set, default to turning on unless explicitly set to false
+				const hasBrightnessOrColorUpdate = brightnessUpdate || colorRedUpdate || colorGreenUpdate || colorBlueUpdate;
+				const outputValue = outputUpdate
+					? coerceBooleanSafe(outputUpdate.val)
+					: hasBrightnessOrColorUpdate
+						? true
+						: coerceBooleanSafe(comp.output);
 				const brightnessValue = brightnessUpdate
 					? coerceNumberSafe(brightnessUpdate.val)
 					: coerceNumberSafe(comp.brightness);
@@ -767,10 +773,10 @@ export class DelegatesManagerService {
 					return;
 				}
 
-				await comp.set(outputValue, clampNumber(brightnessValue, 0, 100), [
-					clampNumber(colorRedValue, 0, 255),
-					clampNumber(colorGreenValue, 0, 255),
-					clampNumber(colorBlueValue, 0, 255),
+				await comp.set(outputValue, Math.round(clampNumber(brightnessValue, 0, 100)), [
+					Math.round(clampNumber(colorRedValue, 0, 255)),
+					Math.round(clampNumber(colorGreenValue, 0, 255)),
+					Math.round(clampNumber(colorBlueValue, 0, 255)),
 				]);
 
 				return true;
@@ -864,7 +870,7 @@ export class DelegatesManagerService {
 							return;
 						}
 
-						await comp.set(comp.output, clampNumber(n, 0, 100));
+						await comp.set(true, Math.round(clampNumber(n, 0, 100)));
 
 						return true;
 					},
@@ -936,7 +942,7 @@ export class DelegatesManagerService {
 							return;
 						}
 
-						await comp.set(comp.output, comp.brightness, [clampNumber(n, 0, 255), comp.rgb[1], comp.rgb[2]]);
+						await comp.set(true, comp.brightness, [Math.round(clampNumber(n, 0, 255)), comp.rgb[1], comp.rgb[2]]);
 
 						return true;
 					},
@@ -955,7 +961,7 @@ export class DelegatesManagerService {
 							return;
 						}
 
-						await comp.set(comp.output, comp.brightness, [comp.rgb[0], clampNumber(n, 0, 255), comp.rgb[2]]);
+						await comp.set(true, comp.brightness, [comp.rgb[0], Math.round(clampNumber(n, 0, 255)), comp.rgb[2]]);
 
 						return true;
 					},
@@ -974,7 +980,7 @@ export class DelegatesManagerService {
 							return;
 						}
 
-						await comp.set(comp.output, comp.brightness, [comp.rgb[0], comp.rgb[1], clampNumber(n, 0, 255)]);
+						await comp.set(true, comp.brightness, [comp.rgb[0], comp.rgb[1], Math.round(clampNumber(n, 0, 255))]);
 
 						return true;
 					},
@@ -1013,7 +1019,7 @@ export class DelegatesManagerService {
 							return;
 						}
 
-						await comp.set(comp.output, clampNumber(n, 0, 255));
+						await comp.set(true, Math.round(clampNumber(n, 0, 255)));
 
 						return true;
 					},
@@ -1028,7 +1034,14 @@ export class DelegatesManagerService {
 				const colorBlueUpdate = updates.find((u) => u.property.identifier === 'rgb:blue');
 				const whiteUpdate = updates.find((u) => u.property.identifier === 'white');
 
-				const outputValue = outputUpdate ? coerceBooleanSafe(outputUpdate.val) : coerceBooleanSafe(comp.output);
+				// If brightness, color, or white is being set, default to turning on unless explicitly set to false
+				const hasBrightnessOrColorUpdate =
+					brightnessUpdate || colorRedUpdate || colorGreenUpdate || colorBlueUpdate || whiteUpdate;
+				const outputValue = outputUpdate
+					? coerceBooleanSafe(outputUpdate.val)
+					: hasBrightnessOrColorUpdate
+						? true
+						: coerceBooleanSafe(comp.output);
 				const brightnessValue = brightnessUpdate
 					? coerceNumberSafe(brightnessUpdate.val)
 					: coerceNumberSafe(comp.brightness);
@@ -1060,13 +1073,13 @@ export class DelegatesManagerService {
 
 				await comp.set(
 					outputValue,
-					clampNumber(brightnessValue, 0, 100),
+					Math.round(clampNumber(brightnessValue, 0, 100)),
 					[
-						clampNumber(colorRedValue, 0, 255),
-						clampNumber(colorGreenValue, 0, 255),
-						clampNumber(colorBlueValue, 0, 255),
+						Math.round(clampNumber(colorRedValue, 0, 255)),
+						Math.round(clampNumber(colorGreenValue, 0, 255)),
+						Math.round(clampNumber(colorBlueValue, 0, 255)),
 					],
-					clampNumber(whiteValue, 0, 255),
+					Math.round(clampNumber(whiteValue, 0, 255)),
 				);
 
 				return true;
@@ -1157,7 +1170,7 @@ export class DelegatesManagerService {
 							return;
 						}
 
-						await comp.set(comp.output, clampNumber(n, 0, 100));
+						await comp.set(true, Math.round(clampNumber(n, 0, 100)));
 
 						return true;
 					},
@@ -1196,7 +1209,7 @@ export class DelegatesManagerService {
 							return;
 						}
 
-						await comp.set(comp.output, clampNumber(n, 2_700, 6_500));
+						await comp.set(true, Math.round(clampNumber(n, 2_700, 6_500)));
 
 						return true;
 					},
@@ -1208,7 +1221,13 @@ export class DelegatesManagerService {
 				const brightnessUpdate = updates.find((u) => u.property.identifier === 'brightness');
 				const ctUpdate = updates.find((u) => u.property.identifier === 'temperature');
 
-				const outputValue = outputUpdate ? coerceBooleanSafe(outputUpdate.val) : comp.output;
+				// If brightness or color temperature is being set, default to turning on unless explicitly set to false
+				const hasBrightnessOrCtUpdate = brightnessUpdate || ctUpdate;
+				const outputValue = outputUpdate
+					? coerceBooleanSafe(outputUpdate.val)
+					: hasBrightnessOrCtUpdate
+						? true
+						: comp.output;
 				const brightnessValue = brightnessUpdate ? coerceNumberSafe(brightnessUpdate.val) : comp.brightness;
 				const ctValue = ctUpdate ? coerceNumberSafe(ctUpdate.val) : comp.ct;
 
@@ -1225,7 +1244,11 @@ export class DelegatesManagerService {
 					return;
 				}
 
-				await comp.set(outputValue, clampNumber(brightnessValue, 0, 100), clampNumber(ctValue, 2_700, 6_500));
+				await comp.set(
+					outputValue,
+					Math.round(clampNumber(brightnessValue, 0, 100)),
+					Math.round(clampNumber(ctValue, 2_700, 6_500)),
+				);
 
 				return true;
 			});

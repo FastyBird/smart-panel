@@ -43,6 +43,8 @@ class _AppBodyState extends State<AppBody> {
 
   Offset? _swipeStartPosition;
   bool _isSwipingVertically = false;
+  bool _swipeActionTriggered = false;
+  bool _isSettingsOpen = false;
 
   @override
   void initState() {
@@ -152,6 +154,17 @@ class _AppBodyState extends State<AppBody> {
             _resetInactivityTimer();
           },
         ),
+        SettingsScreenObserver(
+          onSettingsPushed: () {
+            // Track that settings is open
+            _isSettingsOpen = true;
+          },
+          onSettingsPopped: () {
+            // Reset swipe action flag and track that settings is closed
+            _swipeActionTriggered = false;
+            _isSettingsOpen = false;
+          },
+        ),
       ],
       builder: (context, child) {
         return GestureDetector(
@@ -159,10 +172,12 @@ class _AppBodyState extends State<AppBody> {
           onTap: () => _resetInactivityTimer(),
           onPanDown: (DragDownDetails details) => _resetInactivityTimer(),
           onPanStart: (details) {
+            // Reset flag at the start of each new gesture
+            _swipeActionTriggered = false;
             _swipeStartPosition = details.globalPosition;
           },
           onPanUpdate: (details) {
-            if (_swipeStartPosition == null) return;
+            if (_swipeStartPosition == null || _swipeActionTriggered) return;
 
             final delta = details.globalPosition - _swipeStartPosition!;
             // Check if the swipe is vertical enough
@@ -173,8 +188,13 @@ class _AppBodyState extends State<AppBody> {
             // Once confirmed vertical, decide swipe direction
             if (_isSwipingVertically) {
               if (delta.dy > 20) {
-                // Swipe down detected
-                _navigator.navigateTo(AppRouteNames.settings);
+                // Swipe down detected - only trigger once per gesture
+                // Set flag immediately to prevent multiple triggers
+                _swipeActionTriggered = true;
+                // Check if settings is already open to prevent multiple navigations
+                if (!_isSettingsOpen) {
+                  _navigator.navigateTo(AppRouteNames.settings);
+                }
               } else if (delta.dy < -20) {
                 // Swipe up detected
               }
@@ -183,6 +203,12 @@ class _AppBodyState extends State<AppBody> {
           onPanEnd: (_) {
             _swipeStartPosition = null;
             _isSwipingVertically = false;
+            _swipeActionTriggered = false;
+          },
+          onPanCancel: () {
+            _swipeStartPosition = null;
+            _isSwipingVertically = false;
+            _swipeActionTriggered = false;
           },
           child: child,
         );
@@ -251,6 +277,34 @@ class OverlayScreenObserver extends NavigatorObserver {
     if (route.settings.name != null &&
         ['reboot', 'power_off', 'reset'].contains(route.settings.name)) {
       onOverlayScreenPopped();
+    }
+
+    super.didPop(route, previousRoute);
+  }
+}
+
+class SettingsScreenObserver extends NavigatorObserver {
+  final VoidCallback onSettingsPushed;
+  final VoidCallback onSettingsPopped;
+
+  SettingsScreenObserver({
+    required this.onSettingsPushed,
+    required this.onSettingsPopped,
+  });
+
+  @override
+  void didPush(Route route, Route? previousRoute) {
+    if (route.settings.name == AppRouteNames.settings) {
+      onSettingsPushed();
+    }
+
+    super.didPush(route, previousRoute);
+  }
+
+  @override
+  void didPop(Route route, Route? previousRoute) {
+    if (route.settings.name == AppRouteNames.settings) {
+      onSettingsPopped();
     }
 
     super.didPop(route, previousRoute);

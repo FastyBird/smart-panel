@@ -2,6 +2,7 @@
 import { Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
@@ -20,6 +21,10 @@ describe('SpaceLightingRoleService', () => {
 	let roleRepository: jest.Mocked<Repository<SpaceLightingRoleEntity>>;
 	let deviceRepository: jest.Mocked<Repository<DeviceEntity>>;
 	let spacesService: jest.Mocked<SpacesService>;
+
+	// Mock functions for transactional manager - configurable per test
+	let transactionalFindOne: jest.Mock;
+	let transactionalUpsert: jest.Mock;
 
 	const mockSpace: SpaceEntity = {
 		id: uuid(),
@@ -116,6 +121,14 @@ describe('SpaceLightingRoleService', () => {
 		mockRole.role = LightingRole.MAIN;
 		mockRole.priority = 0;
 
+		// Initialize transactional manager mocks
+		// Default: first findOne returns null (create case), second returns mockRole
+		transactionalFindOne = jest
+			.fn()
+			.mockResolvedValueOnce(null) // First call: check if exists (returns null = create)
+			.mockResolvedValue(mockRole); // Second call: fetch after upsert
+		transactionalUpsert = jest.fn().mockResolvedValue(undefined);
+
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				SpaceLightingRoleService,
@@ -128,6 +141,24 @@ describe('SpaceLightingRoleService', () => {
 						save: jest.fn().mockImplementation((entity: SpaceLightingRoleEntity) => entity),
 						upsert: jest.fn().mockResolvedValue(undefined),
 						remove: jest.fn().mockResolvedValue(undefined),
+						manager: {
+							transaction: jest
+								.fn()
+								.mockImplementation(
+									(
+										callback: (manager: {
+											findOne: typeof transactionalFindOne;
+											upsert: typeof transactionalUpsert;
+										}) => Promise<void>,
+									) => {
+										const transactionalManager = {
+											findOne: transactionalFindOne,
+											upsert: transactionalUpsert,
+										};
+										return callback(transactionalManager);
+									},
+								),
+						},
 					},
 				},
 				{
@@ -141,6 +172,12 @@ describe('SpaceLightingRoleService', () => {
 					useValue: {
 						getOneOrThrow: jest.fn().mockResolvedValue(mockSpace),
 						findDevicesBySpace: jest.fn().mockResolvedValue([mockDevice]),
+					},
+				},
+				{
+					provide: EventEmitter2,
+					useValue: {
+						emit: jest.fn(),
 					},
 				},
 			],
@@ -167,8 +204,8 @@ describe('SpaceLightingRoleService', () => {
 
 	describe('setRole', () => {
 		it('should create a new role assignment', async () => {
-			// After upsert, findOne returns the created role
-			roleRepository.findOne.mockResolvedValue(mockRole);
+			// Default mocks: first findOne returns null (create), second returns mockRole
+			// This is already set up in beforeEach
 
 			const dto = {
 				deviceId: mockDevice.id,
@@ -180,7 +217,8 @@ describe('SpaceLightingRoleService', () => {
 			const result = await service.setRole(mockSpace.id, dto);
 
 			expect(result.role).toBe(LightingRole.MAIN);
-			expect(roleRepository.upsert).toHaveBeenCalledWith(
+			expect(transactionalUpsert).toHaveBeenCalledWith(
+				SpaceLightingRoleEntity,
 				{
 					spaceId: mockSpace.id,
 					deviceId: dto.deviceId,
@@ -197,7 +235,12 @@ describe('SpaceLightingRoleService', () => {
 
 		it('should update an existing role assignment', async () => {
 			const updatedRole = { ...mockRole, role: LightingRole.AMBIENT, priority: 1 };
-			roleRepository.findOne.mockResolvedValue(updatedRole);
+
+			// Configure mocks for update case: first findOne returns existing role, second returns updated role
+			transactionalFindOne
+				.mockReset()
+				.mockResolvedValueOnce(mockRole) // First call: exists (update case)
+				.mockResolvedValue(updatedRole); // Second call: fetch after upsert
 
 			const dto = {
 				deviceId: mockDevice.id,
@@ -209,7 +252,40 @@ describe('SpaceLightingRoleService', () => {
 			const result = await service.setRole(mockSpace.id, dto);
 
 			expect(result.role).toBe(LightingRole.AMBIENT);
-			expect(roleRepository.upsert).toHaveBeenCalled();
+			expect(transactionalUpsert).toHaveBeenCalled();
+		});
+
+		it('should handle update with no value changes', async () => {
+			// Configure mocks: role exists with same values, upsert returns same role
+			transactionalFindOne
+				.mockReset()
+				.mockResolvedValueOnce(mockRole) // First call: exists (update case)
+				.mockResolvedValue(mockRole); // Second call: fetch after upsert (unchanged)
+
+			const dto = {
+				deviceId: mockDevice.id,
+				channelId: mockChannel.id,
+				role: mockRole.role, // Same role as existing
+				priority: mockRole.priority, // Same priority as existing
+			};
+
+			const result = await service.setRole(mockSpace.id, dto);
+
+			// Should succeed and return the existing role
+			expect(result.role).toBe(mockRole.role);
+			expect(result.priority).toBe(mockRole.priority);
+
+			// Upsert should still be called with skipUpdateIfNoValuesChanged option
+			expect(transactionalUpsert).toHaveBeenCalledWith(
+				SpaceLightingRoleEntity,
+				expect.objectContaining({
+					role: mockRole.role,
+					priority: mockRole.priority,
+				}),
+				expect.objectContaining({
+					skipUpdateIfNoValuesChanged: true,
+				}),
+			);
 		});
 
 		it('should throw validation exception when device not found', async () => {
@@ -266,15 +342,25 @@ describe('SpaceLightingRoleService', () => {
 
 			const result = await service.bulkSetRoles(mockSpace.id, roles);
 
-			expect(result).toBe(1);
+			expect(result.success).toBe(true);
+			expect(result.totalCount).toBe(1);
+			expect(result.successCount).toBe(1);
+			expect(result.failureCount).toBe(0);
+			expect(result.results).toHaveLength(1);
+			expect(result.results[0].success).toBe(true);
+			expect(result.results[0].deviceId).toBe(mockDevice.id);
+			expect(result.results[0].channelId).toBe(mockChannel.id);
+			expect(result.results[0].role).toBe(LightingRole.MAIN);
 		});
 
-		it('should continue on errors and return count of successful updates', async () => {
+		it('should continue on errors and return detailed results', async () => {
 			// First call succeeds (device found, findOne returns role)
 			// Second call fails (device not found)
 			deviceRepository.findOne.mockResolvedValueOnce(mockDevice).mockResolvedValueOnce(null);
 			roleRepository.findOne.mockResolvedValue(mockRole);
 
+			const failingDeviceId = uuid();
+			const failingChannelId = uuid();
 			const roles = [
 				{
 					deviceId: mockDevice.id,
@@ -282,15 +368,24 @@ describe('SpaceLightingRoleService', () => {
 					role: LightingRole.MAIN,
 				},
 				{
-					deviceId: uuid(), // This one will fail
-					channelId: uuid(),
+					deviceId: failingDeviceId, // This one will fail
+					channelId: failingChannelId,
 					role: LightingRole.AMBIENT,
 				},
 			];
 
 			const result = await service.bulkSetRoles(mockSpace.id, roles);
 
-			expect(result).toBe(1);
+			expect(result.success).toBe(false);
+			expect(result.totalCount).toBe(2);
+			expect(result.successCount).toBe(1);
+			expect(result.failureCount).toBe(1);
+			expect(result.results).toHaveLength(2);
+			expect(result.results[0].success).toBe(true);
+			expect(result.results[0].role).toBe(LightingRole.MAIN);
+			expect(result.results[1].success).toBe(false);
+			expect(result.results[1].deviceId).toBe(failingDeviceId);
+			expect(result.results[1].error).toBeDefined();
 		});
 	});
 
@@ -453,8 +548,12 @@ describe('SpaceLightingRoleService', () => {
 			];
 
 			for (const role of validRoles) {
-				// Mock findOne to return a role with the current role value
-				roleRepository.findOne.mockResolvedValue({ ...mockRole, role });
+				// Reset and configure transactional mock for each role
+				const roleWithValue = { ...mockRole, role };
+				transactionalFindOne
+					.mockReset()
+					.mockResolvedValueOnce(null) // First call: check if exists
+					.mockResolvedValue(roleWithValue); // Second call: fetch after upsert
 
 				const dto = {
 					deviceId: mockDevice.id,

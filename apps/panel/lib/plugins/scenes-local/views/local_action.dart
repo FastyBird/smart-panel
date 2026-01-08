@@ -1,32 +1,16 @@
 import 'package:fastybird_smart_panel/modules/scenes/views/actions/view.dart';
+import 'package:fastybird_smart_panel/plugins/scenes-local/models/local_action.dart';
 
 class LocalActionView extends ActionView {
-  final String _deviceId;
-  final String? _channelId;
-  final String _propertyId;
-  final dynamic _value;
+  LocalActionView({required LocalActionModel model}) : super(model: model);
 
-  LocalActionView({
-    required super.id,
-    required super.type,
-    required super.scene,
-    required super.order,
-    required super.enabled,
-    super.configuration = const {},
-    required String deviceId,
-    String? channelId,
-    required String propertyId,
-    required dynamic value,
-  })  : _deviceId = deviceId,
-        _channelId = channelId,
-        _propertyId = propertyId,
-        _value = value;
+  LocalActionModel get _typedModel => model as LocalActionModel;
 
-  String get deviceId => _deviceId;
+  String get deviceId => _typedModel.deviceId;
 
-  String? get channelId => _channelId;
+  String? get channelId => _typedModel.channelId;
 
-  String get propertyId => _propertyId;
+  String get propertyId => _typedModel.propertyId;
 
-  dynamic get value => _value;
+  dynamic get value => _typedModel.value;
 }

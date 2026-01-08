@@ -55,12 +55,12 @@ export class StateChangedEventService implements WsEventService {
 		private readonly virtualPropertyService: VirtualPropertyService,
 	) {}
 
-	// Invalidate cache on structural changes (create/delete/metadata updates).
+	// Invalidate cache on structural changes (create/delete/update).
 	// This ensures that when users modify property metadata like haEntityId or haAttribute
 	// through the API, the cache is refreshed and new mappings take effect immediately.
-	// Note: Value-only updates emit CHANNEL_PROPERTY_VALUE_SET (not CHANNEL_PROPERTY_UPDATED),
-	// so they won't trigger cache invalidation. This prevents unnecessary cache rebuilds
-	// when HA state changes are written to the database.
+	// Note: While value updates also trigger CHANNEL_PROPERTY_UPDATED, this is acceptable
+	// because the cache reload fetches the latest metadata from the database, and HA state
+	// values are always applied fresh from incoming WebSocket events.
 	@OnEvent(DevicesModuleEventType.DEVICE_CREATED)
 	@OnEvent(DevicesModuleEventType.DEVICE_UPDATED)
 	@OnEvent(DevicesModuleEventType.DEVICE_DELETED)

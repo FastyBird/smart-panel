@@ -63,13 +63,65 @@ class DeviceDetailPage extends StatelessWidget {
         );
       }
 
+      final localizations = AppLocalizations.of(context)!;
+
       return Scaffold(
         appBar: AppTopBar(
           title: device.name,
-          icon: buildDeviceIcon(
-            device.category,
-            device.icon,
-          ),
+          icon: buildDeviceIcon(device.category, device.icon),
+          actions: [
+            // Offline indicator
+            if (!device.isOnline) ...[
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    MdiIcons.alert,
+                    size: _screenService.scale(
+                      14,
+                      density: _visualDensityService.density,
+                    ),
+                    color: Theme.of(context).warning,
+                  ),
+                  SizedBox(
+                    width: _screenService.scale(
+                      4,
+                      density: _visualDensityService.density,
+                    ),
+                  ),
+                  Text(
+                    localizations.device_status_offline,
+                    style: TextStyle(
+                      fontSize: _screenService.scale(
+                        12,
+                        density: _visualDensityService.density,
+                      ),
+                      color: Theme.of(context).warning,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(
+                width: _screenService.scale(
+                  16,
+                  density: _visualDensityService.density,
+                ),
+              ),
+            ],
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Icon(
+                MdiIcons.close,
+                size: _screenService.scale(
+                  16,
+                  density: _visualDensityService.density,
+                ),
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppTextColorLight.regular
+                    : AppTextColorDark.regular,
+              ),
+            ),
+          ],
         ),
         body: buildDeviceWidget(device),
       );

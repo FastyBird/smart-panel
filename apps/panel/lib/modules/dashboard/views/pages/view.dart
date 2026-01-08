@@ -1,55 +1,40 @@
+import 'package:fastybird_smart_panel/modules/dashboard/models/pages/page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/cards/view.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/data_sources/view.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/tiles/view.dart';
 import 'package:flutter/cupertino.dart';
 
 abstract class DashboardPageView {
-  final String _id;
-  final String _type;
-  final String _title;
-  final IconData? _icon;
-  final int _order;
-  final bool _showTopBar;
-  final List<String>? _displays;
+  final PageModel _model;
   final List<TileView> _tiles;
   final List<CardView> _cards;
   final List<DataSourceView> _dataSources;
 
   DashboardPageView({
-    required String id,
-    required String type,
-    required String title,
-    IconData? icon,
-    int order = 0,
-    bool showTopBar = true,
-    List<String>? displays,
+    required PageModel model,
     List<TileView> tiles = const [],
     List<CardView> cards = const [],
     List<DataSourceView> dataSources = const [],
-  })  : _id = id,
-        _type = type,
-        _title = title,
-        _icon = icon,
-        _order = order,
-        _showTopBar = showTopBar,
-        _displays = displays,
+  })  : _model = model,
         _tiles = tiles,
         _cards = cards,
         _dataSources = dataSources;
 
-  String get id => _id;
+  PageModel get model => _model;
 
-  String get type => _type;
+  String get id => _model.id;
 
-  String get title => _title;
+  String get type => _model.type;
 
-  IconData? get icon => _icon;
+  String get title => _model.title;
 
-  int get order => _order;
+  IconData? get icon => _model.icon;
 
-  bool get showTopBar => _showTopBar;
+  int get order => _model.order;
 
-  List<String>? get displays => _displays;
+  bool get showTopBar => _model.showTopBar;
+
+  List<String>? get displays => _model.displays;
 
   List<TileView> get tiles => _tiles;
 

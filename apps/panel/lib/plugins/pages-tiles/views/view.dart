@@ -1,31 +1,19 @@
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/view.dart';
+import 'package:fastybird_smart_panel/plugins/pages-tiles/models/model.dart';
 
 class TilesPageView extends DashboardPageView {
-  final double? _tileSize;
-  final int? _rows;
-  final int? _cols;
-
   TilesPageView({
-    required super.id,
-    required super.type,
-    required super.title,
-    super.icon,
-    super.order,
-    super.showTopBar,
-    super.displays,
+    required TilesPageModel model,
     super.tiles,
     super.cards,
     super.dataSources,
-    double? tileSize,
-    int? rows,
-    int? cols,
-  })  : _tileSize = tileSize,
-        _rows = rows,
-        _cols = cols;
+  }) : super(model: model);
 
-  double? get tileSize => _tileSize;
+  TilesPageModel get _typedModel => model as TilesPageModel;
 
-  int? get rows => _rows;
+  double? get tileSize => _typedModel.tileSize;
 
-  int? get cols => _cols;
+  int? get rows => _typedModel.rows;
+
+  int? get cols => _typedModel.cols;
 }

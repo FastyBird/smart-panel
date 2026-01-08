@@ -221,6 +221,38 @@ export class ScenesService {
 		const entityUpdate = toInstance(SceneEntity, dtoInstance);
 		const filteredUpdate = omitBy(entityUpdate, isUndefined);
 
+		// Check if any entity fields are actually being changed by comparing with existing values
+		const entityFieldsChanged = Object.keys(filteredUpdate).some((key) => {
+			const newValue = (filteredUpdate as Record<string, unknown>)[key];
+			const existingValue = (existingScene as unknown as Record<string, unknown>)[key];
+
+			// Deep comparison for arrays
+			if (Array.isArray(newValue) && Array.isArray(existingValue)) {
+				return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+			}
+
+			// Deep comparison for plain objects
+			if (
+				typeof newValue === 'object' &&
+				typeof existingValue === 'object' &&
+				newValue !== null &&
+				existingValue !== null
+			) {
+				return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+			}
+
+			// Handle null/undefined comparison
+			if (newValue === null && existingValue === null) {
+				return false;
+			}
+			if (newValue === null || existingValue === null) {
+				return true;
+			}
+
+			// Simple value comparison
+			return newValue !== existingValue;
+		});
+
 		// Apply updates to existing scene
 		const mergedScene = this.repository.merge(existingScene, filteredUpdate as Partial<SceneEntity>);
 		mergedScene.updatedAt = new Date();
@@ -230,7 +262,9 @@ export class ScenesService {
 		// Retrieve the updated scene with its full relations
 		const updatedScene = await this.getOneOrThrow(savedScene.id);
 
-		this.eventEmitter.emit(EventType.SCENE_UPDATED, updatedScene);
+		if (entityFieldsChanged) {
+			this.eventEmitter.emit(EventType.SCENE_UPDATED, updatedScene);
+		}
 
 		return updatedScene;
 	}

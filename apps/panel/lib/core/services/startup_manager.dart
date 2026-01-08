@@ -30,7 +30,9 @@ import 'package:fastybird_smart_panel/modules/devices/repositories/channel_prope
 import 'package:fastybird_smart_panel/modules/devices/repositories/channels.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/device_controls.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/devices.dart';
+import 'package:fastybird_smart_panel/modules/devices/repositories/validation.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/role_control_state_repository.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/property_timeseries.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 import 'package:fastybird_smart_panel/modules/displays/module.dart';
@@ -337,7 +339,15 @@ class StartupManagerService {
   /// Unregister modules if they are already registered
   /// This ensures modules are cleaned up on retries or initialization failures
   void _unregisterModulesIfNeeded() {
-    if (!locator.isRegistered<ConfigModuleService>()) {
+    // Check if any module or repository is registered
+    // We check multiple types because registration can fail partway through
+    final hasAnyRegistration = locator.isRegistered<ConfigModuleService>() ||
+        locator.isRegistered<DisplaysModuleService>() ||
+        locator.isRegistered<DisplayRepository>() ||
+        locator.isRegistered<DevicesModuleService>() ||
+        locator.isRegistered<DevicesRepository>();
+
+    if (!hasAnyRegistration) {
       return;
     }
 
@@ -489,6 +499,17 @@ class StartupManagerService {
         locator.unregister<ChannelPropertiesRepository>();
       } catch (_) {}
     }
+    if (locator.isRegistered<DeviceValidationRepository>()) {
+      try {
+        locator.unregister<DeviceValidationRepository>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<RoleControlStateRepository>()) {
+      try {
+        locator<RoleControlStateRepository>().dispose();
+        locator.unregister<RoleControlStateRepository>();
+      } catch (_) {}
+    }
     if (locator.isRegistered<DevicesService>()) {
       try {
         locator.unregister<DevicesService>();
@@ -528,6 +549,11 @@ class StartupManagerService {
         locator.unregister<SpacesRepository>();
       } catch (_) {}
     }
+    if (locator.isRegistered<LightTargetsRepository>()) {
+      try {
+        locator.unregister<LightTargetsRepository>();
+      } catch (_) {}
+    }
     if (locator.isRegistered<SpacesService>()) {
       try {
         locator.unregister<SpacesService>();
@@ -538,6 +564,11 @@ class StartupManagerService {
     if (locator.isRegistered<ScenesRepository>()) {
       try {
         locator.unregister<ScenesRepository>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<ActionsRepository>()) {
+      try {
+        locator.unregister<ActionsRepository>();
       } catch (_) {}
     }
     if (locator.isRegistered<ScenesService>()) {
@@ -558,7 +589,13 @@ class StartupManagerService {
       } catch (_) {}
     }
 
-    // Deck services
+    // Deck module services
+    if (locator.isRegistered<DeckModuleService>()) {
+      try {
+        locator<DeckModuleService>().dispose();
+        locator.unregister<DeckModuleService>();
+      } catch (_) {}
+    }
     if (locator.isRegistered<DeckService>()) {
       try {
         locator.unregister<DeckService>();
@@ -567,6 +604,11 @@ class StartupManagerService {
     if (locator.isRegistered<IntentsService>()) {
       try {
         locator.unregister<IntentsService>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<PropertyTimeseriesService>()) {
+      try {
+        locator.unregister<PropertyTimeseriesService>();
       } catch (_) {}
     }
 
@@ -668,22 +710,15 @@ class StartupManagerService {
     var propertyTimeseriesService = PropertyTimeseriesService(dio: _apiIoService);
     locator.registerSingleton(propertyTimeseriesService);
 
-    // Deck navigation services
-    // Note: IntentsService must be created before DeckService since DeckService
-    // needs to synchronize the deck with IntentsService after building it
-    var intentsService = IntentsService(
+    // Deck module services
+    var deckModuleService = DeckModuleService(
       eventBus: _eventBus,
+      dashboardService: locator<DashboardService>(),
+      devicesService: locator<DevicesService>(),
       scenesService: locator<ScenesService>(),
       channelPropertiesRepository: locator<ChannelPropertiesRepository>(),
     );
-    locator.registerSingleton(intentsService);
-
-    var deckService = DeckService(
-      dashboardService: locator<DashboardService>(),
-      intentsService: intentsService,
-      devicesService: locator<DevicesService>(),
-    );
-    locator.registerSingleton(deckService);
+    locator.registerSingleton(deckModuleService);
 
     // Api client
     locator.registerSingleton(_apiIoService);

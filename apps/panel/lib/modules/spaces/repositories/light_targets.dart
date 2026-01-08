@@ -88,6 +88,59 @@ class LightTargetsRepository extends ChangeNotifier {
     }
   }
 
+  /// Delete a single light target by ID
+  void delete(String lightTargetId) {
+    for (final spaceId in _lightTargets.keys) {
+      if (_lightTargets[spaceId]?.containsKey(lightTargetId) == true) {
+        _lightTargets[spaceId]!.remove(lightTargetId);
+
+        if (kDebugMode) {
+          debugPrint(
+            '[SPACES MODULE][LIGHT_TARGETS] Removed light target: $lightTargetId from space: $spaceId',
+          );
+        }
+        notifyListeners();
+        return;
+      }
+    }
+  }
+
+  /// Insert or update a single light target from raw JSON data
+  void insertOne(Map<String, dynamic> json) {
+    final spaceId = json['space'] is Map<String, dynamic>
+        ? json['space']['id'] as String?
+        : json['space_id'] as String?;
+
+    if (spaceId == null) {
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][LIGHT_TARGETS] Cannot insert light target: missing space ID',
+        );
+      }
+      return;
+    }
+
+    try {
+      final lightTarget = LightTargetModel.fromJson(json, spaceId: spaceId);
+
+      _lightTargets[spaceId] ??= {};
+      _lightTargets[spaceId]![lightTarget.id] = lightTarget;
+
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][LIGHT_TARGETS] Inserted light target: ${lightTarget.id} for space: $spaceId',
+        );
+      }
+      notifyListeners();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][LIGHT_TARGETS] Failed to parse light target: $e',
+        );
+      }
+    }
+  }
+
   /// Fetch light targets for a specific space from the API
   Future<void> fetchForSpace(String spaceId) async {
     _isLoading = true;

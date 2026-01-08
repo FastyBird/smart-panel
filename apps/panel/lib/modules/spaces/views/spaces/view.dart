@@ -1,84 +1,54 @@
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_category.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_type.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/spaces/space.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/light_targets/view.dart';
 
 class SpaceView {
-  final String _id;
-  final SpacesModuleDataSpaceType _type;
-  final String _name;
-  final String? _description;
-  final SpacesModuleDataSpaceCategory? _category;
-  final String? _parentId;
-  final int _displayOrder;
-  final bool _suggestionsEnabled;
-  final String? _icon;
-  final String? _primaryThermostatId;
-  final String? _primaryTemperatureSensorId;
-  final DateTime? _lastActivityAt;
+  final SpaceModel _model;
   final List<SpaceView> _children;
   final List<LightTargetView> _lightTargets;
 
   SpaceView({
-    required String id,
-    required SpacesModuleDataSpaceType type,
-    required String name,
-    String? description,
-    SpacesModuleDataSpaceCategory? category,
-    String? parentId,
-    required int displayOrder,
-    required bool suggestionsEnabled,
-    String? icon,
-    String? primaryThermostatId,
-    String? primaryTemperatureSensorId,
-    DateTime? lastActivityAt,
+    required SpaceModel model,
     List<SpaceView> children = const [],
     List<LightTargetView> lightTargets = const [],
-  })  : _id = id,
-        _type = type,
-        _name = name,
-        _description = description,
-        _category = category,
-        _parentId = parentId,
-        _displayOrder = displayOrder,
-        _suggestionsEnabled = suggestionsEnabled,
-        _icon = icon,
-        _primaryThermostatId = primaryThermostatId,
-        _primaryTemperatureSensorId = primaryTemperatureSensorId,
-        _lastActivityAt = lastActivityAt,
+  })  : _model = model,
         _children = children,
         _lightTargets = lightTargets;
 
-  String get id => _id;
+  SpaceModel get model => _model;
 
-  SpacesModuleDataSpaceType get type => _type;
+  String get id => _model.id;
 
-  String get name => _name;
+  SpacesModuleDataSpaceType get type => _model.type;
 
-  String? get description => _description;
+  String get name => _model.name;
 
-  SpacesModuleDataSpaceCategory? get category => _category;
+  String? get description => _model.description;
 
-  String? get parentId => _parentId;
+  SpacesModuleDataSpaceCategory? get category => _model.category;
 
-  int get displayOrder => _displayOrder;
+  String? get parentId => _model.parentId;
 
-  bool get suggestionsEnabled => _suggestionsEnabled;
+  int get displayOrder => _model.displayOrder;
 
-  String? get icon => _icon;
+  bool get suggestionsEnabled => _model.suggestionsEnabled;
 
-  String? get primaryThermostatId => _primaryThermostatId;
+  String? get icon => _model.icon;
 
-  String? get primaryTemperatureSensorId => _primaryTemperatureSensorId;
+  String? get primaryThermostatId => _model.primaryThermostatId;
 
-  DateTime? get lastActivityAt => _lastActivityAt;
+  String? get primaryTemperatureSensorId => _model.primaryTemperatureSensorId;
+
+  DateTime? get lastActivityAt => _model.lastActivityAt;
 
   List<SpaceView> get children => _children;
 
   List<LightTargetView> get lightTargets => _lightTargets;
 
-  bool get isRoom => _type == SpacesModuleDataSpaceType.room;
+  bool get isRoom => _model.isRoom;
 
-  bool get isZone => _type == SpacesModuleDataSpaceType.zone;
+  bool get isZone => _model.isZone;
 
   /// Get light targets by role
   List<LightTargetView> getLightTargetsByRole(LightTargetRole role) {

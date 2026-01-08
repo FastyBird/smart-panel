@@ -6,6 +6,7 @@ import 'package:fastybird_smart_panel/modules/devices/constants.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/property.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/channels/channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/properties/properties.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/channels.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/repository.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
@@ -169,12 +170,13 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
 
       // Start new debounce timer
       _debounceTimers[id] = Timer(const Duration(milliseconds: 300), () async {
+        // Send command and wait for result
         await _sendCommandToBackend(channel, property!, completer);
 
         _debounceTimers.remove(id);
 
-        /// Clearing of backup value
-        _valueBackup.remove(id);
+        // Note: _valueBackup is cleared in _sendCommandToBackend on success,
+        // or used for revert on failure. Don't clear here as ack is async.
       });
 
       if (kDebugMode) {
@@ -234,6 +236,9 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
 
           _revertValue(id: property.id);
 
+          // Clear backup after revert
+          _valueBackup.remove(property.id);
+
           completer.complete(false);
         } else {
           if (kDebugMode) {
@@ -242,10 +247,81 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
             );
           }
 
+          // Clear backup on success - server now has the new value
+          _valueBackup.remove(property.id);
+
           completer.complete(true);
         }
       },
     );
+  }
+
+  /// Set multiple property values in a single command
+  /// This creates a single intent on the backend for all properties
+  Future<bool> setMultipleValues({
+    required List<PropertyCommandItem> properties,
+    PropertyCommandContext? context,
+  }) async {
+    if (properties.isEmpty) {
+      return true;
+    }
+
+    try {
+      // Generate single request ID for tracking
+      final requestId = const Uuid().v4();
+
+      // Build properties payload
+      final propertiesPayload = properties.map((prop) => prop.toJson()).toList();
+
+      // Build context payload if provided
+      Map<String, dynamic>? contextPayload;
+      if (context != null) {
+        contextPayload = context.toJson();
+      }
+
+      final completer = Completer<bool>();
+
+      // Build command payload
+      final payload = <String, dynamic>{
+        'request_id': requestId,
+        'properties': propertiesPayload,
+      };
+      if (contextPayload != null && contextPayload.isNotEmpty) {
+        payload['context'] = contextPayload;
+      }
+
+      await _socketService.sendCommand(
+        DevicesModuleConstants.channelPropertySetEvent,
+        payload,
+        DevicesModuleEventHandlerName.internalSetProperty,
+        onAck: (SocketCommandResponseModel? response) {
+          if (response == null || response.status == false) {
+            if (kDebugMode) {
+              debugPrint(
+                '[DEVICES MODULE][CHANNEL PROPERTIES] Failed batch command for ${properties.length} properties, reason: ${response?.message ?? 'N/A'}',
+              );
+            }
+            completer.complete(false);
+          } else {
+            if (kDebugMode) {
+              debugPrint(
+                '[DEVICES MODULE][CHANNEL PROPERTIES] Successfully sent batch command for ${properties.length} properties, requestId: $requestId',
+              );
+            }
+            completer.complete(true);
+          }
+        },
+      );
+
+      return completer.future;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[DEVICES MODULE][CHANNEL PROPERTIES] Exception in batch command: ${e.toString()}',
+        );
+      }
+      return false;
+    }
   }
 
   void _revertValue({required String id}) {

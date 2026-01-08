@@ -14,6 +14,8 @@ class DeviceView {
   final String? _roomId;
   final List<String> _zoneIds;
   final List<ChannelView> _channels;
+  final bool _enabled;
+  final bool _isOnline;
   final bool _isValid;
   final List<ValidationIssue> _validationIssues;
 
@@ -27,6 +29,8 @@ class DeviceView {
     String? roomId,
     List<String> zoneIds = const [],
     required List<ChannelView> channels,
+    bool enabled = true,
+    bool isOnline = false,
     bool isValid = true,
     List<ValidationIssue> validationIssues = const [],
   })  : _id = id,
@@ -38,6 +42,8 @@ class DeviceView {
         _roomId = roomId,
         _zoneIds = zoneIds,
         _channels = channels,
+        _enabled = enabled,
+        _isOnline = isOnline,
         _isValid = isValid,
         _validationIssues = validationIssues;
 
@@ -58,6 +64,10 @@ class DeviceView {
   List<String> get zoneIds => _zoneIds;
 
   List<ChannelView> get channels => _channels;
+
+  bool get enabled => _enabled;
+
+  bool get isOnline => _isOnline;
 
   bool? get isOn => null;
 

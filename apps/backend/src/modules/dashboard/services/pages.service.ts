@@ -194,6 +194,9 @@ export class PagesService {
 
 		const dtoInstance = await this.validateDto<TUpdateDTO>(mapping.updateDto, updateDto);
 
+		// Capture original displays before modification for change detection
+		const originalDisplayIds = page.displays?.map((d) => d.id) ?? [];
+
 		// Handle display assignments if provided
 		if (dtoInstance.displays !== undefined && dtoInstance.displays !== null) {
 			if (dtoInstance.displays.length > 0) {
@@ -234,7 +237,53 @@ export class PagesService {
 		const dtoInstanceWithoutDisplays = omitBy(toInstance(mapping.class, dtoWithoutDisplays), isUndefined);
 		// Explicitly exclude displays from being overwritten if not provided in DTO
 		delete dtoInstanceWithoutDisplays.displays;
-		Object.assign(page, dtoInstanceWithoutDisplays);
+
+		// Get the fields to update from DTO (excluding undefined values)
+		const updateFields = dtoInstanceWithoutDisplays;
+
+		// Check if any entity fields are actually being changed by comparing with existing values
+		// Also check if displays changed (use originalDisplayIds captured before modification)
+		const displaysChanged =
+			// Case 1: displays is an array - compare with original displays
+			// Use spread to copy array before sorting to avoid mutating the original DTO
+			(Array.isArray(dtoInstance.displays) &&
+				JSON.stringify([...originalDisplayIds].sort()) !== JSON.stringify([...dtoInstance.displays].sort())) ||
+			// Case 2: displays is explicitly null - check if we're clearing existing displays
+			(dtoInstance.displays === null && originalDisplayIds.length > 0);
+		const entityFieldsChanged =
+			displaysChanged ||
+			Object.keys(updateFields).some((key) => {
+				const newValue = (updateFields as Record<string, unknown>)[key];
+				const existingValue = (page as unknown as Record<string, unknown>)[key];
+
+				// Deep comparison for arrays
+				if (Array.isArray(newValue) && Array.isArray(existingValue)) {
+					return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+				}
+
+				// Deep comparison for plain objects
+				if (
+					typeof newValue === 'object' &&
+					typeof existingValue === 'object' &&
+					newValue !== null &&
+					existingValue !== null
+				) {
+					return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+				}
+
+				// Handle null/undefined comparison
+				if (newValue === null && existingValue === null) {
+					return false;
+				}
+				if (newValue === null || existingValue === null) {
+					return true;
+				}
+
+				// Simple value comparison
+				return newValue !== existingValue;
+			});
+
+		Object.assign(page, updateFields);
 
 		await repository.save(page);
 
@@ -242,7 +291,9 @@ export class PagesService {
 
 		this.logger.debug(`Successfully updated page with id=${updatedPage.id}`);
 
-		this.eventEmitter.emit(EventType.PAGE_UPDATED, updatedPage);
+		if (entityFieldsChanged) {
+			this.eventEmitter.emit(EventType.PAGE_UPDATED, updatedPage);
+		}
 
 		return updatedPage;
 	}

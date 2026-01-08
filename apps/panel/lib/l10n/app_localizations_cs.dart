@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -26,6 +28,9 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get action_failed => 'Akci se nepodařilo zpracovat';
+
+  @override
+  String get services_not_available => 'Služby nejsou k dispozici';
 
   @override
   String get button_ok => 'OK';
@@ -124,6 +129,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get message_error_no_device_detail_preparing_description => 'Pro vybrané zařízení stránka s podrobnostmi ještě není připravena.';
 
   @override
+  String get device_status_offline => 'offline';
+
+  @override
   String get message_error_page_not_found_title => 'Stránka nenalezena!';
 
   @override
@@ -184,16 +192,70 @@ class AppLocalizationsCs extends AppLocalizations {
   String get electrical_power_over_power_description => 'Varování: Spotřeba energie je příliš vysoká.';
 
   @override
+  String get light_state_on => 'Zapnuto';
+
+  @override
+  String get light_state_on_description => 'Světlo svítí';
+
+  @override
   String get light_state_off => 'Vypnuto';
 
   @override
-  String get light_state_off_description => 'Světlo je vypnuto.';
+  String get light_state_failed => 'Selhalo';
+
+  @override
+  String get light_state_off_description => 'Světlo nesvítí';
 
   @override
   String get light_state_brightness_description => 'Aktuální jas.';
 
   @override
+  String get light_state_mixed_description => 'Zařízení mají různé hodnoty.';
+
+  @override
+  String get light_state_syncing_description => 'Synchronizace zařízení...';
+
+  @override
+  String get light_state_not_synced_description => 'Zařízení nejsou synchronizována';
+
+  @override
+  String get light_role_main => 'Hlavní';
+
+  @override
+  String get light_role_task => 'Pracovní';
+
+  @override
+  String get light_role_ambient => 'Okolní';
+
+  @override
+  String get light_role_accent => 'Akcentové';
+
+  @override
+  String get light_role_night => 'Noční';
+
+  @override
+  String get light_role_other => 'Ostatní';
+
+  @override
+  String get light_role_hidden => 'Skryté';
+
+  @override
+  String get light_role_on_description => 'Světla svítí';
+
+  @override
+  String get light_role_off_description => 'Světla nesvítí';
+
+  @override
+  String get light_role_not_synced_description => 'Světla nejsou synchronizována';
+
+  @override
+  String get light_state_out_of_sync => 'Nesynchronizováno';
+
+  @override
   String get light_mode_off => 'Vypnuto';
+
+  @override
+  String get light_mode_on => 'Zapnuto';
 
   @override
   String get light_mode_brightness => 'Jas';
@@ -916,6 +978,30 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get domain_lights => 'Světla';
+
+  @override
+  String get domain_lights_other => 'Ostatní světla';
+
+  @override
+  String get domain_lights_empty_title => 'Žádná světla';
+
+  @override
+  String get domain_lights_empty_description => 'V této místnosti nebyla nalezena žádná světla';
+
+  @override
+  String domain_lights_count_on(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count světel zapnuto',
+      few: '$count světla zapnuta',
+      one: '1 světlo zapnuto',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get domain_lights_all_off => 'vše vypnuto';
 
   @override
   String get domain_climate => 'Klima';

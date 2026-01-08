@@ -34,10 +34,11 @@ class TestPageView extends DashboardPageView {
     required String title,
     int order = 0,
   }) : super(
-          id: id,
-          type: _testPageType,
-          title: title,
-          order: order,
+          model: TestPageModel(
+            id: id,
+            title: title,
+            order: order,
+          ),
         );
 }
 

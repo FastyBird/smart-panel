@@ -288,7 +288,42 @@ export class ChannelsService {
 
 		const repository: Repository<TChannel> = this.dataSource.getRepository(mapping.class);
 
-		Object.assign(channel, omitBy(toInstance(mapping.class, dtoInstance), isUndefined));
+		// Get the fields to update from DTO (excluding undefined values)
+		const updateFields = omitBy(toInstance(mapping.class, dtoInstance), isUndefined);
+
+		// Check if any entity fields are actually being changed by comparing with existing values
+		const entityFieldsChanged = Object.keys(updateFields).some((key) => {
+			const newValue = (updateFields as Record<string, unknown>)[key];
+			const existingValue = (channel as unknown as Record<string, unknown>)[key];
+
+			// Deep comparison for arrays
+			if (Array.isArray(newValue) && Array.isArray(existingValue)) {
+				return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+			}
+
+			// Deep comparison for plain objects
+			if (
+				typeof newValue === 'object' &&
+				typeof existingValue === 'object' &&
+				newValue !== null &&
+				existingValue !== null
+			) {
+				return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+			}
+
+			// Handle null/undefined comparison
+			if (newValue === null && existingValue === null) {
+				return false;
+			}
+			if (newValue === null || existingValue === null) {
+				return true;
+			}
+
+			// Simple value comparison
+			return newValue !== existingValue;
+		});
+
+		Object.assign(channel, updateFields);
 
 		await repository.save(channel as TChannel);
 
@@ -302,7 +337,9 @@ export class ChannelsService {
 
 		this.logger.debug(`Successfully updated channel with id=${updatedChannel.id}`);
 
-		this.eventEmitter.emit(EventType.CHANNEL_UPDATED, updatedChannel);
+		if (entityFieldsChanged) {
+			this.eventEmitter.emit(EventType.CHANNEL_UPDATED, updatedChannel);
+		}
 
 		return updatedChannel;
 	}

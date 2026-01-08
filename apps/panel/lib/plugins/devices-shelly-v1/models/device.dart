@@ -19,6 +19,8 @@ class ShellyV1DeviceModel extends DeviceModel {
     super.zoneIds = const [],
     super.controls = const [],
     super.channels = const [],
+    super.enabled = true,
+    super.isOnline = false,
     super.createdAt,
     super.updatedAt,
     required String? password,
@@ -74,6 +76,15 @@ class ShellyV1DeviceModel extends DeviceModel {
       }
     }
 
+    // Parse enabled field (defaults to true if not present)
+    final bool enabled = json['enabled'] ?? true;
+
+    // Parse online status from nested status object
+    bool isOnline = false;
+    if (json['status'] is Map<String, dynamic>) {
+      isOnline = json['status']['online'] ?? false;
+    }
+
     return ShellyV1DeviceModel(
       id: json['id'],
       category: category,
@@ -86,6 +97,8 @@ class ShellyV1DeviceModel extends DeviceModel {
       zoneIds: UuidUtils.validateUuidList(zoneIds),
       controls: UuidUtils.validateUuidList(controls),
       channels: UuidUtils.validateUuidList(channels),
+      enabled: enabled,
+      isOnline: isOnline,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,

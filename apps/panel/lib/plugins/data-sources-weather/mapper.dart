@@ -26,16 +26,7 @@ void registerDataSourcesWeatherPlugin() {
       throw ArgumentError('Data source model is not valid for Weather current data source view.');
     }
 
-    return WeatherCurrentDataSourceView(
-      id: dataSource.id,
-      type: dataSource.type,
-      parentType: dataSource.parentType,
-      parentId: dataSource.parentId,
-      locationId: dataSource.locationId,
-      field: dataSource.field,
-      icon: dataSource.icon,
-      unit: dataSource.unit,
-    );
+    return WeatherCurrentDataSourceView(model: dataSource);
   });
 
   registerDataSourceViewMapper(dataSourcesWeatherForecastDayType, (DataSourceModel dataSource) {
@@ -43,17 +34,7 @@ void registerDataSourcesWeatherPlugin() {
       throw ArgumentError('Data source model is not valid for Weather forecast day data source view.');
     }
 
-    return WeatherForecastDayDataSourceView(
-      id: dataSource.id,
-      type: dataSource.type,
-      parentType: dataSource.parentType,
-      parentId: dataSource.parentId,
-      locationId: dataSource.locationId,
-      dayOffset: dataSource.dayOffset,
-      field: dataSource.field,
-      icon: dataSource.icon,
-      unit: dataSource.unit,
-    );
+    return WeatherForecastDayDataSourceView(model: dataSource);
   });
 
   // Register widget mappers

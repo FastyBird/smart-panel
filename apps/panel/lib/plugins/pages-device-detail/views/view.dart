@@ -1,21 +1,15 @@
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/view.dart';
+import 'package:fastybird_smart_panel/plugins/pages-device-detail/models/model.dart';
 
 class DeviceDetailPageView extends DashboardPageView {
-  final String _device;
-
   DeviceDetailPageView({
-    required super.id,
-    required super.type,
-    required super.title,
-    super.icon,
-    super.order,
-    super.showTopBar,
-    super.displays,
+    required DeviceDetailPageModel model,
     super.tiles,
     super.cards,
     super.dataSources,
-    required String device,
-  }) : _device = device;
+  }) : super(model: model);
 
-  String get device => _device;
+  DeviceDetailPageModel get _typedModel => model as DeviceDetailPageModel;
+
+  String get device => _typedModel.device;
 }

@@ -1,22 +1,14 @@
+import 'package:fastybird_smart_panel/modules/dashboard/models/tiles/generic_tile.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/tiles/view.dart';
 
 /// Generic tile view for unknown/unregistered tile types.
 class GenericTileView extends TileView {
-  final Map<String, dynamic> _configuration;
-
   GenericTileView({
-    required super.id,
-    required super.type,
-    required super.parentType,
-    required super.parentId,
-    super.dataSource,
-    required super.row,
-    required super.col,
-    super.rowSpan,
-    super.colSpan,
+    required GenericTileModel model,
     super.dataSources,
-    Map<String, dynamic> configuration = const {},
-  }) : _configuration = configuration;
+  }) : super(model: model);
 
-  Map<String, dynamic> get configuration => _configuration;
+  GenericTileModel get _typedModel => model as GenericTileModel;
+
+  Map<String, dynamic> get configuration => _typedModel.configuration;
 }

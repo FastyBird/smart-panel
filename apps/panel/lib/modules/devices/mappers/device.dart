@@ -97,6 +97,8 @@ T _createDeviceView<T extends DeviceView>(
     String? roomId,
     List<String> zoneIds,
     required List<ChannelView> channels,
+    bool enabled,
+    bool isOnline,
     bool isValid,
     List<ValidationIssue> validationIssues,
   }) constructor,
@@ -111,6 +113,8 @@ T _createDeviceView<T extends DeviceView>(
     roomId: model.roomId,
     zoneIds: model.zoneIds,
     channels: channels,
+    enabled: model.enabled,
+    isOnline: model.isOnline,
     isValid: isValid,
     validationIssues: validationIssues,
   );

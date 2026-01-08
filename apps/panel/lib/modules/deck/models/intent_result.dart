@@ -1,4 +1,4 @@
-import 'package:fastybird_smart_panel/modules/deck/intents/intent_types.dart';
+import 'package:fastybird_smart_panel/modules/deck/types/intent_type.dart';
 
 /// Result of executing an intent.
 class IntentResult {

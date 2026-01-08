@@ -9,6 +9,8 @@ import 'package:fastybird_smart_panel/modules/devices/repositories/device_contro
 import 'package:fastybird_smart_panel/modules/devices/repositories/devices.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/validation.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/role_control_state_repository.dart';
 import 'package:fastybird_smart_panel/plugins/devices-home-assistant/plugin.dart';
 import 'package:fastybird_smart_panel/plugins/devices-shelly-ng/plugin.dart';
 import 'package:fastybird_smart_panel/plugins/devices-shelly-v1/plugin.dart';
@@ -26,6 +28,8 @@ class DevicesModuleService {
   late ChannelControlsRepository _channelControlsRepository;
   late ChannelPropertiesRepository _channelPropertiesRepository;
   late DeviceValidationRepository _validationRepository;
+  late RoleControlStateRepository _roleControlStateRepository;
+  late DeviceControlStateService _deviceControlStateService;
 
   late DevicesService _devicesService;
 
@@ -75,6 +79,9 @@ class DevicesModuleService {
       apiClient: apiClient.devicesModule,
     );
 
+    _roleControlStateRepository = RoleControlStateRepository();
+    _deviceControlStateService = DeviceControlStateService();
+
     _devicesService = DevicesService(
       devicesRepository: _devicesRepository,
       devicesControlsRepository: _deviceControlsRepository,
@@ -94,6 +101,8 @@ class DevicesModuleService {
     locator.registerSingleton(_channelControlsRepository);
     locator.registerSingleton(_channelPropertiesRepository);
     locator.registerSingleton(_validationRepository);
+    locator.registerSingleton(_roleControlStateRepository);
+    locator.registerSingleton(_deviceControlStateService);
 
     locator.registerSingleton(_devicesService);
   }

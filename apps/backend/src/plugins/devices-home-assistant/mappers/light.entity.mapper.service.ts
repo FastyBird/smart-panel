@@ -264,11 +264,36 @@ export class LightEntityMapperService extends EntityMapper {
 			return null;
 		}
 
-		const isOn = values.has(onProp.id) ? values.get(onProp.id) : onProp.value;
+		// Check if we're explicitly setting the ON state
+		const explicitlySettingOn = values.has(onProp.id);
+		const onValue = explicitlySettingOn ? values.get(onProp.id) : onProp.value;
 
-		const state = isOn === true ? 'on' : 'off';
+		// Check if we're setting any light attributes (brightness, color, temperature, etc.)
+		// These attributes can only be set via turn_on service in Home Assistant
+		const settingLightAttributes = Array.from(values.keys()).some((id) => id !== onProp.id);
 
-		const service = isOn === true ? 'turn_on' : 'turn_off';
+		// Determine the service to call:
+		// - If explicitly turning off (ON=false), use turn_off
+		// - If setting any light attributes (brightness, color, etc.), always use turn_on
+		//   because HA requires turn_on to set these attributes (turn_off ignores them)
+		// - Otherwise, use the current ON state
+		let service: string;
+		let state: string;
+
+		if (explicitlySettingOn && onValue === false) {
+			// Explicitly turning off - use turn_off
+			service = 'turn_off';
+			state = 'off';
+		} else if (settingLightAttributes || onValue === true) {
+			// Setting light attributes or turning on - use turn_on
+			// This ensures brightness/color/temp changes work even when light is currently off
+			service = 'turn_on';
+			state = 'on';
+		} else {
+			// No changes or maintaining off state
+			service = 'turn_off';
+			state = 'off';
+		}
 
 		const attributes: Map<string, string | number | number[] | boolean | null> = new Map();
 
@@ -404,12 +429,7 @@ export class LightEntityMapperService extends EntityMapper {
 		);
 
 		if (brightnessProp && values.has(brightnessProp.id) && typeof values.get(brightnessProp.id) === 'number') {
-			if (typeof values.get(brightnessProp.id) === 'number') {
-				attributes.set(
-					LightEntityAttribute.BRIGHTNESS,
-					Math.round((Number(values.get(brightnessProp.id)) / 100) * 255),
-				);
-			}
+			attributes.set(LightEntityAttribute.BRIGHTNESS, Math.round((Number(values.get(brightnessProp.id)) / 100) * 255));
 		}
 
 		const brightnessPctProp = await this.getValidProperty(
@@ -420,9 +440,7 @@ export class LightEntityMapperService extends EntityMapper {
 		);
 
 		if (brightnessPctProp && values.has(brightnessPctProp.id) && typeof values.get(brightnessPctProp.id) === 'number') {
-			if (typeof values.get(brightnessPctProp.id) === 'number') {
-				attributes.set(LightEntityAttribute.BRIGHTNESS_PCT, values.get(brightnessPctProp.id));
-			}
+			attributes.set(LightEntityAttribute.BRIGHTNESS_PCT, values.get(brightnessPctProp.id));
 		}
 
 		this.logger.debug('[LIGHT ENTITY MAPPER] Received properties were mapped to Home Assistant entity state');

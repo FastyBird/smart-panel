@@ -189,7 +189,48 @@ export class SpacesService {
 			...(normalizedCategory !== undefined ? { category: normalizedCategory } : {}),
 		};
 
-		Object.assign(space, omitBy(toInstance(SpaceEntity, updateData), isUndefined));
+		// Get the fields to update from DTO (excluding undefined values)
+		const updateFields = omitBy(toInstance(SpaceEntity, updateData), isUndefined);
+
+		// Check if any entity fields are actually being changed by comparing with existing values
+		const entityFieldsChanged =
+			Object.keys(updateFields).some((key) => {
+				const newValue = (updateFields as Record<string, unknown>)[key];
+				const existingValue = (space as unknown as Record<string, unknown>)[key];
+
+				// Deep comparison for arrays
+				if (Array.isArray(newValue) && Array.isArray(existingValue)) {
+					return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+				}
+
+				// Deep comparison for plain objects
+				if (
+					typeof newValue === 'object' &&
+					typeof existingValue === 'object' &&
+					newValue !== null &&
+					existingValue !== null
+				) {
+					return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+				}
+
+				// Handle null/undefined comparison
+				if (newValue === null && existingValue === null) {
+					return false;
+				}
+				if (newValue === null || existingValue === null) {
+					return true;
+				}
+
+				// Simple value comparison
+				return newValue !== existingValue;
+			}) ||
+			(dtoInstance.parent_id !== undefined && space.parentId !== (dtoInstance.parent_id ?? null)) ||
+			(dtoInstance.primary_thermostat_id !== undefined &&
+				space.primaryThermostatId !== (dtoInstance.primary_thermostat_id ?? null)) ||
+			(dtoInstance.primary_temperature_sensor_id !== undefined &&
+				space.primaryTemperatureSensorId !== (dtoInstance.primary_temperature_sensor_id ?? null));
+
+		Object.assign(space, updateFields);
 
 		// Explicitly handle parent_id being set to null (toInstance with exposeUnsetFields:false drops null values)
 		if (dtoInstance.parent_id === null) {
@@ -210,7 +251,9 @@ export class SpacesService {
 
 		this.logger.debug(`Successfully updated space with id=${space.id}`);
 
-		this.eventEmitter.emit(EventType.SPACE_UPDATED, space);
+		if (entityFieldsChanged) {
+			this.eventEmitter.emit(EventType.SPACE_UPDATED, space);
+		}
 
 		return space;
 	}

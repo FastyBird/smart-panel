@@ -20,7 +20,7 @@ import {
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { toInstance } from '../../../common/utils/transform.utils';
+import { toInstance, toSnakeCaseKeys } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { setLocationHeader } from '../../api/utils/location-header.utils';
 import { SpacesResponseModel } from '../../spaces/models/spaces-response.model';
@@ -108,10 +108,10 @@ export class DevicesController {
 
 		const response = new DevicesValidationResponseModel();
 
-		response.data = {
+		response.data = toSnakeCaseKeys({
 			summary: validationResult.summary,
 			devices: validationResult.devices,
-		};
+		});
 
 		return response;
 	}
@@ -149,7 +149,7 @@ export class DevicesController {
 
 		const response = new DeviceValidationResponseModel();
 
-		response.data = validationResult;
+		response.data = toSnakeCaseKeys(validationResult);
 
 		return response;
 	}

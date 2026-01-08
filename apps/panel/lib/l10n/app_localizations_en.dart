@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -26,6 +28,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get action_failed => 'Action could not be processed';
+
+  @override
+  String get services_not_available => 'Services not available';
 
   @override
   String get button_ok => 'Ok';
@@ -124,6 +129,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get message_error_no_device_detail_preparing_description => 'For selected device detail page is not ready yet.';
 
   @override
+  String get device_status_offline => 'offline';
+
+  @override
   String get message_error_page_not_found_title => 'Page Not Found!';
 
   @override
@@ -184,16 +192,70 @@ class AppLocalizationsEn extends AppLocalizations {
   String get electrical_power_over_power_description => 'Warning: Power consumption is too high';
 
   @override
+  String get light_state_on => 'On';
+
+  @override
+  String get light_state_on_description => 'Light is on';
+
+  @override
   String get light_state_off => 'Off';
 
   @override
-  String get light_state_off_description => 'Light is turned off';
+  String get light_state_failed => 'Failed';
+
+  @override
+  String get light_state_off_description => 'Light is off';
 
   @override
   String get light_state_brightness_description => 'Current brightness';
 
   @override
+  String get light_state_mixed_description => 'Devices have different values';
+
+  @override
+  String get light_state_syncing_description => 'Syncing devices...';
+
+  @override
+  String get light_state_not_synced_description => 'Devices are not synced';
+
+  @override
+  String get light_role_main => 'Main';
+
+  @override
+  String get light_role_task => 'Task';
+
+  @override
+  String get light_role_ambient => 'Ambient';
+
+  @override
+  String get light_role_accent => 'Accent';
+
+  @override
+  String get light_role_night => 'Night';
+
+  @override
+  String get light_role_other => 'Other';
+
+  @override
+  String get light_role_hidden => 'Hidden';
+
+  @override
+  String get light_role_on_description => 'Lights are on';
+
+  @override
+  String get light_role_off_description => 'Lights are off';
+
+  @override
+  String get light_role_not_synced_description => 'Lights are not synced';
+
+  @override
+  String get light_state_out_of_sync => 'Out of sync';
+
+  @override
   String get light_mode_off => 'Off';
+
+  @override
+  String get light_mode_on => 'On';
 
   @override
   String get light_mode_brightness => 'Brightness';
@@ -916,6 +978,29 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get domain_lights => 'Lights';
+
+  @override
+  String get domain_lights_other => 'Other Lights';
+
+  @override
+  String get domain_lights_empty_title => 'No Lights';
+
+  @override
+  String get domain_lights_empty_description => 'No lighting devices found in this room';
+
+  @override
+  String domain_lights_count_on(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count lights on',
+      one: '1 light on',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get domain_lights_all_off => 'all off';
 
   @override
   String get domain_climate => 'Climate';

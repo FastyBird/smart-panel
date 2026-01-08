@@ -102,7 +102,45 @@ export class DisplaysService {
 		// Validate homeMode/homePageId combination
 		await this.validateHomeModePageCombination(effectiveHomeMode, effectiveHomePageId);
 
-		Object.assign(display, omitBy(toInstance(DisplayEntity, dtoInstance), isUndefined));
+		// Get the fields to update from DTO (excluding undefined values)
+		const updateFields = omitBy(toInstance(DisplayEntity, dtoInstance), isUndefined);
+
+		// Check if any entity fields are actually being changed by comparing with existing values
+		const entityFieldsChanged =
+			Object.keys(updateFields).some((key) => {
+				const newValue = (updateFields as Record<string, unknown>)[key];
+				const existingValue = (display as unknown as Record<string, unknown>)[key];
+
+				// Deep comparison for arrays
+				if (Array.isArray(newValue) && Array.isArray(existingValue)) {
+					return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+				}
+
+				// Deep comparison for plain objects
+				if (
+					typeof newValue === 'object' &&
+					typeof existingValue === 'object' &&
+					newValue !== null &&
+					existingValue !== null
+				) {
+					return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+				}
+
+				// Handle null/undefined comparison
+				if (newValue === null && existingValue === null) {
+					return false;
+				}
+				if (newValue === null || existingValue === null) {
+					return true;
+				}
+
+				// Simple value comparison
+				return newValue !== existingValue;
+			}) ||
+			(dtoInstance.room_id !== undefined && display.roomId !== (dtoInstance.room_id ?? null)) ||
+			(dtoInstance.home_page_id !== undefined && display.homePageId !== (dtoInstance.home_page_id ?? null));
+
+		Object.assign(display, updateFields);
 
 		// Explicitly handle room_id being set to null (toInstance with exposeUnsetFields:false drops null values)
 		if (dtoInstance.room_id === null) {
@@ -118,7 +156,9 @@ export class DisplaysService {
 
 		this.logger.debug(`Successfully updated display with id=${display.id}`);
 
-		this.eventEmitter.emit(EventType.DISPLAY_UPDATED, display);
+		if (entityFieldsChanged) {
+			this.eventEmitter.emit(EventType.DISPLAY_UPDATED, display);
+		}
 
 		return display;
 	}

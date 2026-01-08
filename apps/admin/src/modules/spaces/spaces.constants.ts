@@ -426,6 +426,7 @@ export enum LightingRole {
 	ACCENT = 'accent',
 	NIGHT = 'night',
 	OTHER = 'other',
+	HIDDEN = 'hidden',
 }
 
 export enum FormResult {

@@ -43,22 +43,15 @@ TileView buildTileView(
   if (builder != null) {
     return builder(tile, dataSources);
   } else {
-    final Map<String, dynamic> configuration = tile is GenericTileModel
-        ? tile.configuration
-        : <String, dynamic>{};
+    if (tile is! GenericTileModel) {
+      throw ArgumentError(
+        'Cannot create generic view for non-generic model type: ${tile.type}',
+      );
+    }
 
     return GenericTileView(
-      id: tile.id,
-      type: tile.type,
-      parentType: tile.parentType,
-      parentId: tile.parentId,
-      dataSource: tile.dataSource,
-      row: tile.row,
-      col: tile.col,
-      rowSpan: tile.rowSpan,
-      colSpan: tile.colSpan,
+      model: tile,
       dataSources: dataSources,
-      configuration: configuration,
     );
   }
 }

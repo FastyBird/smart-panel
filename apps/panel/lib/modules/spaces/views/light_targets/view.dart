@@ -1,4 +1,5 @@
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_light_target_role.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/light_targets/light_target.dart';
 
 /// Light target role enum for convenience
 enum LightTargetRole {
@@ -7,7 +8,8 @@ enum LightTargetRole {
   ambient,
   accent,
   night,
-  other;
+  other,
+  hidden;
 
   static LightTargetRole? fromApiRole(SpacesModuleDataLightTargetRole? role) {
     if (role == null) return null;
@@ -24,6 +26,8 @@ enum LightTargetRole {
         return LightTargetRole.night;
       case SpacesModuleDataLightTargetRole.other:
         return LightTargetRole.other;
+      case SpacesModuleDataLightTargetRole.hidden:
+        return LightTargetRole.hidden;
       case SpacesModuleDataLightTargetRole.$unknown:
         return null;
     }
@@ -31,68 +35,49 @@ enum LightTargetRole {
 }
 
 class LightTargetView {
-  final String _id;
-  final String _deviceId;
-  final String _deviceName;
-  final String _channelId;
-  final String _channelName;
-  final int _priority;
-  final bool _hasBrightness;
-  final bool _hasColorTemp;
-  final bool _hasColor;
-  final LightTargetRole? _role;
-  final String _spaceId;
+  final LightTargetModel _model;
 
-  LightTargetView({
-    required String id,
-    required String deviceId,
-    required String deviceName,
-    required String channelId,
-    required String channelName,
-    required int priority,
-    required bool hasBrightness,
-    required bool hasColorTemp,
-    required bool hasColor,
-    LightTargetRole? role,
-    required String spaceId,
-  })  : _id = id,
-        _deviceId = deviceId,
-        _deviceName = deviceName,
-        _channelId = channelId,
-        _channelName = channelName,
-        _priority = priority,
-        _hasBrightness = hasBrightness,
-        _hasColorTemp = hasColorTemp,
-        _hasColor = hasColor,
-        _role = role,
-        _spaceId = spaceId;
+  LightTargetView({required LightTargetModel model}) : _model = model;
 
-  String get id => _id;
+  LightTargetModel get model => _model;
 
-  String get deviceId => _deviceId;
+  String get id => _model.id;
 
-  String get deviceName => _deviceName;
+  String get deviceId => _model.deviceId;
 
-  String get channelId => _channelId;
+  String get deviceName => _model.deviceName;
 
-  String get channelName => _channelName;
+  String get channelId => _model.channelId;
 
-  int get priority => _priority;
+  String get channelName => _model.channelName;
 
-  bool get hasBrightness => _hasBrightness;
+  int get priority => _model.priority;
 
-  bool get hasColorTemp => _hasColorTemp;
+  bool get hasBrightness => _model.hasBrightness;
 
-  bool get hasColor => _hasColor;
+  bool get hasColorTemp => _model.hasColorTemp;
 
-  LightTargetRole? get role => _role;
+  bool get hasColor => _model.hasColor;
 
-  String get spaceId => _spaceId;
+  /// Converted role from API enum to local enum
+  LightTargetRole? get role => LightTargetRole.fromApiRole(_model.role);
+
+  String get spaceId => _model.spaceId;
 
   /// Check if this light supports any advanced features
-  bool get hasAdvancedFeatures => _hasBrightness || _hasColorTemp || _hasColor;
+  bool get hasAdvancedFeatures =>
+      _model.hasBrightness || _model.hasColorTemp || _model.hasColor;
 
   /// Display name for the light target
   String get displayName =>
-      _channelName.isNotEmpty ? _channelName : _deviceName;
+      _model.channelName.isNotEmpty ? _model.channelName : _model.deviceName;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is LightTargetView && other._model == _model;
+  }
+
+  @override
+  int get hashCode => _model.hashCode;
 }
