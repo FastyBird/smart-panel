@@ -2051,6 +2051,12 @@ abstract class AppLocalizations {
   /// **'all off'**
   String get domain_lights_all_off;
 
+  /// Text shown when all lights in a role group are on
+  ///
+  /// In en, this message translates to:
+  /// **'all on'**
+  String get domain_lights_all_on;
+
   /// Title for climate domain view in room navigation
   ///
   /// In en, this message translates to:
