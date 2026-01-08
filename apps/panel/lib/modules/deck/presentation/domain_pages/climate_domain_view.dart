@@ -1,4 +1,3 @@
-import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
@@ -13,7 +12,6 @@ import 'package:fastybird_smart_panel/modules/devices/export.dart'
     hide IntentOverlayService;
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/payloads.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_conditioner.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_dehumidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_humidifier.dart';
@@ -21,7 +19,6 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/air_purifier
 import 'package:fastybird_smart_panel/modules/devices/views/devices/fan.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/heater.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/channels/switcher.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/intents/service.dart';
 import 'package:flutter/foundation.dart';
@@ -232,8 +229,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
   /// Build empty state when no climate devices
   Widget _buildEmptyState(BuildContext context) {
-    final localizations = AppLocalizations.of(context);
-
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -248,7 +243,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           ),
           AppSpacings.spacingLgVertical,
           Text(
-            localizations?.climate_no_devices ?? 'No climate devices',
+            'No climate devices',
             style: TextStyle(
               fontSize: AppFontSize.extraLarge,
               fontWeight: FontWeight.bold,
@@ -256,8 +251,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           ),
           AppSpacings.spacingSmVertical,
           Text(
-            localizations?.climate_no_devices_hint ??
-                'Add climate devices to this room to control them here',
+            'Add climate devices to this room to control them here',
             style: TextStyle(
               fontSize: AppFontSize.base,
               color: Theme.of(context).brightness == Brightness.light
@@ -533,33 +527,33 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
     if (device is HeaterDeviceView) {
       return device.isOn
-          ? (localizations?.climate_heating ?? 'Heating')
-          : (localizations?.climate_idle ?? 'Idle');
+          ? (localizations?.thermostat_state_heating ?? 'Heating')
+          : (localizations?.thermostat_state_idling ?? 'Idle');
     }
     if (device is AirConditionerDeviceView) {
       return device.isOn
-          ? (localizations?.climate_cooling ?? 'Cooling')
-          : (localizations?.climate_idle ?? 'Idle');
+          ? (localizations?.thermostat_state_cooling ?? 'Cooling')
+          : (localizations?.thermostat_state_idling ?? 'Idle');
     }
     if (device is FanDeviceView) {
       return device.isOn
-          ? (localizations?.climate_on ?? 'On')
-          : (localizations?.climate_off ?? 'Off');
+          ? (localizations?.on_state_on ?? 'On')
+          : (localizations?.on_state_off ?? 'Off');
     }
     if (device is AirHumidifierDeviceView) {
       return device.isOn
-          ? (localizations?.climate_on ?? 'On')
-          : (localizations?.climate_off ?? 'Off');
+          ? (localizations?.on_state_on ?? 'On')
+          : (localizations?.on_state_off ?? 'Off');
     }
     if (device is AirDehumidifierDeviceView) {
       return device.isOn
-          ? (localizations?.climate_on ?? 'On')
-          : (localizations?.climate_off ?? 'Off');
+          ? (localizations?.on_state_on ?? 'On')
+          : (localizations?.on_state_off ?? 'Off');
     }
     if (device is AirPurifierDeviceView) {
       return device.isOn
-          ? (localizations?.climate_on ?? 'On')
-          : (localizations?.climate_off ?? 'Off');
+          ? (localizations?.on_state_on ?? 'On')
+          : (localizations?.on_state_off ?? 'Off');
     }
 
     return '';
