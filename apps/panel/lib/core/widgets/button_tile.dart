@@ -90,6 +90,7 @@ class ButtonTileTitle extends StatelessWidget {
   final bool isOn;
   final bool isLoading;
   final bool isDisabled;
+  final bool small;
 
   const ButtonTileTitle({
     super.key,
@@ -97,6 +98,7 @@ class ButtonTileTitle extends StatelessWidget {
     required this.isOn,
     this.isLoading = false,
     this.isDisabled = false,
+    this.small = false,
   });
 
   @override
@@ -118,7 +120,7 @@ class ButtonTileTitle extends StatelessWidget {
                     ? AppColorsLight.info
                     : AppColorsDark.info)),
         fontFamily: 'DIN1451',
-        fontSize: AppFontSize.small,
+        fontSize: small ? AppFontSize.extraSmall : AppFontSize.small,
         fontWeight: FontWeight.bold,
       ),
     );

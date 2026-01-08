@@ -237,6 +237,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get light_role_other => 'Ostatní';
 
   @override
+  String get light_role_hidden => 'Skryté';
+
+  @override
   String get light_role_on_description => 'Světla svítí';
 
   @override

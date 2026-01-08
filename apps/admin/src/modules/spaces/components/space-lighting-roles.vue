@@ -130,6 +130,7 @@ const roleOptions = computed(() => [
 	{ value: LightingRole.ACCENT, label: t('spacesModule.lightingRoles.accent') },
 	{ value: LightingRole.NIGHT, label: t('spacesModule.lightingRoles.night') },
 	{ value: LightingRole.OTHER, label: t('spacesModule.lightingRoles.other') },
+	{ value: LightingRole.HIDDEN, label: t('spacesModule.lightingRoles.hidden') },
 ]);
 
 const loadLightTargets = async (): Promise<void> => {

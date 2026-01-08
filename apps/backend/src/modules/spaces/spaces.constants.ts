@@ -426,6 +426,7 @@ export enum LightingRole {
 	ACCENT = 'accent', // Accent/decorative lights (e.g., wall sconces)
 	NIGHT = 'night', // Night/minimal lights (e.g., night lights)
 	OTHER = 'other', // Unclassified lights
+	HIDDEN = 'hidden', // Hidden lights (excluded from UI, not controlled by intents)
 }
 
 /**
@@ -551,6 +552,7 @@ export const LIGHTING_MODE_ORCHESTRATION: Record<LightingMode, ModeOrchestration
 			[LightingRole.ACCENT]: { on: false, brightness: null },
 			[LightingRole.NIGHT]: { on: false, brightness: null },
 			[LightingRole.OTHER]: { on: false, brightness: null },
+			[LightingRole.HIDDEN]: { on: false, brightness: null },
 		},
 	},
 	[LightingMode.RELAX]: {
@@ -561,6 +563,7 @@ export const LIGHTING_MODE_ORCHESTRATION: Record<LightingMode, ModeOrchestration
 			[LightingRole.ACCENT]: { on: true, brightness: 30 },
 			[LightingRole.NIGHT]: { on: false, brightness: null },
 			[LightingRole.OTHER]: { on: true, brightness: 50 },
+			[LightingRole.HIDDEN]: { on: false, brightness: null },
 		},
 	},
 	[LightingMode.NIGHT]: {
@@ -571,6 +574,7 @@ export const LIGHTING_MODE_ORCHESTRATION: Record<LightingMode, ModeOrchestration
 			[LightingRole.ACCENT]: { on: false, brightness: null },
 			[LightingRole.NIGHT]: { on: true, brightness: 20 },
 			[LightingRole.OTHER]: { on: false, brightness: null },
+			[LightingRole.HIDDEN]: { on: false, brightness: null },
 		},
 		// If no night lights exist, fallback to main at low brightness
 		fallbackRoles: [LightingRole.MAIN],
@@ -760,6 +764,12 @@ export const LIGHTING_ROLE_META: Record<LightingRole, IntentEnumValueMeta> = {
 		label: 'Other',
 		description: 'Unclassified lights',
 		icon: 'mdi:lightbulb',
+	},
+	[LightingRole.HIDDEN]: {
+		value: LightingRole.HIDDEN,
+		label: 'Hidden',
+		description: 'Hidden lights (excluded from UI)',
+		icon: 'mdi:eye-off',
 	},
 };
 

@@ -7,7 +7,8 @@ enum LightTargetRole {
   ambient,
   accent,
   night,
-  other;
+  other,
+  hidden;
 
   static LightTargetRole? fromApiRole(SpacesModuleDataLightTargetRole? role) {
     if (role == null) return null;
@@ -24,6 +25,8 @@ enum LightTargetRole {
         return LightTargetRole.night;
       case SpacesModuleDataLightTargetRole.other:
         return LightTargetRole.other;
+      case SpacesModuleDataLightTargetRole.hidden:
+        return LightTargetRole.hidden;
       case SpacesModuleDataLightTargetRole.$unknown:
         return null;
     }

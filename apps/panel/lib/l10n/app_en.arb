@@ -304,6 +304,10 @@
   "@light_role_other": {
     "description": "Name for other/uncategorized lighting role"
   },
+  "light_role_hidden": "Hidden",
+  "@light_role_hidden": {
+    "description": "Name for hidden lighting role (excluded from UI)"
+  },
   "light_role_on_description": "Lights are on",
   "@light_role_on_description": {
     "description": "Description for role detail when lights are on (plural)"

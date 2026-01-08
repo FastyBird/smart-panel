@@ -237,6 +237,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get light_role_other => 'Other';
 
   @override
+  String get light_role_hidden => 'Hidden';
+
+  @override
   String get light_role_on_description => 'Lights are on';
 
   @override

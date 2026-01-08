@@ -183,7 +183,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
   }
 
   /// Layout for multi-channel devices - tiles grid using FixedGridSizeGrid
-  /// Responsive to orientation: portrait shows 2 per row, landscape shows 3-4
+  /// Channel tile sizing: 2x2 default, 3x2 if cols=3
   Widget _buildMultiChannelLayout(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
@@ -196,30 +196,26 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
 
             // Use screen service columns or default
             final cols = _screenService.columns.clamp(2, 100);
-            final displayRows = _screenService.rows.clamp(1, 100);
+            final rows = _screenService.rows.clamp(1, 100);
 
             // Calculate cell height based on body height and display rows
-            final cellHeight = bodyHeight / displayRows;
+            final cellHeight = bodyHeight / rows;
 
-            // Responsive layout based on orientation
-            final isLandscape = _screenService.isLandscape;
-
-            // Calculate tiles per row and spans based on orientation
-            final int tilesPerRow;
+            // Channel tile sizing: 2x2 default, 3x2 if cols=3
             final int tileColSpan;
             final int tileRowSpan;
+            final int tilesPerRow;
 
-            if (isLandscape) {
-              // Landscape: more tiles per row (3-4), tiles wider than tall
-              tilesPerRow = (cols >= 6) ? 4 : 3;
-              tileColSpan = (cols / tilesPerRow).floor().clamp(1, cols);
-              // Tiles are shorter in height - use 2/3 of colSpan for row span
-              tileRowSpan = ((tileColSpan * 2) / 3).ceil().clamp(1, displayRows);
+            if (cols == 3) {
+              // Full width 3x2 rectangle
+              tileColSpan = 3;
+              tileRowSpan = 2;
+              tilesPerRow = 1;
             } else {
-              // Portrait: 2 tiles per row, square tiles
-              tilesPerRow = 2;
-              tileColSpan = (cols / 2).floor().clamp(1, cols);
-              tileRowSpan = tileColSpan; // Square tiles
+              // 2x2 square tiles
+              tileColSpan = 2;
+              tileRowSpan = 2;
+              tilesPerRow = (cols / 2).floor().clamp(1, cols);
             }
 
             // Calculate how many rows we need for the channel tiles
@@ -239,7 +235,13 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
                   crossAxisIndex: col * tileColSpan + 1,
                   mainAxisCellCount: tileRowSpan,
                   crossAxisCellCount: tileColSpan,
-                  child: _buildChannelTile(context, channel, localizations),
+                  child: _buildChannelTile(
+                    context,
+                    channel,
+                    localizations,
+                    rowSpan: tileRowSpan,
+                    colSpan: tileColSpan,
+                  ),
                 ),
               );
             }
@@ -262,83 +264,144 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
   }
 
   /// Build a single channel tile for multi-channel layout
+  /// Layout adapts based on rowSpan/colSpan: square=vertical, rectangle=horizontal, 1x1=icon only
   Widget _buildChannelTile(
     BuildContext context,
     LightChannelView channel,
-    AppLocalizations localizations,
-  ) {
+    AppLocalizations localizations, {
+    required int rowSpan,
+    required int colSpan,
+  }) {
     final isOn = channel.on;
     final isToggling = _togglingChannels.contains(channel.id);
     final hasBrightness = channel.hasBrightness;
     final brightness = hasBrightness ? channel.brightness : null;
+
+    // Determine tile shape for layout
+    final bool isSquare = rowSpan == colSpan;
+    final bool isIconOnly = rowSpan == 1 && colSpan == 1;
 
     // Build subtitle: On/Off state with optional brightness
     final stateText =
         isOn ? localizations.light_state_on : localizations.light_state_off;
     final showBrightness = hasBrightness && isOn && brightness != null;
 
+    final iconWidget = Stack(
+      clipBehavior: Clip.none,
+      children: [
+        ButtonTileIcon(
+          icon: isOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline,
+          onTap: isToggling ? null : () => _toggleChannel(channel, !isOn),
+          isOn: isOn,
+          isLoading: isToggling,
+          iconSize: isIconOnly ? 24 : null,
+        ),
+        // Offline indicator badge
+        if (!widget._device.isOnline)
+          Positioned(
+            right: -2,
+            bottom: -2,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                MdiIcons.alert,
+                size: AppFontSize.extraSmall,
+                color: AppColorsLight.warning,
+              ),
+            ),
+          ),
+      ],
+    );
+
+    final subTitleWidget = Row(
+      mainAxisAlignment: isSquare ? MainAxisAlignment.center : MainAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(stateText),
+        if (showBrightness) ...[
+          AppSpacings.spacingSmHorizontal,
+          Icon(
+            MdiIcons.weatherSunny,
+            size: AppFontSize.extraSmall,
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppTextColorLight.placeholder
+                : AppTextColorDark.placeholder,
+          ),
+          const SizedBox(width: 2),
+          Text('$brightness%'),
+        ],
+      ],
+    );
+
+    // Icon-only tile (1x1): tap toggles, long press opens detail
+    if (isIconOnly) {
+      return ButtonTileBox(
+        onTap: isToggling ? null : () => _toggleChannel(channel, !isOn),
+        isOn: isOn,
+        child: GestureDetector(
+          onLongPress: isToggling ? null : () => _openChannelDetail(context, channel),
+          child: Center(child: iconWidget),
+        ),
+      );
+    }
+
+    // Square tile: vertical layout [icon] [label] [state]
+    if (isSquare) {
+      return ButtonTileBox(
+        onTap: isToggling ? null : () => _openChannelDetail(context, channel),
+        isOn: isOn,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            iconWidget,
+            AppSpacings.spacingSmVertical,
+            ButtonTileTitle(
+              title: channel.name,
+              isOn: isOn,
+            ),
+            AppSpacings.spacingXsVertical,
+            ButtonTileSubTitle(
+              subTitle: subTitleWidget,
+              isOn: isOn,
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Rectangle tile: horizontal layout - icon on side, content next to it
     return ButtonTileBox(
       onTap: isToggling ? null : () => _openChannelDetail(context, channel),
       isOn: isOn,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              ButtonTileIcon(
-                icon: isOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline,
-                onTap: isToggling ? null : () => _toggleChannel(channel, !isOn),
-                isOn: isOn,
-                isLoading: isToggling,
-              ),
-              // Offline indicator badge
-              if (!widget._device.isOnline)
-                Positioned(
-                  right: -2,
-                  bottom: -2,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).scaffoldBackgroundColor,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      MdiIcons.alert,
-                      size: AppFontSize.extraSmall,
-                      color: AppColorsLight.warning,
-                    ),
+          iconWidget,
+          AppSpacings.spacingMdHorizontal,
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ButtonTileTitle(
+                  title: channel.name,
+                  isOn: isOn,
+                ),
+                AppSpacings.spacingXsVertical,
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: ButtonTileSubTitle(
+                    subTitle: subTitleWidget,
+                    isOn: isOn,
                   ),
                 ),
-            ],
-          ),
-          AppSpacings.spacingSmVertical,
-          ButtonTileTitle(
-            title: channel.name,
-            isOn: isOn,
-          ),
-          AppSpacings.spacingXsVertical,
-          ButtonTileSubTitle(
-            subTitle: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(stateText),
-                if (showBrightness) ...[
-                  AppSpacings.spacingSmHorizontal,
-                  Icon(
-                    MdiIcons.weatherSunny,
-                    size: AppFontSize.extraSmall,
-                    color: Theme.of(context).brightness == Brightness.light
-                        ? AppTextColorLight.placeholder
-                        : AppTextColorDark.placeholder,
-                  ),
-                  const SizedBox(width: 2),
-                  Text('$brightness%'),
-                ],
               ],
             ),
-            isOn: isOn,
           ),
         ],
       ),

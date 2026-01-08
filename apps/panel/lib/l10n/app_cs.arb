@@ -75,6 +75,7 @@
   "light_role_accent": "Akcentové",
   "light_role_night": "Noční",
   "light_role_other": "Ostatní",
+  "light_role_hidden": "Skryté",
   "light_role_on_description": "Světla svítí",
   "light_role_off_description": "Světla nesvítí",
   "light_role_not_synced_description": "Světla nejsou synchronizována",

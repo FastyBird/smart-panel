@@ -222,6 +222,7 @@
 		"accent": "Accent",
 		"night": "Night",
 		"other": "Other",
+		"hidden": "Hidden",
 		"unassigned": "Unassigned",
 		"descriptions": {
 			"main": "Primary lighting for the space, typically overhead or central fixtures used for general illumination.",
@@ -229,7 +230,8 @@
 			"ambient": "Soft background lighting used to create atmosphere and comfort.",
 			"accent": "Decorative lighting used to highlight features or create visual interest.",
 			"night": "Low-level lighting for nighttime navigation and safety.",
-			"other": "Lighting that doesn't fit into standard categories."
+			"other": "Lighting that doesn't fit into standard categories.",
+			"hidden": "Hidden lights are excluded from the panel UI and intent-based control."
 		}
 	},
 	"filters": {

@@ -72,6 +72,8 @@ String getLightRoleName(BuildContext context, LightTargetRole role) {
       return localizations.light_role_night;
     case LightTargetRole.other:
       return localizations.light_role_other;
+    case LightTargetRole.hidden:
+      return localizations.light_role_hidden;
   }
 }
 
@@ -90,5 +92,7 @@ IconData getLightRoleIcon(LightTargetRole role) {
       return MdiIcons.weatherNight;
     case LightTargetRole.other:
       return MdiIcons.lightbulbOutline;
+    case LightTargetRole.hidden:
+      return MdiIcons.eyeOff;
   }
 }

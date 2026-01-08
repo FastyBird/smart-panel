@@ -551,6 +551,12 @@ abstract class AppLocalizations {
   /// **'Other'**
   String get light_role_other;
 
+  /// Name for hidden lighting role (excluded from UI)
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden'**
+  String get light_role_hidden;
+
   /// Description for role detail when lights are on (plural)
   ///
   /// In en, this message translates to:

@@ -190,8 +190,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
               return const Center(child: CircularProgressIndicator());
             }
 
-            final lightTargets =
-                spacesService.getLightTargetsForSpace(_roomId);
+            final lightTargets = spacesService
+                .getLightTargetsForSpace(_roomId)
+                .where((t) => t.role != LightTargetRole.hidden)
+                .toList();
 
             if (lightTargets.isEmpty) {
               return _buildEmptyState(context);
@@ -201,7 +203,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             final roleGroups = _buildRoleGroups(lightTargets, devicesService);
             final definedRoles = roleGroups
                 .where((g) =>
-                    g.role != LightTargetRole.other && g.targets.isNotEmpty)
+                    g.role != LightTargetRole.other &&
+                    g.role != LightTargetRole.hidden &&
+                    g.targets.isNotEmpty)
                 .toList();
             final otherGroup = roleGroups
                 .where((g) => g.role == LightTargetRole.other)
@@ -379,7 +383,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   /// Build grid of role tiles using FixedGridSizeGrid
-  /// Responsive to orientation: portrait shows 2 per row, landscape shows 3-4
+  /// Role tile sizing: 2x2 default, 3x2 if cols=3
   Widget _buildRoleTilesGrid(
     BuildContext context,
     List<_RoleGroup> roleGroups,
@@ -388,30 +392,26 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   ) {
     final display = _deckService?.display;
     final cols = (display?.cols ?? 4).clamp(2, 100);
-    final displayRows = (display?.rows ?? 6).clamp(1, 100);
+    final rows = (display?.rows ?? 6).clamp(1, 100);
 
     // Calculate cell height based on body height and display rows
-    final cellHeight = bodyHeight / displayRows;
+    final cellHeight = bodyHeight / rows;
 
-    // Responsive layout based on orientation
-    final isLandscape = _screenService.isLandscape;
-
-    // Calculate tiles per row and spans based on orientation
-    final int tilesPerRow;
+    // Role tile sizing: 2x2 default, 3x2 if cols=3
     final int tileColSpan;
     final int tileRowSpan;
+    final int tilesPerRow;
 
-    if (isLandscape) {
-      // Landscape: more tiles per row (3-4), tiles wider than tall
-      tilesPerRow = (cols >= 6) ? 4 : 3;
-      tileColSpan = (cols / tilesPerRow).floor().clamp(1, cols);
-      // Tiles are shorter in height - use 2/3 of colSpan for row span
-      tileRowSpan = ((tileColSpan * 2) / 3).ceil().clamp(1, displayRows);
+    if (cols == 3) {
+      // Full width 3x2 rectangle
+      tileColSpan = 3;
+      tileRowSpan = 2;
+      tilesPerRow = 1;
     } else {
-      // Portrait: 2 tiles per row, square tiles
-      tilesPerRow = 2;
-      tileColSpan = (cols / 2).floor().clamp(1, cols);
-      tileRowSpan = tileColSpan; // Square tiles
+      // 2x2 square tiles
+      tileColSpan = 2;
+      tileRowSpan = 2;
+      tilesPerRow = (cols / 2).floor().clamp(1, cols);
     }
 
     // Calculate how many rows we need for the role tiles
@@ -430,7 +430,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           crossAxisIndex: col * tileColSpan + 1,
           mainAxisCellCount: tileRowSpan,
           crossAxisCellCount: tileColSpan,
-          child: _buildRoleTile(context, roleGroups[i], devicesService),
+          child: _buildRoleTile(
+            context,
+            roleGroups[i],
+            devicesService,
+            rowSpan: tileRowSpan,
+            colSpan: tileColSpan,
+          ),
         ),
       );
     }
@@ -450,11 +456,14 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   /// Build a single role tile using existing ButtonTileBox components
   /// Uses optimistic UI updates via device control state service
+  /// Layout adapts based on rowSpan/colSpan: square=vertical, rectangle=horizontal
   Widget _buildRoleTile(
     BuildContext context,
     _RoleGroup group,
-    DevicesService devicesService,
-  ) {
+    DevicesService devicesService, {
+    required int rowSpan,
+    required int colSpan,
+  }) {
     final localizations = AppLocalizations.of(context)!;
     final isToggling = _togglingRoles.contains(group.role);
 
@@ -505,45 +514,104 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     // Build subtitle widget with brightness icon if available
     final bool showBrightness = group.hasBrightness && group.brightness != null && group.onCount > 0;
 
+    // Determine tile shape for layout
+    final bool isSquare = rowSpan == colSpan;
+    final bool isIconOnly = rowSpan == 1 && colSpan == 1;
+
+    final icon = ButtonTileIcon(
+      icon: getLightRoleIcon(group.role),
+      onTap: isToggling ? null : () => _toggleRole(context, group, devicesService),
+      isOn: isOn,
+    );
+
+    final subTitleWidget = Row(
+      mainAxisAlignment: isSquare ? MainAxisAlignment.center : MainAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(countText),
+        if (showBrightness) ...[
+          Text(' • '),
+          Icon(
+            MdiIcons.weatherSunny,
+            size: AppFontSize.extraSmall,
+          ),
+          const SizedBox(width: 2),
+          Text('${group.brightness}%'),
+        ],
+      ],
+    );
+
+    // Icon-only tile (1x1): tap toggles, long press opens detail
+    if (isIconOnly) {
+      return ButtonTileBox(
+        onTap: isToggling ? null : () => _toggleRole(context, group, devicesService),
+        isOn: isOn,
+        child: GestureDetector(
+          onLongPress: isToggling
+              ? null
+              : () => _openRoleTileDetail(context, group, devicesService),
+          child: Center(child: icon),
+        ),
+      );
+    }
+
+    // Square tile: vertical layout [icon] [label] [state]
+    if (isSquare) {
+      return ButtonTileBox(
+        onTap: isToggling
+            ? null
+            : () => _openRoleTileDetail(context, group, devicesService),
+        isOn: isOn,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            icon,
+            AppSpacings.spacingSmVertical,
+            ButtonTileTitle(
+              title: getLightRoleName(context, group.role),
+              isOn: isOn,
+            ),
+            AppSpacings.spacingXsVertical,
+            ButtonTileSubTitle(
+              subTitle: subTitleWidget,
+              isOn: isOn,
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Rectangle tile: horizontal layout - icon on side, content next to it
     return ButtonTileBox(
-      // Tap on tile (outside icon) opens detail
       onTap: isToggling
           ? null
           : () => _openRoleTileDetail(context, group, devicesService),
       isOn: isOn,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          ButtonTileIcon(
-            icon: getLightRoleIcon(group.role),
-            // Tap on icon toggles the role
-            onTap: isToggling ? null : () => _toggleRole(context, group, devicesService),
-            isOn: isOn,
-          ),
-          AppSpacings.spacingSmVertical,
-          ButtonTileTitle(
-            title: getLightRoleName(context, group.role),
-            isOn: isOn,
-          ),
-          AppSpacings.spacingXsVertical,
-          ButtonTileSubTitle(
-            subTitle: Row(
+          icon,
+          AppSpacings.spacingMdHorizontal,
+          Expanded(
+            child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(countText),
-                if (showBrightness) ...[
-                  Text(' • '),
-                  Icon(
-                    MdiIcons.weatherSunny,
-                    size: AppFontSize.extraSmall,
+                ButtonTileTitle(
+                  title: getLightRoleName(context, group.role),
+                  isOn: isOn,
+                ),
+                AppSpacings.spacingXsVertical,
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: ButtonTileSubTitle(
+                    subTitle: subTitleWidget,
+                    isOn: isOn,
                   ),
-                  const SizedBox(width: 2),
-                  Text('${group.brightness}%'),
-                ],
+                ),
               ],
             ),
-            isOn: isOn,
           ),
         ],
       ),
@@ -718,7 +786,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   /// Build "Other" channels section using FixedGridSizeGrid
-  /// Responsive to orientation: portrait shows 2 per row, landscape shows 3-4
+  /// Light tile sizing: 2x1 default, 2x2 if cols=2
   Widget _buildOtherChannelsSection(
     BuildContext context,
     _RoleGroup group,
@@ -732,25 +800,22 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     // Calculate cell height based on body height and display rows
     final cellHeight = bodyHeight / displayRows;
 
-    // Responsive layout based on orientation
-    final isLandscape = _screenService.isLandscape;
-
-    // Calculate tiles per row and spans based on orientation
-    final int tilesPerRow;
+    // Light tile sizing: 2x1 default, 2x2 if cols=2
     final int tileColSpan;
+    final int tileRowSpan;
+    final int tilesPerRow;
 
-    if (isLandscape) {
-      // Landscape: more tiles per row (3-4)
-      tilesPerRow = (cols >= 6) ? 4 : 3;
-      tileColSpan = (cols / tilesPerRow).floor().clamp(1, cols);
+    if (cols == 2) {
+      // 2x2 square tiles
+      tileColSpan = 2;
+      tileRowSpan = 2;
+      tilesPerRow = 1;
     } else {
-      // Portrait: 2 tiles per row
-      tilesPerRow = 2;
-      tileColSpan = (cols / 2).floor().clamp(1, cols);
+      // 2x1 rectangle tiles
+      tileColSpan = 2;
+      tileRowSpan = 1;
+      tilesPerRow = (cols / 2).floor().clamp(1, cols);
     }
-
-    // Each tile is 1 row height for compact display
-    const tileRowSpan = 1;
 
     // Calculate how many rows we need
     final totalRows = (group.targets.length / tilesPerRow).ceil();
@@ -772,6 +837,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             context,
             group.targets[i],
             devicesService,
+            rowSpan: tileRowSpan,
+            colSpan: tileColSpan,
           ),
         ),
       );
@@ -799,7 +866,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             ),
           ),
         ),
-        // Channel tiles grid - horizontal layout with 1 row height
+        // Channel tiles grid
         SizedBox(
           height: gridHeight,
           child: FixedGridSizeGrid(
@@ -812,12 +879,15 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
   }
 
-  /// Build a small channel tile for "Other" channels using horizontal layout
+  /// Build a channel tile for "Other" channels
+  /// Layout adapts based on rowSpan/colSpan: square=vertical, rectangle=horizontal, 1x1=icon only
   Widget _buildOtherChannelTile(
     BuildContext context,
     LightTargetView target,
-    DevicesService devicesService,
-  ) {
+    DevicesService devicesService, {
+    required int rowSpan,
+    required int colSpan,
+  }) {
     final localizations = AppLocalizations.of(context)!;
     final device = devicesService.getDevice(target.deviceId);
     if (device is! LightingDeviceView) {
@@ -883,50 +953,112 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final roomName = _spacesService?.getSpace(_roomId)?.name;
     final displayName = stripRoomNameFromDevice(target.channelName, roomName);
 
-    // Uses optimistic UI updates via overlay service - no loader needed
+    // Determine tile shape for layout
+    final bool isSquare = rowSpan == colSpan;
+    final bool isIconOnly = rowSpan == 1 && colSpan == 1;
+
+    final iconWidget = Stack(
+      clipBehavior: Clip.none,
+      children: [
+        ButtonTileIcon(
+          icon: hasFailure
+              ? MdiIcons.alertCircleOutline
+              : (isOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline),
+          onTap: isToggling
+              ? null
+              : () => _toggleDevice(context, target, channel, devicesService),
+          isOn: isOn,
+          iconColor: hasFailure ? AppColorsLight.warning : null,
+          iconSize: isIconOnly ? 24 : 20,
+        ),
+        // Offline indicator badge
+        if (!device.isOnline)
+          Positioned(
+            right: -2,
+            bottom: -2,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                MdiIcons.alert,
+                size: AppFontSize.extraSmall,
+                color: AppColorsLight.warning,
+              ),
+            ),
+          ),
+      ],
+    );
+
+    final subTitleWidget = Row(
+      mainAxisAlignment: isSquare ? MainAxisAlignment.center : MainAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(stateText),
+        if (showBrightness) ...[
+          AppSpacings.spacingSmHorizontal,
+          Icon(
+            MdiIcons.weatherSunny,
+            size: AppFontSize.extraSmall,
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppTextColorLight.placeholder
+                : AppTextColorDark.placeholder,
+          ),
+          const SizedBox(width: 2),
+          Text('$brightness%'),
+        ],
+      ],
+    );
+
+    // Icon-only tile (1x1): tap toggles, long press opens detail
+    if (isIconOnly) {
+      return ButtonTileBox(
+        onTap: isToggling
+            ? null
+            : () => _toggleDevice(context, target, channel, devicesService),
+        isOn: isOn,
+        child: GestureDetector(
+          onLongPress: isToggling ? null : () => _openDeviceDetail(context, device),
+          child: Center(child: iconWidget),
+        ),
+      );
+    }
+
+    // Square tile: vertical layout [icon] [label] [state]
+    if (isSquare) {
+      return ButtonTileBox(
+        onTap: isToggling ? null : () => _openDeviceDetail(context, device),
+        isOn: isOn,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            iconWidget,
+            AppSpacings.spacingSmVertical,
+            ButtonTileTitle(
+              title: displayName,
+              isOn: isOn,
+            ),
+            AppSpacings.spacingXsVertical,
+            ButtonTileSubTitle(
+              subTitle: subTitleWidget,
+              isOn: isOn,
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Rectangle tile: horizontal layout - icon on side, content next to it
     return ButtonTileBox(
-      // Tap on tile (outside icon) opens device detail
       onTap: isToggling ? null : () => _openDeviceDetail(context, device),
       isOn: isOn,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              ButtonTileIcon(
-                icon: hasFailure
-                    ? MdiIcons.alertCircleOutline
-                    : (isOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline),
-                // Tap on icon toggles the device
-                onTap: isToggling
-                    ? null
-                    : () => _toggleDevice(context, target, channel, devicesService),
-                isOn: isOn,
-                iconColor: hasFailure ? AppColorsLight.warning : null,
-                iconSize: 20,
-              ),
-              // Offline indicator badge
-              if (!device.isOnline)
-                Positioned(
-                  right: -2,
-                  bottom: -2,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).scaffoldBackgroundColor,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      MdiIcons.alert,
-                      size: AppFontSize.extraSmall,
-                      color: AppColorsLight.warning,
-                    ),
-                  ),
-                ),
-            ],
-          ),
+          iconWidget,
           AppSpacings.spacingMdHorizontal,
           Expanded(
             child: Column(
@@ -936,27 +1068,15 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                 ButtonTileTitle(
                   title: displayName,
                   isOn: isOn,
+                  small: true,
                 ),
                 AppSpacings.spacingXsVertical,
-                ButtonTileSubTitle(
-                  subTitle: Row(
-                    children: [
-                      Text(stateText),
-                      if (showBrightness) ...[
-                        AppSpacings.spacingSmHorizontal,
-                        Icon(
-                          MdiIcons.weatherSunny,
-                          size: AppFontSize.extraSmall,
-                          color: Theme.of(context).brightness == Brightness.light
-                              ? AppTextColorLight.placeholder
-                              : AppTextColorDark.placeholder,
-                        ),
-                        const SizedBox(width: 2),
-                        Text('$brightness%'),
-                      ],
-                    ],
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: ButtonTileSubTitle(
+                    subTitle: subTitleWidget,
+                    isOn: isOn,
                   ),
-                  isOn: isOn,
                 ),
               ],
             ),
