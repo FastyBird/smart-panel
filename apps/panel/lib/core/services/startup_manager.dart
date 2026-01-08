@@ -589,7 +589,13 @@ class StartupManagerService {
       } catch (_) {}
     }
 
-    // Deck services
+    // Deck module services
+    if (locator.isRegistered<DeckModuleService>()) {
+      try {
+        locator<DeckModuleService>().dispose();
+        locator.unregister<DeckModuleService>();
+      } catch (_) {}
+    }
     if (locator.isRegistered<DeckService>()) {
       try {
         locator.unregister<DeckService>();
@@ -704,22 +710,15 @@ class StartupManagerService {
     var propertyTimeseriesService = PropertyTimeseriesService(dio: _apiIoService);
     locator.registerSingleton(propertyTimeseriesService);
 
-    // Deck navigation services
-    // Note: IntentsService must be created before DeckService since DeckService
-    // needs to synchronize the deck with IntentsService after building it
-    var intentsService = IntentsService(
+    // Deck module services
+    var deckModuleService = DeckModuleService(
       eventBus: _eventBus,
+      dashboardService: locator<DashboardService>(),
+      devicesService: locator<DevicesService>(),
       scenesService: locator<ScenesService>(),
       channelPropertiesRepository: locator<ChannelPropertiesRepository>(),
     );
-    locator.registerSingleton(intentsService);
-
-    var deckService = DeckService(
-      dashboardService: locator<DashboardService>(),
-      intentsService: intentsService,
-      devicesService: locator<DevicesService>(),
-    );
-    locator.registerSingleton(deckService);
+    locator.registerSingleton(deckModuleService);
 
     // Api client
     locator.registerSingleton(_apiIoService);

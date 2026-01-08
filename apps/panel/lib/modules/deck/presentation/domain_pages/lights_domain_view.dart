@@ -28,14 +28,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
-part 'lights_domain_view_models.dart';
-
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
-// Private UI models are in the part file: lights_domain_view_models.dart
-// Public models, constants, and utilities are in: modules/deck/domain_views/lighting/
 
 /// Lights domain page - displays lighting devices grouped by role with quick controls.
 ///
@@ -249,7 +244,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   /// Build role groups from light targets
-  List<_RoleGroup> _buildRoleGroups(
+  List<RoleGroup> _buildRoleGroups(
     List<LightTargetView> targets,
     DevicesService devicesService,
   ) {
@@ -271,7 +266,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     }
 
     // Build role groups with state information
-    final List<_RoleGroup> groups = [];
+    final List<RoleGroup> groups = [];
     for (final role in LightTargetRole.values) {
       final roleTargets = grouped[role] ?? [];
       if (roleTargets.isEmpty) continue;
@@ -369,7 +364,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         );
       }
 
-      groups.add(_RoleGroup(
+      groups.add(RoleGroup(
         role: role,
         targets: roleTargets,
         onCount: effectiveOnCount,
@@ -386,7 +381,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   /// Role tile sizing: 2x2 default, 3x2 if cols=3
   Widget _buildRoleTilesGrid(
     BuildContext context,
-    List<_RoleGroup> roleGroups,
+    List<RoleGroup> roleGroups,
     DevicesService devicesService,
     double bodyHeight,
   ) {
@@ -459,7 +454,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   /// Layout adapts based on rowSpan/colSpan: square=vertical, rectangle=horizontal
   Widget _buildRoleTile(
     BuildContext context,
-    _RoleGroup group,
+    RoleGroup group,
     DevicesService devicesService, {
     required int rowSpan,
     required int colSpan,
@@ -695,7 +690,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   /// Open role detail or device detail based on number of devices in the group
   void _openRoleTileDetail(
     BuildContext context,
-    _RoleGroup group,
+    RoleGroup group,
     DevicesService devicesService,
   ) {
     if (group.targets.length == 1) {
@@ -715,7 +710,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   /// Uses DeviceControlStateService for property-level state tracking
   Future<void> _toggleRole(
     BuildContext context,
-    _RoleGroup group,
+    RoleGroup group,
     DevicesService devicesService,
   ) async {
     final localizations = AppLocalizations.of(context);
@@ -829,7 +824,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   /// Open role detail page or device detail if only one device
   void _openRoleDetail(
     BuildContext context,
-    _RoleGroup group,
+    RoleGroup group,
     DevicesService devicesService,
   ) {
     // If only one device in role, open device detail directly
@@ -863,7 +858,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   /// Light tile sizing: 2x1 default, 2x2 if cols=2
   Widget _buildOtherChannelsSection(
     BuildContext context,
-    _RoleGroup group,
+    RoleGroup group,
     DevicesService devicesService,
     double bodyHeight,
   ) {
@@ -1392,8 +1387,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
   RoleControlStateRepository? _roleControlStateRepository;
 
   // Current mode for bottom navigation
-  _LightRoleMode _currentMode = _LightRoleMode.off;
-  final List<_LightRoleMode> _availableModes = [];
+  LightRoleMode _currentMode = LightRoleMode.off;
+  final List<LightRoleMode> _availableModes = [];
 
   // Role control states for each control type (replaces simple slider values)
   RoleControlState _brightnessState = const RoleControlState();
@@ -2445,14 +2440,14 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     }
 
     _availableModes.clear();
-    _availableModes.add(_LightRoleMode.off);
-    if (hasBrightness) _availableModes.add(_LightRoleMode.brightness);
-    if (hasColor) _availableModes.add(_LightRoleMode.color);
-    if (hasTemperature) _availableModes.add(_LightRoleMode.temperature);
-    if (hasWhite) _availableModes.add(_LightRoleMode.white);
+    _availableModes.add(LightRoleMode.off);
+    if (hasBrightness) _availableModes.add(LightRoleMode.brightness);
+    if (hasColor) _availableModes.add(LightRoleMode.color);
+    if (hasTemperature) _availableModes.add(LightRoleMode.temperature);
+    if (hasWhite) _availableModes.add(LightRoleMode.white);
 
     // Set initial mode to brightness if available, otherwise keep current
-    if (_availableModes.length > 1 && _currentMode == _LightRoleMode.off) {
+    if (_availableModes.length > 1 && _currentMode == LightRoleMode.off) {
       _currentMode = _availableModes[1];
     }
   }
@@ -2541,7 +2536,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         : 0;
     // Use pending state as fallback for optimistic UI (in case overlay lookup has timing issues)
     final anyOn = _pendingOnState ?? (onCount > 0);
-    final hasBrightness = _availableModes.contains(_LightRoleMode.brightness);
+    final hasBrightness = _availableModes.contains(LightRoleMode.brightness);
 
     return Scaffold(
       appBar: AppTopBar(
@@ -2938,7 +2933,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     }
 
     switch (_currentMode) {
-      case _LightRoleMode.brightness:
+      case LightRoleMode.brightness:
         return _buildBrightnessSlider(
           context,
           targets,
@@ -2946,28 +2941,28 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           elementMaxSize,
           devicesService,
         );
-      case _LightRoleMode.color:
+      case LightRoleMode.color:
         return _buildColorSlider(
           context,
           targets,
           elementMaxSize,
           devicesService,
         );
-      case _LightRoleMode.temperature:
+      case LightRoleMode.temperature:
         return _buildTemperatureSlider(
           context,
           targets,
           elementMaxSize,
           devicesService,
         );
-      case _LightRoleMode.white:
+      case LightRoleMode.white:
         return _buildWhiteSlider(
           context,
           targets,
           elementMaxSize,
           devicesService,
         );
-      case _LightRoleMode.off:
+      case LightRoleMode.off:
         return _buildBrightnessSlider(
           context,
           targets,
@@ -3116,7 +3111,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
             _setSimplePropertyForAll(
               context: context,
               targets: targets,
-              propertyType: _SimplePropertyType.brightness,
+              propertyType: SimplePropertyType.brightness,
               value: value.round(),
               devicesService: devicesService,
             );
@@ -3456,7 +3451,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
             _setSimplePropertyForAll(
               context: context,
               targets: targets,
-              propertyType: _SimplePropertyType.temperature,
+              propertyType: SimplePropertyType.temperature,
               value: value,
               devicesService: devicesService,
             );
@@ -3611,7 +3606,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
             _setSimplePropertyForAll(
               context: context,
               targets: targets,
-              propertyType: _SimplePropertyType.white,
+              propertyType: SimplePropertyType.white,
               value: value.round(),
               devicesService: devicesService,
             );
@@ -3676,7 +3671,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       bool isPropertyLocked = false;
       if (channel != null && _intentOverlayService != null) {
         switch (_currentMode) {
-          case _LightRoleMode.brightness:
+          case LightRoleMode.brightness:
             final brightnessProp = channel.brightnessProp;
             if (brightnessProp != null) {
               isPropertyLocked = _intentOverlayService!.isPropertyLocked(
@@ -3686,7 +3681,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
               );
             }
             break;
-          case _LightRoleMode.color:
+          case LightRoleMode.color:
             final hueProp = channel.hueProp;
             if (hueProp != null) {
               isPropertyLocked = _intentOverlayService!.isPropertyLocked(
@@ -3703,7 +3698,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
               );
             }
             break;
-          case _LightRoleMode.temperature:
+          case LightRoleMode.temperature:
             final tempProp = channel.temperatureProp;
             if (tempProp != null) {
               isPropertyLocked = _intentOverlayService!.isPropertyLocked(
@@ -3713,7 +3708,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
               );
             }
             break;
-          case _LightRoleMode.white:
+          case LightRoleMode.white:
             final whiteProp = channel.colorWhiteProp;
             if (whiteProp != null) {
               isPropertyLocked = _intentOverlayService!.isPropertyLocked(
@@ -3723,7 +3718,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
               );
             }
             break;
-          case _LightRoleMode.off:
+          case LightRoleMode.off:
             // No property to check for off mode
             break;
         }
@@ -3823,13 +3818,13 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       onTap: (int index) async {
         final selectedMode = _availableModes[index];
 
-        if (selectedMode == _LightRoleMode.off) {
+        if (selectedMode == LightRoleMode.off) {
           // Toggle all lights
           await _toggleAllLights(context, targets, devicesService);
           // Switch to brightness mode after toggle
-          if (_availableModes.contains(_LightRoleMode.brightness)) {
+          if (_availableModes.contains(LightRoleMode.brightness)) {
             setState(() {
-              _currentMode = _LightRoleMode.brightness;
+              _currentMode = LightRoleMode.brightness;
             });
           }
         } else {
@@ -3840,28 +3835,28 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       },
       items: _availableModes.map((mode) {
         switch (mode) {
-          case _LightRoleMode.off:
+          case LightRoleMode.off:
             // Show "On" when lights are off, "Off" when lights are on
             return AppBottomNavigationItem(
               icon: Icon(MdiIcons.power),
               label: anyOn ? localizations.light_mode_off : localizations.light_mode_on,
             );
-          case _LightRoleMode.brightness:
+          case LightRoleMode.brightness:
             return AppBottomNavigationItem(
               icon: Icon(MdiIcons.weatherSunny),
               label: localizations.light_mode_brightness,
             );
-          case _LightRoleMode.color:
+          case LightRoleMode.color:
             return AppBottomNavigationItem(
               icon: Icon(MdiIcons.paletteOutline),
               label: localizations.light_mode_color,
             );
-          case _LightRoleMode.temperature:
+          case LightRoleMode.temperature:
             return AppBottomNavigationItem(
               icon: Icon(MdiIcons.thermometer),
               label: localizations.light_mode_temperature,
             );
-          case _LightRoleMode.white:
+          case LightRoleMode.white:
             return AppBottomNavigationItem(
               icon: Icon(MdiIcons.lightbulbOutline),
               label: localizations.light_mode_white,
@@ -4056,7 +4051,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
   Future<void> _setSimplePropertyForAll({
     required BuildContext context,
     required List<LightTargetView> targets,
-    required _SimplePropertyType propertyType,
+    required SimplePropertyType propertyType,
     required num value,
     required DevicesService devicesService,
   }) async {
@@ -4070,9 +4065,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       for (final target in targets) {
         // Check target capability based on property type
         final hasCapability = switch (propertyType) {
-          _SimplePropertyType.brightness => target.hasBrightness,
-          _SimplePropertyType.temperature => target.hasColorTemp,
-          _SimplePropertyType.white => true, // No specific check for white
+          SimplePropertyType.brightness => target.hasBrightness,
+          SimplePropertyType.temperature => target.hasColorTemp,
+          SimplePropertyType.white => true, // No specific check for white
         };
         if (!hasCapability) continue;
 
@@ -4083,9 +4078,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
           // Get the appropriate property from channel
           final prop = switch (propertyType) {
-            _SimplePropertyType.brightness => channel.brightnessProp,
-            _SimplePropertyType.temperature => channel.temperatureProp,
-            _SimplePropertyType.white => channel.colorWhiteProp,
+            SimplePropertyType.brightness => channel.brightnessProp,
+            SimplePropertyType.temperature => channel.temperatureProp,
+            SimplePropertyType.white => channel.colorWhiteProp,
           };
 
           if (prop != null) {

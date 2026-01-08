@@ -1,8 +1,8 @@
 import 'package:event_bus/event_bus.dart';
-import 'package:fastybird_smart_panel/modules/deck/events/navigate_to_deck_item.dart';
-import 'package:fastybird_smart_panel/modules/deck/intents/intent_result.dart';
-import 'package:fastybird_smart_panel/modules/deck/intents/intent_types.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_result.dart';
+import 'package:fastybird_smart_panel/modules/deck/models/intent_result.dart';
+import 'package:fastybird_smart_panel/modules/deck/types/intent_type.dart';
+import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/channel_properties.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
 import 'package:flutter/foundation.dart';

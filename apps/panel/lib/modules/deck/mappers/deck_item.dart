@@ -1,6 +1,3 @@
-import 'package:fastybird_smart_panel/features/deck/mappers/system_view.dart';
-import 'package:fastybird_smart_panel/features/deck/presentation/domain_views/domain_view.dart';
-import 'package:fastybird_smart_panel/features/deck/presentation/domain_views/lights_domain_view.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/page.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:flutter/material.dart';

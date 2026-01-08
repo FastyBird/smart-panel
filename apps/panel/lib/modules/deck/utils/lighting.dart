@@ -55,7 +55,7 @@ String stripRoomNameFromDevice(String deviceName, String? roomName) {
   return deviceName;
 }
 
-/// Get localized name for a light role
+/// Get localized name for a light role.
 String getLightRoleName(BuildContext context, LightTargetRole role) {
   final localizations = AppLocalizations.of(context)!;
 
@@ -77,7 +77,7 @@ String getLightRoleName(BuildContext context, LightTargetRole role) {
   }
 }
 
-/// Get icon for a light role
+/// Get icon for a light role.
 IconData getLightRoleIcon(LightTargetRole role) {
   switch (role) {
     case LightTargetRole.main:
