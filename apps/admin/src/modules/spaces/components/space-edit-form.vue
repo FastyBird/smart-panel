@@ -249,6 +249,11 @@
 						<space-lighting-roles :space="props.space" />
 					</template>
 
+					<!-- Climate Roles -->
+					<template v-if="hasClimateDevices">
+						<space-climate-roles :space="props.space" />
+					</template>
+
 					<!-- Smart Suggestions -->
 					<el-divider content-position="left" class="mt-6!">
 						{{ t('spacesModule.edit.sections.smartOverrides.smartSuggestions') }}
@@ -332,6 +337,7 @@ import {
 	SpaceType,
 } from '../spaces.constants';
 
+import SpaceClimateRoles from './space-climate-roles.vue';
 import SpaceEditSummarySection from './space-edit-summary-section.vue';
 import SpaceLightingRoles from './space-lighting-roles.vue';
 import { type ISpaceEditFormProps, spaceEditFormEmits } from './space-edit-form.types';
@@ -486,6 +492,22 @@ const climateDevices = computed(() => [...thermostatDevices.value, ...sensorDevi
 // Check if there are lighting devices in this space
 const hasLightingDevices = computed(() =>
 	spaceDevices.value.some((d) => d.category === DevicesModuleDeviceCategory.lighting)
+);
+
+// Climate device categories for role assignment
+const climateDeviceCategories = [
+	DevicesModuleDeviceCategory.thermostat,
+	DevicesModuleDeviceCategory.heater,
+	DevicesModuleDeviceCategory.air_conditioner,
+	DevicesModuleDeviceCategory.fan,
+	DevicesModuleDeviceCategory.air_humidifier,
+	DevicesModuleDeviceCategory.air_dehumidifier,
+	DevicesModuleDeviceCategory.air_purifier,
+];
+
+// Check if there are climate devices in this space (for role assignment)
+const hasClimateDevices = computed(() =>
+	spaceDevices.value.some((d) => climateDeviceCategories.includes(d.category as DevicesModuleDeviceCategory))
 );
 
 watch(
