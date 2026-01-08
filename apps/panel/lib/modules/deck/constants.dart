@@ -34,6 +34,8 @@ class LightingConstants {
   static const double temperatureTolerance = 100.0;
   static const double whiteTolerance = 5.0;
 
-  /// Threshold for detecting "mixed" states across devices.
+  /// Thresholds for detecting "mixed" states across devices.
   static const int mixedThreshold = 10;
+  static const int hueMixedThreshold = 20;
+  static const int whiteMixedThreshold = 15;
 }
