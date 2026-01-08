@@ -23,6 +23,7 @@ Widget _buildDomainViewWidget(DomainViewItem domainView) {
     case DomainType.lights:
       return LightsDomainViewPage(viewItem: domainView);
     case DomainType.climate:
+      return ClimateDomainViewPage(viewItem: domainView);
     case DomainType.media:
     case DomainType.sensors:
       // Use placeholder for other domains (to be implemented)
