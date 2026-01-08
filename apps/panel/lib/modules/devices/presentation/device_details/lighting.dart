@@ -16,6 +16,7 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/light
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/light_mode_navigation.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/light_state_display.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
@@ -24,6 +25,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dar
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 import 'package:fastybird_smart_panel/modules/displays/export.dart';
 import 'package:fastybird_smart_panel/modules/intents/service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -41,19 +43,58 @@ class LightingDeviceDetail extends StatefulWidget {
 
 class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
   final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
   final PropertyValueHelper _valueHelper = PropertyValueHelper();
+
+  DeviceControlStateService? _deviceControlStateService;
+  IntentOverlayService? _intentOverlayService;
 
   late List<LightMode> _availableModes;
   late LightMode _currentMode;
   late List<LightChannelView> _channels;
 
-  // Track which channels are being toggled
+  // Track which channels are being toggled (prevents double-taps)
   final Set<String> _togglingChannels = {};
 
   @override
   void initState() {
     super.initState();
+
+    try {
+      _deviceControlStateService = locator<DeviceControlStateService>();
+      _deviceControlStateService?.addListener(_onControlStateChanged);
+    } catch (e) {
+      if (kDebugMode) debugPrint('[LightingDeviceDetail] Failed to get DeviceControlStateService: $e');
+    }
+
+    try {
+      _intentOverlayService = locator<IntentOverlayService>();
+      _intentOverlayService?.addListener(_onIntentChanged);
+    } catch (e) {
+      if (kDebugMode) debugPrint('[LightingDeviceDetail] Failed to get IntentOverlayService: $e');
+    }
+
     _initializeWidget();
+  }
+
+  @override
+  void dispose() {
+    _deviceControlStateService?.removeListener(_onControlStateChanged);
+    _intentOverlayService?.removeListener(_onIntentChanged);
+    super.dispose();
+  }
+
+  void _onControlStateChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _onIntentChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -265,6 +306,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
 
   /// Build a single channel tile for multi-channel layout
   /// Layout adapts based on rowSpan/colSpan: square=vertical, rectangle=horizontal, 1x1=icon only
+  /// Uses LayoutBuilder for dynamic icon sizing based on tile dimensions
   Widget _buildChannelTile(
     BuildContext context,
     LightChannelView channel,
@@ -272,138 +314,231 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     required int rowSpan,
     required int colSpan,
   }) {
-    final isOn = channel.on;
+    final deviceId = widget._device.id;
+    final channelId = channel.id;
+    final onProp = channel.onProp;
+
+    // Check device control state service first (local optimistic state, most reliable)
+    // When state is locked (pending/settling), use the desired value
+    bool isOn = channel.on;
+    final controlStateService = _deviceControlStateService;
+
+    if (controlStateService != null &&
+        controlStateService.isLocked(deviceId, channelId, onProp.id)) {
+      // Use desired value from control state service (immediate, no listener delay)
+      final desiredValue = controlStateService.getDesiredValue(
+        deviceId,
+        channelId,
+        onProp.id,
+      );
+      if (desiredValue is bool) {
+        isOn = desiredValue;
+      } else if (desiredValue is num) {
+        isOn = desiredValue > 0.5;
+      }
+    } else if (_intentOverlayService != null) {
+      // Fall back to overlay service (for failures, backend intents, etc.)
+      if (_intentOverlayService!.isPropertyLocked(
+            deviceId,
+            channelId,
+            onProp.id,
+          )) {
+        final overlayValue = _intentOverlayService!.getOverlayValue(
+          deviceId,
+          channelId,
+          onProp.id,
+        );
+        if (overlayValue is bool) {
+          isOn = overlayValue;
+        }
+      }
+    }
+
     final isToggling = _togglingChannels.contains(channel.id);
     final hasBrightness = channel.hasBrightness;
     final brightness = hasBrightness ? channel.brightness : null;
+
+    // Check for recent failure
+    final hasFailure = _intentOverlayService?.hasRecentFailure(deviceId) ?? false;
 
     // Determine tile shape for layout
     final bool isSquare = rowSpan == colSpan;
     final bool isIconOnly = rowSpan == 1 && colSpan == 1;
 
     // Build subtitle: On/Off state with optional brightness
-    final stateText =
-        isOn ? localizations.light_state_on : localizations.light_state_off;
-    final showBrightness = hasBrightness && isOn && brightness != null;
+    final stateText = hasFailure
+        ? localizations.light_state_failed
+        : (isOn ? localizations.light_state_on : localizations.light_state_off);
+    final showBrightness = hasBrightness && isOn && brightness != null && !hasFailure;
 
-    final iconWidget = Stack(
-      clipBehavior: Clip.none,
-      children: [
-        ButtonTileIcon(
-          icon: isOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline,
-          onTap: isToggling ? null : () => _toggleChannel(channel, !isOn),
-          isOn: isOn,
-          isLoading: isToggling,
-          iconSize: isIconOnly ? 24 : null,
-        ),
-        // Offline indicator badge
-        if (!widget._device.isOnline)
-          Positioned(
-            right: -2,
-            bottom: -2,
-            child: Container(
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                MdiIcons.alert,
-                size: AppFontSize.extraSmall,
-                color: AppColorsLight.warning,
-              ),
+    // Helper to build icon widget with dynamic size
+    Widget buildIconWidget(double iconSize) {
+      return ButtonTileIcon(
+        icon: hasFailure
+            ? MdiIcons.alertCircleOutline
+            : (isOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline),
+        onTap: isToggling ? null : () => _toggleChannel(channel, !isOn),
+        isOn: isOn,
+        iconColor: hasFailure ? AppColorsLight.warning : null,
+        rawIconSize: iconSize,
+        showAlert: !widget._device.isOnline,
+      );
+    }
+
+    // Scaled spacing for icon-to-text gap
+    final scaledIconTextGap = _screenService.scale(
+      2,
+      density: _visualDensityService.density,
+    );
+
+    // Text style for measuring (matches ButtonTileSubTitle)
+    final subtitleStyle = TextStyle(
+      fontFamily: 'DIN1451',
+      fontSize: AppFontSize.extraSmall,
+    );
+
+    // Helper to measure text width
+    double measureText(String text) {
+      final textPainter = TextPainter(
+        text: TextSpan(text: text, style: subtitleStyle),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      return textPainter.width;
+    }
+
+    // Helper to build subtitle widget with optional width constraint for overflow detection
+    Widget buildSubTitleWidget({double? availableWidth}) {
+      // Calculate widths if we need to check for overflow
+      bool showStateText = true;
+      if (availableWidth != null && showBrightness) {
+        final stateWidth = measureText(stateText);
+        final brightnessText = '$brightness%';
+        final brightnessWidth = measureText(brightnessText);
+        final iconWidth = AppFontSize.extraSmall;
+        final spacing = AppSpacings.pSm + scaledIconTextGap;
+
+        final fullWidth = stateWidth + spacing + iconWidth + scaledIconTextGap + brightnessWidth;
+        final brightnessOnlyWidth = iconWidth + scaledIconTextGap + brightnessWidth;
+
+        // If full content doesn't fit but brightness does, hide state text
+        if (fullWidth > availableWidth && brightnessOnlyWidth <= availableWidth) {
+          showStateText = false;
+        }
+      }
+
+      return Row(
+        mainAxisAlignment: isSquare ? MainAxisAlignment.center : MainAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (showStateText) Text(stateText),
+          if (showBrightness) ...[
+            if (showStateText) AppSpacings.spacingSmHorizontal,
+            Icon(
+              MdiIcons.weatherSunny,
+              size: AppFontSize.extraSmall,
             ),
-          ),
-      ],
-    );
-
-    final subTitleWidget = Row(
-      mainAxisAlignment: isSquare ? MainAxisAlignment.center : MainAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(stateText),
-        if (showBrightness) ...[
-          AppSpacings.spacingSmHorizontal,
-          Icon(
-            MdiIcons.weatherSunny,
-            size: AppFontSize.extraSmall,
-            color: Theme.of(context).brightness == Brightness.light
-                ? AppTextColorLight.placeholder
-                : AppTextColorDark.placeholder,
-          ),
-          const SizedBox(width: 2),
-          Text('$brightness%'),
+            SizedBox(width: scaledIconTextGap),
+            Text('$brightness%'),
+          ],
         ],
-      ],
-    );
+      );
+    }
 
-    // Icon-only tile (1x1): tap toggles, long press opens detail
+    // Icon-only tile (1x1): icon fills tile with padding, tap toggles, long press opens detail
     if (isIconOnly) {
       return ButtonTileBox(
         onTap: isToggling ? null : () => _toggleChannel(channel, !isOn),
         isOn: isOn,
-        child: GestureDetector(
-          onLongPress: isToggling ? null : () => _openChannelDetail(context, channel),
-          child: Center(child: iconWidget),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Icon fills tile with padding
+            final availableSize = constraints.maxWidth < constraints.maxHeight
+                ? constraints.maxWidth
+                : constraints.maxHeight;
+            final iconSize = availableSize - AppSpacings.pSm;
+
+            return GestureDetector(
+              onLongPress: isToggling ? null : () => _openChannelDetail(context, channel),
+              child: Center(child: buildIconWidget(iconSize)),
+            );
+          },
         ),
       );
     }
 
     // Square tile: vertical layout [icon] [label] [state]
+    // Icon takes upper half, text takes bottom half
     if (isSquare) {
       return ButtonTileBox(
         onTap: isToggling ? null : () => _openChannelDetail(context, channel),
         isOn: isOn,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            iconWidget,
-            AppSpacings.spacingSmVertical,
-            ButtonTileTitle(
-              title: channel.name,
-              isOn: isOn,
-            ),
-            AppSpacings.spacingXsVertical,
-            ButtonTileSubTitle(
-              subTitle: subTitleWidget,
-              isOn: isOn,
-            ),
-          ],
-        ),
-      );
-    }
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Icon area is upper half minus some spacing for text
+            final iconSize = (constraints.maxHeight / 2) - AppSpacings.pSm;
 
-    // Rectangle tile: horizontal layout - icon on side, content next to it
-    return ButtonTileBox(
-      onTap: isToggling ? null : () => _openChannelDetail(context, channel),
-      isOn: isOn,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          iconWidget,
-          AppSpacings.spacingMdHorizontal,
-          Expanded(
-            child: Column(
+            return Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                buildIconWidget(iconSize),
+                AppSpacings.spacingSmVertical,
                 ButtonTileTitle(
                   title: channel.name,
                   isOn: isOn,
                 ),
                 AppSpacings.spacingXsVertical,
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: ButtonTileSubTitle(
-                    subTitle: subTitleWidget,
-                    isOn: isOn,
-                  ),
+                ButtonTileSubTitle(
+                  subTitle: buildSubTitleWidget(availableWidth: constraints.maxWidth),
+                  isOn: isOn,
                 ),
               ],
-            ),
-          ),
-        ],
+            );
+          },
+        ),
+      );
+    }
+
+    // Rectangle tile: horizontal layout - icon on left (1/3 width), content on right
+    return ButtonTileBox(
+      onTap: isToggling ? null : () => _openChannelDetail(context, channel),
+      isOn: isOn,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Icon takes left 1/3 of width, but limited by height
+          final maxIconWidth = constraints.maxWidth / 3;
+          final maxIconHeight = constraints.maxHeight - AppSpacings.pSm;
+          final iconSize = maxIconWidth < maxIconHeight ? maxIconWidth : maxIconHeight;
+
+          // Calculate available width for subtitle (after icon and spacing)
+          final subtitleAvailableWidth = constraints.maxWidth - iconSize - AppSpacings.pMd;
+
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              buildIconWidget(iconSize),
+              AppSpacings.spacingMdHorizontal,
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ButtonTileTitle(
+                      title: channel.name,
+                      isOn: isOn,
+                      small: true,
+                    ),
+                    AppSpacings.spacingXsVertical,
+                    ButtonTileSubTitle(
+                      subTitle: buildSubTitleWidget(availableWidth: subtitleAvailableWidth),
+                      isOn: isOn,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -421,25 +556,69 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     );
   }
 
-  /// Toggle a single channel
+  /// Toggle a single channel with optimistic UI
   Future<void> _toggleChannel(LightChannelView channel, bool newState) async {
+    final localizations = AppLocalizations.of(context);
+    final controlStateService = _deviceControlStateService;
+    final deviceId = widget._device.id;
+    final channelId = channel.id;
+    final propertyId = channel.onProp.id;
+
+    // Set state machine to PENDING - this locks the UI to show desired state
+    controlStateService?.setPending(
+      deviceId,
+      channelId,
+      propertyId,
+      newState,
+    );
     setState(() {
       _togglingChannels.add(channel.id);
     });
 
+    // Also create overlay for intent tracking (for failure detection etc)
+    _intentOverlayService?.createLocalOverlay(
+      deviceId: deviceId,
+      channelId: channelId,
+      propertyId: propertyId,
+      value: newState,
+      ttlMs: 5000, // 5 second TTL
+    );
+
     try {
-      await _valueHelper.setPropertyValue(
+      final success = await _valueHelper.setPropertyValue(
         context,
         channel.onProp,
         newState,
-        deviceId: widget._device.id,
-        channelId: channel.id,
+        deviceId: deviceId,
+        channelId: channelId,
+      );
+
+      if (!mounted) return;
+
+      if (!success) {
+        AlertBar.showError(
+          context,
+          message: localizations?.action_failed ?? 'Failed to toggle device',
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      AlertBar.showError(
+        context,
+        message: localizations?.action_failed ?? 'Failed to toggle device',
       );
     } finally {
+      // Transition to SETTLING state - suppresses state changes while device syncs
+      setState(() {
+        _togglingChannels.remove(channel.id);
+      });
+
       if (mounted) {
-        setState(() {
-          _togglingChannels.remove(channel.id);
-        });
+        controlStateService?.setSettling(
+          deviceId,
+          channelId,
+          propertyId,
+        );
       }
     }
   }

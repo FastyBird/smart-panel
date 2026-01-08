@@ -1,3 +1,6 @@
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/button_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -13,6 +16,10 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 ///
 /// Uses horizontal Row layout (same as "other" tiles in domain view).
 class LightChannelTile extends StatelessWidget {
+  final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
+
   /// The light channel to display
   final LightChannelView channel;
 
@@ -40,7 +47,7 @@ class LightChannelTile extends StatelessWidget {
   /// Optional: override the displayed on state (for optimistic UI)
   final bool? overrideIsOn;
 
-  const LightChannelTile({
+  LightChannelTile({
     super.key,
     required this.channel,
     required this.name,
@@ -80,10 +87,21 @@ class LightChannelTile extends StatelessWidget {
               // Offline indicator badge
               if (!isOnline)
                 Positioned(
-                  right: -2,
-                  bottom: -2,
+                  right: -_screenService.scale(
+                    2,
+                    density: _visualDensityService.density,
+                  ),
+                  bottom: -_screenService.scale(
+                    2,
+                    density: _visualDensityService.density,
+                  ),
                   child: Container(
-                    padding: const EdgeInsets.all(2),
+                    padding: EdgeInsets.all(
+                      _screenService.scale(
+                        2,
+                        density: _visualDensityService.density,
+                      ),
+                    ),
                     decoration: BoxDecoration(
                       color: Theme.of(context).scaffoldBackgroundColor,
                       shape: BoxShape.circle,
@@ -91,7 +109,9 @@ class LightChannelTile extends StatelessWidget {
                     child: Icon(
                       MdiIcons.alert,
                       size: AppFontSize.extraSmall,
-                      color: AppColorsLight.warning,
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? AppColorsLight.warning
+                          : AppColorsDark.warning,
                     ),
                   ),
                 ),
@@ -147,11 +167,13 @@ class LightChannelTile extends StatelessWidget {
           Icon(
             MdiIcons.weatherSunny,
             size: AppFontSize.extraSmall,
-            color: Theme.of(context).brightness == Brightness.light
-                ? AppTextColorLight.placeholder
-                : AppTextColorDark.placeholder,
           ),
-          const SizedBox(width: 2),
+          SizedBox(
+            width: _screenService.scale(
+              2,
+              density: _visualDensityService.density,
+            ),
+          ),
           Text('$brightness%'),
         ],
       ],

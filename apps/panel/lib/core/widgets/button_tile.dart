@@ -4,6 +4,7 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 /// Container box for button tiles with on/off state styling
 class ButtonTileBox extends StatelessWidget {
@@ -26,6 +27,20 @@ class ButtonTileBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Scale shadow values
+    final shadowBlur = _screenService.scale(
+      4,
+      density: _visualDensityService.density,
+    );
+    final shadowSpread = _screenService.scale(
+      1,
+      density: _visualDensityService.density,
+    );
+    final shadowOffsetY = _screenService.scale(
+      2,
+      density: _visualDensityService.density,
+    );
+
     return Container(
       constraints: const BoxConstraints.expand(),
       decoration: BoxDecoration(
@@ -62,9 +77,9 @@ class ButtonTileBox extends StatelessWidget {
             ? [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 4,
-                  spreadRadius: 1,
-                  offset: const Offset(0, 2),
+                  blurRadius: shadowBlur,
+                  spreadRadius: shadowSpread,
+                  offset: Offset(0, shadowOffsetY),
                 )
               ]
             : [],
@@ -326,7 +341,11 @@ class ButtonTileIcon extends StatelessWidget {
   final bool isLoading;
   final bool isDisabled;
   final double? iconSize;
+  final double? rawIconSize;
   final Color? iconColor;
+  final bool showAlert;
+  final IconData? alertIcon;
+  final Color? alertColor;
 
   ButtonTileIcon({
     super.key,
@@ -336,18 +355,29 @@ class ButtonTileIcon extends StatelessWidget {
     this.isLoading = false,
     this.isDisabled = false,
     this.iconSize,
+    this.rawIconSize,
     this.iconColor,
+    this.showAlert = false,
+    this.alertIcon,
+    this.alertColor,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Use rawIconSize if provided (already in pixels), otherwise scale iconSize
     // Total size: icon (24) + border (4*2) + padding (4*2) = 40 scaled
-    final double iconSize = _screenService.scale(
-      this.iconSize ?? 40,
-      density: _visualDensityService.density,
-    );
+    final double iconSize = rawIconSize ??
+        _screenService.scale(
+          this.iconSize ?? 40,
+          density: _visualDensityService.density,
+        );
 
-    return SizedBox(
+    // Inner icon glyph size: 60% of container (24/40 ratio)
+    final double glyphSize = rawIconSize != null
+        ? iconSize * 0.6
+        : _screenService.scale(24, density: _visualDensityService.density);
+
+    final iconButton = SizedBox(
       width: iconSize,
       height: iconSize,
       child: InkWell(
@@ -402,14 +432,8 @@ class ButtonTileIcon extends StatelessWidget {
           ),
           child: Center(
             child: SizedBox(
-              width: _screenService.scale(
-                24,
-                density: _visualDensityService.density,
-              ),
-              height: _screenService.scale(
-                24,
-                density: _visualDensityService.density,
-              ),
+              width: glyphSize,
+              height: glyphSize,
               child: isLoading
                   ? Theme(
                       data: ThemeData(
@@ -431,16 +455,18 @@ class ButtonTileIcon extends StatelessWidget {
                           linearTrackColor: AppColors.blank,
                         ),
                       ),
-                      child: const CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        strokeWidth: _screenService.scale(
+                          2,
+                          density: _visualDensityService.density,
+                        ),
+                      ),
                     )
                   : FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Icon(
                         icon,
-                        size: _screenService.scale(
-                          24,
-                          density: _visualDensityService.density,
-                        ),
+                        size: glyphSize,
                         color: iconColor ??
                             (isDisabled
                                 ? (Theme.of(context).brightness ==
@@ -463,6 +489,48 @@ class ButtonTileIcon extends StatelessWidget {
         ),
       ),
       ),
+    );
+
+    if (!showAlert) {
+      return iconButton;
+    }
+
+    // Wrap with Stack to add alert badge
+    final defaultAlertColor = Theme.of(context).brightness == Brightness.light
+        ? AppColorsLight.warning
+        : AppColorsDark.warning;
+
+    // Scale alert badge positioning and padding
+    final alertOffset = _screenService.scale(
+      -2,
+      density: _visualDensityService.density,
+    );
+    final alertPadding = _screenService.scale(
+      2,
+      density: _visualDensityService.density,
+    );
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        iconButton,
+        Positioned(
+          right: alertOffset,
+          bottom: alertOffset,
+          child: Container(
+            padding: EdgeInsets.all(alertPadding),
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              alertIcon ?? MdiIcons.alert,
+              size: AppFontSize.extraSmall,
+              color: alertColor ?? defaultAlertColor,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -459,7 +459,10 @@ class SensorCard extends StatelessWidget {
             color: isLight
                 ? (isAlert ? AppColorsLight.warning : AppBorderColorLight.base)
                 : (isAlert ? AppColorsDark.warning : AppBorderColorDark.base),
-            width: 1,
+            width: screenService.scale(
+              1,
+              density: visualDensityService.density,
+            ),
           ),
         ),
         child: Column(
@@ -1039,7 +1042,12 @@ class _SensorDetailBottomSheetState extends State<SensorDetailBottomSheet> {
               ),
             ),
             if (unit != null) ...[
-              const SizedBox(width: 2),
+              SizedBox(
+                width: _screenService.scale(
+                  2,
+                  density: _visualDensityService.density,
+                ),
+              ),
               Text(
                 unit,
                 style: TextStyle(
@@ -1058,11 +1066,15 @@ class _SensorDetailBottomSheetState extends State<SensorDetailBottomSheet> {
 }
 
 class SensorTimeseriesChart extends StatelessWidget {
+  final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
+
   final PropertyTimeseries timeseries;
   final String? unit;
   final TimeRange timeRange;
 
-  const SensorTimeseriesChart({
+  SensorTimeseriesChart({
     super.key,
     required this.timeseries,
     required this.timeRange,
@@ -1102,7 +1114,10 @@ class SensorTimeseriesChart extends StatelessWidget {
               color: isLight
                   ? AppBorderColorLight.base.withValues(alpha: 0.5)
                   : AppBorderColorDark.base.withValues(alpha: 0.5),
-              strokeWidth: 1,
+              strokeWidth: _screenService.scale(
+                1,
+                density: _visualDensityService.density,
+              ),
             );
           },
         ),
@@ -1126,7 +1141,12 @@ class SensorTimeseriesChart extends StatelessWidget {
                 }
                 final point = timeseries.points[index];
                 return Padding(
-                  padding: const EdgeInsets.only(top: 8),
+                  padding: EdgeInsets.only(
+                    top: _screenService.scale(
+                      8,
+                      density: _visualDensityService.density,
+                    ),
+                  ),
                   child: Text(
                     _formatTimeLabel(point.time),
                     style: TextStyle(

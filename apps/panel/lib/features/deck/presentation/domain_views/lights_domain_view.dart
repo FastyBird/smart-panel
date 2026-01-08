@@ -518,102 +518,176 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final bool isSquare = rowSpan == colSpan;
     final bool isIconOnly = rowSpan == 1 && colSpan == 1;
 
-    final icon = ButtonTileIcon(
-      icon: getLightRoleIcon(group.role),
-      onTap: isToggling ? null : () => _toggleRole(context, group, devicesService),
-      isOn: isOn,
+    // Scaled spacing for icon-to-text gap
+    final scaledIconTextGap = _screenService.scale(
+      2,
+      density: _visualDensityService.density,
     );
 
-    final subTitleWidget = Row(
-      mainAxisAlignment: isSquare ? MainAxisAlignment.center : MainAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(countText),
-        if (showBrightness) ...[
-          Text(' • '),
-          Icon(
-            MdiIcons.weatherSunny,
-            size: AppFontSize.extraSmall,
-          ),
-          const SizedBox(width: 2),
-          Text('${group.brightness}%'),
+    // Text style for measuring (matches ButtonTileSubTitle)
+    final subtitleStyle = TextStyle(
+      fontFamily: 'DIN1451',
+      fontSize: AppFontSize.extraSmall,
+    );
+
+    // Helper to measure text width
+    double measureText(String text) {
+      final textPainter = TextPainter(
+        text: TextSpan(text: text, style: subtitleStyle),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      return textPainter.width;
+    }
+
+    // Helper to build icon widget with dynamic size
+    Widget buildIconWidget(double iconSize) {
+      return ButtonTileIcon(
+        icon: getLightRoleIcon(group.role),
+        onTap: isToggling ? null : () => _toggleRole(context, group, devicesService),
+        isOn: isOn,
+        rawIconSize: iconSize,
+      );
+    }
+
+    // Helper to build subtitle widget with optional width constraint for overflow detection
+    Widget buildSubTitleWidget({double? availableWidth}) {
+      // Calculate widths if we need to check for overflow
+      bool showCountText = true;
+      if (availableWidth != null && showBrightness) {
+        final countWidth = measureText(countText);
+        final brightnessText = '${group.brightness}%';
+        final brightnessWidth = measureText(brightnessText);
+        final iconWidth = AppFontSize.extraSmall;
+        final spacing = AppSpacings.pSm + scaledIconTextGap;
+
+        final fullWidth = countWidth + spacing + iconWidth + scaledIconTextGap + brightnessWidth;
+        final brightnessOnlyWidth = iconWidth + scaledIconTextGap + brightnessWidth;
+
+        // If full content doesn't fit but brightness does, hide count text
+        if (fullWidth > availableWidth && brightnessOnlyWidth <= availableWidth) {
+          showCountText = false;
+        }
+      }
+
+      return Row(
+        mainAxisAlignment: isSquare ? MainAxisAlignment.center : MainAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (showCountText) Text(countText),
+          if (showBrightness) ...[
+            if (showCountText) AppSpacings.spacingSmHorizontal,
+            Icon(
+              MdiIcons.weatherSunny,
+              size: AppFontSize.extraSmall,
+            ),
+            SizedBox(width: scaledIconTextGap),
+            Text('${group.brightness}%'),
+          ],
         ],
-      ],
-    );
+      );
+    }
 
-    // Icon-only tile (1x1): tap toggles, long press opens detail
+    // Icon-only tile (1x1): icon fills tile with padding, tap toggles, long press opens detail
     if (isIconOnly) {
       return ButtonTileBox(
         onTap: isToggling ? null : () => _toggleRole(context, group, devicesService),
         isOn: isOn,
-        child: GestureDetector(
-          onLongPress: isToggling
-              ? null
-              : () => _openRoleTileDetail(context, group, devicesService),
-          child: Center(child: icon),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Icon fills tile with padding
+            final availableSize = constraints.maxWidth < constraints.maxHeight
+                ? constraints.maxWidth
+                : constraints.maxHeight;
+            final iconSize = availableSize - AppSpacings.pSm;
+
+            return GestureDetector(
+              onLongPress: isToggling
+                  ? null
+                  : () => _openRoleTileDetail(context, group, devicesService),
+              child: Center(child: buildIconWidget(iconSize)),
+            );
+          },
         ),
       );
     }
 
     // Square tile: vertical layout [icon] [label] [state]
+    // Icon takes upper half, text takes bottom half
     if (isSquare) {
       return ButtonTileBox(
         onTap: isToggling
             ? null
             : () => _openRoleTileDetail(context, group, devicesService),
         isOn: isOn,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            icon,
-            AppSpacings.spacingSmVertical,
-            ButtonTileTitle(
-              title: getLightRoleName(context, group.role),
-              isOn: isOn,
-            ),
-            AppSpacings.spacingXsVertical,
-            ButtonTileSubTitle(
-              subTitle: subTitleWidget,
-              isOn: isOn,
-            ),
-          ],
-        ),
-      );
-    }
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Icon area is upper half minus some spacing for text
+            final iconSize = (constraints.maxHeight / 2) - AppSpacings.pSm;
 
-    // Rectangle tile: horizontal layout - icon on side, content next to it
-    return ButtonTileBox(
-      onTap: isToggling
-          ? null
-          : () => _openRoleTileDetail(context, group, devicesService),
-      isOn: isOn,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          icon,
-          AppSpacings.spacingMdHorizontal,
-          Expanded(
-            child: Column(
+            return Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                buildIconWidget(iconSize),
+                AppSpacings.spacingSmVertical,
                 ButtonTileTitle(
                   title: getLightRoleName(context, group.role),
                   isOn: isOn,
                 ),
                 AppSpacings.spacingXsVertical,
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: ButtonTileSubTitle(
-                    subTitle: subTitleWidget,
-                    isOn: isOn,
-                  ),
+                ButtonTileSubTitle(
+                  subTitle: buildSubTitleWidget(availableWidth: constraints.maxWidth),
+                  isOn: isOn,
                 ),
               ],
-            ),
-          ),
-        ],
+            );
+          },
+        ),
+      );
+    }
+
+    // Rectangle tile: horizontal layout - icon on left (1/3 width), content on right
+    return ButtonTileBox(
+      onTap: isToggling
+          ? null
+          : () => _openRoleTileDetail(context, group, devicesService),
+      isOn: isOn,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Icon takes left 1/3 of width, but limited by height
+          final maxIconWidth = constraints.maxWidth / 3;
+          final maxIconHeight = constraints.maxHeight - AppSpacings.pSm;
+          final iconSize = maxIconWidth < maxIconHeight ? maxIconWidth : maxIconHeight;
+
+          // Calculate available width for subtitle (after icon and spacing)
+          final subtitleAvailableWidth = constraints.maxWidth - iconSize - AppSpacings.pMd;
+
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              buildIconWidget(iconSize),
+              AppSpacings.spacingMdHorizontal,
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ButtonTileTitle(
+                      title: getLightRoleName(context, group.role),
+                      isOn: isOn,
+                      small: true,
+                    ),
+                    AppSpacings.spacingXsVertical,
+                    ButtonTileSubTitle(
+                      subTitle: buildSubTitleWidget(availableWidth: subtitleAvailableWidth),
+                      isOn: isOn,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -854,7 +928,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       children: [
         // Section header
         Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: EdgeInsets.only(
+            bottom: _screenService.scale(
+              8,
+              density: _visualDensityService.density,
+            ),
+          ),
           child: Text(
             localizations.domain_lights_other,
             style: TextStyle(
@@ -881,6 +960,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   /// Build a channel tile for "Other" channels
   /// Layout adapts based on rowSpan/colSpan: square=vertical, rectangle=horizontal, 1x1=icon only
+  /// Uses LayoutBuilder for dynamic icon sizing based on tile dimensions
   Widget _buildOtherChannelTile(
     BuildContext context,
     LightTargetView target,
@@ -957,131 +1037,178 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final bool isSquare = rowSpan == colSpan;
     final bool isIconOnly = rowSpan == 1 && colSpan == 1;
 
-    final iconWidget = Stack(
-      clipBehavior: Clip.none,
-      children: [
-        ButtonTileIcon(
-          icon: hasFailure
-              ? MdiIcons.alertCircleOutline
-              : (isOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline),
-          onTap: isToggling
-              ? null
-              : () => _toggleDevice(context, target, channel, devicesService),
-          isOn: isOn,
-          iconColor: hasFailure ? AppColorsLight.warning : null,
-          iconSize: isIconOnly ? 24 : 20,
-        ),
-        // Offline indicator badge
-        if (!device.isOnline)
-          Positioned(
-            right: -2,
-            bottom: -2,
-            child: Container(
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                MdiIcons.alert,
-                size: AppFontSize.extraSmall,
-                color: AppColorsLight.warning,
-              ),
+    // Helper to build icon widget with dynamic size
+    Widget buildIconWidget(double iconSize) {
+      return ButtonTileIcon(
+        icon: hasFailure
+            ? MdiIcons.alertCircleOutline
+            : (isOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline),
+        onTap: isToggling
+            ? null
+            : () => _toggleDevice(context, target, channel, devicesService),
+        isOn: isOn,
+        iconColor: hasFailure ? AppColorsLight.warning : null,
+        rawIconSize: iconSize,
+        showAlert: !device.isOnline,
+      );
+    }
+
+    // Scaled spacing for icon-to-text gap
+    final scaledIconTextGap = _screenService.scale(
+      2,
+      density: _visualDensityService.density,
+    );
+
+    // Text style for measuring (matches ButtonTileSubTitle)
+    final subtitleStyle = TextStyle(
+      fontFamily: 'DIN1451',
+      fontSize: AppFontSize.extraSmall,
+    );
+
+    // Helper to measure text width
+    double measureText(String text) {
+      final textPainter = TextPainter(
+        text: TextSpan(text: text, style: subtitleStyle),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      return textPainter.width;
+    }
+
+    // Helper to build subtitle widget with optional width constraint for overflow detection
+    Widget buildSubTitleWidget({double? availableWidth}) {
+      // Calculate widths if we need to check for overflow
+      bool showStateText = true;
+      if (availableWidth != null && showBrightness) {
+        final stateWidth = measureText(stateText);
+        final brightnessText = '$brightness%';
+        final brightnessWidth = measureText(brightnessText);
+        final iconWidth = AppFontSize.extraSmall;
+        final spacing = AppSpacings.pSm + scaledIconTextGap;
+
+        final fullWidth = stateWidth + spacing + iconWidth + scaledIconTextGap + brightnessWidth;
+        final brightnessOnlyWidth = iconWidth + scaledIconTextGap + brightnessWidth;
+
+        // If full content doesn't fit but brightness does, hide state text
+        if (fullWidth > availableWidth && brightnessOnlyWidth <= availableWidth) {
+          showStateText = false;
+        }
+      }
+
+      return Row(
+        mainAxisAlignment: isSquare ? MainAxisAlignment.center : MainAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (showStateText) Text(stateText),
+          if (showBrightness) ...[
+            if (showStateText) AppSpacings.spacingSmHorizontal,
+            Icon(
+              MdiIcons.weatherSunny,
+              size: AppFontSize.extraSmall,
             ),
-          ),
-      ],
-    );
-
-    final subTitleWidget = Row(
-      mainAxisAlignment: isSquare ? MainAxisAlignment.center : MainAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(stateText),
-        if (showBrightness) ...[
-          AppSpacings.spacingSmHorizontal,
-          Icon(
-            MdiIcons.weatherSunny,
-            size: AppFontSize.extraSmall,
-            color: Theme.of(context).brightness == Brightness.light
-                ? AppTextColorLight.placeholder
-                : AppTextColorDark.placeholder,
-          ),
-          const SizedBox(width: 2),
-          Text('$brightness%'),
+            SizedBox(width: scaledIconTextGap),
+            Text('$brightness%'),
+          ],
         ],
-      ],
-    );
+      );
+    }
 
-    // Icon-only tile (1x1): tap toggles, long press opens detail
+    // Icon-only tile (1x1): icon fills tile with padding, tap toggles, long press opens detail
     if (isIconOnly) {
       return ButtonTileBox(
         onTap: isToggling
             ? null
             : () => _toggleDevice(context, target, channel, devicesService),
         isOn: isOn,
-        child: GestureDetector(
-          onLongPress: isToggling ? null : () => _openDeviceDetail(context, device),
-          child: Center(child: iconWidget),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Icon fills tile with padding
+            final availableSize = constraints.maxWidth < constraints.maxHeight
+                ? constraints.maxWidth
+                : constraints.maxHeight;
+            final iconSize = availableSize - AppSpacings.pSm;
+
+            return GestureDetector(
+              onLongPress: isToggling ? null : () => _openDeviceDetail(context, device),
+              child: Center(child: buildIconWidget(iconSize)),
+            );
+          },
         ),
       );
     }
 
     // Square tile: vertical layout [icon] [label] [state]
+    // Icon takes upper half, text takes bottom half
     if (isSquare) {
       return ButtonTileBox(
         onTap: isToggling ? null : () => _openDeviceDetail(context, device),
         isOn: isOn,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            iconWidget,
-            AppSpacings.spacingSmVertical,
-            ButtonTileTitle(
-              title: displayName,
-              isOn: isOn,
-            ),
-            AppSpacings.spacingXsVertical,
-            ButtonTileSubTitle(
-              subTitle: subTitleWidget,
-              isOn: isOn,
-            ),
-          ],
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Icon area is upper half minus some spacing for text
+            final iconSize = (constraints.maxHeight / 2) - AppSpacings.pSm;
+
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                buildIconWidget(iconSize),
+                AppSpacings.spacingSmVertical,
+                ButtonTileTitle(
+                  title: displayName,
+                  isOn: isOn,
+                ),
+                AppSpacings.spacingXsVertical,
+                ButtonTileSubTitle(
+                  subTitle: buildSubTitleWidget(availableWidth: constraints.maxWidth),
+                  isOn: isOn,
+                ),
+              ],
+            );
+          },
         ),
       );
     }
 
-    // Rectangle tile: horizontal layout - icon on side, content next to it
+    // Rectangle tile: horizontal layout - icon on left (1/3 width), content on right
     return ButtonTileBox(
       onTap: isToggling ? null : () => _openDeviceDetail(context, device),
       isOn: isOn,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          iconWidget,
-          AppSpacings.spacingMdHorizontal,
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ButtonTileTitle(
-                  title: displayName,
-                  isOn: isOn,
-                  small: true,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Icon takes left 1/3 of width, but limited by height
+          final maxIconWidth = constraints.maxWidth / 3;
+          final maxIconHeight = constraints.maxHeight - AppSpacings.pSm;
+          final iconSize = maxIconWidth < maxIconHeight ? maxIconWidth : maxIconHeight;
+
+          // Calculate available width for subtitle (after icon and spacing)
+          final subtitleAvailableWidth = constraints.maxWidth - iconSize - AppSpacings.pMd;
+
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              buildIconWidget(iconSize),
+              AppSpacings.spacingMdHorizontal,
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ButtonTileTitle(
+                      title: displayName,
+                      isOn: isOn,
+                      small: true,
+                    ),
+                    AppSpacings.spacingXsVertical,
+                    ButtonTileSubTitle(
+                      subTitle: buildSubTitleWidget(availableWidth: subtitleAvailableWidth),
+                      isOn: isOn,
+                    ),
+                  ],
                 ),
-                AppSpacings.spacingXsVertical,
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: ButtonTileSubTitle(
-                    subTitle: subTitleWidget,
-                    isOn: isOn,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }
