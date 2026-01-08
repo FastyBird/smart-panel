@@ -1003,6 +1003,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get domain_lights_all_off => 'all off';
 
   @override
+  String get domain_lights_all_on => 'all on';
+
+  @override
   String get domain_climate => 'Climate';
 
   @override

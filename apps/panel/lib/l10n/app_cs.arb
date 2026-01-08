@@ -329,6 +329,7 @@
   "domain_lights_empty_description": "V této místnosti nebyla nalezena žádná světla",
   "domain_lights_count_on": "{count, plural, =1{1 světlo zapnuto} few{{count} světla zapnuta} other{{count} světel zapnuto}}",
   "domain_lights_all_off": "vše vypnuto",
+  "domain_lights_all_on": "vše zapnuto",
   "domain_climate": "Klima",
   "domain_media": "Média",
   "domain_sensors": "Senzory",

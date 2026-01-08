@@ -495,13 +495,15 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       }
     }
 
-    // Build subtitle: "X light(s) on" or "all off", with optional brightness
+    // Build subtitle: "X light(s) on", "all on", or "all off", with optional brightness
     final String countText;
     if (group.onCount == 0 && !isOn) {
       countText = localizations.domain_lights_all_off;
     } else if (isOn && group.onCount == 0) {
       // Optimistic state: turning on but actual count is still 0
-      countText = localizations.domain_lights_count_on(group.totalCount);
+      countText = localizations.domain_lights_all_on;
+    } else if (group.onCount == group.totalCount) {
+      countText = localizations.domain_lights_all_on;
     } else {
       countText = localizations.domain_lights_count_on(group.onCount);
     }

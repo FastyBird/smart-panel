@@ -1337,6 +1337,10 @@
   "@domain_lights_all_off": {
     "description": "Text shown when all lights in a role group are off"
   },
+  "domain_lights_all_on": "all on",
+  "@domain_lights_all_on": {
+    "description": "Text shown when all lights in a role group are on"
+  },
   "domain_climate": "Climate",
   "@domain_climate": {
     "description": "Title for climate domain view in room navigation"
