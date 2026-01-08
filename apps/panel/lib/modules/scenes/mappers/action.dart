@@ -53,14 +53,12 @@ ActionView buildActionView(ActionModel action) {
   if (builder != null) {
     return builder(action);
   } else {
-    // Use generic view with attributes from model
-    return GenericActionView(
-      id: action.id,
-      type: action.type,
-      scene: action.scene,
-      order: action.order,
-      enabled: action.enabled,
-      configuration: action.configuration,
-    );
+    if (action is! GenericActionModel) {
+      throw ArgumentError(
+        'Cannot create generic view for non-generic model type: ${action.type}',
+      );
+    }
+
+    return GenericActionView(model: action);
   }
 }

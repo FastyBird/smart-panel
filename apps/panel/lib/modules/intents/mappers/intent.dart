@@ -6,19 +6,5 @@ IntentModel buildIntentModel(Map<String, dynamic> data) {
 }
 
 IntentView buildIntentView(IntentModel intent) {
-  return IntentView(
-    id: intent.id,
-    requestId: intent.requestId,
-    type: intent.type,
-    context: intent.context,
-    targets: intent.targets,
-    value: intent.value,
-    status: intent.status,
-    ttlMs: intent.ttlMs,
-    createdAt: intent.createdAt ?? DateTime.now(),
-    expiresAt: intent.expiresAt,
-    completedAt: intent.completedAt,
-    results: intent.results,
-    isLocal: intent.isLocal,
-  );
+  return IntentView(model: intent);
 }

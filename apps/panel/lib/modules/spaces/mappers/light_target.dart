@@ -9,17 +9,5 @@ LightTargetModel buildLightTargetModel(
 }
 
 LightTargetView buildLightTargetView(LightTargetModel lightTarget) {
-  return LightTargetView(
-    id: lightTarget.id,
-    deviceId: lightTarget.deviceId,
-    deviceName: lightTarget.deviceName,
-    channelId: lightTarget.channelId,
-    channelName: lightTarget.channelName,
-    priority: lightTarget.priority,
-    hasBrightness: lightTarget.hasBrightness,
-    hasColorTemp: lightTarget.hasColorTemp,
-    hasColor: lightTarget.hasColor,
-    role: LightTargetRole.fromApiRole(lightTarget.role),
-    spaceId: lightTarget.spaceId,
-  );
+  return LightTargetView(model: lightTarget);
 }

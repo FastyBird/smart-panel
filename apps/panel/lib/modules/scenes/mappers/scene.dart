@@ -18,16 +18,7 @@ SceneView buildSceneView(SceneModel scene) {
     ..sort((a, b) => a.order.compareTo(b.order));
 
   return SceneView(
-    id: scene.id,
-    category: scene.category,
-    name: scene.name,
-    description: scene.description,
-    primarySpaceId: scene.primarySpaceId,
-    order: scene.order,
-    enabled: scene.enabled,
-    triggerable: scene.triggerable,
-    editable: scene.editable,
-    lastTriggeredAt: scene.lastTriggeredAt,
+    model: scene,
     actions: actions,
   );
 }
