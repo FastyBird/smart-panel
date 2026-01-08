@@ -4016,7 +4016,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
           final targets = spacesService
               .getLightTargetsForSpace(widget.roomId)
-              .where((t) => t.role == widget.role)
+              .where((t) => (t.role ?? LightTargetRole.other) == widget.role)
               .toList();
 
           final roleMixedState = _getRoleMixedState(targets);

@@ -313,7 +313,8 @@ export class SpaceIntentService {
 	}
 
 	/**
-	 * Find all light devices in a space with their channels, properties, and roles
+	 * Find all light devices in a space with their channels, properties, and roles.
+	 * Excludes lights with HIDDEN role as they should not be controlled by intents.
 	 */
 	private async getLightsInSpace(spaceId: string): Promise<LightDevice[]> {
 		const devices = await this.spacesService.findDevicesBySpace(spaceId);
@@ -350,6 +351,12 @@ export class SpaceIntentService {
 			const roleKey = `${device.id}:${lightChannel.id}`;
 			const roleEntity = roleMap.get(roleKey);
 			const role = roleEntity?.role ?? null;
+
+			// Skip HIDDEN lights - they should not be controlled by intents
+			if (role === LightingRole.HIDDEN) {
+				this.logger.debug(`Skipping HIDDEN light deviceId=${device.id} channelId=${lightChannel.id}`);
+				continue;
+			}
 
 			lights.push({
 				device,
