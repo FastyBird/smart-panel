@@ -569,11 +569,23 @@ abstract class AppLocalizations {
   /// **'Lights are off'**
   String get light_role_off_description;
 
-  /// Description for role detail when lights are out of sync (plural)
+  /// Description for role detail when lights failed to sync after a command
   ///
   /// In en, this message translates to:
-  /// **'Lights are not synced'**
+  /// **'Lights failed to sync'**
   String get light_role_not_synced_description;
+
+  /// Description for role detail when lights are actively syncing
+  ///
+  /// In en, this message translates to:
+  /// **'Lights are syncing'**
+  String get light_role_syncing_description;
+
+  /// Description for role detail when lights intentionally have different values
+  ///
+  /// In en, this message translates to:
+  /// **'Lights have different values'**
+  String get light_role_mixed_description;
 
   /// Short label for a device that is out of sync with the target value
   ///
@@ -2056,6 +2068,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'all on'**
   String get domain_lights_all_on;
+
+  /// Text shown when lights are syncing after a command
+  ///
+  /// In en, this message translates to:
+  /// **'syncing'**
+  String get domain_lights_syncing;
+
+  /// Text shown when lights failed to sync after a command
+  ///
+  /// In en, this message translates to:
+  /// **'unsynced'**
+  String get domain_lights_unsynced;
+
+  /// Text shown when lights intentionally have different values
+  ///
+  /// In en, this message translates to:
+  /// **'mixed'**
+  String get domain_lights_mixed;
 
   /// Title for climate domain view in room navigation
   ///
