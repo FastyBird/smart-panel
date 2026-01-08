@@ -6,8 +6,8 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | Status | Count |
 |--------|-------|
-| Done | 80 |
-| Planned | 24 |
+| Done | 81 |
+| Planned | 23 |
 | **Total** | **104** |
 
 ---
@@ -96,6 +96,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-UNIFIED-EXTENSION-LOGS | Unified Extension Logs | backend, admin | medium |
 | FEATURE-WLED-PLUGIN | WLED Device Plugin | backend, admin, panel | large |
 | FEATURE-WINDOW-COVERING-DEVICE-PAGE | Window Covering Device Page | panel | medium |
+| FEATURE-PANEL-DOMAIN-LIGHTS-PAGE | Lights domain page MVP | panel | medium |
 
 ### Planned
 
@@ -113,7 +114,6 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-PANEL-ROOM-CONTEXT | RoomContext loader and aggregation | panel | medium | FEATURE-PANEL-ROOM-SYSTEM-PAGES |
 | FEATURE-PANEL-DECK-ROOM-BUILDER | Deterministic system deck for Room role | panel | medium | FEATURE-PANEL-ROOM-SYSTEM-PAGES |
 | FEATURE-PANEL-ROOM-OVERVIEW-UI | Room Overview UI | panel | large | FEATURE-PANEL-ROOM-SYSTEM-PAGES |
-| FEATURE-PANEL-DOMAIN-LIGHTS-PAGE | Lights domain page MVP | panel | medium | FEATURE-PANEL-ROOM-SYSTEM-PAGES |
 | FEATURE-PANEL-DOMAIN-CLIMATE-PAGE | Climate domain page MVP | panel | medium | FEATURE-PANEL-ROOM-SYSTEM-PAGES |
 | FEATURE-PANEL-DOMAIN-SENSORS-PAGE | Sensors domain page MVP | panel | medium | FEATURE-PANEL-ROOM-SYSTEM-PAGES |
 | FEATURE-PANEL-QUICK-SCENES-FEEDBACK | Quick Scenes execution feedback | panel | small | FEATURE-PANEL-ROOM-SYSTEM-PAGES |
@@ -355,12 +355,12 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-HOUSE-MODES-MVP-V2 | feature | done |
 | FEATURE-HOUSE-OVERVIEW-PAGE-V2 | feature | done |
 | FEATURE-WINDOW-COVERING-DEVICE-PAGE | feature | done |
+| FEATURE-PANEL-DOMAIN-LIGHTS-PAGE | feature | done |
 | FEATURE-PANEL-SENSOR-DEVICE-PAGE | feature | planned |
 | FEATURE-PANEL-ROOM-SYSTEM-PAGES | feature | planned |
 | FEATURE-PANEL-ROOM-CONTEXT | technical | planned |
 | FEATURE-PANEL-DECK-ROOM-BUILDER | technical | planned |
 | FEATURE-PANEL-ROOM-OVERVIEW-UI | feature | planned |
-| FEATURE-PANEL-DOMAIN-LIGHTS-PAGE | feature | planned |
 | FEATURE-PANEL-DOMAIN-CLIMATE-PAGE | feature | planned |
 | FEATURE-PANEL-DOMAIN-SENSORS-PAGE | feature | planned |
 | FEATURE-PANEL-QUICK-SCENES-FEEDBACK | technical | planned |
@@ -460,7 +460,7 @@ FEATURE-PANEL-ROOM-SYSTEM-PAGES (planned)
 ├── FEATURE-PANEL-ROOM-CONTEXT (planned)
 ├── FEATURE-PANEL-DECK-ROOM-BUILDER (planned)
 ├── FEATURE-PANEL-ROOM-OVERVIEW-UI (planned)
-├── FEATURE-PANEL-DOMAIN-LIGHTS-PAGE (planned)
+├── FEATURE-PANEL-DOMAIN-LIGHTS-PAGE (done)
 ├── FEATURE-PANEL-DOMAIN-CLIMATE-PAGE (planned)
 ├── FEATURE-PANEL-DOMAIN-SENSORS-PAGE (planned)
 └── FEATURE-PANEL-QUICK-SCENES-FEEDBACK (planned)
@@ -566,4 +566,4 @@ tasks/
 
 ---
 
-*Last updated: 2026-01-06*
+*Last updated: 2026-01-08*

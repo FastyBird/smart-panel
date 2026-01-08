@@ -302,7 +302,7 @@ Type: feature
 Scope: panel
 Size: medium
 Parent: FEATURE-PANEL-ROOM-SYSTEM-PAGES
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -328,10 +328,10 @@ I want a lights page that lists lighting devices and supports quick toggle actio
 
 ## 4. Acceptance criteria
 
-- [ ] Lights page renders when included and shows all lighting devices for the room.
-- [ ] Toggling a device sends the correct command via existing device control pathways.
-- [ ] UI updates reflect new state (optimistic or after update event).
-- [ ] No crashes if a device lacks a supported toggle capability (render as read-only).
+- [x] Lights page renders when included and shows all lighting devices for the room.
+- [x] Toggling a device sends the correct command via existing device control pathways.
+- [x] UI updates reflect new state (optimistic or after update event).
+- [x] No crashes if a device lacks a supported toggle capability (render as read-only).
 
 ## 6. Technical constraints
 
