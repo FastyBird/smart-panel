@@ -458,7 +458,7 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 		name: ShellyProDimmer2Pm.modelName,
 		models: [ShellyProDimmer2Pm.model.toUpperCase()],
 		components: [
-			{ type: ComponentType.LIGHT, cls: Light, ids: [0] },
+			{ type: ComponentType.LIGHT, cls: Light, ids: [0, 1] },
 			{ type: ComponentType.INPUT, cls: Input, ids: [0, 1] },
 		],
 		system: [
