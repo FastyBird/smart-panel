@@ -246,7 +246,13 @@ class AppLocalizationsCs extends AppLocalizations {
   String get light_role_off_description => 'Světla nesvítí';
 
   @override
-  String get light_role_not_synced_description => 'Světla nejsou synchronizována';
+  String get light_role_not_synced_description => 'Synchronizace selhala';
+
+  @override
+  String get light_role_syncing_description => 'Probíhá synchronizace';
+
+  @override
+  String get light_role_mixed_description => 'Světla mají různé hodnoty';
 
   @override
   String get light_state_out_of_sync => 'Nesynchronizováno';
@@ -1005,6 +1011,15 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get domain_lights_all_on => 'vše zapnuto';
+
+  @override
+  String get domain_lights_syncing => 'synchronizuji';
+
+  @override
+  String get domain_lights_unsynced => 'nesynchronizováno';
+
+  @override
+  String get domain_lights_mixed => 'různé hodnoty';
 
   @override
   String get domain_climate => 'Klima';
