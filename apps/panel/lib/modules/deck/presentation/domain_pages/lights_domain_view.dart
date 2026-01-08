@@ -547,7 +547,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     final hueMixed = minHue != null &&
         maxHue != null &&
-        (maxHue - minHue) > LightingConstants.mixedThreshold;
+        (maxHue - minHue) > LightingConstants.hueMixedThreshold;
 
     final temperatureMixed = minTemperature != null &&
         maxTemperature != null &&
@@ -555,7 +555,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     final whiteMixed = minWhite != null &&
         maxWhite != null &&
-        (maxWhite - minWhite) > LightingConstants.mixedThreshold;
+        (maxWhite - minWhite) > LightingConstants.whiteMixedThreshold;
 
     return onStateMixed || brightnessMixed || hueMixed || temperatureMixed || whiteMixed;
   }
@@ -2361,7 +2361,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
     final hueMixed = minHue != null &&
         maxHue != null &&
-        (maxHue - minHue) > LightingConstants.mixedThreshold;
+        (maxHue - minHue) > LightingConstants.hueMixedThreshold;
 
     final temperatureMixed = minTemperature != null &&
         maxTemperature != null &&
@@ -2369,7 +2369,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
     final whiteMixed = minWhite != null &&
         maxWhite != null &&
-        (maxWhite - minWhite) > LightingConstants.mixedThreshold;
+        (maxWhite - minWhite) > LightingConstants.whiteMixedThreshold;
 
     final result = RoleMixedState(
       onStateMixed: onStateMixed,
