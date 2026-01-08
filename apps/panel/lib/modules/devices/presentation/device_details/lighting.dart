@@ -191,6 +191,44 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
   Widget _buildSingleChannelLayout(BuildContext context) {
     final channel = _channels.first;
 
+    // Check control state service for optimistic on/off state
+    bool isOn = channel.on;
+    final controlStateService = _deviceControlStateService;
+    final deviceId = widget._device.id;
+    final channelId = channel.id;
+    final onProp = channel.onProp;
+
+    if (controlStateService != null &&
+        controlStateService.isLocked(deviceId, channelId, onProp.id)) {
+      // Use desired value from control state service (immediate, no listener delay)
+      final desiredValue = controlStateService.getDesiredValue(
+        deviceId,
+        channelId,
+        onProp.id,
+      );
+      if (desiredValue is bool) {
+        isOn = desiredValue;
+      } else if (desiredValue is num) {
+        isOn = desiredValue > 0.5;
+      }
+    } else if (_intentOverlayService != null) {
+      // Fall back to overlay service (for failures, backend intents, etc.)
+      if (_intentOverlayService!.isPropertyLocked(
+            deviceId,
+            channelId,
+            onProp.id,
+          )) {
+        final overlayValue = _intentOverlayService!.getOverlayValue(
+          deviceId,
+          channelId,
+          onProp.id,
+        );
+        if (overlayValue is bool) {
+          isOn = overlayValue;
+        }
+      }
+    }
+
     return Column(
       children: [
         Expanded(
@@ -209,17 +247,17 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
             child: LightModeNavigation(
               availableModes: _availableModes,
               currentMode: _currentMode,
-              anyOn: channel.on,
+              anyOn: isOn, // Use optimistic state
               onModeSelected: (mode) {
                 setState(() {
                   _currentMode = mode;
                 });
                 // Turn on if selecting a control mode while off
-                if (!channel.on && mode != LightMode.off) {
+                if (!isOn && mode != LightMode.off) {
                   _toggleChannel(channel, true);
                 }
               },
-              onPowerToggle: () => _toggleChannel(channel, !channel.on),
+              onPowerToggle: () => _toggleChannel(channel, !isOn),
             ),
           ),
       ],
@@ -820,7 +858,18 @@ class LightSingleChannelDetail extends StatelessWidget {
           vertical: true,
           elementMaxSize: elementMaxSize,
           onValueChanged: (double value) async {
-            _valueHelper.setPropertyValue(
+            // If device is off, turn it on first
+            if (!_channel.on) {
+              await _valueHelper.setPropertyValue(
+                context,
+                _channel.onProp,
+                true,
+                deviceId: _device.id,
+                channelId: _channel.id,
+              );
+            }
+            // Set brightness value
+            await _valueHelper.setPropertyValue(
               context,
               brightnessProp,
               value,
@@ -844,6 +893,16 @@ class LightSingleChannelDetail extends StatelessWidget {
 
             // Build list of all color properties to update in a single batch
             final List<PropertyCommandItem> properties = [];
+
+            // If device is off, turn it on first
+            if (!_channel.on) {
+              properties.add(PropertyCommandItem(
+                deviceId: _device.id,
+                channelId: _channel.id,
+                propertyId: _channel.onProp.id,
+                value: true,
+              ));
+            }
 
             if (_channel.colorRedProp != null) {
               properties.add(PropertyCommandItem(
@@ -890,7 +949,7 @@ class LightSingleChannelDetail extends StatelessWidget {
               ));
             }
 
-            // Send all color properties in a single batch command
+            // Send all properties in a single batch command
             if (properties.isNotEmpty) {
               await _valueHelper.setMultiplePropertyValues(
                 context,
@@ -912,7 +971,18 @@ class LightSingleChannelDetail extends StatelessWidget {
           vertical: true,
           elementMaxSize: elementMaxSize,
           onValueChanged: (double value) async {
-            _valueHelper.setPropertyValue(
+            // If device is off, turn it on first
+            if (!_channel.on) {
+              await _valueHelper.setPropertyValue(
+                context,
+                _channel.onProp,
+                true,
+                deviceId: _device.id,
+                channelId: _channel.id,
+              );
+            }
+            // Set temperature value
+            await _valueHelper.setPropertyValue(
               context,
               tempProp,
               value,
@@ -934,7 +1004,18 @@ class LightSingleChannelDetail extends StatelessWidget {
           vertical: true,
           elementMaxSize: elementMaxSize,
           onValueChanged: (double value) async {
-            _valueHelper.setPropertyValue(
+            // If device is off, turn it on first
+            if (!_channel.on) {
+              await _valueHelper.setPropertyValue(
+                context,
+                _channel.onProp,
+                true,
+                deviceId: _device.id,
+                channelId: _channel.id,
+              );
+            }
+            // Set white channel value
+            await _valueHelper.setPropertyValue(
               context,
               colorWhiteProp,
               value,
@@ -1146,8 +1227,6 @@ class _BrightnessChannelState extends State<BrightnessChannel> {
 
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-
     num min = 0;
     num max = 255;
 
@@ -1217,7 +1296,7 @@ class _BrightnessChannelState extends State<BrightnessChannel> {
       value: displayValue,
       min: min,
       max: max,
-      enabled: widget._channel.on, // Always enabled when channel is on - don't disable during state machine to prevent blinking
+      enabled: true, // Always enabled - don't disable during state machine to prevent blinking
       vertical: widget._vertical,
       trackWidth: widget._elementMaxSize,
       showThumb: false,
@@ -1249,6 +1328,24 @@ class _BrightnessChannelState extends State<BrightnessChannel> {
             widget._propertyId!,
             value,
           );
+
+          // If device is off, also set on/off state to pending for optimistic UI
+          if (!widget._channel.on) {
+            final onProp = widget._channel.onProp;
+            final onState = _deviceControlStateService?.getState(
+              widget._deviceId!,
+              widget._channelId!,
+              onProp.id,
+            );
+            onState?.cancelTimer();
+
+            _deviceControlStateService?.setPending(
+              widget._deviceId!,
+              widget._channelId!,
+              onProp.id,
+              true,
+            );
+          }
         }
 
         // Debounce the API call to prevent overwhelming the backend
@@ -1278,7 +1375,7 @@ class _BrightnessChannelState extends State<BrightnessChannel> {
                           text: (property != null
                                   ? ValueUtils.formatValue(property)
                                   : null) ??
-                              localizations.value_not_available,
+                              '-',
                           style: TextStyle(
                             color:
                                 Theme.of(context).brightness == Brightness.light
@@ -1524,7 +1621,7 @@ class _ColorChannelState extends State<ColorChannel> {
       value: displayValue,
       min: 0.0,
       max: 1.0,
-      enabled: widget._channel.on, // Always enabled when channel is on - don't disable during state machine to prevent blinking
+      enabled: true, // Always enabled - don't disable during state machine to prevent blinking
       vertical: widget._vertical,
       trackWidth: widget._elementMaxSize,
       onValueChanged: (double value) {
@@ -1559,6 +1656,24 @@ class _ColorChannelState extends State<ColorChannel> {
             hueProp.id,
             hueValue,
           );
+
+          // If device is off, also set on/off state to pending for optimistic UI
+          if (!widget._channel.on) {
+            final onProp = widget._channel.onProp;
+            final onState = _deviceControlStateService?.getState(
+              widget._deviceId!,
+              widget._channelId!,
+              onProp.id,
+            );
+            onState?.cancelTimer();
+
+            _deviceControlStateService?.setPending(
+              widget._deviceId!,
+              widget._channelId!,
+              onProp.id,
+              true,
+            );
+          }
 
           // Update intent lock tracking state
           final isIntentLocked = _intentOverlayService?.isPropertyLocked(
@@ -1817,7 +1932,7 @@ class _TemperatureChannelState extends State<TemperatureChannel> {
       value: displayValue,
       min: min,
       max: max,
-      enabled: widget._channel.on, // Always enabled when channel is on - don't disable during state machine to prevent blinking
+      enabled: true, // Always enabled - don't disable during state machine to prevent blinking
       vertical: widget._vertical,
       trackWidth: widget._elementMaxSize,
       onValueChanged: (double value) {
@@ -1847,6 +1962,24 @@ class _TemperatureChannelState extends State<TemperatureChannel> {
             widget._propertyId!,
             value,
           );
+
+          // If device is off, also set on/off state to pending for optimistic UI
+          if (!widget._channel.on) {
+            final onProp = widget._channel.onProp;
+            final onState = _deviceControlStateService?.getState(
+              widget._deviceId!,
+              widget._channelId!,
+              onProp.id,
+            );
+            onState?.cancelTimer();
+
+            _deviceControlStateService?.setPending(
+              widget._deviceId!,
+              widget._channelId!,
+              onProp.id,
+              true,
+            );
+          }
 
           // Update intent lock tracking state
           final isIntentLocked = _intentOverlayService?.isPropertyLocked(
@@ -2109,7 +2242,7 @@ class _WhiteChannelState extends State<WhiteChannel> {
       value: displayValue,
       min: min,
       max: max,
-      enabled: widget._channel.on, // Always enabled when channel is on - don't disable during state machine to prevent blinking
+      enabled: true, // Always enabled - don't disable during state machine to prevent blinking
       vertical: widget._vertical,
       trackWidth: widget._elementMaxSize,
       showThumb: false,
@@ -2140,6 +2273,24 @@ class _WhiteChannelState extends State<WhiteChannel> {
             widget._propertyId!,
             value,
           );
+
+          // If device is off, also set on/off state to pending for optimistic UI
+          if (!widget._channel.on) {
+            final onProp = widget._channel.onProp;
+            final onState = _deviceControlStateService?.getState(
+              widget._deviceId!,
+              widget._channelId!,
+              onProp.id,
+            );
+            onState?.cancelTimer();
+
+            _deviceControlStateService?.setPending(
+              widget._deviceId!,
+              widget._channelId!,
+              onProp.id,
+              true,
+            );
+          }
 
           // Update intent lock tracking state
           final isIntentLocked = _intentOverlayService?.isPropertyLocked(
@@ -2361,17 +2512,64 @@ class _ChannelActualBrightnessState extends State<ChannelActualBrightness> {
             )
         : null;
 
+    // Check on/off state with optimistic UI
+    bool isOn = widget._channel.on;
+    final onProp = widget._channel.onProp;
+    
+    if (widget._deviceId != null && widget._channelId != null) {
+      // Check control state service first (most reliable for optimistic UI)
+      final isOnOffLocked = _deviceControlStateService?.isLocked(
+            widget._deviceId!,
+            widget._channelId!,
+            onProp.id,
+          ) ?? false;
+
+      if (isOnOffLocked) {
+        // Use desired value from control state service for optimistic on/off state
+        final onOffDesiredValue = _deviceControlStateService?.getDesiredValue(
+              widget._deviceId!,
+              widget._channelId!,
+              onProp.id,
+            );
+        if (onOffDesiredValue is bool) {
+          isOn = onOffDesiredValue;
+        } else if (onOffDesiredValue is num) {
+          isOn = onOffDesiredValue > 0.5;
+        }
+      } else {
+        // Check intent overlay as fallback
+        try {
+          final intentOverlayService = locator<IntentOverlayService>();
+          if (intentOverlayService.isPropertyLocked(
+                widget._deviceId!,
+                widget._channelId!,
+                onProp.id,
+              )) {
+            final overlayValue = intentOverlayService.getOverlayValue(
+              widget._deviceId!,
+              widget._channelId!,
+              onProp.id,
+            );
+            if (overlayValue is bool) {
+              isOn = overlayValue;
+            }
+          }
+        } catch (_) {
+          // IntentOverlayService not available, use actual state
+        }
+      }
+    }
+
     // Determine display value: desired value if locked, otherwise actual property value
     final String displayText;
-    if (widget._channel.on) {
+    if (isOn) {
       if (isLocked && desiredValue is num) {
         // Show desired value immediately when user is dragging
         displayText = desiredValue.round().toString();
       } else if (property != null) {
-        displayText = ValueUtils.formatValue(property) ??
-            localizations.value_not_available;
+        displayText = ValueUtils.formatValue(property) ?? '-';
       } else {
-        displayText = localizations.value_not_available;
+        displayText = '-';
       }
     } else {
       displayText = localizations.light_state_off;
@@ -2409,7 +2607,7 @@ class _ChannelActualBrightnessState extends State<ChannelActualBrightness> {
                 ),
                 textAlign: TextAlign.center,
               ),
-              widget._channel.on
+              isOn
                   ? RichText(
                       text: TextSpan(
                         text: '%',
@@ -2435,7 +2633,7 @@ class _ChannelActualBrightnessState extends State<ChannelActualBrightness> {
           Text(
             widget._showName
                 ? widget._channel.name
-                : widget._channel.on
+                : isOn
                     ? localizations.light_state_brightness_description
                     : localizations.light_state_off_description,
             style: TextStyle(
