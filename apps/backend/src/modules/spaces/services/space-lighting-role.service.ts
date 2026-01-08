@@ -137,6 +137,10 @@ export class SpaceLightingRoleService {
 
 		let roleEntity: SpaceLightingRoleEntity | null = null;
 		let isUpdate = false;
+		let hasChanges = false;
+
+		const newRole = dto.role;
+		const newPriority = dto.priority ?? 0;
 
 		// Use a transaction to atomically check existence and upsert
 		// This prevents race conditions where concurrent requests could both see
@@ -148,6 +152,13 @@ export class SpaceLightingRoleService {
 			});
 			isUpdate = existingRole !== null;
 
+			// Detect actual changes to avoid spurious events
+			if (existingRole) {
+				hasChanges = existingRole.role !== newRole || existingRole.priority !== newPriority;
+			} else {
+				hasChanges = true; // New record is always a change
+			}
+
 			// Upsert within the same transaction to maintain atomicity
 			await transactionalManager.upsert(
 				SpaceLightingRoleEntity,
@@ -155,8 +166,8 @@ export class SpaceLightingRoleService {
 					spaceId,
 					deviceId: dto.deviceId,
 					channelId: dto.channelId,
-					role: dto.role,
-					priority: dto.priority ?? 0,
+					role: newRole,
+					priority: newPriority,
 				},
 				{
 					conflictPaths: ['spaceId', 'deviceId', 'channelId'],
@@ -176,18 +187,21 @@ export class SpaceLightingRoleService {
 			);
 		}
 
-		// Emit event for websocket clients with full light target info
-		const eventPayload = await this.buildLightTargetEventPayload(
-			spaceId,
-			dto.deviceId,
-			dto.channelId,
-			dto.role,
-			dto.priority ?? 0,
-		);
+		// Only emit event if values actually changed
+		if (hasChanges) {
+			// Emit event for websocket clients with full light target info
+			const eventPayload = await this.buildLightTargetEventPayload(
+				spaceId,
+				dto.deviceId,
+				dto.channelId,
+				dto.role,
+				dto.priority ?? 0,
+			);
 
-		if (eventPayload) {
-			const eventType = isUpdate ? EventType.LIGHT_TARGET_UPDATED : EventType.LIGHT_TARGET_CREATED;
-			this.eventEmitter.emit(eventType, eventPayload);
+			if (eventPayload) {
+				const eventType = isUpdate ? EventType.LIGHT_TARGET_UPDATED : EventType.LIGHT_TARGET_CREATED;
+				this.eventEmitter.emit(eventType, eventPayload);
+			}
 		}
 
 		return roleEntity;

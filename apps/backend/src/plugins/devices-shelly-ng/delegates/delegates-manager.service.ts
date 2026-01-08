@@ -1244,7 +1244,11 @@ export class DelegatesManagerService {
 					return;
 				}
 
-				await comp.set(outputValue, Math.round(clampNumber(brightnessValue, 0, 100)), Math.round(clampNumber(ctValue, 2_700, 6_500)));
+				await comp.set(
+					outputValue,
+					Math.round(clampNumber(brightnessValue, 0, 100)),
+					Math.round(clampNumber(ctValue, 2_700, 6_500)),
+				);
 
 				return true;
 			});
