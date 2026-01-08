@@ -3105,7 +3105,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         // Debounce the API call to prevent overwhelming the backend
         _brightnessDebounceTimer?.cancel();
         _brightnessDebounceTimer = Timer(
-          const Duration(milliseconds: 300),
+          const Duration(milliseconds: LightingConstants.sliderDebounceMs),
           () {
             if (!mounted) return;
             _setSimplePropertyForAll(
@@ -3302,7 +3302,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         // Debounce the API call
         _hueDebounceTimer?.cancel();
         _hueDebounceTimer = Timer(
-          const Duration(milliseconds: 300),
+          const Duration(milliseconds: LightingConstants.sliderDebounceMs),
           () {
             if (!mounted) return;
             _setHueForAll(context, targets, value, devicesService);
@@ -3445,7 +3445,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         // Debounce the API call
         _temperatureDebounceTimer?.cancel();
         _temperatureDebounceTimer = Timer(
-          const Duration(milliseconds: 300),
+          const Duration(milliseconds: LightingConstants.sliderDebounceMs),
           () {
             if (!mounted) return;
             _setSimplePropertyForAll(
@@ -3600,7 +3600,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         // Debounce the API call
         _whiteDebounceTimer?.cancel();
         _whiteDebounceTimer = Timer(
-          const Duration(milliseconds: 300),
+          const Duration(milliseconds: LightingConstants.sliderDebounceMs),
           () {
             if (!mounted) return;
             _setSimplePropertyForAll(
@@ -3987,7 +3987,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       if (mounted) {
         _onOffState.cancelTimer();
 
-        final settlingTimer = Timer(const Duration(seconds: 3), () {
+        final settlingTimer = Timer(const Duration(milliseconds: LightingConstants.onOffSettlingWindowMs), () {
           if (!mounted) {
             _pendingOnState = null;
             _onOffState = const RoleControlState();
