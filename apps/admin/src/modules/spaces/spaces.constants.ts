@@ -429,6 +429,15 @@ export enum LightingRole {
 	HIDDEN = 'hidden',
 }
 
+export enum ClimateRole {
+	PRIMARY = 'primary',
+	AUXILIARY = 'auxiliary',
+	VENTILATION = 'ventilation',
+	HUMIDITY = 'humidity',
+	OTHER = 'other',
+	HIDDEN = 'hidden',
+}
+
 export enum FormResult {
 	NONE = 'none',
 	WORKING = 'working',

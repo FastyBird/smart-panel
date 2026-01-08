@@ -13,10 +13,12 @@ import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models
 
 import { SpacesController } from './controllers/spaces.controller';
 import { UpdateSpacesConfigDto } from './dto/update-config.dto';
+import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
 import { SpaceEntity } from './entities/space.entity';
 import { SpaceActivityListener } from './listeners/space-activity.listener';
 import { SpacesConfigModel } from './models/config.model';
+import { SpaceClimateRoleService } from './services/space-climate-role.service';
 import { SpaceContextSnapshotService } from './services/space-context-snapshot.service';
 import { SpaceIntentService } from './services/space-intent.service';
 import { SpaceLightingRoleService } from './services/space-lighting-role.service';
@@ -33,7 +35,14 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 })
 @Module({
 	imports: [
-		TypeOrmModule.forFeature([SpaceEntity, SpaceLightingRoleEntity, DeviceEntity, ChannelEntity, DisplayEntity]),
+		TypeOrmModule.forFeature([
+			SpaceEntity,
+			SpaceLightingRoleEntity,
+			SpaceClimateRoleEntity,
+			DeviceEntity,
+			ChannelEntity,
+			DisplayEntity,
+		]),
 		forwardRef(() => DevicesModule),
 		forwardRef(() => ExtensionsModule),
 		forwardRef(() => ConfigModule),
@@ -43,6 +52,7 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 		SpacesService,
 		SpaceIntentService,
 		SpaceLightingRoleService,
+		SpaceClimateRoleService,
 		SpaceSuggestionService,
 		SpaceContextSnapshotService,
 		SpaceUndoHistoryService,
@@ -52,6 +62,7 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 		SpacesService,
 		SpaceIntentService,
 		SpaceLightingRoleService,
+		SpaceClimateRoleService,
 		SpaceSuggestionService,
 		SpaceContextSnapshotService,
 		SpaceUndoHistoryService,

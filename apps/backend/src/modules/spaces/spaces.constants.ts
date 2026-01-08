@@ -12,6 +12,9 @@ export enum EventType {
 	LIGHT_TARGET_CREATED = 'SpacesModule.LightTarget.Created',
 	LIGHT_TARGET_UPDATED = 'SpacesModule.LightTarget.Updated',
 	LIGHT_TARGET_DELETED = 'SpacesModule.LightTarget.Deleted',
+	CLIMATE_TARGET_CREATED = 'SpacesModule.ClimateTarget.Created',
+	CLIMATE_TARGET_UPDATED = 'SpacesModule.ClimateTarget.Updated',
+	CLIMATE_TARGET_DELETED = 'SpacesModule.ClimateTarget.Deleted',
 }
 
 export enum SpaceType {
@@ -427,6 +430,16 @@ export enum LightingRole {
 	NIGHT = 'night', // Night/minimal lights (e.g., night lights)
 	OTHER = 'other', // Unclassified lights
 	HIDDEN = 'hidden', // Hidden lights (excluded from UI, not controlled by intents)
+}
+
+// Climate Roles - classify climate devices within a space for intent-based control
+export enum ClimateRole {
+	PRIMARY = 'primary', // Primary temperature regulation (e.g., main thermostat, central HVAC)
+	AUXILIARY = 'auxiliary', // Auxiliary heating/cooling (e.g., portable heater, window AC)
+	VENTILATION = 'ventilation', // Ventilation/air circulation (e.g., fans, air exchange)
+	HUMIDITY = 'humidity', // Humidity control (e.g., humidifier, dehumidifier)
+	OTHER = 'other', // Unclassified climate devices
+	HIDDEN = 'hidden', // Hidden devices (excluded from UI, not controlled by intents)
 }
 
 /**

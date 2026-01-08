@@ -16,17 +16,24 @@ import { ReqBulkAssignDto } from '../dto/bulk-assign.dto';
 import { ReqClimateIntentDto } from '../dto/climate-intent.dto';
 import { ReqCreateSpaceDto } from '../dto/create-space.dto';
 import { ReqLightingIntentDto } from '../dto/lighting-intent.dto';
+import { ReqBulkSetClimateRolesDto, ReqSetClimateRoleDto } from '../dto/climate-role.dto';
 import { ReqBulkSetLightingRolesDto, ReqSetLightingRoleDto } from '../dto/lighting-role.dto';
 import { ReqSuggestionFeedbackDto } from '../dto/suggestion.dto';
 import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
 import {
 	BulkAssignmentResponseModel,
 	BulkAssignmentResultDataModel,
+	BulkClimateRoleResultItemModel,
+	BulkClimateRolesResponseModel,
+	BulkClimateRolesResultDataModel,
 	BulkLightingRoleResultItemModel,
 	BulkLightingRolesResponseModel,
 	BulkLightingRolesResultDataModel,
 	CategoryTemplateDataModel,
 	CategoryTemplatesResponseModel,
+	ClimateRoleResponseModel,
+	ClimateTargetDataModel,
+	ClimateTargetsResponseModel,
 	ClimateIntentResponseModel,
 	ClimateIntentResultDataModel,
 	ClimateStateDataModel,
@@ -62,6 +69,7 @@ import {
 	UndoStateDataModel,
 	UndoStateResponseModel,
 } from '../models/spaces-response.model';
+import { SpaceClimateRoleService } from '../services/space-climate-role.service';
 import { SpaceContextSnapshotService } from '../services/space-context-snapshot.service';
 import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
@@ -89,6 +97,7 @@ export class SpacesController {
 		private readonly spacesService: SpacesService,
 		private readonly spaceIntentService: SpaceIntentService,
 		private readonly spaceLightingRoleService: SpaceLightingRoleService,
+		private readonly spaceClimateRoleService: SpaceClimateRoleService,
 		private readonly spaceSuggestionService: SpaceSuggestionService,
 		private readonly spaceContextSnapshotService: SpaceContextSnapshotService,
 		private readonly spaceUndoHistoryService: SpaceUndoHistoryService,
@@ -750,6 +759,187 @@ export class SpacesController {
 		await this.spaceLightingRoleService.deleteRole(id, deviceId, channelId);
 
 		this.logger.debug(`Successfully deleted lighting role for device=${deviceId} channel=${channelId}`);
+	}
+
+	// ================================
+	// Climate Role Endpoints
+	// ================================
+
+	@Get(':id/climate/targets')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-climate-targets',
+		summary: 'List climate targets in space',
+		description:
+			'Retrieves all controllable climate targets (device/channel pairs) in a space ' +
+			'along with their current role assignments and capabilities. Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(ClimateTargetsResponseModel, 'Returns the list of climate targets with role assignments')
+	@ApiNotFoundResponse('Space not found')
+	async getClimateTargets(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<ClimateTargetsResponseModel> {
+		this.logger.debug(`Fetching climate targets for space with id=${id}`);
+
+		const targets = await this.spaceClimateRoleService.getClimateTargetsInSpace(id);
+
+		const response = new ClimateTargetsResponseModel();
+		response.data = targets.map((t) => {
+			const model = new ClimateTargetDataModel();
+			model.deviceId = t.deviceId;
+			model.deviceName = t.deviceName;
+			model.deviceCategory = t.deviceCategory;
+			model.channelId = t.channelId;
+			model.channelName = t.channelName;
+			model.channelCategory = t.channelCategory;
+			model.role = t.role;
+			model.priority = t.priority;
+			model.hasTemperature = t.hasTemperature;
+			model.hasHumidity = t.hasHumidity;
+			model.hasMode = t.hasMode;
+			return model;
+		});
+
+		return response;
+	}
+
+	@Post(':id/climate/roles')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-climate-role',
+		summary: 'Set climate role for a climate target',
+		description:
+			'Sets or updates the climate role for a specific device/channel in a space. ' + 'Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(ClimateRoleResponseModel, 'Returns the created/updated climate role assignment')
+	@ApiNotFoundResponse('Space not found')
+	@ApiBadRequestResponse('Invalid role data')
+	@ApiUnprocessableEntityResponse('Role assignment validation failed')
+	async setClimateRole(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqSetClimateRoleDto,
+	): Promise<ClimateRoleResponseModel> {
+		this.logger.debug(`Setting climate role for space with id=${id}`);
+
+		const role = await this.spaceClimateRoleService.setRole(id, body.data);
+
+		const response = new ClimateRoleResponseModel();
+		response.data = role;
+
+		return response;
+	}
+
+	@Post(':id/climate/roles/bulk')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-climate-roles-bulk',
+		summary: 'Bulk set climate roles for climate targets',
+		description:
+			'Sets or updates climate roles for multiple device/channels in a space in a single operation. ' +
+			'Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(BulkClimateRolesResponseModel, 'Returns the bulk update result')
+	@ApiNotFoundResponse('Space not found')
+	@ApiBadRequestResponse('Invalid role data')
+	@ApiUnprocessableEntityResponse('Role assignment validation failed')
+	async bulkSetClimateRoles(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqBulkSetClimateRolesDto,
+	): Promise<BulkClimateRolesResponseModel> {
+		this.logger.debug(`Bulk setting climate roles for space with id=${id}`);
+
+		const result = await this.spaceClimateRoleService.bulkSetRoles(id, body.data.roles);
+
+		const resultData = new BulkClimateRolesResultDataModel();
+		resultData.success = result.success;
+		resultData.totalCount = result.totalCount;
+		resultData.successCount = result.successCount;
+		resultData.failureCount = result.failureCount;
+		resultData.results = result.results.map((item) => {
+			const resultItem = new BulkClimateRoleResultItemModel();
+			resultItem.deviceId = item.deviceId;
+			resultItem.channelId = item.channelId;
+			resultItem.success = item.success;
+			resultItem.role = item.role;
+			resultItem.error = item.error;
+			return resultItem;
+		});
+
+		const response = new BulkClimateRolesResponseModel();
+		response.data = resultData;
+
+		return response;
+	}
+
+	@Post(':id/climate/roles/defaults')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-climate-roles-defaults',
+		summary: 'Apply default climate roles',
+		description:
+			'Infers and applies default climate roles for all climate devices in the space. ' +
+			'Thermostats become PRIMARY, heaters/AC become AUXILIARY, fans become VENTILATION, ' +
+			'humidifiers/dehumidifiers become HUMIDITY. Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(BulkClimateRolesResponseModel, 'Returns the bulk update result')
+	@ApiNotFoundResponse('Space not found')
+	async applyDefaultClimateRoles(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<BulkClimateRolesResponseModel> {
+		this.logger.debug(`Applying default climate roles for space with id=${id}`);
+
+		const defaultRoles = await this.spaceClimateRoleService.inferDefaultClimateRoles(id);
+		const result = await this.spaceClimateRoleService.bulkSetRoles(id, defaultRoles);
+
+		const resultData = new BulkClimateRolesResultDataModel();
+		resultData.success = result.success;
+		resultData.totalCount = result.totalCount;
+		resultData.successCount = result.successCount;
+		resultData.failureCount = result.failureCount;
+		resultData.results = result.results.map((item) => {
+			const resultItem = new BulkClimateRoleResultItemModel();
+			resultItem.deviceId = item.deviceId;
+			resultItem.channelId = item.channelId;
+			resultItem.success = item.success;
+			resultItem.role = item.role;
+			resultItem.error = item.error;
+			return resultItem;
+		});
+
+		const response = new BulkClimateRolesResponseModel();
+		response.data = resultData;
+
+		return response;
+	}
+
+	@Delete(':id/climate/roles/:deviceId/:channelId')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'delete-spaces-module-space-climate-role',
+		summary: 'Delete climate role assignment',
+		description:
+			'Removes the climate role assignment for a specific device/channel in a space. ' +
+			'Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
+	@ApiNoContentResponse({ description: 'Climate role deleted successfully' })
+	@ApiNotFoundResponse('Space not found')
+	@HttpCode(204)
+	async deleteClimateRole(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
+		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
+	): Promise<void> {
+		this.logger.debug(`Deleting climate role for space=${id} device=${deviceId} channel=${channelId}`);
+
+		await this.spaceClimateRoleService.deleteRole(id, deviceId, channelId);
+
+		this.logger.debug(`Successfully deleted climate role for device=${deviceId} channel=${channelId}`);
 	}
 
 	// ================================
