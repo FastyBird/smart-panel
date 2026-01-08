@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/utils/theme.dart'
-    show AppSpacings;
+import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/colored_switch.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/light_mode_navigation.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/light_state_display.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/lighting.dart';
@@ -47,6 +49,8 @@ class LightChannelDetailPage extends StatefulWidget {
 
 class _LightChannelDetailPageState extends State<LightChannelDetailPage> {
   final PropertyValueHelper _valueHelper = PropertyValueHelper();
+  final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService = locator<VisualDensityService>();
 
   DeviceControlStateService? _deviceControlStateService;
   IntentOverlayService? _intentOverlayService;
@@ -291,11 +295,16 @@ class _LightChannelDetailPageState extends State<LightChannelDetailPage> {
         !channel.hasTemperature &&
         !channel.hasColorWhite;
 
+    final device = _getDevice();
+    final localizations = AppLocalizations.of(context);
+
     // Simple device with single channel: just ON/OFF
     if (isSimple) {
       return Scaffold(
         appBar: AppTopBar(
           title: channel.name,
+          icon: buildDeviceIcon(device.category, device.icon),
+          actions: _buildHeaderActions(context, device, localizations),
         ),
         body: _buildSimpleDeviceLayout(context),
       );
@@ -305,6 +314,8 @@ class _LightChannelDetailPageState extends State<LightChannelDetailPage> {
     return Scaffold(
       appBar: AppTopBar(
         title: channel.name,
+        icon: buildDeviceIcon(device.category, device.icon),
+        actions: _buildHeaderActions(context, device, localizations),
       ),
       body: _buildSingleChannelLayout(context),
     );
@@ -467,6 +478,81 @@ class _LightChannelDetailPageState extends State<LightChannelDetailPage> {
           ),
       ],
     );
+  }
+
+  /// Build header actions (offline indicator and close button)
+  List<Widget> _buildHeaderActions(
+    BuildContext context,
+    LightingDeviceView device,
+    AppLocalizations? localizations,
+  ) {
+    final actions = <Widget>[];
+
+    // Offline indicator
+    if (!device.isOnline) {
+      actions.add(
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              MdiIcons.alert,
+              size: _screenService.scale(
+                14,
+                density: _visualDensityService.density,
+              ),
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppColorsLight.warning
+                  : AppColorsDark.warning,
+            ),
+            SizedBox(
+              width: _screenService.scale(
+                4,
+                density: _visualDensityService.density,
+              ),
+            ),
+            Text(
+              localizations?.device_status_offline ?? 'Offline',
+              style: TextStyle(
+                fontSize: _screenService.scale(
+                  12,
+                  density: _visualDensityService.density,
+                ),
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppColorsLight.warning
+                    : AppColorsDark.warning,
+              ),
+            ),
+          ],
+        ),
+      );
+      actions.add(
+        SizedBox(
+          width: _screenService.scale(
+            16,
+            density: _visualDensityService.density,
+          ),
+        ),
+      );
+    }
+
+    // Close button
+    actions.add(
+      GestureDetector(
+        onTap: () => Navigator.pop(context),
+        child: Icon(
+          MdiIcons.close,
+          size: _screenService.scale(
+            16,
+            density: _visualDensityService.density,
+          ),
+          color: Theme.of(context).brightness == Brightness.light
+              ? AppTextColorLight.regular
+              : AppTextColorDark.regular,
+        ),
+      ),
+    );
+
+    return actions;
   }
 
   /// Convert LightMode to LightChannelModeType for compatibility
