@@ -1745,6 +1745,30 @@ abstract class AppLocalizations {
   /// **'Target'**
   String get space_climate_target_label;
 
+  /// Section header for auxiliary climate devices
+  ///
+  /// In en, this message translates to:
+  /// **'Auxiliary'**
+  String get climate_role_auxiliary;
+
+  /// Section header for ventilation devices (fans, purifiers)
+  ///
+  /// In en, this message translates to:
+  /// **'Ventilation'**
+  String get climate_role_ventilation;
+
+  /// Section header for humidity control devices
+  ///
+  /// In en, this message translates to:
+  /// **'Humidity Control'**
+  String get climate_role_humidity;
+
+  /// Section header for other climate devices
+  ///
+  /// In en, this message translates to:
+  /// **'Other Devices'**
+  String get climate_role_other;
+
   /// Message shown when a suggestion is applied
   ///
   /// In en, this message translates to:

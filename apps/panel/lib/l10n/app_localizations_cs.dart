@@ -842,6 +842,18 @@ class AppLocalizationsCs extends AppLocalizations {
   String get space_climate_target_label => 'Cílová';
 
   @override
+  String get climate_role_auxiliary => 'Pomocné';
+
+  @override
+  String get climate_role_ventilation => 'Větrání';
+
+  @override
+  String get climate_role_humidity => 'Ovládání vlhkosti';
+
+  @override
+  String get climate_role_other => 'Ostatní zařízení';
+
+  @override
   String get space_suggestion_applied => 'Návrh byl aplikován';
 
   @override

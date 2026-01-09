@@ -26,6 +26,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/channels/cooler.dart
 import 'package:fastybird_smart_panel/modules/devices/views/channels/heater.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/intents/service.dart';
+import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 import 'package:fastybird_smart_panel/modules/weather/service.dart';
 import 'package:fastybird_smart_panel/modules/weather/types/configuration.dart';
 import 'package:flutter/foundation.dart';
@@ -113,6 +114,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       locator<VisualDensityService>();
   final _PropertyValueHelper _valueHelper = _PropertyValueHelper();
 
+  SpacesService? _spacesService;
   DevicesService? _devicesService;
   IntentOverlayService? _intentOverlayService;
   DeviceControlStateService? _deviceControlStateService;
@@ -123,6 +125,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
   // Debounce timer for temperature dial to prevent overwhelming the backend
   Timer? _temperatureDebounceTimer;
+
+  bool _isLoading = true;
 
   String get _roomId => widget.viewItem.roomId;
 
@@ -140,6 +144,15 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   @override
   void initState() {
     super.initState();
+
+    try {
+      _spacesService = locator<SpacesService>();
+      _spacesService?.addListener(_onSpacesDataChanged);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[ClimateDomainView] Failed to get SpacesService: $e');
+      }
+    }
 
     try {
       _devicesService = locator<DevicesService>();
@@ -176,16 +189,38 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         debugPrint('[ClimateDomainView] Failed to get WeatherService: $e');
       }
     }
+
+    // Fetch climate targets for this space
+    _fetchClimateTargets();
+  }
+
+  Future<void> _fetchClimateTargets() async {
+    try {
+      await _spacesService?.fetchClimateTargetsForSpace(_roomId);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
   void dispose() {
     _temperatureDebounceTimer?.cancel();
+    _spacesService?.removeListener(_onSpacesDataChanged);
     _devicesService?.removeListener(_onDevicesDataChanged);
     _intentOverlayService?.removeListener(_onIntentDataChanged);
     _deviceControlStateService?.removeListener(_onControlStateChanged);
 
     super.dispose();
+  }
+
+  void _onSpacesDataChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _onDevicesDataChanged() {
@@ -242,10 +277,55 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     return temp != 0.0 && temp >= -50 && temp <= 100;
   }
 
-  /// Get hero device (thermostat > heater > cooler priority)
-  /// Falls back to category-based detection if typed detection fails
-  DeviceView? _getHeroDevice(List<DeviceView> devices) {
-    // Priority 1: typed device views (thermostat first, then heater, then cooler)
+  /// Get climate targets for the current room
+  List<ClimateTargetView> _getClimateTargets() {
+    final spacesService = _spacesService;
+    if (spacesService == null) return [];
+
+    return spacesService
+        .getClimateTargetsForSpace(_roomId)
+        .where((t) => t.role != ClimateTargetRole.hidden)
+        .toList();
+  }
+
+  /// Get the PRIMARY climate target (hero device)
+  ClimateTargetView? _getPrimaryTarget(List<ClimateTargetView> targets) {
+    // Look for PRIMARY role first
+    final primaryTarget = targets
+        .where((t) => t.role == ClimateTargetRole.primary)
+        .firstOrNull;
+    if (primaryTarget != null) return primaryTarget;
+
+    // Fallback: first actuator target with temperature control
+    return targets
+        .where((t) => t.isActuator && t.hasTemperature)
+        .firstOrNull;
+  }
+
+  /// Get the temperature sensor target for room temperature display
+  ClimateTargetView? _getTemperatureSensorTarget(List<ClimateTargetView> targets) {
+    // Look for TEMPERATURE_SENSOR role
+    return targets
+        .where((t) => t.role == ClimateTargetRole.temperatureSensor)
+        .firstOrNull;
+  }
+
+  /// Get hero device from PRIMARY target or fallback to type-based priority
+  DeviceView? _getHeroDevice(
+    List<ClimateTargetView> targets,
+    DevicesService devicesService,
+  ) {
+    // Priority 1: Use PRIMARY role climate target
+    final primaryTarget = _getPrimaryTarget(targets);
+    if (primaryTarget != null) {
+      final device = devicesService.getDevice(primaryTarget.deviceId);
+      if (device != null) return device;
+    }
+
+    // Priority 2: Fallback to type-based detection from devices in room
+    final devices = _getClimateDevices();
+
+    // typed device views (thermostat first, then heater, then cooler)
     for (final device in devices) {
       if (device is ThermostatDeviceView) return device;
     }
@@ -256,30 +336,25 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       if (device is AirConditionerDeviceView) return device;
     }
 
-    // Priority 2: fallback to category-based detection
-    // This handles cases where device view mapping failed but category is correct
-    for (final device in devices) {
-      if (device.category == DevicesModuleDeviceCategory.thermostat) return device;
-    }
-    for (final device in devices) {
-      if (device.category == DevicesModuleDeviceCategory.heater) return device;
-    }
-    for (final device in devices) {
-      if (device.category == DevicesModuleDeviceCategory.airConditioner) return device;
-    }
-
     return null;
   }
 
-  /// Get secondary devices (non-hero devices)
-  List<DeviceView> _getSecondaryDevices(
-      List<DeviceView> devices, DeviceView? heroDevice) {
-    if (heroDevice == null) return devices;
-    return devices.where((d) => d.id != heroDevice.id).toList();
+  /// Get secondary climate targets (non-PRIMARY, non-sensor roles)
+  List<ClimateTargetView> _getSecondaryTargets(
+    List<ClimateTargetView> targets,
+    ClimateTargetView? primaryTarget,
+  ) {
+    return targets
+        .where((t) =>
+            t.id != primaryTarget?.id &&
+            t.role != ClimateTargetRole.temperatureSensor &&
+            t.role != ClimateTargetRole.humiditySensor)
+        .toList();
   }
 
   @override
   Widget build(BuildContext context) {
+    final spacesService = _spacesService;
     final devicesService = _devicesService;
 
     return Scaffold(
@@ -290,19 +365,42 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            if (devicesService == null) {
+            if (spacesService == null || devicesService == null) {
               return _buildEmptyState(context);
             }
 
-            final climateDevices = _getClimateDevices();
-
-            if (climateDevices.isEmpty) {
-              return _buildEmptyState(context);
+            if (_isLoading) {
+              return const Center(child: CircularProgressIndicator());
             }
 
-            final heroDevice = _getHeroDevice(climateDevices);
-            final secondaryDevices =
-                _getSecondaryDevices(climateDevices, heroDevice);
+            final climateTargets = _getClimateTargets();
+
+            // If no climate targets, fallback to device-based detection
+            if (climateTargets.isEmpty) {
+              final climateDevices = _getClimateDevices();
+              if (climateDevices.isEmpty) {
+                return _buildEmptyState(context);
+              }
+
+              // Fallback: use old device-based approach
+              final heroDevice = _getHeroDevice(climateTargets, devicesService);
+              final secondaryDevices = climateDevices
+                  .where((d) => d.id != heroDevice?.id)
+                  .toList();
+
+              return _buildLegacyLayout(
+                context,
+                heroDevice,
+                secondaryDevices,
+                devicesService,
+                constraints,
+              );
+            }
+
+            final primaryTarget = _getPrimaryTarget(climateTargets);
+            final heroDevice = _getHeroDevice(climateTargets, devicesService);
+            final secondaryTargets =
+                _getSecondaryTargets(climateTargets, primaryTarget);
 
             return SingleChildScrollView(
               padding: AppSpacings.paddingMd,
@@ -318,11 +416,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                     ),
 
                   // Secondary devices section
-                  if (secondaryDevices.isNotEmpty) ...[
+                  if (secondaryTargets.isNotEmpty) ...[
                     if (heroDevice != null) AppSpacings.spacingLgVertical,
-                    _buildSecondaryDevicesSection(
+                    _buildSecondaryTargetsSection(
                       context,
-                      secondaryDevices,
+                      secondaryTargets,
                       devicesService,
                     ),
                   ],
@@ -331,6 +429,38 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             );
           },
         ),
+      ),
+    );
+  }
+
+  /// Build legacy layout when no climate targets available
+  Widget _buildLegacyLayout(
+    BuildContext context,
+    DeviceView? heroDevice,
+    List<DeviceView> secondaryDevices,
+    DevicesService devicesService,
+    BoxConstraints constraints,
+  ) {
+    return SingleChildScrollView(
+      padding: AppSpacings.paddingMd,
+      child: Column(
+        children: [
+          if (heroDevice != null)
+            _buildHeroSection(
+              context,
+              heroDevice,
+              devicesService,
+              constraints,
+            ),
+          if (secondaryDevices.isNotEmpty) ...[
+            if (heroDevice != null) AppSpacings.spacingLgVertical,
+            _buildSecondaryDevicesSection(
+              context,
+              secondaryDevices,
+              devicesService,
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -1436,7 +1566,109 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     );
   }
 
-  /// Build secondary devices section
+  /// Build secondary climate targets section (role-based)
+  Widget _buildSecondaryTargetsSection(
+    BuildContext context,
+    List<ClimateTargetView> targets,
+    DevicesService devicesService,
+  ) {
+    final localizations = AppLocalizations.of(context);
+
+    // Group targets by role for better organization
+    final auxiliaryTargets =
+        targets.where((t) => t.role == ClimateTargetRole.auxiliary).toList();
+    final ventilationTargets =
+        targets.where((t) => t.role == ClimateTargetRole.ventilation).toList();
+    final humidityTargets =
+        targets.where((t) => t.role == ClimateTargetRole.humidityControl).toList();
+    final otherTargets = targets
+        .where((t) =>
+            t.role == ClimateTargetRole.other || t.role == null)
+        .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Auxiliary heating/cooling devices
+        if (auxiliaryTargets.isNotEmpty) ...[
+          _buildRoleSection(
+            context,
+            localizations?.climate_role_auxiliary ?? 'Auxiliary',
+            auxiliaryTargets,
+            devicesService,
+          ),
+          AppSpacings.spacingMdVertical,
+        ],
+
+        // Ventilation devices (fans, purifiers)
+        if (ventilationTargets.isNotEmpty) ...[
+          _buildRoleSection(
+            context,
+            localizations?.climate_role_ventilation ?? 'Ventilation',
+            ventilationTargets,
+            devicesService,
+          ),
+          AppSpacings.spacingMdVertical,
+        ],
+
+        // Humidity control devices
+        if (humidityTargets.isNotEmpty) ...[
+          _buildRoleSection(
+            context,
+            localizations?.climate_role_humidity ?? 'Humidity Control',
+            humidityTargets,
+            devicesService,
+          ),
+          AppSpacings.spacingMdVertical,
+        ],
+
+        // Other devices
+        if (otherTargets.isNotEmpty)
+          _buildRoleSection(
+            context,
+            localizations?.climate_role_other ?? 'Other Devices',
+            otherTargets,
+            devicesService,
+          ),
+      ],
+    );
+  }
+
+  /// Build a section for a specific climate role
+  Widget _buildRoleSection(
+    BuildContext context,
+    String title,
+    List<ClimateTargetView> targets,
+    DevicesService devicesService,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: AppFontSize.base,
+            fontWeight: FontWeight.w500,
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppTextColorLight.secondary
+                : AppTextColorDark.secondary,
+          ),
+        ),
+        AppSpacings.spacingSmVertical,
+        Wrap(
+          spacing: AppSpacings.pSm,
+          runSpacing: AppSpacings.pSm,
+          children: targets.map((target) {
+            final device = devicesService.getDevice(target.deviceId);
+            if (device == null) return const SizedBox.shrink();
+            return _buildSecondaryDeviceTile(context, device, devicesService);
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  /// Build secondary devices section (legacy - device based)
   Widget _buildSecondaryDevicesSection(
     BuildContext context,
     List<DeviceView> devices,

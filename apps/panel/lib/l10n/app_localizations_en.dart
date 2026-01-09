@@ -842,6 +842,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get space_climate_target_label => 'Target';
 
   @override
+  String get climate_role_auxiliary => 'Auxiliary';
+
+  @override
+  String get climate_role_ventilation => 'Ventilation';
+
+  @override
+  String get climate_role_humidity => 'Humidity Control';
+
+  @override
+  String get climate_role_other => 'Other Devices';
+
+  @override
   String get space_suggestion_applied => 'Suggestion applied';
 
   @override

@@ -1126,6 +1126,22 @@
   "@space_climate_target_label": {
     "description": "Label for target temperature display"
   },
+  "climate_role_auxiliary": "Auxiliary",
+  "@climate_role_auxiliary": {
+    "description": "Section header for auxiliary climate devices"
+  },
+  "climate_role_ventilation": "Ventilation",
+  "@climate_role_ventilation": {
+    "description": "Section header for ventilation devices (fans, purifiers)"
+  },
+  "climate_role_humidity": "Humidity Control",
+  "@climate_role_humidity": {
+    "description": "Section header for humidity control devices"
+  },
+  "climate_role_other": "Other Devices",
+  "@climate_role_other": {
+    "description": "Section header for other climate devices"
+  },
   "space_suggestion_applied": "Suggestion applied",
   "@space_suggestion_applied": {
     "description": "Message shown when a suggestion is applied"
