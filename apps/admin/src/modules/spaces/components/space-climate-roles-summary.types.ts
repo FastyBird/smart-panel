@@ -4,8 +4,6 @@ export interface IClimateRoleDevice {
 	deviceId: string;
 	deviceName: string;
 	deviceCategory: string;
-	channelId: string;
-	channelName: string;
 }
 
 export interface IClimateRoleSummary {
