@@ -138,19 +138,22 @@ export class ElectricalConverter extends BaseConverter {
 
 	/**
 	 * Find a potential parent channel identifier for electrical monitoring channels
-	 * Parents are typically switch or light channels with the same endpoint
+	 * Parents are typically switch, light, cover, or fan channels with the same endpoint
 	 */
 	private findParentChannelIdentifier(endpoint: string | undefined, context: ConversionContext): string | undefined {
-		// Look for switch or light exposes with the same endpoint
-		const controlExposeTypes = ['switch', 'light'];
+		// Look for control exposes with the same endpoint
+		// Maps expose type to the channel identifier prefix used by each converter
+		const exposeTypeToChannelPrefix: Record<string, string> = {
+			switch: 'switcher', // SwitchConverter uses 'switcher'
+			light: 'light', // LightConverter uses 'light'
+			cover: 'window_covering', // CoverConverter uses 'window_covering'
+			fan: 'fan', // FanConverter uses 'fan'
+		};
 
-		for (const exposeType of controlExposeTypes) {
+		for (const [exposeType, channelPrefix] of Object.entries(exposeTypeToChannelPrefix)) {
 			const matchingExpose = context.allExposes.find((e) => e.type === exposeType && e.endpoint === endpoint);
 
 			if (matchingExpose) {
-				// Return the channel identifier that would be created for this expose
-				// Note: SwitchConverter creates 'switcher' channels for 'switch' exposes
-				const channelPrefix = exposeType === 'switch' ? 'switcher' : exposeType;
 				return this.createChannelIdentifier(channelPrefix, endpoint);
 			}
 		}
