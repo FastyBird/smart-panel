@@ -264,6 +264,35 @@ export class ChannelEntity extends BaseEntity {
 	@ManyToOne(() => DeviceEntity, (device) => device.channels, { onDelete: 'CASCADE' })
 	device: DeviceEntity | string;
 
+	@ApiPropertyOptional({
+		name: 'parent',
+		description: 'Parent channel identifier (for hierarchical channels like energy monitoring per switch)',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: '550e8400-e29b-41d4-a716-446655440000',
+	})
+	@Expose({ name: 'parent' })
+	@IsOptional()
+	@ValidateIf((_, value) => typeof value === 'string')
+	@IsUUID('4', { message: '[{"field":"parent","reason":"Parent must be a valid UUID (version 4)."}]' })
+	@Transform(({ value }: { value: ChannelEntity | string | null }) => (typeof value === 'string' ? value : value?.id), {
+		toPlainOnly: true,
+	})
+	@Transform(({ obj }: { obj: { parent?: string; parentId?: string } }) => obj.parent ?? obj.parentId, {
+		toClassOnly: true,
+	})
+	@Index()
+	@Column({ nullable: true, default: null })
+	parentId: string | null;
+
+	@ManyToOne(() => ChannelEntity, (channel) => channel.children, { nullable: true, onDelete: 'SET NULL' })
+	@JoinColumn({ name: 'parentId' })
+	parent: ChannelEntity | null;
+
+	@OneToMany(() => ChannelEntity, (channel) => channel.parent)
+	children: ChannelEntity[];
+
 	@ApiProperty({
 		description: 'Channel controls',
 		type: 'array',

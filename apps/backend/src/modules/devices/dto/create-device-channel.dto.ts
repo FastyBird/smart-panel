@@ -85,6 +85,20 @@ export class CreateDeviceChannelDto {
 	description?: string | null;
 
 	@ApiPropertyOptional({
+		name: 'parent',
+		description: 'Parent channel ID (for hierarchical channels like energy monitoring per switch)',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: '123e4567-e89b-12d3-a456-426614174000',
+	})
+	@Expose({ name: 'parent' })
+	@IsOptional()
+	@IsUUID('4', { message: '[{"field":"parent","reason":"Parent must be a valid UUID (version 4)."}]' })
+	@ValidateIf((_, value) => value !== null)
+	parent?: string | null;
+
+	@ApiPropertyOptional({
 		description: 'Channel controls',
 		type: 'array',
 		items: { $ref: getSchemaPath(CreateDeviceChannelControlDto) },
