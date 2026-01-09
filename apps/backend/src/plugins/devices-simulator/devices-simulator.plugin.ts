@@ -54,7 +54,7 @@ import { DeviceGeneratorService } from './services/device-generator.service';
 })
 @Module({
 	imports: [
-		TypeOrmModule.forFeature([SimulatorDeviceEntity]),
+		TypeOrmModule.forFeature([SimulatorDeviceEntity, SimulatorChannelEntity, SimulatorChannelPropertyEntity]),
 		DevicesModule,
 		ConfigModule,
 		ExtensionsModule,
