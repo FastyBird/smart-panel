@@ -10,6 +10,7 @@ abstract class ChannelModel extends Model {
   final String? _description;
 
   final String _device;
+  final String? _parent;
 
   final List<String> _properties;
   final List<String> _controls;
@@ -21,6 +22,7 @@ abstract class ChannelModel extends Model {
     String? name,
     String? description,
     required String device,
+    String? parent,
     required List<String> properties,
     required List<String> controls,
     super.createdAt,
@@ -30,6 +32,7 @@ abstract class ChannelModel extends Model {
         _name = name,
         _description = description,
         _device = device,
+        _parent = parent,
         _properties = properties,
         _controls = controls;
 
@@ -42,6 +45,9 @@ abstract class ChannelModel extends Model {
   String? get description => _description;
 
   String get device => _device;
+
+  /// Parent channel ID (for hierarchical channels like energy monitoring per switch)
+  String? get parent => _parent;
 
   List<String> get properties => _properties;
 

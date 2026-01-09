@@ -28,6 +28,7 @@ export const ChannelSchema = z.object({
 	identifier: z.string().trim().nonempty().nullable(),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable().default(null),
+	parent: z.string().uuid().nullable().default(null),
 	createdAt: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
 	updatedAt: z
 		.union([z.string().datetime({ offset: true }), z.date()])
@@ -69,6 +70,7 @@ export const ChannelsSetActionPayloadSchema = z.object({
 			.transform((val) => (val === '' ? null : val))
 			.nullable()
 			.optional(),
+		parent: z.string().uuid().nullable().optional(),
 	}),
 });
 
@@ -101,6 +103,7 @@ export const ChannelsAddActionPayloadSchema = z.object({
 			.transform((val) => (val === '' ? null : val))
 			.nullable()
 			.optional(),
+		parent: z.string().uuid().nullable().optional(),
 	}),
 });
 
@@ -118,6 +121,7 @@ export const ChannelsEditActionPayloadSchema = z.object({
 			.transform((val) => (val === '' ? null : val))
 			.nullable()
 			.optional(),
+		parent: z.string().uuid().nullable().optional(),
 	}),
 });
 
@@ -147,6 +151,7 @@ export const ChannelCreateReqSchema: ZodType<ApiCreateChannel> = z.object({
 		.transform((val) => (val === '' ? null : val))
 		.nullable()
 		.optional(),
+	parent: z.string().uuid().nullable().optional(),
 	controls: z.array(ChannelControlCreateReqSchema).optional(),
 	properties: z.array(ChannelPropertyCreateReqSchema).optional(),
 });
@@ -161,6 +166,7 @@ export const ChannelUpdateReqSchema: ZodType<ApiUpdateChannel> = z.object({
 		.transform((val) => (val === '' ? null : val))
 		.nullable()
 		.optional(),
+	parent: z.string().uuid().nullable().optional(),
 });
 
 export const ChannelResSchema: ZodType<ApiChannel> = z.object({
@@ -171,6 +177,7 @@ export const ChannelResSchema: ZodType<ApiChannel> = z.object({
 	identifier: z.string().trim().nonempty().nullable(),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable(),
+	parent: z.string().uuid().nullable().optional(),
 	created_at: z.string().date(),
 	updated_at: z.string().date().nullable(),
 	controls: z.array(ChannelControlResSchema),

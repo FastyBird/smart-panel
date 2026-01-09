@@ -43,6 +43,7 @@ export const HomeAssistantChannelCreateReqSchema: ZodType<ApiCreateChannel> = z.
 		.transform((val) => (val === '' ? null : val))
 		.nullable()
 		.optional(),
+	parent: z.string().uuid().nullable().optional(),
 	controls: z.array(ChannelControlCreateReqSchema).optional(),
 	properties: z.array(HomeAssistantChannelPropertyCreateReqSchema).optional(),
 });
@@ -62,6 +63,7 @@ export const HomeAssistantChannelResSchema: ZodType<ApiChannel> = z.object({
 	identifier: z.string().trim().nonempty().nullable(),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable(),
+	parent: z.string().uuid().nullable().optional(),
 	created_at: z.string().date(),
 	updated_at: z.string().date().nullable(),
 	controls: z.array(ChannelControlResSchema),

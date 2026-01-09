@@ -17,6 +17,7 @@ class ThermostatChannelView extends ChannelView with ChannelActiveMixin {
     super.name,
     super.description,
     required super.device,
+    super.parent,
     required super.properties,
     super.isValid,
     super.validationIssues,

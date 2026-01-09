@@ -41,6 +41,7 @@ export enum ValidationIssueType {
 	INVALID_FORMAT = 'invalid_format',
 	UNKNOWN_CHANNEL = 'unknown_channel',
 	DUPLICATE_CHANNEL = 'duplicate_channel',
+	INVALID_PARENT = 'invalid_parent',
 	CONSTRAINT_ONE_OF_VIOLATION = 'constraint_one_of_violation',
 	CONSTRAINT_ONE_OR_MORE_OF_VIOLATION = 'constraint_one_or_more_of_violation',
 	CONSTRAINT_MUTUALLY_EXCLUSIVE_VIOLATION = 'constraint_mutually_exclusive_violation',
@@ -107,8 +108,10 @@ export interface PropertyDataInput {
  * Input for pre-save channel validation (plain object, not entity)
  */
 export interface ChannelDataInput {
+	id?: string;
 	category: ChannelCategory;
 	properties?: PropertyDataInput[];
+	parent?: string | null;
 }
 
 /**
@@ -308,16 +311,60 @@ export class DeviceValidationService {
 			channelSpecInfo.set(category, existing);
 		}
 
-		// Track existing channel categories and their instances
+		// Track existing channel categories and their instances (only top-level channels without parent)
 		const existingChannelCategories = new Map<ChannelCategory, ChannelEntity[]>();
 
+		// Track channels by parent for parent-scoped multiple validation
+		// Key: parentId, Value: Map of category to child channels
+		const channelsByParent = new Map<string, Map<ChannelCategory, ChannelEntity[]>>();
+
+		// Build a set of all channel IDs for parent validation
+		const allChannelIds = new Set(channels.map((ch) => ch.id));
+
 		for (const channel of channels) {
-			const existing = existingChannelCategories.get(channel.category) || [];
-			existing.push(channel);
-			existingChannelCategories.set(channel.category, existing);
+			if (channel.parentId) {
+				// Validate that parent is not self-referential
+				if (channel.id === channel.parentId) {
+					issues.push({
+						type: ValidationIssueType.INVALID_PARENT,
+						severity: ValidationIssueSeverity.ERROR,
+						channelCategory: channel.category,
+						channelId: channel.id,
+						message: `Channel '${channel.category}' cannot reference itself as parent`,
+						expected: 'different channel ID',
+						actual: channel.parentId,
+					});
+				} else if (!allChannelIds.has(channel.parentId)) {
+					// Validate that parent exists in the same device
+					issues.push({
+						type: ValidationIssueType.INVALID_PARENT,
+						severity: ValidationIssueSeverity.ERROR,
+						channelCategory: channel.category,
+						channelId: channel.id,
+						message: `Channel '${channel.category}' references parent '${channel.parentId}' which does not exist in this device`,
+						expected: 'valid channel ID from the same device',
+						actual: channel.parentId,
+					});
+				}
+
+				// Channel has a parent - group by parent for scoped validation
+				let parentMap = channelsByParent.get(channel.parentId);
+				if (!parentMap) {
+					parentMap = new Map();
+					channelsByParent.set(channel.parentId, parentMap);
+				}
+				const existing = parentMap.get(channel.category) || [];
+				existing.push(channel);
+				parentMap.set(channel.category, existing);
+			} else {
+				// Top-level channel (no parent) - validate against device
+				const existing = existingChannelCategories.get(channel.category) || [];
+				existing.push(channel);
+				existingChannelCategories.set(channel.category, existing);
+			}
 		}
 
-		// Check for missing required channels
+		// Check for missing required channels (only for top-level channels)
 		// A category is satisfied if we have at least requiredCount instances
 		for (const [category, specInfo] of channelSpecInfo) {
 			if (specInfo.requiredCount > 0) {
@@ -339,7 +386,7 @@ export class DeviceValidationService {
 			}
 		}
 
-		// Check for unknown channels and duplicates
+		// Check for unknown channels and duplicates (top-level channels only)
 		for (const [channelCategory, channelInstances] of existingChannelCategories) {
 			const specInfo = channelSpecInfo.get(channelCategory);
 
@@ -372,8 +419,53 @@ export class DeviceValidationService {
 			}
 		}
 
+		// Validate child channels (channels with parent)
+		// For child channels, the multiple constraint is checked against the parent, not the device
+		for (const [parentId, categoryMap] of channelsByParent) {
+			for (const [channelCategory, channelInstances] of categoryMap) {
+				const specInfo = channelSpecInfo.get(channelCategory);
+
+				// Check if channel is allowed for this device category
+				if (!isChannelAllowed(deviceCategory, channelCategory)) {
+					for (const channel of channelInstances) {
+						issues.push({
+							type: ValidationIssueType.UNKNOWN_CHANNEL,
+							severity: ValidationIssueSeverity.WARNING,
+							channelCategory,
+							channelId: channel.id,
+							message: `Channel category '${channelCategory}' is not defined in specification for device category '${deviceCategory}'`,
+						});
+					}
+				} else if (specInfo) {
+					// For child channels, check multiple against parent scope
+					// Each parent can have up to 1 instance of non-multiple channels
+					const maxAllowed = specInfo.multipleAllowed ? Infinity : 1;
+
+					if (channelInstances.length > maxAllowed) {
+						issues.push({
+							type: ValidationIssueType.DUPLICATE_CHANNEL,
+							severity: ValidationIssueSeverity.WARNING,
+							channelCategory,
+							message: `Too many instances of channel '${channelCategory}' under parent channel '${parentId}'`,
+							expected: maxAllowed.toString(),
+							actual: channelInstances.length.toString(),
+						});
+					}
+				}
+			}
+		}
+
+		// Build a combined set of all channel categories (top-level + children) for constraint validation
+		const allChannelCategories = new Map<ChannelCategory, ChannelEntity[]>(existingChannelCategories);
+		for (const [, categoryMap] of channelsByParent) {
+			for (const [category, channelInstances] of categoryMap) {
+				const existing = allChannelCategories.get(category) || [];
+				allChannelCategories.set(category, [...existing, ...channelInstances]);
+			}
+		}
+
 		// Validate device-level channel constraints (oneOf, oneOrMoreOf, mutuallyExclusiveGroups)
-		this.validateDeviceChannelConstraints(device, existingChannelCategories, issues);
+		this.validateDeviceChannelConstraints(device, allChannelCategories, issues);
 	}
 
 	/**
@@ -715,16 +807,48 @@ export class DeviceValidationService {
 			channelSpecInfo.set(category, existing);
 		}
 
-		// Track channel instances by category
+		// Track channel instances by category (only top-level channels without parent)
 		const existingChannelCategories = new Map<ChannelCategory, ChannelDataInput[]>();
 
+		// Track channels by parent for parent-scoped multiple validation
+		// Key: parentId, Value: Map of category to child channels
+		const channelsByParent = new Map<string, Map<ChannelCategory, ChannelDataInput[]>>();
+
 		for (const channel of channels) {
-			const existing = existingChannelCategories.get(channel.category) || [];
-			existing.push(channel);
-			existingChannelCategories.set(channel.category, existing);
+			if (channel.parent) {
+				// Validate that parent is not self-referential
+				// Note: We only validate self-reference here. Parent existence cannot be fully validated
+				// in pre-save context because the parent might be an existing channel not in this input array.
+				if (channel.id && channel.id === channel.parent) {
+					issues.push({
+						type: ValidationIssueType.INVALID_PARENT,
+						severity: ValidationIssueSeverity.ERROR,
+						channelCategory: channel.category,
+						channelId: channel.id,
+						message: `Channel '${channel.category}' cannot reference itself as parent`,
+						expected: 'different channel ID',
+						actual: channel.parent,
+					});
+				}
+
+				// Channel has a parent - group by parent for scoped validation
+				let parentMap = channelsByParent.get(channel.parent);
+				if (!parentMap) {
+					parentMap = new Map();
+					channelsByParent.set(channel.parent, parentMap);
+				}
+				const existing = parentMap.get(channel.category) || [];
+				existing.push(channel);
+				parentMap.set(channel.category, existing);
+			} else {
+				// Top-level channel (no parent) - validate against device
+				const existing = existingChannelCategories.get(channel.category) || [];
+				existing.push(channel);
+				existingChannelCategories.set(channel.category, existing);
+			}
 		}
 
-		// Check for missing required channels
+		// Check for missing required channels (only for top-level channels)
 		for (const [category, specInfo] of channelSpecInfo) {
 			if (specInfo.requiredCount > 0) {
 				const existingCount = existingChannelCategories.get(category)?.length || 0;
@@ -745,7 +869,7 @@ export class DeviceValidationService {
 			}
 		}
 
-		// Check for unknown channels and duplicates
+		// Check for unknown channels and duplicates (top-level channels only)
 		for (const [channelCategory, channelInstances] of existingChannelCategories) {
 			const specInfo = channelSpecInfo.get(channelCategory);
 
@@ -772,8 +896,49 @@ export class DeviceValidationService {
 			}
 		}
 
+		// Validate child channels (channels with parent)
+		// For child channels, the multiple constraint is checked against the parent, not the device
+		for (const [parentId, categoryMap] of channelsByParent) {
+			for (const [channelCategory, channelInstances] of categoryMap) {
+				const specInfo = channelSpecInfo.get(channelCategory);
+
+				if (!isChannelAllowed(deviceCategory, channelCategory)) {
+					issues.push({
+						type: ValidationIssueType.UNKNOWN_CHANNEL,
+						severity: ValidationIssueSeverity.WARNING,
+						channelCategory,
+						message: `Channel category '${channelCategory}' is not defined in specification for device category '${deviceCategory}'`,
+					});
+				} else if (specInfo) {
+					// For child channels, check multiple against parent scope
+					// Each parent can have up to 1 instance of non-multiple channels
+					const maxAllowed = specInfo.multipleAllowed ? Infinity : 1;
+
+					if (channelInstances.length > maxAllowed) {
+						issues.push({
+							type: ValidationIssueType.DUPLICATE_CHANNEL,
+							severity: ValidationIssueSeverity.WARNING,
+							channelCategory,
+							message: `Too many instances of channel '${channelCategory}' under parent channel '${parentId}'`,
+							expected: maxAllowed.toString(),
+							actual: channelInstances.length.toString(),
+						});
+					}
+				}
+			}
+		}
+
+		// Build a combined set of all channel categories (top-level + children) for constraint validation
+		const allChannelCategories = new Map<ChannelCategory, ChannelDataInput[]>(existingChannelCategories);
+		for (const [, categoryMap] of channelsByParent) {
+			for (const [category, channelInstances] of categoryMap) {
+				const existing = allChannelCategories.get(category) || [];
+				allChannelCategories.set(category, [...existing, ...channelInstances]);
+			}
+		}
+
 		// Validate device-level channel constraints (oneOf, oneOrMoreOf, mutuallyExclusiveGroups)
-		this.validateDeviceChannelConstraintsStructure(deviceCategory, existingChannelCategories, issues);
+		this.validateDeviceChannelConstraintsStructure(deviceCategory, allChannelCategories, issues);
 	}
 
 	/**

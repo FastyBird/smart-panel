@@ -246,6 +246,30 @@ export class ChannelsService {
 			throw new DevicesValidationException('Provided channel data are invalid.');
 		}
 
+		// Validate parent channel belongs to the same device
+		if (dtoInstance.parent) {
+			const parentChannel = await this.repository.findOne({
+				where: { id: dtoInstance.parent },
+				relations: ['device'],
+			});
+
+			if (!parentChannel) {
+				this.logger.error(`Parent channel with id=${dtoInstance.parent} does not exist`);
+
+				throw new DevicesValidationException('The specified parent channel does not exist.');
+			}
+
+			const parentDeviceId = typeof parentChannel.device === 'string' ? parentChannel.device : parentChannel.device.id;
+
+			if (parentDeviceId !== dtoInstance.device) {
+				this.logger.error(
+					`Parent channel with id=${dtoInstance.parent} belongs to a different device (${parentDeviceId} !== ${dtoInstance.device})`,
+				);
+
+				throw new DevicesValidationException('Parent channel must belong to the same device.');
+			}
+		}
+
 		const repository: Repository<TChannel> = this.dataSource.getRepository(mapping.class);
 
 		const channel = repository.create(toInstance(mapping.class, dtoInstance));
@@ -285,6 +309,53 @@ export class ChannelsService {
 		const mapping = this.channelsMapperService.getMapping<TChannel, any, TUpdateDTO>(channel.type);
 
 		const dtoInstance = await this.validateDto<TUpdateDTO>(mapping.updateDto, updateDto);
+
+		// Validate parent channel belongs to the same device (if parent is being updated)
+		if (dtoInstance.parent !== undefined && dtoInstance.parent !== null) {
+			const parentChannel = await this.repository.findOne({
+				where: { id: dtoInstance.parent },
+				relations: ['device'],
+			});
+
+			if (!parentChannel) {
+				this.logger.error(`Parent channel with id=${dtoInstance.parent} does not exist`);
+
+				throw new DevicesValidationException('The specified parent channel does not exist.');
+			}
+
+			const parentDeviceId = typeof parentChannel.device === 'string' ? parentChannel.device : parentChannel.device.id;
+			const channelDeviceId = typeof channel.device === 'string' ? channel.device : channel.device.id;
+
+			if (parentDeviceId !== channelDeviceId) {
+				this.logger.error(
+					`Parent channel with id=${dtoInstance.parent} belongs to a different device (${parentDeviceId} !== ${channelDeviceId})`,
+				);
+
+				throw new DevicesValidationException('Parent channel must belong to the same device.');
+			}
+
+			// Check for circular reference by walking up the parent chain
+			const visited = new Set<string>([id]);
+			let currentParentId: string | null = dtoInstance.parent;
+
+			while (currentParentId !== null) {
+				if (visited.has(currentParentId)) {
+					this.logger.error(
+						`Circular parent reference detected: setting parent to ${dtoInstance.parent} would create a cycle`,
+					);
+
+					throw new DevicesValidationException(
+						'Circular parent reference detected. A channel cannot be its own ancestor.',
+					);
+				}
+
+				visited.add(currentParentId);
+
+				const currentParent = await this.repository.findOne({ where: { id: currentParentId } });
+
+				currentParentId = currentParent?.parentId ?? null;
+			}
+		}
 
 		const repository: Repository<TChannel> = this.dataSource.getRepository(mapping.class);
 
@@ -353,6 +424,14 @@ export class ChannelsService {
 			// Capture channel ID and data before removal to preserve for event emission
 			const channelForEvent = { ...channel };
 
+			// Find children before clearing parentId (SQLite doesn't enforce FK constraints)
+			const children = await manager.find<ChannelEntity>(ChannelEntity, { where: { parentId: id } });
+
+			// Clear parentId for all children
+			if (children.length > 0) {
+				await manager.update(ChannelEntity, { parentId: id }, { parentId: null });
+			}
+
 			const properties = await manager.find<ChannelPropertyEntity>(ChannelPropertyEntity, {
 				where: { channel: { id } },
 			});
@@ -371,14 +450,31 @@ export class ChannelsService {
 
 			this.logger.log(`Successfully removed channel with id=${id}`);
 
+			// Emit CHANNEL_UPDATED events for children whose parentId was cleared
+			for (const child of children) {
+				const updatedChild = { ...child, parentId: null, parent: null };
+				this.eventEmitter.emit(EventType.CHANNEL_UPDATED, updatedChild);
+			}
+
 			// Emit event with the channel entity captured before removal to preserve ID
 			this.eventEmitter.emit(EventType.CHANNEL_DELETED, channelForEvent);
 		} else {
 			// Get the full channel entity before removal to preserve ID for event emission
 			const fullChannel = await this.getOneOrThrow(id);
 
+			// Store children for event emission after transaction
+			let childrenForEvents: ChannelEntity[] = [];
+
 			await this.dataSource.transaction(async (manager) => {
 				const channel = await manager.findOneOrFail<ChannelEntity>(ChannelEntity, { where: { id } });
+
+				// Find children before clearing parentId (SQLite doesn't enforce FK constraints)
+				childrenForEvents = await manager.find<ChannelEntity>(ChannelEntity, { where: { parentId: id } });
+
+				// Clear parentId for all children
+				if (childrenForEvents.length > 0) {
+					await manager.update(ChannelEntity, { parentId: id }, { parentId: null });
+				}
 
 				const properties = await manager.find<ChannelPropertyEntity>(ChannelPropertyEntity, {
 					where: { channel: { id } },
@@ -397,10 +493,16 @@ export class ChannelsService {
 				await manager.remove(channel);
 
 				this.logger.log(`Successfully removed channel with id=${id}`);
-
-				// Emit event with the full channel entity captured before removal to preserve ID
-				this.eventEmitter.emit(EventType.CHANNEL_DELETED, fullChannel);
 			});
+
+			// Emit CHANNEL_UPDATED events for children whose parentId was cleared (after transaction)
+			for (const child of childrenForEvents) {
+				const updatedChild = { ...child, parentId: null, parent: null };
+				this.eventEmitter.emit(EventType.CHANNEL_UPDATED, updatedChild);
+			}
+
+			// Emit event with the full channel entity captured before removal to preserve ID
+			this.eventEmitter.emit(EventType.CHANNEL_DELETED, fullChannel);
 		}
 	}
 

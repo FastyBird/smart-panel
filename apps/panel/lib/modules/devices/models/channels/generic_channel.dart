@@ -14,6 +14,7 @@ class GenericChannelModel extends ChannelModel {
     super.category = DevicesModuleChannelCategory.generic,
     super.name,
     super.description,
+    super.parent,
     required super.controls,
     required super.properties,
     super.createdAt,
@@ -62,6 +63,9 @@ class GenericChannelModel extends ChannelModel {
       category: category,
       name: json['name'],
       description: json['description'],
+      parent: json['parent'] != null
+          ? UuidUtils.validateUuid(json['parent'])
+          : null,
       controls: UuidUtils.validateUuidList(controls),
       properties: UuidUtils.validateUuidList(properties),
       createdAt: json['created_at'] != null

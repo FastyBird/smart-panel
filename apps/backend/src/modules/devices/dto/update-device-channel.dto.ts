@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsBoolean, IsNotEmpty, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -59,6 +59,20 @@ export class UpdateDeviceChannelDto {
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled attribute must be a valid true or false."}]' })
 	enabled?: boolean;
+
+	@ApiPropertyOptional({
+		name: 'parent',
+		description: 'Parent channel ID (for hierarchical channels like energy monitoring per switch)',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: '123e4567-e89b-12d3-a456-426614174000',
+	})
+	@Expose({ name: 'parent' })
+	@IsOptional()
+	@IsUUID('4', { message: '[{"field":"parent","reason":"Parent must be a valid UUID (version 4)."}]' })
+	@ValidateIf((_, value) => value !== null)
+	parent?: string | null;
 }
 
 @ApiSchema({ name: 'DevicesModuleReqUpdateDeviceChannel' })
