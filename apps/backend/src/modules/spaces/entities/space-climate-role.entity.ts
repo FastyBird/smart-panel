@@ -5,8 +5,7 @@ import { Column, Entity, JoinColumn, ManyToOne, Unique } from 'typeorm';
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
-import { ChannelEntity } from '../../devices/entities/channels.entity';
-import { DeviceEntity } from '../../devices/entities/devices.entity';
+import { ChannelEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { ClimateRole } from '../spaces.constants';
 
 import { SpaceEntity } from './space.entity';

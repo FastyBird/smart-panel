@@ -6,8 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
-import { ChannelEntity } from '../../devices/entities/channels.entity';
-import { DeviceEntity } from '../../devices/entities/devices.entity';
+import { ChannelEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { SetClimateRoleDto } from '../dto/climate-role.dto';
 import { SpaceClimateRoleEntity } from '../entities/space-climate-role.entity';
 import { CLIMATE_SENSOR_ROLES, ClimateRole, EventType, SPACES_MODULE_NAME } from '../spaces.constants';
