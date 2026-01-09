@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/spaces/constants.dart';
+import 'package:fastybird_smart_panel/modules/spaces/repositories/climate_targets.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/light_targets.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/spaces.dart';
 import 'package:fastybird_smart_panel/modules/spaces/service.dart';
@@ -12,6 +13,7 @@ class SpacesModuleService {
 
   late SpacesRepository _spacesRepository;
   late LightTargetsRepository _lightTargetsRepository;
+  late ClimateTargetsRepository _climateTargetsRepository;
   late SpacesService _spacesService;
 
   bool _isLoading = true;
@@ -28,13 +30,19 @@ class SpacesModuleService {
       apiClient: apiClient.spacesModule,
     );
 
+    _climateTargetsRepository = ClimateTargetsRepository(
+      apiClient: apiClient.spacesModule,
+    );
+
     _spacesService = SpacesService(
       spacesRepository: _spacesRepository,
       lightTargetsRepository: _lightTargetsRepository,
+      climateTargetsRepository: _climateTargetsRepository,
     );
 
     locator.registerSingleton(_spacesRepository);
     locator.registerSingleton(_lightTargetsRepository);
+    locator.registerSingleton(_climateTargetsRepository);
     locator.registerSingleton(_spacesService);
   }
 
@@ -81,6 +89,7 @@ class SpacesModuleService {
         payload.containsKey('id')) {
       _spacesRepository.delete(payload['id']);
       _lightTargetsRepository.deleteForSpace(payload['id']);
+      _climateTargetsRepository.deleteForSpace(payload['id']);
 
       /// Light Target CREATE/UPDATE
     } else if (event == SpacesModuleConstants.lightTargetCreatedEvent ||
@@ -91,6 +100,16 @@ class SpacesModuleService {
     } else if (event == SpacesModuleConstants.lightTargetDeletedEvent &&
         payload.containsKey('id')) {
       _lightTargetsRepository.delete(payload['id']);
+
+      /// Climate Target CREATE/UPDATE
+    } else if (event == SpacesModuleConstants.climateTargetCreatedEvent ||
+        event == SpacesModuleConstants.climateTargetUpdatedEvent) {
+      _climateTargetsRepository.insertOne(payload);
+
+      /// Climate Target DELETE
+    } else if (event == SpacesModuleConstants.climateTargetDeletedEvent &&
+        payload.containsKey('id')) {
+      _climateTargetsRepository.delete(payload['id']);
     }
   }
 }

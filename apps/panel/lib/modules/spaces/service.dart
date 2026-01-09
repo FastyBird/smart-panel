@@ -1,8 +1,11 @@
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_type.dart';
+import 'package:fastybird_smart_panel/modules/spaces/mappers/climate_target.dart';
 import 'package:fastybird_smart_panel/modules/spaces/mappers/light_target.dart';
 import 'package:fastybird_smart_panel/modules/spaces/mappers/space.dart';
+import 'package:fastybird_smart_panel/modules/spaces/repositories/climate_targets.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/light_targets.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/spaces.dart';
+import 'package:fastybird_smart_panel/modules/spaces/views/climate_targets/view.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/light_targets/view.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/spaces/view.dart';
 import 'package:flutter/foundation.dart';
@@ -10,21 +13,26 @@ import 'package:flutter/foundation.dart';
 class SpacesService extends ChangeNotifier {
   final SpacesRepository _spacesRepository;
   final LightTargetsRepository _lightTargetsRepository;
+  final ClimateTargetsRepository _climateTargetsRepository;
 
   Map<String, SpaceView> _spaces = {};
   Map<String, LightTargetView> _lightTargets = {};
+  Map<String, ClimateTargetView> _climateTargets = {};
 
   SpacesService({
     required SpacesRepository spacesRepository,
     required LightTargetsRepository lightTargetsRepository,
+    required ClimateTargetsRepository climateTargetsRepository,
   })  : _spacesRepository = spacesRepository,
-        _lightTargetsRepository = lightTargetsRepository;
+        _lightTargetsRepository = lightTargetsRepository,
+        _climateTargetsRepository = climateTargetsRepository;
 
   Future<void> initialize() async {
     await _spacesRepository.fetchAll();
 
     _spacesRepository.addListener(_updateData);
     _lightTargetsRepository.addListener(_updateData);
+    _climateTargetsRepository.addListener(_updateData);
 
     _updateData();
   }
@@ -49,6 +57,9 @@ class SpacesService extends ChangeNotifier {
 
   /// All light targets as a map by ID
   Map<String, LightTargetView> get lightTargets => _lightTargets;
+
+  /// All climate targets as a map by ID
+  Map<String, ClimateTargetView> get climateTargets => _climateTargets;
 
   /// Get a specific space by ID
   SpaceView? getSpace(String id) {
@@ -102,6 +113,30 @@ class SpacesService extends ChangeNotifier {
     await _lightTargetsRepository.fetchForSpaces(roomIds);
   }
 
+  /// Get climate targets for a specific space
+  List<ClimateTargetView> getClimateTargetsForSpace(String spaceId) {
+    return _climateTargets.values
+        .where((t) => t.spaceId == spaceId)
+        .toList()
+      ..sort((a, b) => a.priority.compareTo(b.priority));
+  }
+
+  /// Get a specific climate target by ID
+  ClimateTargetView? getClimateTarget(String id) {
+    return _climateTargets[id];
+  }
+
+  /// Fetch climate targets for a specific space
+  Future<void> fetchClimateTargetsForSpace(String spaceId) async {
+    await _climateTargetsRepository.fetchForSpace(spaceId);
+  }
+
+  /// Fetch climate targets for all rooms
+  Future<void> fetchAllClimateTargets() async {
+    final roomIds = rooms.map((r) => r.id).toList();
+    await _climateTargetsRepository.fetchForSpaces(roomIds);
+  }
+
   void _updateData() {
     final spaceModels = _spacesRepository.spaces;
 
@@ -130,6 +165,32 @@ class SpacesService extends ChangeNotifier {
 
     if (!mapEquals(_lightTargets, newLightTargetViews)) {
       _lightTargets = newLightTargetViews;
+      triggerNotifyListeners = true;
+    }
+
+    // Build climate target views
+    Map<String, ClimateTargetView> newClimateTargetViews = {};
+
+    for (var space in spaceModels) {
+      final climateTargetModels =
+          _climateTargetsRepository.getClimateTargetsForSpace(space.id);
+
+      for (var climateTarget in climateTargetModels) {
+        try {
+          newClimateTargetViews[climateTarget.id] =
+              buildClimateTargetView(climateTarget);
+        } catch (e) {
+          if (kDebugMode) {
+            debugPrint(
+              '[SPACES MODULE][SERVICE] Failed to create climate target view: ${e.toString()}',
+            );
+          }
+        }
+      }
+    }
+
+    if (!mapEquals(_climateTargets, newClimateTargetViews)) {
+      _climateTargets = newClimateTargetViews;
       triggerNotifyListeners = true;
     }
 
@@ -162,6 +223,7 @@ class SpacesService extends ChangeNotifier {
   void dispose() {
     _spacesRepository.removeListener(_updateData);
     _lightTargetsRepository.removeListener(_updateData);
+    _climateTargetsRepository.removeListener(_updateData);
     super.dispose();
   }
 }
