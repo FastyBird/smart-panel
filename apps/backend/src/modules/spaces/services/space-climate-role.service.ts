@@ -523,14 +523,16 @@ export class SpaceClimateRoleService {
 	}
 
 	/**
-	 * Get role assignments for all climate devices in a space, indexed by device ID
+	 * Get role assignments for all climate targets in a space, indexed by target key.
+	 * Key format: deviceId for actuators, deviceId:channelId for sensor channels.
 	 */
 	async getRoleMap(spaceId: string): Promise<Map<string, SpaceClimateRoleEntity>> {
 		const roles = await this.findBySpace(spaceId);
 		const map = new Map<string, SpaceClimateRoleEntity>();
 
 		for (const role of roles) {
-			map.set(role.deviceId, role);
+			const key = role.channelId ? `${role.deviceId}:${role.channelId}` : role.deviceId;
+			map.set(key, role);
 		}
 
 		return map;
