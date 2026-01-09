@@ -433,6 +433,7 @@ const climateDeviceCategories = [
 	DevicesModuleDeviceCategory.air_humidifier,
 	DevicesModuleDeviceCategory.air_dehumidifier,
 	DevicesModuleDeviceCategory.air_purifier,
+	DevicesModuleDeviceCategory.sensor,
 ];
 
 // Check if there are climate devices in this space (for role assignment)
