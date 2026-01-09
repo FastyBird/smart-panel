@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
-import { ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { DevicesResponseModel } from '../../devices/models/devices-response.model';
@@ -914,22 +914,34 @@ export class SpacesController {
 	@ApiOperation({
 		operationId: 'delete-spaces-module-space-climate-role',
 		summary: 'Delete climate role assignment',
-		description: 'Removes the climate role assignment for a specific device in a space. Requires owner or admin role.',
+		description:
+			'Removes the climate role assignment for a specific device in a space. ' +
+			'For actuator roles (PRIMARY, AUXILIARY, etc.), only deviceId is needed. ' +
+			'For sensor roles (TEMPERATURE_SENSOR, HUMIDITY_SENSOR), channelId query parameter must be provided. ' +
+			'Requires owner or admin role.',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiQuery({
+		name: 'channelId',
+		type: 'string',
+		format: 'uuid',
+		required: false,
+		description: 'Channel ID (required for sensor roles, omit for actuator roles)',
+	})
 	@ApiNoContentResponse({ description: 'Climate role deleted successfully' })
 	@ApiNotFoundResponse('Space not found')
 	@HttpCode(204)
 	async deleteClimateRole(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
+		@Query('channelId', new ParseUUIDPipe({ version: '4', optional: true })) channelId?: string,
 	): Promise<void> {
-		this.logger.debug(`Deleting climate role for space=${id} device=${deviceId}`);
+		this.logger.debug(`Deleting climate role for space=${id} device=${deviceId} channel=${channelId ?? 'null'}`);
 
-		await this.spaceClimateRoleService.deleteRole(id, deviceId);
+		await this.spaceClimateRoleService.deleteRole(id, deviceId, channelId);
 
-		this.logger.debug(`Successfully deleted climate role for device=${deviceId}`);
+		this.logger.debug(`Successfully deleted climate role for device=${deviceId} channel=${channelId ?? 'null'}`);
 	}
 
 	// ================================
