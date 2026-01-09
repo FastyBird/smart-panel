@@ -824,6 +824,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
               color: Theme.of(context).colorScheme.primary,
             ),
           ),
+        ],
       ],
     );
   }
