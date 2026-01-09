@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:fastybird_smart_panel/api/models/spaces_module_climate_intent_delta.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
@@ -455,6 +456,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
               heroDevice,
               devicesService,
               constraints,
+              useIntents: false,
             ),
           if (secondaryDevices.isNotEmpty) ...[
             if (heroDevice != null) AppSpacings.spacingLgVertical,
@@ -514,6 +516,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     DevicesService devicesService,
     BoxConstraints constraints, {
     ClimateTargetView? temperatureSensorTarget,
+    bool useIntents = true,
   }) {
     // Get room temperature from sensor if available
     final sensorTemperature = _getSensorTemperature(
@@ -551,6 +554,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                 devicesService,
                 constraints,
                 sensorTemperature: sensorTemperature,
+                useIntents: useIntents,
               )
             else if (device is HeaterDeviceView)
               _buildHeaterHero(
@@ -559,6 +563,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                 devicesService,
                 constraints,
                 sensorTemperature: sensorTemperature,
+                useIntents: useIntents,
               )
             else if (device is AirConditionerDeviceView)
               _buildCoolerHero(
@@ -567,6 +572,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                 devicesService,
                 constraints,
                 sensorTemperature: sensorTemperature,
+                useIntents: useIntents,
               )
             else
               // Fallback hero for category-based devices (when typed mapping failed)
@@ -624,6 +630,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     DevicesService devicesService,
     BoxConstraints constraints, {
     double? sensorTemperature,
+    bool useIntents = true,
   }) {
     final thermostatChannel = device.thermostatChannel;
     final unit = thermostatChannel.showInFahrenheit ? '°F' : '°C';
@@ -651,6 +658,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                   dialSize,
                   unit,
                   sensorTemperature: sensorTemperature,
+                  useIntents: useIntents,
                 )
               : _buildTemperatureDialDisplay(context, device),
         ),
@@ -663,6 +671,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             devicesService,
             heaterChannel,
             coolerChannel,
+            useIntents: useIntents,
           ),
 
         AppSpacings.spacingMdVertical,
@@ -681,6 +690,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     double dialSize,
     String unit, {
     double? sensorTemperature,
+    bool useIntents = true,
   }) {
     // Prefer heater channel, fall back to cooler
     final heaterChannel = device.heaterChannel;
@@ -695,7 +705,10 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         heaterChannel.maxTemperature,
         unit,
         dialSize,
-        (value) => _setHeaterTemperature(context, device, value, devicesService),
+        useIntents
+            ? (value) => _setTemperatureViaIntent(context, value)
+            : (value) =>
+                _setHeaterTemperature(context, device, value, devicesService),
         sensorTemperature: sensorTemperature,
       );
     } else if (coolerChannel != null &&
@@ -708,7 +721,10 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         coolerChannel.maxTemperature,
         unit,
         dialSize,
-        (value) => _setCoolerTemperature(context, device, value, devicesService),
+        useIntents
+            ? (value) => _setTemperatureViaIntent(context, value)
+            : (value) =>
+                _setCoolerTemperature(context, device, value, devicesService),
         sensorTemperature: sensorTemperature,
       );
     }
@@ -723,6 +739,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     DevicesService devicesService,
     BoxConstraints constraints, {
     double? sensorTemperature,
+    bool useIntents = true,
   }) {
     final heaterChannel = device.heaterChannel;
     final hasSetpoint = heaterChannel.temperatureProp.isWritable;
@@ -741,8 +758,10 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
               heaterChannel.maxTemperature,
               _getTemperatureUnit(),
               dialSize,
-              (value) =>
-                  _setHeaterTemperature(context, device, value, devicesService),
+              useIntents
+                  ? (value) => _setTemperatureViaIntent(context, value)
+                  : (value) =>
+                      _setHeaterTemperature(context, device, value, devicesService),
               sensorTemperature: sensorTemperature,
             )
           : _buildHeaterDialDisplay(context, device),
@@ -756,6 +775,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     DevicesService devicesService,
     BoxConstraints constraints, {
     double? sensorTemperature,
+    bool useIntents = true,
   }) {
     final coolerChannel = device.coolerChannel;
     final hasSetpoint = coolerChannel.temperatureProp.isWritable;
@@ -774,8 +794,10 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
               coolerChannel.maxTemperature,
               _getTemperatureUnit(),
               dialSize,
-              (value) =>
-                  _setCoolerTemperature(context, device, value, devicesService),
+              useIntents
+                  ? (value) => _setTemperatureViaIntent(context, value)
+                  : (value) =>
+                      _setCoolerTemperature(context, device, value, devicesService),
               sensorTemperature: sensorTemperature,
             )
           : _buildCoolerDialDisplay(context, device),
@@ -1446,8 +1468,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     ThermostatDeviceView device,
     DevicesService devicesService,
     HeaterChannelView? heaterChannel,
-    CoolerChannelView? coolerChannel,
-  ) {
+    CoolerChannelView? coolerChannel, {
+    bool useIntents = true,
+  }) {
     final localizations = AppLocalizations.of(context);
 
     // Determine which channel to use for adjustment
@@ -1487,7 +1510,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             icon: MdiIcons.minus,
             label: '-${step.toStringAsFixed(1)}°',
             enabled: canDecrease,
-            onTap: () => setTemperature(currentTarget - step),
+            onTap: useIntents
+                ? () => _adjustTemperatureViaIntent(context, increase: false)
+                : () => setTemperature(currentTarget - step),
           ),
 
           AppSpacings.spacingMdHorizontal,
@@ -1523,7 +1548,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             icon: MdiIcons.plus,
             label: '+${step.toStringAsFixed(1)}°',
             enabled: canIncrease,
-            onTap: () => setTemperature(currentTarget + step),
+            onTap: useIntents
+                ? () => _adjustTemperatureViaIntent(context, increase: true)
+                : () => setTemperature(currentTarget + step),
           ),
         ],
       ),
@@ -2057,7 +2084,62 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   }
 
   // ============================================================================
-  // Temperature Setting Methods
+  // Intent-Based Temperature Control Methods
+  // ============================================================================
+
+  /// Execute a setpoint set intent (dial changes)
+  Future<void> _setTemperatureViaIntent(
+    BuildContext context,
+    double value,
+  ) async {
+    final spacesService = _spacesService;
+    if (spacesService == null) return;
+
+    final localizations = AppLocalizations.of(context);
+    final errorMessage = localizations?.action_failed ?? 'Failed to set temperature';
+
+    final success = await spacesService.executeClimateSetpointSet(
+      spaceId: _roomId,
+      value: value,
+    );
+
+    if (!success && mounted) {
+      AlertBar.showError(
+        this.context,
+        message: errorMessage,
+      );
+    }
+  }
+
+  /// Execute a setpoint delta intent (+/- buttons)
+  Future<void> _adjustTemperatureViaIntent(
+    BuildContext context, {
+    required bool increase,
+    SpacesModuleClimateIntentDelta delta = SpacesModuleClimateIntentDelta.small,
+  }) async {
+    final spacesService = _spacesService;
+    if (spacesService == null) return;
+
+    final localizations = AppLocalizations.of(context);
+    final errorMessage =
+        localizations?.action_failed ?? 'Failed to adjust temperature';
+
+    final success = await spacesService.executeClimateSetpointDelta(
+      spaceId: _roomId,
+      delta: delta,
+      increase: increase,
+    );
+
+    if (!success && mounted) {
+      AlertBar.showError(
+        this.context,
+        message: errorMessage,
+      );
+    }
+  }
+
+  // ============================================================================
+  // Legacy Temperature Setting Methods (fallback for non-intent devices)
   // ============================================================================
 
   Future<void> _setHeaterTemperature(

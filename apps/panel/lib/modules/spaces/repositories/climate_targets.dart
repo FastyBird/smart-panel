@@ -1,4 +1,8 @@
 import 'package:dio/dio.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_climate_intent.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_climate_intent_delta.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_climate_intent_type.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_req_climate_intent.dart';
 import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/climate_targets/climate_target.dart';
 import 'package:flutter/foundation.dart';
@@ -205,5 +209,77 @@ class ClimateTargetsRepository extends ChangeNotifier {
 
     _isLoading = false;
     notifyListeners();
+  }
+
+  /// Execute a setpoint delta intent (adjust temperature by small/medium/large step)
+  Future<bool> executeSetpointDelta({
+    required String spaceId,
+    required SpacesModuleClimateIntentDelta delta,
+    required bool increase,
+  }) async {
+    try {
+      final response = await _apiClient.createSpacesModuleSpaceClimateIntent(
+        id: spaceId,
+        body: SpacesModuleReqClimateIntent(
+          data: SpacesModuleClimateIntent(
+            type: SpacesModuleClimateIntentType.setpointDelta,
+            delta: delta,
+            increase: increase,
+          ),
+        ),
+      );
+
+      return response.response.statusCode == 200 ||
+          response.response.statusCode == 201;
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][CLIMATE_TARGETS] Failed to execute setpoint delta: ${e.response?.statusCode} - ${e.message}',
+        );
+      }
+      return false;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][CLIMATE_TARGETS] Unexpected error executing setpoint delta: $e',
+        );
+      }
+      return false;
+    }
+  }
+
+  /// Execute a setpoint set intent (set temperature to exact value)
+  Future<bool> executeSetpointSet({
+    required String spaceId,
+    required double value,
+  }) async {
+    try {
+      final response = await _apiClient.createSpacesModuleSpaceClimateIntent(
+        id: spaceId,
+        body: SpacesModuleReqClimateIntent(
+          data: SpacesModuleClimateIntent(
+            type: SpacesModuleClimateIntentType.setpointSet,
+            value: value,
+          ),
+        ),
+      );
+
+      return response.response.statusCode == 200 ||
+          response.response.statusCode == 201;
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][CLIMATE_TARGETS] Failed to execute setpoint set: ${e.response?.statusCode} - ${e.message}',
+        );
+      }
+      return false;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][CLIMATE_TARGETS] Unexpected error executing setpoint set: $e',
+        );
+      }
+      return false;
+    }
   }
 }

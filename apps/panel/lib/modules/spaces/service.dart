@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/api/models/spaces_module_climate_intent_delta.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_type.dart';
 import 'package:fastybird_smart_panel/modules/spaces/mappers/climate_target.dart';
 import 'package:fastybird_smart_panel/modules/spaces/mappers/light_target.dart';
@@ -135,6 +136,30 @@ class SpacesService extends ChangeNotifier {
   Future<void> fetchAllClimateTargets() async {
     final roomIds = rooms.map((r) => r.id).toList();
     await _climateTargetsRepository.fetchForSpaces(roomIds);
+  }
+
+  /// Execute a climate setpoint delta intent (adjust temperature by step)
+  Future<bool> executeClimateSetpointDelta({
+    required String spaceId,
+    required SpacesModuleClimateIntentDelta delta,
+    required bool increase,
+  }) {
+    return _climateTargetsRepository.executeSetpointDelta(
+      spaceId: spaceId,
+      delta: delta,
+      increase: increase,
+    );
+  }
+
+  /// Execute a climate setpoint set intent (set temperature to exact value)
+  Future<bool> executeClimateSetpointSet({
+    required String spaceId,
+    required double value,
+  }) {
+    return _climateTargetsRepository.executeSetpointSet(
+      spaceId: spaceId,
+      value: value,
+    );
   }
 
   void _updateData() {
