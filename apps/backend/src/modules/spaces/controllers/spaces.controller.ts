@@ -789,6 +789,8 @@ export class SpacesController {
 			model.deviceId = t.deviceId;
 			model.deviceName = t.deviceName;
 			model.deviceCategory = t.deviceCategory;
+			model.channelId = t.channelId;
+			model.channelName = t.channelName;
 			model.role = t.role;
 			model.priority = t.priority;
 			model.hasTemperature = t.hasTemperature;
@@ -856,6 +858,7 @@ export class SpacesController {
 		resultData.results = result.results.map((item) => {
 			const resultItem = new BulkClimateRoleResultItemModel();
 			resultItem.deviceId = item.deviceId;
+			resultItem.channelId = item.channelId;
 			resultItem.success = item.success;
 			resultItem.role = item.role;
 			resultItem.error = item.error;
@@ -897,6 +900,7 @@ export class SpacesController {
 		resultData.results = result.results.map((item) => {
 			const resultItem = new BulkClimateRoleResultItemModel();
 			resultItem.deviceId = item.deviceId;
+			resultItem.channelId = item.channelId;
 			resultItem.success = item.success;
 			resultItem.role = item.role;
 			resultItem.error = item.error;
