@@ -46,7 +46,7 @@
 					<ul class="list-none p-0 m-0 space-y-1">
 						<li
 							v-for="device in summary.devices"
-							:key="`${device.deviceId}-${device.channelId}`"
+							:key="device.deviceId"
 							class="flex items-center gap-2 text-sm py-1"
 						>
 							<icon :icon="getDeviceIcon(device.deviceCategory)" class="text-gray-400" />
@@ -171,8 +171,6 @@ const loadClimateRoles = async (): Promise<void> => {
 				deviceId: target.device_id,
 				deviceName: target.device_name,
 				deviceCategory: target.device_category ?? '',
-				channelId: target.channel_id,
-				channelName: target.channel_name,
 			});
 		}
 
