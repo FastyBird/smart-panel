@@ -641,9 +641,10 @@ export class SpaceIntentService {
 	}
 
 	/**
-	 * Get the primary thermostat device ID for a space using climate roles
+	 * Get the primary thermostat device ID for a space using climate roles.
+	 * Returns the device with PRIMARY role, or falls back to the first thermostat.
 	 */
-	private async getPrimaryThermostatId(spaceId: string): Promise<string | null> {
+	async getPrimaryThermostatId(spaceId: string): Promise<string | null> {
 		const climateDevices = await this.getClimateDevicesInSpace(spaceId);
 		const roleMap = await this.climateRoleService.getRoleMap(spaceId);
 

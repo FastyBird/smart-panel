@@ -8,7 +8,6 @@ import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity'
 import { SpaceEntity } from '../entities/space.entity';
 import { LightingRole, SpaceType } from '../spaces.constants';
 
-import { SpaceClimateRoleService } from './space-climate-role.service';
 import { SpaceContextSnapshotService } from './space-context-snapshot.service';
 import { ClimateState, SpaceIntentService } from './space-intent.service';
 import { SpaceLightingRoleService } from './space-lighting-role.service';
@@ -149,16 +148,11 @@ describe('SpaceContextSnapshotService', () => {
 					provide: SpaceIntentService,
 					useValue: {
 						getClimateState: jest.fn(),
+						getPrimaryThermostatId: jest.fn(),
 					},
 				},
 				{
 					provide: SpaceLightingRoleService,
-					useValue: {
-						getRoleMap: jest.fn(),
-					},
-				},
-				{
-					provide: SpaceClimateRoleService,
 					useValue: {
 						getRoleMap: jest.fn(),
 					},
