@@ -1,4 +1,4 @@
-import { Expose } from 'class-transformer';
+import { Expose, Transform } from 'class-transformer';
 import { ChildEntity, Column } from 'typeorm';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
@@ -16,6 +16,10 @@ export class SimulatorDeviceEntity extends DeviceEntity {
 		example: false,
 	})
 	@Expose({ name: 'auto_simulate' })
+	@Transform(
+		({ obj }: { obj: { auto_simulate?: boolean; autoSimulate?: boolean } }) => obj.auto_simulate ?? obj.autoSimulate,
+		{ toClassOnly: true },
+	)
 	@Column({ default: false })
 	autoSimulate: boolean;
 
@@ -26,6 +30,11 @@ export class SimulatorDeviceEntity extends DeviceEntity {
 		example: 5000,
 	})
 	@Expose({ name: 'simulate_interval' })
+	@Transform(
+		({ obj }: { obj: { simulate_interval?: number; simulateInterval?: number } }) =>
+			obj.simulate_interval ?? obj.simulateInterval,
+		{ toClassOnly: true },
+	)
 	@Column({ default: 5000 })
 	simulateInterval: number;
 
