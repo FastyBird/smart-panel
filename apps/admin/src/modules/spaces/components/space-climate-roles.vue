@@ -102,9 +102,6 @@ interface IClimateTarget {
 	deviceId: string;
 	deviceName: string;
 	deviceCategory: string;
-	channelId: string;
-	channelName: string;
-	channelCategory: string;
 	role: ClimateRole | null;
 	priority: number;
 	hasTemperature: boolean;
@@ -174,9 +171,6 @@ const loadClimateTargets = async (): Promise<void> => {
 			deviceId: target.device_id,
 			deviceName: target.device_name,
 			deviceCategory: target.device_category ?? '',
-			channelId: target.channel_id,
-			channelName: target.channel_name,
-			channelCategory: target.channel_category ?? '',
 			role: target.role ? (target.role as unknown as ClimateRole) : null,
 			priority: target.priority ?? 0,
 			hasTemperature: target.has_temperature ?? false,
@@ -193,13 +187,12 @@ const onRoleChange = async (target: IClimateTarget, newRole: string): Promise<vo
 		if (newRole === '') {
 			// Clear role - delete the assignment
 			const { error } = await backend.client.DELETE(
-				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/climate/roles/{deviceId}/{channelId}`,
+				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/climate/roles/{deviceId}`,
 				{
 					params: {
 						path: {
 							id: props.space.id,
 							deviceId: target.deviceId,
-							channelId: target.channelId,
 						},
 					},
 				}
@@ -220,7 +213,6 @@ const onRoleChange = async (target: IClimateTarget, newRole: string): Promise<vo
 					body: {
 						data: {
 							device_id: target.deviceId,
-							channel_id: target.channelId,
 							// Type assertion needed: ClimateRole values match OpenAPI generated enum at runtime
 							role: newRole as never,
 						},
