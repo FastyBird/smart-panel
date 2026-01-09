@@ -250,7 +250,9 @@
 		"primary": "Primary",
 		"auxiliary": "Auxiliary",
 		"ventilation": "Ventilation",
-		"humidity": "Humidity",
+		"humidity_control": "Humidity Control",
+		"temperature_sensor": "Temperature Sensor",
+		"humidity_sensor": "Humidity Sensor",
 		"other": "Other",
 		"hidden": "Hidden",
 		"unassigned": "Unassigned",
@@ -258,7 +260,9 @@
 			"primary": "Main temperature regulation device for the space, typically the primary thermostat or HVAC controller.",
 			"auxiliary": "Secondary heating or cooling devices that supplement the primary climate control.",
 			"ventilation": "Air circulation devices like fans and air exchangers for fresh air and comfort.",
-			"humidity": "Humidity control devices including humidifiers and dehumidifiers.",
+			"humidity_control": "Humidity control devices including humidifiers and dehumidifiers.",
+			"temperature_sensor": "Temperature sensor providing ambient temperature readings for the space.",
+			"humidity_sensor": "Humidity sensor providing ambient humidity readings for the space.",
 			"other": "Climate devices that don't fit into standard categories.",
 			"hidden": "Hidden devices are excluded from the panel UI and intent-based control."
 		}
