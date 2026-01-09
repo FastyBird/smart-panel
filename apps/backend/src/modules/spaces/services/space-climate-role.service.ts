@@ -377,7 +377,8 @@ export class SpaceClimateRoleService {
 				role = ClimateRole.VENTILATION;
 			} else if (
 				target.deviceCategory === DeviceCategory.AIR_HUMIDIFIER ||
-				target.deviceCategory === DeviceCategory.AIR_DEHUMIDIFIER
+				target.deviceCategory === DeviceCategory.AIR_DEHUMIDIFIER ||
+				target.deviceCategory === DeviceCategory.AIR_PURIFIER
 			) {
 				role = ClimateRole.HUMIDITY;
 			} else {
