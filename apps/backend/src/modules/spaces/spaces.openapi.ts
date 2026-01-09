@@ -2,13 +2,13 @@
  * OpenAPI extra models for Spaces module
  */
 import { BulkAssignDto, ReqBulkAssignDto } from './dto/bulk-assign.dto';
+import { ClimateIntentDto, ReqClimateIntentDto } from './dto/climate-intent.dto';
 import {
 	BulkSetClimateRolesDto,
 	ReqBulkSetClimateRolesDto,
 	ReqSetClimateRoleDto,
 	SetClimateRoleDto,
 } from './dto/climate-role.dto';
-import { ClimateIntentDto, ReqClimateIntentDto } from './dto/climate-intent.dto';
 import { CreateSpaceDto, ReqCreateSpaceDto } from './dto/create-space.dto';
 import { LightingIntentDto, ReqLightingIntentDto } from './dto/lighting-intent.dto';
 import {

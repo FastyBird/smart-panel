@@ -13,8 +13,8 @@ import {
 import { Roles } from '../../users/guards/roles.guard';
 import { UserRole } from '../../users/users.constants';
 import { ReqBulkAssignDto } from '../dto/bulk-assign.dto';
-import { ReqBulkSetClimateRolesDto, ReqSetClimateRoleDto } from '../dto/climate-role.dto';
 import { ReqClimateIntentDto } from '../dto/climate-intent.dto';
+import { ReqBulkSetClimateRolesDto, ReqSetClimateRoleDto } from '../dto/climate-role.dto';
 import { ReqCreateSpaceDto } from '../dto/create-space.dto';
 import { ReqLightingIntentDto } from '../dto/lighting-intent.dto';
 import { ReqBulkSetLightingRolesDto, ReqSetLightingRoleDto } from '../dto/lighting-role.dto';
