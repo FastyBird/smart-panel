@@ -9,6 +9,7 @@ class ChannelView {
   final String? _name;
   final String? _description;
   final String _device;
+  final String? _parent;
   final List<ChannelPropertyView> _properties;
   final bool _isValid;
   final List<ValidationIssue> _validationIssues;
@@ -20,6 +21,7 @@ class ChannelView {
     String? name,
     String? description,
     required String device,
+    String? parent,
     required List<ChannelPropertyView> properties,
     bool isValid = true,
     List<ValidationIssue> validationIssues = const [],
@@ -29,6 +31,7 @@ class ChannelView {
         _name = name,
         _description = description,
         _device = device,
+        _parent = parent,
         _properties = properties,
         _isValid = isValid,
         _validationIssues = validationIssues;
@@ -44,6 +47,9 @@ class ChannelView {
   String? get description => _description;
 
   String get device => _device;
+
+  /// Parent channel ID (for hierarchical channels like energy monitoring per switch)
+  String? get parent => _parent;
 
   List<ChannelPropertyView> get properties => _properties;
 

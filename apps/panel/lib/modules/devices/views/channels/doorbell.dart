@@ -17,6 +17,7 @@ class DoorbellChannelView extends ChannelView
     super.name,
     super.description,
     required super.device,
+    super.parent,
     required super.properties,
     super.isValid,
     super.validationIssues,

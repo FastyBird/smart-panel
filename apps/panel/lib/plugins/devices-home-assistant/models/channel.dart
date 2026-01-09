@@ -10,6 +10,7 @@ class HomeAssistantChannelModel extends ChannelModel {
     super.name,
     super.description,
     required super.device,
+    super.parent,
     required super.properties,
     required super.controls,
     super.createdAt,
@@ -55,6 +56,9 @@ class HomeAssistantChannelModel extends ChannelModel {
       name: json['name'],
       description: json['description'],
       device: json['device'],
+      parent: json['parent'] != null
+          ? UuidUtils.validateUuid(json['parent'])
+          : null,
       controls: UuidUtils.validateUuidList(controls),
       properties: UuidUtils.validateUuidList(properties),
       createdAt: json['created_at'] != null
