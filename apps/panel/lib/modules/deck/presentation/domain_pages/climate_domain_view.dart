@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
@@ -117,6 +119,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   // Track which devices are currently being toggled (prevents double-taps)
   final Set<String> _togglingDevices = {};
 
+  // Debounce timer for temperature dial to prevent overwhelming the backend
+  Timer? _temperatureDebounceTimer;
+
   String get _roomId => widget.viewItem.roomId;
 
   /// Climate device categories
@@ -173,6 +178,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
   @override
   void dispose() {
+    _temperatureDebounceTimer?.cancel();
     _devicesService?.removeListener(_onDevicesDataChanged);
     _intentOverlayService?.removeListener(_onIntentDataChanged);
     _deviceControlStateService?.removeListener(_onControlStateChanged);
@@ -542,7 +548,14 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       enabled: true,
       availableWidth: dialSize,
       availableHeight: dialSize,
-      onValueChanged: (value) => onChanged(value.toDouble()),
+      onValueChanged: (value) {
+        // Debounce the API call to prevent overwhelming the backend
+        _temperatureDebounceTimer?.cancel();
+        _temperatureDebounceTimer = Timer(
+          const Duration(milliseconds: LightingConstants.sliderDebounceMs),
+          () => onChanged(value.toDouble()),
+        );
+      },
       inner: _buildDialCenterContent(context, device, unit),
     );
   }
