@@ -770,8 +770,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          AppSpacings.spacingSmVertical,
-          _buildStatusIndicator(context, device),
         ],
       ),
     );
