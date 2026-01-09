@@ -674,7 +674,7 @@ export class ClimateTargetDataModel {
 		type: 'string',
 		format: 'uuid',
 		nullable: true,
-		example: 'c3d29ea4-632f-5e8c-c4gf-dce8b9e6c0f8',
+		example: 'c3d29ea4-632f-5e8c-c4af-dce8b9e6c0f8',
 	})
 	@Expose({ name: 'channel_id' })
 	channelId: string | null;
