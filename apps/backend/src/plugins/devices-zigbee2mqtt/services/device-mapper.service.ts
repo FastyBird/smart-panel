@@ -677,14 +677,35 @@ export class Z2mDeviceMapperService {
 						existing.properties.push(prop);
 					}
 				}
+				// Preserve parentIdentifier if not already set
+				if (mappedChannel.parentIdentifier && !existing.parentIdentifier) {
+					existing.parentIdentifier = mappedChannel.parentIdentifier;
+				}
 			} else {
 				channelMap.set(mappedChannel.identifier, { ...mappedChannel });
 			}
 		}
 
+		// Sort channels so parent channels are created before children
+		// Channels without parentIdentifier should be created first
+		const sortedChannels = Array.from(channelMap.values()).sort((a, b) => {
+			if (a.parentIdentifier && !b.parentIdentifier) return 1;
+			if (!a.parentIdentifier && b.parentIdentifier) return -1;
+			return 0;
+		});
+
+		// Map to store created channel identifiers -> channel IDs
+		const channelIdMap = new Map<string, string>();
+
 		// Create each channel
-		for (const mappedChannel of channelMap.values()) {
-			await this.createChannel(device, mappedChannel, virtualContext);
+		for (const mappedChannel of sortedChannels) {
+			// Resolve parent ID from identifier
+			const parentId = mappedChannel.parentIdentifier ? channelIdMap.get(mappedChannel.parentIdentifier) : undefined;
+
+			const channel = await this.createChannel(device, mappedChannel, virtualContext, parentId);
+			if (channel) {
+				channelIdMap.set(mappedChannel.identifier, channel.id);
+			}
 		}
 	}
 
@@ -695,7 +716,8 @@ export class Z2mDeviceMapperService {
 		device: Zigbee2mqttDeviceEntity,
 		mappedChannel: MappedChannel,
 		virtualContext: VirtualPropertyContext,
-	): Promise<void> {
+		parentId?: string,
+	): Promise<Zigbee2mqttChannelEntity | null> {
 		// Find or create channel
 		let channel = await this.channelsService.findOneBy<Zigbee2mqttChannelEntity>(
 			'identifier',
@@ -711,6 +733,7 @@ export class Z2mDeviceMapperService {
 				name: mappedChannel.name,
 				category: mappedChannel.category,
 				device: device.id,
+				parent: parentId ?? null,
 			};
 
 			channel = await this.channelsService.create<Zigbee2mqttChannelEntity, CreateZigbee2mqttChannelDto>(
@@ -725,6 +748,8 @@ export class Z2mDeviceMapperService {
 
 		// Add virtual properties for missing required properties
 		await this.createVirtualProperties(channel, mappedChannel, virtualContext);
+
+		return channel;
 	}
 
 	/**

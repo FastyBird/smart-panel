@@ -108,11 +108,11 @@ export class WledDeviceMapperService {
 
 		// Create channels and properties
 		await this.createDeviceInformationChannel(device, context.info);
-		await this.createLightChannel(device, context.state);
-		await this.createElectricalPowerChannel(device, context.info);
+		const lightChannel = await this.createLightChannel(device, context.state);
+		await this.createElectricalPowerChannel(device, context.info, lightChannel?.id);
 		await this.createNightlightChannel(device, context.state);
 		await this.createSyncChannel(device, context.state);
-		await this.createSegmentChannels(device, context.state);
+		await this.createSegmentChannels(device, context.state, lightChannel?.id);
 
 		// Set connection state to CONNECTED
 		await this.deviceConnectivityService.setConnectionState(device.id, {
@@ -275,12 +275,12 @@ export class WledDeviceMapperService {
 	/**
 	 * Create the light channel with control properties
 	 */
-	private async createLightChannel(device: WledDeviceEntity, state: WledState): Promise<void> {
+	private async createLightChannel(device: WledDeviceEntity, state: WledState): Promise<WledChannelEntity | null> {
 		const channelIdentifier = WLED_CHANNEL_IDENTIFIERS.LIGHT;
 		const channelDescriptor = WLED_DEVICE_DESCRIPTOR.channels.find((c) => c.identifier === channelIdentifier);
 
 		if (!channelDescriptor) {
-			return;
+			return null;
 		}
 
 		// Find or create channel
@@ -310,6 +310,8 @@ export class WledDeviceMapperService {
 		for (const binding of channelDescriptor.bindings) {
 			await this.createOrUpdateProperty(channel, binding, propertyValues[binding.propertyIdentifier]);
 		}
+
+		return channel;
 	}
 
 	/**
@@ -396,7 +398,11 @@ export class WledDeviceMapperService {
 	 * Create the electrical_power channel with power monitoring properties
 	 * WLED provides estimated power consumption via ledInfo.power (in mA)
 	 */
-	private async createElectricalPowerChannel(device: WledDeviceEntity, info: WledInfo): Promise<void> {
+	private async createElectricalPowerChannel(
+		device: WledDeviceEntity,
+		info: WledInfo,
+		parent?: string | null,
+	): Promise<void> {
 		const channelIdentifier = WLED_CHANNEL_IDENTIFIERS.ELECTRICAL_POWER;
 		const channelDescriptor = WLED_DEVICE_DESCRIPTOR.channels.find((c) => c.identifier === channelIdentifier);
 
@@ -419,6 +425,7 @@ export class WledDeviceMapperService {
 				name: channelDescriptor.name,
 				category: channelDescriptor.category,
 				device: device.id,
+				parent: parent ?? null,
 			};
 
 			channel = await this.channelsService.create<WledChannelEntity, CreateWledChannelDto>(createChannelDto);
@@ -436,7 +443,11 @@ export class WledDeviceMapperService {
 	/**
 	 * Create segment channels based on the number of segments in the device
 	 */
-	private async createSegmentChannels(device: WledDeviceEntity, state: WledState): Promise<void> {
+	private async createSegmentChannels(
+		device: WledDeviceEntity,
+		state: WledState,
+		parent?: string | null,
+	): Promise<void> {
 		for (let i = 0; i < state.segments.length; i++) {
 			const channelIdentifier = `${WLED_CHANNEL_IDENTIFIERS.SEGMENT}_${i}`;
 
@@ -455,6 +466,7 @@ export class WledDeviceMapperService {
 					name: `Segment ${i}`,
 					category: ChannelCategory.LIGHT,
 					device: device.id,
+					parent: parent ?? null,
 				};
 
 				channel = await this.channelsService.create<WledChannelEntity, CreateWledChannelDto>(createChannelDto);

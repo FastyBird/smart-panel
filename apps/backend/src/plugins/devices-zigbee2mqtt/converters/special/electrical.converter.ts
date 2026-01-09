@@ -83,7 +83,7 @@ export class ElectricalConverter extends BaseConverter {
 		return this.cannotHandle();
 	}
 
-	convert(expose: Z2mExpose, _context: ConversionContext): MappedChannel[] {
+	convert(expose: Z2mExpose, context: ConversionContext): MappedChannel[] {
 		const numericExpose = expose as Z2mExposeNumeric;
 		const propertyName = this.getPropertyName(expose);
 
@@ -121,6 +121,9 @@ export class ElectricalConverter extends BaseConverter {
 
 		const channelName = this.formatChannelName(baseChannelName, expose.endpoint);
 
+		// Find potential parent channel (switch or light with same endpoint)
+		const parentIdentifier = this.findParentChannelIdentifier(expose.endpoint, context);
+
 		return [
 			this.createChannel({
 				identifier: channelId,
@@ -128,7 +131,28 @@ export class ElectricalConverter extends BaseConverter {
 				category: config.channelCategory,
 				endpoint: expose.endpoint,
 				properties: [property],
+				parentIdentifier,
 			}),
 		];
+	}
+
+	/**
+	 * Find a potential parent channel identifier for electrical monitoring channels
+	 * Parents are typically switch or light channels with the same endpoint
+	 */
+	private findParentChannelIdentifier(endpoint: string | undefined, context: ConversionContext): string | undefined {
+		// Look for switch or light exposes with the same endpoint
+		const controlExposeTypes = ['switch', 'light'];
+
+		for (const exposeType of controlExposeTypes) {
+			const matchingExpose = context.allExposes.find((e) => e.type === exposeType && e.endpoint === endpoint);
+
+			if (matchingExpose) {
+				// Return the channel identifier that would be created for this expose
+				return this.createChannelIdentifier(exposeType, endpoint);
+			}
+		}
+
+		return undefined;
 	}
 }
