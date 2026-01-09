@@ -276,9 +276,11 @@ export class ChannelEntity extends BaseEntity {
 	@IsOptional()
 	@ValidateIf((_, value) => typeof value === 'string')
 	@IsUUID('4', { message: '[{"field":"parent","reason":"Parent must be a valid UUID (version 4)."}]' })
-	@Transform(({ value }: { value: ChannelEntity | string | null }) => (typeof value === 'string' ? value : value?.id), {
-		toPlainOnly: true,
-	})
+	@Transform(
+		({ value }: { value: ChannelEntity | string | null }) =>
+			value === null ? null : typeof value === 'string' ? value : value?.id,
+		{ toPlainOnly: true },
+	)
 	@Transform(({ obj }: { obj: { parent?: string; parentId?: string } }) => obj.parent ?? obj.parentId, {
 		toClassOnly: true,
 	})

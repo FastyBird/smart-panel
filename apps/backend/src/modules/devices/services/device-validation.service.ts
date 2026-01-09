@@ -323,8 +323,19 @@ export class DeviceValidationService {
 
 		for (const channel of channels) {
 			if (channel.parentId) {
-				// Validate that parent exists in the same device
-				if (!allChannelIds.has(channel.parentId)) {
+				// Validate that parent is not self-referential
+				if (channel.id === channel.parentId) {
+					issues.push({
+						type: ValidationIssueType.INVALID_PARENT,
+						severity: ValidationIssueSeverity.ERROR,
+						channelCategory: channel.category,
+						channelId: channel.id,
+						message: `Channel '${channel.category}' cannot reference itself as parent`,
+						expected: 'different channel ID',
+						actual: channel.parentId,
+					});
+				} else if (!allChannelIds.has(channel.parentId)) {
+					// Validate that parent exists in the same device
 					issues.push({
 						type: ValidationIssueType.INVALID_PARENT,
 						severity: ValidationIssueSeverity.ERROR,
@@ -808,8 +819,19 @@ export class DeviceValidationService {
 
 		for (const channel of channels) {
 			if (channel.parent) {
-				// Validate that parent exists in the same device (if IDs are available)
-				if (allChannelIds.size > 0 && !allChannelIds.has(channel.parent)) {
+				// Validate that parent is not self-referential
+				if (channel.id && channel.id === channel.parent) {
+					issues.push({
+						type: ValidationIssueType.INVALID_PARENT,
+						severity: ValidationIssueSeverity.ERROR,
+						channelCategory: channel.category,
+						channelId: channel.id,
+						message: `Channel '${channel.category}' cannot reference itself as parent`,
+						expected: 'different channel ID',
+						actual: channel.parent,
+					});
+				} else if (allChannelIds.size > 0 && !allChannelIds.has(channel.parent)) {
+					// Validate that parent exists in the same device (if IDs are available)
 					issues.push({
 						type: ValidationIssueType.INVALID_PARENT,
 						severity: ValidationIssueSeverity.ERROR,
