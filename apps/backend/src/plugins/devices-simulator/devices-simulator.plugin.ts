@@ -20,6 +20,7 @@ import { ExtendedDiscriminatorService } from '../../modules/swagger/services/ext
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
+import { GenerateDeviceCommand } from './commands/generate-device.command';
 import { SimulatorController } from './controllers/simulator.controller';
 import {
 	DEVICES_SIMULATOR_PLUGIN_API_TAG_DESCRIPTION,
@@ -49,7 +50,7 @@ import { DeviceGeneratorService } from './services/device-generator.service';
 })
 @Module({
 	imports: [TypeOrmModule.forFeature([SimulatorDeviceEntity]), DevicesModule, ExtensionsModule, SwaggerModule],
-	providers: [SimulatorDevicePlatform, DeviceGeneratorService],
+	providers: [SimulatorDevicePlatform, DeviceGeneratorService, GenerateDeviceCommand],
 	controllers: [SimulatorController],
 	exports: [DeviceGeneratorService],
 })
@@ -208,6 +209,25 @@ Simulate connection state changes (connected, disconnected, lost, alert).
 
 ### POST /api/v1/plugins/devices-simulator/simulator/{deviceId}/simulate-all
 Generate random values for all properties of a device.
+
+## CLI Commands
+
+### List Available Categories
+\`\`\`bash
+pnpm run cli simulator:generate --list
+\`\`\`
+
+### Generate Devices (Interactive)
+\`\`\`bash
+pnpm run cli simulator:generate
+\`\`\`
+
+### Generate Devices (Non-Interactive)
+\`\`\`bash
+pnpm run cli simulator:generate --category lighting --name "Test Light"
+pnpm run cli simulator:generate --category thermostat --count 3
+pnpm run cli simulator:generate --category sensor --required-only
+\`\`\`
 
 ## Device Categories
 
