@@ -814,12 +814,11 @@ export class DeviceValidationService {
 		// Key: parentId, Value: Map of category to child channels
 		const channelsByParent = new Map<string, Map<ChannelCategory, ChannelDataInput[]>>();
 
-		// Build a set of all channel IDs for parent validation (only channels that have IDs)
-		const allChannelIds = new Set(channels.map((ch) => ch.id).filter((id): id is string => id !== undefined));
-
 		for (const channel of channels) {
 			if (channel.parent) {
 				// Validate that parent is not self-referential
+				// Note: We only validate self-reference here. Parent existence cannot be fully validated
+				// in pre-save context because the parent might be an existing channel not in this input array.
 				if (channel.id && channel.id === channel.parent) {
 					issues.push({
 						type: ValidationIssueType.INVALID_PARENT,
@@ -828,18 +827,6 @@ export class DeviceValidationService {
 						channelId: channel.id,
 						message: `Channel '${channel.category}' cannot reference itself as parent`,
 						expected: 'different channel ID',
-						actual: channel.parent,
-					});
-				} else if (!allChannelIds.has(channel.parent)) {
-					// Validate that parent exists in the same device
-					// Note: If no channels have IDs yet, parent references cannot be validated and will fail
-					issues.push({
-						type: ValidationIssueType.INVALID_PARENT,
-						severity: ValidationIssueSeverity.ERROR,
-						channelCategory: channel.category,
-						channelId: channel.id,
-						message: `Channel '${channel.category}' references parent '${channel.parent}' which does not exist in this device`,
-						expected: 'valid channel ID from the same device',
 						actual: channel.parent,
 					});
 				}

@@ -353,8 +353,13 @@ export class ChannelsService {
 			// Capture channel ID and data before removal to preserve for event emission
 			const channelForEvent = { ...channel };
 
-			// Clear parentId for all children (SQLite doesn't enforce FK constraints)
-			await manager.update(ChannelEntity, { parentId: id }, { parentId: null });
+			// Find children before clearing parentId (SQLite doesn't enforce FK constraints)
+			const children = await manager.find<ChannelEntity>(ChannelEntity, { where: { parentId: id } });
+
+			// Clear parentId for all children
+			if (children.length > 0) {
+				await manager.update(ChannelEntity, { parentId: id }, { parentId: null });
+			}
 
 			const properties = await manager.find<ChannelPropertyEntity>(ChannelPropertyEntity, {
 				where: { channel: { id } },
@@ -374,17 +379,31 @@ export class ChannelsService {
 
 			this.logger.log(`Successfully removed channel with id=${id}`);
 
+			// Emit CHANNEL_UPDATED events for children whose parentId was cleared
+			for (const child of children) {
+				const updatedChild = { ...child, parentId: null, parent: null };
+				this.eventEmitter.emit(EventType.CHANNEL_UPDATED, updatedChild);
+			}
+
 			// Emit event with the channel entity captured before removal to preserve ID
 			this.eventEmitter.emit(EventType.CHANNEL_DELETED, channelForEvent);
 		} else {
 			// Get the full channel entity before removal to preserve ID for event emission
 			const fullChannel = await this.getOneOrThrow(id);
 
+			// Store children for event emission after transaction
+			let childrenForEvents: ChannelEntity[] = [];
+
 			await this.dataSource.transaction(async (manager) => {
 				const channel = await manager.findOneOrFail<ChannelEntity>(ChannelEntity, { where: { id } });
 
-				// Clear parentId for all children (SQLite doesn't enforce FK constraints)
-				await manager.update(ChannelEntity, { parentId: id }, { parentId: null });
+				// Find children before clearing parentId (SQLite doesn't enforce FK constraints)
+				childrenForEvents = await manager.find<ChannelEntity>(ChannelEntity, { where: { parentId: id } });
+
+				// Clear parentId for all children
+				if (childrenForEvents.length > 0) {
+					await manager.update(ChannelEntity, { parentId: id }, { parentId: null });
+				}
 
 				const properties = await manager.find<ChannelPropertyEntity>(ChannelPropertyEntity, {
 					where: { channel: { id } },
@@ -403,10 +422,16 @@ export class ChannelsService {
 				await manager.remove(channel);
 
 				this.logger.log(`Successfully removed channel with id=${id}`);
-
-				// Emit event with the full channel entity captured before removal to preserve ID
-				this.eventEmitter.emit(EventType.CHANNEL_DELETED, fullChannel);
 			});
+
+			// Emit CHANNEL_UPDATED events for children whose parentId was cleared (after transaction)
+			for (const child of childrenForEvents) {
+				const updatedChild = { ...child, parentId: null, parent: null };
+				this.eventEmitter.emit(EventType.CHANNEL_UPDATED, updatedChild);
+			}
+
+			// Emit event with the full channel entity captured before removal to preserve ID
+			this.eventEmitter.emit(EventType.CHANNEL_DELETED, fullChannel);
 		}
 	}
 
