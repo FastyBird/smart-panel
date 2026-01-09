@@ -830,8 +830,9 @@ export class DeviceValidationService {
 						expected: 'different channel ID',
 						actual: channel.parent,
 					});
-				} else if (allChannelIds.size > 0 && !allChannelIds.has(channel.parent)) {
-					// Validate that parent exists in the same device (if IDs are available)
+				} else if (!allChannelIds.has(channel.parent)) {
+					// Validate that parent exists in the same device
+					// Note: If no channels have IDs yet, parent references cannot be validated and will fail
 					issues.push({
 						type: ValidationIssueType.INVALID_PARENT,
 						severity: ValidationIssueSeverity.ERROR,

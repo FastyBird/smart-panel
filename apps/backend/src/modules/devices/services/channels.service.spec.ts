@@ -108,6 +108,7 @@ describe('ChannelsService', () => {
 		findOneOrFail: jest.fn(),
 		find: jest.fn(),
 		remove: jest.fn(),
+		update: jest.fn(),
 	};
 
 	beforeEach(async () => {
