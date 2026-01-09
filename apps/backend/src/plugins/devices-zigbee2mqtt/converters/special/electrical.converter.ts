@@ -83,7 +83,7 @@ export class ElectricalConverter extends BaseConverter {
 		return this.cannotHandle();
 	}
 
-	convert(expose: Z2mExpose, _context: ConversionContext): MappedChannel[] {
+	convert(expose: Z2mExpose, context: ConversionContext): MappedChannel[] {
 		const numericExpose = expose as Z2mExposeNumeric;
 		const propertyName = this.getPropertyName(expose);
 
@@ -121,6 +121,9 @@ export class ElectricalConverter extends BaseConverter {
 
 		const channelName = this.formatChannelName(baseChannelName, expose.endpoint);
 
+		// Find potential parent channel (switch or light with same endpoint)
+		const parentIdentifier = this.findParentChannelIdentifier(expose.endpoint, context);
+
 		return [
 			this.createChannel({
 				identifier: channelId,
@@ -128,7 +131,33 @@ export class ElectricalConverter extends BaseConverter {
 				category: config.channelCategory,
 				endpoint: expose.endpoint,
 				properties: [property],
+				parentIdentifier,
 			}),
 		];
+	}
+
+	/**
+	 * Find a potential parent channel identifier for electrical monitoring channels
+	 * Parents are typically switch, light, cover, or fan channels with the same endpoint
+	 */
+	private findParentChannelIdentifier(endpoint: string | undefined, context: ConversionContext): string | undefined {
+		// Look for control exposes with the same endpoint
+		// Maps expose type to the channel identifier prefix used by each converter
+		const exposeTypeToChannelPrefix: Record<string, string> = {
+			switch: 'switcher', // SwitchConverter uses 'switcher'
+			light: 'light', // LightConverter uses 'light'
+			cover: 'window_covering', // CoverConverter uses 'window_covering'
+			fan: 'fan', // FanConverter uses 'fan'
+		};
+
+		for (const [exposeType, channelPrefix] of Object.entries(exposeTypeToChannelPrefix)) {
+			const matchingExpose = context.allExposes.find((e) => e.type === exposeType && e.endpoint === endpoint);
+
+			if (matchingExpose) {
+				return this.createChannelIdentifier(channelPrefix, endpoint);
+			}
+		}
+
+		return undefined;
 	}
 }

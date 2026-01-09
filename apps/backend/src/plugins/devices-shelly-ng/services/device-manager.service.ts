@@ -285,13 +285,13 @@ export class DeviceManagerService {
 							? `Power: ${switchConfig.name}`
 							: `${cat === ChannelCategory.LIGHT ? 'Light' : cat === ChannelCategory.FAN ? 'Fan' : cat === ChannelCategory.VALVE ? 'Valve' : 'Switch'} power: ${key}`;
 
-						const ee = await this.ensureElectricalEnergy(device, key, switchStatus, energyName);
+						const ee = await this.ensureElectricalEnergy(device, key, switchStatus, energyName, chan.id);
 
 						if (ee) {
 							channelsIds.push(ee.channel.id);
 						}
 
-						const ep = await this.ensureElectricalPower(device, key, switchStatus, powerName);
+						const ep = await this.ensureElectricalPower(device, key, switchStatus, powerName, chan.id);
 
 						if (ep) {
 							channelsIds.push(ep.channel.id);
@@ -359,6 +359,7 @@ export class DeviceManagerService {
 							key,
 							coverStatus,
 							coverConfig.name ? `Consumption: ${coverConfig.name}` : `Cover consumption: ${key}`,
+							chan.id,
 						);
 
 						if (ee) {
@@ -370,6 +371,7 @@ export class DeviceManagerService {
 							key,
 							coverStatus,
 							coverConfig.name ? `Power: ${coverConfig.name}` : `Cover power: ${key}`,
+							chan.id,
 						);
 
 						if (ep) {
@@ -438,6 +440,7 @@ export class DeviceManagerService {
 							key,
 							lightStatus,
 							lightConfig.name ? `Consumption: ${lightConfig.name}` : `Light consumption: ${key}`,
+							chan.id,
 						);
 
 						if (ee) {
@@ -449,6 +452,7 @@ export class DeviceManagerService {
 							key,
 							lightStatus,
 							lightConfig.name ? `Power: ${lightConfig.name}` : `Light power: ${key}`,
+							chan.id,
 						);
 
 						if (ep) {
@@ -531,6 +535,7 @@ export class DeviceManagerService {
 							key,
 							rgbStatus,
 							rgbConfig.name ? `Consumption: ${rgbConfig.name}` : `RGB consumption: ${key}`,
+							chan.id,
 						);
 
 						if (ee) {
@@ -542,6 +547,7 @@ export class DeviceManagerService {
 							key,
 							rgbStatus,
 							rgbConfig.name ? `Power: ${rgbConfig.name}` : `RGB power: ${key}`,
+							chan.id,
 						);
 
 						if (ep) {
@@ -628,6 +634,7 @@ export class DeviceManagerService {
 							key,
 							rgbwStatus,
 							rgbwConfig.name ? `Consumption: ${rgbwConfig.name}` : `RGBW consumption: ${key}`,
+							chan.id,
 						);
 
 						if (ee) {
@@ -639,6 +646,7 @@ export class DeviceManagerService {
 							key,
 							rgbwStatus,
 							rgbwConfig.name ? `Power: ${rgbwConfig.name}` : `RGBW power: ${key}`,
+							chan.id,
 						);
 
 						if (ep) {
@@ -717,6 +725,7 @@ export class DeviceManagerService {
 							key,
 							cctStatus,
 							cctConfig.name ? `Consumption: ${cctConfig.name}` : `CCT consumption: ${key}`,
+							chan.id,
 						);
 
 						if (ee) {
@@ -728,6 +737,7 @@ export class DeviceManagerService {
 							key,
 							cctStatus,
 							cctConfig.name ? `Power: ${cctConfig.name}` : `CCT power: ${key}`,
+							chan.id,
 						);
 
 						if (ep) {
@@ -993,6 +1003,7 @@ export class DeviceManagerService {
 		identifierOrCategory: string | ChannelCategory,
 		category: ChannelCategory,
 		name: string,
+		parent?: string | null,
 	): Promise<ShellyNgChannelEntity> {
 		if (column === 'category') {
 			if ((identifierOrCategory as ChannelCategory) !== category) {
@@ -1026,12 +1037,14 @@ export class DeviceManagerService {
 				identifier: column === 'identifier' ? identifierOrCategory : null,
 				name,
 				device: device.id,
+				parent: parent ?? null,
 			});
 		} else {
 			channel = await this.channelsService.update<ShellyNgChannelEntity, UpdateShellyNgChannelDto>(channel.id, {
 				type: DEVICES_SHELLY_NG_TYPE,
 				category,
 				identifier: column === 'identifier' ? identifierOrCategory : channel.identifier,
+				parent: parent ?? null,
 			});
 		}
 
@@ -1158,6 +1171,7 @@ export class DeviceManagerService {
 		key: number,
 		status: { aenergy?: { total: number; by_minute: number[]; minute_ts: number } },
 		name?: string,
+		parent?: string | null,
 	): Promise<{ channel: ShellyNgChannelEntity; properties: ShellyNgChannelPropertyEntity[] } | null> {
 		if (typeof status.aenergy !== 'undefined') {
 			const electricalEnergy = await this.ensureChannel(
@@ -1166,6 +1180,7 @@ export class DeviceManagerService {
 				`energy:${key}`,
 				ChannelCategory.ELECTRICAL_ENERGY,
 				name ?? `Consumption: ${key}`,
+				parent,
 			);
 
 			const consumption = await this.ensureProperty(
@@ -1190,6 +1205,7 @@ export class DeviceManagerService {
 		key: number,
 		status: { apower?: number; voltage?: number; current?: number },
 		name?: string,
+		parent?: string | null,
 	): Promise<{ channel: ShellyNgChannelEntity; properties: ShellyNgChannelPropertyEntity[] } | null> {
 		if (typeof status.apower !== 'undefined') {
 			const electricalPower = await this.ensureChannel(
@@ -1198,6 +1214,7 @@ export class DeviceManagerService {
 				`power:${key}`,
 				ChannelCategory.ELECTRICAL_POWER,
 				name ?? `Power: ${key}`,
+				parent,
 			);
 
 			const power = await this.ensureProperty(

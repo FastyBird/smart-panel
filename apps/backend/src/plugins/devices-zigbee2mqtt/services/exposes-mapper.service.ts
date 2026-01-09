@@ -46,6 +46,11 @@ export interface MappedChannel {
 	category: ChannelCategory;
 	endpoint?: string;
 	properties: MappedProperty[];
+	/**
+	 * Identifier of the parent channel (for hierarchical relationships like power monitoring per switch)
+	 * This is resolved to actual channel ID during creation
+	 */
+	parentIdentifier?: string;
 }
 
 /**

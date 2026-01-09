@@ -34,6 +34,7 @@ import { CreateShellyV1ChannelPropertyDto } from '../dto/create-channel-property
 import { CreateShellyV1ChannelDto } from '../dto/create-channel.dto';
 import { CreateShellyV1DeviceDto } from '../dto/create-device.dto';
 import { UpdateShellyV1ChannelPropertyDto } from '../dto/update-channel-property.dto';
+import { UpdateShellyV1ChannelDto } from '../dto/update-channel.dto';
 import { UpdateShellyV1DeviceDto } from '../dto/update-device.dto';
 import {
 	ShellyV1ChannelEntity,
@@ -361,10 +362,90 @@ export class DeviceMapperService {
 			channelBindingsMap.get(binding.channelIdentifier).push(binding);
 		}
 
+		// Determine channel categories and sort so control channels are created first
+		const channelEntries = Array.from(channelBindingsMap.entries()).map(([identifier, channelBindings]) => ({
+			identifier,
+			bindings: channelBindings,
+			category: this.inferChannelCategory(identifier, channelBindings),
+		}));
+
+		// Sort: control channels (light, switch, etc.) first, then monitoring channels (power, energy)
+		const controlCategories = [
+			ChannelCategory.LIGHT,
+			ChannelCategory.SWITCHER,
+			ChannelCategory.FAN,
+			ChannelCategory.VALVE,
+			ChannelCategory.WINDOW_COVERING,
+		];
+		const monitoringCategories = [ChannelCategory.ELECTRICAL_POWER, ChannelCategory.ELECTRICAL_ENERGY];
+
+		channelEntries.sort((a, b) => {
+			const aIsControl = controlCategories.includes(a.category);
+			const bIsControl = controlCategories.includes(b.category);
+			if (aIsControl && !bIsControl) return -1;
+			if (!aIsControl && bIsControl) return 1;
+			return 0;
+		});
+
+		// Map to store created channel identifiers -> channel IDs
+		const channelIdMap = new Map<string, string>();
+
 		// Create channels and their properties
-		for (const [channelIdentifier, channelBindings] of channelBindingsMap) {
-			await this.createChannelWithProperties(device, channelIdentifier, channelBindings, shellyDevice);
+		for (const entry of channelEntries) {
+			// Find parent for monitoring channels
+			let parentId: string | undefined;
+			if (monitoringCategories.includes(entry.category)) {
+				parentId = this.findParentChannelId(entry.identifier, channelIdMap, controlCategories, channelEntries);
+			}
+
+			const channel = await this.createChannelWithProperties(
+				device,
+				entry.identifier,
+				entry.bindings,
+				shellyDevice,
+				parentId,
+			);
+
+			if (channel) {
+				channelIdMap.set(entry.identifier, channel.id);
+			}
 		}
+	}
+
+	/**
+	 * Find a parent channel ID for monitoring channels
+	 * Matches based on channel index (e.g., power_0 -> light_0 or switch_0)
+	 */
+	private findParentChannelId(
+		channelIdentifier: string,
+		channelIdMap: Map<string, string>,
+		controlCategories: ChannelCategory[],
+		channelEntries: Array<{ identifier: string; category: ChannelCategory }>,
+	): string | undefined {
+		// Extract index from channel identifier (e.g., "power_0" -> "0")
+		const match = channelIdentifier.match(/_(\d+)$/);
+		const index = match ? match[1] : null;
+
+		if (!index) {
+			// No index, try to find any control channel
+			for (const [identifier, id] of channelIdMap.entries()) {
+				const entry = channelEntries.find((e) => e.identifier === identifier);
+				if (entry && controlCategories.includes(entry.category)) {
+					return id;
+				}
+			}
+			return undefined;
+		}
+
+		// Find control channel with same index
+		for (const [identifier, id] of channelIdMap.entries()) {
+			const entry = channelEntries.find((e) => e.identifier === identifier);
+			if (entry && controlCategories.includes(entry.category) && identifier.endsWith(`_${index}`)) {
+				return id;
+			}
+		}
+
+		return undefined;
 	}
 
 	/**
@@ -375,7 +456,8 @@ export class DeviceMapperService {
 		channelIdentifier: string,
 		bindings: PropertyBinding[],
 		shellyDevice: ShellyDevice,
-	): Promise<void> {
+		parentId?: string,
+	): Promise<ShellyV1ChannelEntity | null> {
 		// Check if a channel already exists
 		let channel = await this.channelsService.findOneBy<ShellyV1ChannelEntity>(
 			'identifier',
@@ -394,9 +476,16 @@ export class DeviceMapperService {
 				identifier: channelIdentifier,
 				name: channelName,
 				category: channelCategory,
+				parent: parentId ?? null,
 			};
 
 			channel = await this.channelsService.create<ShellyV1ChannelEntity, CreateShellyV1ChannelDto>(createChannelDto);
+		} else {
+			// Update existing channel with parent if needed
+			channel = await this.channelsService.update<ShellyV1ChannelEntity, UpdateShellyV1ChannelDto>(channel.id, {
+				type: DEVICES_SHELLY_V1_TYPE,
+				parent: parentId ?? null,
+			});
 		}
 
 		// Create properties for the channel with initial values from the device state
@@ -479,6 +568,8 @@ export class DeviceMapperService {
 
 		// Ensure synthetic properties (e.g., battery status derived from percentage)
 		await this.ensureSyntheticProperties(channel, shellyDevice);
+
+		return channel;
 	}
 
 	/**

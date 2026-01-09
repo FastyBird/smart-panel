@@ -281,6 +281,7 @@ export abstract class BaseConverter implements IConverter {
 		category: ChannelCategory;
 		endpoint?: string;
 		properties: MappedProperty[];
+		parentIdentifier?: string;
 	}): MappedChannel {
 		return {
 			identifier: params.identifier,
@@ -288,6 +289,7 @@ export abstract class BaseConverter implements IConverter {
 			category: params.category,
 			endpoint: params.endpoint,
 			properties: params.properties,
+			parentIdentifier: params.parentIdentifier,
 		};
 	}
 }
