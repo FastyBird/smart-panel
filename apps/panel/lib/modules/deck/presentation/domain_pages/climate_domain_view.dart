@@ -24,6 +24,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/heater.dart'
 import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/cooler.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/heater.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/temperature.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/intents/service.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
@@ -399,6 +400,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
             final primaryTarget = _getPrimaryTarget(climateTargets);
             final heroDevice = _getHeroDevice(climateTargets, devicesService);
+            final temperatureSensorTarget =
+                _getTemperatureSensorTarget(climateTargets);
             final secondaryTargets =
                 _getSecondaryTargets(climateTargets, primaryTarget);
 
@@ -413,6 +416,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                       heroDevice,
                       devicesService,
                       constraints,
+                      temperatureSensorTarget: temperatureSensorTarget,
                     ),
 
                   // Secondary devices section
@@ -508,8 +512,15 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     BuildContext context,
     DeviceView device,
     DevicesService devicesService,
-    BoxConstraints constraints,
-  ) {
+    BoxConstraints constraints, {
+    ClimateTargetView? temperatureSensorTarget,
+  }) {
+    // Get room temperature from sensor if available
+    final sensorTemperature = _getSensorTemperature(
+      temperatureSensorTarget,
+      devicesService,
+    );
+
     return GestureDetector(
       onTap: () => _openDeviceDetail(context, device),
       child: Container(
@@ -534,11 +545,29 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
             // Dial or temperature display based on device type
             if (device is ThermostatDeviceView)
-              _buildThermostatHero(context, device, devicesService, constraints)
+              _buildThermostatHero(
+                context,
+                device,
+                devicesService,
+                constraints,
+                sensorTemperature: sensorTemperature,
+              )
             else if (device is HeaterDeviceView)
-              _buildHeaterHero(context, device, devicesService, constraints)
+              _buildHeaterHero(
+                context,
+                device,
+                devicesService,
+                constraints,
+                sensorTemperature: sensorTemperature,
+              )
             else if (device is AirConditionerDeviceView)
-              _buildCoolerHero(context, device, devicesService, constraints)
+              _buildCoolerHero(
+                context,
+                device,
+                devicesService,
+                constraints,
+                sensorTemperature: sensorTemperature,
+              )
             else
               // Fallback hero for category-based devices (when typed mapping failed)
               _buildFallbackHero(context, device, constraints),
@@ -553,13 +582,49 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     );
   }
 
+  /// Get temperature reading from a temperature sensor target
+  double? _getSensorTemperature(
+    ClimateTargetView? sensorTarget,
+    DevicesService devicesService,
+  ) {
+    if (sensorTarget == null) return null;
+
+    final device = devicesService.getDevice(sensorTarget.deviceId);
+    if (device == null) return null;
+
+    // Sensor targets have a channelId - find the specific temperature channel
+    final channelId = sensorTarget.channelId;
+    if (channelId != null) {
+      // Find the channel by ID and check if it's a temperature channel
+      final channel = device.channels.where((c) => c.id == channelId).firstOrNull;
+      if (channel is TemperatureChannelView) {
+        return channel.temperature;
+      }
+    }
+
+    // Fallback: look for any temperature channel on the device
+    final tempChannel =
+        device.channels.whereType<TemperatureChannelView>().firstOrNull;
+    if (tempChannel != null) {
+      return tempChannel.temperature;
+    }
+
+    // For thermostat devices, temperature comes from temperatureChannel
+    if (device is ThermostatDeviceView) {
+      return device.temperatureChannel.temperature;
+    }
+
+    return null;
+  }
+
   /// Build thermostat hero with temperature display and mode buttons
   Widget _buildThermostatHero(
     BuildContext context,
     ThermostatDeviceView device,
     DevicesService devicesService,
-    BoxConstraints constraints,
-  ) {
+    BoxConstraints constraints, {
+    double? sensorTemperature,
+  }) {
     final thermostatChannel = device.thermostatChannel;
     final unit = thermostatChannel.showInFahrenheit ? '°F' : '°C';
 
@@ -580,7 +645,13 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           height: dialSize,
           child: hasControllableTemp
               ? _buildThermostatDial(
-                  context, device, devicesService, dialSize, unit)
+                  context,
+                  device,
+                  devicesService,
+                  dialSize,
+                  unit,
+                  sensorTemperature: sensorTemperature,
+                )
               : _buildTemperatureDialDisplay(context, device),
         ),
 
@@ -608,8 +679,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     ThermostatDeviceView device,
     DevicesService devicesService,
     double dialSize,
-    String unit,
-  ) {
+    String unit, {
+    double? sensorTemperature,
+  }) {
     // Prefer heater channel, fall back to cooler
     final heaterChannel = device.heaterChannel;
     final coolerChannel = device.coolerChannel;
@@ -624,6 +696,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         unit,
         dialSize,
         (value) => _setHeaterTemperature(context, device, value, devicesService),
+        sensorTemperature: sensorTemperature,
       );
     } else if (coolerChannel != null &&
         coolerChannel.temperatureProp.isWritable) {
@@ -636,6 +709,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         unit,
         dialSize,
         (value) => _setCoolerTemperature(context, device, value, devicesService),
+        sensorTemperature: sensorTemperature,
       );
     }
 
@@ -647,8 +721,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     BuildContext context,
     HeaterDeviceView device,
     DevicesService devicesService,
-    BoxConstraints constraints,
-  ) {
+    BoxConstraints constraints, {
+    double? sensorTemperature,
+  }) {
     final heaterChannel = device.heaterChannel;
     final hasSetpoint = heaterChannel.temperatureProp.isWritable;
 
@@ -668,6 +743,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
               dialSize,
               (value) =>
                   _setHeaterTemperature(context, device, value, devicesService),
+              sensorTemperature: sensorTemperature,
             )
           : _buildHeaterDialDisplay(context, device),
     );
@@ -678,8 +754,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     BuildContext context,
     AirConditionerDeviceView device,
     DevicesService devicesService,
-    BoxConstraints constraints,
-  ) {
+    BoxConstraints constraints, {
+    double? sensorTemperature,
+  }) {
     final coolerChannel = device.coolerChannel;
     final hasSetpoint = coolerChannel.temperatureProp.isWritable;
 
@@ -699,6 +776,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
               dialSize,
               (value) =>
                   _setCoolerTemperature(context, device, value, devicesService),
+              sensorTemperature: sensorTemperature,
             )
           : _buildCoolerDialDisplay(context, device),
     );
@@ -713,8 +791,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     double maxValue,
     String unit,
     double dialSize,
-    Function(double) onChanged,
-  ) {
+    Function(double) onChanged, {
+    double? sensorTemperature,
+  }) {
     return RoundedSlider(
       value: currentValue.clamp(minValue, maxValue),
       min: minValue,
@@ -730,7 +809,12 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           () => onChanged(value.toDouble()),
         );
       },
-      inner: _buildDialCenterContent(context, device, unit),
+      inner: _buildDialCenterContent(
+        context,
+        device,
+        unit,
+        sensorTemperature: sensorTemperature,
+      ),
     );
   }
 
@@ -738,14 +822,30 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   Widget _buildDialCenterContent(
     BuildContext context,
     DeviceView device,
-    String unit,
-  ) {
+    String unit, {
+    double? sensorTemperature,
+  }) {
     if (device is ThermostatDeviceView) {
-      return _buildThermostatDialCenter(context, device, unit);
+      return _buildThermostatDialCenter(
+        context,
+        device,
+        unit,
+        sensorTemperature: sensorTemperature,
+      );
     } else if (device is HeaterDeviceView) {
-      return _buildHeaterDialCenter(context, device, unit);
+      return _buildHeaterDialCenter(
+        context,
+        device,
+        unit,
+        sensorTemperature: sensorTemperature,
+      );
     } else if (device is AirConditionerDeviceView) {
-      return _buildCoolerDialCenter(context, device, unit);
+      return _buildCoolerDialCenter(
+        context,
+        device,
+        unit,
+        sensorTemperature: sensorTemperature,
+      );
     }
     return SizedBox.shrink();
   }
@@ -754,9 +854,12 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   Widget _buildThermostatDialCenter(
     BuildContext context,
     ThermostatDeviceView device,
-    String unit,
-  ) {
-    final currentTemp = device.temperatureChannel.temperature;
+    String unit, {
+    double? sensorTemperature,
+  }) {
+    // Use sensor temperature if available, otherwise device's temperature
+    final currentTemp =
+        sensorTemperature ?? device.temperatureChannel.temperature;
     // Get target from heater or cooler channel if available
     final heaterChannel = device.heaterChannel;
     final coolerChannel = device.coolerChannel;
@@ -826,10 +929,12 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   Widget _buildHeaterDialCenter(
     BuildContext context,
     HeaterDeviceView device,
-    String unit,
-  ) {
-    // Current room temp from temperature channel, target from heater channel
-    final currentTemp = device.temperatureChannel.temperature;
+    String unit, {
+    double? sensorTemperature,
+  }) {
+    // Use sensor temperature if available, otherwise device's temperature
+    final currentTemp =
+        sensorTemperature ?? device.temperatureChannel.temperature;
     final targetTemp = device.heaterChannel.temperature;
     final localizations = AppLocalizations.of(context);
 
@@ -888,9 +993,12 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   Widget _buildCoolerDialCenter(
     BuildContext context,
     AirConditionerDeviceView device,
-    String unit,
-  ) {
-    final currentTemp = device.temperatureChannel.temperature;
+    String unit, {
+    double? sensorTemperature,
+  }) {
+    // Use sensor temperature if available, otherwise device's temperature
+    final currentTemp =
+        sensorTemperature ?? device.temperatureChannel.temperature;
     final targetTemp = device.coolerChannel.temperature;
     final localizations = AppLocalizations.of(context);
 
