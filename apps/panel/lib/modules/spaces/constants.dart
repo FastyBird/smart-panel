@@ -12,4 +12,11 @@ class SpacesModuleConstants {
       'SpacesModule.LightTarget.Updated';
   static const String lightTargetDeletedEvent =
       'SpacesModule.LightTarget.Deleted';
+
+  static const String climateTargetCreatedEvent =
+      'SpacesModule.ClimateTarget.Created';
+  static const String climateTargetUpdatedEvent =
+      'SpacesModule.ClimateTarget.Updated';
+  static const String climateTargetDeletedEvent =
+      'SpacesModule.ClimateTarget.Deleted';
 }
