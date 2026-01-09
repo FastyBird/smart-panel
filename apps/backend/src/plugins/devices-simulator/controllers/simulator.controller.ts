@@ -319,6 +319,10 @@ export class SimulatorController {
 		// Reload the device to get updated values
 		const updatedDevice = await this.devicesService.findOne<DeviceEntity>(deviceId);
 
+		if (!updatedDevice) {
+			throw new DevicesNotFoundException(`Simulator device ${deviceId} not found`);
+		}
+
 		this.logger.log(`Simulated all values for device=${deviceId}`, { resource: deviceId });
 
 		return toInstance(DeviceResponseModel, { data: updatedDevice }, { excludeExtraneousValues: true });
