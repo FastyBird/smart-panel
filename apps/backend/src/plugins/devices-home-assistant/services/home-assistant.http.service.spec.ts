@@ -1,4 +1,3 @@
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
@@ -68,7 +67,6 @@ describe('HomeAssistantHttpService', () => {
 			apiKey: 'test-api-key',
 			hostname: 'localhost',
 		});
-
 	});
 
 	afterEach(() => {

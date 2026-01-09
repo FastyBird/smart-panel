@@ -43,11 +43,9 @@ describe('ShelliesAdapterService', () => {
 
 	// Quiet logger noise
 
-	beforeAll(() => {
-	});
+	beforeAll(() => {});
 
-	afterAll(() => {
-	});
+	afterAll(() => {});
 
 	beforeEach(() => {
 		jest.clearAllMocks();

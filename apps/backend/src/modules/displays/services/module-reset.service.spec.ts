@@ -8,7 +8,6 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
@@ -126,7 +125,6 @@ describe('DisplaysModuleResetService', () => {
 		service = module.get<DisplaysModuleResetService>(DisplaysModuleResetService);
 		repository = module.get<Repository<DisplayEntity>>(getRepositoryToken(DisplayEntity));
 		tokensService = module.get<TokensService>(TokensService);
-
 	});
 
 	afterEach(() => {

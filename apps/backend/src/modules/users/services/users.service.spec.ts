@@ -9,7 +9,6 @@ import bcrypt from 'bcrypt';
 import { Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -72,7 +71,6 @@ describe('UsersService', () => {
 		service = module.get<UsersService>(UsersService);
 		repository = module.get<Repository<UserEntity>>(getRepositoryToken(UserEntity));
 		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
-
 	});
 
 	afterEach(() => {

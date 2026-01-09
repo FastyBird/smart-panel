@@ -1,4 +1,3 @@
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { DevicesException } from '../devices.exceptions';
@@ -21,7 +20,6 @@ describe('ChannelsTypeMapperService', () => {
 		}).compile();
 
 		service = module.get<ChannelsTypeMapperService>(ChannelsTypeMapperService);
-
 	});
 
 	it('should be defined', () => {

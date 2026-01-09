@@ -1,6 +1,5 @@
 import WebSocket from 'ws';
 
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
@@ -56,7 +55,6 @@ describe('HomeAssistantWsService', () => {
 		}).compile();
 
 		service = module.get(HomeAssistantWsService);
-
 	});
 
 	afterEach(() => {

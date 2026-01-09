@@ -21,11 +21,9 @@ import { ShellyNgDevicePlatform } from './shelly-ng.device.platform';
 describe('ShellyNgDevicePlatform', () => {
 	// Quiet logger noise and let us assert calls
 
-	beforeAll(() => {
-	});
+	beforeAll(() => {});
 
-	afterAll(() => {
-	});
+	afterAll(() => {});
 
 	const makeDevice = (id = 'dev-1'): ShellyNgDeviceEntity => Object.assign(new ShellyNgDeviceEntity(), { id });
 

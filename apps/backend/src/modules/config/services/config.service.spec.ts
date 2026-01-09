@@ -11,7 +11,6 @@ import * as fs from 'fs';
 import path from 'path';
 import * as yaml from 'yaml';
 
-import { Logger } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -174,7 +173,6 @@ describe('ConfigService', () => {
 		service = module.get<ConfigService>(ConfigService);
 		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 		platform = module.get<PlatformService>(PlatformService);
-
 	});
 
 	afterEach(() => {

@@ -7,7 +7,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { v4 as uuid } from 'uuid';
 
-import { HttpException, HttpStatus, Logger, NotFoundException } from '@nestjs/common';
+import { HttpException, HttpStatus, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { WeatherService } from '../services/weather.service';
@@ -99,7 +99,6 @@ describe('WeatherController', () => {
 
 		controller = module.get<WeatherController>(WeatherController);
 		service = module.get<WeatherService>(WeatherService);
-
 	});
 
 	afterEach(() => {

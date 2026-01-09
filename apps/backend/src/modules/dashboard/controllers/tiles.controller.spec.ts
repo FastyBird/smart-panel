@@ -10,7 +10,6 @@ import { IsArray, IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class
 import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 import { v4 as uuid } from 'uuid';
 
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -132,7 +131,6 @@ describe('TilesController', () => {
 		controller = module.get<TilesController>(TilesController);
 		tilesService = module.get<TilesService>(TilesService);
 		tileMapper = module.get<TilesTypeMapperService>(TilesTypeMapperService);
-
 	});
 
 	afterEach(() => {

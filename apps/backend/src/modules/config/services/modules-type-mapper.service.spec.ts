@@ -1,4 +1,3 @@
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConfigException } from '../config.exceptions';
@@ -19,7 +18,6 @@ describe('ModulesTypeMapperService', () => {
 		}).compile();
 
 		service = module.get<ModulesTypeMapperService>(ModulesTypeMapperService);
-
 	});
 
 	afterEach(() => {

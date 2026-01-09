@@ -1,4 +1,3 @@
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { IDataSourceRelationsLoader } from '../entities/dashboard.relations';
@@ -19,7 +18,6 @@ describe('DataSourceRelationsLoaderRegistryService', () => {
 		}).compile();
 
 		service = module.get<DataSourceRelationsLoaderRegistryService>(DataSourceRelationsLoaderRegistryService);
-
 	});
 
 	afterEach(() => {

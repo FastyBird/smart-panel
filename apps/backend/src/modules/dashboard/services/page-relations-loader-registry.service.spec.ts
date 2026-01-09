@@ -1,4 +1,3 @@
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { IPageRelationsLoader } from '../entities/dashboard.relations';
@@ -19,7 +18,6 @@ describe('PageRelationsLoaderRegistryService', () => {
 		}).compile();
 
 		service = module.get<PageRelationsLoaderRegistryService>(PageRelationsLoaderRegistryService);
-
 	});
 
 	afterEach(() => {

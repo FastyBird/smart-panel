@@ -7,7 +7,6 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { instanceToPlain } from 'class-transformer';
 
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -54,7 +53,6 @@ describe('StateChangedEventService', () => {
 		httpService = module.get(HomeAssistantHttpService);
 
 		jest.useFakeTimers();
-
 	});
 
 	afterEach(() => {

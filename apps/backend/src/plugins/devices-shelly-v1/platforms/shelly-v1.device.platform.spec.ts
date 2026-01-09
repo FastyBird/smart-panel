@@ -23,11 +23,9 @@ import { ShellyV1DevicePlatform } from './shelly-v1.device.platform';
 describe('ShellyV1DevicePlatform', () => {
 	// Quiet logger noise and let us assert calls
 
-	beforeAll(() => {
-	});
+	beforeAll(() => {});
 
-	afterAll(() => {
-	});
+	afterAll(() => {});
 
 	const makeDevice = (id = 'dev-1', identifier = 'shelly1pm-ABC123', enabled = true): ShellyV1DeviceEntity =>
 		Object.assign(new ShellyV1DeviceEntity(), { id, identifier, enabled });

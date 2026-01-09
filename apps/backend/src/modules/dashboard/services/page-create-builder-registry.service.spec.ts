@@ -1,4 +1,3 @@
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { IPageNestedCreateBuilder } from '../entities/dashboard.relations';
@@ -19,7 +18,6 @@ describe('PageCreateBuilderRegistryService', () => {
 		}).compile();
 
 		service = module.get<PageCreateBuilderRegistryService>(PageCreateBuilderRegistryService);
-
 	});
 
 	afterEach(() => {

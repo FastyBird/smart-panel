@@ -5,7 +5,6 @@ eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/unbou
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
@@ -46,11 +45,9 @@ describe('WledService', () => {
 
 	// Quiet logger noise
 
-	beforeAll(() => {
-	});
+	beforeAll(() => {});
 
-	afterAll(() => {
-	});
+	afterAll(() => {});
 
 	const mockConfig: Partial<WledConfigModel> = {
 		enabled: true,

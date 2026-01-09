@@ -40,7 +40,6 @@ describe('ExtensionsBundledService', () => {
 		}).compile();
 
 		service = module.get<ExtensionsBundledService>(ExtensionsBundledService);
-
 	});
 
 	afterEach(() => {

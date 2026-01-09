@@ -1,6 +1,5 @@
 import { useContainer } from 'class-validator';
 
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
@@ -106,7 +105,6 @@ describe('DeviceAdoptionService', () => {
 		homeAssistantWsService = module.get(HomeAssistantWsService);
 		devicesService = module.get(DevicesService);
 		channelsService = module.get(ChannelsService);
-
 	});
 
 	afterEach(() => {

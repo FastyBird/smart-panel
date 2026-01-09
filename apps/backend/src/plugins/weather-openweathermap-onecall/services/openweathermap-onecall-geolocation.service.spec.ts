@@ -4,7 +4,6 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import fetch from 'node-fetch';
 
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
@@ -63,7 +62,6 @@ describe('OpenWeatherMapOneCallGeolocationService', () => {
 
 		service = module.get<OpenWeatherMapOneCallGeolocationService>(OpenWeatherMapOneCallGeolocationService);
 		configService = module.get<ConfigService>(ConfigService);
-
 	});
 
 	afterEach(() => {

@@ -1,4 +1,3 @@
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ITileRelationsLoader } from '../entities/dashboard.relations';
@@ -19,7 +18,6 @@ describe('TileRelationsLoaderRegistryService', () => {
 		}).compile();
 
 		service = module.get<TileRelationsLoaderRegistryService>(TileRelationsLoaderRegistryService);
-
 	});
 
 	afterEach(() => {

@@ -1,4 +1,3 @@
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { DashboardException } from '../dashboard.exceptions';
@@ -21,7 +20,6 @@ describe('TileTypeMapperService', () => {
 		}).compile();
 
 		service = module.get<TilesTypeMapperService>(TilesTypeMapperService);
-
 	});
 
 	afterEach(() => {

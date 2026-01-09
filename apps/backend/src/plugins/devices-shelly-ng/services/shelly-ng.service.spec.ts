@@ -7,7 +7,6 @@ eslint-disable @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
 import { ConfigService } from '../../../modules/config/services/config.service';

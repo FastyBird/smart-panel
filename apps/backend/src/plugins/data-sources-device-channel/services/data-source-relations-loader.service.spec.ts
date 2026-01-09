@@ -7,7 +7,6 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { v4 as uuid } from 'uuid';
 
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -59,7 +58,6 @@ describe('DataSourceRelationsLoaderService', () => {
 		devicesService = module.get(DevicesService);
 		channelsService = module.get(ChannelsService);
 		propertiesService = module.get(ChannelsPropertiesService);
-
 	});
 
 	afterEach(() => {

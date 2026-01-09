@@ -10,7 +10,6 @@ import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 import { v4 as uuid } from 'uuid';
 
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -155,7 +154,6 @@ describe('PagesController', () => {
 		pageMapper = module.get<PagesTypeMapperService>(PagesTypeMapperService);
 		tileMapper = module.get<TilesTypeMapperService>(TilesTypeMapperService);
 		dataSourceMapper = module.get<DataSourcesTypeMapperService>(DataSourcesTypeMapperService);
-
 	});
 
 	afterEach(() => {

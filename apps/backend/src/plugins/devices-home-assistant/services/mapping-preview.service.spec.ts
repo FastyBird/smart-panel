@@ -1,4 +1,3 @@
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ChannelCategory, DeviceCategory } from '../../../modules/devices/devices.constants';
@@ -113,7 +112,6 @@ describe('MappingPreviewService', () => {
 		homeAssistantHttpService = module.get(HomeAssistantHttpService);
 		homeAssistantWsService = module.get(HomeAssistantWsService);
 		deviceValidationService = module.get(DeviceValidationService);
-
 	});
 
 	afterEach(() => {

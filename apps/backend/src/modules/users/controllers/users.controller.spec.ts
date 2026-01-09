@@ -8,7 +8,6 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 import { v4 as uuid } from 'uuid';
 
-import { Logger } from '@nestjs/common';
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
@@ -62,7 +61,6 @@ describe('UsersController', () => {
 
 		controller = module.get<UsersController>(UsersController);
 		service = module.get<UsersService>(UsersService);
-
 	});
 
 	afterEach(() => {

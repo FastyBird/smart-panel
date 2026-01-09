@@ -7,7 +7,6 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import si, { Systeminformation } from 'systeminformation';
 
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -29,7 +28,6 @@ describe('PlatformService', () => {
 		}).compile();
 
 		service = module.get<PlatformService>(PlatformService);
-
 	});
 
 	afterEach(() => {
