@@ -353,6 +353,9 @@ export class ChannelsService {
 			// Capture channel ID and data before removal to preserve for event emission
 			const channelForEvent = { ...channel };
 
+			// Clear parentId for all children (SQLite doesn't enforce FK constraints)
+			await manager.update(ChannelEntity, { parentId: id }, { parentId: null });
+
 			const properties = await manager.find<ChannelPropertyEntity>(ChannelPropertyEntity, {
 				where: { channel: { id } },
 			});
@@ -379,6 +382,9 @@ export class ChannelsService {
 
 			await this.dataSource.transaction(async (manager) => {
 				const channel = await manager.findOneOrFail<ChannelEntity>(ChannelEntity, { where: { id } });
+
+				// Clear parentId for all children (SQLite doesn't enforce FK constraints)
+				await manager.update(ChannelEntity, { parentId: id }, { parentId: null });
 
 				const properties = await manager.find<ChannelPropertyEntity>(ChannelPropertyEntity, {
 					where: { channel: { id } },
