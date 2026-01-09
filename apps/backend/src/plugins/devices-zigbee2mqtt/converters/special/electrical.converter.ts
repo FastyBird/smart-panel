@@ -149,7 +149,9 @@ export class ElectricalConverter extends BaseConverter {
 
 			if (matchingExpose) {
 				// Return the channel identifier that would be created for this expose
-				return this.createChannelIdentifier(exposeType, endpoint);
+				// Note: SwitchConverter creates 'switcher' channels for 'switch' exposes
+				const channelPrefix = exposeType === 'switch' ? 'switcher' : exposeType;
+				return this.createChannelIdentifier(channelPrefix, endpoint);
 			}
 		}
 

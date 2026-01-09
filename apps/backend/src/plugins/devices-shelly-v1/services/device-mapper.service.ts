@@ -34,6 +34,7 @@ import { CreateShellyV1ChannelPropertyDto } from '../dto/create-channel-property
 import { CreateShellyV1ChannelDto } from '../dto/create-channel.dto';
 import { CreateShellyV1DeviceDto } from '../dto/create-device.dto';
 import { UpdateShellyV1ChannelPropertyDto } from '../dto/update-channel-property.dto';
+import { UpdateShellyV1ChannelDto } from '../dto/update-channel.dto';
 import { UpdateShellyV1DeviceDto } from '../dto/update-device.dto';
 import {
 	ShellyV1ChannelEntity,
@@ -479,6 +480,12 @@ export class DeviceMapperService {
 			};
 
 			channel = await this.channelsService.create<ShellyV1ChannelEntity, CreateShellyV1ChannelDto>(createChannelDto);
+		} else {
+			// Update existing channel with parent if needed
+			channel = await this.channelsService.update<ShellyV1ChannelEntity, UpdateShellyV1ChannelDto>(channel.id, {
+				type: DEVICES_SHELLY_V1_TYPE,
+				parent: parentId ?? null,
+			});
 		}
 
 		// Create properties for the channel with initial values from the device state

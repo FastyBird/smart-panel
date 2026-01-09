@@ -24,6 +24,7 @@ import { CreateZigbee2mqttChannelPropertyDto } from '../dto/create-channel-prope
 import { CreateZigbee2mqttChannelDto } from '../dto/create-channel.dto';
 import { CreateZigbee2mqttDeviceDto } from '../dto/create-device.dto';
 import { UpdateZigbee2mqttChannelPropertyDto } from '../dto/update-channel-property.dto';
+import { UpdateZigbee2mqttChannelDto } from '../dto/update-channel.dto';
 import {
 	Zigbee2mqttChannelEntity,
 	Zigbee2mqttChannelPropertyEntity,
@@ -739,6 +740,12 @@ export class Z2mDeviceMapperService {
 			channel = await this.channelsService.create<Zigbee2mqttChannelEntity, CreateZigbee2mqttChannelDto>(
 				createChannelDto,
 			);
+		} else {
+			// Update existing channel with parent if needed
+			channel = await this.channelsService.update<Zigbee2mqttChannelEntity, UpdateZigbee2mqttChannelDto>(channel.id, {
+				type: DEVICES_ZIGBEE2MQTT_TYPE,
+				parent: parentId ?? null,
+			});
 		}
 
 		// Create regular properties

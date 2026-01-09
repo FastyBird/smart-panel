@@ -32,6 +32,7 @@ import { CreateWledChannelPropertyDto } from '../dto/create-channel-property.dto
 import { CreateWledChannelDto } from '../dto/create-channel.dto';
 import { CreateWledDeviceDto } from '../dto/create-device.dto';
 import { UpdateWledChannelPropertyDto } from '../dto/update-channel-property.dto';
+import { UpdateWledChannelDto } from '../dto/update-channel.dto';
 import { UpdateWledDeviceDto } from '../dto/update-device.dto';
 import { WledChannelEntity, WledChannelPropertyEntity, WledDeviceEntity } from '../entities/devices-wled.entity';
 import { WledDeviceContext, WledInfo, WledState } from '../interfaces/wled.interface';
@@ -429,6 +430,12 @@ export class WledDeviceMapperService {
 			};
 
 			channel = await this.channelsService.create<WledChannelEntity, CreateWledChannelDto>(createChannelDto);
+		} else {
+			// Update existing channel with parent if needed
+			channel = await this.channelsService.update<WledChannelEntity, UpdateWledChannelDto>(channel.id, {
+				type: DEVICES_WLED_TYPE,
+				parent: parent ?? null,
+			});
 		}
 
 		// Extract power values (convert from mA to W and A)
@@ -470,6 +477,12 @@ export class WledDeviceMapperService {
 				};
 
 				channel = await this.channelsService.create<WledChannelEntity, CreateWledChannelDto>(createChannelDto);
+			} else {
+				// Update existing channel with parent if needed
+				channel = await this.channelsService.update<WledChannelEntity, UpdateWledChannelDto>(channel.id, {
+					type: DEVICES_WLED_TYPE,
+					parent: parent ?? null,
+				});
 			}
 
 			// Extract state values for this segment
