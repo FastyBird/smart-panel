@@ -798,7 +798,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           ),
           AppSpacings.spacingMdVertical,
           Text(
-            '${currentTemp.toStringAsFixed(1)}°C',
+            '${currentTemp.toStringAsFixed(1)}${_getTemperatureUnit()}',
             style: TextStyle(
               fontSize: _screenService.scale(
                 48,
@@ -833,7 +833,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           ),
           AppSpacings.spacingMdVertical,
           Text(
-            '${currentTemp.toStringAsFixed(1)}°C',
+            '${currentTemp.toStringAsFixed(1)}${_getTemperatureUnit()}',
             style: TextStyle(
               fontSize: _screenService.scale(
                 48,
