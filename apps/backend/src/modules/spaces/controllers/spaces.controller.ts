@@ -13,10 +13,10 @@ import {
 import { Roles } from '../../users/guards/roles.guard';
 import { UserRole } from '../../users/users.constants';
 import { ReqBulkAssignDto } from '../dto/bulk-assign.dto';
+import { ReqBulkSetClimateRolesDto, ReqSetClimateRoleDto } from '../dto/climate-role.dto';
 import { ReqClimateIntentDto } from '../dto/climate-intent.dto';
 import { ReqCreateSpaceDto } from '../dto/create-space.dto';
 import { ReqLightingIntentDto } from '../dto/lighting-intent.dto';
-import { ReqBulkSetClimateRolesDto, ReqSetClimateRoleDto } from '../dto/climate-role.dto';
 import { ReqBulkSetLightingRolesDto, ReqSetLightingRoleDto } from '../dto/lighting-role.dto';
 import { ReqSuggestionFeedbackDto } from '../dto/suggestion.dto';
 import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
@@ -31,13 +31,13 @@ import {
 	BulkLightingRolesResultDataModel,
 	CategoryTemplateDataModel,
 	CategoryTemplatesResponseModel,
-	ClimateRoleResponseModel,
-	ClimateTargetDataModel,
-	ClimateTargetsResponseModel,
 	ClimateIntentResponseModel,
 	ClimateIntentResultDataModel,
+	ClimateRoleResponseModel,
 	ClimateStateDataModel,
 	ClimateStateResponseModel,
+	ClimateTargetDataModel,
+	ClimateTargetsResponseModel,
 	ContextSnapshotDataModel,
 	ContextSnapshotResponseModel,
 	IntentCatalogDataModel,

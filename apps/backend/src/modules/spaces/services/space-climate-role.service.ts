@@ -325,13 +325,13 @@ export class SpaceClimateRoleService {
 
 		for (const device of devices) {
 			// Only process climate devices
-			if (!CLIMATE_DEVICE_CATEGORIES.includes(device.category as DeviceCategory)) {
+			if (!CLIMATE_DEVICE_CATEGORIES.includes(device.category)) {
 				continue;
 			}
 
 			// Find climate channels
 			for (const channel of device.channels ?? []) {
-				if (!CLIMATE_CHANNEL_CATEGORIES.includes(channel.category as ChannelCategory)) {
+				if (!CLIMATE_CHANNEL_CATEGORIES.includes(channel.category)) {
 					continue;
 				}
 
@@ -348,10 +348,10 @@ export class SpaceClimateRoleService {
 				climateTargets.push({
 					deviceId: device.id,
 					deviceName: device.name,
-					deviceCategory: device.category as DeviceCategory,
+					deviceCategory: device.category,
 					channelId: channel.id,
 					channelName: channel.name,
-					channelCategory: channel.category as ChannelCategory,
+					channelCategory: channel.category,
 					role: existingRole?.role ?? null,
 					priority: existingRole?.priority ?? 0,
 					hasTemperature,
@@ -476,10 +476,10 @@ export class SpaceClimateRoleService {
 			space_id: spaceId,
 			device_id: deviceId,
 			device_name: device.name,
-			device_category: device.category as DeviceCategory,
+			device_category: device.category,
 			channel_id: channelId,
 			channel_name: channel.name,
-			channel_category: channel.category as ChannelCategory,
+			channel_category: channel.category,
 			role,
 			priority,
 			has_temperature: hasTemperature,
