@@ -259,8 +259,7 @@ export class ChannelsService {
 				throw new DevicesValidationException('The specified parent channel does not exist.');
 			}
 
-			const parentDeviceId =
-				typeof parentChannel.device === 'string' ? parentChannel.device : parentChannel.device.id;
+			const parentDeviceId = typeof parentChannel.device === 'string' ? parentChannel.device : parentChannel.device.id;
 
 			if (parentDeviceId !== dtoInstance.device) {
 				this.logger.error(
@@ -324,8 +323,7 @@ export class ChannelsService {
 				throw new DevicesValidationException('The specified parent channel does not exist.');
 			}
 
-			const parentDeviceId =
-				typeof parentChannel.device === 'string' ? parentChannel.device : parentChannel.device.id;
+			const parentDeviceId = typeof parentChannel.device === 'string' ? parentChannel.device : parentChannel.device.id;
 			const channelDeviceId = typeof channel.device === 'string' ? channel.device : channel.device.id;
 
 			if (parentDeviceId !== channelDeviceId) {
@@ -334,6 +332,28 @@ export class ChannelsService {
 				);
 
 				throw new DevicesValidationException('Parent channel must belong to the same device.');
+			}
+
+			// Check for circular reference by walking up the parent chain
+			const visited = new Set<string>([id]);
+			let currentParentId: string | null = dtoInstance.parent;
+
+			while (currentParentId !== null) {
+				if (visited.has(currentParentId)) {
+					this.logger.error(
+						`Circular parent reference detected: setting parent to ${dtoInstance.parent} would create a cycle`,
+					);
+
+					throw new DevicesValidationException(
+						'Circular parent reference detected. A channel cannot be its own ancestor.',
+					);
+				}
+
+				visited.add(currentParentId);
+
+				const currentParent = await this.repository.findOne({ where: { id: currentParentId } });
+
+				currentParentId = currentParent?.parentId ?? null;
 			}
 		}
 
