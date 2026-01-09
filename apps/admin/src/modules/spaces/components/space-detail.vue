@@ -60,9 +60,17 @@
 				</el-text>
 			</dd>
 			<!-- Lighting roles summary -->
-			<space-lighting-roles-summary :space="space" />
-			<!-- Climate overrides summary -->
-			<space-climate-overrides-summary :space="space" />
+			<space-lighting-roles-summary
+				ref="lightingRolesSummaryRef"
+				:space="space"
+				@edit="showLightingRolesDialog = true"
+			/>
+			<!-- Climate roles summary -->
+			<space-climate-roles-summary
+				ref="climateRolesSummaryRef"
+				:space="space"
+				@edit="showClimateRolesDialog = true"
+			/>
 			<!-- Inline Floor selector (Room only) -->
 			<dt
 				v-if="space.type === SpaceType.ROOM"
@@ -126,6 +134,20 @@
 			</dd>
 		</dl>
 	</el-card>
+
+	<!-- Lighting roles dialog -->
+	<space-lighting-roles-dialog
+		v-model:visible="showLightingRolesDialog"
+		:space="space"
+		@roles-changed="onLightingRolesChanged"
+	/>
+
+	<!-- Climate roles dialog -->
+	<space-climate-roles-dialog
+		v-model:visible="showClimateRolesDialog"
+		:space="space"
+		@roles-changed="onClimateRolesChanged"
+	/>
 </template>
 
 <script setup lang="ts">
@@ -140,7 +162,9 @@ import { useFlashMessage } from '../../../common';
 import { isFloorZoneCategory, SpaceType } from '../spaces.constants';
 import { type ISpace } from '../store';
 import { useSpace, useSpaces } from '../composables';
-import SpaceClimateOverridesSummary from './space-climate-overrides-summary.vue';
+import SpaceClimateRolesDialog from './space-climate-roles-dialog.vue';
+import SpaceClimateRolesSummary from './space-climate-roles-summary.vue';
+import SpaceLightingRolesDialog from './space-lighting-roles-dialog.vue';
 import SpaceLightingRolesSummary from './space-lighting-roles-summary.vue';
 
 import type { ISpaceDetailProps } from './space-detail.types';
@@ -156,6 +180,12 @@ const flashMessage = useFlashMessage();
 
 const { spaces, firstLoadFinished, fetchSpaces } = useSpaces();
 const { editSpace } = useSpace(computed(() => props.space?.id));
+
+// Role dialog state
+const showLightingRolesDialog = ref(false);
+const showClimateRolesDialog = ref(false);
+const lightingRolesSummaryRef = ref<InstanceType<typeof SpaceLightingRolesSummary> | null>(null);
+const climateRolesSummaryRef = ref<InstanceType<typeof SpaceClimateRolesSummary> | null>(null);
 
 // Ensure all spaces are loaded when component mounts (needed for floor selector)
 onMounted(async () => {
@@ -275,5 +305,14 @@ onMounted(() => {
 onBeforeUnmount(() => {
 	document.removeEventListener('keydown', handleEscapeKey);
 });
+
+// Role dialog handlers
+const onLightingRolesChanged = (): void => {
+	lightingRolesSummaryRef.value?.reload();
+};
+
+const onClimateRolesChanged = (): void => {
+	climateRolesSummaryRef.value?.reload();
+};
 </script>
 

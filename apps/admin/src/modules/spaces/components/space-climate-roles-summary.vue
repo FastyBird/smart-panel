@@ -6,7 +6,8 @@
 		>
 			{{ t('spacesModule.detail.climateRoles.title') }}
 		</dt>
-		<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center gap-2 flex-wrap min-w-[8rem]">
+		<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center justify-between min-w-[8rem]">
+			<div class="flex items-center gap-2 flex-wrap">
 			<el-popover
 				v-for="summary in roleSummaries"
 				:key="summary.role"
@@ -55,6 +56,18 @@
 					</ul>
 				</div>
 			</el-popover>
+			</div>
+			<el-button
+				text
+				size="small"
+				class="ml-2"
+				@click="emit('edit')"
+			>
+				<template #icon>
+					<icon icon="mdi:pencil" />
+				</template>
+				{{ t('spacesModule.buttons.edit.title') }}
+			</el-button>
 		</dd>
 	</template>
 </template>
@@ -63,7 +76,7 @@
 import { onMounted, ref, watch } from 'vue';
 
 import { Icon } from '@iconify/vue';
-import { ElAlert, ElBadge, ElPopover, ElTag } from 'element-plus';
+import { ElAlert, ElBadge, ElButton, ElPopover, ElTag } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
 import { useBackend } from '../../../common';
@@ -77,6 +90,10 @@ defineOptions({
 });
 
 const props = defineProps<ISpaceClimateRolesSummaryProps>();
+
+const emit = defineEmits<{
+	(e: 'edit'): void;
+}>();
 
 const { t } = useI18n();
 const backend = useBackend();
@@ -218,5 +235,9 @@ onMounted(() => {
 	if (props.space?.id) {
 		loadClimateRoles();
 	}
+});
+
+defineExpose({
+	reload: loadClimateRoles,
 });
 </script>

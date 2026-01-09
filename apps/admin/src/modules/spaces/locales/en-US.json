@@ -280,9 +280,20 @@
 		"noFilteredSpaces": "No spaces match your filter criteria",
 		"confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
 	},
+	"dialogs": {
+		"lightingRoles": {
+			"title": "Edit Lighting Roles"
+		},
+		"climateRoles": {
+			"title": "Edit Climate Roles"
+		}
+	},
 	"buttons": {
 		"add": {
 			"title": "Add"
+		},
+		"done": {
+			"title": "Done"
 		},
 		"detail": {
 			"title": "Detail"

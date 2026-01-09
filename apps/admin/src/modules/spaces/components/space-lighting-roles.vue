@@ -1,6 +1,6 @@
 <template>
-	<div class="mt-2">
-		<el-divider content-position="left" class="mt-6!">
+	<div :class="{ 'mt-2': !hideHeader }">
+		<el-divider v-if="!hideHeader" content-position="left" class="mt-6!">
 			{{ t('spacesModule.edit.sections.smartOverrides.lightingRoles') }}
 		</el-divider>
 
@@ -18,12 +18,15 @@
 		</div>
 
 		<template v-else-if="lightTargets.length > 0">
-			<el-table :data="lightTargets" border>
+			<el-table :data="lightTargets" border max-height="400px">
 				<el-table-column prop="deviceName" :label="t('spacesModule.onboarding.deviceName')" min-width="180">
 					<template #default="{ row }">
 						<div class="flex items-center gap-2">
 							<icon icon="mdi:lightbulb" />
-							<span>{{ row.deviceName }}</span>
+							<div class="flex flex-col">
+								<span>{{ row.deviceName }}</span>
+								<span v-if="row.channelName" class="text-xs text-gray-400">{{ row.channelName }}</span>
+							</div>
 						</div>
 					</template>
 				</el-table-column>
@@ -111,9 +114,12 @@ interface ILightTarget {
 
 interface IProps {
 	space: ISpace;
+	hideHeader?: boolean;
 }
 
-const props = defineProps<IProps>();
+const props = withDefaults(defineProps<IProps>(), {
+	hideHeader: false,
+});
 
 const { t } = useI18n();
 const backend = useBackend();
