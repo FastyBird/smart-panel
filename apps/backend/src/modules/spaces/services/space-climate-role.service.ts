@@ -5,7 +5,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
+import { DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { SetClimateRoleDto } from '../dto/climate-role.dto';
 import { SpaceClimateRoleEntity } from '../entities/space-climate-role.entity';
@@ -27,25 +27,10 @@ const CLIMATE_DEVICE_CATEGORIES = [
 	DeviceCategory.AIR_PURIFIER,
 ];
 
-/**
- * Climate channel categories for filtering
- */
-const CLIMATE_CHANNEL_CATEGORIES = [
-	ChannelCategory.THERMOSTAT,
-	ChannelCategory.HEATER,
-	ChannelCategory.COOLER,
-	ChannelCategory.FAN,
-	ChannelCategory.HUMIDITY,
-	ChannelCategory.SWITCHER, // Some climate devices use switcher channel
-];
-
 export interface ClimateTargetInfo {
 	deviceId: string;
 	deviceName: string;
 	deviceCategory: DeviceCategory;
-	channelId: string;
-	channelName: string;
-	channelCategory: ChannelCategory;
 	role: ClimateRole | null;
 	priority: number;
 	hasTemperature: boolean;
@@ -58,7 +43,6 @@ export interface ClimateTargetInfo {
  */
 export interface BulkClimateRoleResultItem {
 	deviceId: string;
-	channelId: string;
 	success: boolean;
 	role: ClimateRole | null;
 	error: string | null;
@@ -85,9 +69,6 @@ export interface ClimateTargetEventPayload {
 	device_id: string;
 	device_name: string;
 	device_category: DeviceCategory;
-	channel_id: string;
-	channel_name: string;
-	channel_category: ChannelCategory;
 	role: ClimateRole | null;
 	priority: number;
 	has_temperature: boolean;
@@ -130,9 +111,9 @@ export class SpaceClimateRoleService {
 	/**
 	 * Get a single climate role assignment
 	 */
-	async findOne(spaceId: string, deviceId: string, channelId: string): Promise<SpaceClimateRoleEntity | null> {
+	async findOne(spaceId: string, deviceId: string): Promise<SpaceClimateRoleEntity | null> {
 		return this.repository.findOne({
-			where: { spaceId, deviceId, channelId },
+			where: { spaceId, deviceId },
 		});
 	}
 
@@ -146,7 +127,7 @@ export class SpaceClimateRoleService {
 		// Verify device exists and belongs to this space
 		const device = await this.deviceRepository.findOne({
 			where: { id: dto.deviceId },
-			relations: ['channels'],
+			relations: ['channels', 'channels.properties'],
 		});
 
 		if (!device) {
@@ -157,11 +138,9 @@ export class SpaceClimateRoleService {
 			throw new SpacesValidationException(`Device with id=${dto.deviceId} does not belong to space ${spaceId}`);
 		}
 
-		// Verify channel exists and belongs to the device
-		const channel = device.channels?.find((ch) => ch.id === dto.channelId);
-
-		if (!channel) {
-			throw new SpacesValidationException(`Channel with id=${dto.channelId} not found on device ${dto.deviceId}`);
+		// Verify device is a climate device
+		if (!CLIMATE_DEVICE_CATEGORIES.includes(device.category)) {
+			throw new SpacesValidationException(`Device with id=${dto.deviceId} is not a climate device`);
 		}
 
 		let roleEntity: SpaceClimateRoleEntity | null = null;
@@ -175,7 +154,7 @@ export class SpaceClimateRoleService {
 		await this.repository.manager.transaction(async (transactionalManager) => {
 			// Check if this is an update or create within the transaction
 			const existingRole = await transactionalManager.findOne(SpaceClimateRoleEntity, {
-				where: { spaceId, deviceId: dto.deviceId, channelId: dto.channelId },
+				where: { spaceId, deviceId: dto.deviceId },
 			});
 			isUpdate = existingRole !== null;
 
@@ -192,38 +171,29 @@ export class SpaceClimateRoleService {
 				{
 					spaceId,
 					deviceId: dto.deviceId,
-					channelId: dto.channelId,
 					role: newRole,
 					priority: newPriority,
 				},
 				{
-					conflictPaths: ['spaceId', 'deviceId', 'channelId'],
+					conflictPaths: ['spaceId', 'deviceId'],
 					skipUpdateIfNoValuesChanged: true,
 				},
 			);
 
 			// Fetch the saved entity within the transaction
 			roleEntity = await transactionalManager.findOne(SpaceClimateRoleEntity, {
-				where: { spaceId, deviceId: dto.deviceId, channelId: dto.channelId },
+				where: { spaceId, deviceId: dto.deviceId },
 			});
 		});
 
 		if (!roleEntity) {
-			throw new SpacesValidationException(
-				`Failed to save climate role for device=${dto.deviceId} channel=${dto.channelId}`,
-			);
+			throw new SpacesValidationException(`Failed to save climate role for device=${dto.deviceId}`);
 		}
 
 		// Only emit event if values actually changed
 		if (hasChanges) {
 			// Emit event for websocket clients with full climate target info
-			const eventPayload = await this.buildClimateTargetEventPayload(
-				spaceId,
-				dto.deviceId,
-				dto.channelId,
-				dto.role,
-				dto.priority ?? 0,
-			);
+			const eventPayload = await this.buildClimateTargetEventPayload(spaceId, dto.deviceId, dto.role, dto.priority ?? 0);
 
 			if (eventPayload) {
 				const eventType = isUpdate ? EventType.CLIMATE_TARGET_UPDATED : EventType.CLIMATE_TARGET_CREATED;
@@ -249,17 +219,15 @@ export class SpaceClimateRoleService {
 				await this.setRole(spaceId, dto);
 				results.push({
 					deviceId: dto.deviceId,
-					channelId: dto.channelId,
 					success: true,
 					role: dto.role,
 					error: null,
 				});
 			} catch (error) {
 				const err = error as Error;
-				this.logger.warn(`Failed to set role for device=${dto.deviceId} channel=${dto.channelId}: ${err.message}`);
+				this.logger.warn(`Failed to set role for device=${dto.deviceId}: ${err.message}`);
 				results.push({
 					deviceId: dto.deviceId,
-					channelId: dto.channelId,
 					success: false,
 					role: null,
 					error: err.message,
@@ -281,28 +249,27 @@ export class SpaceClimateRoleService {
 	/**
 	 * Delete a climate role assignment
 	 */
-	async deleteRole(spaceId: string, deviceId: string, channelId: string): Promise<void> {
+	async deleteRole(spaceId: string, deviceId: string): Promise<void> {
 		// Verify space exists
 		await this.spacesService.getOneOrThrow(spaceId);
 
-		const role = await this.findOne(spaceId, deviceId, channelId);
+		const role = await this.findOne(spaceId, deviceId);
 
 		if (role) {
 			await this.repository.remove(role);
 
 			// Emit event for websocket clients with the climate target ID
 			this.eventEmitter.emit(EventType.CLIMATE_TARGET_DELETED, {
-				id: `${deviceId}:${channelId}`,
+				id: deviceId,
 				space_id: spaceId,
 				device_id: deviceId,
-				channel_id: channelId,
 			});
 		}
 	}
 
 	/**
 	 * Get all climate targets in a space with their role assignments
-	 * This combines device/channel info with role data
+	 * This works at device level - each climate device is a target
 	 */
 	async getClimateTargetsInSpace(spaceId: string): Promise<ClimateTargetInfo[]> {
 		this.logger.debug(`Getting climate targets for space id=${spaceId}`);
@@ -318,7 +285,7 @@ export class SpaceClimateRoleService {
 		const roleMap = new Map<string, SpaceClimateRoleEntity>();
 
 		for (const role of existingRoles) {
-			roleMap.set(`${role.deviceId}:${role.channelId}`, role);
+			roleMap.set(role.deviceId, role);
 		}
 
 		const climateTargets: ClimateTargetInfo[] = [];
@@ -329,36 +296,37 @@ export class SpaceClimateRoleService {
 				continue;
 			}
 
-			// Find climate channels
+			// Aggregate capabilities from all device channels
+			let hasTemperature = false;
+			let hasHumidity = false;
+			let hasMode = false;
+
 			for (const channel of device.channels ?? []) {
-				if (!CLIMATE_CHANNEL_CATEGORIES.includes(channel.category)) {
-					continue;
-				}
-
-				// Check for properties
 				const properties = channel.properties ?? [];
-				const hasTemperature = properties.some((p) => p.category === PropertyCategory.TEMPERATURE);
-				const hasHumidity = properties.some((p) => p.category === PropertyCategory.HUMIDITY);
-				const hasMode = properties.some((p) => p.category === PropertyCategory.MODE);
-
-				// Get existing role assignment if any
-				const roleKey = `${device.id}:${channel.id}`;
-				const existingRole = roleMap.get(roleKey);
-
-				climateTargets.push({
-					deviceId: device.id,
-					deviceName: device.name,
-					deviceCategory: device.category,
-					channelId: channel.id,
-					channelName: channel.name,
-					channelCategory: channel.category,
-					role: existingRole?.role ?? null,
-					priority: existingRole?.priority ?? 0,
-					hasTemperature,
-					hasHumidity,
-					hasMode,
-				});
+				if (properties.some((p) => p.category === PropertyCategory.TEMPERATURE)) {
+					hasTemperature = true;
+				}
+				if (properties.some((p) => p.category === PropertyCategory.HUMIDITY)) {
+					hasHumidity = true;
+				}
+				if (properties.some((p) => p.category === PropertyCategory.MODE)) {
+					hasMode = true;
+				}
 			}
+
+			// Get existing role assignment if any
+			const existingRole = roleMap.get(device.id);
+
+			climateTargets.push({
+				deviceId: device.id,
+				deviceName: device.name,
+				deviceCategory: device.category,
+				role: existingRole?.role ?? null,
+				priority: existingRole?.priority ?? 0,
+				hasTemperature,
+				hasHumidity,
+				hasMode,
+			});
 		}
 
 		this.logger.debug(`Found ${climateTargets.length} climate targets in space id=${spaceId}`);
@@ -390,7 +358,7 @@ export class SpaceClimateRoleService {
 			const target = climateTargets[i];
 			let role: ClimateRole;
 
-			// Assign role based on device/channel category
+			// Assign role based on device category
 			if (target.deviceCategory === DeviceCategory.THERMOSTAT && !primaryFound) {
 				role = ClimateRole.PRIMARY;
 				primaryFound = true;
@@ -413,7 +381,6 @@ export class SpaceClimateRoleService {
 
 			defaultRoles.push({
 				deviceId: target.deviceId,
-				channelId: target.channelId,
 				role,
 				priority: i,
 			});
@@ -425,14 +392,14 @@ export class SpaceClimateRoleService {
 	}
 
 	/**
-	 * Get role assignments for all climate devices in a space, indexed by device/channel
+	 * Get role assignments for all climate devices in a space, indexed by device ID
 	 */
 	async getRoleMap(spaceId: string): Promise<Map<string, SpaceClimateRoleEntity>> {
 		const roles = await this.findBySpace(spaceId);
 		const map = new Map<string, SpaceClimateRoleEntity>();
 
 		for (const role of roles) {
-			map.set(`${role.deviceId}:${role.channelId}`, role);
+			map.set(role.deviceId, role);
 		}
 
 		return map;
@@ -444,7 +411,6 @@ export class SpaceClimateRoleService {
 	private async buildClimateTargetEventPayload(
 		spaceId: string,
 		deviceId: string,
-		channelId: string,
 		role: ClimateRole | null,
 		priority: number,
 	): Promise<ClimateTargetEventPayload | null> {
@@ -459,27 +425,30 @@ export class SpaceClimateRoleService {
 			return null;
 		}
 
-		const channel = device.channels?.find((ch) => ch.id === channelId);
+		// Aggregate capabilities from all device channels
+		let hasTemperature = false;
+		let hasHumidity = false;
+		let hasMode = false;
 
-		if (!channel) {
-			this.logger.warn(`Channel ${channelId} not found when building event payload`);
-			return null;
+		for (const channel of device.channels ?? []) {
+			const properties = channel.properties ?? [];
+			if (properties.some((p) => p.category === PropertyCategory.TEMPERATURE)) {
+				hasTemperature = true;
+			}
+			if (properties.some((p) => p.category === PropertyCategory.HUMIDITY)) {
+				hasHumidity = true;
+			}
+			if (properties.some((p) => p.category === PropertyCategory.MODE)) {
+				hasMode = true;
+			}
 		}
 
-		const properties = channel.properties ?? [];
-		const hasTemperature = properties.some((p) => p.category === PropertyCategory.TEMPERATURE);
-		const hasHumidity = properties.some((p) => p.category === PropertyCategory.HUMIDITY);
-		const hasMode = properties.some((p) => p.category === PropertyCategory.MODE);
-
 		return {
-			id: `${deviceId}:${channelId}`,
+			id: deviceId,
 			space_id: spaceId,
 			device_id: deviceId,
 			device_name: device.name,
 			device_category: device.category,
-			channel_id: channelId,
-			channel_name: channel.name,
-			channel_category: channel.category,
 			role,
 			priority,
 			has_temperature: hasTemperature,
