@@ -130,19 +130,19 @@ const climateTargets = ref<IClimateTarget[]>([]);
 
 // Control roles for actuator devices
 const controlRoleOptions = computed(() => [
-	{ value: ClimateRole.PRIMARY, label: t('spacesModule.climateRoles.primary') },
-	{ value: ClimateRole.AUXILIARY, label: t('spacesModule.climateRoles.auxiliary') },
-	{ value: ClimateRole.VENTILATION, label: t('spacesModule.climateRoles.ventilation') },
-	{ value: ClimateRole.HUMIDITY_CONTROL, label: t('spacesModule.climateRoles.humidityControl') },
-	{ value: ClimateRole.OTHER, label: t('spacesModule.climateRoles.other') },
-	{ value: ClimateRole.HIDDEN, label: t('spacesModule.climateRoles.hidden') },
+	{ value: ClimateRole.PRIMARY, label: t(`spacesModule.climateRoles.${ClimateRole.PRIMARY}`) },
+	{ value: ClimateRole.AUXILIARY, label: t(`spacesModule.climateRoles.${ClimateRole.AUXILIARY}`) },
+	{ value: ClimateRole.VENTILATION, label: t(`spacesModule.climateRoles.${ClimateRole.VENTILATION}`) },
+	{ value: ClimateRole.HUMIDITY_CONTROL, label: t(`spacesModule.climateRoles.${ClimateRole.HUMIDITY_CONTROL}`) },
+	{ value: ClimateRole.OTHER, label: t(`spacesModule.climateRoles.${ClimateRole.OTHER}`) },
+	{ value: ClimateRole.HIDDEN, label: t(`spacesModule.climateRoles.${ClimateRole.HIDDEN}`) },
 ]);
 
 // Sensor roles for sensor device channels
 const sensorRoleOptions = computed(() => [
-	{ value: ClimateRole.TEMPERATURE_SENSOR, label: t('spacesModule.climateRoles.temperatureSensor') },
-	{ value: ClimateRole.HUMIDITY_SENSOR, label: t('spacesModule.climateRoles.humiditySensor') },
-	{ value: ClimateRole.HIDDEN, label: t('spacesModule.climateRoles.hidden') },
+	{ value: ClimateRole.TEMPERATURE_SENSOR, label: t(`spacesModule.climateRoles.${ClimateRole.TEMPERATURE_SENSOR}`) },
+	{ value: ClimateRole.HUMIDITY_SENSOR, label: t(`spacesModule.climateRoles.${ClimateRole.HUMIDITY_SENSOR}`) },
+	{ value: ClimateRole.HIDDEN, label: t(`spacesModule.climateRoles.${ClimateRole.HIDDEN}`) },
 ]);
 
 // Get role options based on device category
