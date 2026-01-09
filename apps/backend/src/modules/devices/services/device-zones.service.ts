@@ -52,7 +52,7 @@ export class DeviceZonesService {
 
 		const relations = await this.repository.find({
 			where: { zoneId },
-			relations: ['device'],
+			relations: ['device', 'device.channels', 'device.channels.properties'],
 		});
 
 		const devices = relations.map((r) => r.device).filter((d) => d !== null);
