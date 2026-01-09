@@ -319,10 +319,11 @@ export class DeviceValidationService {
 		for (const channel of channels) {
 			if (channel.parentId) {
 				// Channel has a parent - group by parent for scoped validation
-				if (!channelsByParent.has(channel.parentId)) {
-					channelsByParent.set(channel.parentId, new Map());
+				let parentMap = channelsByParent.get(channel.parentId);
+				if (!parentMap) {
+					parentMap = new Map();
+					channelsByParent.set(channel.parentId, parentMap);
 				}
-				const parentMap = channelsByParent.get(channel.parentId)!;
 				const existing = parentMap.get(channel.category) || [];
 				existing.push(channel);
 				parentMap.set(channel.category, existing);
@@ -778,10 +779,11 @@ export class DeviceValidationService {
 		for (const channel of channels) {
 			if (channel.parent) {
 				// Channel has a parent - group by parent for scoped validation
-				if (!channelsByParent.has(channel.parent)) {
-					channelsByParent.set(channel.parent, new Map());
+				let parentMap = channelsByParent.get(channel.parent);
+				if (!parentMap) {
+					parentMap = new Map();
+					channelsByParent.set(channel.parent, parentMap);
 				}
-				const parentMap = channelsByParent.get(channel.parent)!;
 				const existing = parentMap.get(channel.category) || [];
 				existing.push(channel);
 				parentMap.set(channel.category, existing);
