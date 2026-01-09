@@ -22,6 +22,8 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/heater.dart'
 import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/intents/service.dart';
+import 'package:fastybird_smart_panel/modules/weather/service.dart';
+import 'package:fastybird_smart_panel/modules/weather/types/configuration.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -110,6 +112,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   DevicesService? _devicesService;
   IntentOverlayService? _intentOverlayService;
   DeviceControlStateService? _deviceControlStateService;
+  WeatherService? _weatherService;
 
   // Track which devices are currently being toggled (prevents double-taps)
   final Set<String> _togglingDevices = {};
@@ -158,6 +161,14 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             '[ClimateDomainView] Failed to get DeviceControlStateService: $e');
       }
     }
+
+    try {
+      _weatherService = locator<WeatherService>();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[ClimateDomainView] Failed to get WeatherService: $e');
+      }
+    }
   }
 
   @override
@@ -196,6 +207,16 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         .getDevicesForRoom(_roomId)
         .where((device) => _climateCategories.contains(device.category))
         .toList();
+  }
+
+  /// Get temperature unit string from weather service configuration.
+  /// Falls back to Celsius if weather service is not available.
+  String _getTemperatureUnit() {
+    final currentDay = _weatherService?.currentDay;
+    if (currentDay != null && currentDay.unit == WeatherUnit.fahrenheit) {
+      return '°F';
+    }
+    return '°C';
   }
 
   /// Get hero device (thermostat > heater > cooler priority)
@@ -463,7 +484,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
               heaterChannel.temperature,
               heaterChannel.minTemperature,
               heaterChannel.maxTemperature,
-              '°C',
+              _getTemperatureUnit(),
               dialSize,
               (value) =>
                   _setHeaterTemperature(context, device, value, devicesService),
@@ -494,7 +515,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
               coolerChannel.temperature,
               coolerChannel.minTemperature,
               coolerChannel.maxTemperature,
-              '°C',
+              _getTemperatureUnit(),
               dialSize,
               (value) =>
                   _setCoolerTemperature(context, device, value, devicesService),
