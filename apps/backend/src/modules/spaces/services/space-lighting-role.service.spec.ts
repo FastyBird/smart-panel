@@ -170,6 +170,7 @@ describe('SpaceLightingRoleService', () => {
 					useValue: {
 						getOneOrThrow: jest.fn().mockResolvedValue(mockSpace),
 						findDevicesBySpace: jest.fn().mockResolvedValue([mockDevice]),
+						isDeviceInSpace: jest.fn().mockResolvedValue(true),
 					},
 				},
 				{
@@ -299,11 +300,11 @@ describe('SpaceLightingRoleService', () => {
 		});
 
 		it('should throw validation exception when device does not belong to space', async () => {
-			const otherDevice = { ...mockDevice, roomId: uuid() } as unknown as DeviceEntity;
-			deviceRepository.findOne.mockResolvedValue(otherDevice);
+			// Mock isDeviceInSpace to return false
+			spacesService.isDeviceInSpace.mockResolvedValueOnce(false);
 
 			const dto = {
-				deviceId: otherDevice.id,
+				deviceId: mockDevice.id,
 				channelId: mockChannel.id,
 				role: LightingRole.MAIN,
 			};

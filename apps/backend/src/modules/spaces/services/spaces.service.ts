@@ -309,6 +309,27 @@ export class SpacesService {
 		}
 	}
 
+	/**
+	 * Check if a device belongs to a space (room or zone)
+	 * - For rooms: checks device.roomId
+	 * - For zones: checks the zone-device junction table
+	 */
+	async isDeviceInSpace(spaceId: string, deviceId: string): Promise<boolean> {
+		const space = await this.getOneOrThrow(spaceId);
+
+		if (space.type === SpaceType.ROOM) {
+			// For rooms, check device.roomId
+			const device = await this.deviceRepository.findOne({
+				where: { id: deviceId, roomId: spaceId },
+			});
+			return device !== null;
+		} else {
+			// For zones, check the junction table
+			const zoneDevices = await this.deviceZonesService.getZoneDevices(spaceId);
+			return zoneDevices.some((d) => d.id === deviceId);
+		}
+	}
+
 	async findDisplaysBySpace(spaceId: string): Promise<DisplayEntity[]> {
 		this.logger.debug(`Fetching displays for space with id=${spaceId}`);
 

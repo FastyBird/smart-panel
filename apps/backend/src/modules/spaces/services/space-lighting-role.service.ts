@@ -124,7 +124,9 @@ export class SpaceLightingRoleService {
 			throw new SpacesValidationException(`Device with id=${dto.deviceId} not found`);
 		}
 
-		if (device.roomId !== spaceId) {
+		// Verify device belongs to this space (works for both rooms and zones)
+		const deviceInSpace = await this.spacesService.isDeviceInSpace(spaceId, dto.deviceId);
+		if (!deviceInSpace) {
 			throw new SpacesValidationException(`Device with id=${dto.deviceId} does not belong to space ${spaceId}`);
 		}
 
