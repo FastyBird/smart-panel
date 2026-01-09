@@ -124,13 +124,13 @@ const applyingDefaults = ref(false);
 const lightTargets = ref<ILightTarget[]>([]);
 
 const roleOptions = computed(() => [
-	{ value: LightingRole.MAIN, label: t('spacesModule.lightingRoles.main') },
-	{ value: LightingRole.TASK, label: t('spacesModule.lightingRoles.task') },
-	{ value: LightingRole.AMBIENT, label: t('spacesModule.lightingRoles.ambient') },
-	{ value: LightingRole.ACCENT, label: t('spacesModule.lightingRoles.accent') },
-	{ value: LightingRole.NIGHT, label: t('spacesModule.lightingRoles.night') },
-	{ value: LightingRole.OTHER, label: t('spacesModule.lightingRoles.other') },
-	{ value: LightingRole.HIDDEN, label: t('spacesModule.lightingRoles.hidden') },
+	{ value: LightingRole.main, label: t('spacesModule.lightingRoles.main') },
+	{ value: LightingRole.task, label: t('spacesModule.lightingRoles.task') },
+	{ value: LightingRole.ambient, label: t('spacesModule.lightingRoles.ambient') },
+	{ value: LightingRole.accent, label: t('spacesModule.lightingRoles.accent') },
+	{ value: LightingRole.night, label: t('spacesModule.lightingRoles.night') },
+	{ value: LightingRole.other, label: t('spacesModule.lightingRoles.other') },
+	{ value: LightingRole.hidden, label: t('spacesModule.lightingRoles.hidden') },
 ]);
 
 const loadLightTargets = async (): Promise<void> => {
