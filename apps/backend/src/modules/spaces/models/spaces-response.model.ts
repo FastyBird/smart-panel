@@ -3,7 +3,7 @@ import { Expose, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
-import { ChannelCategory, DeviceCategory } from '../../devices/devices.constants';
+import { DeviceCategory } from '../../devices/devices.constants';
 import { SpaceClimateRoleEntity } from '../entities/space-climate-role.entity';
 import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
 import { SpaceEntity } from '../entities/space.entity';

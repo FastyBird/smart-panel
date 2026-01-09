@@ -193,7 +193,12 @@ export class SpaceClimateRoleService {
 		// Only emit event if values actually changed
 		if (hasChanges) {
 			// Emit event for websocket clients with full climate target info
-			const eventPayload = await this.buildClimateTargetEventPayload(spaceId, dto.deviceId, dto.role, dto.priority ?? 0);
+			const eventPayload = await this.buildClimateTargetEventPayload(
+				spaceId,
+				dto.deviceId,
+				dto.role,
+				dto.priority ?? 0,
+			);
 
 			if (eventPayload) {
 				const eventType = isUpdate ? EventType.CLIMATE_TARGET_UPDATED : EventType.CLIMATE_TARGET_CREATED;
