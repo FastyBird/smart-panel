@@ -231,26 +231,26 @@ export class SpaceClimateRoleService {
 				hasChanges = true; // New record is always a change
 			}
 
-			// Upsert within the same transaction to maintain atomicity
-			await transactionalManager.upsert(
-				SpaceClimateRoleEntity,
-				{
+			// Use explicit insert/update instead of upsert to handle NULL channelId correctly
+			// SQLite treats NULL as distinct in unique constraints, so upsert's conflictPaths
+			// won't detect conflicts when channelId is NULL (actuator roles)
+			if (existingRole) {
+				// Update existing role
+				existingRole.role = newRole;
+				existingRole.priority = newPriority;
+				existingRole.channelId = channelId;
+				roleEntity = await transactionalManager.save(existingRole);
+			} else {
+				// Create new role
+				const newEntity = transactionalManager.create(SpaceClimateRoleEntity, {
 					spaceId,
 					deviceId: dto.deviceId,
 					channelId,
 					role: newRole,
 					priority: newPriority,
-				},
-				{
-					conflictPaths: ['spaceId', 'deviceId', 'channelId'],
-					skipUpdateIfNoValuesChanged: true,
-				},
-			);
-
-			// Fetch the saved entity within the transaction
-			roleEntity = await transactionalManager.findOne(SpaceClimateRoleEntity, {
-				where: { spaceId, deviceId: dto.deviceId, channelId },
-			});
+				});
+				roleEntity = await transactionalManager.save(newEntity);
+			}
 		});
 
 		if (!roleEntity) {
