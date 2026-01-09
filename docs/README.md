@@ -6,8 +6,12 @@ This directory contains developer documentation for the Smart Panel project.
 
 ```
 docs/
-├── README.md           # This file
-└── architecture.md     # System architecture overview
+├── README.md                      # This file
+├── architecture.md                # System architecture overview
+├── device-simulator.md            # Device simulator plugin for testing
+├── extensions.md                  # Extensions system documentation
+├── spaces_devices_relations.md    # Spaces and devices relationships
+└── spaces_rooms_and_zones.md      # Rooms and zones documentation
 ```
 
 ## Related Documentation
@@ -23,6 +27,7 @@ docs/
 - [Architecture Overview](./architecture.md) - System design and module structure
 - [Development Guidelines](../.ai-rules/GUIDELINES.md) - Setup, build commands, coding style
 - [API Conventions](../.ai-rules/API_CONVENTIONS.md) - Backend API patterns
+- [Device Simulator](./device-simulator.md) - Create virtual devices for testing
 
 ### For AI Tools
 
