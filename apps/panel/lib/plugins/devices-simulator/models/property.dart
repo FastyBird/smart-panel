@@ -1,0 +1,88 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_data_type.dart';
+import 'package:fastybird_smart_panel/api/models/devices_module_permission_type.dart';
+import 'package:fastybird_smart_panel/api/models/devices_module_property_category.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/properties/properties.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
+import 'package:fastybird_smart_panel/plugins/devices-simulator/constants.dart';
+
+class SimulatorChannelPropertyModel extends ChannelPropertyModel {
+  SimulatorChannelPropertyModel({
+    required super.id,
+    required super.channel,
+    super.category = DevicesModulePropertyCategory.generic,
+    super.name,
+    super.permission = const [],
+    super.dataType = DevicesModuleDataType.unknown,
+    super.unit,
+    super.format,
+    super.invalid,
+    super.step,
+    super.defaultValue,
+    super.value,
+    super.createdAt,
+    super.updatedAt,
+  }) : super(
+          type: simulatorDeviceType,
+        );
+
+  factory SimulatorChannelPropertyModel.fromJson(Map<String, dynamic> json) {
+    return SimulatorChannelPropertyModel(
+      channel: json['channel'],
+      id: json['id'],
+      category: DevicesModulePropertyCategory.fromJson(json['category']),
+      name: json['name'],
+      permission: (json['permission'] as List<dynamic>? ?? [])
+          .map((e) => DevicesModulePermissionType.fromJson(e.toString()))
+          .where((e) => e != DevicesModulePermissionType.$unknown)
+          .toList(),
+      dataType: DevicesModuleDataType.fromJson(json['data_type']),
+      unit: json['unit'],
+      format:
+          json['format'] != null ? FormatType.fromJson(json['format']) : null,
+      invalid: json['invalid'] != null
+          ? InvalidValueType.fromJson(json['invalid'])
+          : null,
+      step: json['step'] != null ? (json['step'] as num).toDouble() : null,
+      defaultValue: json['default_value'] != null
+          ? ValueType.fromJson(json['default_value'])
+          : null,
+      value: json['value'] != null ? ValueType.fromJson(json['value']) : null,
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'])
+          : null,
+    );
+  }
+
+  @override
+  SimulatorChannelPropertyModel copyWith({
+    ValueType? value,
+    bool? clearValue,
+  }) {
+    ValueType? setValue = value ?? this.value;
+
+    if (clearValue == true) {
+      setValue = null;
+    }
+
+    return SimulatorChannelPropertyModel(
+      channel: channel,
+      id: id,
+      category: category,
+      name: name,
+      permission: permission,
+      dataType: dataType,
+      unit: unit,
+      format: format,
+      invalid: invalid,
+      step: step,
+      defaultValue: defaultValue,
+      value: setValue,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+    );
+  }
+}

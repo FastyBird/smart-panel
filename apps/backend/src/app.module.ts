@@ -50,6 +50,8 @@ import { DEVICES_SHELLY_NG_PLUGIN_PREFIX } from './plugins/devices-shelly-ng/dev
 import { DevicesShellyNgPlugin } from './plugins/devices-shelly-ng/devices-shelly-ng.plugin';
 import { DEVICES_SHELLY_V1_PLUGIN_PREFIX } from './plugins/devices-shelly-v1/devices-shelly-v1.constants';
 import { DevicesShellyV1Plugin } from './plugins/devices-shelly-v1/devices-shelly-v1.plugin';
+import { DEVICES_SIMULATOR_PLUGIN_PREFIX } from './plugins/devices-simulator/devices-simulator.constants';
+import { DevicesSimulatorPlugin } from './plugins/devices-simulator/devices-simulator.plugin';
 import { DEVICES_THIRD_PARTY_PLUGIN_PREFIX } from './plugins/devices-third-party/devices-third-party.constants';
 import { DevicesThirdPartyPlugin } from './plugins/devices-third-party/devices-third-party.plugin';
 import { DEVICES_WLED_PLUGIN_PREFIX } from './plugins/devices-wled/devices-wled.constants';
@@ -217,6 +219,10 @@ export class AppModule {
 								module: DevicesZigbee2mqttPlugin,
 							},
 							{
+								path: DEVICES_SIMULATOR_PLUGIN_PREFIX,
+								module: DevicesSimulatorPlugin,
+							},
+							{
 								path: WEATHER_OPENWEATHERMAP_PLUGIN_PREFIX,
 								module: WeatherOpenweathermapPlugin,
 							},
@@ -253,6 +259,7 @@ export class AppModule {
 				DevicesShellyV1Plugin,
 				DevicesWledPlugin,
 				DevicesZigbee2mqttPlugin,
+				DevicesSimulatorPlugin,
 				PagesCardsPlugin,
 				PagesDeviceDetailPlugin,
 				PagesTilesPlugin,

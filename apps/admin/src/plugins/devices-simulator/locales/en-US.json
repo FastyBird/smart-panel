@@ -1,0 +1,35 @@
+{
+  "fields": {
+    "devices": {
+      "id": {
+        "title": "Internal identifier",
+        "placeholder": "Device id"
+      },
+      "identifier": {
+        "title": "System identifier",
+        "placeholder": "Device system identifier"
+      },
+      "category": {
+        "title": "Category",
+        "placeholder": "Device category",
+        "validation": {
+          "required": "Please select device category"
+        }
+      },
+      "name": {
+        "title": "Name",
+        "placeholder": "Device name",
+        "validation": {
+          "required": "Please fill in device name"
+        }
+      },
+      "description": {
+        "title": "Description",
+        "placeholder": "Device description"
+      },
+      "enabled": {
+        "title": "Enabled"
+      }
+    }
+  }
+}
