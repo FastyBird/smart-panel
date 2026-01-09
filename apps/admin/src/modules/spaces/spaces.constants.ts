@@ -419,39 +419,24 @@ export function getTemplatesForType(
 	return SPACE_CATEGORY_TEMPLATES;
 }
 
-export enum LightingRole {
-	MAIN = 'main',
-	TASK = 'task',
-	AMBIENT = 'ambient',
-	ACCENT = 'accent',
-	NIGHT = 'night',
-	OTHER = 'other',
-	HIDDEN = 'hidden',
-}
+// Re-export role enums from OpenAPI-generated types (single source of truth)
+export { SpacesModuleLightingRole as LightingRole, SpacesModuleClimateRole as ClimateRole } from '../../openapi.constants';
 
-export enum ClimateRole {
-	// Control roles (actuators)
-	PRIMARY = 'primary',
-	AUXILIARY = 'auxiliary',
-	VENTILATION = 'ventilation',
-	HUMIDITY_CONTROL = 'humidity_control',
-	// Read roles (sensors)
-	TEMPERATURE_SENSOR = 'temperature_sensor',
-	HUMIDITY_SENSOR = 'humidity_sensor',
-	// Other
-	OTHER = 'other',
-	HIDDEN = 'hidden',
-}
+// Import for local use in helper arrays
+import { SpacesModuleClimateRole } from '../../openapi.constants';
 
 // Helper arrays for role categorization
 export const CLIMATE_CONTROL_ROLES = [
-	ClimateRole.PRIMARY,
-	ClimateRole.AUXILIARY,
-	ClimateRole.VENTILATION,
-	ClimateRole.HUMIDITY_CONTROL,
+	SpacesModuleClimateRole.primary,
+	SpacesModuleClimateRole.auxiliary,
+	SpacesModuleClimateRole.ventilation,
+	SpacesModuleClimateRole.humidity_control,
 ] as const;
 
-export const CLIMATE_SENSOR_ROLES = [ClimateRole.TEMPERATURE_SENSOR, ClimateRole.HUMIDITY_SENSOR] as const;
+export const CLIMATE_SENSOR_ROLES = [
+	SpacesModuleClimateRole.temperature_sensor,
+	SpacesModuleClimateRole.humidity_sensor,
+] as const;
 
 export enum FormResult {
 	NONE = 'none',

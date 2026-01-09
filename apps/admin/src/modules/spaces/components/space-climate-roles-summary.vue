@@ -86,19 +86,19 @@ const roleSummaries = ref<IClimateRoleSummary[]>([]);
 
 const getRoleTagType = (role: string): 'primary' | 'success' | 'warning' | 'info' | 'danger' => {
 	switch (role) {
-		case ClimateRole.PRIMARY:
+		case ClimateRole.primary:
 			return 'primary';
-		case ClimateRole.AUXILIARY:
+		case ClimateRole.auxiliary:
 			return 'warning';
-		case ClimateRole.VENTILATION:
+		case ClimateRole.ventilation:
 			return 'success';
-		case ClimateRole.HUMIDITY_CONTROL:
+		case ClimateRole.humidity_control:
 			return 'info';
-		case ClimateRole.TEMPERATURE_SENSOR:
+		case ClimateRole.temperature_sensor:
 			return 'warning';
-		case ClimateRole.HUMIDITY_SENSOR:
+		case ClimateRole.humidity_sensor:
 			return 'info';
-		case ClimateRole.OTHER:
+		case ClimateRole.other:
 		default:
 			return 'info';
 	}
@@ -106,19 +106,19 @@ const getRoleTagType = (role: string): 'primary' | 'success' | 'warning' | 'info
 
 const getRoleIcon = (role: string): string => {
 	switch (role) {
-		case ClimateRole.PRIMARY:
+		case ClimateRole.primary:
 			return 'mdi:thermostat';
-		case ClimateRole.AUXILIARY:
+		case ClimateRole.auxiliary:
 			return 'mdi:radiator';
-		case ClimateRole.VENTILATION:
+		case ClimateRole.ventilation:
 			return 'mdi:fan';
-		case ClimateRole.HUMIDITY_CONTROL:
+		case ClimateRole.humidity_control:
 			return 'mdi:water-percent';
-		case ClimateRole.TEMPERATURE_SENSOR:
+		case ClimateRole.temperature_sensor:
 			return 'mdi:thermometer';
-		case ClimateRole.HUMIDITY_SENSOR:
+		case ClimateRole.humidity_sensor:
 			return 'mdi:water-percent';
-		case ClimateRole.OTHER:
+		case ClimateRole.other:
 		default:
 			return 'mdi:thermostat-box';
 	}
@@ -167,7 +167,7 @@ const loadClimateRoles = async (): Promise<void> => {
 		const roleMap = new Map<string, IClimateRoleSummary>();
 
 		for (const target of responseData.data ?? []) {
-			if (!target.role || (target.role as string) === ClimateRole.HIDDEN) continue;
+			if (!target.role || (target.role as string) === ClimateRole.hidden) continue;
 
 			const role = target.role as string;
 			if (!roleMap.has(role)) {
@@ -186,13 +186,13 @@ const loadClimateRoles = async (): Promise<void> => {
 
 		// Convert map to array and sort by role order
 		const roleOrder = [
-			ClimateRole.PRIMARY,
-			ClimateRole.AUXILIARY,
-			ClimateRole.VENTILATION,
-			ClimateRole.HUMIDITY_CONTROL,
-			ClimateRole.TEMPERATURE_SENSOR,
-			ClimateRole.HUMIDITY_SENSOR,
-			ClimateRole.OTHER,
+			ClimateRole.primary,
+			ClimateRole.auxiliary,
+			ClimateRole.ventilation,
+			ClimateRole.humidity_control,
+			ClimateRole.temperature_sensor,
+			ClimateRole.humidity_sensor,
+			ClimateRole.other,
 		];
 
 		roleSummaries.value = Array.from(roleMap.values()).sort((a, b) => {

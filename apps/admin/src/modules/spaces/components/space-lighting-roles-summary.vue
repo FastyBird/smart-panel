@@ -86,17 +86,17 @@ const roleSummaries = ref<ILightingRoleSummary[]>([]);
 
 const getRoleTagType = (role: string): 'primary' | 'success' | 'warning' | 'info' | 'danger' => {
 	switch (role) {
-		case LightingRole.MAIN:
+		case LightingRole.main:
 			return 'primary';
-		case LightingRole.TASK:
+		case LightingRole.task:
 			return 'warning';
-		case LightingRole.AMBIENT:
+		case LightingRole.ambient:
 			return 'success';
-		case LightingRole.ACCENT:
+		case LightingRole.accent:
 			return 'danger';
-		case LightingRole.NIGHT:
+		case LightingRole.night:
 			return 'info';
-		case LightingRole.OTHER:
+		case LightingRole.other:
 		default:
 			return 'info';
 	}
@@ -104,17 +104,17 @@ const getRoleTagType = (role: string): 'primary' | 'success' | 'warning' | 'info
 
 const getRoleIcon = (role: string): string => {
 	switch (role) {
-		case LightingRole.MAIN:
+		case LightingRole.main:
 			return 'mdi:lightbulb';
-		case LightingRole.TASK:
+		case LightingRole.task:
 			return 'mdi:desk-lamp';
-		case LightingRole.AMBIENT:
+		case LightingRole.ambient:
 			return 'mdi:lightbulb-group';
-		case LightingRole.ACCENT:
+		case LightingRole.accent:
 			return 'mdi:spotlight-beam';
-		case LightingRole.NIGHT:
+		case LightingRole.night:
 			return 'mdi:weather-night';
-		case LightingRole.OTHER:
+		case LightingRole.other:
 		default:
 			return 'mdi:lightbulb-outline';
 	}
@@ -160,12 +160,12 @@ const loadLightingRoles = async (): Promise<void> => {
 
 		// Convert map to array and sort by role order
 		const roleOrder = [
-			LightingRole.MAIN,
-			LightingRole.TASK,
-			LightingRole.AMBIENT,
-			LightingRole.ACCENT,
-			LightingRole.NIGHT,
-			LightingRole.OTHER,
+			LightingRole.main,
+			LightingRole.task,
+			LightingRole.ambient,
+			LightingRole.accent,
+			LightingRole.night,
+			LightingRole.other,
 		];
 
 		roleSummaries.value = Array.from(roleMap.values()).sort((a, b) => {

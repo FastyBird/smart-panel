@@ -130,19 +130,19 @@ const climateTargets = ref<IClimateTarget[]>([]);
 
 // Control roles for actuator devices
 const controlRoleOptions = computed(() => [
-	{ value: ClimateRole.PRIMARY, label: t(`spacesModule.climateRoles.${ClimateRole.PRIMARY}`) },
-	{ value: ClimateRole.AUXILIARY, label: t(`spacesModule.climateRoles.${ClimateRole.AUXILIARY}`) },
-	{ value: ClimateRole.VENTILATION, label: t(`spacesModule.climateRoles.${ClimateRole.VENTILATION}`) },
-	{ value: ClimateRole.HUMIDITY_CONTROL, label: t(`spacesModule.climateRoles.${ClimateRole.HUMIDITY_CONTROL}`) },
-	{ value: ClimateRole.OTHER, label: t(`spacesModule.climateRoles.${ClimateRole.OTHER}`) },
-	{ value: ClimateRole.HIDDEN, label: t(`spacesModule.climateRoles.${ClimateRole.HIDDEN}`) },
+	{ value: ClimateRole.primary, label: t(`spacesModule.climateRoles.${ClimateRole.primary}`) },
+	{ value: ClimateRole.auxiliary, label: t(`spacesModule.climateRoles.${ClimateRole.auxiliary}`) },
+	{ value: ClimateRole.ventilation, label: t(`spacesModule.climateRoles.${ClimateRole.ventilation}`) },
+	{ value: ClimateRole.humidity_control, label: t(`spacesModule.climateRoles.${ClimateRole.humidity_control}`) },
+	{ value: ClimateRole.other, label: t(`spacesModule.climateRoles.${ClimateRole.other}`) },
+	{ value: ClimateRole.hidden, label: t(`spacesModule.climateRoles.${ClimateRole.hidden}`) },
 ]);
 
 // Sensor roles for sensor device channels
 const sensorRoleOptions = computed(() => [
-	{ value: ClimateRole.TEMPERATURE_SENSOR, label: t(`spacesModule.climateRoles.${ClimateRole.TEMPERATURE_SENSOR}`) },
-	{ value: ClimateRole.HUMIDITY_SENSOR, label: t(`spacesModule.climateRoles.${ClimateRole.HUMIDITY_SENSOR}`) },
-	{ value: ClimateRole.HIDDEN, label: t(`spacesModule.climateRoles.${ClimateRole.HIDDEN}`) },
+	{ value: ClimateRole.temperature_sensor, label: t(`spacesModule.climateRoles.${ClimateRole.temperature_sensor}`) },
+	{ value: ClimateRole.humidity_sensor, label: t(`spacesModule.climateRoles.${ClimateRole.humidity_sensor}`) },
+	{ value: ClimateRole.hidden, label: t(`spacesModule.climateRoles.${ClimateRole.hidden}`) },
 ]);
 
 // Get role options based on device category
