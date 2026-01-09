@@ -63,8 +63,6 @@ export const transformSpaceResponse = (response: ApiSpace): ISpace => {
 		icon: response.icon ?? null,
 		displayOrder: response.display_order ?? 0,
 		parentId: response.parent_id ?? null,
-		primaryThermostatId: response.primary_thermostat_id ?? null,
-		primaryTemperatureSensorId: response.primary_temperature_sensor_id ?? null,
 		suggestionsEnabled: response.suggestions_enabled ?? true,
 		createdAt: new Date(response.created_at),
 		updatedAt: response.updated_at ? new Date(response.updated_at) : null,
@@ -81,8 +79,6 @@ export const transformSpaceCreateRequest = (data: ISpaceCreateData): ApiSpaceCre
 		icon: data.icon ?? undefined,
 		display_order: data.displayOrder,
 		parent_id: data.parentId ?? undefined,
-		primary_thermostat_id: data.primaryThermostatId ?? undefined,
-		primary_temperature_sensor_id: data.primaryTemperatureSensorId ?? undefined,
 		suggestions_enabled: data.suggestionsEnabled,
 	};
 };
@@ -102,16 +98,6 @@ export const transformSpaceEditRequest = (data: ISpaceEditData): ApiSpaceUpdate 
 	// Parent zone assignment - explicitly include null to unassign
 	if ('parentId' in data) {
 		baseData.parent_id = data.parentId ?? null;
-	}
-
-	// Primary thermostat ID - explicitly include null to unassign
-	if ('primaryThermostatId' in data) {
-		baseData.primary_thermostat_id = data.primaryThermostatId ?? null;
-	}
-
-	// Primary temperature sensor ID - explicitly include null to unassign
-	if ('primaryTemperatureSensorId' in data) {
-		baseData.primary_temperature_sensor_id = data.primaryTemperatureSensorId ?? null;
 	}
 
 	return baseData as ApiSpaceUpdate;

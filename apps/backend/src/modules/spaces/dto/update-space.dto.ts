@@ -105,39 +105,6 @@ export class UpdateSpaceDto {
 	display_order?: number;
 
 	@ApiPropertyOptional({
-		name: 'primary_thermostat_id',
-		description: 'ID of the primary thermostat device for this space (optional admin override)',
-		type: 'string',
-		format: 'uuid',
-		nullable: true,
-		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
-	})
-	@Expose()
-	@IsOptional()
-	@IsUUID('4', {
-		message: '[{"field":"primary_thermostat_id","reason":"Primary thermostat ID must be a valid UUID."}]',
-	})
-	@ValidateIf((_, value) => value !== null)
-	primary_thermostat_id?: string | null;
-
-	@ApiPropertyOptional({
-		name: 'primary_temperature_sensor_id',
-		description: 'ID of the primary temperature sensor device for this space (optional admin override)',
-		type: 'string',
-		format: 'uuid',
-		nullable: true,
-		example: 'a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7',
-	})
-	@Expose()
-	@IsOptional()
-	@IsUUID('4', {
-		message:
-			'[{"field":"primary_temperature_sensor_id","reason":"Primary temperature sensor ID must be a valid UUID."}]',
-	})
-	@ValidateIf((_, value) => value !== null)
-	primary_temperature_sensor_id?: string | null;
-
-	@ApiPropertyOptional({
 		name: 'suggestions_enabled',
 		description: 'Whether suggestions are enabled for this space',
 		type: 'boolean',

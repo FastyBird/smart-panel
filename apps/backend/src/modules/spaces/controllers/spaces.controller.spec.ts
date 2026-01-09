@@ -13,6 +13,7 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { SpaceEntity } from '../entities/space.entity';
+import { SpaceClimateRoleService } from '../services/space-climate-role.service';
 import { SpaceContextSnapshotService } from '../services/space-context-snapshot.service';
 import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
@@ -104,8 +105,6 @@ describe('SpacesController', () => {
 							minSetpoint: null,
 							maxSetpoint: null,
 							canSetSetpoint: false,
-							primaryThermostatId: null,
-							primarySensorId: null,
 						}),
 						executeClimateIntent: jest.fn().mockResolvedValue({
 							success: true,
@@ -131,6 +130,25 @@ describe('SpacesController', () => {
 						deleteRole: jest.fn().mockResolvedValue(undefined),
 						getLightTargetsInSpace: jest.fn().mockResolvedValue([]),
 						inferDefaultLightingRoles: jest.fn().mockResolvedValue([]),
+						getRoleMap: jest.fn().mockResolvedValue(new Map()),
+					},
+				},
+				{
+					provide: SpaceClimateRoleService,
+					useValue: {
+						findBySpace: jest.fn().mockResolvedValue([]),
+						findOne: jest.fn().mockResolvedValue(null),
+						setRole: jest.fn().mockResolvedValue({}),
+						bulkSetRoles: jest.fn().mockResolvedValue({
+							success: true,
+							totalCount: 0,
+							successCount: 0,
+							failureCount: 0,
+							results: [],
+						}),
+						deleteRole: jest.fn().mockResolvedValue(undefined),
+						getClimateTargetsInSpace: jest.fn().mockResolvedValue([]),
+						inferDefaultClimateRoles: jest.fn().mockResolvedValue([]),
 						getRoleMap: jest.fn().mockResolvedValue(new Map()),
 					},
 				},
@@ -636,8 +654,6 @@ describe('SpacesController', () => {
 				minSetpoint: 16,
 				maxSetpoint: 30,
 				canSetSetpoint: true,
-				primaryThermostatId: uuid(),
-				primarySensorId: null,
 			};
 			jest.spyOn(spaceIntentService, 'getClimateState').mockResolvedValue(climateState);
 
@@ -657,8 +673,6 @@ describe('SpacesController', () => {
 				minSetpoint: null,
 				maxSetpoint: null,
 				canSetSetpoint: false,
-				primaryThermostatId: null,
-				primarySensorId: null,
 			});
 
 			const result = await controller.getClimateState(mockSpace.id);
@@ -977,7 +991,6 @@ describe('SpacesController', () => {
 					maxSetpoint: null,
 					canSetSetpoint: false,
 					primaryThermostatId: null,
-					primarySensorId: null,
 				},
 			};
 			jest.spyOn(spaceContextSnapshotService, 'captureSnapshot').mockResolvedValue(snapshot);

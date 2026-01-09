@@ -1,6 +1,6 @@
 <template>
-	<div class="mt-2">
-		<el-divider content-position="left" class="mt-6!">
+	<div :class="{ 'mt-2': !hideHeader }">
+		<el-divider v-if="!hideHeader" content-position="left" class="mt-6!">
 			{{ t('spacesModule.edit.sections.smartOverrides.lightingRoles') }}
 		</el-divider>
 
@@ -18,12 +18,15 @@
 		</div>
 
 		<template v-else-if="lightTargets.length > 0">
-			<el-table :data="lightTargets" border>
+			<el-table :data="lightTargets" border max-height="400px">
 				<el-table-column prop="deviceName" :label="t('spacesModule.onboarding.deviceName')" min-width="180">
 					<template #default="{ row }">
 						<div class="flex items-center gap-2">
 							<icon icon="mdi:lightbulb" />
-							<span>{{ row.deviceName }}</span>
+							<div class="flex flex-col">
+								<span>{{ row.deviceName }}</span>
+								<span v-if="row.channelName" class="text-xs text-gray-400">{{ row.channelName }}</span>
+							</div>
 						</div>
 					</template>
 				</el-table-column>
@@ -111,9 +114,12 @@ interface ILightTarget {
 
 interface IProps {
 	space: ISpace;
+	hideHeader?: boolean;
 }
 
-const props = defineProps<IProps>();
+const props = withDefaults(defineProps<IProps>(), {
+	hideHeader: false,
+});
 
 const { t } = useI18n();
 const backend = useBackend();
@@ -124,13 +130,13 @@ const applyingDefaults = ref(false);
 const lightTargets = ref<ILightTarget[]>([]);
 
 const roleOptions = computed(() => [
-	{ value: LightingRole.MAIN, label: t('spacesModule.lightingRoles.main') },
-	{ value: LightingRole.TASK, label: t('spacesModule.lightingRoles.task') },
-	{ value: LightingRole.AMBIENT, label: t('spacesModule.lightingRoles.ambient') },
-	{ value: LightingRole.ACCENT, label: t('spacesModule.lightingRoles.accent') },
-	{ value: LightingRole.NIGHT, label: t('spacesModule.lightingRoles.night') },
-	{ value: LightingRole.OTHER, label: t('spacesModule.lightingRoles.other') },
-	{ value: LightingRole.HIDDEN, label: t('spacesModule.lightingRoles.hidden') },
+	{ value: LightingRole.main, label: t('spacesModule.lightingRoles.main') },
+	{ value: LightingRole.task, label: t('spacesModule.lightingRoles.task') },
+	{ value: LightingRole.ambient, label: t('spacesModule.lightingRoles.ambient') },
+	{ value: LightingRole.accent, label: t('spacesModule.lightingRoles.accent') },
+	{ value: LightingRole.night, label: t('spacesModule.lightingRoles.night') },
+	{ value: LightingRole.other, label: t('spacesModule.lightingRoles.other') },
+	{ value: LightingRole.hidden, label: t('spacesModule.lightingRoles.hidden') },
 ]);
 
 const loadLightTargets = async (): Promise<void> => {

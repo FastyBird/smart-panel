@@ -28,8 +28,6 @@ vi.mock('../../../common', async () => {
 
 const spaceId = uuid();
 const parentId = uuid();
-const thermostatId = uuid();
-const sensorId = uuid();
 
 const validRoomResponse: ApiSpace = {
 	id: spaceId.toString(),
@@ -40,8 +38,6 @@ const validRoomResponse: ApiSpace = {
 	icon: 'mdi:sofa',
 	display_order: 1,
 	parent_id: parentId.toString(),
-	primary_thermostat_id: thermostatId.toString(),
-	primary_temperature_sensor_id: sensorId.toString(),
 	suggestions_enabled: true,
 	created_at: '2024-03-01T12:00:00Z',
 	updated_at: '2024-03-02T12:00:00Z',
@@ -56,8 +52,6 @@ const validZoneResponse: ApiSpace = {
 	icon: 'mdi:home-floor-0',
 	display_order: 0,
 	parent_id: null,
-	primary_thermostat_id: null,
-	primary_temperature_sensor_id: null,
 	suggestions_enabled: false,
 	created_at: '2024-03-01T12:00:00Z',
 	updated_at: null,
@@ -71,8 +65,6 @@ const validSpaceCreatePayload: ISpaceCreateData = {
 	icon: 'mdi:bed',
 	displayOrder: 5,
 	parentId: parentId.toString(),
-	primaryThermostatId: thermostatId.toString(),
-	primaryTemperatureSensorId: sensorId.toString(),
 	suggestionsEnabled: true,
 };
 
@@ -100,8 +92,6 @@ describe('Spaces Transformers', (): void => {
 				icon: 'mdi:sofa',
 				displayOrder: 1,
 				parentId: parentId.toString(),
-				primaryThermostatId: thermostatId.toString(),
-				primaryTemperatureSensorId: sensorId.toString(),
 				suggestionsEnabled: true,
 				createdAt: new Date('2024-03-01T12:00:00Z'),
 				updatedAt: new Date('2024-03-02T12:00:00Z'),
@@ -127,8 +117,6 @@ describe('Spaces Transformers', (): void => {
 				icon: null,
 				display_order: undefined,
 				parent_id: null,
-				primary_thermostat_id: null,
-				primary_temperature_sensor_id: null,
 				suggestions_enabled: undefined,
 				updated_at: null,
 			} as unknown as ApiSpace;
@@ -140,8 +128,6 @@ describe('Spaces Transformers', (): void => {
 			expect(result.icon).toBeNull();
 			expect(result.displayOrder).toBe(0);
 			expect(result.parentId).toBeNull();
-			expect(result.primaryThermostatId).toBeNull();
-			expect(result.primaryTemperatureSensorId).toBeNull();
 			expect(result.suggestionsEnabled).toBe(true);
 			expect(result.updatedAt).toBeNull();
 		});
@@ -159,8 +145,6 @@ describe('Spaces Transformers', (): void => {
 				icon: 'mdi:bed',
 				display_order: 5,
 				parent_id: parentId.toString(),
-				primary_thermostat_id: thermostatId.toString(),
-				primary_temperature_sensor_id: sensorId.toString(),
 				suggestions_enabled: true,
 			});
 		});
@@ -236,30 +220,6 @@ describe('Spaces Transformers', (): void => {
 
 			expect(result).toBeDefined();
 			expect(result!.parent_id).toBeNull();
-		});
-
-		it('should include null for primaryThermostatId when explicitly set', (): void => {
-			const payloadWithNullThermostat: ISpaceEditData = {
-				name: 'Room',
-				primaryThermostatId: null,
-			};
-
-			const result = transformSpaceEditRequest(payloadWithNullThermostat);
-
-			expect(result).toBeDefined();
-			expect(result!.primary_thermostat_id).toBeNull();
-		});
-
-		it('should include null for primaryTemperatureSensorId when explicitly set', (): void => {
-			const payloadWithNullSensor: ISpaceEditData = {
-				name: 'Room',
-				primaryTemperatureSensorId: null,
-			};
-
-			const result = transformSpaceEditRequest(payloadWithNullSensor);
-
-			expect(result).toBeDefined();
-			expect(result!.primary_temperature_sensor_id).toBeNull();
 		});
 
 		it('should not include parent_id when not in data', (): void => {

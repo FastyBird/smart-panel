@@ -116,8 +116,6 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 			category: null,
 			icon: null,
 			displayOrder: 0,
-			primaryThermostatId: null,
-			primaryTemperatureSensorId: null,
 			suggestionsEnabled: true,
 			lastActivityAt: null,
 			parentId: null,

@@ -3,9 +3,12 @@ import { Expose, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
+import { DeviceCategory } from '../../devices/devices.constants';
+import { SpaceClimateRoleEntity } from '../entities/space-climate-role.entity';
 import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
 import { SpaceEntity } from '../entities/space.entity';
 import {
+	ClimateRole,
 	IntentCategory,
 	LightingMode,
 	LightingRole,
@@ -284,28 +287,6 @@ export class ClimateStateDataModel {
 	})
 	@Expose({ name: 'can_set_setpoint' })
 	canSetSetpoint: boolean;
-
-	@ApiProperty({
-		name: 'primary_thermostat_id',
-		description: 'ID of the primary thermostat device',
-		type: 'string',
-		format: 'uuid',
-		nullable: true,
-		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
-	})
-	@Expose({ name: 'primary_thermostat_id' })
-	primaryThermostatId: string | null;
-
-	@ApiProperty({
-		name: 'primary_sensor_id',
-		description: 'ID of the primary temperature sensor device',
-		type: 'string',
-		format: 'uuid',
-		nullable: true,
-		example: 'a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7',
-	})
-	@Expose({ name: 'primary_sensor_id' })
-	primarySensorId: string | null;
 }
 
 /**
@@ -626,6 +607,268 @@ export class BulkLightingRolesResponseModel extends BaseSuccessResponseModel<Bul
 	@Expose()
 	@Type(() => BulkLightingRolesResultDataModel)
 	declare data: BulkLightingRolesResultDataModel;
+}
+
+// ================================
+// Climate Role Response Models
+// ================================
+
+/**
+ * Climate target data model (a climate device/channel in a space)
+ */
+@ApiSchema({ name: 'SpacesModuleDataClimateTarget' })
+export class ClimateTargetDataModel {
+	@ApiProperty({
+		name: 'device_id',
+		description: 'ID of the climate device',
+		type: 'string',
+		format: 'uuid',
+		example: 'a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7',
+	})
+	@Expose({ name: 'device_id' })
+	deviceId: string;
+
+	@ApiProperty({
+		name: 'device_name',
+		description: 'Name of the climate device',
+		type: 'string',
+		example: 'Living Room Thermostat',
+	})
+	@Expose({ name: 'device_name' })
+	deviceName: string;
+
+	@ApiProperty({
+		name: 'device_category',
+		description: 'Category of the climate device',
+		enum: DeviceCategory,
+		example: DeviceCategory.THERMOSTAT,
+	})
+	@Expose({ name: 'device_category' })
+	deviceCategory: DeviceCategory;
+
+	@ApiPropertyOptional({
+		name: 'channel_id',
+		description: 'ID of the channel (for sensor roles)',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: 'c3d29ea4-632f-5e8c-c4af-dce8b9e6c0f8',
+	})
+	@Expose({ name: 'channel_id' })
+	channelId: string | null;
+
+	@ApiPropertyOptional({
+		name: 'channel_name',
+		description: 'Name of the channel (for sensor roles)',
+		type: 'string',
+		nullable: true,
+		example: 'Temperature Sensor',
+	})
+	@Expose({ name: 'channel_name' })
+	channelName: string | null;
+
+	@ApiPropertyOptional({
+		description: 'The climate role assigned to this target (null if not assigned)',
+		enum: ClimateRole,
+		nullable: true,
+		example: ClimateRole.PRIMARY,
+	})
+	@Expose()
+	role: ClimateRole | null;
+
+	@ApiProperty({
+		description: 'Priority for selecting defaults within the same role',
+		type: 'integer',
+		example: 0,
+	})
+	@Expose()
+	priority: number;
+
+	@ApiProperty({
+		name: 'has_temperature',
+		description: 'Whether this device supports temperature control',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'has_temperature' })
+	hasTemperature: boolean;
+
+	@ApiProperty({
+		name: 'has_humidity',
+		description: 'Whether this device supports humidity control',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'has_humidity' })
+	hasHumidity: boolean;
+
+	@ApiProperty({
+		name: 'has_mode',
+		description: 'Whether this device supports HVAC mode control',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'has_mode' })
+	hasMode: boolean;
+}
+
+/**
+ * Response wrapper for climate targets in a space
+ */
+@ApiSchema({ name: 'SpacesModuleResClimateTargets' })
+export class ClimateTargetsResponseModel extends BaseSuccessResponseModel<ClimateTargetDataModel[]> {
+	@ApiProperty({
+		description: 'Array of climate targets in the space with their role assignments',
+		type: () => [ClimateTargetDataModel],
+	})
+	@Expose()
+	@Type(() => ClimateTargetDataModel)
+	declare data: ClimateTargetDataModel[];
+}
+
+/**
+ * Response wrapper for a single climate role assignment
+ */
+@ApiSchema({ name: 'SpacesModuleResClimateRole' })
+export class ClimateRoleResponseModel extends BaseSuccessResponseModel<SpaceClimateRoleEntity> {
+	@ApiProperty({
+		description: 'The climate role assignment',
+		type: () => SpaceClimateRoleEntity,
+	})
+	@Expose()
+	@Type(() => SpaceClimateRoleEntity)
+	declare data: SpaceClimateRoleEntity;
+}
+
+/**
+ * Response wrapper for multiple climate role assignments
+ */
+@ApiSchema({ name: 'SpacesModuleResClimateRoles' })
+export class ClimateRolesResponseModel extends BaseSuccessResponseModel<SpaceClimateRoleEntity[]> {
+	@ApiProperty({
+		description: 'Array of climate role assignments',
+		type: 'array',
+		items: { $ref: getSchemaPath(SpaceClimateRoleEntity) },
+	})
+	@Expose()
+	@Type(() => SpaceClimateRoleEntity)
+	declare data: SpaceClimateRoleEntity[];
+}
+
+/**
+ * Bulk climate role update result item
+ */
+@ApiSchema({ name: 'SpacesModuleDataBulkClimateRoleItem' })
+export class BulkClimateRoleResultItemModel {
+	@ApiProperty({
+		name: 'device_id',
+		description: 'ID of the climate device',
+		type: 'string',
+		format: 'uuid',
+		example: 'a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7',
+	})
+	@Expose({ name: 'device_id' })
+	deviceId: string;
+
+	@ApiPropertyOptional({
+		name: 'channel_id',
+		description: 'ID of the channel (for sensor roles)',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: null,
+	})
+	@Expose({ name: 'channel_id' })
+	channelId: string | null;
+
+	@ApiProperty({
+		description: 'Whether the role was set successfully',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	success: boolean;
+
+	@ApiPropertyOptional({
+		description: 'The role that was set (null if failed)',
+		enum: ClimateRole,
+		nullable: true,
+		example: ClimateRole.PRIMARY,
+	})
+	@Expose()
+	role: ClimateRole | null;
+
+	@ApiPropertyOptional({
+		description: 'Error message if the role assignment failed',
+		type: 'string',
+		nullable: true,
+		example: null,
+	})
+	@Expose()
+	error: string | null;
+}
+
+/**
+ * Bulk climate role update result data
+ */
+@ApiSchema({ name: 'SpacesModuleDataBulkClimateRolesResult' })
+export class BulkClimateRolesResultDataModel {
+	@ApiProperty({
+		description: 'Whether all role assignments succeeded',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	success: boolean;
+
+	@ApiProperty({
+		name: 'total_count',
+		description: 'Total number of role assignments attempted',
+		type: 'integer',
+		example: 3,
+	})
+	@Expose({ name: 'total_count' })
+	totalCount: number;
+
+	@ApiProperty({
+		name: 'success_count',
+		description: 'Number of successful role assignments',
+		type: 'integer',
+		example: 3,
+	})
+	@Expose({ name: 'success_count' })
+	successCount: number;
+
+	@ApiProperty({
+		name: 'failure_count',
+		description: 'Number of failed role assignments',
+		type: 'integer',
+		example: 0,
+	})
+	@Expose({ name: 'failure_count' })
+	failureCount: number;
+
+	@ApiProperty({
+		description: 'Detailed results for each role assignment',
+		type: () => [BulkClimateRoleResultItemModel],
+	})
+	@Expose()
+	@Type(() => BulkClimateRoleResultItemModel)
+	results: BulkClimateRoleResultItemModel[];
+}
+
+/**
+ * Response wrapper for bulk climate role update result
+ */
+@ApiSchema({ name: 'SpacesModuleResBulkClimateRoles' })
+export class BulkClimateRolesResponseModel extends BaseSuccessResponseModel<BulkClimateRolesResultDataModel> {
+	@ApiProperty({
+		description: 'The result of the bulk climate role update',
+		type: () => BulkClimateRolesResultDataModel,
+	})
+	@Expose()
+	@Type(() => BulkClimateRolesResultDataModel)
+	declare data: BulkClimateRolesResultDataModel;
 }
 
 // ================================

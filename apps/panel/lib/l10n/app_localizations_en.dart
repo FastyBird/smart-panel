@@ -246,7 +246,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get light_role_off_description => 'Lights are off';
 
   @override
-  String get light_role_not_synced_description => 'Lights are not synced';
+  String get light_role_not_synced_description => 'Lights failed to sync';
+
+  @override
+  String get light_role_syncing_description => 'Lights are syncing';
+
+  @override
+  String get light_role_mixed_description => 'Lights have different values';
 
   @override
   String get light_state_out_of_sync => 'Out of sync';
@@ -1001,6 +1007,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get domain_lights_all_off => 'all off';
+
+  @override
+  String get domain_lights_all_on => 'all on';
+
+  @override
+  String get domain_lights_syncing => 'syncing';
+
+  @override
+  String get domain_lights_unsynced => 'unsynced';
+
+  @override
+  String get domain_lights_mixed => 'mixed';
 
   @override
   String get domain_climate => 'Climate';

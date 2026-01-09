@@ -33,6 +33,7 @@ import {
 	SetpointDelta,
 } from '../spaces.constants';
 
+import { SpaceClimateRoleService } from './space-climate-role.service';
 import { SpaceContextSnapshotService } from './space-context-snapshot.service';
 import { SpaceIntentService, selectLightsForMode } from './space-intent.service';
 import { SpaceLightingRoleService } from './space-lighting-role.service';
@@ -45,6 +46,7 @@ describe('SpaceIntentService', () => {
 	let mockDevicesService: jest.Mocked<DevicesService>;
 	let mockPlatformRegistryService: jest.Mocked<PlatformRegistryService>;
 	let mockLightingRoleService: jest.Mocked<SpaceLightingRoleService>;
+	let mockClimateRoleService: jest.Mocked<SpaceClimateRoleService>;
 	let mockContextSnapshotService: jest.Mocked<SpaceContextSnapshotService>;
 	let mockUndoHistoryService: jest.Mocked<SpaceUndoHistoryService>;
 	let mockPlatform: jest.Mocked<IDevicePlatform>;
@@ -78,6 +80,10 @@ describe('SpaceIntentService', () => {
 			getRoleMap: jest.fn().mockResolvedValue(new Map<string, SpaceLightingRoleEntity>()),
 		} as unknown as jest.Mocked<SpaceLightingRoleService>;
 
+		mockClimateRoleService = {
+			getRoleMap: jest.fn().mockResolvedValue(new Map()),
+		} as unknown as jest.Mocked<SpaceClimateRoleService>;
+
 		mockContextSnapshotService = {
 			captureSnapshot: jest.fn().mockResolvedValue({
 				spaceId: mockSpaceId,
@@ -104,6 +110,7 @@ describe('SpaceIntentService', () => {
 			mockDevicesService,
 			mockPlatformRegistryService,
 			mockLightingRoleService,
+			mockClimateRoleService,
 			mockContextSnapshotService,
 			mockUndoHistoryService,
 		);
@@ -658,8 +665,6 @@ describe('SpaceIntentService', () => {
 					minSetpoint: DEFAULT_MIN_SETPOINT,
 					maxSetpoint: DEFAULT_MAX_SETPOINT,
 					canSetSetpoint: false,
-					primaryThermostatId: null,
-					primarySensorId: null,
 				});
 			});
 		});
@@ -701,8 +706,6 @@ describe('SpaceIntentService', () => {
 					minSetpoint: DEFAULT_MIN_SETPOINT,
 					maxSetpoint: DEFAULT_MAX_SETPOINT,
 					canSetSetpoint: false,
-					primaryThermostatId: null,
-					primarySensorId: 'sensor-1',
 				});
 			});
 
@@ -715,7 +718,6 @@ describe('SpaceIntentService', () => {
 				const result = await service.getClimateState(mockSpaceId);
 
 				// 'Attic Sensor' comes before 'Bedroom Sensor' alphabetically
-				expect(result.primarySensorId).toBe('sensor-b');
 				expect(result.currentTemperature).toBe(25.0);
 			});
 		});
@@ -735,8 +737,6 @@ describe('SpaceIntentService', () => {
 					minSetpoint: DEFAULT_MIN_SETPOINT,
 					maxSetpoint: DEFAULT_MAX_SETPOINT,
 					canSetSetpoint: true,
-					primaryThermostatId: 'thermo-1',
-					primarySensorId: 'thermo-1', // Uses thermostat for temp reading
 				});
 			});
 
@@ -753,30 +753,6 @@ describe('SpaceIntentService', () => {
 		});
 
 		describe('space with both sensor and thermostat', () => {
-			it('should use admin override to select sensor for temperature reading', async () => {
-				// Thermostat with both temp and setpoint
-				const thermostat = createMockThermostat('thermo-1', 'Thermostat', 20.0, 22.0);
-				const sensor = createMockSensor('sensor-1', 'Temperature Sensor', 21.5);
-
-				// Configure admin override to use sensor for temperature
-				const spaceWithOverride = {
-					...mockSpace,
-					primaryTemperatureSensorId: 'sensor-1',
-				} as SpaceEntity;
-
-				mockSpacesService.findOne.mockResolvedValue(spaceWithOverride);
-				mockSpacesService.findDevicesBySpace.mockResolvedValue([thermostat, sensor]);
-
-				const result = await service.getClimateState(mockSpaceId);
-
-				expect(result.hasClimate).toBe(true);
-				expect(result.canSetSetpoint).toBe(true);
-				expect(result.primaryThermostatId).toBe('thermo-1');
-				expect(result.primarySensorId).toBe('sensor-1');
-				expect(result.targetTemperature).toBe(22.0);
-				expect(result.currentTemperature).toBe(21.5);
-			});
-
 			it('should prefer thermostat temperature over separate sensor by default', async () => {
 				const thermostat = createMockThermostat('thermo-1', 'Thermostat', 21.0, 22.0);
 				const sensor = createMockSensor('sensor-1', 'Sensor', 23.0);
@@ -786,12 +762,11 @@ describe('SpaceIntentService', () => {
 				const result = await service.getClimateState(mockSpaceId);
 
 				// Should use thermostat's temperature reading
-				expect(result.primarySensorId).toBe('thermo-1');
 				expect(result.currentTemperature).toBe(21.0);
 			});
 		});
 
-		describe('multiple thermostats selection + admin override', () => {
+		describe('multiple thermostats selection', () => {
 			it('should select first thermostat deterministically by name', async () => {
 				const thermoA = createMockThermostat('thermo-a', 'Zone B Thermostat', 20.0, 21.0);
 				const thermoB = createMockThermostat('thermo-b', 'Zone A Thermostat', 22.0, 23.0);
@@ -801,66 +776,7 @@ describe('SpaceIntentService', () => {
 				const result = await service.getClimateState(mockSpaceId);
 
 				// 'Zone A Thermostat' comes before 'Zone B Thermostat' alphabetically
-				expect(result.primaryThermostatId).toBe('thermo-b');
 				expect(result.targetTemperature).toBe(23.0);
-			});
-
-			it('should use admin-configured primary thermostat override', async () => {
-				const thermoA = createMockThermostat('thermo-a', 'Zone A Thermostat', 20.0, 21.0);
-				const thermoB = createMockThermostat('thermo-b', 'Zone B Thermostat', 22.0, 23.0);
-
-				// Configure admin override for thermoB
-				const spaceWithOverride = {
-					...mockSpace,
-					primaryThermostatId: 'thermo-b',
-				} as SpaceEntity;
-
-				mockSpacesService.findOne.mockResolvedValue(spaceWithOverride);
-				mockSpacesService.findDevicesBySpace.mockResolvedValue([thermoA, thermoB]);
-
-				const result = await service.getClimateState(mockSpaceId);
-
-				// Should use admin override even though Zone A comes first alphabetically
-				expect(result.primaryThermostatId).toBe('thermo-b');
-				expect(result.targetTemperature).toBe(23.0);
-			});
-
-			it('should use admin-configured primary temperature sensor override', async () => {
-				const thermostat = createMockThermostat('thermo-1', 'Thermostat', 20.0, 21.0);
-				const sensor = createMockSensor('sensor-1', 'Separate Sensor', 24.0);
-
-				// Configure admin override to use separate sensor
-				const spaceWithOverride = {
-					...mockSpace,
-					primaryTemperatureSensorId: 'sensor-1',
-				} as SpaceEntity;
-
-				mockSpacesService.findOne.mockResolvedValue(spaceWithOverride);
-				mockSpacesService.findDevicesBySpace.mockResolvedValue([thermostat, sensor]);
-
-				const result = await service.getClimateState(mockSpaceId);
-
-				// Should use sensor for temperature even though thermostat has temp reading
-				expect(result.primarySensorId).toBe('sensor-1');
-				expect(result.currentTemperature).toBe(24.0);
-			});
-
-			it('should fallback to default if admin override device not found', async () => {
-				const thermostat = createMockThermostat('thermo-1', 'Thermostat', 20.0, 21.0);
-
-				// Configure admin override for non-existent device
-				const spaceWithOverride = {
-					...mockSpace,
-					primaryThermostatId: 'non-existent-device',
-				} as SpaceEntity;
-
-				mockSpacesService.findOne.mockResolvedValue(spaceWithOverride);
-				mockSpacesService.findDevicesBySpace.mockResolvedValue([thermostat]);
-
-				const result = await service.getClimateState(mockSpaceId);
-
-				// Should fallback to first thermostat
-				expect(result.primaryThermostatId).toBe('thermo-1');
 			});
 		});
 	});

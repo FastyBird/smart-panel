@@ -3,8 +3,9 @@ import { Injectable } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
-import { LightingRole, SPACES_MODULE_NAME } from '../spaces.constants';
+import { ClimateRole, LightingRole, SPACES_MODULE_NAME } from '../spaces.constants';
 
+import { SpaceClimateRoleService } from './space-climate-role.service';
 import { ClimateState, SpaceIntentService } from './space-intent.service';
 import { SpaceLightingRoleService } from './space-lighting-role.service';
 import { SpacesService } from './spaces.service';
@@ -42,6 +43,13 @@ export interface LightingContextSnapshot {
 }
 
 /**
+ * Climate state snapshot (extends ClimateState with device ID for undo)
+ */
+export interface ClimateStateSnapshot extends ClimateState {
+	primaryThermostatId: string | null;
+}
+
+/**
  * Complete space context snapshot
  */
 export interface SpaceContextSnapshot {
@@ -49,7 +57,7 @@ export interface SpaceContextSnapshot {
 	spaceName: string;
 	capturedAt: Date;
 	lighting: LightingContextSnapshot;
-	climate: ClimateState;
+	climate: ClimateStateSnapshot;
 }
 
 @Injectable()
@@ -60,6 +68,7 @@ export class SpaceContextSnapshotService {
 		private readonly spacesService: SpacesService,
 		private readonly spaceIntentService: SpaceIntentService,
 		private readonly lightingRoleService: SpaceLightingRoleService,
+		private readonly climateRoleService: SpaceClimateRoleService,
 	) {}
 
 	/**
@@ -80,7 +89,15 @@ export class SpaceContextSnapshotService {
 		const lighting = await this.captureLightingSnapshot(spaceId);
 
 		// Capture climate state (reuse existing method from intent service)
-		const climate = await this.spaceIntentService.getClimateState(spaceId);
+		const climateState = await this.spaceIntentService.getClimateState(spaceId);
+
+		// Get primary thermostat ID from climate roles for undo functionality
+		const primaryThermostatId = await this.getPrimaryThermostatId(spaceId);
+
+		const climate: ClimateStateSnapshot = {
+			...climateState,
+			primaryThermostatId,
+		};
 
 		const snapshot: SpaceContextSnapshot = {
 			spaceId: space.id,
@@ -91,6 +108,42 @@ export class SpaceContextSnapshotService {
 		};
 
 		return snapshot;
+	}
+
+	/**
+	 * Get the primary thermostat device ID from climate roles
+	 */
+	private async getPrimaryThermostatId(spaceId: string): Promise<string | null> {
+		const devices = await this.spacesService.findDevicesBySpace(spaceId);
+		const roleMap = await this.climateRoleService.getRoleMap(spaceId);
+
+		// Find thermostats (devices with setpoint capability)
+		const thermostats = devices.filter((device) => {
+			// Check if device has a thermostat/heater/cooler channel with temperature property
+			return device.channels?.some(
+				(ch) =>
+					(ch.category === ChannelCategory.THERMOSTAT ||
+						ch.category === ChannelCategory.HEATER ||
+						ch.category === ChannelCategory.COOLER) &&
+					ch.properties?.some((p) => p.category === PropertyCategory.TEMPERATURE),
+			);
+		});
+
+		// Look for device with PRIMARY role
+		for (const thermostat of thermostats) {
+			const role = roleMap.get(thermostat.id);
+			if (role?.role === ClimateRole.PRIMARY) {
+				return thermostat.id;
+			}
+		}
+
+		// Fallback: first thermostat (sorted by name for determinism)
+		const sortedThermostats = [...thermostats].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+		if (sortedThermostats.length > 0) {
+			return sortedThermostats[0].id;
+		}
+
+		return null;
 	}
 
 	/**
