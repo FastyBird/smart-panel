@@ -25,6 +25,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/heater.dart'
 import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/cooler.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/heater.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/humidity.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/temperature.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/intents/service.dart';
@@ -312,6 +313,14 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         .firstOrNull;
   }
 
+  /// Get the humidity sensor target for room humidity display
+  ClimateTargetView? _getHumiditySensorTarget(List<ClimateTargetView> targets) {
+    // Look for HUMIDITY_SENSOR role
+    return targets
+        .where((t) => t.role == ClimateTargetRole.humiditySensor)
+        .firstOrNull;
+  }
+
   /// Get hero device from PRIMARY target or fallback to type-based priority
   DeviceView? _getHeroDevice(
     List<ClimateTargetView> targets,
@@ -403,6 +412,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             final heroDevice = _getHeroDevice(climateTargets, devicesService);
             final temperatureSensorTarget =
                 _getTemperatureSensorTarget(climateTargets);
+            final humiditySensorTarget =
+                _getHumiditySensorTarget(climateTargets);
             final secondaryTargets =
                 _getSecondaryTargets(climateTargets, primaryTarget);
 
@@ -418,6 +429,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                       devicesService,
                       constraints,
                       temperatureSensorTarget: temperatureSensorTarget,
+                      humiditySensorTarget: humiditySensorTarget,
                     ),
 
                   // Secondary devices section
@@ -516,11 +528,17 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     DevicesService devicesService,
     BoxConstraints constraints, {
     ClimateTargetView? temperatureSensorTarget,
+    ClimateTargetView? humiditySensorTarget,
     bool useIntents = true,
   }) {
     // Get room temperature from sensor if available
     final sensorTemperature = _getSensorTemperature(
       temperatureSensorTarget,
+      devicesService,
+    );
+    // Get room humidity from sensor if available
+    final sensorHumidity = _getSensorHumidity(
+      humiditySensorTarget,
       devicesService,
     );
 
@@ -580,10 +598,43 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
             AppSpacings.spacingMdVertical,
 
+            // Humidity indicator (if sensor available)
+            if (sensorHumidity != null)
+              _buildHumidityIndicator(context, sensorHumidity),
+
             // Status indicator
             _buildStatusIndicator(context, device),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Build humidity indicator chip
+  Widget _buildHumidityIndicator(BuildContext context, int humidity) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: AppSpacings.pSm),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            MdiIcons.waterPercent,
+            size: AppFontSize.base,
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppTextColorLight.secondary
+                : AppTextColorDark.secondary,
+          ),
+          SizedBox(width: AppSpacings.pXs),
+          Text(
+            '$humidity%',
+            style: TextStyle(
+              fontSize: AppFontSize.small,
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTextColorLight.secondary
+                  : AppTextColorDark.secondary,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -618,6 +669,36 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     // For thermostat devices, temperature comes from temperatureChannel
     if (device is ThermostatDeviceView) {
       return device.temperatureChannel.temperature;
+    }
+
+    return null;
+  }
+
+  /// Get humidity reading from a humidity sensor target
+  int? _getSensorHumidity(
+    ClimateTargetView? sensorTarget,
+    DevicesService devicesService,
+  ) {
+    if (sensorTarget == null) return null;
+
+    final device = devicesService.getDevice(sensorTarget.deviceId);
+    if (device == null) return null;
+
+    // Sensor targets have a channelId - find the specific humidity channel
+    final channelId = sensorTarget.channelId;
+    if (channelId != null) {
+      // Find the channel by ID and check if it's a humidity channel
+      final channel = device.channels.where((c) => c.id == channelId).firstOrNull;
+      if (channel is HumidityChannelView) {
+        return channel.humidity;
+      }
+    }
+
+    // Fallback: look for any humidity channel on the device
+    final humidityChannel =
+        device.channels.whereType<HumidityChannelView>().firstOrNull;
+    if (humidityChannel != null) {
+      return humidityChannel.humidity;
     }
 
     return null;
