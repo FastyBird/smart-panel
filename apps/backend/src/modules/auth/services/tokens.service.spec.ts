@@ -11,7 +11,6 @@ import bcrypt from 'bcrypt';
 import { DataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
@@ -100,8 +99,6 @@ describe('TokensService', () => {
 		repository = module.get<Repository<TokenEntity>>(getRepositoryToken(TokenEntity));
 		mapper = module.get<TokensTypeMapperService>(TokensTypeMapperService);
 		dataSource = module.get<DataSource>(DataSource);
-
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

@@ -8,7 +8,6 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 import { v4 as uuid } from 'uuid';
 
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -98,8 +97,6 @@ describe('ChannelsControlsController', () => {
 		controller = module.get<ChannelsControlsController>(ChannelsControlsController);
 		channelsService = module.get<ChannelsService>(ChannelsService);
 		channelsControlsService = module.get<ChannelsControlsService>(ChannelsControlsService);
-
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

@@ -1,4 +1,3 @@
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { FactoryResetRegistryService } from './factory-reset-registry.service';
@@ -12,8 +11,6 @@ describe('FactoryResetRegistryService', () => {
 		}).compile();
 
 		service = module.get<FactoryResetRegistryService>(FactoryResetRegistryService);
-
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

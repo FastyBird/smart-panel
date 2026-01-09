@@ -1,4 +1,3 @@
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { DevicesException } from '../devices.exceptions';
@@ -21,8 +20,6 @@ describe('DevicesTypeMapperService', () => {
 		}).compile();
 
 		service = module.get<DevicesTypeMapperService>(DevicesTypeMapperService);
-
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

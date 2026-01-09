@@ -7,7 +7,6 @@ eslint-disable @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
@@ -91,10 +90,6 @@ jest.mock('shellies-ds9', () => {
 });
 
 // Silence Nest logger
-jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined as any);
-jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined as any);
-jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined as any);
-jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined as any);
 
 const pluginConfigEnabled = {
 	enabled: true,

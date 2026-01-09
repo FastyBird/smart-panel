@@ -1,6 +1,5 @@
 import { v4 as uuid } from 'uuid';
 
-import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
@@ -64,11 +63,6 @@ describe('HouseModeActionsService', () => {
 		spacesService = module.get(SpacesService);
 		spaceIntentService = module.get(SpaceIntentService);
 		eventEmitter = module.get(EventEmitter2);
-
-		jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

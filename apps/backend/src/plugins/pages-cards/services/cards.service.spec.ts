@@ -10,7 +10,6 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { DataSource as OrmDataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -124,11 +123,6 @@ describe('CardsService', () => {
 		dataSourceMapper = module.get<DataSourcesTypeMapperService>(DataSourcesTypeMapperService);
 		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 		dataSource = module.get<OrmDataSource>(OrmDataSource);
-
-		jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

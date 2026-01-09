@@ -1,6 +1,5 @@
 import { useContainer } from 'class-validator';
 
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
@@ -106,10 +105,6 @@ describe('DeviceAdoptionService', () => {
 		homeAssistantWsService = module.get(HomeAssistantWsService);
 		devicesService = module.get(DevicesService);
 		channelsService = module.get(ChannelsService);
-
-		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

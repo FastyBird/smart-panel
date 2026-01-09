@@ -5,8 +5,6 @@ eslint-disable @typescript-eslint/require-await
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { Logger } from '@nestjs/common';
-
 import { WledAdapterCallbacks } from '../interfaces/wled.interface';
 
 import { WledClientAdapterService } from './wled-client-adapter.service';
@@ -24,24 +22,10 @@ describe('WledClientAdapterService', () => {
 	};
 
 	// Quiet logger noise
-	let logSpy: jest.SpyInstance;
-	let debugSpy: jest.SpyInstance;
-	let warnSpy: jest.SpyInstance;
-	let errSpy: jest.SpyInstance;
 
-	beforeAll(() => {
-		logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
-		debugSpy = jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
-		warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
-		errSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
-	});
+	beforeAll(() => {});
 
-	afterAll(() => {
-		logSpy.mockRestore();
-		debugSpy.mockRestore();
-		warnSpy.mockRestore();
-		errSpy.mockRestore();
-	});
+	afterAll(() => {});
 
 	beforeEach(() => {
 		jest.clearAllMocks();

@@ -11,7 +11,6 @@ import { IsString } from 'class-validator';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -129,8 +128,6 @@ describe('DevicesControlsService', () => {
 		devicesControlsService = module.get<DevicesControlsService>(DevicesControlsService);
 		repository = module.get<Repository<DeviceControlEntity>>(getRepositoryToken(DeviceControlEntity));
 		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
-
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

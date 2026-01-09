@@ -7,7 +7,6 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { v4 as uuid } from 'uuid';
 
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { TileEntity } from '../../../modules/dashboard/entities/dashboard.entity';
@@ -36,8 +35,6 @@ describe('TileRelationsLoaderService', () => {
 
 		service = module.get(TileRelationsLoaderService);
 		devicesService = module.get(DevicesService);
-
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

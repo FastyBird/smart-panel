@@ -8,7 +8,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { v4 as uuid } from 'uuid';
 
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { ExecutionContext, Logger, UnauthorizedException } from '@nestjs/common';
+import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -162,11 +162,6 @@ describe('AuthGuard', () => {
 		reflector = module.get<Reflector>(Reflector);
 		tokensService = module.get<TokensService>(TokensService);
 		usersService = module.get<UsersService>(UsersService);
-
-		jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

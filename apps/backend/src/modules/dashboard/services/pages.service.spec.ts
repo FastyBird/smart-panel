@@ -11,7 +11,6 @@ import { IsNotEmpty, IsOptional, IsString, useContainer } from 'class-validator'
 import { EntityManager, DataSource as OrmDataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -226,11 +225,6 @@ describe('PagesService', () => {
 		mapper = module.get<PagesTypeMapperService>(PagesTypeMapperService);
 		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 		dataSource = module.get<OrmDataSource>(OrmDataSource);
-
-		jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

@@ -1,4 +1,3 @@
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { CryptoService } from './crypto.service';
@@ -12,8 +11,6 @@ describe('CryptoService', () => {
 		}).compile();
 
 		service = module.get<CryptoService>(CryptoService);
-
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

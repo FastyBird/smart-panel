@@ -6,8 +6,6 @@ eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-un
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { Logger } from '@nestjs/common';
-
 import { DevicesShellyV1Exception } from '../devices-shelly-v1.exceptions';
 import {
 	ShellyInfoResponse,
@@ -25,21 +23,10 @@ describe('ShellyV1HttpClientService', () => {
 	let service: ShellyV1HttpClientService;
 
 	// Quiet logger noise
-	let logSpy: jest.SpyInstance;
-	let debugSpy: jest.SpyInstance;
-	let errSpy: jest.SpyInstance;
 
-	beforeAll(() => {
-		logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
-		debugSpy = jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
-		errSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
-	});
+	beforeAll(() => {});
 
-	afterAll(() => {
-		logSpy.mockRestore();
-		debugSpy.mockRestore();
-		errSpy.mockRestore();
-	});
+	afterAll(() => {});
 
 	beforeEach(() => {
 		jest.clearAllMocks();

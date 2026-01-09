@@ -1,4 +1,3 @@
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ChannelCategory, DeviceCategory } from '../../../modules/devices/devices.constants';
@@ -113,10 +112,6 @@ describe('MappingPreviewService', () => {
 		homeAssistantHttpService = module.get(HomeAssistantHttpService);
 		homeAssistantWsService = module.get(HomeAssistantWsService);
 		deviceValidationService = module.get(DeviceValidationService);
-
-		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

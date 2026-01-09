@@ -6,7 +6,6 @@ eslint-disable @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unnece
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { SHELLY_AUTH_USERNAME } from '../devices-shelly-v1.constants';
@@ -102,10 +101,7 @@ describe('ShellyV1ProbeService', () => {
 		},
 	};
 
-	beforeAll(() => {
-		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined as any);
-		jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined as any);
-	});
+	beforeAll(() => {});
 
 	beforeEach(async () => {
 		const httpClientMock: Partial<jest.Mocked<ShellyV1HttpClientService>> = {

@@ -5,7 +5,7 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { Logger, NotFoundException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ServiceStatusExtended } from '../services/managed-plugin-service.interface';
@@ -50,8 +50,6 @@ describe('ServicesController', () => {
 
 		controller = module.get<ServicesController>(ServicesController);
 		pluginServiceManager = module.get(PluginServiceManagerService);
-
-		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

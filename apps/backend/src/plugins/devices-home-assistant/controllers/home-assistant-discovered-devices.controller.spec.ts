@@ -1,4 +1,4 @@
-import { Logger, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import {
@@ -80,9 +80,6 @@ describe('HomeAssistantDiscoveredDevicesController', () => {
 		homeAssistantHttpService = module.get(HomeAssistantHttpService);
 		mappingPreviewService = module.get(MappingPreviewService);
 		deviceAdoptionService = module.get(DeviceAdoptionService);
-
-		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

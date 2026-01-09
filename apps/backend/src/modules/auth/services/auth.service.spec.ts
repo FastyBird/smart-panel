@@ -2,7 +2,6 @@ import bcrypt from 'bcrypt';
 import { v4 as uuid } from 'uuid';
 
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 
@@ -88,8 +87,6 @@ describe('AuthService', () => {
 		tokensService = module.get<TokensService>(TokensService);
 		usersService = module.get<UsersService>(UsersService);
 		jwtService = module.get<JwtService>(JwtService);
-
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

@@ -22,24 +22,10 @@ import { ShellyV1DevicePlatform } from './shelly-v1.device.platform';
 
 describe('ShellyV1DevicePlatform', () => {
 	// Quiet logger noise and let us assert calls
-	let logSpy: jest.SpyInstance;
-	let debugSpy: jest.SpyInstance;
-	let warnSpy: jest.SpyInstance;
-	let errSpy: jest.SpyInstance;
 
-	beforeAll(() => {
-		logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
-		debugSpy = jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
-		warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
-		errSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
-	});
+	beforeAll(() => {});
 
-	afterAll(() => {
-		logSpy.mockRestore();
-		debugSpy.mockRestore();
-		warnSpy.mockRestore();
-		errSpy.mockRestore();
-	});
+	afterAll(() => {});
 
 	const makeDevice = (id = 'dev-1', identifier = 'shelly1pm-ABC123', enabled = true): ShellyV1DeviceEntity =>
 		Object.assign(new ShellyV1DeviceEntity(), { id, identifier, enabled });
@@ -358,7 +344,7 @@ describe('ShellyV1DevicePlatform', () => {
 			const property = makeProp('p-1', 'command');
 
 			// Clear previous warn calls
-			warnSpy.mockClear();
+			(Logger.prototype.warn as jest.Mock).mockClear();
 
 			const ok = await platform.processBatch([{ device, channel, property, value: 'invalid' }]);
 

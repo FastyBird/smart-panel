@@ -9,7 +9,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { FetchError } from 'node-fetch';
 
-import { Logger, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { DeviceManagerService } from '../services/device-manager.service';
@@ -39,10 +39,7 @@ describe('ShellyNgDevicesController', () => {
 	let controller: ShellyNgDevicesController;
 	let deviceManager: jest.Mocked<DeviceManagerService>;
 
-	beforeAll(() => {
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined as any);
-		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined as any);
-	});
+	beforeAll(() => {});
 
 	beforeEach(async () => {
 		const deviceManagerMock: Partial<jest.Mocked<DeviceManagerService>> = {

@@ -1,5 +1,5 @@
 /*
-eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return, @typescript-eslint/unbound-method,
+eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/unbound-method,
 @typescript-eslint/no-unnecessary-type-assertion
 */
 /*
@@ -42,9 +42,6 @@ jest.mock('cron', () => {
 	}));
 	return { CronJob, __mocks: { start, stop } };
 });
-
-jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined as any);
-jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined as any);
 
 type Cfg = {
 	enabled: boolean;

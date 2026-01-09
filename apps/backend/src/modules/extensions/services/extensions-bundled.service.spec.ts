@@ -40,9 +40,6 @@ describe('ExtensionsBundledService', () => {
 		}).compile();
 
 		service = module.get<ExtensionsBundledService>(ExtensionsBundledService);
-
-		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

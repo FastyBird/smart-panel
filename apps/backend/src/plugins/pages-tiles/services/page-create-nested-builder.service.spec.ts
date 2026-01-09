@@ -2,7 +2,6 @@ import { useContainer } from 'class-validator';
 import { DataSource as OrmDataSource } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { CreateDataSourceDto } from '../../../modules/dashboard/dto/create-data-source.dto';
@@ -81,8 +80,6 @@ describe('TilesPageNestedBuilderService', () => {
 		tileMapperService = module.get(TilesTypeMapperService);
 		dataSourceMapperService = module.get(DataSourcesTypeMapperService);
 		ormDataSource = module.get(OrmDataSource);
-
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {
