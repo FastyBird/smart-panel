@@ -835,7 +835,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     final currentMode = device.thermostatMode;
     final modeProp = device.thermostatChannel.modeProp;
 
-    if (modeProp == null || !modeProp.isWritable) {
+    if (!modeProp.isWritable) {
       return SizedBox.shrink();
     }
 
