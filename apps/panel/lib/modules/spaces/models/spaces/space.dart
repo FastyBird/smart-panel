@@ -12,8 +12,6 @@ class SpaceModel extends Model {
   final int _displayOrder;
   final bool _suggestionsEnabled;
   final String? _icon;
-  final String? _primaryThermostatId;
-  final String? _primaryTemperatureSensorId;
   final DateTime? _lastActivityAt;
   final List<String> _children;
 
@@ -27,8 +25,6 @@ class SpaceModel extends Model {
     required int displayOrder,
     required bool suggestionsEnabled,
     String? icon,
-    String? primaryThermostatId,
-    String? primaryTemperatureSensorId,
     DateTime? lastActivityAt,
     List<String> children = const [],
     super.createdAt,
@@ -41,12 +37,6 @@ class SpaceModel extends Model {
         _displayOrder = displayOrder,
         _suggestionsEnabled = suggestionsEnabled,
         _icon = icon,
-        _primaryThermostatId = primaryThermostatId != null
-            ? UuidUtils.validateUuid(primaryThermostatId)
-            : null,
-        _primaryTemperatureSensorId = primaryTemperatureSensorId != null
-            ? UuidUtils.validateUuid(primaryTemperatureSensorId)
-            : null,
         _lastActivityAt = lastActivityAt,
         _children = UuidUtils.validateUuidList(children);
 
@@ -65,10 +55,6 @@ class SpaceModel extends Model {
   bool get suggestionsEnabled => _suggestionsEnabled;
 
   String? get icon => _icon;
-
-  String? get primaryThermostatId => _primaryThermostatId;
-
-  String? get primaryTemperatureSensorId => _primaryTemperatureSensorId;
 
   DateTime? get lastActivityAt => _lastActivityAt;
 
@@ -103,8 +89,6 @@ class SpaceModel extends Model {
       displayOrder: json['display_order'] ?? 0,
       suggestionsEnabled: json['suggestions_enabled'] ?? false,
       icon: json['icon'],
-      primaryThermostatId: json['primary_thermostat_id'],
-      primaryTemperatureSensorId: json['primary_temperature_sensor_id'],
       lastActivityAt: json['last_activity_at'] != null
           ? DateTime.parse(json['last_activity_at'])
           : null,

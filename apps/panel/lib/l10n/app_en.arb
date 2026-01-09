@@ -160,9 +160,21 @@
   "@message_error_no_device_detail_preparing_description": {
     "description": "Indicates that the selected device has no detailed page available"
   },
-  "device_status_offline": "offline",
+  "device_status_offline": "Offline",
   "@device_status_offline": {
     "description": "Label shown when a device is offline/disconnected"
+  },
+  "device_offline_message": "Device is offline",
+  "@device_offline_message": {
+    "description": "Message shown when a device is not connected"
+  },
+  "device_config_issue": "Configuration issue",
+  "@device_config_issue": {
+    "description": "Message shown when a device has configuration problems"
+  },
+  "device_details": "Device Details",
+  "@device_details": {
+    "description": "Button label to open device details"
   },
   "message_error_page_not_found_title": "Page Not Found!",
   "@message_error_page_not_found_title": {
@@ -316,9 +328,17 @@
   "@light_role_off_description": {
     "description": "Description for role detail when all lights are off (plural)"
   },
-  "light_role_not_synced_description": "Lights are not synced",
+  "light_role_not_synced_description": "Lights failed to sync",
   "@light_role_not_synced_description": {
-    "description": "Description for role detail when lights are out of sync (plural)"
+    "description": "Description for role detail when lights failed to sync after a command"
+  },
+  "light_role_syncing_description": "Lights are syncing",
+  "@light_role_syncing_description": {
+    "description": "Description for role detail when lights are actively syncing"
+  },
+  "light_role_mixed_description": "Lights have different values",
+  "@light_role_mixed_description": {
+    "description": "Description for role detail when lights intentionally have different values"
   },
   "light_state_out_of_sync": "Out of sync",
   "@light_state_out_of_sync": {
@@ -1106,6 +1126,22 @@
   "@space_climate_target_label": {
     "description": "Label for target temperature display"
   },
+  "climate_role_auxiliary": "Auxiliary",
+  "@climate_role_auxiliary": {
+    "description": "Section header for auxiliary climate devices"
+  },
+  "climate_role_ventilation": "Ventilation",
+  "@climate_role_ventilation": {
+    "description": "Section header for ventilation devices (fans, purifiers)"
+  },
+  "climate_role_humidity": "Humidity Control",
+  "@climate_role_humidity": {
+    "description": "Section header for humidity control devices"
+  },
+  "climate_role_other": "Other Devices",
+  "@climate_role_other": {
+    "description": "Section header for other climate devices"
+  },
   "space_suggestion_applied": "Suggestion applied",
   "@space_suggestion_applied": {
     "description": "Message shown when a suggestion is applied"
@@ -1336,6 +1372,22 @@
   "domain_lights_all_off": "all off",
   "@domain_lights_all_off": {
     "description": "Text shown when all lights in a role group are off"
+  },
+  "domain_lights_all_on": "all on",
+  "@domain_lights_all_on": {
+    "description": "Text shown when all lights in a role group are on"
+  },
+  "domain_lights_syncing": "syncing",
+  "@domain_lights_syncing": {
+    "description": "Text shown when lights are syncing after a command"
+  },
+  "domain_lights_unsynced": "unsynced",
+  "@domain_lights_unsynced": {
+    "description": "Text shown when lights failed to sync after a command"
+  },
+  "domain_lights_mixed": "mixed",
+  "@domain_lights_mixed": {
+    "description": "Text shown when lights intentionally have different values"
   },
   "domain_climate": "Climate",
   "@domain_climate": {

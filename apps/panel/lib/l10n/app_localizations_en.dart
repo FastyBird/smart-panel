@@ -129,7 +129,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get message_error_no_device_detail_preparing_description => 'For selected device detail page is not ready yet.';
 
   @override
-  String get device_status_offline => 'offline';
+  String get device_status_offline => 'Offline';
+
+  @override
+  String get device_offline_message => 'Device is offline';
+
+  @override
+  String get device_config_issue => 'Configuration issue';
+
+  @override
+  String get device_details => 'Device Details';
 
   @override
   String get message_error_page_not_found_title => 'Page Not Found!';
@@ -246,7 +255,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get light_role_off_description => 'Lights are off';
 
   @override
-  String get light_role_not_synced_description => 'Lights are not synced';
+  String get light_role_not_synced_description => 'Lights failed to sync';
+
+  @override
+  String get light_role_syncing_description => 'Lights are syncing';
+
+  @override
+  String get light_role_mixed_description => 'Lights have different values';
 
   @override
   String get light_state_out_of_sync => 'Out of sync';
@@ -827,6 +842,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get space_climate_target_label => 'Target';
 
   @override
+  String get climate_role_auxiliary => 'Auxiliary';
+
+  @override
+  String get climate_role_ventilation => 'Ventilation';
+
+  @override
+  String get climate_role_humidity => 'Humidity Control';
+
+  @override
+  String get climate_role_other => 'Other Devices';
+
+  @override
   String get space_suggestion_applied => 'Suggestion applied';
 
   @override
@@ -1001,6 +1028,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get domain_lights_all_off => 'all off';
+
+  @override
+  String get domain_lights_all_on => 'all on';
+
+  @override
+  String get domain_lights_syncing => 'syncing';
+
+  @override
+  String get domain_lights_unsynced => 'unsynced';
+
+  @override
+  String get domain_lights_mixed => 'mixed';
 
   @override
   String get domain_climate => 'Climate';

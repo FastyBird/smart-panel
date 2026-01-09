@@ -3,6 +3,12 @@
  */
 import { BulkAssignDto, ReqBulkAssignDto } from './dto/bulk-assign.dto';
 import { ClimateIntentDto, ReqClimateIntentDto } from './dto/climate-intent.dto';
+import {
+	BulkSetClimateRolesDto,
+	ReqBulkSetClimateRolesDto,
+	ReqSetClimateRoleDto,
+	SetClimateRoleDto,
+} from './dto/climate-role.dto';
 import { CreateSpaceDto, ReqCreateSpaceDto } from './dto/create-space.dto';
 import { LightingIntentDto, ReqLightingIntentDto } from './dto/lighting-intent.dto';
 import {
@@ -13,20 +19,27 @@ import {
 } from './dto/lighting-role.dto';
 import { ReqSuggestionFeedbackDto, SuggestionFeedbackDto } from './dto/suggestion.dto';
 import { ReqUpdateSpaceDto, UpdateSpaceDto } from './dto/update-space.dto';
+import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
 import { SpaceEntity } from './entities/space.entity';
 import {
 	BulkAssignmentDataModel,
 	BulkAssignmentResponseModel,
 	BulkAssignmentResultDataModel,
+	BulkClimateRoleResultItemModel,
+	BulkClimateRolesResponseModel,
+	BulkClimateRolesResultDataModel,
 	BulkLightingRolesResponseModel,
 	BulkLightingRolesResultDataModel,
 	CategoryTemplateDataModel,
 	CategoryTemplatesResponseModel,
 	ClimateIntentResponseModel,
 	ClimateIntentResultDataModel,
+	ClimateRoleResponseModel,
 	ClimateStateDataModel,
 	ClimateStateResponseModel,
+	ClimateTargetDataModel,
+	ClimateTargetsResponseModel,
 	ContextSnapshotDataModel,
 	ContextSnapshotResponseModel,
 	IntentCatalogDataModel,
@@ -76,6 +89,10 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	ReqSetLightingRoleDto,
 	BulkSetLightingRolesDto,
 	ReqBulkSetLightingRolesDto,
+	SetClimateRoleDto,
+	ReqSetClimateRoleDto,
+	BulkSetClimateRolesDto,
+	ReqBulkSetClimateRolesDto,
 	SuggestionFeedbackDto,
 	ReqSuggestionFeedbackDto,
 	// Response models
@@ -98,6 +115,12 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	LightingRolesResponseModel,
 	BulkLightingRolesResultDataModel,
 	BulkLightingRolesResponseModel,
+	ClimateTargetDataModel,
+	ClimateTargetsResponseModel,
+	ClimateRoleResponseModel,
+	BulkClimateRoleResultItemModel,
+	BulkClimateRolesResultDataModel,
+	BulkClimateRolesResponseModel,
 	SuggestionDataModel,
 	SuggestionResponseModel,
 	SuggestionFeedbackResultDataModel,
@@ -127,4 +150,5 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	// Entities
 	SpaceEntity,
 	SpaceLightingRoleEntity,
+	SpaceClimateRoleEntity,
 ];

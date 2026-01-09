@@ -65,7 +65,7 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen> {
     if (index >= 0 && _pageController?.hasClients == true) {
       _pageController?.animateToPage(
         index,
-        duration: const Duration(milliseconds: 300),
+        duration: const Duration(milliseconds: DeckConstants.pageAnimationMs),
         curve: Curves.easeInOut,
       );
     }
@@ -232,7 +232,7 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen> {
     final isSystemView = item is SystemViewItem;
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: DeckConstants.dotAnimationMs),
       margin: EdgeInsets.symmetric(
         horizontal: _screenService.scale(
           4,

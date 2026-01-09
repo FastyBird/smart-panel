@@ -449,6 +449,117 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
   }
 
+  /// Check if role devices are mixed (same logic as _getRoleMixedState in detail page)
+  /// Returns true if on/off states differ OR any property values (brightness, hue, temp, white) differ
+  bool _isRoleMixedForTile(RoleGroup group, DevicesService devicesService) {
+    final targets = group.targets;
+    if (targets.length < 2) return false;
+
+    int onCount = 0;
+    int offCount = 0;
+
+    // Track min/max for each capability
+    int? minBrightness, maxBrightness;
+    double? minHue, maxHue;
+    double? minTemperature, maxTemperature;
+    int? minWhite, maxWhite;
+
+    for (final target in targets) {
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is! LightingDeviceView) continue;
+
+      final channel = findLightChannel(device, target.channelId);
+      if (channel == null) continue;
+
+      // Count on/off state
+      if (channel.on) {
+        onCount++;
+      } else {
+        offCount++;
+      }
+
+      // Only check property values for ON devices
+      if (!channel.on) continue;
+
+      // Brightness
+      if (channel.hasBrightness) {
+        final brightness = channel.brightness;
+        minBrightness = minBrightness == null
+            ? brightness
+            : (brightness < minBrightness ? brightness : minBrightness);
+        maxBrightness = maxBrightness == null
+            ? brightness
+            : (brightness > maxBrightness ? brightness : maxBrightness);
+      }
+
+      // Hue (color) - supports both HSV (hasHue) and RGB-only lights
+      if (channel.hasColor) {
+        double? hue;
+        if (channel.hasHue) {
+          hue = channel.hue;
+        } else {
+          try {
+            final color = channel.color;
+            final hsv = ColorUtils.toHSV(color);
+            hue = hsv.hue;
+          } catch (_) {
+            // Channel has partial color properties but not enough for a valid color
+          }
+        }
+        if (hue != null) {
+          minHue = minHue == null ? hue : (hue < minHue ? hue : minHue);
+          maxHue = maxHue == null ? hue : (hue > maxHue ? hue : maxHue);
+        }
+      }
+
+      // Temperature
+      if (channel.hasTemperature) {
+        final tempProp = channel.temperatureProp;
+        if (tempProp?.value is NumberValueType) {
+          final temp = (tempProp!.value as NumberValueType).value.toDouble();
+          minTemperature = minTemperature == null
+              ? temp
+              : (temp < minTemperature ? temp : minTemperature);
+          maxTemperature = maxTemperature == null
+              ? temp
+              : (temp > maxTemperature ? temp : maxTemperature);
+        }
+      }
+
+      // White
+      if (channel.hasColorWhite) {
+        final white = channel.colorWhite;
+        minWhite = minWhite == null
+            ? white
+            : (white < minWhite ? white : minWhite);
+        maxWhite = maxWhite == null
+            ? white
+            : (white > maxWhite ? white : maxWhite);
+      }
+    }
+
+    // Check for mixed states
+    final onStateMixed = onCount > 0 && offCount > 0;
+
+    final brightnessMixed = minBrightness != null &&
+        maxBrightness != null &&
+        (maxBrightness - minBrightness) > LightingConstants.mixedThreshold;
+
+    final hueMixed = minHue != null &&
+        maxHue != null &&
+        (maxHue - minHue) > LightingConstants.hueMixedThreshold;
+
+    final temperatureMixed = minTemperature != null &&
+        maxTemperature != null &&
+        (maxTemperature - minTemperature) > LightingConstants.mixedThreshold * 10;
+
+    final whiteMixed = minWhite != null &&
+        maxWhite != null &&
+        (maxWhite - minWhite) > LightingConstants.whiteMixedThreshold;
+
+    return onStateMixed || brightnessMixed || hueMixed || temperatureMixed || whiteMixed;
+  }
+
   /// Build a single role tile using existing ButtonTileBox components
   /// Uses optimistic UI updates via device control state service
   /// Layout adapts based on rowSpan/colSpan: square=vertical, rectangle=horizontal
@@ -495,19 +606,27 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       }
     }
 
-    // Build subtitle: "X light(s) on" or "all off", with optional brightness
+    // Check if role is mixed (same logic as detail page _getRoleMixedState)
+    final bool isMixed = _isRoleMixedForTile(group, devicesService);
+
+    // Build subtitle: "all on", "all off", or "mixed" (no brightness shown when mixed)
     final String countText;
-    if (group.onCount == 0 && !isOn) {
+    if (isMixed && !isToggling) {
+      // Show "mixed" when devices have different on/off states or brightness values
+      countText = localizations.domain_lights_mixed;
+    } else if (group.onCount == 0 && !isOn) {
       countText = localizations.domain_lights_all_off;
     } else if (isOn && group.onCount == 0) {
       // Optimistic state: turning on but actual count is still 0
-      countText = localizations.domain_lights_count_on(group.totalCount);
+      countText = localizations.domain_lights_all_on;
+    } else if (group.onCount == group.totalCount && isOn) {
+      countText = localizations.domain_lights_all_on;
     } else {
       countText = localizations.domain_lights_count_on(group.onCount);
     }
 
-    // Build subtitle widget with brightness icon if available
-    final bool showBrightness = group.hasBrightness && group.brightness != null && group.onCount > 0;
+    // Build subtitle widget with brightness icon if available (hide when mixed)
+    final bool showBrightness = group.hasBrightness && group.brightness != null && group.onCount > 0 && !isMixed;
 
     // Determine tile shape for layout
     final bool isSquare = rowSpan == colSpan;
@@ -1928,10 +2047,13 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     if (!mounted) return;
 
     setState(() {
+      // Note: Keep state as IDLE for initial mixed values.
+      // RoleUIState.mixed means "settling timeout error", not "intentionally different".
+      // The roleMixedState.isMixed check handles detecting intentional differences.
       final brightness = cached?.brightness ?? initialBrightness;
       if (brightness != null) {
         _brightnessState = RoleControlState(
-          state: RoleUIState.mixed,
+          state: RoleUIState.idle,
           desiredValue: brightness,
         );
       }
@@ -1939,7 +2061,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       final hue = cached?.hue ?? initialHue;
       if (hue != null) {
         _hueState = RoleControlState(
-          state: RoleUIState.mixed,
+          state: RoleUIState.idle,
           desiredValue: hue,
         );
       }
@@ -1947,7 +2069,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       final temperature = cached?.temperature ?? initialTemperature;
       if (temperature != null) {
         _temperatureState = RoleControlState(
-          state: RoleUIState.mixed,
+          state: RoleUIState.idle,
           desiredValue: temperature,
         );
       }
@@ -1955,7 +2077,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       final white = cached?.white ?? initialWhite;
       if (white != null) {
         _whiteState = RoleControlState(
-          state: RoleUIState.mixed,
+          state: RoleUIState.idle,
           desiredValue: white,
         );
       }
@@ -2239,7 +2361,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
     final hueMixed = minHue != null &&
         maxHue != null &&
-        (maxHue - minHue) > LightingConstants.mixedThreshold;
+        (maxHue - minHue) > LightingConstants.hueMixedThreshold;
 
     final temperatureMixed = minTemperature != null &&
         maxTemperature != null &&
@@ -2247,7 +2369,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
     final whiteMixed = minWhite != null &&
         maxWhite != null &&
-        (maxWhite - minWhite) > LightingConstants.mixedThreshold;
+        (maxWhite - minWhite) > LightingConstants.whiteMixedThreshold;
 
     final result = RoleMixedState(
       onStateMixed: onStateMixed,
@@ -2745,6 +2867,48 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     );
   }
 
+  /// Determine which sync state visual to show
+  /// Returns: 0 = none, 1 = settling (syncing), 2 = unsynced (error), 3 = mixed (intentional)
+  int _getSyncStateVisual({
+    required bool isSettling,
+    required bool isUnsynced,
+    required bool isMixed,
+  }) {
+    if (isSettling) return 1; // Syncing in progress
+    if (isUnsynced) return 2; // Sync failed
+    if (isMixed) return 3; // Intentionally different
+    return 0; // Normal state
+  }
+
+  /// Get icon for sync state
+  IconData _getSyncStateIcon(int syncState) {
+    switch (syncState) {
+      case 1:
+        return MdiIcons.cloudSync; // Syncing
+      case 2:
+        return MdiIcons.syncAlert; // Unsynced/error
+      case 3:
+        return MdiIcons.tune; // Mixed/intentional
+      default:
+        return MdiIcons.syncOff;
+    }
+  }
+
+  /// Get description for sync state
+  String _getSyncStateDescription(BuildContext context, int syncState) {
+    final localizations = AppLocalizations.of(context)!;
+    switch (syncState) {
+      case 1:
+        return localizations.light_role_syncing_description;
+      case 2:
+        return localizations.light_role_not_synced_description;
+      case 3:
+        return localizations.light_role_mixed_description;
+      default:
+        return '';
+    }
+  }
+
   /// Build state display (brightness percentage or on/off)
   Widget _buildStateDisplay(
     BuildContext context,
@@ -2760,10 +2924,19 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
     // For simple on/off lights, show ON/OFF text (but check for mixed on/off state)
     if (!hasBrightness) {
-      // Check if on/off states are mixed (some on, some off) and user hasn't interacted
-      // Only show mixed icon when state is IDLE - during PENDING/SETTLING/MIXED, show user's desired state
+      final isOnOffSettling = _onOffState.isSettling;
+      final isOnOffUnsynced = _onOffState.isMixed;
       final isOnOffLocked = _onOffState.isLocked;
-      final showInitialMixedSimple = !isOnOffLocked && roleMixedState.onStateMixed;
+
+      // Determine sync state visual:
+      // 1. Settling = syncing in progress
+      // 2. Unsynced = settling timed out (error state)
+      // 3. Mixed = idle state but devices have different values (intentional)
+      final syncState = _getSyncStateVisual(
+        isSettling: isOnOffSettling,
+        isUnsynced: isOnOffUnsynced,
+        isMixed: !isOnOffLocked && !isOnOffSettling && !isOnOffUnsynced && roleMixedState.onStateMixed,
+      );
 
       // When locked, show the user's desired state; otherwise show actual state
       final displayAnyOn = isOnOffLocked
@@ -2773,17 +2946,18 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (showInitialMixedSimple)
-            // Show sync-off icon when devices are initially out of sync
+          if (syncState > 0)
             Icon(
-              MdiIcons.syncOff,
+              _getSyncStateIcon(syncState),
               size: _screenService.scale(
                 60,
                 density: _visualDensityService.density,
               ),
-              color: Theme.of(context).brightness == Brightness.light
-                  ? AppTextColorLight.regular
-                  : AppTextColorDark.regular,
+              color: syncState == 2
+                  ? Theme.of(context).warning // Warning color for unsynced
+                  : (Theme.of(context).brightness == Brightness.light
+                      ? AppTextColorLight.regular
+                      : AppTextColorDark.regular),
             )
           else
             Text(
@@ -2802,15 +2976,17 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
               ),
             ),
           Text(
-            showInitialMixedSimple
-                ? localizations.light_role_not_synced_description
+            syncState > 0
+                ? _getSyncStateDescription(context, syncState)
                 : (displayAnyOn
                     ? localizations.light_role_on_description
                     : localizations.light_role_off_description),
             style: TextStyle(
-              color: Theme.of(context).brightness == Brightness.light
-                  ? AppTextColorLight.regular
-                  : AppTextColorDark.regular,
+              color: syncState == 2
+                  ? Theme.of(context).warning
+                  : (Theme.of(context).brightness == Brightness.light
+                      ? AppTextColorLight.regular
+                      : AppTextColorDark.regular),
               fontSize: AppFontSize.base,
             ),
           ),
@@ -2819,42 +2995,54 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     }
 
     // Determine what to display based on state machine:
-    // 1. If state is IDLE and devices are mixed, show sync-off icon
-    // 2. If state is PENDING/SETTLING/MIXED (user has interacted), show user's desired value
-    // 3. If state is IDLE and devices are synced, show actual brightness
+    // 1. Settling = show sync icon (syncing in progress)
+    // 2. Unsynced (RoleUIState.mixed) = show sync-alert icon (error)
+    // 3. Mixed (idle + different values) = show tune icon (intentional)
+    // 4. Normal = show brightness value
 
     final isLocked = _brightnessState.isLocked;
     final isOnOffLocked = _onOffState.isLocked;
+    final isBrightnessSettling = _brightnessState.isSettling;
+    final isBrightnessUnsynced = _brightnessState.isMixed;
+    final isOnOffSettling = _onOffState.isSettling;
+    final isOnOffUnsynced = _onOffState.isMixed;
 
     // Determine the display value
     final displayBrightness = isLocked
         ? (_brightnessState.desiredValue?.round() ?? avgBrightness)
         : avgBrightness;
 
-    // Check if devices are mixed (on/off OR brightness)
-    // But suppress on/off mixed state if on/off is currently settling
-    final onStateMixedForDisplay = !isOnOffLocked && roleMixedState.onStateMixed;
-    final devicesMixed = onStateMixedForDisplay || roleMixedState.brightnessMixed;
+    // Check if devices are mixed (on/off OR brightness) in idle state
+    final onStateMixedForDisplay = !isOnOffLocked && !isOnOffSettling && !isOnOffUnsynced && roleMixedState.onStateMixed;
+    final brightnessMixedForDisplay = !isLocked && !isBrightnessSettling && !isBrightnessUnsynced && roleMixedState.brightnessMixed;
+    final devicesMixedIntentional = onStateMixedForDisplay || brightnessMixedForDisplay;
 
-    // Show sync-off icon when:
-    // - User hasn't interacted yet (IDLE state) AND devices have different values
-    final showInitialMixed = !isLocked && devicesMixed;
+    // Determine sync state visual
+    final isSettling = isBrightnessSettling || isOnOffSettling;
+    final isUnsynced = isBrightnessUnsynced || isOnOffUnsynced;
 
-    // For brightness-capable lights, show brightness percentage or sync-off icon
+    final syncState = _getSyncStateVisual(
+      isSettling: isSettling,
+      isUnsynced: isUnsynced,
+      isMixed: devicesMixedIntentional,
+    );
+
+    // For brightness-capable lights, show brightness percentage or status icon
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (showInitialMixed)
-          // Show sync-off icon when devices are initially out of sync
+        if (syncState > 0)
           Icon(
-            MdiIcons.syncOff,
+            _getSyncStateIcon(syncState),
             size: _screenService.scale(
               60,
               density: _visualDensityService.density,
             ),
-            color: Theme.of(context).brightness == Brightness.light
-                ? AppTextColorLight.regular
-                : AppTextColorDark.regular,
+            color: syncState == 2
+                ? Theme.of(context).warning
+                : (Theme.of(context).brightness == Brightness.light
+                    ? AppTextColorLight.regular
+                    : AppTextColorDark.regular),
           )
         else
           Row(
@@ -2895,15 +3083,17 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
             ],
           ),
         Text(
-          showInitialMixed
-              ? localizations.light_role_not_synced_description
+          syncState > 0
+              ? _getSyncStateDescription(context, syncState)
               : (anyOn
                   ? localizations.light_state_brightness_description
                   : localizations.light_role_off_description),
           style: TextStyle(
-            color: Theme.of(context).brightness == Brightness.light
-                ? AppTextColorLight.regular
-                : AppTextColorDark.regular,
+            color: syncState == 2
+                ? Theme.of(context).warning
+                : (Theme.of(context).brightness == Brightness.light
+                    ? AppTextColorLight.regular
+                    : AppTextColorDark.regular),
             fontSize: AppFontSize.base,
           ),
         ),
@@ -3105,7 +3295,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         // Debounce the API call to prevent overwhelming the backend
         _brightnessDebounceTimer?.cancel();
         _brightnessDebounceTimer = Timer(
-          const Duration(milliseconds: 300),
+          const Duration(milliseconds: LightingConstants.sliderDebounceMs),
           () {
             if (!mounted) return;
             _setSimplePropertyForAll(
@@ -3302,7 +3492,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         // Debounce the API call
         _hueDebounceTimer?.cancel();
         _hueDebounceTimer = Timer(
-          const Duration(milliseconds: 300),
+          const Duration(milliseconds: LightingConstants.sliderDebounceMs),
           () {
             if (!mounted) return;
             _setHueForAll(context, targets, value, devicesService);
@@ -3445,7 +3635,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         // Debounce the API call
         _temperatureDebounceTimer?.cancel();
         _temperatureDebounceTimer = Timer(
-          const Duration(milliseconds: 300),
+          const Duration(milliseconds: LightingConstants.sliderDebounceMs),
           () {
             if (!mounted) return;
             _setSimplePropertyForAll(
@@ -3600,7 +3790,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
         // Debounce the API call
         _whiteDebounceTimer?.cancel();
         _whiteDebounceTimer = Timer(
-          const Duration(milliseconds: 300),
+          const Duration(milliseconds: LightingConstants.sliderDebounceMs),
           () {
             if (!mounted) return;
             _setSimplePropertyForAll(
@@ -3987,7 +4177,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
       if (mounted) {
         _onOffState.cancelTimer();
 
-        final settlingTimer = Timer(const Duration(seconds: 3), () {
+        final settlingTimer = Timer(const Duration(milliseconds: LightingConstants.onOffSettlingWindowMs), () {
           if (!mounted) {
             _pendingOnState = null;
             _onOffState = const RoleControlState();

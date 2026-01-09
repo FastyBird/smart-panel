@@ -42,6 +42,13 @@ export interface LightingContextSnapshot {
 }
 
 /**
+ * Climate state snapshot (extends ClimateState with device ID for undo)
+ */
+export interface ClimateStateSnapshot extends ClimateState {
+	primaryThermostatId: string | null;
+}
+
+/**
  * Complete space context snapshot
  */
 export interface SpaceContextSnapshot {
@@ -49,7 +56,7 @@ export interface SpaceContextSnapshot {
 	spaceName: string;
 	capturedAt: Date;
 	lighting: LightingContextSnapshot;
-	climate: ClimateState;
+	climate: ClimateStateSnapshot;
 }
 
 @Injectable()
@@ -80,7 +87,15 @@ export class SpaceContextSnapshotService {
 		const lighting = await this.captureLightingSnapshot(spaceId);
 
 		// Capture climate state (reuse existing method from intent service)
-		const climate = await this.spaceIntentService.getClimateState(spaceId);
+		const climateState = await this.spaceIntentService.getClimateState(spaceId);
+
+		// Get primary thermostat ID from intent service (uses same logic as executeClimateIntent)
+		const primaryThermostatId = await this.spaceIntentService.getPrimaryThermostatId(spaceId);
+
+		const climate: ClimateStateSnapshot = {
+			...climateState,
+			primaryThermostatId,
+		};
 
 		const snapshot: SpaceContextSnapshot = {
 			spaceId: space.id,

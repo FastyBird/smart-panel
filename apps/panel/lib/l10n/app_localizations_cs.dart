@@ -129,7 +129,16 @@ class AppLocalizationsCs extends AppLocalizations {
   String get message_error_no_device_detail_preparing_description => 'Pro vybrané zařízení stránka s podrobnostmi ještě není připravena.';
 
   @override
-  String get device_status_offline => 'offline';
+  String get device_status_offline => 'Offline';
+
+  @override
+  String get device_offline_message => 'Zařízení je offline';
+
+  @override
+  String get device_config_issue => 'Problém s konfigurací';
+
+  @override
+  String get device_details => 'Podrobnosti zařízení';
 
   @override
   String get message_error_page_not_found_title => 'Stránka nenalezena!';
@@ -246,7 +255,13 @@ class AppLocalizationsCs extends AppLocalizations {
   String get light_role_off_description => 'Světla nesvítí';
 
   @override
-  String get light_role_not_synced_description => 'Světla nejsou synchronizována';
+  String get light_role_not_synced_description => 'Synchronizace selhala';
+
+  @override
+  String get light_role_syncing_description => 'Probíhá synchronizace';
+
+  @override
+  String get light_role_mixed_description => 'Světla mají různé hodnoty';
 
   @override
   String get light_state_out_of_sync => 'Nesynchronizováno';
@@ -827,6 +842,18 @@ class AppLocalizationsCs extends AppLocalizations {
   String get space_climate_target_label => 'Cílová';
 
   @override
+  String get climate_role_auxiliary => 'Pomocné';
+
+  @override
+  String get climate_role_ventilation => 'Větrání';
+
+  @override
+  String get climate_role_humidity => 'Ovládání vlhkosti';
+
+  @override
+  String get climate_role_other => 'Ostatní zařízení';
+
+  @override
   String get space_suggestion_applied => 'Návrh byl aplikován';
 
   @override
@@ -1002,6 +1029,18 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get domain_lights_all_off => 'vše vypnuto';
+
+  @override
+  String get domain_lights_all_on => 'vše zapnuto';
+
+  @override
+  String get domain_lights_syncing => 'synchronizuji';
+
+  @override
+  String get domain_lights_unsynced => 'nesynchronizováno';
+
+  @override
+  String get domain_lights_mixed => 'různé hodnoty';
 
   @override
   String get domain_climate => 'Klima';

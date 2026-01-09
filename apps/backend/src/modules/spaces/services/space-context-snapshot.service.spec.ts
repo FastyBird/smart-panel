@@ -27,8 +27,6 @@ describe('SpaceContextSnapshotService', () => {
 		category: null,
 		icon: null,
 		displayOrder: 0,
-		primaryThermostatId: null,
-		primaryTemperatureSensorId: null,
 		suggestionsEnabled: true,
 		lastActivityAt: null,
 		parentId: null,
@@ -133,8 +131,6 @@ describe('SpaceContextSnapshotService', () => {
 		minSetpoint: 5,
 		maxSetpoint: 35,
 		canSetSetpoint: false,
-		primaryThermostatId: null,
-		primarySensorId: null,
 	});
 
 	beforeEach(async () => {
@@ -152,6 +148,7 @@ describe('SpaceContextSnapshotService', () => {
 					provide: SpaceIntentService,
 					useValue: {
 						getClimateState: jest.fn(),
+						getPrimaryThermostatId: jest.fn(),
 					},
 				},
 				{
@@ -286,8 +283,6 @@ describe('SpaceContextSnapshotService', () => {
 				minSetpoint: 5,
 				maxSetpoint: 35,
 				canSetSetpoint: true,
-				primaryThermostatId: uuid(),
-				primarySensorId: uuid(),
 			};
 
 			spacesService.findOne.mockResolvedValue(space);

@@ -338,8 +338,26 @@ abstract class AppLocalizations {
   /// Label shown when a device is offline/disconnected
   ///
   /// In en, this message translates to:
-  /// **'offline'**
+  /// **'Offline'**
   String get device_status_offline;
+
+  /// Message shown when a device is not connected
+  ///
+  /// In en, this message translates to:
+  /// **'Device is offline'**
+  String get device_offline_message;
+
+  /// Message shown when a device has configuration problems
+  ///
+  /// In en, this message translates to:
+  /// **'Configuration issue'**
+  String get device_config_issue;
+
+  /// Button label to open device details
+  ///
+  /// In en, this message translates to:
+  /// **'Device Details'**
+  String get device_details;
 
   /// Title for error when a requested page cannot be found
   ///
@@ -569,11 +587,23 @@ abstract class AppLocalizations {
   /// **'Lights are off'**
   String get light_role_off_description;
 
-  /// Description for role detail when lights are out of sync (plural)
+  /// Description for role detail when lights failed to sync after a command
   ///
   /// In en, this message translates to:
-  /// **'Lights are not synced'**
+  /// **'Lights failed to sync'**
   String get light_role_not_synced_description;
+
+  /// Description for role detail when lights are actively syncing
+  ///
+  /// In en, this message translates to:
+  /// **'Lights are syncing'**
+  String get light_role_syncing_description;
+
+  /// Description for role detail when lights intentionally have different values
+  ///
+  /// In en, this message translates to:
+  /// **'Lights have different values'**
+  String get light_role_mixed_description;
 
   /// Short label for a device that is out of sync with the target value
   ///
@@ -1715,6 +1745,30 @@ abstract class AppLocalizations {
   /// **'Target'**
   String get space_climate_target_label;
 
+  /// Section header for auxiliary climate devices
+  ///
+  /// In en, this message translates to:
+  /// **'Auxiliary'**
+  String get climate_role_auxiliary;
+
+  /// Section header for ventilation devices (fans, purifiers)
+  ///
+  /// In en, this message translates to:
+  /// **'Ventilation'**
+  String get climate_role_ventilation;
+
+  /// Section header for humidity control devices
+  ///
+  /// In en, this message translates to:
+  /// **'Humidity Control'**
+  String get climate_role_humidity;
+
+  /// Section header for other climate devices
+  ///
+  /// In en, this message translates to:
+  /// **'Other Devices'**
+  String get climate_role_other;
+
   /// Message shown when a suggestion is applied
   ///
   /// In en, this message translates to:
@@ -2050,6 +2104,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'all off'**
   String get domain_lights_all_off;
+
+  /// Text shown when all lights in a role group are on
+  ///
+  /// In en, this message translates to:
+  /// **'all on'**
+  String get domain_lights_all_on;
+
+  /// Text shown when lights are syncing after a command
+  ///
+  /// In en, this message translates to:
+  /// **'syncing'**
+  String get domain_lights_syncing;
+
+  /// Text shown when lights failed to sync after a command
+  ///
+  /// In en, this message translates to:
+  /// **'unsynced'**
+  String get domain_lights_unsynced;
+
+  /// Text shown when lights intentionally have different values
+  ///
+  /// In en, this message translates to:
+  /// **'mixed'**
+  String get domain_lights_mixed;
 
   /// Title for climate domain view in room navigation
   ///

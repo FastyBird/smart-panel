@@ -370,3 +370,9 @@ export { SystemModuleCreateLogEntryType as SystemModuleLogEntryType } from './op
 // Extensions Module Service State Enum
 // =====================================
 export { ExtensionsModuleDataServiceStatusState as ExtensionsModuleServiceState } from './openapi';
+
+// Spaces Module Role Enums
+// ========================
+export { SpacesModuleSetLightingRoleRole as SpacesModuleLightingRole } from './openapi';
+
+export { SpacesModuleSetClimateRoleRole as SpacesModuleClimateRole } from './openapi';

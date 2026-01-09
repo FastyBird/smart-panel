@@ -17,7 +17,6 @@ import { DevicesService } from '../../devices/services/devices.service';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 
 import { LightStateSnapshot, SpaceContextSnapshot } from './space-context-snapshot.service';
-import { ClimateState } from './space-intent.service';
 import { SpaceUndoHistoryService } from './space-undo-history.service';
 import { SpacesService } from './spaces.service';
 
@@ -46,8 +45,7 @@ describe('SpaceUndoHistoryService', () => {
 			maxSetpoint: 35,
 			canSetSetpoint: false,
 			primaryThermostatId: null,
-			primarySensorId: null,
-		} as ClimateState,
+		},
 	});
 
 	const createLightSnapshot = (
@@ -138,8 +136,7 @@ describe('SpaceUndoHistoryService', () => {
 			maxSetpoint: 35,
 			canSetSetpoint: thermostatId !== null,
 			primaryThermostatId: thermostatId,
-			primarySensorId: null,
-		} as ClimateState,
+		},
 	});
 
 	beforeEach(async () => {

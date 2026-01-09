@@ -224,27 +224,13 @@ export class SpacesService {
 				// Simple value comparison
 				return newValue !== existingValue;
 			}) ||
-			(dtoInstance.parent_id !== undefined && space.parentId !== (dtoInstance.parent_id ?? null)) ||
-			(dtoInstance.primary_thermostat_id !== undefined &&
-				space.primaryThermostatId !== (dtoInstance.primary_thermostat_id ?? null)) ||
-			(dtoInstance.primary_temperature_sensor_id !== undefined &&
-				space.primaryTemperatureSensorId !== (dtoInstance.primary_temperature_sensor_id ?? null));
+			(dtoInstance.parent_id !== undefined && space.parentId !== (dtoInstance.parent_id ?? null));
 
 		Object.assign(space, updateFields);
 
 		// Explicitly handle parent_id being set to null (toInstance with exposeUnsetFields:false drops null values)
 		if (dtoInstance.parent_id === null) {
 			space.parentId = null;
-		}
-
-		// Explicitly handle primary_thermostat_id being set to null
-		if (dtoInstance.primary_thermostat_id === null) {
-			space.primaryThermostatId = null;
-		}
-
-		// Explicitly handle primary_temperature_sensor_id being set to null
-		if (dtoInstance.primary_temperature_sensor_id === null) {
-			space.primaryTemperatureSensorId = null;
 		}
 
 		await this.repository.save(space);
@@ -320,6 +306,27 @@ export class SpacesService {
 			this.logger.debug(`Found ${devices.length} devices in zone`);
 
 			return devices;
+		}
+	}
+
+	/**
+	 * Check if a device belongs to a space (room or zone)
+	 * - For rooms: checks device.roomId
+	 * - For zones: checks the zone-device junction table
+	 */
+	async isDeviceInSpace(spaceId: string, deviceId: string): Promise<boolean> {
+		const space = await this.getOneOrThrow(spaceId);
+
+		if (space.type === SpaceType.ROOM) {
+			// For rooms, check device.roomId
+			const device = await this.deviceRepository.findOne({
+				where: { id: deviceId, roomId: spaceId },
+			});
+			return device !== null;
+		} else {
+			// For zones, check the junction table
+			const zoneDevices = await this.deviceZonesService.getZoneDevices(spaceId);
+			return zoneDevices.some((d) => d.id === deviceId);
 		}
 	}
 

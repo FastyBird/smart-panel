@@ -7,7 +7,10 @@ export { default as SpaceEditForm } from './space-edit-form.vue';
 export { default as SpaceEditSummarySection } from './space-edit-summary-section.vue';
 export { default as SpaceLightingRoles } from './space-lighting-roles.vue';
 export { default as SpaceLightingRolesSummary } from './space-lighting-roles-summary.vue';
-export { default as SpaceClimateOverridesSummary } from './space-climate-overrides-summary.vue';
+export { default as SpaceClimateRoles } from './space-climate-roles.vue';
+export { default as SpaceClimateRolesSummary } from './space-climate-roles-summary.vue';
+export { default as SpaceLightingRolesDialog } from './space-lighting-roles-dialog.vue';
+export { default as SpaceClimateRolesDialog } from './space-climate-roles-dialog.vue';
 
 // Space detail sections
 export { default as SpaceDetail } from './space-detail.vue';

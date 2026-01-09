@@ -354,7 +354,7 @@ Type: feature
 Scope: panel
 Size: medium
 Parent: FEATURE-PANEL-ROOM-SYSTEM-PAGES
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -381,10 +381,10 @@ I want a climate page that shows thermostats/heaters and allows basic adjustment
 
 ## 4. Acceptance criteria
 
-- [ ] Climate page renders correctly when included and lists room climate devices.
-- [ ] Basic controls work (toggle and/or setpoint where supported).
-- [ ] Missing capabilities degrade gracefully (read-only UI).
-- [ ] Unit tests cover device-to-widget mapping decisions.
+- [x] Climate page renders correctly when included and lists room climate devices.
+- [x] Basic controls work (toggle and/or setpoint where supported).
+- [x] Missing capabilities degrade gracefully (read-only UI).
+- [x] Unit tests cover device-to-widget mapping decisions.
 
 ## 6. Technical constraints
 
