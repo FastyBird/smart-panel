@@ -819,11 +819,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           Text(
             _formatTemperature(targetTemp, unit),
             style: TextStyle(
-            fontSize: AppFontSize.large,
-            fontWeight: FontWeight.w500,
-            color: Theme.of(context).colorScheme.primary,
+              fontSize: AppFontSize.large,
+              fontWeight: FontWeight.w500,
+              color: Theme.of(context).colorScheme.primary,
+            ),
           ),
-        ),
       ],
     );
   }
