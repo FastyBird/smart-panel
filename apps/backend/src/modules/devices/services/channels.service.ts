@@ -246,6 +246,31 @@ export class ChannelsService {
 			throw new DevicesValidationException('Provided channel data are invalid.');
 		}
 
+		// Validate parent channel belongs to the same device
+		if (dtoInstance.parent) {
+			const parentChannel = await this.repository.findOne({
+				where: { id: dtoInstance.parent },
+				relations: ['device'],
+			});
+
+			if (!parentChannel) {
+				this.logger.error(`Parent channel with id=${dtoInstance.parent} does not exist`);
+
+				throw new DevicesValidationException('The specified parent channel does not exist.');
+			}
+
+			const parentDeviceId =
+				typeof parentChannel.device === 'string' ? parentChannel.device : parentChannel.device.id;
+
+			if (parentDeviceId !== dtoInstance.device) {
+				this.logger.error(
+					`Parent channel with id=${dtoInstance.parent} belongs to a different device (${parentDeviceId} !== ${dtoInstance.device})`,
+				);
+
+				throw new DevicesValidationException('Parent channel must belong to the same device.');
+			}
+		}
+
 		const repository: Repository<TChannel> = this.dataSource.getRepository(mapping.class);
 
 		const channel = repository.create(toInstance(mapping.class, dtoInstance));
@@ -285,6 +310,32 @@ export class ChannelsService {
 		const mapping = this.channelsMapperService.getMapping<TChannel, any, TUpdateDTO>(channel.type);
 
 		const dtoInstance = await this.validateDto<TUpdateDTO>(mapping.updateDto, updateDto);
+
+		// Validate parent channel belongs to the same device (if parent is being updated)
+		if (dtoInstance.parent !== undefined && dtoInstance.parent !== null) {
+			const parentChannel = await this.repository.findOne({
+				where: { id: dtoInstance.parent },
+				relations: ['device'],
+			});
+
+			if (!parentChannel) {
+				this.logger.error(`Parent channel with id=${dtoInstance.parent} does not exist`);
+
+				throw new DevicesValidationException('The specified parent channel does not exist.');
+			}
+
+			const parentDeviceId =
+				typeof parentChannel.device === 'string' ? parentChannel.device : parentChannel.device.id;
+			const channelDeviceId = typeof channel.device === 'string' ? channel.device : channel.device.id;
+
+			if (parentDeviceId !== channelDeviceId) {
+				this.logger.error(
+					`Parent channel with id=${dtoInstance.parent} belongs to a different device (${parentDeviceId} !== ${channelDeviceId})`,
+				);
+
+				throw new DevicesValidationException('Parent channel must belong to the same device.');
+			}
+		}
 
 		const repository: Repository<TChannel> = this.dataSource.getRepository(mapping.class);
 
