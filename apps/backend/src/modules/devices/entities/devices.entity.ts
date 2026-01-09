@@ -281,9 +281,11 @@ export class ChannelEntity extends BaseEntity {
 			value === null ? null : typeof value === 'string' ? value : value?.id,
 		{ toPlainOnly: true },
 	)
-	@Transform(({ obj }: { obj: { parent?: string; parentId?: string } }) => obj.parent ?? obj.parentId, {
-		toClassOnly: true,
-	})
+	@Transform(
+		({ obj }: { obj: { parent?: string | null; parentId?: string | null } }) =>
+			obj.parent !== undefined ? obj.parent : obj.parentId,
+		{ toClassOnly: true },
+	)
 	@Index()
 	@Column({ nullable: true, default: null })
 	parentId: string | null;
