@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
-import { ApiBody, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -13,8 +13,10 @@ import { DevicesService } from '../../../modules/devices/services/devices.servic
 import { getAllProperties, getDeviceSpec } from '../../../modules/devices/utils/schema.utils';
 import {
 	ApiBadRequestResponse,
+	ApiCreatedSuccessResponse,
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
+	ApiSuccessResponse,
 } from '../../../modules/swagger/decorators/api-documentation.decorator';
 import {
 	DEVICES_SIMULATOR_PLUGIN_API_TAG_NAME,
@@ -29,7 +31,6 @@ import {
 	ConnectionStateResultModel,
 	DeviceCategoriesResponseModel,
 	DeviceCategoryModel,
-	GeneratedDeviceResponseModel,
 	SimulatedValueResponseModel,
 	SimulatedValueResultModel,
 } from '../models/simulator-response.model';
@@ -56,10 +57,7 @@ export class SimulatorController {
 			'Returns a list of all device categories that can be used to generate simulated devices with their descriptions.',
 		operationId: 'get-devices-simulator-plugin-categories',
 	})
-	@ApiOkResponse({
-		description: 'List of available device categories',
-		type: DeviceCategoriesResponseModel,
-	})
+	@ApiSuccessResponse(DeviceCategoriesResponseModel, 'List of available device categories')
 	@Get('categories')
 	getCategories(): DeviceCategoriesResponseModel {
 		this.logger.debug('Fetching available device categories');
@@ -89,10 +87,7 @@ export class SimulatorController {
 		type: ReqGenerateDeviceDto,
 		description: 'Device generation parameters',
 	})
-	@ApiCreatedResponse({
-		description: 'The generated simulated device',
-		type: GeneratedDeviceResponseModel,
-	})
+	@ApiCreatedSuccessResponse(DeviceResponseModel, 'The generated simulated device')
 	@ApiBadRequestResponse('Invalid device generation parameters')
 	@ApiInternalServerErrorResponse('Failed to generate device')
 	@Post('generate')
@@ -135,10 +130,7 @@ export class SimulatorController {
 		type: ReqSimulateValueDto,
 		description: 'Property value simulation parameters',
 	})
-	@ApiOkResponse({
-		description: 'Value simulation result',
-		type: SimulatedValueResponseModel,
-	})
+	@ApiSuccessResponse(SimulatedValueResponseModel, 'Value simulation result')
 	@ApiNotFoundResponse('Device or property not found')
 	@ApiBadRequestResponse('Invalid simulation parameters or device is not a simulator device')
 	@Post(':deviceId/simulate-value')
@@ -219,10 +211,7 @@ export class SimulatorController {
 		type: ReqSimulateConnectionStateDto,
 		description: 'Connection state simulation parameters',
 	})
-	@ApiOkResponse({
-		description: 'Connection state simulation result',
-		type: ConnectionStateResponseModel,
-	})
+	@ApiSuccessResponse(ConnectionStateResponseModel, 'Connection state simulation result')
 	@ApiNotFoundResponse('Device not found')
 	@ApiBadRequestResponse('Invalid state or device is not a simulator device')
 	@Post(':deviceId/simulate-connection')
@@ -285,10 +274,7 @@ export class SimulatorController {
 		type: 'string',
 		format: 'uuid',
 	})
-	@ApiOkResponse({
-		description: 'The device with updated values',
-		type: DeviceResponseModel,
-	})
+	@ApiSuccessResponse(DeviceResponseModel, 'The device with updated values')
 	@ApiNotFoundResponse('Device not found')
 	@ApiBadRequestResponse('Device is not a simulator device')
 	@Post(':deviceId/simulate-all')
