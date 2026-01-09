@@ -4,6 +4,7 @@ import { createExtensionLogger } from '../../../common/logger/extension-logger.s
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { LightingRole, SPACES_MODULE_NAME } from '../spaces.constants';
+
 import { ClimateState, SpaceIntentService } from './space-intent.service';
 import { SpaceLightingRoleService } from './space-lighting-role.service';
 import { SpacesService } from './spaces.service';
