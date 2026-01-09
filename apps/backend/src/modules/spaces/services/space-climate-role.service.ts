@@ -6,18 +6,19 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
+import { ChannelEntity } from '../../devices/entities/channels.entity';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { SetClimateRoleDto } from '../dto/climate-role.dto';
 import { SpaceClimateRoleEntity } from '../entities/space-climate-role.entity';
-import { ClimateRole, EventType, SPACES_MODULE_NAME } from '../spaces.constants';
+import { CLIMATE_SENSOR_ROLES, ClimateRole, EventType, SPACES_MODULE_NAME } from '../spaces.constants';
 import { SpacesValidationException } from '../spaces.exceptions';
 
 import { SpacesService } from './spaces.service';
 
 /**
- * Climate device categories for filtering
+ * Climate device categories for filtering (actuators)
  */
-const CLIMATE_DEVICE_CATEGORIES = [
+const CLIMATE_ACTUATOR_CATEGORIES = [
 	DeviceCategory.THERMOSTAT,
 	DeviceCategory.HEATER,
 	DeviceCategory.AIR_CONDITIONER,
@@ -27,10 +28,17 @@ const CLIMATE_DEVICE_CATEGORIES = [
 	DeviceCategory.AIR_PURIFIER,
 ];
 
+/**
+ * All climate device categories (actuators + sensors)
+ */
+const CLIMATE_DEVICE_CATEGORIES = [...CLIMATE_ACTUATOR_CATEGORIES, DeviceCategory.SENSOR];
+
 export interface ClimateTargetInfo {
 	deviceId: string;
 	deviceName: string;
 	deviceCategory: DeviceCategory;
+	channelId: string | null;
+	channelName: string | null;
 	role: ClimateRole | null;
 	priority: number;
 	hasTemperature: boolean;
@@ -43,6 +51,7 @@ export interface ClimateTargetInfo {
  */
 export interface BulkClimateRoleResultItem {
 	deviceId: string;
+	channelId: string | null;
 	success: boolean;
 	role: ClimateRole | null;
 	error: string | null;
@@ -69,6 +78,8 @@ export interface ClimateTargetEventPayload {
 	device_id: string;
 	device_name: string;
 	device_category: DeviceCategory;
+	channel_id: string | null;
+	channel_name: string | null;
 	role: ClimateRole | null;
 	priority: number;
 	has_temperature: boolean;
@@ -85,6 +96,8 @@ export class SpaceClimateRoleService {
 		private readonly repository: Repository<SpaceClimateRoleEntity>,
 		@InjectRepository(DeviceEntity)
 		private readonly deviceRepository: Repository<DeviceEntity>,
+		@InjectRepository(ChannelEntity)
+		private readonly channelRepository: Repository<ChannelEntity>,
 		private readonly spacesService: SpacesService,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
@@ -111,18 +124,40 @@ export class SpaceClimateRoleService {
 	/**
 	 * Get a single climate role assignment
 	 */
-	async findOne(spaceId: string, deviceId: string): Promise<SpaceClimateRoleEntity | null> {
+	async findOne(
+		spaceId: string,
+		deviceId: string,
+		channelId?: string | null,
+	): Promise<SpaceClimateRoleEntity | null> {
 		return this.repository.findOne({
-			where: { spaceId, deviceId },
+			where: { spaceId, deviceId, channelId: channelId ?? null },
 		});
 	}
 
 	/**
 	 * Set or update a climate role assignment
+	 * - PRIMARY role can only be assigned to one device per space
+	 * - Sensor roles (TEMPERATURE_SENSOR, HUMIDITY_SENSOR) require channelId
+	 * - Actuator roles require channelId to be null
 	 */
 	async setRole(spaceId: string, dto: SetClimateRoleDto): Promise<SpaceClimateRoleEntity> {
 		// Verify space exists
 		await this.spacesService.getOneOrThrow(spaceId);
+
+		const isSensorRole = CLIMATE_SENSOR_ROLES.includes(dto.role as (typeof CLIMATE_SENSOR_ROLES)[number]);
+		const channelId = dto.channelId ?? null;
+
+		// Validate channelId requirements
+		if (isSensorRole && !channelId) {
+			throw new SpacesValidationException(
+				`Sensor roles (${dto.role}) require a channel_id to be specified`,
+			);
+		}
+		if (!isSensorRole && channelId) {
+			throw new SpacesValidationException(
+				`Actuator roles (${dto.role}) must not have a channel_id - they operate at device level`,
+			);
+		}
 
 		// Verify device exists and belongs to this space
 		const device = await this.deviceRepository.findOne({
@@ -143,6 +178,30 @@ export class SpaceClimateRoleService {
 			throw new SpacesValidationException(`Device with id=${dto.deviceId} is not a climate device`);
 		}
 
+		// For sensor roles, verify the channel exists and belongs to the device
+		if (isSensorRole && channelId) {
+			const channel = device.channels?.find((c) => c.id === channelId);
+			if (!channel) {
+				throw new SpacesValidationException(
+					`Channel with id=${channelId} not found on device ${dto.deviceId}`,
+				);
+			}
+
+			// Verify channel has the required property for the sensor role
+			const properties = channel.properties ?? [];
+			if (dto.role === ClimateRole.TEMPERATURE_SENSOR) {
+				if (!properties.some((p) => p.category === PropertyCategory.TEMPERATURE)) {
+					throw new SpacesValidationException(
+						`Channel ${channelId} does not have a temperature property`,
+					);
+				}
+			} else if (dto.role === ClimateRole.HUMIDITY_SENSOR) {
+				if (!properties.some((p) => p.category === PropertyCategory.HUMIDITY)) {
+					throw new SpacesValidationException(`Channel ${channelId} does not have a humidity property`);
+				}
+			}
+		}
+
 		let roleEntity: SpaceClimateRoleEntity | null = null;
 		let isUpdate = false;
 		let hasChanges = false;
@@ -152,15 +211,34 @@ export class SpaceClimateRoleService {
 
 		// Use a transaction to atomically check existence and upsert
 		await this.repository.manager.transaction(async (transactionalManager) => {
+			// If setting PRIMARY role, check no other device has PRIMARY in this space
+			if (dto.role === ClimateRole.PRIMARY) {
+				const existingPrimary = await transactionalManager.findOne(SpaceClimateRoleEntity, {
+					where: { spaceId, role: ClimateRole.PRIMARY },
+				});
+				// Allow if updating the same device/channel, otherwise reject
+				if (
+					existingPrimary &&
+					(existingPrimary.deviceId !== dto.deviceId || existingPrimary.channelId !== channelId)
+				) {
+					throw new SpacesValidationException(
+						`Space already has a PRIMARY climate device (device_id=${existingPrimary.deviceId}). Only one PRIMARY device is allowed per space.`,
+					);
+				}
+			}
+
 			// Check if this is an update or create within the transaction
 			const existingRole = await transactionalManager.findOne(SpaceClimateRoleEntity, {
-				where: { spaceId, deviceId: dto.deviceId },
+				where: { spaceId, deviceId: dto.deviceId, channelId },
 			});
 			isUpdate = existingRole !== null;
 
 			// Detect actual changes to avoid spurious events
 			if (existingRole) {
-				hasChanges = existingRole.role !== newRole || existingRole.priority !== newPriority;
+				hasChanges =
+					existingRole.role !== newRole ||
+					existingRole.priority !== newPriority ||
+					existingRole.channelId !== channelId;
 			} else {
 				hasChanges = true; // New record is always a change
 			}
@@ -171,18 +249,19 @@ export class SpaceClimateRoleService {
 				{
 					spaceId,
 					deviceId: dto.deviceId,
+					channelId,
 					role: newRole,
 					priority: newPriority,
 				},
 				{
-					conflictPaths: ['spaceId', 'deviceId'],
+					conflictPaths: ['spaceId', 'deviceId', 'channelId'],
 					skipUpdateIfNoValuesChanged: true,
 				},
 			);
 
 			// Fetch the saved entity within the transaction
 			roleEntity = await transactionalManager.findOne(SpaceClimateRoleEntity, {
-				where: { spaceId, deviceId: dto.deviceId },
+				where: { spaceId, deviceId: dto.deviceId, channelId },
 			});
 		});
 
@@ -196,6 +275,7 @@ export class SpaceClimateRoleService {
 			const eventPayload = await this.buildClimateTargetEventPayload(
 				spaceId,
 				dto.deviceId,
+				channelId,
 				dto.role,
 				dto.priority ?? 0,
 			);
@@ -224,6 +304,7 @@ export class SpaceClimateRoleService {
 				await this.setRole(spaceId, dto);
 				results.push({
 					deviceId: dto.deviceId,
+					channelId: dto.channelId ?? null,
 					success: true,
 					role: dto.role,
 					error: null,
@@ -233,6 +314,7 @@ export class SpaceClimateRoleService {
 				this.logger.warn(`Failed to set role for device=${dto.deviceId}: ${err.message}`);
 				results.push({
 					deviceId: dto.deviceId,
+					channelId: dto.channelId ?? null,
 					success: false,
 					role: null,
 					error: err.message,
@@ -274,7 +356,8 @@ export class SpaceClimateRoleService {
 
 	/**
 	 * Get all climate targets in a space with their role assignments
-	 * This works at device level - each climate device is a target
+	 * - Actuators (thermostat, heater, AC, etc.) are device-level targets with channelId: null
+	 * - Sensors are channel-level targets - each channel with temperature/humidity is a separate target
 	 */
 	async getClimateTargetsInSpace(spaceId: string): Promise<ClimateTargetInfo[]> {
 		this.logger.debug(`Getting climate targets for space id=${spaceId}`);
@@ -287,10 +370,12 @@ export class SpaceClimateRoleService {
 
 		// Get all existing role assignments for this space
 		const existingRoles = await this.findBySpace(spaceId);
+		// Key format: deviceId or deviceId:channelId for sensor channels
 		const roleMap = new Map<string, SpaceClimateRoleEntity>();
 
 		for (const role of existingRoles) {
-			roleMap.set(role.deviceId, role);
+			const key = role.channelId ? `${role.deviceId}:${role.channelId}` : role.deviceId;
+			roleMap.set(key, role);
 		}
 
 		const climateTargets: ClimateTargetInfo[] = [];
@@ -301,37 +386,68 @@ export class SpaceClimateRoleService {
 				continue;
 			}
 
-			// Aggregate capabilities from all device channels
-			let hasTemperature = false;
-			let hasHumidity = false;
-			let hasMode = false;
+			if (device.category === DeviceCategory.SENSOR) {
+				// For sensors, create a target for each channel with temperature or humidity properties
+				for (const channel of device.channels ?? []) {
+					const properties = channel.properties ?? [];
+					const hasTemperature = properties.some((p) => p.category === PropertyCategory.TEMPERATURE);
+					const hasHumidity = properties.some((p) => p.category === PropertyCategory.HUMIDITY);
 
-			for (const channel of device.channels ?? []) {
-				const properties = channel.properties ?? [];
-				if (properties.some((p) => p.category === PropertyCategory.TEMPERATURE)) {
-					hasTemperature = true;
+					// Only include channels that have temperature or humidity properties
+					if (!hasTemperature && !hasHumidity) {
+						continue;
+					}
+
+					const key = `${device.id}:${channel.id}`;
+					const existingRole = roleMap.get(key);
+
+					climateTargets.push({
+						deviceId: device.id,
+						deviceName: device.name,
+						deviceCategory: device.category,
+						channelId: channel.id,
+						channelName: channel.name ?? null,
+						role: existingRole?.role ?? null,
+						priority: existingRole?.priority ?? 0,
+						hasTemperature,
+						hasHumidity,
+						hasMode: false, // Sensors don't have mode
+					});
 				}
-				if (properties.some((p) => p.category === PropertyCategory.HUMIDITY)) {
-					hasHumidity = true;
+			} else {
+				// For actuators, create a device-level target
+				let hasTemperature = false;
+				let hasHumidity = false;
+				let hasMode = false;
+
+				for (const channel of device.channels ?? []) {
+					const properties = channel.properties ?? [];
+					if (properties.some((p) => p.category === PropertyCategory.TEMPERATURE)) {
+						hasTemperature = true;
+					}
+					if (properties.some((p) => p.category === PropertyCategory.HUMIDITY)) {
+						hasHumidity = true;
+					}
+					if (properties.some((p) => p.category === PropertyCategory.MODE)) {
+						hasMode = true;
+					}
 				}
-				if (properties.some((p) => p.category === PropertyCategory.MODE)) {
-					hasMode = true;
-				}
+
+				const existingRole = roleMap.get(device.id);
+
+				climateTargets.push({
+					deviceId: device.id,
+					deviceName: device.name,
+					deviceCategory: device.category,
+					channelId: null,
+					channelName: null,
+					role: existingRole?.role ?? null,
+					priority: existingRole?.priority ?? 0,
+					hasTemperature,
+					hasHumidity,
+					hasMode,
+				});
 			}
-
-			// Get existing role assignment if any
-			const existingRole = roleMap.get(device.id);
-
-			climateTargets.push({
-				deviceId: device.id,
-				deviceName: device.name,
-				deviceCategory: device.category,
-				role: existingRole?.role ?? null,
-				priority: existingRole?.priority ?? 0,
-				hasTemperature,
-				hasHumidity,
-				hasMode,
-			});
 		}
 
 		this.logger.debug(`Found ${climateTargets.length} climate targets in space id=${spaceId}`);
@@ -341,11 +457,17 @@ export class SpaceClimateRoleService {
 
 	/**
 	 * Infer default climate roles for a space (quick defaults helper)
-	 * - Thermostats become PRIMARY
-	 * - Heaters/AC become AUXILIARY
+	 *
+	 * Control roles (actuators):
+	 * - First thermostat becomes PRIMARY (only one allowed)
+	 * - Other thermostats, heaters, AC become AUXILIARY
 	 * - Fans become VENTILATION
-	 * - Humidifiers/Dehumidifiers become HUMIDITY
-	 * - Others become OTHER
+	 * - Humidifiers/Dehumidifiers become HUMIDITY_CONTROL
+	 * - Air purifiers and others become OTHER
+	 *
+	 * Read roles (sensors):
+	 * - Temperature sensor channels become TEMPERATURE_SENSOR
+	 * - Humidity sensor channels become HUMIDITY_SENSOR
 	 */
 	async inferDefaultClimateRoles(spaceId: string): Promise<SetClimateRoleDto[]> {
 		this.logger.debug(`Inferring default climate roles for space id=${spaceId}`);
@@ -363,29 +485,42 @@ export class SpaceClimateRoleService {
 			const target = climateTargets[i];
 			let role: ClimateRole;
 
-			// Assign role based on device category
-			if (target.deviceCategory === DeviceCategory.THERMOSTAT && !primaryFound) {
-				role = ClimateRole.PRIMARY;
-				primaryFound = true;
-			} else if (
-				target.deviceCategory === DeviceCategory.HEATER ||
-				target.deviceCategory === DeviceCategory.AIR_CONDITIONER ||
-				target.deviceCategory === DeviceCategory.THERMOSTAT
-			) {
-				role = ClimateRole.AUXILIARY;
-			} else if (target.deviceCategory === DeviceCategory.FAN) {
-				role = ClimateRole.VENTILATION;
-			} else if (
-				target.deviceCategory === DeviceCategory.AIR_HUMIDIFIER ||
-				target.deviceCategory === DeviceCategory.AIR_DEHUMIDIFIER
-			) {
-				role = ClimateRole.HUMIDITY;
+			if (target.deviceCategory === DeviceCategory.SENSOR) {
+				// Sensors get sensor roles based on their capabilities
+				// Prefer temperature sensor, fall back to humidity sensor
+				if (target.hasTemperature) {
+					role = ClimateRole.TEMPERATURE_SENSOR;
+				} else if (target.hasHumidity) {
+					role = ClimateRole.HUMIDITY_SENSOR;
+				} else {
+					continue; // Skip sensors without relevant properties
+				}
 			} else {
-				role = ClimateRole.OTHER;
+				// Actuators get control roles based on device category
+				if (target.deviceCategory === DeviceCategory.THERMOSTAT && !primaryFound) {
+					role = ClimateRole.PRIMARY;
+					primaryFound = true;
+				} else if (
+					target.deviceCategory === DeviceCategory.HEATER ||
+					target.deviceCategory === DeviceCategory.AIR_CONDITIONER ||
+					target.deviceCategory === DeviceCategory.THERMOSTAT
+				) {
+					role = ClimateRole.AUXILIARY;
+				} else if (target.deviceCategory === DeviceCategory.FAN) {
+					role = ClimateRole.VENTILATION;
+				} else if (
+					target.deviceCategory === DeviceCategory.AIR_HUMIDIFIER ||
+					target.deviceCategory === DeviceCategory.AIR_DEHUMIDIFIER
+				) {
+					role = ClimateRole.HUMIDITY_CONTROL;
+				} else {
+					role = ClimateRole.OTHER;
+				}
 			}
 
 			defaultRoles.push({
 				deviceId: target.deviceId,
+				channelId: target.channelId,
 				role,
 				priority: i,
 			});
@@ -416,6 +551,7 @@ export class SpaceClimateRoleService {
 	private async buildClimateTargetEventPayload(
 		spaceId: string,
 		deviceId: string,
+		channelId: string | null,
 		role: ClimateRole | null,
 		priority: number,
 	): Promise<ClimateTargetEventPayload | null> {
@@ -430,30 +566,49 @@ export class SpaceClimateRoleService {
 			return null;
 		}
 
-		// Aggregate capabilities from all device channels
+		// For sensors, get capabilities from the specific channel
+		// For actuators, aggregate from all channels
 		let hasTemperature = false;
 		let hasHumidity = false;
 		let hasMode = false;
+		let channelName: string | null = null;
 
-		for (const channel of device.channels ?? []) {
-			const properties = channel.properties ?? [];
-			if (properties.some((p) => p.category === PropertyCategory.TEMPERATURE)) {
-				hasTemperature = true;
+		if (channelId) {
+			// Sensor - get capabilities from specific channel
+			const channel = device.channels?.find((c) => c.id === channelId);
+			if (channel) {
+				channelName = channel.name ?? null;
+				const properties = channel.properties ?? [];
+				hasTemperature = properties.some((p) => p.category === PropertyCategory.TEMPERATURE);
+				hasHumidity = properties.some((p) => p.category === PropertyCategory.HUMIDITY);
 			}
-			if (properties.some((p) => p.category === PropertyCategory.HUMIDITY)) {
-				hasHumidity = true;
-			}
-			if (properties.some((p) => p.category === PropertyCategory.MODE)) {
-				hasMode = true;
+		} else {
+			// Actuator - aggregate from all channels
+			for (const channel of device.channels ?? []) {
+				const properties = channel.properties ?? [];
+				if (properties.some((p) => p.category === PropertyCategory.TEMPERATURE)) {
+					hasTemperature = true;
+				}
+				if (properties.some((p) => p.category === PropertyCategory.HUMIDITY)) {
+					hasHumidity = true;
+				}
+				if (properties.some((p) => p.category === PropertyCategory.MODE)) {
+					hasMode = true;
+				}
 			}
 		}
 
+		// Use deviceId:channelId as id for sensors, deviceId for actuators
+		const id = channelId ? `${deviceId}:${channelId}` : deviceId;
+
 		return {
-			id: deviceId,
+			id,
 			space_id: spaceId,
 			device_id: deviceId,
 			device_name: device.name,
 			device_category: device.category,
+			channel_id: channelId,
+			channel_name: channelName,
 			role,
 			priority,
 			has_temperature: hasTemperature,

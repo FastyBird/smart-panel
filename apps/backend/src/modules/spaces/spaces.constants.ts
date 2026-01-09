@@ -434,13 +434,28 @@ export enum LightingRole {
 
 // Climate Roles - classify climate devices within a space for intent-based control
 export enum ClimateRole {
-	PRIMARY = 'primary', // Primary temperature regulation (e.g., main thermostat, central HVAC)
+	// Control roles (actuators)
+	PRIMARY = 'primary', // Primary temperature regulation (e.g., main thermostat, central HVAC) - only one per space
 	AUXILIARY = 'auxiliary', // Auxiliary heating/cooling (e.g., portable heater, window AC)
 	VENTILATION = 'ventilation', // Ventilation/air circulation (e.g., fans, air exchange)
-	HUMIDITY = 'humidity', // Humidity control (e.g., humidifier, dehumidifier)
+	HUMIDITY_CONTROL = 'humidity_control', // Humidity control (e.g., humidifier, dehumidifier)
+	// Read roles (sensors)
+	TEMPERATURE_SENSOR = 'temperature_sensor', // Temperature sensing (e.g., temperature sensor channel)
+	HUMIDITY_SENSOR = 'humidity_sensor', // Humidity sensing (e.g., humidity sensor channel)
+	// Other
 	OTHER = 'other', // Unclassified climate devices
 	HIDDEN = 'hidden', // Hidden devices (excluded from UI, not controlled by intents)
 }
+
+// Helper arrays for role categorization
+export const CLIMATE_CONTROL_ROLES = [
+	ClimateRole.PRIMARY,
+	ClimateRole.AUXILIARY,
+	ClimateRole.VENTILATION,
+	ClimateRole.HUMIDITY_CONTROL,
+] as const;
+
+export const CLIMATE_SENSOR_ROLES = [ClimateRole.TEMPERATURE_SENSOR, ClimateRole.HUMIDITY_SENSOR] as const;
 
 /**
  * Role-based lighting orchestration rules

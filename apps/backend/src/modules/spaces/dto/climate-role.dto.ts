@@ -24,8 +24,23 @@ export class SetClimateRoleDto {
 	})
 	deviceId: string;
 
+	@ApiPropertyOptional({
+		name: 'channel_id',
+		description: 'ID of the channel (required for sensor roles, null for actuator roles)',
+		type: 'string',
+		format: 'uuid',
+		example: 'c3d29ea4-632f-5e8c-c4gf-dce8b9e6c0f8',
+	})
+	@Expose({ name: 'channel_id' })
+	@IsOptional()
+	@IsUUID('4', { message: '[{"field":"channel_id","reason":"Channel ID must be a valid UUID."}]' })
+	@Transform(({ obj }: { obj: { channel_id?: string; channelId?: string } }) => obj.channel_id ?? obj.channelId, {
+		toClassOnly: true,
+	})
+	channelId?: string | null;
+
 	@ApiProperty({
-		description: 'The climate role for this device',
+		description: 'The climate role for this device/channel',
 		enum: ClimateRole,
 		example: ClimateRole.PRIMARY,
 	})

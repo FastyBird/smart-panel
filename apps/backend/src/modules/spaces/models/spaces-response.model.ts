@@ -669,7 +669,28 @@ export class ClimateTargetDataModel {
 	deviceCategory: DeviceCategory;
 
 	@ApiPropertyOptional({
-		description: 'The climate role assigned to this device (null if not assigned)',
+		name: 'channel_id',
+		description: 'ID of the channel (for sensor roles)',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: 'c3d29ea4-632f-5e8c-c4gf-dce8b9e6c0f8',
+	})
+	@Expose({ name: 'channel_id' })
+	channelId: string | null;
+
+	@ApiPropertyOptional({
+		name: 'channel_name',
+		description: 'Name of the channel (for sensor roles)',
+		type: 'string',
+		nullable: true,
+		example: 'Temperature Sensor',
+	})
+	@Expose({ name: 'channel_name' })
+	channelName: string | null;
+
+	@ApiPropertyOptional({
+		description: 'The climate role assigned to this target (null if not assigned)',
 		enum: ClimateRole,
 		nullable: true,
 		example: ClimateRole.PRIMARY,
@@ -770,6 +791,17 @@ export class BulkClimateRoleResultItemModel {
 	})
 	@Expose({ name: 'device_id' })
 	deviceId: string;
+
+	@ApiPropertyOptional({
+		name: 'channel_id',
+		description: 'ID of the channel (for sensor roles)',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: null,
+	})
+	@Expose({ name: 'channel_id' })
+	channelId: string | null;
 
 	@ApiProperty({
 		description: 'Whether the role was set successfully',

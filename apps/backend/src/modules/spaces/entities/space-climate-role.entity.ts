@@ -5,6 +5,7 @@ import { Column, Entity, JoinColumn, ManyToOne, Unique } from 'typeorm';
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
+import { ChannelEntity } from '../../devices/entities/channels.entity';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { ClimateRole } from '../spaces.constants';
 
@@ -12,7 +13,7 @@ import { SpaceEntity } from './space.entity';
 
 @ApiSchema({ name: 'SpacesModuleDataSpaceClimateRole' })
 @Entity('spaces_module_climate_roles')
-@Unique(['spaceId', 'deviceId'])
+@Unique(['spaceId', 'deviceId', 'channelId'])
 export class SpaceClimateRoleEntity extends BaseEntity {
 	@ApiProperty({
 		name: 'space_id',
@@ -52,8 +53,28 @@ export class SpaceClimateRoleEntity extends BaseEntity {
 	@JoinColumn({ name: 'deviceId' })
 	device: DeviceEntity;
 
+	@ApiPropertyOptional({
+		name: 'channel_id',
+		description: 'ID of the channel (required for sensor roles, null for actuator roles)',
+		type: 'string',
+		format: 'uuid',
+		example: 'c3d29ea4-632f-5e8c-c4gf-dce8b9e6c0f8',
+	})
+	@Expose({ name: 'channel_id' })
+	@IsOptional()
+	@IsUUID('4')
+	@Transform(({ obj }: { obj: { channel_id?: string; channelId?: string } }) => obj.channel_id ?? obj.channelId, {
+		toClassOnly: true,
+	})
+	@Column({ nullable: true })
+	channelId: string | null;
+
+	@ManyToOne(() => ChannelEntity, { nullable: true, onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'channelId' })
+	channel: ChannelEntity | null;
+
 	@ApiProperty({
-		description: 'The climate role for this device in the space',
+		description: 'The climate role for this device/channel in the space',
 		enum: ClimateRole,
 		example: ClimateRole.PRIMARY,
 	})
