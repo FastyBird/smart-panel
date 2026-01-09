@@ -153,11 +153,11 @@ const loadClimateRoles = async (): Promise<void> => {
 			return;
 		}
 
-		// Group targets by role
+		// Group targets by role (excluding HIDDEN roles)
 		const roleMap = new Map<string, IClimateRoleSummary>();
 
 		for (const target of responseData.data ?? []) {
-			if (!target.role) continue;
+			if (!target.role || target.role === ClimateRole.HIDDEN) continue;
 
 			const role = target.role as string;
 			if (!roleMap.has(role)) {

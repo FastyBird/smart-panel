@@ -761,7 +761,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     BuildContext context,
     HeaterDeviceView device,
   ) {
-    final currentTemp = device.heaterChannel.temperature;
+    final currentTemp = device.temperatureChannel.temperature;
 
     return Center(
       child: Column(
