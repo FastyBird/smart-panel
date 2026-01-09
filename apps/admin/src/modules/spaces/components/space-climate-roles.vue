@@ -208,6 +208,7 @@ const onRoleChange = async (target: IClimateTarget, newRole: string): Promise<vo
 	try {
 		if (newRole === '') {
 			// Clear role - delete the assignment
+			// For sensor targets, include channelId in query params
 			const { error } = await backend.client.DELETE(
 				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/climate/roles/{deviceId}`,
 				{
@@ -216,6 +217,7 @@ const onRoleChange = async (target: IClimateTarget, newRole: string): Promise<vo
 							id: props.space.id,
 							deviceId: target.deviceId,
 						},
+						query: target.channelId ? { channelId: target.channelId } : undefined,
 					},
 				}
 			);

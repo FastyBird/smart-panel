@@ -321,21 +321,26 @@ export class SpaceClimateRoleService {
 
 	/**
 	 * Delete a climate role assignment
+	 * - For actuator roles: only deviceId is needed (channelId is null)
+	 * - For sensor roles: channelId must be provided to identify the specific channel
 	 */
-	async deleteRole(spaceId: string, deviceId: string): Promise<void> {
+	async deleteRole(spaceId: string, deviceId: string, channelId?: string | null): Promise<void> {
 		// Verify space exists
 		await this.spacesService.getOneOrThrow(spaceId);
 
-		const role = await this.findOne(spaceId, deviceId);
+		const role = await this.findOne(spaceId, deviceId, channelId);
 
 		if (role) {
 			await this.repository.remove(role);
 
 			// Emit event for websocket clients with the climate target ID
+			// For sensors, the target ID includes the channelId
+			const targetId = channelId ? `${deviceId}:${channelId}` : deviceId;
 			this.eventEmitter.emit(EventType.CLIMATE_TARGET_DELETED, {
-				id: deviceId,
+				id: targetId,
 				space_id: spaceId,
 				device_id: deviceId,
+				channel_id: channelId ?? null,
 			});
 		}
 	}
