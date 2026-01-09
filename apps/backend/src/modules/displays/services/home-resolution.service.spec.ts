@@ -90,10 +90,6 @@ describe('HomeResolutionService', () => {
 		service = module.get<HomeResolutionService>(HomeResolutionService);
 		pagesRepository = module.get<Repository<PageEntity>>(getRepositoryToken(PageEntity));
 
-		jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

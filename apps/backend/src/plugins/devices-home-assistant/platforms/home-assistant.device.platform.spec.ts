@@ -57,7 +57,6 @@ describe('HomeAssistantDevicePlatform', () => {
 		// Mock the sendCommand method
 		sendCommandMock = jest.spyOn(platform as any, 'sendCommand').mockResolvedValue({});
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

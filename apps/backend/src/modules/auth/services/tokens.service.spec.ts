@@ -101,7 +101,6 @@ describe('TokensService', () => {
 		mapper = module.get<TokensTypeMapperService>(TokensTypeMapperService);
 		dataSource = module.get<DataSource>(DataSource);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

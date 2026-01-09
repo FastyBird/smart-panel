@@ -38,7 +38,6 @@ describe('PageRelationsLoaderService', () => {
 		service = module.get(PageRelationsLoaderService);
 		devicesService = module.get(DevicesService);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

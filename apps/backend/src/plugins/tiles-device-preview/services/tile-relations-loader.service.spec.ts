@@ -37,7 +37,6 @@ describe('TileRelationsLoaderService', () => {
 		service = module.get(TileRelationsLoaderService);
 		devicesService = module.get(DevicesService);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

@@ -63,7 +63,6 @@ describe('UsersController', () => {
 		controller = module.get<UsersController>(UsersController);
 		service = module.get<UsersService>(UsersService);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

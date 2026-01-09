@@ -92,10 +92,6 @@ describe('RegistrationController', () => {
 		controller = module.get<RegistrationController>(RegistrationController);
 		service = module.get<RegistrationService>(RegistrationService);
 
-		jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

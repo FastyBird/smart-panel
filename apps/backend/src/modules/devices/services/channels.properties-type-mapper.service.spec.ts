@@ -22,7 +22,6 @@ describe('ChannelsPropertiesTypeMapperService', () => {
 
 		service = module.get<ChannelsPropertiesTypeMapperService>(ChannelsPropertiesTypeMapperService);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

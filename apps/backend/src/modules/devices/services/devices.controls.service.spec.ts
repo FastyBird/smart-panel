@@ -130,7 +130,6 @@ describe('DevicesControlsService', () => {
 		repository = module.get<Repository<DeviceControlEntity>>(getRepositoryToken(DeviceControlEntity));
 		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

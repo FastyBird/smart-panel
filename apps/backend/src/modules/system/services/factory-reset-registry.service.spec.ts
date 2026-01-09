@@ -13,7 +13,6 @@ describe('FactoryResetRegistryService', () => {
 
 		service = module.get<FactoryResetRegistryService>(FactoryResetRegistryService);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

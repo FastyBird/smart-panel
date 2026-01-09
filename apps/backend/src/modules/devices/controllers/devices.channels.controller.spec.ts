@@ -110,7 +110,6 @@ describe('DevicesChannelsController', () => {
 		channelsService = module.get<ChannelsService>(ChannelsService);
 		mapper = module.get<ChannelsTypeMapperService>(ChannelsTypeMapperService);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

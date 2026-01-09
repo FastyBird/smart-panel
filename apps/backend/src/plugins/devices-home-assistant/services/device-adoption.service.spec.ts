@@ -107,9 +107,6 @@ describe('DeviceAdoptionService', () => {
 		devicesService = module.get(DevicesService);
 		channelsService = module.get(ChannelsService);
 
-		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

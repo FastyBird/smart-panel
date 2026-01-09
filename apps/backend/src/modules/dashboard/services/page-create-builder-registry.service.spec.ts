@@ -20,7 +20,6 @@ describe('PageCreateBuilderRegistryService', () => {
 
 		service = module.get<PageCreateBuilderRegistryService>(PageCreateBuilderRegistryService);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

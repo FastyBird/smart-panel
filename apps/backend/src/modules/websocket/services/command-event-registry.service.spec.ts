@@ -13,7 +13,6 @@ describe('CommandEventRegistryService', () => {
 
 		service = module.get<CommandEventRegistryService>(CommandEventRegistryService);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

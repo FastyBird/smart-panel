@@ -43,8 +43,6 @@ jest.mock('cron', () => {
 	return { CronJob, __mocks: { start, stop } };
 });
 
-jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined as any);
-jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined as any);
 
 type Cfg = {
 	enabled: boolean;

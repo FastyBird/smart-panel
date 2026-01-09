@@ -41,7 +41,6 @@ describe('HomeAssistantRegistryController', () => {
 		controller = module.get<HomeAssistantRegistryController>(HomeAssistantRegistryController);
 		homeAssistantWsService = module.get(HomeAssistantWsService);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

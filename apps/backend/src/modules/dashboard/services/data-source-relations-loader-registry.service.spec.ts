@@ -20,7 +20,6 @@ describe('DataSourceRelationsLoaderRegistryService', () => {
 
 		service = module.get<DataSourceRelationsLoaderRegistryService>(DataSourceRelationsLoaderRegistryService);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

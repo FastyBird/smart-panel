@@ -25,20 +25,11 @@ describe('ShellyV1HttpClientService', () => {
 	let service: ShellyV1HttpClientService;
 
 	// Quiet logger noise
-	let logSpy: jest.SpyInstance;
-	let debugSpy: jest.SpyInstance;
-	let errSpy: jest.SpyInstance;
 
 	beforeAll(() => {
-		logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
-		debugSpy = jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
-		errSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterAll(() => {
-		logSpy.mockRestore();
-		debugSpy.mockRestore();
-		errSpy.mockRestore();
 	});
 
 	beforeEach(() => {

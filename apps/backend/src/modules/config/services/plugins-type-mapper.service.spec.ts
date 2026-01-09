@@ -20,7 +20,6 @@ describe('PluginsTypeMapperService', () => {
 
 		service = module.get<PluginsTypeMapperService>(PluginsTypeMapperService);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

@@ -73,10 +73,6 @@ describe('OpenWeatherMapOneCallGeolocationController', () => {
 		controller = module.get<OpenWeatherMapOneCallGeolocationController>(OpenWeatherMapOneCallGeolocationController);
 		service = module.get<OpenWeatherMapOneCallGeolocationService>(OpenWeatherMapOneCallGeolocationService);
 
-		jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

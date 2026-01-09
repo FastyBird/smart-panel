@@ -20,8 +20,6 @@ describe('ShellyV1DevicesController', () => {
 	let probeService: jest.Mocked<ShellyV1ProbeService>;
 
 	beforeAll(() => {
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined as any);
-		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined as any);
 	});
 
 	beforeEach(async () => {

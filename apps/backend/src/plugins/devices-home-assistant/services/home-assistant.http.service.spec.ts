@@ -69,7 +69,6 @@ describe('HomeAssistantHttpService', () => {
 			hostname: 'localhost',
 		});
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

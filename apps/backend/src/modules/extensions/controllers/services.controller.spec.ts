@@ -51,7 +51,6 @@ describe('ServicesController', () => {
 		controller = module.get<ServicesController>(ServicesController);
 		pluginServiceManager = module.get(PluginServiceManagerService);
 
-		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

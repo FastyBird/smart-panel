@@ -35,7 +35,6 @@ describe('SystemController', () => {
 		controller = module.get<SystemController>(SystemController);
 		service = module.get<SystemService>(SystemService);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

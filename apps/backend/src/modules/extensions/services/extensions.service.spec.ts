@@ -97,7 +97,6 @@ describe('ExtensionsService', () => {
 		pluginsMapperService = module.get<PluginsTypeMapperService>(PluginsTypeMapperService);
 		bundledService = module.get<ExtensionsBundledService>(ExtensionsBundledService);
 
-		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

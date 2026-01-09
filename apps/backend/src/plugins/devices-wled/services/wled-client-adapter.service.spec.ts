@@ -24,23 +24,11 @@ describe('WledClientAdapterService', () => {
 	};
 
 	// Quiet logger noise
-	let logSpy: jest.SpyInstance;
-	let debugSpy: jest.SpyInstance;
-	let warnSpy: jest.SpyInstance;
-	let errSpy: jest.SpyInstance;
 
 	beforeAll(() => {
-		logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
-		debugSpy = jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
-		warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
-		errSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterAll(() => {
-		logSpy.mockRestore();
-		debugSpy.mockRestore();
-		warnSpy.mockRestore();
-		errSpy.mockRestore();
 	});
 
 	beforeEach(() => {

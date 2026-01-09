@@ -89,7 +89,6 @@ describe('AuthService', () => {
 		usersService = module.get<UsersService>(UsersService);
 		jwtService = module.get<JwtService>(JwtService);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

@@ -81,8 +81,6 @@ describe('HomeAssistantDiscoveredDevicesController', () => {
 		mappingPreviewService = module.get(MappingPreviewService);
 		deviceAdoptionService = module.get(DeviceAdoptionService);
 
-		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

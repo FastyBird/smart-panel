@@ -20,7 +20,6 @@ describe('DataSourceCreateBuilderRegistryService', () => {
 
 		service = module.get<DataSourceCreateBuilderRegistryService>(DataSourceCreateBuilderRegistryService);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

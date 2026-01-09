@@ -20,20 +20,11 @@ import { ShellyNgDevicePlatform } from './shelly-ng.device.platform';
 
 describe('ShellyNgDevicePlatform', () => {
 	// Quiet logger noise and let us assert calls
-	let logSpy: jest.SpyInstance;
-	let warnSpy: jest.SpyInstance;
-	let errSpy: jest.SpyInstance;
 
 	beforeAll(() => {
-		logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
-		warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
-		errSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterAll(() => {
-		logSpy.mockRestore();
-		warnSpy.mockRestore();
-		errSpy.mockRestore();
 	});
 
 	const makeDevice = (id = 'dev-1'): ShellyNgDeviceEntity => Object.assign(new ShellyNgDeviceEntity(), { id });

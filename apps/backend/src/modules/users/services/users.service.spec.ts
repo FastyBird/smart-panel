@@ -73,7 +73,6 @@ describe('UsersService', () => {
 		repository = module.get<Repository<UserEntity>>(getRepositoryToken(UserEntity));
 		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

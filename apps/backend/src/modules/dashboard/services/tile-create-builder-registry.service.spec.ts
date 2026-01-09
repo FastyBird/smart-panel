@@ -20,7 +20,6 @@ describe('TileCreateBuilderRegistryService', () => {
 
 		service = module.get<TileCreateBuilderRegistryService>(TileCreateBuilderRegistryService);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

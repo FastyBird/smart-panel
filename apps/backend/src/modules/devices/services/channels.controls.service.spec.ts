@@ -126,7 +126,6 @@ describe('ChannelsControlsService', () => {
 		repository = module.get<Repository<ChannelControlEntity>>(getRepositoryToken(ChannelControlEntity));
 		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

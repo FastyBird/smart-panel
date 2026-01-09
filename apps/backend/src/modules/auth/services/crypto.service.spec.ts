@@ -13,7 +13,6 @@ describe('CryptoService', () => {
 
 		service = module.get<CryptoService>(CryptoService);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

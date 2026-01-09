@@ -39,7 +39,6 @@ describe('ThirdPartyDemoController', () => {
 		controller = module.get<ThirdPartyDemoController>(ThirdPartyDemoController);
 		propertiesService = module.get<ChannelsPropertiesService>(ChannelsPropertiesService);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

@@ -136,7 +136,6 @@ describe('CardsPageNestedBuilderService', () => {
 		dataSourceMapperService = module.get(DataSourcesTypeMapperService);
 		ormDataSource = module.get(OrmDataSource);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

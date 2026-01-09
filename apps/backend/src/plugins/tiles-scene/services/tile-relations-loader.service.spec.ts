@@ -37,7 +37,6 @@ describe('TileRelationsLoaderService', () => {
 		service = module.get(TileRelationsLoaderService);
 		scenesService = module.get(ScenesService);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

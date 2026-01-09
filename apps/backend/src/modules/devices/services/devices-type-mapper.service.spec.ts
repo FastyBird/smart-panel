@@ -22,7 +22,6 @@ describe('DevicesTypeMapperService', () => {
 
 		service = module.get<DevicesTypeMapperService>(DevicesTypeMapperService);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

@@ -114,9 +114,6 @@ describe('MappingPreviewService', () => {
 		homeAssistantWsService = module.get(HomeAssistantWsService);
 		deviceValidationService = module.get(DeviceValidationService);
 
-		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

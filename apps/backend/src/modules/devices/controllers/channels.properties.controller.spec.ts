@@ -140,7 +140,6 @@ describe('ChannelsPropertiesController', () => {
 		mapper = module.get<ChannelsPropertiesTypeMapperService>(ChannelsPropertiesTypeMapperService);
 		propertyTimeseriesService = module.get<PropertyTimeseriesService>(PropertyTimeseriesService);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

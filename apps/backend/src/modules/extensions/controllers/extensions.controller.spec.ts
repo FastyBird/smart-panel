@@ -49,7 +49,6 @@ describe('ExtensionsController', () => {
 		controller = module.get<ExtensionsController>(ExtensionsController);
 		extensionsService = module.get<ExtensionsService>(ExtensionsService);
 
-		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

@@ -99,7 +99,6 @@ describe('ChannelsControlsController', () => {
 		channelsService = module.get<ChannelsService>(ChannelsService);
 		channelsControlsService = module.get<ChannelsControlsService>(ChannelsControlsService);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

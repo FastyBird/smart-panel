@@ -60,7 +60,6 @@ describe('DataSourceRelationsLoaderService', () => {
 		channelsService = module.get(ChannelsService);
 		propertiesService = module.get(ChannelsPropertiesService);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

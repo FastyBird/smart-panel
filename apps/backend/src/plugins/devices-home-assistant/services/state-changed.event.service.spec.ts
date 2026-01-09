@@ -55,7 +55,6 @@ describe('StateChangedEventService', () => {
 
 		jest.useFakeTimers();
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

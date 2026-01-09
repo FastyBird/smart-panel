@@ -20,7 +20,6 @@ describe('TileRelationsLoaderRegistryService', () => {
 
 		service = module.get<TileRelationsLoaderRegistryService>(TileRelationsLoaderRegistryService);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

@@ -145,10 +145,6 @@ describe('DisplaysService', () => {
 		spaceRepository = module.get<Repository<SpaceEntity>>(getRepositoryToken(SpaceEntity));
 		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 
-		jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

@@ -37,7 +37,6 @@ describe('PageRelationsLoaderService (Tiles)', () => {
 		service = module.get(PageRelationsLoaderService);
 		tilesService = module.get(TilesService);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

@@ -20,7 +20,6 @@ describe('PageRelationsLoaderRegistryService', () => {
 
 		service = module.get<PageRelationsLoaderRegistryService>(PageRelationsLoaderRegistryService);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

@@ -22,7 +22,6 @@ describe('TokensTypeMapperService', () => {
 
 		service = module.get<TokensTypeMapperService>(TokensTypeMapperService);
 
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

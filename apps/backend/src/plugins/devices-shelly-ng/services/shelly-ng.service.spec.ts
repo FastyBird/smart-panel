@@ -91,10 +91,6 @@ jest.mock('shellies-ds9', () => {
 });
 
 // Silence Nest logger
-jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined as any);
-jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined as any);
-jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined as any);
-jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined as any);
 
 const pluginConfigEnabled = {
 	enabled: true,

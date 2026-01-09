@@ -81,10 +81,6 @@ describe('CardsController', () => {
 		pagesService = module.get<PagesService>(PagesService);
 		cardsService = module.get<CardsService>(CardsService);
 
-		jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
-		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {
