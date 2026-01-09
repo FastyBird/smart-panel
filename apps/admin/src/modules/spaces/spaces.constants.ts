@@ -430,13 +430,28 @@ export enum LightingRole {
 }
 
 export enum ClimateRole {
+	// Control roles (actuators)
 	PRIMARY = 'primary',
 	AUXILIARY = 'auxiliary',
 	VENTILATION = 'ventilation',
-	HUMIDITY = 'humidity',
+	HUMIDITY_CONTROL = 'humidity_control',
+	// Read roles (sensors)
+	TEMPERATURE_SENSOR = 'temperature_sensor',
+	HUMIDITY_SENSOR = 'humidity_sensor',
+	// Other
 	OTHER = 'other',
 	HIDDEN = 'hidden',
 }
+
+// Helper arrays for role categorization
+export const CLIMATE_CONTROL_ROLES = [
+	ClimateRole.PRIMARY,
+	ClimateRole.AUXILIARY,
+	ClimateRole.VENTILATION,
+	ClimateRole.HUMIDITY_CONTROL,
+] as const;
+
+export const CLIMATE_SENSOR_ROLES = [ClimateRole.TEMPERATURE_SENSOR, ClimateRole.HUMIDITY_SENSOR] as const;
 
 export enum FormResult {
 	NONE = 'none',

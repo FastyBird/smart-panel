@@ -92,7 +92,11 @@ const getRoleTagType = (role: string): 'primary' | 'success' | 'warning' | 'info
 			return 'warning';
 		case ClimateRole.VENTILATION:
 			return 'success';
-		case ClimateRole.HUMIDITY:
+		case ClimateRole.HUMIDITY_CONTROL:
+			return 'info';
+		case ClimateRole.TEMPERATURE_SENSOR:
+			return 'warning';
+		case ClimateRole.HUMIDITY_SENSOR:
 			return 'info';
 		case ClimateRole.OTHER:
 		default:
@@ -108,7 +112,11 @@ const getRoleIcon = (role: string): string => {
 			return 'mdi:radiator';
 		case ClimateRole.VENTILATION:
 			return 'mdi:fan';
-		case ClimateRole.HUMIDITY:
+		case ClimateRole.HUMIDITY_CONTROL:
+			return 'mdi:water-percent';
+		case ClimateRole.TEMPERATURE_SENSOR:
+			return 'mdi:thermometer';
+		case ClimateRole.HUMIDITY_SENSOR:
 			return 'mdi:water-percent';
 		case ClimateRole.OTHER:
 		default:
@@ -132,6 +140,8 @@ const getDeviceIcon = (category: string): string => {
 			return 'mdi:air-humidifier-off';
 		case 'air_purifier':
 			return 'mdi:air-purifier';
+		case 'sensor':
+			return 'mdi:thermometer';
 		default:
 			return 'mdi:thermostat-box';
 	}
@@ -179,7 +189,9 @@ const loadClimateRoles = async (): Promise<void> => {
 			ClimateRole.PRIMARY,
 			ClimateRole.AUXILIARY,
 			ClimateRole.VENTILATION,
-			ClimateRole.HUMIDITY,
+			ClimateRole.HUMIDITY_CONTROL,
+			ClimateRole.TEMPERATURE_SENSOR,
+			ClimateRole.HUMIDITY_SENSOR,
 			ClimateRole.OTHER,
 		];
 

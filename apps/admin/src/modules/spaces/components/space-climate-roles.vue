@@ -23,12 +23,15 @@
 					<template #default="{ row }">
 						<div class="flex items-center gap-2">
 							<icon :icon="getDeviceIcon(row.deviceCategory)" />
-							<span>{{ row.deviceName }}</span>
+							<div class="flex flex-col">
+								<span>{{ row.deviceName }}</span>
+								<span v-if="row.channelName" class="text-xs text-gray-400">{{ row.channelName }}</span>
+							</div>
 						</div>
 					</template>
 				</el-table-column>
 
-				<el-table-column :label="t('spacesModule.fields.spaces.climateRoles.role.title')" width="160">
+				<el-table-column :label="t('spacesModule.fields.spaces.climateRoles.role.title')" width="200">
 					<template #default="{ row }">
 						<el-select
 							:model-value="row.role ?? ''"
@@ -37,7 +40,7 @@
 							@update:model-value="onRoleChange(row, $event)"
 						>
 							<el-option
-								v-for="role in roleOptions"
+								v-for="role in getRoleOptions(row)"
 								:key="role.value"
 								:label="role.label"
 								:value="role.value"
@@ -95,13 +98,15 @@ import { useI18n } from 'vue-i18n';
 
 import { IconWithChild, useBackend, useFlashMessage } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
-import { ClimateRole, SPACES_MODULE_PREFIX } from '../spaces.constants';
+import { CLIMATE_SENSOR_ROLES, ClimateRole, SPACES_MODULE_PREFIX } from '../spaces.constants';
 import type { ISpace } from '../store';
 
 interface IClimateTarget {
 	deviceId: string;
 	deviceName: string;
 	deviceCategory: string;
+	channelId: string | null;
+	channelName: string | null;
 	role: ClimateRole | null;
 	priority: number;
 	hasTemperature: boolean;
@@ -123,14 +128,27 @@ const loading = ref(false);
 const applyingDefaults = ref(false);
 const climateTargets = ref<IClimateTarget[]>([]);
 
-const roleOptions = computed(() => [
+// Control roles for actuator devices
+const controlRoleOptions = computed(() => [
 	{ value: ClimateRole.PRIMARY, label: t('spacesModule.climateRoles.primary') },
 	{ value: ClimateRole.AUXILIARY, label: t('spacesModule.climateRoles.auxiliary') },
 	{ value: ClimateRole.VENTILATION, label: t('spacesModule.climateRoles.ventilation') },
-	{ value: ClimateRole.HUMIDITY, label: t('spacesModule.climateRoles.humidity') },
+	{ value: ClimateRole.HUMIDITY_CONTROL, label: t('spacesModule.climateRoles.humidityControl') },
 	{ value: ClimateRole.OTHER, label: t('spacesModule.climateRoles.other') },
 	{ value: ClimateRole.HIDDEN, label: t('spacesModule.climateRoles.hidden') },
 ]);
+
+// Sensor roles for sensor device channels
+const sensorRoleOptions = computed(() => [
+	{ value: ClimateRole.TEMPERATURE_SENSOR, label: t('spacesModule.climateRoles.temperatureSensor') },
+	{ value: ClimateRole.HUMIDITY_SENSOR, label: t('spacesModule.climateRoles.humiditySensor') },
+	{ value: ClimateRole.HIDDEN, label: t('spacesModule.climateRoles.hidden') },
+]);
+
+// Get role options based on device category
+const getRoleOptions = (target: IClimateTarget) => {
+	return target.deviceCategory === 'sensor' ? sensorRoleOptions.value : controlRoleOptions.value;
+};
 
 const getDeviceIcon = (category: string): string => {
 	switch (category) {
@@ -148,9 +166,17 @@ const getDeviceIcon = (category: string): string => {
 			return 'mdi:air-humidifier-off';
 		case 'air_purifier':
 			return 'mdi:air-purifier';
+		case 'sensor':
+			return 'mdi:thermometer';
 		default:
 			return 'mdi:thermostat-box';
 	}
+};
+
+// Check if a role is a sensor role
+const isSensorRole = (role: ClimateRole | null): boolean => {
+	if (!role) return false;
+	return CLIMATE_SENSOR_ROLES.includes(role as (typeof CLIMATE_SENSOR_ROLES)[number]);
 };
 
 const loadClimateTargets = async (): Promise<void> => {
@@ -171,6 +197,8 @@ const loadClimateTargets = async (): Promise<void> => {
 			deviceId: target.device_id,
 			deviceName: target.device_name,
 			deviceCategory: target.device_category ?? '',
+			channelId: target.channel_id ?? null,
+			channelName: target.channel_name ?? null,
 			role: target.role ? (target.role as unknown as ClimateRole) : null,
 			priority: target.priority ?? 0,
 			hasTemperature: target.has_temperature ?? false,
@@ -205,18 +233,25 @@ const onRoleChange = async (target: IClimateTarget, newRole: string): Promise<vo
 
 			target.role = null;
 		} else {
+			// Build the role assignment payload
+			// Sensor roles require channel_id, actuator roles must not have it
+			const roleData: { device_id: string; role: never; channel_id?: string } = {
+				device_id: target.deviceId,
+				// Type assertion needed: ClimateRole values match OpenAPI generated enum at runtime
+				role: newRole as never,
+			};
+
+			// For sensor targets, include the channel_id
+			if (target.channelId) {
+				roleData.channel_id = target.channelId;
+			}
+
 			// Set role
 			const { error } = await backend.client.POST(
 				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/climate/roles`,
 				{
 					params: { path: { id: props.space.id } },
-					body: {
-						data: {
-							device_id: target.deviceId,
-							// Type assertion needed: ClimateRole values match OpenAPI generated enum at runtime
-							role: newRole as never,
-						},
-					},
+					body: { data: roleData },
 				}
 			);
 
