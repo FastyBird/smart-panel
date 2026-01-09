@@ -81,6 +81,7 @@ describe('DeviceMapperService', () => {
 		channelsService = {
 			findOneBy: jest.fn(),
 			create: jest.fn(),
+			update: jest.fn(),
 		} as any;
 
 		channelsPropertiesService = {
@@ -460,6 +461,7 @@ describe('DeviceMapperService', () => {
 				identifier: 'relay_0',
 			});
 			channelsService.findOneBy.mockResolvedValue(mockChannel);
+			channelsService.update.mockResolvedValue(mockChannel);
 
 			const mockProperty = Object.assign(new ShellyV1ChannelPropertyEntity(), {
 				id: 'prop-state-uuid',
