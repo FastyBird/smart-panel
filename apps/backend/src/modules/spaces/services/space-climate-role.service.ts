@@ -123,11 +123,7 @@ export class SpaceClimateRoleService {
 	/**
 	 * Get a single climate role assignment
 	 */
-	async findOne(
-		spaceId: string,
-		deviceId: string,
-		channelId?: string | null,
-	): Promise<SpaceClimateRoleEntity | null> {
+	async findOne(spaceId: string, deviceId: string, channelId?: string | null): Promise<SpaceClimateRoleEntity | null> {
 		return this.repository.findOne({
 			where: { spaceId, deviceId, channelId: channelId ?? null },
 		});
@@ -148,9 +144,7 @@ export class SpaceClimateRoleService {
 
 		// Validate channelId requirements
 		if (isSensorRole && !channelId) {
-			throw new SpacesValidationException(
-				`Sensor roles (${dto.role}) require a channel_id to be specified`,
-			);
+			throw new SpacesValidationException(`Sensor roles (${dto.role}) require a channel_id to be specified`);
 		}
 		if (!isSensorRole && channelId) {
 			throw new SpacesValidationException(
@@ -181,18 +175,14 @@ export class SpaceClimateRoleService {
 		if (isSensorRole && channelId) {
 			const channel = device.channels?.find((c) => c.id === channelId);
 			if (!channel) {
-				throw new SpacesValidationException(
-					`Channel with id=${channelId} not found on device ${dto.deviceId}`,
-				);
+				throw new SpacesValidationException(`Channel with id=${channelId} not found on device ${dto.deviceId}`);
 			}
 
 			// Verify channel has the required property for the sensor role
 			const properties = channel.properties ?? [];
 			if (dto.role === ClimateRole.TEMPERATURE_SENSOR) {
 				if (!properties.some((p) => p.category === PropertyCategory.TEMPERATURE)) {
-					throw new SpacesValidationException(
-						`Channel ${channelId} does not have a temperature property`,
-					);
+					throw new SpacesValidationException(`Channel ${channelId} does not have a temperature property`);
 				}
 			} else if (dto.role === ClimateRole.HUMIDITY_SENSOR) {
 				if (!properties.some((p) => p.category === PropertyCategory.HUMIDITY)) {
@@ -216,10 +206,7 @@ export class SpaceClimateRoleService {
 					where: { spaceId, role: ClimateRole.PRIMARY },
 				});
 				// Allow if updating the same device/channel, otherwise reject
-				if (
-					existingPrimary &&
-					(existingPrimary.deviceId !== dto.deviceId || existingPrimary.channelId !== channelId)
-				) {
+				if (existingPrimary && (existingPrimary.deviceId !== dto.deviceId || existingPrimary.channelId !== channelId)) {
 					throw new SpacesValidationException(
 						`Space already has a PRIMARY climate device (device_id=${existingPrimary.deviceId}). Only one PRIMARY device is allowed per space.`,
 					);
