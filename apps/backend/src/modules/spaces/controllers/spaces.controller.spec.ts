@@ -105,8 +105,6 @@ describe('SpacesController', () => {
 							minSetpoint: null,
 							maxSetpoint: null,
 							canSetSetpoint: false,
-							primaryThermostatId: null,
-							primarySensorId: null,
 						}),
 						executeClimateIntent: jest.fn().mockResolvedValue({
 							success: true,
@@ -656,8 +654,6 @@ describe('SpacesController', () => {
 				minSetpoint: 16,
 				maxSetpoint: 30,
 				canSetSetpoint: true,
-				primaryThermostatId: uuid(),
-				primarySensorId: null,
 			};
 			jest.spyOn(spaceIntentService, 'getClimateState').mockResolvedValue(climateState);
 
@@ -677,8 +673,6 @@ describe('SpacesController', () => {
 				minSetpoint: null,
 				maxSetpoint: null,
 				canSetSetpoint: false,
-				primaryThermostatId: null,
-				primarySensorId: null,
 			});
 
 			const result = await controller.getClimateState(mockSpace.id);
@@ -997,7 +991,6 @@ describe('SpacesController', () => {
 					maxSetpoint: null,
 					canSetSetpoint: false,
 					primaryThermostatId: null,
-					primarySensorId: null,
 				},
 			};
 			jest.spyOn(spaceContextSnapshotService, 'captureSnapshot').mockResolvedValue(snapshot);

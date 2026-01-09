@@ -8,6 +8,7 @@ import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity'
 import { SpaceEntity } from '../entities/space.entity';
 import { LightingRole, SpaceType } from '../spaces.constants';
 
+import { SpaceClimateRoleService } from './space-climate-role.service';
 import { SpaceContextSnapshotService } from './space-context-snapshot.service';
 import { ClimateState, SpaceIntentService } from './space-intent.service';
 import { SpaceLightingRoleService } from './space-lighting-role.service';
@@ -27,8 +28,6 @@ describe('SpaceContextSnapshotService', () => {
 		category: null,
 		icon: null,
 		displayOrder: 0,
-		primaryThermostatId: null,
-		primaryTemperatureSensorId: null,
 		suggestionsEnabled: true,
 		lastActivityAt: null,
 		parentId: null,
@@ -133,8 +132,6 @@ describe('SpaceContextSnapshotService', () => {
 		minSetpoint: 5,
 		maxSetpoint: 35,
 		canSetSetpoint: false,
-		primaryThermostatId: null,
-		primarySensorId: null,
 	});
 
 	beforeEach(async () => {
@@ -156,6 +153,12 @@ describe('SpaceContextSnapshotService', () => {
 				},
 				{
 					provide: SpaceLightingRoleService,
+					useValue: {
+						getRoleMap: jest.fn(),
+					},
+				},
+				{
+					provide: SpaceClimateRoleService,
 					useValue: {
 						getRoleMap: jest.fn(),
 					},
@@ -286,8 +289,6 @@ describe('SpaceContextSnapshotService', () => {
 				minSetpoint: 5,
 				maxSetpoint: 35,
 				canSetSetpoint: true,
-				primaryThermostatId: uuid(),
-				primarySensorId: uuid(),
 			};
 
 			spacesService.findOne.mockResolvedValue(space);

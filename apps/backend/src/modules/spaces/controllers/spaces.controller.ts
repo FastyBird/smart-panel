@@ -540,8 +540,6 @@ export class SpacesController {
 		stateData.minSetpoint = state.minSetpoint;
 		stateData.maxSetpoint = state.maxSetpoint;
 		stateData.canSetSetpoint = state.canSetSetpoint;
-		stateData.primaryThermostatId = state.primaryThermostatId;
-		stateData.primarySensorId = state.primarySensorId;
 
 		const response = new ClimateStateResponseModel();
 		response.data = stateData;
@@ -1077,8 +1075,6 @@ export class SpacesController {
 		climateState.minSetpoint = snapshot.climate.minSetpoint;
 		climateState.maxSetpoint = snapshot.climate.maxSetpoint;
 		climateState.canSetSetpoint = snapshot.climate.canSetSetpoint;
-		climateState.primaryThermostatId = snapshot.climate.primaryThermostatId;
-		climateState.primarySensorId = snapshot.climate.primarySensorId;
 
 		const snapshotData = new ContextSnapshotDataModel();
 		snapshotData.spaceId = snapshot.spaceId;

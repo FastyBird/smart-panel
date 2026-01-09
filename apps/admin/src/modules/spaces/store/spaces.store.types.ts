@@ -11,8 +11,6 @@ export interface ISpace {
 	icon: string | null;
 	displayOrder: number;
 	parentId: string | null;
-	primaryThermostatId: string | null;
-	primaryTemperatureSensorId: string | null;
 	suggestionsEnabled: boolean;
 	createdAt: Date;
 	updatedAt: Date | null;
@@ -28,8 +26,6 @@ export interface ISpaceEditData {
 	icon?: string | null;
 	displayOrder?: number;
 	parentId?: string | null;
-	primaryThermostatId?: string | null;
-	primaryTemperatureSensorId?: string | null;
 	suggestionsEnabled?: boolean;
 }
 
@@ -41,8 +37,6 @@ export interface ISpaceCreateData {
 	icon?: string | null;
 	displayOrder?: number;
 	parentId?: string | null;
-	primaryThermostatId?: string | null;
-	primaryTemperatureSensorId?: string | null;
 	suggestionsEnabled?: boolean;
 }
 

@@ -31,8 +31,6 @@ export type SpaceAddFormSchemaType = z.infer<typeof SpaceAddFormSchema>;
 export const SpaceEditFormSchema = SpaceFormBaseSchema.extend({
 	id: z.string().uuid(),
 	type: z.nativeEnum(SpaceType),
-	primaryThermostatId: z.string().uuid().nullable().optional(),
-	primaryTemperatureSensorId: z.string().uuid().nullable().optional(),
 	suggestionsEnabled: z.boolean().default(true),
 });
 

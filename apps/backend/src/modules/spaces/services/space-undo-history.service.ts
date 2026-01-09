@@ -8,8 +8,7 @@ import { DevicesService } from '../../devices/services/devices.service';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { SPACES_MODULE_NAME } from '../spaces.constants';
 
-import { LightStateSnapshot, SpaceContextSnapshot } from './space-context-snapshot.service';
-import { ClimateState } from './space-intent.service';
+import { ClimateStateSnapshot, LightStateSnapshot, SpaceContextSnapshot } from './space-context-snapshot.service';
 import { SpacesService } from './spaces.service';
 
 /**
@@ -319,7 +318,7 @@ export class SpaceUndoHistoryService implements OnModuleDestroy {
 	 * { failed: true } if restoration failed,
 	 * { restored: false, failed: false } if no restoration was needed.
 	 */
-	private async restoreClimateState(climate: ClimateState): Promise<{ restored: boolean; failed: boolean }> {
+	private async restoreClimateState(climate: ClimateStateSnapshot): Promise<{ restored: boolean; failed: boolean }> {
 		// Skip if no climate devices or no setpoint capability
 		if (!climate.hasClimate || !climate.canSetSetpoint || !climate.primaryThermostatId) {
 			return { restored: false, failed: false };

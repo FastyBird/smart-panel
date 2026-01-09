@@ -287,28 +287,6 @@ export class ClimateStateDataModel {
 	})
 	@Expose({ name: 'can_set_setpoint' })
 	canSetSetpoint: boolean;
-
-	@ApiProperty({
-		name: 'primary_thermostat_id',
-		description: 'ID of the primary thermostat device',
-		type: 'string',
-		format: 'uuid',
-		nullable: true,
-		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
-	})
-	@Expose({ name: 'primary_thermostat_id' })
-	primaryThermostatId: string | null;
-
-	@ApiProperty({
-		name: 'primary_sensor_id',
-		description: 'ID of the primary temperature sensor device',
-		type: 'string',
-		format: 'uuid',
-		nullable: true,
-		example: 'a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7',
-	})
-	@Expose({ name: 'primary_sensor_id' })
-	primarySensorId: string | null;
 }
 
 /**
