@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { ConfigModule } from '../../modules/config/config.module';
+import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
 import { CreateChannelPropertyDto } from '../../modules/devices/dto/create-channel-property.dto';
 import { CreateChannelDto } from '../../modules/devices/dto/create-channel.dto';
@@ -34,12 +36,14 @@ import { CreateSimulatorChannelDto } from './dto/create-channel.dto';
 import { CreateSimulatorDeviceDto } from './dto/create-device.dto';
 import { UpdateSimulatorChannelPropertyDto } from './dto/update-channel-property.dto';
 import { UpdateSimulatorChannelDto } from './dto/update-channel.dto';
+import { SimulatorUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateSimulatorDeviceDto } from './dto/update-device.dto';
 import {
 	SimulatorChannelEntity,
 	SimulatorChannelPropertyEntity,
 	SimulatorDeviceEntity,
 } from './entities/devices-simulator.entity';
+import { SimulatorConfigModel } from './models/config.model';
 import { SimulatorDevicePlatform } from './platforms/simulator-device.platform';
 import { DeviceGeneratorService } from './services/device-generator.service';
 
@@ -49,13 +53,20 @@ import { DeviceGeneratorService } from './services/device-generator.service';
 	description: DEVICES_SIMULATOR_PLUGIN_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [TypeOrmModule.forFeature([SimulatorDeviceEntity]), DevicesModule, ExtensionsModule, SwaggerModule],
+	imports: [
+		TypeOrmModule.forFeature([SimulatorDeviceEntity]),
+		DevicesModule,
+		ConfigModule,
+		ExtensionsModule,
+		SwaggerModule,
+	],
 	providers: [SimulatorDevicePlatform, DeviceGeneratorService, GenerateDeviceCommand],
 	controllers: [SimulatorController],
 	exports: [DeviceGeneratorService],
 })
 export class DevicesSimulatorPlugin {
 	constructor(
+		private readonly configMapper: PluginsTypeMapperService,
 		private readonly devicesMapper: DevicesTypeMapperService,
 		private readonly channelsMapper: ChannelsTypeMapperService,
 		private readonly channelsPropertiesMapper: ChannelsPropertiesTypeMapperService,
@@ -67,6 +78,13 @@ export class DevicesSimulatorPlugin {
 	) {}
 
 	onModuleInit() {
+		// Register plugin configuration
+		this.configMapper.registerMapping<SimulatorConfigModel, SimulatorUpdatePluginConfigDto>({
+			type: DEVICES_SIMULATOR_PLUGIN_NAME,
+			class: SimulatorConfigModel,
+			configDto: SimulatorUpdatePluginConfigDto,
+		});
+
 		// Register device type mapping
 		this.devicesMapper.registerMapping<SimulatorDeviceEntity, CreateSimulatorDeviceDto, UpdateSimulatorDeviceDto>({
 			type: DEVICES_SIMULATOR_TYPE,
@@ -76,14 +94,12 @@ export class DevicesSimulatorPlugin {
 		});
 
 		// Register channel type mapping
-		this.channelsMapper.registerMapping<SimulatorChannelEntity, CreateSimulatorChannelDto, UpdateSimulatorChannelDto>(
-			{
-				type: DEVICES_SIMULATOR_TYPE,
-				class: SimulatorChannelEntity,
-				createDto: CreateSimulatorChannelDto,
-				updateDto: UpdateSimulatorChannelDto,
-			},
-		);
+		this.channelsMapper.registerMapping<SimulatorChannelEntity, CreateSimulatorChannelDto, UpdateSimulatorChannelDto>({
+			type: DEVICES_SIMULATOR_TYPE,
+			class: SimulatorChannelEntity,
+			createDto: CreateSimulatorChannelDto,
+			updateDto: UpdateSimulatorChannelDto,
+		});
 
 		// Register channel property type mapping
 		this.channelsPropertiesMapper.registerMapping<

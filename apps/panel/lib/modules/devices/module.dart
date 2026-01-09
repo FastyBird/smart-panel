@@ -14,6 +14,7 @@ import 'package:fastybird_smart_panel/modules/devices/services/role_control_stat
 import 'package:fastybird_smart_panel/plugins/devices-home-assistant/plugin.dart';
 import 'package:fastybird_smart_panel/plugins/devices-shelly-ng/plugin.dart';
 import 'package:fastybird_smart_panel/plugins/devices-shelly-v1/plugin.dart';
+import 'package:fastybird_smart_panel/plugins/devices-simulator/plugin.dart';
 import 'package:fastybird_smart_panel/plugins/devices-third-party/plugin.dart';
 import 'package:fastybird_smart_panel/plugins/devices-wled/plugin.dart';
 import 'package:fastybird_smart_panel/plugins/devices-zigbee2mqtt/plugin.dart';
@@ -44,6 +45,7 @@ class DevicesModuleService {
     DevicesHomeAssistantPlugin.register();
     DevicesShellyNgPlugin.register();
     DevicesShellyV1Plugin.register();
+    DevicesSimulatorPlugin.register();
     DevicesWledPlugin.register();
     DevicesZigbee2mqttPlugin.register();
 

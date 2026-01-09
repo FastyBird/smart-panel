@@ -3,7 +3,6 @@ import { Expose } from 'class-transformer';
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
-import { DeviceCategory } from '../../../modules/devices/devices.constants';
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 
 /**

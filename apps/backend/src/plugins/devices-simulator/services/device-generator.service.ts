@@ -3,14 +3,19 @@ import { v4 as uuidv4 } from 'uuid';
 import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { ChannelCategory, DataTypeType, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
-import { CreateDeviceChannelDto } from '../../../modules/devices/dto/create-device-channel.dto';
-import { CreateDeviceChannelPropertyDto } from '../../../modules/devices/dto/create-device-channel-property.dto';
 import {
-	getAllowedChannels,
-	getAllProperties,
-	getPropertyDefaultValue,
+	ChannelCategory,
+	DataTypeType,
+	DeviceCategory,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
+import { CreateDeviceChannelPropertyDto } from '../../../modules/devices/dto/create-device-channel-property.dto';
+import { CreateDeviceChannelDto } from '../../../modules/devices/dto/create-device-channel.dto';
+import {
 	PropertyMetadata,
+	getAllProperties,
+	getAllowedChannels,
+	getPropertyDefaultValue,
 } from '../../../modules/devices/utils/schema.utils';
 import { DEVICES_SIMULATOR_PLUGIN_NAME, DEVICES_SIMULATOR_TYPE } from '../devices-simulator.constants';
 import { GenerateDeviceDto } from '../dto/generate-device.dto';
@@ -74,7 +79,7 @@ export class DeviceGeneratorService {
 				continue;
 			}
 
-			const channelCategory = channelSpec.category as ChannelCategory;
+			const channelCategory = channelSpec.category;
 			const properties = this.generateProperties(channelCategory, requiredPropertiesOnly);
 
 			// Skip channels with no valid properties

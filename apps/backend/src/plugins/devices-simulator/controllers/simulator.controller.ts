@@ -1,19 +1,11 @@
-import { Body, Controller, Get, HttpStatus, Param, ParseUUIDPipe, Post } from '@nestjs/common';
-import {
-	ApiBody,
-	ApiCreatedResponse,
-	ApiOkResponse,
-	ApiOperation,
-	ApiParam,
-	ApiTags,
-	getSchemaPath,
-} from '@nestjs/swagger';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { ApiBody, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ConnectionState, DeviceCategory } from '../../../modules/devices/devices.constants';
 import { DevicesNotFoundException } from '../../../modules/devices/devices.exceptions';
-import { ChannelEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DeviceResponseModel } from '../../../modules/devices/models/devices-response.model';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
@@ -29,7 +21,7 @@ import {
 	DEVICES_SIMULATOR_PLUGIN_NAME,
 	DEVICES_SIMULATOR_TYPE,
 } from '../devices-simulator.constants';
-import { GenerateDeviceDto, ReqGenerateDeviceDto } from '../dto/generate-device.dto';
+import { ReqGenerateDeviceDto } from '../dto/generate-device.dto';
 import { ReqSimulateConnectionStateDto, ReqSimulateValueDto } from '../dto/simulate-value.dto';
 import { SimulatorDeviceEntity } from '../entities/devices-simulator.entity';
 import {
@@ -69,7 +61,7 @@ export class SimulatorController {
 		type: DeviceCategoriesResponseModel,
 	})
 	@Get('categories')
-	async getCategories(): Promise<DeviceCategoriesResponseModel> {
+	getCategories(): DeviceCategoriesResponseModel {
 		this.logger.debug('Fetching available device categories');
 
 		const categories: DeviceCategoryModel[] = [];
@@ -178,8 +170,7 @@ export class SimulatorController {
 		if (value === undefined) {
 			// Get property metadata from schema
 			// property.channel can be a string (id) or ChannelEntity
-			const channelCategory =
-				typeof property.channel === 'string' ? null : (property.channel as ChannelEntity).category;
+			const channelCategory = typeof property.channel === 'string' ? null : property.channel.category;
 
 			if (channelCategory) {
 				const allProperties = getAllProperties(channelCategory);
