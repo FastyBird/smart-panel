@@ -44,8 +44,6 @@ export const useSpaceEditForm = <TForm extends ISpaceEditForm = ISpaceEditForm>(
 		icon: space.icon,
 		displayOrder: space.displayOrder,
 		parentId: space.parentId,
-		primaryThermostatId: space.primaryThermostatId,
-		primaryTemperatureSensorId: space.primaryTemperatureSensorId,
 		suggestionsEnabled: space.suggestionsEnabled,
 	} as TForm);
 
@@ -83,8 +81,6 @@ export const useSpaceEditForm = <TForm extends ISpaceEditForm = ISpaceEditForm>(
 					icon: parsedModel.data.icon ?? null,
 					displayOrder: parsedModel.data.displayOrder,
 					parentId: parsedModel.data.parentId ?? null,
-					primaryThermostatId: parsedModel.data.primaryThermostatId ?? null,
-					primaryTemperatureSensorId: parsedModel.data.primaryTemperatureSensorId ?? null,
 					suggestionsEnabled: parsedModel.data.suggestionsEnabled,
 				},
 			});
@@ -133,8 +129,6 @@ export const useSpaceEditForm = <TForm extends ISpaceEditForm = ISpaceEditForm>(
 				model.icon = newSpace.icon as TForm['icon'];
 				model.displayOrder = newSpace.displayOrder as TForm['displayOrder'];
 				model.parentId = newSpace.parentId as TForm['parentId'];
-				model.primaryThermostatId = newSpace.primaryThermostatId as TForm['primaryThermostatId'];
-				model.primaryTemperatureSensorId = newSpace.primaryTemperatureSensorId as TForm['primaryTemperatureSensorId'];
 				model.suggestionsEnabled = newSpace.suggestionsEnabled as TForm['suggestionsEnabled'];
 
 				initialModel = deepClone<Reactive<TForm>>(toRaw(model));

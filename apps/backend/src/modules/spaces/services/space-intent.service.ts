@@ -12,6 +12,7 @@ import {
 	BRIGHTNESS_DELTA_STEPS,
 	BrightnessDelta,
 	ClimateIntentType,
+	ClimateRole,
 	DEFAULT_MAX_SETPOINT,
 	DEFAULT_MIN_SETPOINT,
 	LIGHTING_MODE_BRIGHTNESS,
@@ -24,6 +25,7 @@ import {
 	SPACES_MODULE_NAME,
 } from '../spaces.constants';
 
+import { SpaceClimateRoleService } from './space-climate-role.service';
 import { SpaceContextSnapshotService } from './space-context-snapshot.service';
 import { SpaceLightingRoleService } from './space-lighting-role.service';
 import { SpaceUndoHistoryService } from './space-undo-history.service';
@@ -135,8 +137,6 @@ export interface ClimateState {
 	minSetpoint: number;
 	maxSetpoint: number;
 	canSetSetpoint: boolean;
-	primaryThermostatId: string | null;
-	primarySensorId: string | null;
 }
 
 interface ClimateIntentResult extends IntentExecutionResult {
@@ -152,6 +152,7 @@ export class SpaceIntentService {
 		private readonly devicesService: DevicesService,
 		private readonly platformRegistryService: PlatformRegistryService,
 		private readonly lightingRoleService: SpaceLightingRoleService,
+		private readonly climateRoleService: SpaceClimateRoleService,
 		@Inject(forwardRef(() => SpaceContextSnapshotService))
 		private readonly contextSnapshotService: SpaceContextSnapshotService,
 		@Inject(forwardRef(() => SpaceUndoHistoryService))
@@ -517,7 +518,7 @@ export class SpaceIntentService {
 	// =====================
 
 	/**
-	 * Get the current climate state for a space
+	 * Get the current climate state for a space using climate roles
 	 */
 	async getClimateState(spaceId: string): Promise<ClimateState> {
 		const defaultState: ClimateState = {
@@ -527,8 +528,6 @@ export class SpaceIntentService {
 			minSetpoint: DEFAULT_MIN_SETPOINT,
 			maxSetpoint: DEFAULT_MAX_SETPOINT,
 			canSetSetpoint: false,
-			primaryThermostatId: null,
-			primarySensorId: null,
 		};
 
 		// Verify space exists
@@ -549,44 +548,46 @@ export class SpaceIntentService {
 			return defaultState;
 		}
 
-		// Determine primary thermostat
+		// Get climate roles for this space
+		const roleMap = await this.climateRoleService.getRoleMap(spaceId);
+
+		// Determine primary thermostat from climate roles (PRIMARY role)
 		let primaryThermostat: ClimateDevice | null = null;
 
-		if (space.primaryThermostatId) {
-			// Admin override
-			primaryThermostat = climateDevices.thermostats.find((t) => t.device.id === space.primaryThermostatId) ?? null;
-
-			if (!primaryThermostat) {
-				this.logger.warn(
-					`Admin-configured primary thermostat not found in space id=${spaceId} thermostatId=${space.primaryThermostatId}`,
-				);
+		for (const thermostat of climateDevices.thermostats) {
+			const role = roleMap.get(thermostat.device.id);
+			if (role?.role === ClimateRole.PRIMARY) {
+				primaryThermostat = thermostat;
+				break;
 			}
 		}
 
+		// Fallback: first thermostat if no PRIMARY role assigned
 		if (!primaryThermostat && climateDevices.thermostats.length > 0) {
-			// Default: first thermostat (deterministic by device name)
 			primaryThermostat = climateDevices.thermostats[0];
 		}
 
-		// Determine primary temperature sensor
+		// Determine primary temperature sensor from climate roles (TEMPERATURE_SENSOR role)
 		let primarySensor: ClimateDevice | null = null;
+		let primarySensorChannelId: string | null = null;
 
-		if (space.primaryTemperatureSensorId) {
-			// Admin override - can be a sensor device or thermostat device
-			primarySensor =
-				climateDevices.sensors.find((s) => s.device.id === space.primaryTemperatureSensorId) ??
-				climateDevices.thermostats.find((t) => t.device.id === space.primaryTemperatureSensorId) ??
-				null;
-
-			if (!primarySensor) {
-				this.logger.warn(
-					`Admin-configured primary temperature sensor not found in space id=${spaceId} sensorId=${space.primaryTemperatureSensorId}`,
-				);
+		// First, check for explicit TEMPERATURE_SENSOR role on sensor channels
+		for (const sensor of climateDevices.sensors) {
+			// For sensors, check each channel's role
+			for (const channel of sensor.device.channels ?? []) {
+				const key = `${sensor.device.id}:${channel.id}`;
+				const role = roleMap.get(key);
+				if (role?.role === ClimateRole.TEMPERATURE_SENSOR) {
+					primarySensor = sensor;
+					primarySensorChannelId = channel.id;
+					break;
+				}
 			}
+			if (primarySensor) break;
 		}
 
+		// Fallback: use thermostat's temperature if available, otherwise first sensor
 		if (!primarySensor) {
-			// Default: use thermostat's temperature if available, otherwise first sensor
 			if (primaryThermostat?.temperatureProperty) {
 				primarySensor = primaryThermostat;
 			} else if (climateDevices.sensors.length > 0) {
@@ -595,7 +596,17 @@ export class SpaceIntentService {
 		}
 
 		// Build climate state
-		const currentTemperature = this.getPropertyNumericValue(primarySensor?.temperatureProperty);
+		let currentTemperature: number | null = null;
+
+		if (primarySensor && primarySensorChannelId) {
+			// Get temperature from the specific sensor channel
+			const channel = primarySensor.device.channels?.find((ch) => ch.id === primarySensorChannelId);
+			const tempProp = channel?.properties?.find((p) => p.category === PropertyCategory.TEMPERATURE);
+			currentTemperature = this.getPropertyNumericValue(tempProp);
+		} else {
+			currentTemperature = this.getPropertyNumericValue(primarySensor?.temperatureProperty);
+		}
+
 		const targetTemperature = this.getPropertyNumericValue(primaryThermostat?.setpointProperty);
 
 		// Get min/max from property format if available (format is [min, max] for numeric properties)
@@ -626,9 +637,30 @@ export class SpaceIntentService {
 			minSetpoint,
 			maxSetpoint,
 			canSetSetpoint: primaryThermostat?.setpointProperty !== null && primaryThermostat?.setpointProperty !== undefined,
-			primaryThermostatId: primaryThermostat?.device.id ?? null,
-			primarySensorId: primarySensor?.device.id ?? null,
 		};
+	}
+
+	/**
+	 * Get the primary thermostat device ID for a space using climate roles
+	 */
+	private async getPrimaryThermostatId(spaceId: string): Promise<string | null> {
+		const climateDevices = await this.getClimateDevicesInSpace(spaceId);
+		const roleMap = await this.climateRoleService.getRoleMap(spaceId);
+
+		// Look for device with PRIMARY role
+		for (const thermostat of climateDevices.thermostats) {
+			const role = roleMap.get(thermostat.device.id);
+			if (role?.role === ClimateRole.PRIMARY) {
+				return thermostat.device.id;
+			}
+		}
+
+		// Fallback: first thermostat
+		if (climateDevices.thermostats.length > 0) {
+			return climateDevices.thermostats[0].device.id;
+		}
+
+		return null;
 	}
 
 	/**
@@ -660,7 +692,10 @@ export class SpaceIntentService {
 			return { ...defaultResult, success: true };
 		}
 
-		if (!climateState.canSetSetpoint || !climateState.primaryThermostatId) {
+		// Get primary thermostat from climate roles
+		const primaryThermostatId = await this.getPrimaryThermostatId(spaceId);
+
+		if (!climateState.canSetSetpoint || !primaryThermostatId) {
 			this.logger.debug(`No thermostat with setpoint capability in space id=${spaceId}`);
 
 			return { ...defaultResult, success: true };
@@ -670,11 +705,11 @@ export class SpaceIntentService {
 		await this.captureClimateUndoSnapshot(spaceId, intent);
 
 		// Get the primary thermostat device with full relations
-		const thermostatDevice = await this.devicesService.getOneOrThrow(climateState.primaryThermostatId);
+		const thermostatDevice = await this.devicesService.getOneOrThrow(primaryThermostatId);
 		const climateDeviceInfo = this.extractClimateDevice(thermostatDevice);
 
 		if (!climateDeviceInfo?.setpointProperty || !climateDeviceInfo.setpointChannel) {
-			this.logger.error(`Primary thermostat has no setpoint property/channel id=${climateState.primaryThermostatId}`);
+			this.logger.error(`Primary thermostat has no setpoint property/channel id=${primaryThermostatId}`);
 
 			return defaultResult;
 		}

@@ -124,13 +124,8 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
         final onlineCount = deviceCount;
         onlineDeviceCount += onlineCount;
 
-        // Get temperature from primary temperature sensor if available
-        double? temperature;
-        if (room.primaryTemperatureSensorId != null) {
-          temperature = _getTemperatureFromDevice(
-            room.primaryTemperatureSensorId!,
-          );
-        }
+        // Get temperature from any device in the room that has a temperature sensor
+        double? temperature = _getTemperatureFromRoomDevices(roomDevices);
 
         roomSummaries.add(RoomSummary(
           id: room.id,
@@ -163,19 +158,18 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
     }
   }
 
-  /// Get temperature value from a device by ID
-  double? _getTemperatureFromDevice(String deviceId) {
-    final device = _devicesService?.getDevice(deviceId);
-    if (device == null) return null;
-
-    for (final channel in device.channels) {
-      for (final property in channel.properties) {
-        if (property.category == DevicesModulePropertyCategory.temperature) {
-          final valueType = property.value;
-          if (valueType != null) {
-            final rawValue = valueType.value;
-            if (rawValue is num) {
-              return rawValue.toDouble();
+  /// Get temperature value from any device in the room that has a temperature sensor
+  double? _getTemperatureFromRoomDevices(List<DeviceView> devices) {
+    for (final device in devices) {
+      for (final channel in device.channels) {
+        for (final property in channel.properties) {
+          if (property.category == DevicesModulePropertyCategory.temperature) {
+            final valueType = property.value;
+            if (valueType != null) {
+              final rawValue = valueType.value;
+              if (rawValue is num) {
+                return rawValue.toDouble();
+              }
             }
           }
         }

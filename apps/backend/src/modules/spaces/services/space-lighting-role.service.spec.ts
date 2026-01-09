@@ -34,8 +34,6 @@ describe('SpaceLightingRoleService', () => {
 		category: null,
 		icon: 'mdi:sofa',
 		displayOrder: 0,
-		primaryThermostatId: null,
-		primaryTemperatureSensorId: null,
 		suggestionsEnabled: true,
 		lastActivityAt: null,
 		parentId: null,

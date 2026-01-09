@@ -193,57 +193,6 @@
 						show-icon
 					/>
 
-					<!-- Climate Device Overrides -->
-					<template v-if="climateDevices.length > 0">
-						<el-divider content-position="left" class="!mt-6">
-							{{ t('spacesModule.edit.sections.smartOverrides.climateOverrides') }}
-						</el-divider>
-
-						<el-form-item
-							:label="t('spacesModule.fields.spaces.primaryThermostat.title')"
-							prop="primaryThermostatId"
-						>
-							<el-select
-								v-model="model.primaryThermostatId"
-								:placeholder="t('spacesModule.fields.spaces.primaryThermostat.placeholder')"
-								clearable
-								:loading="loadingDevices"
-							>
-								<el-option
-									v-for="device in thermostatDevices"
-									:key="device.id"
-									:label="device.name"
-									:value="device.id"
-								/>
-							</el-select>
-							<div class="text-xs text-gray-500 mt-1">
-								{{ t('spacesModule.fields.spaces.primaryThermostat.hint') }}
-							</div>
-						</el-form-item>
-
-						<el-form-item
-							:label="t('spacesModule.fields.spaces.primaryTemperatureSensor.title')"
-							prop="primaryTemperatureSensorId"
-						>
-							<el-select
-								v-model="model.primaryTemperatureSensorId"
-								:placeholder="t('spacesModule.fields.spaces.primaryTemperatureSensor.placeholder')"
-								clearable
-								:loading="loadingDevices"
-							>
-								<el-option
-									v-for="device in temperatureSensorDevices"
-									:key="device.id"
-									:label="device.name"
-									:value="device.id"
-								/>
-							</el-select>
-							<div class="text-xs text-gray-500 mt-1">
-								{{ t('spacesModule.fields.spaces.primaryTemperatureSensor.hint') }}
-							</div>
-						</el-form-item>
-					</template>
-
 					<!-- Lighting Roles -->
 					<template v-if="hasLightingDevices">
 						<space-lighting-roles :space="props.space" />
@@ -351,7 +300,7 @@ const emit = defineEmits(spaceEditFormEmits);
 const { t } = useI18n();
 
 const { zoneSpaces, findById } = useSpaces();
-const { devices: allDevices, areLoading: loadingDevices, loaded: devicesLoaded, fetchDevices } = useDevices();
+const { devices: allDevices, loaded: devicesLoaded, fetchDevices } = useDevices();
 const { displays: allDisplays, isLoaded: displaysLoaded, fetchDisplays } = useDisplays();
 
 // Use the form composable - pass space as computed to enable reactivity when prop changes
@@ -469,25 +418,6 @@ const rules = computed<FormRules>(() => ({
 		},
 	],
 }));
-
-// Filter devices by category
-const thermostatDevices = computed(() =>
-	spaceDevices.value.filter((d) => d.category === DevicesModuleDeviceCategory.thermostat)
-);
-
-const sensorDevices = computed(() =>
-	spaceDevices.value.filter((d) => d.category === DevicesModuleDeviceCategory.sensor)
-);
-
-// Temperature sensor options include both thermostats (which have temp sensors) and standalone sensors
-const temperatureSensorDevices = computed(() =>
-	spaceDevices.value.filter(
-		(d) => d.category === DevicesModuleDeviceCategory.thermostat || d.category === DevicesModuleDeviceCategory.sensor
-	)
-);
-
-// All climate-capable devices (for showing/hiding the section)
-const climateDevices = computed(() => [...thermostatDevices.value, ...sensorDevices.value]);
 
 // Check if there are lighting devices in this space
 const hasLightingDevices = computed(() =>

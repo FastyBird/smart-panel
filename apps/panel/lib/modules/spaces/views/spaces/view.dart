@@ -36,10 +36,6 @@ class SpaceView {
 
   String? get icon => _model.icon;
 
-  String? get primaryThermostatId => _model.primaryThermostatId;
-
-  String? get primaryTemperatureSensorId => _model.primaryTemperatureSensorId;
-
   DateTime? get lastActivityAt => _model.lastActivityAt;
 
   List<SpaceView> get children => _children;

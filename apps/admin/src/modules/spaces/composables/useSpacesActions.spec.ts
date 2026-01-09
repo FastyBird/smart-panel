@@ -14,8 +14,6 @@ const createMockSpace = (overrides: Partial<ISpace> = {}): ISpace => ({
 	icon: null,
 	displayOrder: 0,
 	parentId: null,
-	primaryThermostatId: null,
-	primaryTemperatureSensorId: null,
 	suggestionsEnabled: true,
 	createdAt: new Date(),
 	updatedAt: null,
