@@ -24,7 +24,7 @@ export class SimulatorDevicePlatform implements IDevicePlatform {
 	 * Process a single property update for a simulated device.
 	 * Since this is a simulator, we simply accept all updates.
 	 */
-	process({ device, channel, property, value }: ISimulatorDevicePropertyData): boolean {
+	process({ device, channel, property, value }: ISimulatorDevicePropertyData): Promise<boolean> {
 		this.logger.log(
 			`Simulated property update: device=${device.id}, channel=${channel.id}, property=${property.id}, value=${value}`,
 			{ resource: device.id },
@@ -32,15 +32,15 @@ export class SimulatorDevicePlatform implements IDevicePlatform {
 
 		// For simulated devices, we always accept the update
 		// The actual value persistence is handled by the PropertyValueService
-		return true;
+		return Promise.resolve(true);
 	}
 
 	/**
 	 * Process batch property updates for simulated devices.
 	 */
-	processBatch(updates: Array<ISimulatorDevicePropertyData>): boolean {
+	processBatch(updates: Array<ISimulatorDevicePropertyData>): Promise<boolean> {
 		if (updates.length === 0) {
-			return true;
+			return Promise.resolve(true);
 		}
 
 		const device = updates[0].device;
@@ -57,6 +57,6 @@ export class SimulatorDevicePlatform implements IDevicePlatform {
 			);
 		}
 
-		return true;
+		return Promise.resolve(true);
 	}
 }
