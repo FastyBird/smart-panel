@@ -98,7 +98,7 @@ import { useI18n } from 'vue-i18n';
 
 import { IconWithChild, useBackend, useFlashMessage } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
-import { CLIMATE_SENSOR_ROLES, ClimateRole, SPACES_MODULE_PREFIX } from '../spaces.constants';
+import { ClimateRole, SPACES_MODULE_PREFIX } from '../spaces.constants';
 import type { ISpace } from '../store';
 
 interface IClimateTarget {
@@ -171,12 +171,6 @@ const getDeviceIcon = (category: string): string => {
 		default:
 			return 'mdi:thermostat-box';
 	}
-};
-
-// Check if a role is a sensor role
-const isSensorRole = (role: ClimateRole | null): boolean => {
-	if (!role) return false;
-	return CLIMATE_SENSOR_ROLES.includes(role as (typeof CLIMATE_SENSOR_ROLES)[number]);
 };
 
 const loadClimateTargets = async (): Promise<void> => {
