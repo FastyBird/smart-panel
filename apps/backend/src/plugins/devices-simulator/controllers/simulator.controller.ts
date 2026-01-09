@@ -156,6 +156,14 @@ export class SimulatorController {
 			throw new DevicesNotFoundException(`Property ${dto.property_id} not found`);
 		}
 
+		// Verify the property belongs to the specified device
+		const channelId = typeof property.channel === 'string' ? property.channel : property.channel.id;
+		const propertyBelongsToDevice = device.channels.some((ch) => ch.id === channelId);
+
+		if (!propertyBelongsToDevice) {
+			throw new DevicesNotFoundException(`Property ${dto.property_id} does not belong to device ${deviceId}`);
+		}
+
 		// Generate value if not provided
 		let value = dto.value;
 

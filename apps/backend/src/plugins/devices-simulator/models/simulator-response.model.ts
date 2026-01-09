@@ -21,7 +21,7 @@ export class GeneratedDeviceResponseModel extends BaseSuccessResponseModel<Devic
 /**
  * Available device category model
  */
-@ApiSchema({ name: 'DevicesSimulatorPluginDeviceCategory' })
+@ApiSchema({ name: 'DevicesSimulatorPluginDataDeviceCategory' })
 export class DeviceCategoryModel {
 	@ApiProperty({
 		description: 'Category identifier',
@@ -65,7 +65,7 @@ export class DeviceCategoriesResponseModel extends BaseSuccessResponseModel<Devi
 /**
  * Simulated value result model
  */
-@ApiSchema({ name: 'DevicesSimulatorPluginSimulatedValueResult' })
+@ApiSchema({ name: 'DevicesSimulatorPluginDataSimulatedValueResult' })
 export class SimulatedValueResultModel {
 	@ApiProperty({
 		description: 'Property ID that was updated',
@@ -107,7 +107,7 @@ export class SimulatedValueResponseModel extends BaseSuccessResponseModel<Simula
 /**
  * Connection state simulation result
  */
-@ApiSchema({ name: 'DevicesSimulatorPluginConnectionStateResult' })
+@ApiSchema({ name: 'DevicesSimulatorPluginDataConnectionStateResult' })
 export class ConnectionStateResultModel {
 	@ApiProperty({
 		description: 'Device ID',

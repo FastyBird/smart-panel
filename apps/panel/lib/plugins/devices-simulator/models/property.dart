@@ -62,9 +62,9 @@ class SimulatorChannelPropertyModel extends ChannelPropertyModel {
     ValueType? value,
     bool? clearValue,
   }) {
-    ValueType? setValue = value ?? value;
+    ValueType? setValue = value ?? this.value;
 
-    if (clearValue != null) {
+    if (clearValue == true) {
       setValue = null;
     }
 

@@ -7,7 +7,6 @@ The Device Simulator plugin allows developers to create virtual devices for test
 - **Generate Devices** - Create simulated devices of any category with proper channels and properties
 - **Simulate Values** - Manually set or auto-generate random values for properties
 - **Connection Testing** - Simulate connection state changes (online/offline/lost/alert)
-- **Auto-Simulation** - Enable automatic random value updates at configurable intervals
 - **CLI Tool** - Interactive and non-interactive command-line interface
 
 ## Use Cases
@@ -65,8 +64,8 @@ pnpm run cli simulator:generate -c lighting --auto-simulate --interval 3000
 | `--name` | `-n` | Custom name for the device | Auto-generated |
 | `--count` | - | Number of devices to generate | 1 |
 | `--required-only` | - | Only include required channels/properties | false |
-| `--auto-simulate` | - | Enable automatic value simulation | false |
-| `--interval` | - | Auto-simulation interval in milliseconds | 5000 |
+| `--auto-simulate` | - | Store auto-simulate flag in device (not yet implemented) | false |
+| `--interval` | - | Store simulation interval in device (not yet implemented) | 5000 |
 | `--list` | `-l` | List all available device categories | - |
 
 ## REST API Endpoints
@@ -236,11 +235,14 @@ curl -X POST http://localhost:3000/api/v1/plugins/devices-simulator/simulator/{d
 ### Testing Real-time Value Updates
 
 ```bash
-# Generate a sensor with auto-simulation
-pnpm run cli simulator:generate -c sensor -n "Test Sensor" --auto-simulate --interval 2000
+# Generate a sensor and manually trigger value updates
+pnpm run cli simulator:generate -c sensor -n "Test Sensor"
 
-# The sensor will update its values every 2 seconds
+# Use the API to simulate value changes
+curl -X POST http://localhost:3000/api/v1/plugins/devices-simulator/simulator/{deviceId}/simulate-all
 ```
+
+> **Note:** The `--auto-simulate` and `--interval` options store configuration in the device entity but automatic value simulation is not yet implemented. Use the `/simulate-all` endpoint to manually trigger value updates.
 
 ## Technical Details
 
