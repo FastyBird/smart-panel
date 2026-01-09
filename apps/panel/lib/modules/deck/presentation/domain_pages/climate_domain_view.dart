@@ -13,8 +13,6 @@ import 'package:fastybird_smart_panel/modules/devices/export.dart'
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/payloads.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/channels/cooler.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/channels/heater.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_conditioner.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_dehumidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_humidifier.dart';
@@ -324,8 +322,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     DevicesService devicesService,
     BoxConstraints constraints,
   ) {
-    final deviceType = getClimateDeviceType(device);
-
     return GestureDetector(
       onTap: () => _openDeviceDetail(context, device),
       child: Container(
@@ -334,7 +330,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           color: Theme.of(context).brightness == Brightness.light
               ? AppColorsLight.infoLight5.withValues(alpha: 0.3)
               : AppColorsDark.infoLight5.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(AppBorderRadius.large),
+          borderRadius: BorderRadius.circular(AppBorderRadius.round),
         ),
         child: Column(
           children: [
@@ -366,7 +362,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     );
   }
 
-  /// Build thermostat hero with dial and mode buttons
+  /// Build thermostat hero with temperature display and mode buttons
   Widget _buildThermostatHero(
     BuildContext context,
     ThermostatDeviceView device,
@@ -374,29 +370,26 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     BoxConstraints constraints,
   ) {
     final thermostatChannel = device.thermostatChannel;
-    final targetTempProp = thermostatChannel.targetTemperatureProp;
-    final hasSetpoint =
-        targetTempProp != null && targetTempProp.isWritable;
+    final unit = thermostatChannel.showInFahrenheit ? '°F' : '°C';
+
+    // Check if device has heater/cooler channel with controllable temperature
+    final heaterChannel = device.heaterChannel;
+    final coolerChannel = device.coolerChannel;
+    final hasControllableTemp =
+        (heaterChannel != null && heaterChannel.temperatureProp.isWritable) ||
+        (coolerChannel != null && coolerChannel.temperatureProp.isWritable);
 
     final dialSize = (constraints.maxWidth * 0.5).clamp(150.0, 250.0);
 
     return Column(
       children: [
-        // Circular dial
+        // Circular dial or temperature display
         SizedBox(
           width: dialSize,
           height: dialSize,
-          child: hasSetpoint
-              ? _buildTemperatureDial(
-                  context,
-                  device,
-                  thermostatChannel.targetTemperature,
-                  thermostatChannel.minTargetTemperature,
-                  thermostatChannel.maxTargetTemperature,
-                  thermostatChannel.showInFahrenheit ? '°F' : '°C',
-                  (value) => _setThermostatTemperature(
-                      context, device, value, devicesService),
-                )
+          child: hasControllableTemp
+              ? _buildThermostatDial(
+                  context, device, devicesService, dialSize, unit)
               : _buildTemperatureDialDisplay(context, device),
         ),
 
@@ -408,6 +401,46 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     );
   }
 
+  /// Build thermostat dial using heater or cooler channel
+  Widget _buildThermostatDial(
+    BuildContext context,
+    ThermostatDeviceView device,
+    DevicesService devicesService,
+    double dialSize,
+    String unit,
+  ) {
+    // Prefer heater channel, fall back to cooler
+    final heaterChannel = device.heaterChannel;
+    final coolerChannel = device.coolerChannel;
+
+    if (heaterChannel != null && heaterChannel.temperatureProp.isWritable) {
+      return _buildTemperatureDial(
+        context,
+        device,
+        heaterChannel.temperature,
+        heaterChannel.minTemperature,
+        heaterChannel.maxTemperature,
+        unit,
+        dialSize,
+        (value) => _setHeaterTemperature(context, device, value, devicesService),
+      );
+    } else if (coolerChannel != null &&
+        coolerChannel.temperatureProp.isWritable) {
+      return _buildTemperatureDial(
+        context,
+        device,
+        coolerChannel.temperature,
+        coolerChannel.minTemperature,
+        coolerChannel.maxTemperature,
+        unit,
+        dialSize,
+        (value) => _setCoolerTemperature(context, device, value, devicesService),
+      );
+    }
+
+    return _buildTemperatureDialDisplay(context, device);
+  }
+
   /// Build heater hero with dial
   Widget _buildHeaterHero(
     BuildContext context,
@@ -416,9 +449,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     BoxConstraints constraints,
   ) {
     final heaterChannel = device.heaterChannel;
-    final targetTempProp = heaterChannel.targetTemperatureProp;
-    final hasSetpoint =
-        targetTempProp != null && targetTempProp.isWritable;
+    final hasSetpoint = heaterChannel.temperatureProp.isWritable;
 
     final dialSize = (constraints.maxWidth * 0.5).clamp(150.0, 250.0);
 
@@ -429,10 +460,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           ? _buildTemperatureDial(
               context,
               device,
-              heaterChannel.targetTemperature,
-              heaterChannel.minTargetTemperature,
-              heaterChannel.maxTargetTemperature,
+              heaterChannel.temperature,
+              heaterChannel.minTemperature,
+              heaterChannel.maxTemperature,
               '°C',
+              dialSize,
               (value) =>
                   _setHeaterTemperature(context, device, value, devicesService),
             )
@@ -448,9 +480,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     BoxConstraints constraints,
   ) {
     final coolerChannel = device.coolerChannel;
-    final targetTempProp = coolerChannel.targetTemperatureProp;
-    final hasSetpoint =
-        targetTempProp != null && targetTempProp.isWritable;
+    final hasSetpoint = coolerChannel.temperatureProp.isWritable;
 
     final dialSize = (constraints.maxWidth * 0.5).clamp(150.0, 250.0);
 
@@ -461,10 +491,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           ? _buildTemperatureDial(
               context,
               device,
-              coolerChannel.targetTemperature,
-              coolerChannel.minTargetTemperature,
-              coolerChannel.maxTargetTemperature,
+              coolerChannel.temperature,
+              coolerChannel.minTemperature,
+              coolerChannel.maxTemperature,
               '°C',
+              dialSize,
               (value) =>
                   _setCoolerTemperature(context, device, value, devicesService),
             )
@@ -480,20 +511,18 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     double minValue,
     double maxValue,
     String unit,
+    double dialSize,
     Function(double) onChanged,
   ) {
     return RoundedSlider(
       value: currentValue.clamp(minValue, maxValue),
       min: minValue,
       max: maxValue,
-      onChanged: onChanged,
-      strokeWidth: 12,
-      handleSize: 20,
-      activeColor: Theme.of(context).colorScheme.primary,
-      inactiveColor: Theme.of(context).brightness == Brightness.light
-          ? AppColorsLight.infoLight5
-          : AppColorsDark.infoLight5,
-      child: _buildDialCenterContent(context, device, unit),
+      enabled: true,
+      availableWidth: dialSize,
+      availableHeight: dialSize,
+      onValueChanged: (value) => onChanged(value.toDouble()),
+      inner: _buildDialCenterContent(context, device, unit),
     );
   }
 
@@ -520,7 +549,15 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     String unit,
   ) {
     final currentTemp = device.temperatureChannel.temperature;
-    final targetTemp = device.thermostatChannel.targetTemperature;
+    // Get target from heater or cooler channel if available
+    final heaterChannel = device.heaterChannel;
+    final coolerChannel = device.coolerChannel;
+    double? targetTemp;
+    if (heaterChannel != null) {
+      targetTemp = heaterChannel.temperature;
+    } else if (coolerChannel != null) {
+      targetTemp = coolerChannel.temperature;
+    }
     final localizations = AppLocalizations.of(context);
 
     return Column(
@@ -546,26 +583,28 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        AppSpacings.spacingSmVertical,
+        if (targetTemp != null) ...[
+          AppSpacings.spacingSmVertical,
 
-        // Target/setpoint temperature
-        Text(
-          localizations?.space_climate_target_label ?? 'Target',
-          style: TextStyle(
-            fontSize: AppFontSize.extraSmall,
-            color: Theme.of(context).brightness == Brightness.light
-                ? AppTextColorLight.secondary
-                : AppTextColorDark.secondary,
+          // Target/setpoint temperature
+          Text(
+            localizations?.space_climate_target_label ?? 'Target',
+            style: TextStyle(
+              fontSize: AppFontSize.extraSmall,
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTextColorLight.secondary
+                  : AppTextColorDark.secondary,
+            ),
           ),
-        ),
-        Text(
-          '${targetTemp.toStringAsFixed(1)}$unit',
-          style: TextStyle(
-            fontSize: AppFontSize.large,
-            fontWeight: FontWeight.w500,
-            color: Theme.of(context).colorScheme.primary,
+          Text(
+            '${targetTemp.toStringAsFixed(1)}$unit',
+            style: TextStyle(
+              fontSize: AppFontSize.large,
+              fontWeight: FontWeight.w500,
+              color: Theme.of(context).colorScheme.primary,
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -576,8 +615,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     HeaterDeviceView device,
     String unit,
   ) {
-    final currentTemp = device.heaterChannel.temperature;
-    final targetTemp = device.heaterChannel.targetTemperature;
+    // Current room temp from temperature channel, target from heater channel
+    final currentTemp = device.temperatureChannel.temperature;
+    final targetTemp = device.heaterChannel.temperature;
     final localizations = AppLocalizations.of(context);
 
     return Column(
@@ -631,7 +671,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     String unit,
   ) {
     final currentTemp = device.temperatureChannel.temperature;
-    final targetTemp = device.coolerChannel.targetTemperature;
+    final targetTemp = device.coolerChannel.temperature;
     final localizations = AppLocalizations.of(context);
 
     return Column(
@@ -1052,52 +1092,42 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   // Temperature Setting Methods
   // ============================================================================
 
-  Future<void> _setThermostatTemperature(
-    BuildContext context,
-    ThermostatDeviceView device,
-    double value,
-    DevicesService devicesService,
-  ) async {
-    final targetTempProp = device.thermostatChannel.targetTemperatureProp;
-    if (targetTempProp == null) return;
-
-    await _valueHelper.setPropertyValue(
-      context,
-      targetTempProp,
-      value,
-    );
-  }
-
   Future<void> _setHeaterTemperature(
     BuildContext context,
-    HeaterDeviceView device,
+    DeviceView device,
     double value,
     DevicesService devicesService,
   ) async {
-    final targetTempProp = device.heaterChannel.targetTemperatureProp;
-    if (targetTempProp == null) return;
-
-    await _valueHelper.setPropertyValue(
-      context,
-      targetTempProp,
-      value,
-    );
+    // Works for both HeaterDeviceView and ThermostatDeviceView with heater channel
+    if (device is HeaterDeviceView) {
+      final temperatureProp = device.heaterChannel.temperatureProp;
+      await _valueHelper.setPropertyValue(context, temperatureProp, value);
+    } else if (device is ThermostatDeviceView) {
+      final heaterChannel = device.heaterChannel;
+      if (heaterChannel != null) {
+        await _valueHelper.setPropertyValue(
+            context, heaterChannel.temperatureProp, value);
+      }
+    }
   }
 
   Future<void> _setCoolerTemperature(
     BuildContext context,
-    AirConditionerDeviceView device,
+    DeviceView device,
     double value,
     DevicesService devicesService,
   ) async {
-    final targetTempProp = device.coolerChannel.targetTemperatureProp;
-    if (targetTempProp == null) return;
-
-    await _valueHelper.setPropertyValue(
-      context,
-      targetTempProp,
-      value,
-    );
+    // Works for both AirConditionerDeviceView and ThermostatDeviceView with cooler channel
+    if (device is AirConditionerDeviceView) {
+      final temperatureProp = device.coolerChannel.temperatureProp;
+      await _valueHelper.setPropertyValue(context, temperatureProp, value);
+    } else if (device is ThermostatDeviceView) {
+      final coolerChannel = device.coolerChannel;
+      if (coolerChannel != null) {
+        await _valueHelper.setPropertyValue(
+            context, coolerChannel.temperatureProp, value);
+      }
+    }
   }
 
   Future<void> _setThermostatMode(
@@ -1107,7 +1137,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     DevicesService devicesService,
   ) async {
     final modeProp = device.thermostatChannel.modeProp;
-    if (modeProp == null) return;
 
     await _valueHelper.setPropertyValue(
       context,
