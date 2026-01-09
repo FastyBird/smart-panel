@@ -338,8 +338,26 @@ abstract class AppLocalizations {
   /// Label shown when a device is offline/disconnected
   ///
   /// In en, this message translates to:
-  /// **'offline'**
+  /// **'Offline'**
   String get device_status_offline;
+
+  /// Message shown when a device is not connected
+  ///
+  /// In en, this message translates to:
+  /// **'Device is offline'**
+  String get device_offline_message;
+
+  /// Message shown when a device has configuration problems
+  ///
+  /// In en, this message translates to:
+  /// **'Configuration issue'**
+  String get device_config_issue;
+
+  /// Button label to open device details
+  ///
+  /// In en, this message translates to:
+  /// **'Device Details'**
+  String get device_details;
 
   /// Title for error when a requested page cannot be found
   ///

@@ -160,9 +160,21 @@
   "@message_error_no_device_detail_preparing_description": {
     "description": "Indicates that the selected device has no detailed page available"
   },
-  "device_status_offline": "offline",
+  "device_status_offline": "Offline",
   "@device_status_offline": {
     "description": "Label shown when a device is offline/disconnected"
+  },
+  "device_offline_message": "Device is offline",
+  "@device_offline_message": {
+    "description": "Message shown when a device is not connected"
+  },
+  "device_config_issue": "Configuration issue",
+  "@device_config_issue": {
+    "description": "Message shown when a device has configuration problems"
+  },
+  "device_details": "Device Details",
+  "@device_details": {
+    "description": "Button label to open device details"
   },
   "message_error_page_not_found_title": "Page Not Found!",
   "@message_error_page_not_found_title": {

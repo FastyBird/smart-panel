@@ -271,20 +271,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     return null;
   }
 
-  /// Check if a device is a typed hero device (has proper view class)
-  bool _isTypedHeroDevice(DeviceView device) {
-    return device is ThermostatDeviceView ||
-        device is HeaterDeviceView ||
-        device is AirConditionerDeviceView;
-  }
-
-  /// Check if a device is a category-based hero (fallback)
-  bool _isCategoryBasedHeroDevice(DeviceView device) {
-    return device.category == DevicesModuleDeviceCategory.thermostat ||
-        device.category == DevicesModuleDeviceCategory.heater ||
-        device.category == DevicesModuleDeviceCategory.airConditioner;
-  }
-
   /// Get secondary devices (non-hero devices)
   List<DeviceView> _getSecondaryDevices(
       List<DeviceView> devices, DeviceView? heroDevice) {
@@ -1000,8 +986,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
 
     // Check device status
-    final isOnline = device.isOnline ?? true;
-    final isValid = device.isValid ?? true;
+    final isOnline = device.isOnline;
+    final isValid = device.isValid;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -1051,7 +1037,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
         // Temperature display (show -- if device is offline or invalid)
         Text(
-          isOnline ? '--$unit' : (localizations?.device_offline ?? 'Offline'),
+          isOnline ? '--$unit' : (localizations?.device_status_offline ?? 'Offline'),
           style: TextStyle(
             fontSize: _screenService.scale(
               48,
@@ -1494,7 +1480,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     final isToggling = _togglingDevices.contains(device.id);
     final bool isOn = _getDeviceOnState(device);
     final canToggle = _canToggleDevice(device);
-    final isOnline = device.isOnline ?? true;
+    final isOnline = device.isOnline;
 
     // Get temperature info if available
     final temperatureInfo = _getDeviceTemperatureInfo(device);
@@ -1678,7 +1664,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
   /// Get status icon for device
   IconData _getDeviceStatusIcon(DeviceView device) {
-    if (!(device.isOnline ?? true)) {
+    if (!(device.isOnline)) {
       return MdiIcons.cloudOffOutline;
     }
 
@@ -1702,7 +1688,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
   /// Get status color for device
   Color _getDeviceStatusColor(BuildContext context, DeviceView device) {
-    if (!(device.isOnline ?? true)) {
+    if (!(device.isOnline)) {
       return Theme.of(context).brightness == Brightness.light
           ? AppColorsLight.danger
           : AppColorsDark.danger;

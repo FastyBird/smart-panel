@@ -129,7 +129,16 @@ class AppLocalizationsCs extends AppLocalizations {
   String get message_error_no_device_detail_preparing_description => 'Pro vybrané zařízení stránka s podrobnostmi ještě není připravena.';
 
   @override
-  String get device_status_offline => 'offline';
+  String get device_status_offline => 'Offline';
+
+  @override
+  String get device_offline_message => 'Zařízení je offline';
+
+  @override
+  String get device_config_issue => 'Problém s konfigurací';
+
+  @override
+  String get device_details => 'Podrobnosti zařízení';
 
   @override
   String get message_error_page_not_found_title => 'Stránka nenalezena!';
