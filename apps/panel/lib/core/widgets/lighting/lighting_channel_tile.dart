@@ -72,7 +72,7 @@ class LightingChannelTile extends StatelessWidget {
         ? (isDark ? AppBorderColorDark.light : AppBorderColorLight.light)
         : (isOn
             ? (isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight5)
-            : (isDark ? AppBorderColorDark.light : AppBorderColorLight.light));
+            : (isDark ? AppFillColorDark.light : AppBorderColorLight.light));
     final iconBgColor = isDisabled
         ? (isDark ? AppFillColorDark.light : AppFillColorLight.light)
         : (isOn
