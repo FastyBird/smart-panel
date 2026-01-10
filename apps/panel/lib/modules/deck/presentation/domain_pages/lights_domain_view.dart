@@ -1243,7 +1243,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             final iconSize = availableSize - AppSpacings.pSm;
 
             return GestureDetector(
-              onLongPress: isToggling ? null : () => _openDeviceDetail(context, device),
+              onLongPress: isToggling
+                  ? null
+                  : () => _openDeviceDetail(context, device, channelId: channel.id),
               child: Center(child: buildIconWidget(iconSize)),
             );
           },
@@ -1255,7 +1257,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     // Icon takes upper half, text takes bottom half
     if (isSquare) {
       return ButtonTileBox(
-        onTap: isToggling ? null : () => _openDeviceDetail(context, device),
+        onTap: isToggling
+            ? null
+            : () => _openDeviceDetail(context, device, channelId: channel.id),
         isOn: isOn,
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -1285,7 +1289,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     // Rectangle tile: horizontal layout - icon on left (1/3 width), content on right
     return ButtonTileBox(
-      onTap: isToggling ? null : () => _openDeviceDetail(context, device),
+      onTap: isToggling
+          ? null
+          : () => _openDeviceDetail(context, device, channelId: channel.id),
       isOn: isOn,
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -1419,11 +1425,18 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   /// Open device detail page
-  void _openDeviceDetail(BuildContext context, LightingDeviceView device) {
+  void _openDeviceDetail(
+    BuildContext context,
+    LightingDeviceView device, {
+    String? channelId,
+  }) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => DeviceDetailPage(device.id),
+        builder: (context) => DeviceDetailPage(
+          device.id,
+          initialChannelId: channelId,
+        ),
       ),
     );
   }
@@ -3979,7 +3992,10 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => DeviceDetailPage(device.id),
+                builder: (context) => DeviceDetailPage(
+                  device.id,
+                  initialChannelId: channel?.id,
+                ),
               ),
             );
           },

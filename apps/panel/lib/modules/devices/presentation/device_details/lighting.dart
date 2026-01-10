@@ -31,10 +31,12 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 
 class LightingDeviceDetail extends StatefulWidget {
   final LightingDeviceView _device;
+  final String? initialChannelId;
 
   const LightingDeviceDetail({
     super.key,
     required LightingDeviceView device,
+    this.initialChannelId,
   }) : _device = device;
 
   @override
@@ -148,6 +150,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       showHeader: true,
       onBack: () => Navigator.pop(context),
       onChannelTap: (channel) => _openChannelDetail(context, channel),
+      initialChannelId: widget.initialChannelId,
     );
   }
 
@@ -3287,6 +3290,9 @@ class LightMultiChannelControlPanel extends StatefulWidget {
   /// Callback when a channel is tapped to open its detail
   final void Function(LightChannelView channel)? onChannelTap;
 
+  /// Initial channel ID to select (for preselecting a specific channel)
+  final String? initialChannelId;
+
   const LightMultiChannelControlPanel({
     super.key,
     required this.device,
@@ -3294,6 +3300,7 @@ class LightMultiChannelControlPanel extends StatefulWidget {
     this.showHeader = false,
     this.onBack,
     this.onChannelTap,
+    this.initialChannelId,
   });
 
   @override
@@ -3313,12 +3320,24 @@ class _LightMultiChannelControlPanelState
   Timer? _temperatureDebounceTimer;
   Timer? _whiteDebounceTimer;
 
+  // Selected channel index for focused control
+  int _selectedChannelIndex = 0;
+
   LightingDeviceView get _device => widget.device;
   List<LightChannelView> get _channels => widget.channels;
+  LightChannelView get _selectedChannel => _channels[_selectedChannelIndex];
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize selected channel from initialChannelId if provided
+    if (widget.initialChannelId != null) {
+      final index = _channels.indexWhere((c) => c.id == widget.initialChannelId);
+      if (index != -1) {
+        _selectedChannelIndex = index;
+      }
+    }
 
     try {
       _deviceControlStateService = locator<DeviceControlStateService>();
@@ -3510,7 +3529,10 @@ class _LightMultiChannelControlPanelState
   // ============================================================================
 
   List<LightingChannelData> _buildChannelsList() {
-    return _channels.map((channel) {
+    return _channels.asMap().entries.map((entry) {
+      final index = entry.key;
+      final channel = entry.value;
+
       // Get optimistic on state
       bool isOn = channel.on;
       final controlState = _deviceControlStateService;
@@ -3551,8 +3573,18 @@ class _LightMultiChannelControlPanelState
         brightness: brightness,
         hasBrightness: channel.hasBrightness,
         isOnline: _device.isOnline,
+        isSelected: index == _selectedChannelIndex,
       );
     }).toList();
+  }
+
+  void _handleChannelSelect(LightingChannelData channelData) {
+    final index = _channels.indexWhere((c) => c.id == channelData.id);
+    if (index != -1 && index != _selectedChannelIndex) {
+      setState(() {
+        _selectedChannelIndex = index;
+      });
+    }
   }
 
   // ============================================================================
@@ -3892,12 +3924,359 @@ class _LightMultiChannelControlPanelState
   }
 
   void _handleChannelTileTap(LightingChannelData channelData) {
-    // Find the channel and open its detail
-    final channel = _channels.firstWhere(
-      (c) => c.id == channelData.id,
-      orElse: () => _channels.first,
+    // Change selected channel (tap on tile = select, tap on icon = toggle)
+    _handleChannelSelect(channelData);
+  }
+
+  // ============================================================================
+  // Selected Channel Command Handlers
+  // ============================================================================
+
+  void _handleSelectedChannelPowerToggle() async {
+    final channel = _selectedChannel;
+    final newState = !_getSelectedChannelIsOn();
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      channel.id,
+      channel.onProp.id,
+      newState,
     );
-    widget.onChannelTap?.call(channel);
+    setState(() {});
+
+    try {
+      await _valueHelper.setPropertyValue(
+        context,
+        channel.onProp,
+        newState,
+        deviceId: _device.id,
+        channelId: channel.id,
+      );
+    } finally {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          channel.id,
+          channel.onProp.id,
+        );
+      }
+    }
+  }
+
+  void _handleSelectedChannelBrightnessChanged(int value) {
+    final channel = _selectedChannel;
+    final prop = channel.brightnessProp;
+    if (prop == null) return;
+
+    _deviceControlStateService?.setPending(_device.id, channel.id, prop.id, value);
+    setState(() {});
+
+    _brightnessDebounceTimer?.cancel();
+    _brightnessDebounceTimer = Timer(
+      const Duration(milliseconds: 150),
+      () async {
+        if (!mounted) return;
+
+        final List<PropertyCommandItem> commands = [];
+
+        // Turn on if off
+        if (!_getSelectedChannelIsOn()) {
+          commands.add(PropertyCommandItem(
+            deviceId: _device.id,
+            channelId: channel.id,
+            propertyId: channel.onProp.id,
+            value: true,
+          ));
+        }
+
+        commands.add(PropertyCommandItem(
+          deviceId: _device.id,
+          channelId: channel.id,
+          propertyId: prop.id,
+          value: value.toDouble(),
+        ));
+
+        await _valueHelper.setMultiplePropertyValues(context, commands);
+
+        if (mounted) {
+          _deviceControlStateService?.setSettling(_device.id, channel.id, prop.id);
+        }
+      },
+    );
+  }
+
+  void _handleSelectedChannelColorTempChanged(int value) {
+    final channel = _selectedChannel;
+    final prop = channel.temperatureProp;
+    if (prop == null) return;
+
+    _deviceControlStateService?.setPending(_device.id, channel.id, prop.id, value);
+    setState(() {});
+
+    _temperatureDebounceTimer?.cancel();
+    _temperatureDebounceTimer = Timer(
+      const Duration(milliseconds: 150),
+      () async {
+        if (!mounted) return;
+
+        final List<PropertyCommandItem> commands = [];
+
+        // Turn on if off
+        if (!_getSelectedChannelIsOn()) {
+          commands.add(PropertyCommandItem(
+            deviceId: _device.id,
+            channelId: channel.id,
+            propertyId: channel.onProp.id,
+            value: true,
+          ));
+        }
+
+        commands.add(PropertyCommandItem(
+          deviceId: _device.id,
+          channelId: channel.id,
+          propertyId: prop.id,
+          value: value.toDouble(),
+        ));
+
+        await _valueHelper.setMultiplePropertyValues(context, commands);
+
+        if (mounted) {
+          _deviceControlStateService?.setSettling(_device.id, channel.id, prop.id);
+        }
+      },
+    );
+  }
+
+  void _handleSelectedChannelColorChanged(Color color, double saturation) {
+    final channel = _selectedChannel;
+    if (!channel.hasColor) return;
+
+    _colorDebounceTimer?.cancel();
+    _colorDebounceTimer = Timer(
+      const Duration(milliseconds: 150),
+      () async {
+        if (!mounted) return;
+
+        final List<PropertyCommandItem> commands = [];
+
+        // Turn on if off
+        if (!_getSelectedChannelIsOn()) {
+          commands.add(PropertyCommandItem(
+            deviceId: _device.id,
+            channelId: channel.id,
+            propertyId: channel.onProp.id,
+            value: true,
+          ));
+        }
+
+        // HSV mode
+        if (channel.hasHue) {
+          final hsv = HSVColor.fromColor(color);
+          if (channel.hueProp != null) {
+            commands.add(PropertyCommandItem(
+              deviceId: _device.id,
+              channelId: channel.id,
+              propertyId: channel.hueProp!.id,
+              value: hsv.hue.round(),
+            ));
+          }
+          if (channel.saturationProp != null) {
+            commands.add(PropertyCommandItem(
+              deviceId: _device.id,
+              channelId: channel.id,
+              propertyId: channel.saturationProp!.id,
+              value: (saturation * 100).round(),
+            ));
+          }
+        }
+        // RGB mode
+        else if (channel.hasColorRed) {
+          final rgbValue = ColorUtils.toRGB(color);
+          if (channel.colorRedProp != null) {
+            commands.add(PropertyCommandItem(
+              deviceId: _device.id,
+              channelId: channel.id,
+              propertyId: channel.colorRedProp!.id,
+              value: rgbValue.red,
+            ));
+          }
+          if (channel.colorGreenProp != null) {
+            commands.add(PropertyCommandItem(
+              deviceId: _device.id,
+              channelId: channel.id,
+              propertyId: channel.colorGreenProp!.id,
+              value: rgbValue.green,
+            ));
+          }
+          if (channel.colorBlueProp != null) {
+            commands.add(PropertyCommandItem(
+              deviceId: _device.id,
+              channelId: channel.id,
+              propertyId: channel.colorBlueProp!.id,
+              value: rgbValue.blue,
+            ));
+          }
+        }
+
+        await _valueHelper.setMultiplePropertyValues(context, commands);
+      },
+    );
+  }
+
+  void _handleSelectedChannelWhiteChanged(int value) {
+    final channel = _selectedChannel;
+    final prop = channel.colorWhiteProp;
+    if (prop == null) return;
+
+    _deviceControlStateService?.setPending(_device.id, channel.id, prop.id, value);
+    setState(() {});
+
+    _whiteDebounceTimer?.cancel();
+    _whiteDebounceTimer = Timer(
+      const Duration(milliseconds: 150),
+      () async {
+        if (!mounted) return;
+
+        final List<PropertyCommandItem> commands = [];
+
+        // Turn on if off
+        if (!_getSelectedChannelIsOn()) {
+          commands.add(PropertyCommandItem(
+            deviceId: _device.id,
+            channelId: channel.id,
+            propertyId: channel.onProp.id,
+            value: true,
+          ));
+        }
+
+        commands.add(PropertyCommandItem(
+          deviceId: _device.id,
+          channelId: channel.id,
+          propertyId: prop.id,
+          value: value.toDouble(),
+        ));
+
+        await _valueHelper.setMultiplePropertyValues(context, commands);
+
+        if (mounted) {
+          _deviceControlStateService?.setSettling(_device.id, channel.id, prop.id);
+        }
+      },
+    );
+  }
+
+  // ============================================================================
+  // Selected Channel Value Getters
+  // ============================================================================
+
+  bool _getSelectedChannelIsOn() {
+    final channel = _selectedChannel;
+    final controlState = _deviceControlStateService;
+
+    if (controlState != null &&
+        controlState.isLocked(_device.id, channel.id, channel.onProp.id)) {
+      final desiredValue = controlState.getDesiredValue(
+        _device.id,
+        channel.id,
+        channel.onProp.id,
+      );
+      if (desiredValue is bool) return desiredValue;
+      if (desiredValue is num) return desiredValue > 0.5;
+    }
+    return channel.on;
+  }
+
+  int _getSelectedChannelBrightness() {
+    final channel = _selectedChannel;
+    if (!channel.hasBrightness) return 100;
+
+    final controlState = _deviceControlStateService;
+    final brightnessProp = channel.brightnessProp;
+
+    if (brightnessProp != null &&
+        controlState != null &&
+        controlState.isLocked(_device.id, channel.id, brightnessProp.id)) {
+      final desiredValue = controlState.getDesiredValue(
+        _device.id,
+        channel.id,
+        brightnessProp.id,
+      );
+      if (desiredValue is num) return desiredValue.round();
+    }
+    return channel.brightness;
+  }
+
+  int _getSelectedChannelColorTemp() {
+    final channel = _selectedChannel;
+    if (!channel.hasTemperature) return 4000;
+
+    final controlState = _deviceControlStateService;
+    final tempProp = channel.temperatureProp;
+
+    if (tempProp != null &&
+        controlState != null &&
+        controlState.isLocked(_device.id, channel.id, tempProp.id)) {
+      final desiredValue = controlState.getDesiredValue(
+        _device.id,
+        channel.id,
+        tempProp.id,
+      );
+      if (desiredValue is num) return desiredValue.round();
+    }
+
+    final value = tempProp?.value;
+    if (value is NumberValueType) return value.value.toInt();
+    return 4000;
+  }
+
+  Color? _getSelectedChannelColor() {
+    final channel = _selectedChannel;
+    if (!channel.hasColor) return null;
+
+    try {
+      if (channel.hasColorRed) {
+        return ColorUtils.fromRGB(
+          channel.colorRed,
+          channel.colorGreen,
+          channel.colorBlue,
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[LightMultiChannelControlPanel] Error getting color: $e');
+      }
+    }
+    return null;
+  }
+
+  int _getSelectedChannelWhite() {
+    final channel = _selectedChannel;
+    if (!channel.hasColorWhite) return 100;
+
+    final controlState = _deviceControlStateService;
+    final whiteProp = channel.colorWhiteProp;
+
+    if (whiteProp != null &&
+        controlState != null &&
+        controlState.isLocked(_device.id, channel.id, whiteProp.id)) {
+      final desiredValue = controlState.getDesiredValue(
+        _device.id,
+        channel.id,
+        whiteProp.id,
+      );
+      if (desiredValue is num) return desiredValue.round();
+    }
+    return channel.colorWhite;
+  }
+
+  Set<LightCapability> _buildSelectedChannelCapabilities() {
+    final channel = _selectedChannel;
+    final caps = <LightCapability>{LightCapability.power};
+    if (channel.hasBrightness) caps.add(LightCapability.brightness);
+    if (channel.hasColor) caps.add(LightCapability.color);
+    if (channel.hasTemperature) caps.add(LightCapability.colorTemp);
+    if (channel.hasColorWhite) caps.add(LightCapability.white);
+    return caps;
   }
 
   // ============================================================================
@@ -3906,23 +4285,29 @@ class _LightMultiChannelControlPanelState
 
   @override
   Widget build(BuildContext context) {
-    final isOn = _getAnyOn();
-    final brightness = _getAverageBrightness();
-    final colorTemp = _getAverageColorTemp();
-    final color = _getFirstColor();
-    final white = _getAverageWhite();
-    final capabilities = _buildCapabilities();
+    // Get values from selected channel (not aggregated)
+    final isOn = _getSelectedChannelIsOn();
+    final brightness = _getSelectedChannelBrightness();
+    final colorTemp = _getSelectedChannelColorTemp();
+    final color = _getSelectedChannelColor();
+    final white = _getSelectedChannelWhite();
+    final capabilities = _buildSelectedChannelCapabilities();
     final channelsList = _buildChannelsList();
+
+    // Header: channel name as title, device name as subtitle (if different)
+    final channelName = _selectedChannel.name;
+    final deviceName = _device.name;
+    final showSubtitle = channelName.toLowerCase() != deviceName.toLowerCase();
 
     return LightingControlPanel(
       // Header configuration
       showHeader: widget.showHeader,
-      title: _device.name,
-      subtitle: '${_channels.length} channels',
+      title: channelName,
+      subtitle: showSubtitle ? deviceName : null,
       icon: MdiIcons.lightbulb,
       onBack: widget.onBack,
 
-      // Aggregated current values
+      // Selected channel values
       isOn: isOn,
       brightness: brightness,
       colorTemp: colorTemp,
@@ -3937,11 +4322,11 @@ class _LightMultiChannelControlPanelState
       channelsPanelIcon: MdiIcons.lightbulbGroup,
 
       // Callbacks
-      onPowerToggle: _handlePowerToggle,
-      onBrightnessChanged: _handleBrightnessChanged,
-      onColorTempChanged: _handleColorTempChanged,
-      onColorChanged: _handleColorChanged,
-      onWhiteChannelChanged: _handleWhiteChannelChanged,
+      onPowerToggle: _handleSelectedChannelPowerToggle,
+      onBrightnessChanged: _handleSelectedChannelBrightnessChanged,
+      onColorTempChanged: _handleSelectedChannelColorTempChanged,
+      onColorChanged: _handleSelectedChannelColorChanged,
+      onWhiteChannelChanged: _handleSelectedChannelWhiteChanged,
       onChannelIconTap: _handleChannelIconTap,
       onChannelTileTap: _handleChannelTileTap,
     );

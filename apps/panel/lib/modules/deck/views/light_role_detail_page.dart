@@ -1444,10 +1444,35 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       orElse: () => targets.first,
     );
 
+    // Get the actual device to find the correct channel ID from the devices module
+    // (spaces module's channelId might differ from devices module's channel.id)
+    final device = _devicesService?.getDevice(target.deviceId);
+    String? deviceChannelId;
+    if (device is LightingDeviceView) {
+      // First try exact match with target.channelId
+      final matchedChannel = device.lightChannels.cast<LightChannelView?>().firstWhere(
+        (c) => c?.id == target.channelId,
+        orElse: () => null,
+      );
+      if (matchedChannel != null) {
+        deviceChannelId = matchedChannel.id;
+      } else {
+        // Fallback: try to find by name match
+        final namedChannel = device.lightChannels.cast<LightChannelView?>().firstWhere(
+          (c) => c?.name.toLowerCase() == channelData.name.toLowerCase(),
+          orElse: () => null,
+        );
+        deviceChannelId = namedChannel?.id;
+      }
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => DeviceDetailPage(target.deviceId),
+        builder: (context) => DeviceDetailPage(
+          target.deviceId,
+          initialChannelId: deviceChannelId ?? channelData.id,
+        ),
       ),
     );
   }

@@ -12,6 +12,7 @@ class LightingChannelData {
   final int brightness;
   final bool hasBrightness;
   final bool isOnline;
+  final bool isSelected;
 
   const LightingChannelData({
     required this.id,
@@ -20,6 +21,7 @@ class LightingChannelData {
     this.brightness = 100,
     this.hasBrightness = true,
     this.isOnline = true,
+    this.isSelected = false,
   });
 }
 
@@ -59,6 +61,7 @@ class LightingChannelTile extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isOn = channel.isOn && channel.isOnline;
     final isDisabled = !channel.isOnline;
+    final isSelected = channel.isSelected;
 
     // Colors based on state
     final tileBgColor = isDisabled
@@ -68,11 +71,19 @@ class LightingChannelTile extends StatelessWidget {
                 ? AppColorsDark.primaryLight9
                 : AppColorsLight.primaryLight9)
             : (isDark ? AppFillColorDark.light : AppFillColorLight.light));
+
     final borderColor = isDisabled
         ? (isDark ? AppBorderColorDark.light : AppBorderColorLight.light)
         : (isOn
-            ? (isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight5)
+            ? (isDark
+                ? AppColorsDark.primaryLight5
+                : AppColorsLight.primaryLight5)
             : (isDark ? AppFillColorDark.light : AppBorderColorLight.light));
+
+    // Selection indicator color: primary when on, success (green) when off
+    final selectionIndicatorColor = isOn
+        ? (isDark ? AppColorsDark.primary : AppColorsLight.primary)
+        : (isDark ? AppColorsDark.success : AppColorsLight.success);
     final iconBgColor = isDisabled
         ? (isDark ? AppFillColorDark.light : AppFillColorLight.light)
         : (isOn
@@ -124,53 +135,57 @@ class LightingChannelTile extends StatelessWidget {
                 ]
               : [],
         ),
-        child: Padding(
-          padding: EdgeInsets.all(AppSpacings.pMd + paddingCompensation),
-          child: Column(
-            children: [
-              // Icon - takes available space
-              Expanded(
-                child: Center(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final iconSize = constraints.maxHeight;
-                      return Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        // Icon button
-                        GestureDetector(
-                          onTap: onIconTap,
-                          child: Container(
-                            width: iconSize,
-                            height: iconSize,
-                            decoration: BoxDecoration(
-                              color: iconBgColor,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              isOn ? Icons.lightbulb : Icons.lightbulb_outline,
-                              color: iconColor,
-                              size: iconSize * 0.6,
-                            ),
-                          ),
-                        ),
-                        // Warning badge for offline devices
-                        if (isDisabled)
-                          Positioned(
-                            right: -_scale(2),
-                            bottom: -_scale(2),
-                            child: Icon(
-                              Icons.warning_rounded,
-                              size: _scale(14),
-                              color: warningColor,
-                            ),
-                          ),
-                      ],
-                      );
-                    },
+        child: Stack(
+          children: [
+            Padding(
+              padding: EdgeInsets.all(AppSpacings.pMd + paddingCompensation),
+              child: Column(
+                children: [
+                  // Icon - takes available space
+                  Expanded(
+                    child: Center(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final iconSize = constraints.maxHeight;
+                          return Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              // Icon button
+                              GestureDetector(
+                                onTap: onIconTap,
+                                child: Container(
+                                  width: iconSize,
+                                  height: iconSize,
+                                  decoration: BoxDecoration(
+                                    color: iconBgColor,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    isOn
+                                        ? Icons.lightbulb
+                                        : Icons.lightbulb_outline,
+                                    color: iconColor,
+                                    size: iconSize * 0.6,
+                                  ),
+                                ),
+                              ),
+                              // Warning badge for offline devices
+                              if (isDisabled)
+                                Positioned(
+                                  right: -_scale(2),
+                                  bottom: -_scale(2),
+                                  child: Icon(
+                                    Icons.warning_rounded,
+                                    size: _scale(14),
+                                    color: warningColor,
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
                   ),
-                ),
-              ),
               SizedBox(height: AppSpacings.pSm),
 
               // Name
@@ -186,24 +201,39 @@ class LightingChannelTile extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
 
-              // Status
-              SizedBox(height: _scale(1)),
-              Text(
-                isDisabled
-                    ? 'Offline'
-                    : (isOn
-                        ? (channel.hasBrightness ? '${channel.brightness}%' : 'On')
-                        : 'Off'),
-                style: TextStyle(
-                  color: isDisabled ? warningColor : subtitleColor,
-                  fontSize: AppFontSize.extraExtraSmall,
-                ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-                textAlign: TextAlign.center,
+                  // Status
+                  SizedBox(height: _scale(1)),
+                  Text(
+                    isDisabled
+                        ? 'Offline'
+                        : (isOn
+                            ? (channel.hasBrightness
+                                ? '${channel.brightness}%'
+                                : 'On')
+                            : 'Off'),
+                    style: TextStyle(
+                      color: isDisabled ? warningColor : subtitleColor,
+                      fontSize: AppFontSize.extraExtraSmall,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+            // Selection indicator (compensate for border width difference)
+            if (isSelected)
+              Positioned(
+                top: _scale(4) + paddingCompensation,
+                right: _scale(4) + paddingCompensation,
+                child: Icon(
+                  Icons.check_circle,
+                  size: _scale(14),
+                  color: selectionIndicatorColor,
+                ),
+              ),
+          ],
         ),
       ),
     );
