@@ -894,6 +894,31 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     }
   }
 
+  String _getLightStateSubtitle(RoleMixedState mixedState) {
+    final total = mixedState.onCount + mixedState.offCount;
+
+    // Handle pending state for optimistic UI
+    if (_pendingOnState != null) {
+      return _pendingOnState! ? 'All lights on' : 'All lights off';
+    }
+
+    // All lights on
+    if (mixedState.allOn) {
+      return total == 1 ? '1 light on' : 'All lights on';
+    }
+
+    // All lights off
+    if (mixedState.allOff) {
+      return total == 1 ? '1 light off' : 'All lights off';
+    }
+
+    // Mixed state
+    final onCount = mixedState.onCount;
+    if (onCount == 1) {
+      return '1 of $total lights on';
+    }
+    return '$onCount of $total lights on';
+  }
 
   // ============================================================================
   // Command Methods
@@ -1414,7 +1439,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     return LightingControlPanel(
       // Header
       title: _getRoleName(widget.role),
-      subtitle: '${channels.length} ${channels.length == 1 ? 'channel' : 'channels'}',
+      subtitle: _getLightStateSubtitle(roleMixedState),
       icon: getLightRoleIcon(widget.role),
       onBack: () => Navigator.pop(context),
 
