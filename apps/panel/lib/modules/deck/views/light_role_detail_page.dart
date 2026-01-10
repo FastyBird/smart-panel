@@ -1058,6 +1058,64 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     }
   }
 
+  Future<void> _setAllLightsOff(List<LightTargetView> targets) async {
+    final devicesService = _devicesService;
+    if (devicesService == null) return;
+
+    final localizations = AppLocalizations.of(context);
+
+    try {
+      final List<PropertyCommandItem> properties = [];
+
+      for (final target in targets) {
+        final device = devicesService.getDevice(target.deviceId);
+        if (device is LightingDeviceView) {
+          final channel = findLightChannel(device, target.channelId);
+          if (channel == null) continue;
+
+          final onProp = channel.onProp;
+          properties.add(PropertyCommandItem(
+            deviceId: target.deviceId,
+            channelId: target.channelId,
+            propertyId: onProp.id,
+            value: false,
+          ));
+        }
+      }
+
+      if (properties.isEmpty) return;
+
+      final displayRepository = locator<DisplayRepository>();
+      final displayId = displayRepository.display?.id;
+
+      final commandContext = PropertyCommandContext(
+        origin: 'panel.system.room',
+        displayId: displayId,
+        spaceId: widget.roomId,
+        roleKey: widget.role.name,
+      );
+
+      final success = await devicesService.setMultiplePropertyValues(
+        properties: properties,
+        context: commandContext,
+      );
+
+      if (!success && mounted) {
+        AlertBar.showError(
+          context,
+          message: localizations?.action_failed ?? 'Failed to turn off lights',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        AlertBar.showError(
+          context,
+          message: localizations?.action_failed ?? 'Failed to turn off lights',
+        );
+      }
+    }
+  }
+
   Future<void> _setSimplePropertyForAll({
     required List<LightTargetView> targets,
     required SimplePropertyType propertyType,
@@ -1320,13 +1378,13 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     final channels = <LightingChannelData>[];
     final allCapabilities = <LightCapability>{};
     bool anyOn = false;
-    int totalBrightness = 0;
-    int brightnessCount = 0;
-    int totalColorTemp = 0;
-    int colorTempCount = 0;
-    Color? avgColor;
-    int totalWhite = 0;
-    int whiteCount = 0;
+
+    // Use first device's value for each capability (not average)
+    // This avoids confusing users with values that don't match any real device
+    int? firstBrightness;
+    int? firstColorTemp;
+    Color? firstColor;
+    int? firstWhite;
 
     for (final target in targets) {
       final device = devicesService.getDevice(target.deviceId);
@@ -1351,42 +1409,38 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
         if (channel.hasColor) allCapabilities.add(LightCapability.color);
         if (channel.hasColorWhite) allCapabilities.add(LightCapability.white);
 
-        // Aggregate values from ON devices
+        // Track if any device is on
         if (channel.on) {
           anyOn = true;
+        }
 
-          if (channel.hasBrightness) {
-            totalBrightness += channel.brightness;
-            brightnessCount++;
-          }
+        // Use first device's value for each capability
+        if (channel.hasBrightness && firstBrightness == null) {
+          firstBrightness = channel.brightness;
+        }
 
-          if (channel.hasTemperature) {
-            final tempProp = channel.temperatureProp;
-            if (tempProp?.value is NumberValueType) {
-              totalColorTemp += (tempProp!.value as NumberValueType).value.toInt();
-              colorTempCount++;
-            }
+        if (channel.hasTemperature && firstColorTemp == null) {
+          final tempProp = channel.temperatureProp;
+          if (tempProp?.value is NumberValueType) {
+            firstColorTemp = (tempProp!.value as NumberValueType).value.toInt();
           }
+        }
 
-          if (channel.hasColor) {
-            final color = _getChannelColorSafe(channel);
-            if (color != null) {
-              avgColor = color; // Use first ON device's color for now
-            }
-          }
+        if (channel.hasColor && firstColor == null) {
+          firstColor = _getChannelColorSafe(channel);
+        }
 
-          if (channel.hasColorWhite) {
-            totalWhite += channel.colorWhite;
-            whiteCount++;
-          }
+        if (channel.hasColorWhite && firstWhite == null) {
+          firstWhite = channel.colorWhite;
         }
       }
     }
 
-    // Calculate averages
-    final avgBrightness = brightnessCount > 0 ? (totalBrightness / brightnessCount).round() : 100;
-    final avgColorTemp = colorTempCount > 0 ? (totalColorTemp / colorTempCount).round() : 4000;
-    final avgWhite = whiteCount > 0 ? (totalWhite / whiteCount).round() : 100;
+    // Use first device values (with defaults if no device has the capability)
+    final baseBrightness = firstBrightness ?? 100;
+    final baseColorTemp = firstColorTemp ?? 4000;
+    final baseColor = firstColor;
+    final baseWhite = firstWhite ?? 100;
 
     // Determine state based on device values and state machine
     final roleMixedState = _getRoleMixedState(targets);
@@ -1426,20 +1480,20 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
 
     // Determine displayed values (use state machine values if locked)
     final displayBrightness = _brightnessState.isLocked
-        ? (_brightnessState.desiredValue?.round() ?? avgBrightness)
-        : avgBrightness;
+        ? (_brightnessState.desiredValue?.round() ?? baseBrightness)
+        : baseBrightness;
     final displayColorTemp = _temperatureState.isLocked
-        ? (_temperatureState.desiredValue?.round() ?? avgColorTemp)
-        : avgColorTemp;
+        ? (_temperatureState.desiredValue?.round() ?? baseColorTemp)
+        : baseColorTemp;
     final displayWhite = _whiteState.isLocked
-        ? (_whiteState.desiredValue?.round() ?? avgWhite)
-        : avgWhite;
+        ? (_whiteState.desiredValue?.round() ?? baseWhite)
+        : baseWhite;
 
     // Determine on/off state (use pending state if available)
     final displayIsOn = _pendingOnState ?? anyOn;
 
     // Get hue and convert to color if needed
-    Color? displayColor = avgColor;
+    Color? displayColor = baseColor;
     double saturation = 1.0;
     if (_hueState.isLocked && _hueState.desiredValue != null) {
       displayColor = HSVColor.fromAHSV(1.0, _hueState.desiredValue!, 1.0, 1.0).toColor();
@@ -1556,13 +1610,38 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       onChannelIconTap: (channel) => _toggleChannel(channel),
       onChannelTileTap: (channel) => _navigateToChannelDetail(channel),
       onSyncAll: () {
-        // Sync all devices to current aggregated values
-        final brightness = _brightnessState.desiredValue ?? avgBrightness.toDouble();
-        _setSimplePropertyForAll(
-          targets: targets,
-          propertyType: SimplePropertyType.brightness,
-          value: brightness.round(),
-        );
+        // When state is off, only send off command (avoid sending brightness etc. which would turn lights on)
+        if (!displayIsOn) {
+          _setAllLightsOff(targets);
+          return;
+        }
+
+        // Sync all devices to current displayed values for all capabilities
+        if (allCapabilities.contains(LightCapability.brightness)) {
+          _setSimplePropertyForAll(
+            targets: targets,
+            propertyType: SimplePropertyType.brightness,
+            value: displayBrightness,
+          );
+        }
+        if (allCapabilities.contains(LightCapability.colorTemp)) {
+          _setSimplePropertyForAll(
+            targets: targets,
+            propertyType: SimplePropertyType.temperature,
+            value: displayColorTemp,
+          );
+        }
+        if (allCapabilities.contains(LightCapability.color) && baseColor != null) {
+          final hue = _hueState.desiredValue ?? HSVColor.fromColor(baseColor).hue;
+          _setHueForAll(targets, hue);
+        }
+        if (allCapabilities.contains(LightCapability.white)) {
+          _setSimplePropertyForAll(
+            targets: targets,
+            propertyType: SimplePropertyType.white,
+            value: displayWhite,
+          );
+        }
       },
     );
   }
