@@ -368,9 +368,11 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
       case LightingState.synced:
         return null;
       case LightingState.mixed:
-        return isDark ? AppColorsDark.warning : AppColorsLight.warning;
+        // Blue - informational, devices have different values
+        return AppColorsLight.secondary;
       case LightingState.unsynced:
-        return isDark ? AppColorsDark.danger : AppColorsLight.danger;
+        // Yellow/warning - sync was attempted but failed
+        return isDark ? AppColorsDark.warning : AppColorsLight.warning;
     }
   }
 
@@ -789,9 +791,9 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
     // Use state-specific icon when not synced, otherwise use configured icon
     IconData panelIcon = widget.channelsPanelIcon;
     if (widget.state == LightingState.mixed) {
-      panelIcon = Icons.warning_rounded;
+      panelIcon = Icons.tune; // Informational - devices have different values
     } else if (widget.state == LightingState.unsynced) {
-      panelIcon = Icons.sync_problem;
+      panelIcon = Icons.warning_rounded; // Warning - sync failed
     }
 
     return Container(

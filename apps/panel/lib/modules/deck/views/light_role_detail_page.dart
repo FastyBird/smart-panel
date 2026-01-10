@@ -1388,29 +1388,38 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     final avgColorTemp = colorTempCount > 0 ? (totalColorTemp / colorTempCount).round() : 4000;
     final avgWhite = whiteCount > 0 ? (totalWhite / whiteCount).round() : 100;
 
-    // Determine state based on state machine and mixed state
+    // Determine state based on device values and state machine
     final roleMixedState = _getRoleMixedState(targets);
 
-    // Priority: SETTLING > MIXED (error) > device mixed (intentional)
+    // Check if we're actively settling (waiting for device sync)
     final isSettling = _brightnessState.isSettling ||
         _hueState.isSettling ||
         _temperatureState.isSettling ||
         _whiteState.isSettling ||
         _onOffState.isSettling;
-    final isUnsynced = _brightnessState.isMixed ||
+
+    // Check if any role control state shows a sync error
+    // (settling timer expired without convergence - only happens after user made a role command)
+    final hasSyncError = _brightnessState.isMixed ||
         _hueState.isMixed ||
         _temperatureState.isMixed ||
         _whiteState.isMixed ||
         _onOffState.isMixed;
-    final isMixed = roleMixedState.isMixed;
 
+    // Device values are mixed (some lights have different values)
+    final devicesMixed = roleMixedState.isMixed;
+
+    // State determination:
+    // - synced: while actively settling, or all devices have same values
+    // - unsynced: user made a role command and settling expired without convergence
+    // - mixed: devices have different values (informational)
     LightingState state;
     if (isSettling) {
-      state = LightingState.synced; // Show as synced while settling
-    } else if (isUnsynced) {
-      state = LightingState.unsynced; // Settling timeout error
-    } else if (isMixed) {
-      state = LightingState.mixed; // Intentionally different values
+      state = LightingState.synced;
+    } else if (hasSyncError) {
+      state = LightingState.unsynced;
+    } else if (devicesMixed) {
+      state = LightingState.mixed;
     } else {
       state = LightingState.synced;
     }
