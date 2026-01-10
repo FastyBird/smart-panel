@@ -1059,6 +1059,14 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
   }
 
   Future<void> _setAllLightsOff(List<LightTargetView> targets) async {
+    await _setAllLightsPower(targets, false);
+  }
+
+  Future<void> _setAllLightsOn(List<LightTargetView> targets) async {
+    await _setAllLightsPower(targets, true);
+  }
+
+  Future<void> _setAllLightsPower(List<LightTargetView> targets, bool on) async {
     final devicesService = _devicesService;
     if (devicesService == null) return;
 
@@ -1078,7 +1086,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
             deviceId: target.deviceId,
             channelId: target.channelId,
             propertyId: onProp.id,
-            value: false,
+            value: on,
           ));
         }
       }
@@ -1103,14 +1111,16 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       if (!success && mounted) {
         AlertBar.showError(
           context,
-          message: localizations?.action_failed ?? 'Failed to turn off lights',
+          message: localizations?.action_failed ??
+              'Failed to turn ${on ? 'on' : 'off'} lights',
         );
       }
     } catch (e) {
       if (mounted) {
         AlertBar.showError(
           context,
-          message: localizations?.action_failed ?? 'Failed to turn off lights',
+          message: localizations?.action_failed ??
+              'Failed to turn ${on ? 'on' : 'off'} lights',
         );
       }
     }
@@ -1615,6 +1625,9 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
           _setAllLightsOff(targets);
           return;
         }
+
+        // Turn all lights on first, then sync property values
+        _setAllLightsOn(targets);
 
         // Sync all devices to current displayed values for all capabilities
         if (allCapabilities.contains(LightCapability.brightness)) {
