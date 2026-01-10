@@ -5,15 +5,15 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('DeviceControlStateService', () {
     late DeviceControlStateService service;
-    bool _disposed = false;
+    bool disposed = false;
 
     setUp(() {
       service = DeviceControlStateService();
-      _disposed = false;
+      disposed = false;
     });
 
     tearDown(() {
-      if (!_disposed) {
+      if (!disposed) {
         service.dispose();
       }
     });
@@ -199,7 +199,7 @@ void main() {
           expect(service.activeCount, 2);
 
           service.dispose();
-          _disposed = true;
+          disposed = true;
 
           // Advance time past settling duration - no errors should occur
           async.elapse(const Duration(seconds: 2));
@@ -215,7 +215,7 @@ void main() {
         expect(service.activeCount, 2);
 
         service.dispose();
-        _disposed = true;
+        disposed = true;
 
         expect(service.activeCount, 0);
         expect(service.activeKeys, isEmpty);
@@ -226,7 +226,7 @@ void main() {
         service.addListener(() => notified = true);
 
         service.dispose();
-        _disposed = true;
+        disposed = true;
 
         // This shouldn't throw or notify
         // Note: In practice, you shouldn't call methods after dispose

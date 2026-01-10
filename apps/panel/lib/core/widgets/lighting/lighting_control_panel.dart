@@ -126,6 +126,10 @@ class LightingControlPanel extends StatefulWidget {
   /// Called when sync button is pressed
   final VoidCallback? onSyncAll;
 
+  /// Whether to show the header (title, back button, etc.)
+  /// When false, only the control panel body is rendered (no Scaffold wrapper)
+  final bool showHeader;
+
   const LightingControlPanel({
     super.key,
     required this.title,
@@ -149,6 +153,7 @@ class LightingControlPanel extends StatefulWidget {
     this.onChannelIconTap,
     this.onChannelTileTap,
     this.onSyncAll,
+    this.showHeader = true,
   });
 
   @override
@@ -208,6 +213,23 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? AppBgColorDark.base : AppBgColorLight.base;
 
+    // When showHeader is false, just render the body content without Scaffold
+    if (!widget.showHeader) {
+      return OrientationBuilder(
+        builder: (context, orientation) {
+          final isLandscape = orientation == Orientation.landscape;
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              return isLandscape
+                  ? _buildLandscapeLayout(context, isDark)
+                  : _buildPortraitLayout(context, isDark);
+            },
+          );
+        },
+      );
+    }
+
+    // Full layout with Scaffold and header
     return Scaffold(
       backgroundColor: bgColor,
       body: SafeArea(
