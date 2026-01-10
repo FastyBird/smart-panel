@@ -28,6 +28,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
+// TODO: Remove this import after testing - using mock UI for design testing
+import 'package:fastybird_smart_panel/_tmp/role_detail_wrapper.dart';
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -962,13 +965,19 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     }
 
     // Otherwise open role detail page
+    // TODO: Revert to _LightRoleDetailPage after testing
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => _LightRoleDetailPage(
+        builder: (context) => MockRoleDetailWrapper(
           role: group.role,
           roomId: _roomId,
         ),
+        // Original implementation:
+        // builder: (context) => _LightRoleDetailPage(
+        //   role: group.role,
+        //   roomId: _roomId,
+        // ),
       ),
     );
   }
