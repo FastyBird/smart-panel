@@ -72,13 +72,28 @@ class LightingChannelTile extends StatelessWidget {
                 : AppColorsLight.primaryLight9)
             : (isDark ? AppFillColorDark.light : AppFillColorLight.light));
 
-    final borderColor = isDisabled
-        ? (isDark ? AppBorderColorDark.light : AppBorderColorLight.light)
-        : (isOn
-            ? (isDark
-                ? AppColorsDark.primaryLight5
-                : AppColorsLight.primaryLight5)
-            : (isDark ? AppFillColorDark.light : AppBorderColorLight.light));
+    // Box-in-box border approach: always 2px total (1px outer + 1px inner)
+    // This eliminates jitter when switching states since total width is constant
+    final Color outerBorderColor;
+    final Color innerBorderColor;
+
+    if (isDisabled) {
+      // Disabled: subtle border
+      outerBorderColor =
+          isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+      innerBorderColor = tileBgColor;
+    } else if (isOn) {
+      // On: primary colored double border
+      outerBorderColor =
+          isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight5;
+      innerBorderColor =
+          isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight5;
+    } else {
+      // Off: light theme shows gray border, dark theme is borderless
+      outerBorderColor =
+          isDark ? tileBgColor : AppBorderColorLight.light;
+      innerBorderColor = tileBgColor;
+    }
 
     // Selection indicator color: primary when on, success (green) when off
     final selectionIndicatorColor = isOn
@@ -107,19 +122,18 @@ class LightingChannelTile extends StatelessWidget {
     final warningColor =
         isDark ? AppColorsDark.warning : AppColorsLight.warning;
 
-    // Padding compensation for border width difference
-    final borderWidth = isOn ? _scale(2) : _scale(1);
-    final paddingCompensation = isOn ? 0.0 : _scale(1);
+    // Fixed border width for both boxes
+    final borderWidth = _scale(1);
 
     return GestureDetector(
       onTap: onTileTap,
+      // Outer box with 1px border
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         decoration: BoxDecoration(
-          color: tileBgColor,
           borderRadius: BorderRadius.circular(AppBorderRadius.medium),
           border: Border.all(
-            color: borderColor,
+            color: outerBorderColor,
             width: borderWidth,
           ),
           boxShadow: isOn
@@ -135,105 +149,118 @@ class LightingChannelTile extends StatelessWidget {
                 ]
               : [],
         ),
-        child: Stack(
-          children: [
-            Padding(
-              padding: EdgeInsets.all(AppSpacings.pMd + paddingCompensation),
-              child: Column(
-                children: [
-                  // Icon - takes available space
-                  Expanded(
-                    child: Center(
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          final iconSize = constraints.maxHeight;
-                          return Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              // Icon button
-                              GestureDetector(
-                                onTap: onIconTap,
-                                child: Container(
-                                  width: iconSize,
-                                  height: iconSize,
-                                  decoration: BoxDecoration(
-                                    color: iconBgColor,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    isOn
-                                        ? Icons.lightbulb
-                                        : Icons.lightbulb_outline,
-                                    color: iconColor,
-                                    size: iconSize * 0.6,
+        // Inner box with 1px border
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          decoration: BoxDecoration(
+            color: tileBgColor,
+            borderRadius:
+                BorderRadius.circular(AppBorderRadius.medium - borderWidth),
+            border: Border.all(
+              color: innerBorderColor,
+              width: borderWidth,
+            ),
+          ),
+          child: Stack(
+            children: [
+              Padding(
+                padding: EdgeInsets.all(AppSpacings.pMd),
+                child: Column(
+                  children: [
+                    // Icon - takes available space
+                    Expanded(
+                      child: Center(
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final iconSize = constraints.maxHeight;
+                            return Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                // Icon button
+                                GestureDetector(
+                                  onTap: onIconTap,
+                                  child: Container(
+                                    width: iconSize,
+                                    height: iconSize,
+                                    decoration: BoxDecoration(
+                                      color: iconBgColor,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      isOn
+                                          ? Icons.lightbulb
+                                          : Icons.lightbulb_outline,
+                                      color: iconColor,
+                                      size: iconSize * 0.6,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              // Warning badge for offline devices
-                              if (isDisabled)
-                                Positioned(
-                                  right: -_scale(2),
-                                  bottom: -_scale(2),
-                                  child: Icon(
-                                    Icons.warning_rounded,
-                                    size: _scale(14),
-                                    color: warningColor,
+                                // Warning badge for offline devices
+                                if (isDisabled)
+                                  Positioned(
+                                    right: -_scale(2),
+                                    bottom: -_scale(2),
+                                    child: Icon(
+                                      Icons.warning_rounded,
+                                      size: _scale(14),
+                                      color: warningColor,
+                                    ),
                                   ),
-                                ),
-                            ],
-                          );
-                        },
+                              ],
+                            );
+                          },
+                        ),
                       ),
                     ),
-                  ),
-              SizedBox(height: AppSpacings.pSm),
+                    SizedBox(height: AppSpacings.pSm),
 
-              // Name
-              Text(
-                channel.name,
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: AppFontSize.extraSmall,
-                  fontWeight: FontWeight.w600,
-                ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-                textAlign: TextAlign.center,
-              ),
-
-                  // Status
-                  SizedBox(height: _scale(1)),
-                  Text(
-                    isDisabled
-                        ? 'Offline'
-                        : (isOn
-                            ? (channel.hasBrightness
-                                ? '${channel.brightness}%'
-                                : 'On')
-                            : 'Off'),
-                    style: TextStyle(
-                      color: isDisabled ? warningColor : subtitleColor,
-                      fontSize: AppFontSize.extraExtraSmall,
+                    // Name
+                    Text(
+                      channel.name,
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: AppFontSize.extraSmall,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      textAlign: TextAlign.center,
                     ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-            // Selection indicator (compensate for border width difference)
-            if (isSelected)
-              Positioned(
-                top: _scale(4) + paddingCompensation,
-                right: _scale(4) + paddingCompensation,
-                child: Icon(
-                  Icons.check_circle,
-                  size: _scale(14),
-                  color: selectionIndicatorColor,
+
+                    // Status
+                    SizedBox(height: _scale(1)),
+                    Text(
+                      isDisabled
+                          ? 'Offline'
+                          : (isOn
+                              ? (channel.hasBrightness
+                                  ? '${channel.brightness}%'
+                                  : 'On')
+                              : 'Off'),
+                      style: TextStyle(
+                        color: isDisabled ? warningColor : subtitleColor,
+                        fontSize: AppFontSize.extraExtraSmall,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
               ),
-          ],
+              // Selection indicator
+              if (isSelected)
+                Positioned(
+                  top: _scale(4),
+                  right: _scale(4),
+                  child: Icon(
+                    Icons.check_circle,
+                    size: _scale(14),
+                    color: selectionIndicatorColor,
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
