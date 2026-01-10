@@ -1003,7 +1003,14 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
         roleKey: widget.role.name,
       );
 
+      // Set pending state for immediate optimistic UI
       for (final property in properties) {
+        _deviceControlStateService?.setPending(
+          property.deviceId,
+          property.channelId,
+          property.propertyId,
+          property.value,
+        );
         _intentOverlayService?.createLocalOverlay(
           deviceId: property.deviceId,
           channelId: property.channelId,
@@ -1013,10 +1020,22 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
         );
       }
 
+      // Force immediate UI update
+      if (mounted) setState(() {});
+
       final success = await devicesService.setMultiplePropertyValues(
         properties: properties,
         context: commandContext,
       );
+
+      // Transition to settling state after command is sent
+      for (final property in properties) {
+        _deviceControlStateService?.setSettling(
+          property.deviceId,
+          property.channelId,
+          property.propertyId,
+        );
+      }
 
       if (!mounted) return;
 
@@ -1119,10 +1138,39 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
         roleKey: widget.role.name,
       );
 
+      // Set pending state for immediate optimistic UI
+      for (final property in properties) {
+        _deviceControlStateService?.setPending(
+          property.deviceId,
+          property.channelId,
+          property.propertyId,
+          property.value,
+        );
+        _intentOverlayService?.createLocalOverlay(
+          deviceId: property.deviceId,
+          channelId: property.channelId,
+          propertyId: property.propertyId,
+          value: property.value,
+          ttlMs: 5000,
+        );
+      }
+
+      // Force immediate UI update
+      if (mounted) setState(() {});
+
       final success = await devicesService.setMultiplePropertyValues(
         properties: properties,
         context: commandContext,
       );
+
+      // Transition to settling state after command is sent
+      for (final property in properties) {
+        _deviceControlStateService?.setSettling(
+          property.deviceId,
+          property.channelId,
+          property.propertyId,
+        );
+      }
 
       if (!success && mounted) {
         AlertBar.showError(
