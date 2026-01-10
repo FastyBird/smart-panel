@@ -314,8 +314,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (widget.subtitle != null) ...[
-                  SizedBox(height: _scale(2)),
+                if (widget.subtitle != null)
                   Text(
                     widget.subtitle!,
                     style: TextStyle(
@@ -328,7 +327,6 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                ],
               ],
             ),
           ),
