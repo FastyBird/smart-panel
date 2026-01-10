@@ -3547,6 +3547,7 @@ class _LightMultiChannelControlPanelState
         name: channel.name,
         isOn: isOn,
         brightness: brightness,
+        hasBrightness: channel.hasBrightness,
         isOnline: _device.isOnline,
       );
     }).toList();

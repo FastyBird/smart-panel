@@ -42,6 +42,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
   DevicesService? _devicesService;
   IntentOverlayService? _intentOverlayService;
   RoleControlStateRepository? _roleControlStateRepository;
+  DeviceControlStateService? _deviceControlStateService;
 
   // Role control states for each control type
   RoleControlState _brightnessState = const RoleControlState();
@@ -112,6 +113,13 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       if (kDebugMode) debugPrint('[LightRoleDetail] Failed to get RoleControlStateRepository: $e');
     }
 
+    try {
+      _deviceControlStateService = locator<DeviceControlStateService>();
+      _deviceControlStateService?.addListener(_onControlStateChanged);
+    } catch (e) {
+      if (kDebugMode) debugPrint('[LightRoleDetail] Failed to get DeviceControlStateService: $e');
+    }
+
     // Load cached values
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadCachedValues();
@@ -133,7 +141,15 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     _spacesService?.removeListener(_onSpacesDataChanged);
     _devicesService?.removeListener(_onDevicesDataChanged);
     _intentOverlayService?.removeListener(_onIntentChanged);
+    _deviceControlStateService?.removeListener(_onControlStateChanged);
     super.dispose();
+  }
+
+  void _onControlStateChanged() {
+    // Device control state changed - rebuild to reflect optimistic UI state
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   // ============================================================================
@@ -1314,7 +1330,14 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     final channel = findLightChannel(device, target.channelId);
     if (channel == null) return;
 
-    final newState = !channel.on;
+    // Use overlay value if exists (for rapid taps), otherwise use actual state
+    final currentOverlay = _intentOverlayService?.getOverlayValue(
+      target.deviceId,
+      target.channelId,
+      channel.onProp.id,
+    );
+    final currentState = currentOverlay is bool ? currentOverlay : channel.on;
+    final newState = !currentState;
 
     final displayRepository = locator<DisplayRepository>();
     final displayId = displayRepository.display?.id;
@@ -1326,6 +1349,15 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       roleKey: widget.role.name,
     );
 
+    // Set pending state for immediate optimistic UI (DeviceControlStateService)
+    _deviceControlStateService?.setPending(
+      target.deviceId,
+      target.channelId,
+      channel.onProp.id,
+      newState,
+    );
+
+    // Create overlay for optimistic UI (IntentOverlayService - backup/settling)
     _intentOverlayService?.createLocalOverlay(
       deviceId: target.deviceId,
       channelId: target.channelId,
@@ -1333,6 +1365,9 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       value: newState,
       ttlMs: 5000,
     );
+
+    // Force immediate UI update
+    if (mounted) setState(() {});
 
     await devicesService.setMultiplePropertyValues(
       properties: [
@@ -1344,6 +1379,13 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
         ),
       ],
       context: commandContext,
+    );
+
+    // Transition to settling state after command is sent
+    _deviceControlStateService?.setSettling(
+      target.deviceId,
+      target.channelId,
+      channel.onProp.id,
     );
   }
 
@@ -1404,11 +1446,42 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
           orElse: () => device.lightChannels.first,
         );
 
+        // Use DeviceControlStateService first for optimistic UI (most reliable)
+        // Fall back to IntentOverlayService, then actual device state
+        bool isOn = channel.on;
+        final controlStateService = _deviceControlStateService;
+        final onProp = channel.onProp;
+
+        if (controlStateService != null &&
+            controlStateService.isLocked(target.deviceId, target.channelId, onProp.id)) {
+          // Use desired value from control state service (immediate, no listener delay)
+          final desiredValue = controlStateService.getDesiredValue(
+            target.deviceId,
+            target.channelId,
+            onProp.id,
+          );
+          if (desiredValue is bool) {
+            isOn = desiredValue;
+          }
+        } else if (_intentOverlayService != null &&
+            _intentOverlayService!.isPropertyLocked(target.deviceId, target.channelId, onProp.id)) {
+          // Fall back to intent overlay service
+          final overlayValue = _intentOverlayService!.getOverlayValue(
+            target.deviceId,
+            target.channelId,
+            onProp.id,
+          );
+          if (overlayValue is bool) {
+            isOn = overlayValue;
+          }
+        }
+
         channels.add(LightingChannelData(
           id: target.channelId,
           name: target.channelName,
-          isOn: channel.on,
+          isOn: isOn,
           brightness: channel.hasBrightness ? channel.brightness : 100,
+          hasBrightness: channel.hasBrightness,
           isOnline: device.isOnline,
         ));
 
@@ -1419,8 +1492,8 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
         if (channel.hasColor) allCapabilities.add(LightCapability.color);
         if (channel.hasColorWhite) allCapabilities.add(LightCapability.white);
 
-        // Track if any device is on
-        if (channel.on) {
+        // Track if any device is on (use optimistic value)
+        if (isOn) {
           anyOn = true;
         }
 

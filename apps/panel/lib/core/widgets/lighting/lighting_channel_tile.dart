@@ -10,6 +10,7 @@ class LightingChannelData {
   final String name;
   final bool isOn;
   final int brightness;
+  final bool hasBrightness;
   final bool isOnline;
 
   const LightingChannelData({
@@ -17,6 +18,7 @@ class LightingChannelData {
     required this.name,
     required this.isOn,
     this.brightness = 100,
+    this.hasBrightness = true,
     this.isOnline = true,
   });
 }
@@ -189,7 +191,9 @@ class LightingChannelTile extends StatelessWidget {
               Text(
                 isDisabled
                     ? 'Offline'
-                    : (isOn ? '${channel.brightness}%' : 'Off'),
+                    : (isOn
+                        ? (channel.hasBrightness ? '${channel.brightness}%' : 'On')
+                        : 'Off'),
                 style: TextStyle(
                   color: isDisabled ? warningColor : subtitleColor,
                   fontSize: AppFontSize.extraExtraSmall,
