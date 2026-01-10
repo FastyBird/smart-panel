@@ -894,24 +894,6 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     }
   }
 
-  IconData _getRoleIcon(LightTargetRole role) {
-    switch (role) {
-      case LightTargetRole.main:
-        return Icons.light;
-      case LightTargetRole.task:
-        return Icons.work_outline;
-      case LightTargetRole.ambient:
-        return Icons.wb_twilight;
-      case LightTargetRole.accent:
-        return Icons.highlight;
-      case LightTargetRole.night:
-        return Icons.nightlight_round;
-      case LightTargetRole.other:
-        return Icons.lightbulb_outline;
-      case LightTargetRole.hidden:
-        return Icons.visibility_off;
-    }
-  }
 
   // ============================================================================
   // Command Methods
@@ -1433,7 +1415,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       // Header
       title: _getRoleName(widget.role),
       subtitle: '${channels.length} ${channels.length == 1 ? 'channel' : 'channels'}',
-      icon: _getRoleIcon(widget.role),
+      icon: getLightRoleIcon(widget.role),
       onBack: () => Navigator.pop(context),
 
       // Current values

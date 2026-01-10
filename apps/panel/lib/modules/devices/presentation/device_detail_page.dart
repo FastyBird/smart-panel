@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
@@ -9,6 +10,11 @@ import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
+
+/// Device categories that provide their own header/Scaffold
+const Set<DevicesModuleDeviceCategory> _devicesWithCustomHeader = {
+  DevicesModuleDeviceCategory.lighting,
+};
 
 class DeviceDetailPage extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
@@ -61,6 +67,11 @@ class DeviceDetailPage extends StatelessWidget {
             ),
           ),
         );
+      }
+
+      // Devices with custom header provide their own Scaffold
+      if (_devicesWithCustomHeader.contains(device.category)) {
+        return buildDeviceWidget(device);
       }
 
       final localizations = AppLocalizations.of(context)!;

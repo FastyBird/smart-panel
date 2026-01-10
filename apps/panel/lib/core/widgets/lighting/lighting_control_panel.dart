@@ -293,32 +293,17 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
           ),
           SizedBox(width: AppSpacings.pMd),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.title,
-                  style: TextStyle(
-                    color: isDark
-                        ? AppTextColorDark.primary
-                        : AppTextColorLight.primary,
-                    fontSize: AppFontSize.large,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (widget.subtitle != null) ...[
-                  SizedBox(height: _scale(1)),
-                  Text(
-                    widget.subtitle!,
-                    style: TextStyle(
-                      color: isDark
-                          ? AppTextColorDark.secondary
-                          : AppTextColorLight.secondary,
-                      fontSize: AppFontSize.small,
-                    ),
-                  ),
-                ],
-              ],
+            child: Text(
+              widget.title,
+              style: TextStyle(
+                color: isDark
+                    ? AppTextColorDark.primary
+                    : AppTextColorLight.primary,
+                fontSize: AppFontSize.large,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           if (!_isSimple) ...[

@@ -120,12 +120,11 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
   Widget _buildSimpleDeviceLayout(BuildContext context) {
     final channel = _channels.first;
 
-    return SafeArea(
-      child: LightSingleChannelControlPanel(
-        device: widget._device,
-        channel: channel,
-        showHeader: false,
-      ),
+    return LightSingleChannelControlPanel(
+      device: widget._device,
+      channel: channel,
+      showHeader: true,
+      onBack: () => Navigator.pop(context),
     );
   }
 
@@ -133,24 +132,22 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
   Widget _buildSingleChannelLayout(BuildContext context) {
     final channel = _channels.first;
 
-    return SafeArea(
-      child: LightSingleChannelControlPanel(
-        device: widget._device,
-        channel: channel,
-        showHeader: false,
-      ),
+    return LightSingleChannelControlPanel(
+      device: widget._device,
+      channel: channel,
+      showHeader: true,
+      onBack: () => Navigator.pop(context),
     );
   }
 
   /// Layout for multi-channel devices using LightMultiChannelControlPanel
   Widget _buildMultiChannelLayout(BuildContext context) {
-    return SafeArea(
-      child: LightMultiChannelControlPanel(
-        device: widget._device,
-        channels: _channels,
-        showHeader: false,
-        onChannelTap: (channel) => _openChannelDetail(context, channel),
-      ),
+    return LightMultiChannelControlPanel(
+      device: widget._device,
+      channels: _channels,
+      showHeader: true,
+      onBack: () => Navigator.pop(context),
+      onChannelTap: (channel) => _openChannelDetail(context, channel),
     );
   }
 
@@ -3235,8 +3232,10 @@ class _LightSingleChannelControlPanelState
     return LightingControlPanel(
       // Header configuration
       showHeader: widget.showHeader,
-      title: _channel.name,
-      subtitle: _device.name,
+      // When showing header (device detail), use device name as title
+      // When not showing header (used inside another container), use channel name
+      title: widget.showHeader ? _device.name : _channel.name,
+      subtitle: widget.showHeader ? null : _device.name,
       icon: Icons.lightbulb,
       onBack: widget.onBack,
 
