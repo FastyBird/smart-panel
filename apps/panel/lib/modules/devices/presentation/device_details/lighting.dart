@@ -3236,7 +3236,7 @@ class _LightSingleChannelControlPanelState
       // When not showing header (used inside another container), use channel name
       title: widget.showHeader ? _device.name : _channel.name,
       subtitle: widget.showHeader ? null : _device.name,
-      icon: Icons.lightbulb,
+      icon: MdiIcons.lightbulb,
       onBack: widget.onBack,
 
       // Current values (with optimistic state)
@@ -3916,7 +3916,7 @@ class _LightMultiChannelControlPanelState
       showHeader: widget.showHeader,
       title: _device.name,
       subtitle: '${_channels.length} channels',
-      icon: Icons.lightbulb,
+      icon: MdiIcons.lightbulb,
       onBack: widget.onBack,
 
       // Aggregated current values
@@ -3931,6 +3931,7 @@ class _LightMultiChannelControlPanelState
       capabilities: capabilities,
       state: LightingState.synced,
       channels: channelsList,
+      channelsPanelIcon: MdiIcons.lightbulbGroup,
 
       // Callbacks
       onPowerToggle: _handlePowerToggle,

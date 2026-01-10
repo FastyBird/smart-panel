@@ -1455,6 +1455,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       capabilities: allCapabilities,
       state: state,
       channels: channels,
+      channelsPanelIcon: Icons.check_circle,
 
       // Callbacks
       onPowerToggle: () => _toggleAllLights(targets),

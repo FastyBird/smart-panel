@@ -98,6 +98,10 @@ class LightingControlPanel extends StatefulWidget {
   /// List of channels to display (empty = hide channels panel)
   final List<LightingChannelData> channels;
 
+  /// Icon to show in the channels panel header next to "Lights" label
+  /// Defaults to lightbulb icon
+  final IconData channelsPanelIcon;
+
   // -------------------------
   // Callbacks
   // -------------------------
@@ -145,6 +149,7 @@ class LightingControlPanel extends StatefulWidget {
     required this.capabilities,
     this.state = LightingState.synced,
     this.channels = const [],
+    this.channelsPanelIcon = Icons.lightbulb_outline,
     this.onPowerToggle,
     this.onBrightnessChanged,
     this.onColorTempChanged,
@@ -783,11 +788,12 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
     final dividerColor =
         isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
 
-    IconData stateIcon = Icons.check_circle;
+    // Use state-specific icon when not synced, otherwise use configured icon
+    IconData panelIcon = widget.channelsPanelIcon;
     if (widget.state == LightingState.mixed) {
-      stateIcon = Icons.warning_rounded;
+      panelIcon = Icons.warning_rounded;
     } else if (widget.state == LightingState.unsynced) {
-      stateIcon = Icons.sync_problem;
+      panelIcon = Icons.sync_problem;
     }
 
     return Container(
@@ -807,7 +813,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
       child: Row(
         children: [
           Icon(
-            stateIcon,
+            panelIcon,
             color: stateColor ??
                 (isDark
                     ? AppTextColorDark.secondary
@@ -816,7 +822,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
           ),
           SizedBox(width: isLandscape ? AppSpacings.pSm : AppSpacings.pMd),
           Text(
-            'Channels',
+            'Lights',
             style: TextStyle(
               color: stateColor ??
                   (isDark
