@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
@@ -1332,7 +1334,7 @@ class _SliderPanel extends StatelessWidget {
       width: _scale(52),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final trackHeight = constraints.maxHeight - thumbSize - padding * 2;
+          final trackHeight = math.max(1.0, constraints.maxHeight - thumbSize - padding * 2);
           final thumbOffset = trackHeight * (1 - progress);
 
           return GestureDetector(
@@ -1393,7 +1395,7 @@ class _SliderPanel extends StatelessWidget {
       height: _scale(52),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final trackWidth = constraints.maxWidth - thumbSize - padding * 2;
+          final trackWidth = math.max(1.0, constraints.maxWidth - thumbSize - padding * 2);
           final thumbOffset = trackWidth * progress;
 
           return GestureDetector(
@@ -1789,7 +1791,7 @@ class _ColorPanel extends StatelessWidget {
       width: _scale(52),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final trackHeight = constraints.maxHeight - thumbSize - padding * 2;
+          final trackHeight = math.max(1.0, constraints.maxHeight - thumbSize - padding * 2);
           final thumbOffset = trackHeight * progress;
 
           return GestureDetector(
@@ -1855,7 +1857,7 @@ class _ColorPanel extends StatelessWidget {
       width: _scale(52),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final trackHeight = constraints.maxHeight - thumbSize - padding * 2;
+          final trackHeight = math.max(1.0, constraints.maxHeight - thumbSize - padding * 2);
           final thumbOffset = trackHeight * (1 - saturation);
 
           return GestureDetector(
@@ -1911,7 +1913,7 @@ class _ColorPanel extends StatelessWidget {
       height: _scale(52),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final trackWidth = constraints.maxWidth - thumbSize - padding * 2;
+          final trackWidth = math.max(1.0, constraints.maxWidth - thumbSize - padding * 2);
           final thumbOffset = trackWidth * progress;
 
           return GestureDetector(
@@ -1975,7 +1977,7 @@ class _ColorPanel extends StatelessWidget {
       height: _scale(52),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final trackWidth = constraints.maxWidth - thumbSize - padding * 2;
+          final trackWidth = math.max(1.0, constraints.maxWidth - thumbSize - padding * 2);
           final thumbOffset = trackWidth * saturation;
 
           return GestureDetector(
