@@ -94,20 +94,24 @@ class ScreenService extends ChangeNotifier with WidgetsBindingObserver {
   // --------------------------------------------------------------------------
 
   /// DPR threshold for normalizing screen dimensions.
-  /// Displays with DPR > 1.5 will have their logical dimensions multiplied
-  /// by DPR to get effective dimensions for breakpoint calculations.
+  /// Screen dimensions are stored as physical pixels (_screenWidth, _screenHeight).
+  /// For high DPR displays (> 1.5), we use physical pixels for breakpoints.
+  /// For low DPR displays (<= 1.5), we use logical pixels (physical / DPR).
   /// This ensures same physical screen size behaves consistently regardless of DPR.
   static const double _dprThreshold = 1.5;
 
   /// Get effective width for breakpoint calculations.
   /// Normalizes for DPR so same physical screen size behaves consistently.
+  /// _screenWidth is already in physical pixels, so:
+  /// - High DPR: use physical as-is
+  /// - Low DPR: convert to logical (physical / DPR)
   double get _effectiveWidth =>
-      pixelRatio > _dprThreshold ? _screenWidth * pixelRatio : _screenWidth;
+      pixelRatio > _dprThreshold ? _screenWidth : _screenWidth / pixelRatio;
 
   /// Get effective height for breakpoint calculations.
   /// Normalizes for DPR so same physical screen size behaves consistently.
   double get _effectiveHeight =>
-      pixelRatio > _dprThreshold ? _screenHeight * pixelRatio : _screenHeight;
+      pixelRatio > _dprThreshold ? _screenHeight : _screenHeight / pixelRatio;
 
   /// Check if portrait based on effective dimensions.
   bool get _effectiveIsPortrait => _effectiveHeight > _effectiveWidth;
