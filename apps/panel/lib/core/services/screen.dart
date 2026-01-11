@@ -12,7 +12,7 @@ class ScreenService extends ChangeNotifier with WidgetsBindingObserver {
   // Initial GRID config
   late final int _defaultColumns;
   late final int _defaultRows;
-  late final double _defaultUnitSize;
+  late double _defaultUnitSize;
 
   // Profile GRID config
   int? _profileColumns;
@@ -67,6 +67,10 @@ class ScreenService extends ChangeNotifier with WidgetsBindingObserver {
     if (newWidth != _screenWidth || newHeight != _screenHeight) {
       _screenWidth = newWidth;
       _screenHeight = newHeight;
+
+      // Recalculate unit size for new orientation
+      _defaultUnitSize = _calculateOptimalUnitSize(_screenWidth) / pixelRatio;
+
       notifyListeners();
     }
   }
