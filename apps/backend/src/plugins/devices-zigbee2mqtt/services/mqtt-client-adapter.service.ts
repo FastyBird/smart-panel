@@ -214,11 +214,18 @@ export class Z2mMqttClientAdapterService {
 		if (this.client) {
 			this.logger.log('Disconnecting from MQTT broker');
 
+			// Set connected to false BEFORE calling end() to prevent the 'close' event handler
+			// from scheduling a reconnect. The 'close' event fires during end() and checks
+			// wasConnected - by setting this first, wasConnected will be false.
+			this.connected = false;
+			this.bridgeOnline = false;
+
+			// Also clear config to prevent any reconnection attempts
+			this.config = null;
+
 			return new Promise((resolve) => {
 				this.client?.end(true, {}, () => {
 					this.client = null;
-					this.connected = false;
-					this.bridgeOnline = false;
 					this.deviceRegistry.clear();
 					this.stateCache.clear();
 					resolve();
