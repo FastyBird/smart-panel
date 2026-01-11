@@ -368,8 +368,8 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
       case LightingState.synced:
         return null;
       case LightingState.mixed:
-        // Blue - informational, devices have different values
-        return AppColorsLight.secondary;
+        // Informational - devices have different values
+        return isDark ? AppColorsDark.info : AppColorsLight.secondary;
       case LightingState.unsynced:
         // Yellow/warning - sync was attempted but failed
         return isDark ? AppColorsDark.warning : AppColorsLight.warning;
