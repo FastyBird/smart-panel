@@ -35,14 +35,14 @@ void main() async {
   buffer.writeln('// ignore_for_file: constant_identifier_names');
   buffer.writeln();
   buffer.writeln(
-      '/// Screen size breakpoints for responsive layouts in domain pages.');
-  buffer.writeln('///');
-  buffer.writeln('/// Usage with ScreenService:');
-  buffer.writeln('/// ```dart');
-  buffer.writeln('/// final screenService = locator<ScreenService>();');
+      '// Screen size breakpoints for responsive layouts in domain pages.');
+  buffer.writeln('//');
+  buffer.writeln('// Usage with ScreenService:');
+  buffer.writeln('// ```dart');
+  buffer.writeln('// final screenService = locator<ScreenService>();');
   buffer.writeln(
-      '/// final tilesPerRow = screenService.isLargeScreen ? 4 : 3;');
-  buffer.writeln('/// ```');
+      '// final tilesPerRow = screenService.isLargeScreen ? 4 : 3;');
+  buffer.writeln('// ```');
   buffer.writeln();
 
   // Enum for screen sizes
