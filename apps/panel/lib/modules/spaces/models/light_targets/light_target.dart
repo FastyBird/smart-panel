@@ -58,6 +58,25 @@ class LightTargetModel {
   /// Unique identifier for this light target (combination of device and channel)
   String get id => '$_deviceId:$_channelId';
 
+  /// Create a copy with updated fields
+  LightTargetModel copyWith({
+    String? deviceName,
+    String? channelName,
+  }) {
+    return LightTargetModel(
+      deviceId: _deviceId,
+      deviceName: deviceName ?? _deviceName,
+      channelId: _channelId,
+      channelName: channelName ?? _channelName,
+      priority: _priority,
+      hasBrightness: _hasBrightness,
+      hasColorTemp: _hasColorTemp,
+      hasColor: _hasColor,
+      role: _role,
+      spaceId: _spaceId,
+    );
+  }
+
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;

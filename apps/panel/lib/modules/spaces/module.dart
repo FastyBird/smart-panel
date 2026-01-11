@@ -1,6 +1,7 @@
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
+import 'package:fastybird_smart_panel/modules/devices/constants.dart';
 import 'package:fastybird_smart_panel/modules/spaces/constants.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/climate_targets.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/light_targets.dart';
@@ -58,6 +59,16 @@ class SpacesModuleService {
       _socketEventHandler,
     );
 
+    // Listen for devices module events to sync channel/device names
+    _socketService.registerEventHandler(
+      DevicesModuleConstants.channelUpdatedEvent,
+      _deviceSocketEventHandler,
+    );
+    _socketService.registerEventHandler(
+      DevicesModuleConstants.deviceUpdatedEvent,
+      _deviceSocketEventHandler,
+    );
+
     if (kDebugMode) {
       debugPrint(
         '[SPACES MODULE] Module was successfully initialized',
@@ -71,6 +82,14 @@ class SpacesModuleService {
     _socketService.unregisterEventHandler(
       SpacesModuleConstants.moduleWildcardEvent,
       _socketEventHandler,
+    );
+    _socketService.unregisterEventHandler(
+      DevicesModuleConstants.channelUpdatedEvent,
+      _deviceSocketEventHandler,
+    );
+    _socketService.unregisterEventHandler(
+      DevicesModuleConstants.deviceUpdatedEvent,
+      _deviceSocketEventHandler,
     );
   }
 
@@ -110,6 +129,27 @@ class SpacesModuleService {
     } else if (event == SpacesModuleConstants.climateTargetDeletedEvent &&
         payload.containsKey('id')) {
       _climateTargetsRepository.delete(payload['id']);
+    }
+  }
+
+  /// Handle devices module events to sync names to light targets
+  void _deviceSocketEventHandler(String event, Map<String, dynamic> payload) {
+    if (!payload.containsKey('id')) return;
+
+    final id = payload['id'] as String;
+
+    if (event == DevicesModuleConstants.channelUpdatedEvent) {
+      // Sync channel name to light targets
+      final name = payload['name'] as String?;
+      if (name != null) {
+        _lightTargetsRepository.updateChannelName(id, name);
+      }
+    } else if (event == DevicesModuleConstants.deviceUpdatedEvent) {
+      // Sync device name to light targets
+      final name = payload['name'] as String?;
+      if (name != null) {
+        _lightTargetsRepository.updateDeviceName(id, name);
+      }
     }
   }
 }
