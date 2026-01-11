@@ -51,9 +51,17 @@ class ScreenService extends ChangeNotifier with WidgetsBindingObserver {
   @override
   void didChangeMetrics() {
     // Get updated screen dimensions
-    final view = WidgetsBinding.instance.platformDispatcher.views.first;
-    final newWidth = view.physicalSize.width;
-    final newHeight = view.physicalSize.height;
+    final views = WidgetsBinding.instance.platformDispatcher.views;
+    if (views.isEmpty) return;
+
+    final view = views.first;
+    final size = view.physicalSize;
+
+    // Skip if size is not valid yet (can happen during rotation transition)
+    if (size.isEmpty || size.width <= 0 || size.height <= 0) return;
+
+    final newWidth = size.width;
+    final newHeight = size.height;
 
     // Only notify if dimensions actually changed
     if (newWidth != _screenWidth || newHeight != _screenHeight) {
@@ -82,13 +90,37 @@ class ScreenService extends ChangeNotifier with WidgetsBindingObserver {
   bool get isLandscape => _screenHeight <= _screenWidth;
 
   // --------------------------------------------------------------------------
+  // DPR-NORMALIZED DIMENSIONS FOR BREAKPOINTS
+  // --------------------------------------------------------------------------
+
+  /// DPR threshold for normalizing screen dimensions.
+  /// Displays with DPR > 1.5 will have their logical dimensions multiplied
+  /// by DPR to get effective dimensions for breakpoint calculations.
+  /// This ensures same physical screen size behaves consistently regardless of DPR.
+  static const double _dprThreshold = 1.5;
+
+  /// Get effective width for breakpoint calculations.
+  /// Normalizes for DPR so same physical screen size behaves consistently.
+  double get _effectiveWidth =>
+      pixelRatio > _dprThreshold ? _screenWidth * pixelRatio : _screenWidth;
+
+  /// Get effective height for breakpoint calculations.
+  /// Normalizes for DPR so same physical screen size behaves consistently.
+  double get _effectiveHeight =>
+      pixelRatio > _dprThreshold ? _screenHeight * pixelRatio : _screenHeight;
+
+  /// Check if portrait based on effective dimensions.
+  bool get _effectiveIsPortrait => _effectiveHeight > _effectiveWidth;
+
+  // --------------------------------------------------------------------------
   // SCREEN SIZE BREAKPOINTS
   // --------------------------------------------------------------------------
 
-  /// Get current screen size category based on current width and orientation.
+  /// Get current screen size category based on effective width and orientation.
+  /// Uses DPR-normalized dimensions for consistent behavior across displays.
   ScreenSize get screenSize => ScreenBreakpoints.getScreenSize(
-        _screenWidth,
-        isPortrait: isPortrait,
+        _effectiveWidth,
+        isPortrait: _effectiveIsPortrait,
       );
 
   /// Check if current screen is small (compact layout).
