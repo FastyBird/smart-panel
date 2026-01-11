@@ -1073,14 +1073,17 @@ class _ColorTempPanel extends StatelessWidget {
   Color _getColorTempColor(int temp) {
     final t = (temp - 2700) / (6500 - 2700);
     if (t < 0.33) {
+      // Segment 1: 0 to 0.33
       return Color.lerp(
-          const Color(0xFFFF9800), const Color(0xFFFFFAF0), t * 3)!;
+          const Color(0xFFFF9800), const Color(0xFFFFFAF0), t / 0.33)!;
     } else if (t < 0.66) {
+      // Segment 2: 0.33 to 0.66
       return Color.lerp(
-          const Color(0xFFFFFAF0), const Color(0xFFE3F2FD), (t - 0.33) * 3)!;
+          const Color(0xFFFFFAF0), const Color(0xFFE3F2FD), (t - 0.33) / 0.33)!;
     } else {
+      // Segment 3: 0.66 to 1.0 (width 0.34, not 0.33)
       return Color.lerp(
-          const Color(0xFFE3F2FD), const Color(0xFF64B5F6), (t - 0.66) * 3)!;
+          const Color(0xFFE3F2FD), const Color(0xFF64B5F6), (t - 0.66) / 0.34)!;
     }
   }
 
