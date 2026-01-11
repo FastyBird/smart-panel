@@ -572,7 +572,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                 if (hasOtherLights) ...[
                   if (hasRoles || hasScenes) SizedBox(height: AppSpacings.pLg),
                   _buildOtherLightsHeader(context, otherLights, otherTargets, localizations),
-                  SizedBox(height: AppSpacings.pMd),
+                  SizedBox(height: AppSpacings.pSm),
                   _buildLightsGrid(
                     context,
                     otherLights,
