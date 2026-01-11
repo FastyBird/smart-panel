@@ -148,9 +148,12 @@ class ScreenService extends ChangeNotifier with WidgetsBindingObserver {
   bool get isAtLeastLarge => screenSize == ScreenSize.large;
 
   double scale(double size, {DisplayDensity? density = DisplayDensity.normal}) {
-    return density == DisplayDensity.compact
-        ? size * scaleFactor
-        : size * scaleFactor;
+    final densityMultiplier = switch (density) {
+      DisplayDensity.compact => 0.85,
+      DisplayDensity.large => 1.15,
+      _ => 1.0,
+    };
+    return size * scaleFactor * densityMultiplier;
   }
 
   void updateFromProfile({
