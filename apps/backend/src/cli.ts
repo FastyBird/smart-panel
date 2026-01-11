@@ -1,3 +1,4 @@
+import { useContainer } from 'class-validator';
 import { CommandFactory } from 'nest-commander';
 
 import { NestFactory } from '@nestjs/core';
@@ -34,6 +35,10 @@ async function bootstrap() {
 
 	// Set global app instance so AppInstanceHolder can access it when initialized in command context
 	setGlobalAppInstance(app);
+
+	// Enable class-validator to use NestJS DI container for custom validators
+	// This is required for validators like @ValidateDeviceExists that depend on services
+	useContainer(app.select(appModule), { fallbackOnErrors: true });
 
 	// Run commands using nest-commander
 	// CommandFactory.run creates its own application context, but AppInstanceHolder
