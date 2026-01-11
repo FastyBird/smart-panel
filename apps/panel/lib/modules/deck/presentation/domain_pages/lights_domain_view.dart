@@ -11,6 +11,7 @@ import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
 import 'package:fastybird_smart_panel/modules/deck/views/light_role_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
 import 'package:fastybird_smart_panel/modules/scenes/service.dart';
 import 'package:fastybird_smart_panel/modules/scenes/views/scenes/view.dart';
@@ -237,12 +238,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             targets: [],
           ),
         );
-        final otherLights = _buildOtherLights(otherRole.targets, devicesService);
-
         // Calculate totals
         final totalLights = lightTargets.length;
         final lightsOn = _countLightsOn(lightTargets, devicesService);
         final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
+
+        final otherLights = _buildOtherLights(otherRole.targets, devicesService, roomName);
 
         return Scaffold(
           backgroundColor: Theme.of(context).brightness == Brightness.dark
@@ -337,6 +338,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   List<LightDeviceData> _buildOtherLights(
     List<LightTargetView> targets,
     DevicesService devicesService,
+    String roomName,
   ) {
     final List<LightDeviceData> lights = [];
 
@@ -361,7 +363,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       lights.add(LightDeviceData(
         deviceId: target.deviceId,
         channelId: channel.id,
-        name: target.channelName,
+        name: stripRoomNameFromDevice(target.channelName, roomName),
         state: state,
         brightness: channel.hasBrightness && channel.on ? channel.brightness : null,
       ));

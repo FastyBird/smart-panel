@@ -1504,6 +1504,9 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     final allCapabilities = <LightCapability>{};
     bool anyOn = false;
 
+    // Get room name for stripping from light names
+    final roomName = spacesService.getSpace(widget.roomId)?.name ?? '';
+
     // Use first device's value for each capability (not average)
     // This avoids confusing users with values that don't match any real device
     int? firstBrightness;
@@ -1551,7 +1554,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
 
         channels.add(LightingChannelData(
           id: target.channelId,
-          name: target.channelName,
+          name: stripRoomNameFromDevice(target.channelName, roomName),
           isOn: isOn,
           brightness: channel.hasBrightness ? channel.brightness : 100,
           hasBrightness: channel.hasBrightness,
