@@ -513,6 +513,7 @@ class StartupManagerService {
     }
     if (locator.isRegistered<DeviceControlStateService>()) {
       try {
+        locator<DeviceControlStateService>().dispose();
         locator.unregister<DeviceControlStateService>();
       } catch (_) {}
     }
