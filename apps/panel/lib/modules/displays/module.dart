@@ -174,55 +174,68 @@ class DisplaysModuleService {
       return;
     }
 
-    // Store previous values to detect changes
-    final previousDisplay = _displayRepository.display;
-    final previousDarkMode = previousDisplay?.darkMode;
-    final previousBrightness = previousDisplay?.brightness;
-    final previousScreenSaver = previousDisplay?.screenSaver;
-    final previousRows = previousDisplay?.rows;
-    final previousCols = previousDisplay?.cols;
-    final previousUnitSize = previousDisplay?.unitSize;
+    // CRITICAL: Only process events for THIS display
+    // Without this check, events for other displays would overwrite our state
+    final currentDisplay = _displayRepository.display;
+    final eventDisplayId = payload['id'] as String?;
+
+    if (currentDisplay == null || eventDisplayId != currentDisplay.id) {
+      if (kDebugMode) {
+        debugPrint(
+          '[DISPLAYS MODULE] Ignoring display update for different display: $eventDisplayId (current: ${currentDisplay?.id})',
+        );
+      }
+      return;
+    }
+
+    // Store previous values to detect changes (currentDisplay is guaranteed non-null here)
+    final previousDarkMode = currentDisplay.darkMode;
+    final previousBrightness = currentDisplay.brightness;
+    final previousScreenSaver = currentDisplay.screenSaver;
+    final previousRows = currentDisplay.rows;
+    final previousCols = currentDisplay.cols;
+    final previousUnitSize = currentDisplay.unitSize;
 
     // Update display repository (this will notify listeners)
     _displayRepository.insertDisplay(payload);
 
     // Update screen service if grid settings changed
     final screenService = locator.get<ScreenService>();
-    final currentDisplay = _displayRepository.display;
+    final updatedDisplay = _displayRepository.display;
 
-    if (currentDisplay != null) {
+    if (updatedDisplay != null) {
       // Check if grid settings changed
-      if (previousRows != currentDisplay.rows ||
-          previousCols != currentDisplay.cols ||
-          previousUnitSize != currentDisplay.unitSize) {
+      if (previousRows != updatedDisplay.rows ||
+          previousCols != updatedDisplay.cols ||
+          previousUnitSize != updatedDisplay.unitSize) {
         screenService.updateFromProfile(
-          profileCols: currentDisplay.cols,
-          profileRows: currentDisplay.rows,
-          profileUnitSize: currentDisplay.unitSize,
+          profileCols: updatedDisplay.cols,
+          profileRows: updatedDisplay.rows,
+          profileUnitSize: updatedDisplay.unitSize,
         );
 
         if (kDebugMode) {
           debugPrint(
-            '[DISPLAYS MODULE] Grid settings updated: ${currentDisplay.rows}x${currentDisplay.cols}, unitSize: $currentDisplay.unitSize',
+            '[DISPLAYS MODULE] Grid settings updated: ${updatedDisplay.rows}x${updatedDisplay.cols}, unitSize: ${updatedDisplay.unitSize}',
           );
         }
       }
 
       // Log other setting changes for debugging
       if (kDebugMode) {
-        if (previousDarkMode != currentDisplay.darkMode) {
+        if (previousDarkMode != updatedDisplay.darkMode) {
           debugPrint(
-            '[DISPLAYS MODULE] Dark mode changed: $previousDarkMode -> ${currentDisplay.darkMode}',
+            '[DISPLAYS MODULE] Dark mode changed: $previousDarkMode -> ${updatedDisplay.darkMode}',
           );
         }
-        if (previousBrightness != currentDisplay.brightness) {
+        if (previousBrightness != updatedDisplay.brightness) {
           debugPrint(
-            '[DISPLAYS MODULE] Brightness changed: $previousBrightness -> ${currentDisplay.brightness}',
+            '[DISPLAYS MODULE] Brightness changed: $previousBrightness -> ${updatedDisplay.brightness}',
           );
         }
-        if (previousScreenSaver != currentDisplay.screenSaver) {
+        if (previousScreenSaver != updatedDisplay.screenSaver) {
           debugPrint(
-            '[DISPLAYS MODULE] Screen saver changed: $previousScreenSaver -> ${currentDisplay.screenSaver}',
+            '[DISPLAYS MODULE] Screen saver changed: $previousScreenSaver -> ${updatedDisplay.screenSaver}',
           );
         }
       }

@@ -1,9 +1,161 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:uuid/uuid.dart';
+
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+import 'package:fastybird_smart_panel/core/utils/secure_storage.dart';
 
 class AppInfo {
+  /// Cached device info to avoid repeated calls
+  static AndroidDeviceInfo? _cachedAndroidInfo;
+
+  /// Key for storing persistent device ID
+  static const String _deviceIdKey = 'device_unique_id';
+
+  /// Get Android device info (cached)
+  static Future<AndroidDeviceInfo?> _getAndroidDeviceInfo() async {
+    if (_cachedAndroidInfo != null) {
+      return _cachedAndroidInfo;
+    }
+
+    if (!Platform.isAndroid) return null;
+
+    try {
+      final deviceInfo = DeviceInfoPlugin();
+
+      _cachedAndroidInfo = await deviceInfo.androidInfo;
+
+      return _cachedAndroidInfo;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[APP INFO] Error getting Android device info: $e');
+      }
+    }
+
+    return null;
+  }
+
+  /// Check if running on Android emulator
+  static Future<bool> isAndroidEmulator() async {
+    if (!Platform.isAndroid) return false;
+
+    final info = await _getAndroidDeviceInfo();
+
+    if (info != null) {
+      // device_info_plus provides isPhysicalDevice flag
+      final isEmulator = !info.isPhysicalDevice;
+
+      if (kDebugMode) {
+        debugPrint(
+          '[APP INFO] isPhysicalDevice: ${info.isPhysicalDevice}, isEmulator: $isEmulator',
+        );
+      }
+
+      return isEmulator;
+    }
+
+    return false;
+  }
+
+  /// Get or create a persistent unique device identifier
+  /// This is stored in secure storage and persists across app restarts
+  /// Each emulator/device has its own isolated storage, so IDs will be unique
+  static Future<String> getPersistentDeviceId() async {
+    try {
+      String? storedId;
+
+      // Read existing ID from storage
+      if (Platform.isAndroid || Platform.isIOS) {
+        final storage = const FlutterSecureStorage();
+
+        storedId = await storage.read(key: _deviceIdKey);
+
+        if (storedId == null || storedId.isEmpty) {
+          // Generate new UUID and store it
+          storedId = const Uuid().v4();
+
+          await storage.write(key: _deviceIdKey, value: storedId);
+
+          if (kDebugMode) {
+            debugPrint('[APP INFO] Generated new device ID: $storedId');
+          }
+        } else {
+          if (kDebugMode) {
+            debugPrint('[APP INFO] Using stored device ID: $storedId');
+          }
+        }
+      } else {
+        // Linux/other platforms
+        final storage = SecureStorageFallback();
+
+        storedId = await storage.read(key: _deviceIdKey);
+
+        if (storedId == null || storedId.isEmpty) {
+          storedId = const Uuid().v4();
+
+          await storage.write(key: _deviceIdKey, value: storedId);
+
+          if (kDebugMode) {
+            debugPrint('[APP INFO] Generated new device ID: $storedId');
+          }
+        } else {
+          if (kDebugMode) {
+            debugPrint('[APP INFO] Using stored device ID: $storedId');
+          }
+        }
+      }
+
+      return storedId;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[APP INFO] Error getting persistent device ID: $e');
+      }
+
+      // Fallback to a random ID (won't persist but at least works)
+      return const Uuid().v4();
+    }
+  }
+
+  /// Convert a string to MAC address format using hash
+  /// Takes first 12 hex characters from hash to form XX:XX:XX:XX:XX:XX
+  static String stringToMacFormat(String input) {
+    // Use a simple hash to generate consistent bytes
+    final bytes = utf8.encode(input);
+    var hash = 0;
+
+    for (final byte in bytes) {
+      hash = ((hash << 5) - hash + byte) & 0xFFFFFFFFFFFF;
+    }
+
+    // If input is long enough, use characters directly to get more uniqueness
+    final hexString = hash.toRadixString(16).padLeft(12, '0').substring(0, 12);
+
+    // Format as MAC address, set locally administered bit (second nibble odd)
+    final parts = <String>[];
+
+    for (var i = 0; i < 12; i += 2) {
+      var part = hexString.substring(i, i + 2);
+
+      // For the first octet, set the locally administered bit (bit 1)
+      // This indicates a locally generated MAC address
+      if (i == 0) {
+        final firstOctet = int.parse(part, radix: 16);
+        final locallyAdministered = (firstOctet | 0x02) & 0xFE;
+
+        part = locallyAdministered.toRadixString(16).padLeft(2, '0');
+      }
+
+      parts.add(part);
+    }
+
+    return parts.join(':');
+  }
+
   /// Detects if the device has audio output capability (speakers)
   static Future<bool> hasAudioOutputSupport() async {
     try {
@@ -128,18 +280,38 @@ class AppInfo {
   }
 
   static Future<String> getMacAddress([String interface = 'eth0']) async {
-    try {
-      final result =
-          await Process.run('cat', ['/sys/class/net/$interface/address']);
+    // For Android/iOS, use persistent device ID to generate a unique MAC
+    // Each emulator/device has isolated storage, so IDs will be unique
+    if (Platform.isAndroid || Platform.isIOS) {
+      final deviceId = await getPersistentDeviceId();
 
-      if (result.exitCode == 0) {
-        final mac = (result.stdout as String).trim();
+      final generatedMac = stringToMacFormat('device:$deviceId');
 
-        if (mac.isNotEmpty) {
-          return mac;
-        }
+      if (kDebugMode) {
+        debugPrint(
+          '[APP INFO] Generated MAC from persistent device ID "$deviceId": $generatedMac',
+        );
       }
-    } catch (_) {}
+
+      return generatedMac;
+    }
+
+    // For Linux (Raspberry Pi), try to read real MAC address
+    if (Platform.isLinux) {
+      try {
+        final result =
+            await Process.run('cat', ['/sys/class/net/$interface/address']);
+
+        if (result.exitCode == 0) {
+          final mac = (result.stdout as String).trim();
+
+          // Check if it's a valid, non-zero MAC address
+          if (mac.isNotEmpty && mac != '00:00:00:00:00:00') {
+            return mac;
+          }
+        }
+      } catch (_) {}
+    }
 
     // Return dummy MAC if real one can't be retrieved
     return '00:00:00:00:00:00';

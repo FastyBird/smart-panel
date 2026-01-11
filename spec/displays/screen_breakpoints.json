@@ -1,0 +1,12 @@
+{
+  "$schema": "./screen_breakpoints.schema.json",
+  "description": "Screen size breakpoints for responsive layouts in domain pages and UI components",
+  "portrait": {
+    "small": 600,
+    "medium": 800
+  },
+  "landscape": {
+    "small": 800,
+    "medium": 1150
+  }
+}

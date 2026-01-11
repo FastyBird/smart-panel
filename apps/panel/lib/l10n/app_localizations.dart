@@ -2111,6 +2111,18 @@ abstract class AppLocalizations {
   /// **'all on'**
   String get domain_lights_all_on;
 
+  /// Button label to turn all lights off
+  ///
+  /// In en, this message translates to:
+  /// **'All Off'**
+  String get domain_lights_button_all_off;
+
+  /// Button label to turn all lights on
+  ///
+  /// In en, this message translates to:
+  /// **'All On'**
+  String get domain_lights_button_all_on;
+
   /// Text shown when lights are syncing after a command
   ///
   /// In en, this message translates to:

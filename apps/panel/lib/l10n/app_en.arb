@@ -1377,6 +1377,14 @@
   "@domain_lights_all_on": {
     "description": "Text shown when all lights in a role group are on"
   },
+  "domain_lights_button_all_off": "All Off",
+  "@domain_lights_button_all_off": {
+    "description": "Button label to turn all lights off"
+  },
+  "domain_lights_button_all_on": "All On",
+  "@domain_lights_button_all_on": {
+    "description": "Button label to turn all lights on"
+  },
   "domain_lights_syncing": "syncing",
   "@domain_lights_syncing": {
     "description": "Text shown when lights are syncing after a command"

@@ -154,6 +154,52 @@ pnpm test:e2e
 pnpm test:cov
 ```
 
+## 🖥️ CLI Commands
+
+The backend includes a command-line interface for administration and development tasks.
+
+### Authentication
+
+```shell
+# Register the initial owner account
+pnpm cli auth:register-owner
+
+# Reset a user's password
+pnpm cli auth:reset-password
+```
+
+### Device Simulator
+
+The simulator plugin provides commands for creating and managing test devices:
+
+```shell
+# List available device categories
+pnpm cli simulator:generate --list
+
+# Generate devices interactively
+pnpm cli simulator:generate
+
+# Generate specific device types
+pnpm cli simulator:generate --category lighting --name "Test Light"
+pnpm cli simulator:generate --category thermostat --count 3
+pnpm cli simulator:generate --category sensor --required-only
+
+# List existing simulator devices
+pnpm cli simulator:populate --list
+
+# Populate devices with random values
+pnpm cli simulator:populate --all                    # All devices
+pnpm cli simulator:populate --device <device-id>    # Specific device
+pnpm cli simulator:populate                         # Interactive selection
+```
+
+### OpenAPI Generation
+
+```shell
+# Generate OpenAPI specification from backend code
+pnpm cli openapi:generate
+```
+
 ## 👨‍💻 Contributing
 
 Contributions are welcome! Please fork this repository and submit a pull request.

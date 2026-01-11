@@ -141,6 +141,62 @@ class LightTargetsRepository extends ChangeNotifier {
     }
   }
 
+  /// Update channel name for all light targets referencing the given channel
+  void updateChannelName(String channelId, String newChannelName) {
+    bool updated = false;
+
+    for (final spaceId in _lightTargets.keys) {
+      final spaceTargets = _lightTargets[spaceId]!;
+
+      for (final targetId in spaceTargets.keys.toList()) {
+        final target = spaceTargets[targetId]!;
+
+        if (target.channelId == channelId && target.channelName != newChannelName) {
+          spaceTargets[targetId] = target.copyWith(channelName: newChannelName);
+          updated = true;
+
+          if (kDebugMode) {
+            debugPrint(
+              '[SPACES MODULE][LIGHT_TARGETS] Updated channel name for target: $targetId to: $newChannelName',
+            );
+          }
+        }
+      }
+    }
+
+    if (updated) {
+      notifyListeners();
+    }
+  }
+
+  /// Update device name for all light targets referencing the given device
+  void updateDeviceName(String deviceId, String newDeviceName) {
+    bool updated = false;
+
+    for (final spaceId in _lightTargets.keys) {
+      final spaceTargets = _lightTargets[spaceId]!;
+
+      for (final targetId in spaceTargets.keys.toList()) {
+        final target = spaceTargets[targetId]!;
+
+        if (target.deviceId == deviceId && target.deviceName != newDeviceName) {
+          spaceTargets[targetId] = target.copyWith(deviceName: newDeviceName);
+          updated = true;
+
+          if (kDebugMode) {
+            debugPrint(
+              '[SPACES MODULE][LIGHT_TARGETS] Updated device name for target: $targetId to: $newDeviceName',
+            );
+          }
+        }
+      }
+    }
+
+    if (updated) {
+      notifyListeners();
+    }
+  }
+
   /// Fetch light targets for a specific space from the API
   Future<void> fetchForSpace(String spaceId) async {
     _isLoading = true;

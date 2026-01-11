@@ -50,3 +50,6 @@ export 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/lig
 export 'package:fastybird_smart_panel/modules/deck/presentation/system_pages/entry_overview.dart';
 export 'package:fastybird_smart_panel/modules/deck/presentation/system_pages/master_overview.dart';
 export 'package:fastybird_smart_panel/modules/deck/presentation/system_pages/room_overview.dart';
+
+// Views
+export 'package:fastybird_smart_panel/modules/deck/views/light_role_detail_page.dart';

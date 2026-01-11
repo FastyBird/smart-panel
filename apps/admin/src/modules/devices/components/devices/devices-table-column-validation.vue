@@ -35,7 +35,7 @@
 				<template v-if="issueCount > 0">
 					({{ issueCount }})
 				</template>
-				<el-icon class="ml-1">
+				<el-icon class="ml-1 inline-block!">
 					<icon :icon="popoverVisible ? 'mdi:chevron-up' : 'mdi:chevron-down'" />
 				</el-icon>
 			</el-tag>

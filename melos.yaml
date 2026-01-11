@@ -35,6 +35,8 @@ scripts:
       dart tools/build_channel_spec.dart && \
       echo "🛠️  Building display config spec..." && \
       dart tools/build_display_grid_spec.dart && \
+      echo "🛠️  Building screen breakpoints spec..." && \
+      dart tools/build_screen_breakpoints_spec.dart && \
       echo "✅ Spec rebuild complete!"
     description: Cleans the Spec directory, regenerates device and channel specification Dart files.
 

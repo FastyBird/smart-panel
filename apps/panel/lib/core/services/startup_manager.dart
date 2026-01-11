@@ -32,6 +32,7 @@ import 'package:fastybird_smart_panel/modules/devices/repositories/device_contro
 import 'package:fastybird_smart_panel/modules/devices/repositories/devices.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/validation.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/role_control_state_repository.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/property_timeseries.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
@@ -510,6 +511,12 @@ class StartupManagerService {
         locator.unregister<RoleControlStateRepository>();
       } catch (_) {}
     }
+    if (locator.isRegistered<DeviceControlStateService>()) {
+      try {
+        locator<DeviceControlStateService>().dispose();
+        locator.unregister<DeviceControlStateService>();
+      } catch (_) {}
+    }
     if (locator.isRegistered<DevicesService>()) {
       try {
         locator.unregister<DevicesService>();
@@ -551,7 +558,14 @@ class StartupManagerService {
     }
     if (locator.isRegistered<LightTargetsRepository>()) {
       try {
+        locator<LightTargetsRepository>().dispose();
         locator.unregister<LightTargetsRepository>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<ClimateTargetsRepository>()) {
+      try {
+        locator<ClimateTargetsRepository>().dispose();
+        locator.unregister<ClimateTargetsRepository>();
       } catch (_) {}
     }
     if (locator.isRegistered<SpacesService>()) {
@@ -637,6 +651,11 @@ class StartupManagerService {
         locator.unregister<SystemActionsService>();
       } catch (_) {}
     }
+
+    // Note: Core services like ScreenService, NavigationService, VisualDensityService
+    // are NOT unregistered here as they persist across module reinitializations.
+    // They are registered once at app startup in initializeCoreServices() and
+    // remain active for the app's lifetime.
   }
 
   /// Register modules with the current API client

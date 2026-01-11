@@ -1,9 +1,8 @@
 import { Request } from 'express';
 
-import { CanActivate, ConflictException, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
+import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { TokenOwnerType } from '../../auth/auth.constants';
 import { TokensService } from '../../auth/services/tokens.service';
 import { ConfigService } from '../../config/services/config.service';
 import { DISPLAYS_MODULE_NAME, DeploymentMode } from '../displays.constants';
@@ -42,7 +41,7 @@ export class RegistrationGuard implements CanActivate {
 		}
 	}
 
-	async canActivate(context: ExecutionContext): Promise<boolean> {
+	canActivate(context: ExecutionContext): boolean {
 		const request = context.switchToHttp().getRequest<Request>();
 		const clientIp = extractClientIp(request);
 		const config = this.getConfig();
@@ -50,23 +49,8 @@ export class RegistrationGuard implements CanActivate {
 
 		// Localhost registrations are always allowed without permit join in all modes
 		// This allows local development and all-in-one deployments
+		// Multiple localhost displays are allowed (each has unique MAC address)
 		if (isLocalhost(clientIp)) {
-			// Check if localhost display already exists
-			const localhostDisplay = await this.displaysService.findByRegisteredFromIp(clientIp);
-			if (localhostDisplay) {
-				// Check if the existing display has any active (non-revoked) tokens
-				// If all tokens are revoked, allow re-registration
-				const displayTokens = await this.tokensService.findByOwnerId(localhostDisplay.id, TokenOwnerType.DISPLAY);
-				const hasActiveTokens = displayTokens.some((token) => !token.revoked);
-
-				if (hasActiveTokens) {
-					this.logger.warn(`Rejected: Display already registered with localhost IP ${clientIp} and has active tokens`);
-					throw new ConflictException('Display already registered with localhost IP address');
-				}
-
-				// Display exists but all tokens are revoked - allow re-registration
-				return true;
-			}
 			return true;
 		}
 
