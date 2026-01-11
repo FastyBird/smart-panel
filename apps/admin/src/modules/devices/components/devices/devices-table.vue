@@ -249,7 +249,7 @@
 		<el-table-column
 			:label="t('devicesModule.table.devices.columns.validation.title')"
 			prop="validation"
-			:width="115"
+			:width="120"
 		>
 			<template #default="scope">
 				<devices-table-column-validation :device="scope.row" />
