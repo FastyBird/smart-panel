@@ -32,6 +32,7 @@ import 'package:fastybird_smart_panel/modules/devices/repositories/device_contro
 import 'package:fastybird_smart_panel/modules/devices/repositories/devices.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/validation.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/role_control_state_repository.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/property_timeseries.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
@@ -508,6 +509,11 @@ class StartupManagerService {
       try {
         locator<RoleControlStateRepository>().dispose();
         locator.unregister<RoleControlStateRepository>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<DeviceControlStateService>()) {
+      try {
+        locator.unregister<DeviceControlStateService>();
       } catch (_) {}
     }
     if (locator.isRegistered<DevicesService>()) {
