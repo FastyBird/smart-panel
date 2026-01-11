@@ -1,11 +1,12 @@
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/spec/grid_config.g.dart';
 import 'package:fastybird_smart_panel/spec/screen_breakpoints.g.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/widgets.dart';
 
-class ScreenService extends ChangeNotifier {
-  final double screenWidth;
-  final double screenHeight;
+class ScreenService extends ChangeNotifier with WidgetsBindingObserver {
+  // Current screen dimensions (updated on rotation)
+  double _screenWidth;
+  double _screenHeight;
   final double pixelRatio;
 
   // Initial GRID config
@@ -22,12 +23,12 @@ class ScreenService extends ChangeNotifier {
   late double scaleFactor;
 
   ScreenService({
-    required this.screenWidth,
-    required this.screenHeight,
+    required double screenWidth,
+    required double screenHeight,
     required this.pixelRatio,
-  }) {
-    // 240; // 150.0; // 120.0;
-    _defaultUnitSize = _calculateOptimalUnitSize(screenWidth) / pixelRatio;
+  })  : _screenWidth = screenWidth,
+        _screenHeight = screenHeight {
+    _defaultUnitSize = _calculateOptimalUnitSize(_screenWidth) / pixelRatio;
 
     _defaultColumns = GridConfig.defaultCols;
     _defaultRows = GridConfig.defaultRows;
@@ -36,7 +37,35 @@ class ScreenService extends ChangeNotifier {
     const targetDPR = 2.0;
 
     scaleFactor = targetDPR / pixelRatio;
+
+    // Register for screen metric changes
+    WidgetsBinding.instance.addObserver(this);
   }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeMetrics() {
+    // Get updated screen dimensions
+    final view = WidgetsBinding.instance.platformDispatcher.views.first;
+    final newWidth = view.physicalSize.width;
+    final newHeight = view.physicalSize.height;
+
+    // Only notify if dimensions actually changed
+    if (newWidth != _screenWidth || newHeight != _screenHeight) {
+      _screenWidth = newWidth;
+      _screenHeight = newHeight;
+      notifyListeners();
+    }
+  }
+
+  double get screenWidth => _screenWidth;
+
+  double get screenHeight => _screenHeight;
 
   int get columns => _profileColumns ?? _defaultColumns;
 
@@ -48,47 +77,19 @@ class ScreenService extends ChangeNotifier {
 
   int get defaultRows => _defaultRows;
 
-  bool get isPortrait => screenHeight > screenWidth;
+  bool get isPortrait => _screenHeight > _screenWidth;
 
-  bool get isLandscape => screenHeight <= screenWidth;
+  bool get isLandscape => _screenHeight <= _screenWidth;
 
   // --------------------------------------------------------------------------
   // SCREEN SIZE BREAKPOINTS
   // --------------------------------------------------------------------------
 
-  /// Get current screen size category based on width and initial orientation.
-  ///
-  /// Note: For accurate orientation-aware sizing after rotation, use
-  /// [getScreenSizeFor] with the current orientation from OrientationBuilder.
+  /// Get current screen size category based on current width and orientation.
   ScreenSize get screenSize => ScreenBreakpoints.getScreenSize(
-        screenWidth,
+        _screenWidth,
         isPortrait: isPortrait,
       );
-
-  /// Get screen size for a specific orientation.
-  ///
-  /// Use this when you need accurate screen size after device rotation.
-  /// The [isPortraitOrientation] should come from OrientationBuilder or
-  /// MediaQuery.of(context).orientation.
-  ScreenSize getScreenSizeFor({required bool isPortraitOrientation}) {
-    // Use the appropriate dimension based on current orientation
-    final width = isPortraitOrientation
-        ? (screenWidth < screenHeight ? screenWidth : screenHeight)
-        : (screenWidth > screenHeight ? screenWidth : screenHeight);
-    return ScreenBreakpoints.getScreenSize(width, isPortrait: isPortraitOrientation);
-  }
-
-  /// Check if screen is small for a specific orientation.
-  bool isSmallScreenFor({required bool isPortraitOrientation}) =>
-      getScreenSizeFor(isPortraitOrientation: isPortraitOrientation) == ScreenSize.small;
-
-  /// Check if screen is medium for a specific orientation.
-  bool isMediumScreenFor({required bool isPortraitOrientation}) =>
-      getScreenSizeFor(isPortraitOrientation: isPortraitOrientation) == ScreenSize.medium;
-
-  /// Check if screen is large for a specific orientation.
-  bool isLargeScreenFor({required bool isPortraitOrientation}) =>
-      getScreenSizeFor(isPortraitOrientation: isPortraitOrientation) == ScreenSize.large;
 
   /// Check if current screen is small (compact layout).
   bool get isSmallScreen => screenSize == ScreenSize.small;
