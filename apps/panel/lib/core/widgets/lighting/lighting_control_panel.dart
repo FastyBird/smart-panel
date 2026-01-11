@@ -1785,18 +1785,18 @@ class _ColorPanel extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final trackHeight = constraints.maxHeight - thumbSize - padding * 2;
-          final thumbOffset = trackHeight * (1 - progress);
+          final thumbOffset = trackHeight * progress;
 
           return GestureDetector(
             onVerticalDragUpdate: (details) {
               final newProgress =
-                  1 - (details.localPosition.dy - padding - thumbSize / 2) / trackHeight;
+                  (details.localPosition.dy - padding - thumbSize / 2) / trackHeight;
               final clampedProgress = newProgress.clamp(0.0, 1.0);
               onChanged(clampedProgress * 360, saturation);
             },
             onTapDown: (details) {
               final newProgress =
-                  1 - (details.localPosition.dy - padding - thumbSize / 2) / trackHeight;
+                  (details.localPosition.dy - padding - thumbSize / 2) / trackHeight;
               final clampedProgress = newProgress.clamp(0.0, 1.0);
               onChanged(clampedProgress * 360, saturation);
             },
