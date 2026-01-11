@@ -1743,7 +1743,9 @@ class _ColorPanel extends StatelessWidget {
 
   Widget _buildColorSwatch(Color presetColor) {
     final presetHsv = HSVColor.fromColor(presetColor);
-    final isSelected = (presetHsv.hue - hue).abs() < 15;
+    // Handle circular hue comparison (0° and 360° are the same)
+    final hueDiff = (presetHsv.hue - hue).abs();
+    final isSelected = (hueDiff < 15) || (360 - hueDiff < 15);
 
     return Expanded(
       child: GestureDetector(
