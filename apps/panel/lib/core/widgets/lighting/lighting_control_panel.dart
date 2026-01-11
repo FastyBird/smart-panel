@@ -216,7 +216,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? AppBgColorDark.base : AppBgColorLight.base;
+    final bgColor = isDark ? AppBgColorDark.page : AppBgColorLight.page;
 
     // When showHeader is false, just render the body content without Scaffold
     if (!widget.showHeader) {
@@ -706,8 +706,14 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
       );
     }
 
+    // On wider screens, make the channels panel wider for better tile proportions
+    // Threshold between 1024 (smaller) and 1280 (larger)
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isWideScreen = screenWidth > 1150;
+    final panelWidth = _scale(isWideScreen ? 240 : 180);
+
     return Container(
-      width: _scale(180),
+      width: panelWidth,
       decoration: BoxDecoration(
         border: Border(
           left: BorderSide(color: dividerColor, width: _scale(1)),
@@ -1478,53 +1484,64 @@ class _SliderPanel extends StatelessWidget {
     final inactiveBorderColor =
         isDark ? Colors.transparent : AppBorderColorLight.light;
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(presets!.length, (index) {
-        final preset = presets![index];
-        final isActive = (value - preset).abs() < (maxValue - minValue) * 0.05;
-        final borderWidth = isActive ? _scale(2) : _scale(1);
-        final paddingCompensation = isActive ? 0.0 : _scale(1);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Use smaller padding on smaller screens to avoid overflow
+        final screenWidth = MediaQuery.of(context).size.width;
+        final isSmallScreen = screenWidth < 700;
+        final buttonHorizontalPadding = isSmallScreen ? AppSpacings.pMd : AppSpacings.pLg;
+        final buttonVerticalPadding = isSmallScreen ? AppSpacings.pMd : AppSpacings.pLg;
 
-        return Padding(
-          padding: EdgeInsets.symmetric(horizontal: AppSpacings.pSm),
-          child: GestureDetector(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              onChanged(preset);
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              padding: EdgeInsets.symmetric(
-                horizontal: AppSpacings.pMd + paddingCompensation,
-                vertical: AppSpacings.pSm + paddingCompensation,
-              ),
-              decoration: BoxDecoration(
-                color: isActive
-                    ? (isDark
-                        ? AppColorsDark.primaryLight9
-                        : AppColorsLight.primaryLight9)
-                    : (isDark
-                        ? AppFillColorDark.light
-                        : AppFillColorLight.light),
-                borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-                border: Border.all(
-                  color: isActive ? primaryColor : inactiveBorderColor,
-                  width: borderWidth,
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(presets!.length, (index) {
+            final preset = presets![index];
+            final isActive =
+                (value - preset).abs() < (maxValue - minValue) * 0.05;
+            final borderWidth = isActive ? _scale(2) : _scale(1);
+            final paddingCompensation = isActive ? 0.0 : _scale(1);
+
+            return Padding(
+              padding: EdgeInsets.symmetric(horizontal: AppSpacings.pSm),
+              child: GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  onChanged(preset);
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: buttonHorizontalPadding + paddingCompensation,
+                    vertical: buttonVerticalPadding + paddingCompensation,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? (isDark
+                            ? AppColorsDark.primaryLight9
+                            : AppColorsLight.primaryLight9)
+                        : (isDark
+                            ? AppFillColorDark.light
+                            : AppFillColorLight.light),
+                    borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+                    border: Border.all(
+                      color: isActive ? primaryColor : inactiveBorderColor,
+                      width: borderWidth,
+                    ),
+                  ),
+                  child: Text(
+                    presetLabels![index],
+                    style: TextStyle(
+                      color: isActive ? primaryColor : inactiveTextColor,
+                      fontSize: AppFontSize.base,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
               ),
-              child: Text(
-                presetLabels![index],
-                style: TextStyle(
-                  color: isActive ? primaryColor : inactiveTextColor,
-                  fontSize: AppFontSize.small,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ),
+            );
+          }),
         );
-      }),
+      },
     );
   }
 
