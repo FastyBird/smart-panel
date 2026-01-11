@@ -534,6 +534,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     // Fixed 4 tiles per row for scenes in portrait
     const scenesPerRow = 4;
 
+    // Use higher aspect ratio (shorter tiles) on medium+ portrait displays
+    final isAtLeastMedium = _screenService.isAtLeastMedium;
+    final otherLightsAspectRatio = isAtLeastMedium ? 3.0 : 2.5;
+
     return Column(
       children: [
         Expanded(
@@ -569,7 +573,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                   if (hasRoles || hasScenes) SizedBox(height: AppSpacings.pLg),
                   _buildOtherLightsHeader(context, otherLights, otherTargets, localizations),
                   SizedBox(height: AppSpacings.pMd),
-                  _buildLightsGrid(context, otherLights, localizations, crossAxisCount: 2),
+                  _buildLightsGrid(
+                    context,
+                    otherLights,
+                    localizations,
+                    crossAxisCount: 2,
+                    aspectRatio: otherLightsAspectRatio,
+                  ),
                 ],
               ],
             ),
