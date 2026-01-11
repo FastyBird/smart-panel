@@ -23,6 +23,7 @@ import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swa
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { GenerateDeviceCommand } from './commands/generate-device.command';
+import { PopulateValuesCommand } from './commands/populate-values.command';
 import { SimulatorController } from './controllers/simulator.controller';
 import {
 	DEVICES_SIMULATOR_PLUGIN_API_TAG_DESCRIPTION,
@@ -60,7 +61,7 @@ import { DeviceGeneratorService } from './services/device-generator.service';
 		ExtensionsModule,
 		SwaggerModule,
 	],
-	providers: [SimulatorDevicePlatform, DeviceGeneratorService, GenerateDeviceCommand],
+	providers: [SimulatorDevicePlatform, DeviceGeneratorService, GenerateDeviceCommand, PopulateValuesCommand],
 	controllers: [SimulatorController],
 	exports: [DeviceGeneratorService],
 })
@@ -243,6 +244,14 @@ pnpm run cli simulator:generate
 pnpm run cli simulator:generate --category lighting --name "Test Light"
 pnpm run cli simulator:generate --category thermostat --count 3
 pnpm run cli simulator:generate --category sensor --required-only
+\`\`\`
+
+### Populate Devices with Random Values
+\`\`\`bash
+pnpm run cli simulator:populate --list           # List all simulator devices
+pnpm run cli simulator:populate --all            # Populate all devices with random values
+pnpm run cli simulator:populate --device <id>    # Populate specific device
+pnpm run cli simulator:populate                  # Interactive mode
 \`\`\`
 
 ## Device Categories
