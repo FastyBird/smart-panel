@@ -561,6 +561,11 @@ class StartupManagerService {
         locator.unregister<LightTargetsRepository>();
       } catch (_) {}
     }
+    if (locator.isRegistered<ClimateTargetsRepository>()) {
+      try {
+        locator.unregister<ClimateTargetsRepository>();
+      } catch (_) {}
+    }
     if (locator.isRegistered<SpacesService>()) {
       try {
         locator.unregister<SpacesService>();
@@ -645,13 +650,10 @@ class StartupManagerService {
       } catch (_) {}
     }
 
-    // Unregister ScreenService - must call dispose() to remove WidgetsBindingObserver
-    if (locator.isRegistered<ScreenService>()) {
-      try {
-        locator<ScreenService>().dispose();
-        locator.unregister<ScreenService>();
-      } catch (_) {}
-    }
+    // Note: Core services like ScreenService, NavigationService, VisualDensityService
+    // are NOT unregistered here as they persist across module reinitializations.
+    // They are registered once at app startup in initializeCoreServices() and
+    // remain active for the app's lifetime.
   }
 
   /// Register modules with the current API client
