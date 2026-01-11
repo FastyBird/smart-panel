@@ -644,6 +644,14 @@ class StartupManagerService {
         locator.unregister<SystemActionsService>();
       } catch (_) {}
     }
+
+    // Unregister ScreenService - must call dispose() to remove WidgetsBindingObserver
+    if (locator.isRegistered<ScreenService>()) {
+      try {
+        locator<ScreenService>().dispose();
+        locator.unregister<ScreenService>();
+      } catch (_) {}
+    }
   }
 
   /// Register modules with the current API client
