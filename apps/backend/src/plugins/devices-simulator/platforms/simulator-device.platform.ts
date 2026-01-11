@@ -83,10 +83,7 @@ export class SimulatorDevicePlatform implements IDevicePlatform {
 			} catch (error) {
 				const err = error as Error;
 
-				this.logger.error(
-					`Failed to update property ${update.property.id}: ${err.message}`,
-					{ resource: device.id },
-				);
+				this.logger.error(`Failed to update property ${update.property.id}: ${err.message}`, { resource: device.id });
 
 				results.push(false);
 			}
