@@ -125,7 +125,9 @@ export class PopulateValuesCommand extends CommandRunner {
 			totalPropertiesUpdated += propertiesUpdated;
 		}
 
-		console.log(`\n\x1b[32m✅ Successfully updated ${totalPropertiesUpdated} properties across ${devicesToPopulate.length} device(s)\x1b[0m\n`);
+		console.log(
+			`\n\x1b[32m✅ Successfully updated ${totalPropertiesUpdated} properties across ${devicesToPopulate.length} device(s)\x1b[0m\n`,
+		);
 	}
 
 	private async populateDevice(device: SimulatorDeviceEntity): Promise<number> {
