@@ -135,10 +135,10 @@ export class PopulateValuesCommand extends CommandRunner {
 
 		let propertiesUpdated = 0;
 
-		for (const channel of device.channels) {
+		for (const channel of device.channels ?? []) {
 			const allProperties = getAllProperties(channel.category);
 
-			for (const property of channel.properties) {
+			for (const property of channel.properties ?? []) {
 				const propMeta = allProperties.find((p) => p.category === property.category);
 
 				if (propMeta) {
