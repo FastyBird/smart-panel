@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/spec/grid_config.g.dart';
+import 'package:fastybird_smart_panel/spec/screen_breakpoints.g.dart';
 import 'package:flutter/cupertino.dart';
 
 class ScreenService extends ChangeNotifier {
@@ -50,6 +51,32 @@ class ScreenService extends ChangeNotifier {
   bool get isPortrait => screenHeight > screenWidth;
 
   bool get isLandscape => screenHeight <= screenWidth;
+
+  // --------------------------------------------------------------------------
+  // SCREEN SIZE BREAKPOINTS
+  // --------------------------------------------------------------------------
+
+  /// Get current screen size category based on width and orientation.
+  ScreenSize get screenSize => ScreenBreakpoints.getScreenSize(
+        screenWidth,
+        isPortrait: isPortrait,
+      );
+
+  /// Check if current screen is small (compact layout).
+  bool get isSmallScreen => screenSize == ScreenSize.small;
+
+  /// Check if current screen is medium (standard layout).
+  bool get isMediumScreen => screenSize == ScreenSize.medium;
+
+  /// Check if current screen is large (expanded layout).
+  bool get isLargeScreen => screenSize == ScreenSize.large;
+
+  /// Check if current screen is at least medium size.
+  bool get isAtLeastMedium =>
+      screenSize == ScreenSize.medium || screenSize == ScreenSize.large;
+
+  /// Check if current screen is at least large size.
+  bool get isAtLeastLarge => screenSize == ScreenSize.large;
 
   double scale(double size, {DisplayDensity? density = DisplayDensity.normal}) {
     return density == DisplayDensity.compact

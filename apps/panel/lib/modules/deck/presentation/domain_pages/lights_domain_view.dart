@@ -597,13 +597,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final hasRoles = roles.isNotEmpty;
     final hasOtherLights = otherLights.isNotEmpty;
     final hasScenes = _lightingScenes.isNotEmpty;
-    final screenWidth = MediaQuery.of(context).size.width;
 
-    // On wider screens (e.g., 1280px landscape), show more tiles per row
-    // Threshold between 1024 (smaller) and 1280 (larger)
-    final isWideScreen = screenWidth > 1150;
-    final tilesPerRow = isWideScreen ? 4 : 3;
-    final maxScenes = isWideScreen ? 6 : 4;
+    // Use ScreenService breakpoints for responsive layout
+    final isLargeScreen = _screenService.isLargeScreen;
+    final tilesPerRow = isLargeScreen ? 4 : 3;
+    final maxScenes = isLargeScreen ? 6 : 4;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -634,13 +632,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                   SizedBox(height: AppSpacings.pMd),
                   // Other Lights grid - fills remaining space
                   Flexible(
-                    flex: isWideScreen ? 2 : 1,
+                    flex: isLargeScreen ? 2 : 1,
                     child: _buildLandscapeLightsGrid(
                       context,
                       otherLights,
                       localizations,
                       tilesPerRow: tilesPerRow,
-                      maxRows: isWideScreen ? 2 : 1,
+                      maxRows: isLargeScreen ? 2 : 1,
                     ),
                   ),
                 ] else if (hasRoles) ...[
@@ -664,7 +662,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                       otherLights,
                       localizations,
                       tilesPerRow: tilesPerRow,
-                      maxRows: isWideScreen ? 2 : 1,
+                      maxRows: isLargeScreen ? 2 : 1,
                     ),
                   ),
                 ],
