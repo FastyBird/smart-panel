@@ -339,6 +339,8 @@
   "domain_lights_count_on": "{count, plural, =1{1 světlo zapnuto} few{{count} světla zapnuta} other{{count} světel zapnuto}}",
   "domain_lights_all_off": "vše vypnuto",
   "domain_lights_all_on": "vše zapnuto",
+  "domain_lights_button_all_off": "Vše vypnout",
+  "domain_lights_button_all_on": "Vše zapnout",
   "domain_lights_syncing": "synchronizuji",
   "domain_lights_unsynced": "nesynchronizováno",
   "domain_lights_mixed": "různé hodnoty",

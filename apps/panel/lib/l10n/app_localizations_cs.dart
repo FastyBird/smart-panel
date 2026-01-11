@@ -1034,6 +1034,12 @@ class AppLocalizationsCs extends AppLocalizations {
   String get domain_lights_all_on => 'vše zapnuto';
 
   @override
+  String get domain_lights_button_all_off => 'Vše vypnout';
+
+  @override
+  String get domain_lights_button_all_on => 'Vše zapnout';
+
+  @override
   String get domain_lights_syncing => 'synchronizuji';
 
   @override

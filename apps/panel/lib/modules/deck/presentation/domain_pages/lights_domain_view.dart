@@ -213,13 +213,14 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         }
 
         final lightTargets = _spacesService?.getLightTargetsForSpace(_roomId) ?? [];
+        final localizations = AppLocalizations.of(context)!;
 
         if (lightTargets.isEmpty) {
           return _buildEmptyState(context);
         }
 
         // Build role data and other lights
-        final roleDataList = _buildRoleDataList(lightTargets, devicesService);
+        final roleDataList = _buildRoleDataList(lightTargets, devicesService, localizations);
         final definedRoles = roleDataList
             .where((r) =>
                 r.role != LightTargetRole.other &&
@@ -229,7 +230,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           (r) => r.role == LightTargetRole.other,
           orElse: () => LightingRoleData(
             role: LightTargetRole.other,
-            name: 'Other',
+            name: localizations.light_role_other,
             icon: MdiIcons.lightbulbOutline,
             onCount: 0,
             totalCount: 0,
@@ -257,9 +258,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                       final isLandscape = orientation == Orientation.landscape;
                       return isLandscape
                           ? _buildLandscapeLayout(
-                              context, definedRoles, otherLights, otherRole.targets, devicesService)
+                              context, definedRoles, otherLights, otherRole.targets, devicesService, localizations)
                           : _buildPortraitLayout(
-                              context, definedRoles, otherLights, otherRole.targets, devicesService);
+                              context, definedRoles, otherLights, otherRole.targets, devicesService, localizations);
                     },
                   ),
                 ),
@@ -278,6 +279,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   List<LightingRoleData> _buildRoleDataList(
     List<LightTargetView> targets,
     DevicesService devicesService,
+    AppLocalizations localizations,
   ) {
     final Map<LightTargetRole, List<LightTargetView>> grouped = {};
 
@@ -320,7 +322,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
       roles.add(LightingRoleData(
         role: role,
-        name: _getRoleName(role),
+        name: _getRoleName(role, localizations),
         icon: _getRoleIcon(role),
         onCount: onCount,
         totalCount: roleTargets.length,
@@ -383,22 +385,22 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     return count;
   }
 
-  String _getRoleName(LightTargetRole role) {
+  String _getRoleName(LightTargetRole role, AppLocalizations localizations) {
     switch (role) {
       case LightTargetRole.main:
-        return 'Main';
+        return localizations.light_role_main;
       case LightTargetRole.ambient:
-        return 'Ambient';
+        return localizations.light_role_ambient;
       case LightTargetRole.task:
-        return 'Task';
+        return localizations.light_role_task;
       case LightTargetRole.accent:
-        return 'Accent';
+        return localizations.light_role_accent;
       case LightTargetRole.night:
-        return 'Night';
+        return localizations.light_role_night;
       case LightTargetRole.other:
-        return 'Other';
+        return localizations.light_role_other;
       case LightTargetRole.hidden:
-        return 'Hidden';
+        return localizations.light_role_hidden;
     }
   }
 
@@ -523,6 +525,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     List<LightDeviceData> otherLights,
     List<LightTargetView> otherTargets,
     DevicesService devicesService,
+    AppLocalizations localizations,
   ) {
     final hasRoles = roles.isNotEmpty;
     final hasOtherLights = otherLights.isNotEmpty;
@@ -546,7 +549,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                 // Quick Scenes Section
                 if (hasScenes) ...[
                   if (hasRoles) SizedBox(height: AppSpacings.pLg),
-                  _buildSectionTitle(context, 'Quick Scenes', Icons.auto_awesome),
+                  _buildSectionTitle(context, localizations.space_scenes_title, Icons.auto_awesome),
                   SizedBox(height: AppSpacings.pMd),
                   // Use horizontal scroll when other lights present (less vertical space)
                   if (hasOtherLights)
@@ -564,9 +567,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                 // Other Lights Section
                 if (hasOtherLights) ...[
                   if (hasRoles || hasScenes) SizedBox(height: AppSpacings.pLg),
-                  _buildOtherLightsHeader(context, otherLights, otherTargets),
+                  _buildOtherLightsHeader(context, otherLights, otherTargets, localizations),
                   SizedBox(height: AppSpacings.pMd),
-                  _buildLightsGrid(context, otherLights, crossAxisCount: 2),
+                  _buildLightsGrid(context, otherLights, localizations, crossAxisCount: 2),
                 ],
               ],
             ),
@@ -588,6 +591,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     List<LightDeviceData> otherLights,
     List<LightTargetView> otherTargets,
     DevicesService devicesService,
+    AppLocalizations localizations,
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasRoles = roles.isNotEmpty;
@@ -626,7 +630,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                   ),
                   SizedBox(height: AppSpacings.pLg),
                   // Other Lights header
-                  _buildOtherLightsHeader(context, otherLights, otherTargets),
+                  _buildOtherLightsHeader(context, otherLights, otherTargets, localizations),
                   SizedBox(height: AppSpacings.pMd),
                   // Other Lights grid - fills remaining space
                   Flexible(
@@ -634,6 +638,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                     child: _buildLandscapeLightsGrid(
                       context,
                       otherLights,
+                      localizations,
                       tilesPerRow: tilesPerRow,
                       maxRows: isWideScreen ? 2 : 1,
                     ),
@@ -651,12 +656,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                   ),
                 ] else if (hasOtherLights) ...[
                   // Only other lights, no roles
-                  _buildOtherLightsHeader(context, otherLights, otherTargets),
+                  _buildOtherLightsHeader(context, otherLights, otherTargets, localizations),
                   SizedBox(height: AppSpacings.pMd),
                   Expanded(
                     child: _buildLandscapeLightsGrid(
                       context,
                       otherLights,
+                      localizations,
                       tilesPerRow: tilesPerRow,
                       maxRows: isWideScreen ? 2 : 1,
                     ),
@@ -686,7 +692,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSectionTitle(context, 'Quick Scenes', Icons.auto_awesome),
+                    _buildSectionTitle(context, localizations.space_scenes_title, Icons.auto_awesome),
                     SizedBox(height: AppSpacings.pMd),
                     // Show more scenes on wider screens
                     Expanded(
@@ -765,7 +771,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   Widget _buildLandscapeLightsGrid(
     BuildContext context,
-    List<LightDeviceData> lights, {
+    List<LightDeviceData> lights,
+    AppLocalizations localizations, {
     required int tilesPerRow,
     required int maxRows,
   }) {
@@ -800,6 +807,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                         if (index < lights.length) {
                           return _LightTile(
                             light: lights[index],
+                            localizations: localizations,
                             onTap: () => _openDeviceDetail(context, lights[index]),
                             onIconTap: () => _toggleLight(lights[index]),
                             isVertical: true,
@@ -850,10 +858,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     BuildContext context,
     List<LightDeviceData> otherLights,
     List<LightTargetView> otherTargets,
+    AppLocalizations localizations,
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final anyOn = otherLights.any((light) => light.isOn);
-    final buttonLabel = anyOn ? 'All Off' : 'All On';
+    final buttonLabel = anyOn
+        ? localizations.domain_lights_button_all_off
+        : localizations.domain_lights_button_all_on;
 
     return Row(
       children: [
@@ -865,7 +876,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         SizedBox(width: AppSpacings.pMd),
         Expanded(
           child: Text(
-            'Other Lights',
+            localizations.domain_lights_other,
             style: TextStyle(
               color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
               fontSize: AppFontSize.small,
@@ -1011,7 +1022,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   Widget _buildLightsGrid(
     BuildContext context,
-    List<LightDeviceData> lights, {
+    List<LightDeviceData> lights,
+    AppLocalizations localizations, {
     required int crossAxisCount,
     double aspectRatio = 2.5,
   }) {
@@ -1028,6 +1040,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       itemBuilder: (context, index) {
         return _LightTile(
           light: lights[index],
+          localizations: localizations,
           onTap: () => _openDeviceDetail(context, lights[index]),
           onIconTap: () => _toggleLight(lights[index]),
         );
@@ -1395,16 +1408,29 @@ class _LightTile extends StatelessWidget {
       locator<VisualDensityService>();
 
   final LightDeviceData light;
+  final AppLocalizations localizations;
   final VoidCallback? onTap;
   final VoidCallback? onIconTap;
   final bool isVertical;
 
   _LightTile({
     required this.light,
+    required this.localizations,
     this.onTap,
     this.onIconTap,
     this.isVertical = false,
   });
+
+  String get _localizedStatusText {
+    switch (light.state) {
+      case LightState.off:
+        return localizations.light_state_off;
+      case LightState.on:
+        return light.brightness != null ? '${light.brightness}%' : localizations.light_state_on;
+      case LightState.offline:
+        return localizations.device_status_offline;
+    }
+  }
 
   double _scale(double size) =>
       _screenService.scale(size, density: _visualDensityService.density);
@@ -1594,7 +1620,7 @@ class _LightTile extends StatelessWidget {
         // Status
         SizedBox(height: _scale(1)),
         Text(
-          light.statusText,
+          _localizedStatusText,
           style: TextStyle(
             color: isDisabled ? warningColor : subtitleColor,
             fontSize: AppFontSize.extraExtraSmall,
@@ -1674,7 +1700,7 @@ class _LightTile extends StatelessWidget {
               ),
               SizedBox(height: _scale(1)),
               Text(
-                light.statusText,
+                _localizedStatusText,
                 style: TextStyle(
                   color: isDisabled ? warningColor : subtitleColor,
                   fontSize: AppFontSize.extraExtraSmall,

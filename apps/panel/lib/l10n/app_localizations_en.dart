@@ -1033,6 +1033,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get domain_lights_all_on => 'all on';
 
   @override
+  String get domain_lights_button_all_off => 'All Off';
+
+  @override
+  String get domain_lights_button_all_on => 'All On';
+
+  @override
   String get domain_lights_syncing => 'syncing';
 
   @override
