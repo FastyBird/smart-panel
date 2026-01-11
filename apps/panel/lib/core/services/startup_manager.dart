@@ -558,11 +558,13 @@ class StartupManagerService {
     }
     if (locator.isRegistered<LightTargetsRepository>()) {
       try {
+        locator<LightTargetsRepository>().dispose();
         locator.unregister<LightTargetsRepository>();
       } catch (_) {}
     }
     if (locator.isRegistered<ClimateTargetsRepository>()) {
       try {
+        locator<ClimateTargetsRepository>().dispose();
         locator.unregister<ClimateTargetsRepository>();
       } catch (_) {}
     }
