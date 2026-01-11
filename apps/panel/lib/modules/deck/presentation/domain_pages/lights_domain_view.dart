@@ -598,8 +598,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final hasOtherLights = otherLights.isNotEmpty;
     final hasScenes = _lightingScenes.isNotEmpty;
 
-    // Use ScreenService breakpoints for responsive layout
-    final isLargeScreen = _screenService.isLargeScreen;
+    // Use ScreenService breakpoints for responsive layout (landscape orientation)
+    final isLargeScreen = _screenService.isLargeScreenFor(isPortraitOrientation: false);
     final tilesPerRow = isLargeScreen ? 4 : 3;
     final maxScenes = isLargeScreen ? 6 : 4;
 

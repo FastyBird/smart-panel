@@ -56,11 +56,39 @@ class ScreenService extends ChangeNotifier {
   // SCREEN SIZE BREAKPOINTS
   // --------------------------------------------------------------------------
 
-  /// Get current screen size category based on width and orientation.
+  /// Get current screen size category based on width and initial orientation.
+  ///
+  /// Note: For accurate orientation-aware sizing after rotation, use
+  /// [getScreenSizeFor] with the current orientation from OrientationBuilder.
   ScreenSize get screenSize => ScreenBreakpoints.getScreenSize(
         screenWidth,
         isPortrait: isPortrait,
       );
+
+  /// Get screen size for a specific orientation.
+  ///
+  /// Use this when you need accurate screen size after device rotation.
+  /// The [isPortraitOrientation] should come from OrientationBuilder or
+  /// MediaQuery.of(context).orientation.
+  ScreenSize getScreenSizeFor({required bool isPortraitOrientation}) {
+    // Use the appropriate dimension based on current orientation
+    final width = isPortraitOrientation
+        ? (screenWidth < screenHeight ? screenWidth : screenHeight)
+        : (screenWidth > screenHeight ? screenWidth : screenHeight);
+    return ScreenBreakpoints.getScreenSize(width, isPortrait: isPortraitOrientation);
+  }
+
+  /// Check if screen is small for a specific orientation.
+  bool isSmallScreenFor({required bool isPortraitOrientation}) =>
+      getScreenSizeFor(isPortraitOrientation: isPortraitOrientation) == ScreenSize.small;
+
+  /// Check if screen is medium for a specific orientation.
+  bool isMediumScreenFor({required bool isPortraitOrientation}) =>
+      getScreenSizeFor(isPortraitOrientation: isPortraitOrientation) == ScreenSize.medium;
+
+  /// Check if screen is large for a specific orientation.
+  bool isLargeScreenFor({required bool isPortraitOrientation}) =>
+      getScreenSizeFor(isPortraitOrientation: isPortraitOrientation) == ScreenSize.large;
 
   /// Check if current screen is small (compact layout).
   bool get isSmallScreen => screenSize == ScreenSize.small;
