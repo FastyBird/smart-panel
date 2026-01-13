@@ -87,7 +87,8 @@ class SpeedSlider extends StatelessWidget {
         isDark ? AppFillColorDark.darker : Colors.white;
 
     // For discrete mode, calculate divisions based on steps
-    final divisions = discrete ? steps.length - 1 : null;
+    // divisions must be null or > 0, so use null if steps has fewer than 2 items
+    final divisions = discrete && steps.length > 1 ? steps.length - 1 : null;
 
     final displayLabel = enabled ? label : (disabledLabel ?? '$label (Auto)');
 
