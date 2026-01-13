@@ -233,6 +233,7 @@ class _CircularControlDialState extends State<CircularControlDial>
       _eventBus.fire(PageSwipeBlockEvent(blocked: false));
     }
     _glowController.dispose();
+    _gestures.clear();
     super.dispose();
   }
 

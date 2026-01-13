@@ -63,7 +63,8 @@ class SpeedSlider extends StatelessWidget {
   /// Get the current step label for discrete mode
   String _getCurrentStepLabel() {
     if (steps.isEmpty) return '';
-    final index = (value * (steps.length - 1)).round().clamp(0, steps.length - 1);
+    final clampedValue = value.clamp(0.0, 1.0);
+    final index = (clampedValue * (steps.length - 1)).round().clamp(0, steps.length - 1);
     return steps[index];
   }
 

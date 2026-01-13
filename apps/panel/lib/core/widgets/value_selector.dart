@@ -276,7 +276,7 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
   void initState() {
     super.initState();
     if (widget.options.isEmpty) {
-      _selectedIndex = 0;
+      _selectedIndex = -1; // No selection when options is empty
     } else {
       final index = widget.options.indexWhere((o) => o.value == widget.currentValue);
       _selectedIndex = index < 0 ? 0 : index.clamp(0, widget.options.length - 1);
@@ -452,7 +452,7 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: widget.options.isEmpty
+                  onPressed: widget.options.isEmpty || _selectedIndex < 0
                       ? null
                       : () => widget.onConfirm?.call(widget.options[_selectedIndex].value),
                   style: ElevatedButton.styleFrom(

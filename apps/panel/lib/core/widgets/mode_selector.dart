@@ -121,6 +121,9 @@ class ModeSelector<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Guard against empty modes to prevent division by zero
+    if (modes.isEmpty) return const SizedBox.shrink();
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
