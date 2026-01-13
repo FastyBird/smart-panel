@@ -26,6 +26,19 @@ extension AppExtendedColors on ThemeData {
 
   Color get info =>
       brightness == Brightness.light ? AppColorsLight.info : AppColorsDark.info;
+
+  Color get teal =>
+      brightness == Brightness.light ? AppColorsLight.teal : AppColorsDark.teal;
+
+  Color get cyan =>
+      brightness == Brightness.light ? AppColorsLight.cyan : AppColorsDark.cyan;
+
+  Color get pink =>
+      brightness == Brightness.light ? AppColorsLight.pink : AppColorsDark.pink;
+
+  Color get indigo => brightness == Brightness.light
+      ? AppColorsLight.indigo
+      : AppColorsDark.indigo;
 }
 
 class AppTheme {
@@ -198,14 +211,6 @@ class AppColorsLight {
   static const Color primaryLight9 = Color(0xFFFBE9E7);
   static const Color primaryDark2 = Color(0xFFAD1C0C);
 
-  static const Color secondary = Color(0xFF029acf);
-  static const Color secondaryLight3 = Color(0xFF4DB8DD);
-  static const Color secondaryLight5 = Color(0xFF80CCE7);
-  static const Color secondaryLight7 = Color(0xFFB3E0F0);
-  static const Color secondaryLight8 = Color(0xFFCCEAF5);
-  static const Color secondaryLight9 = Color(0xFFE5F4FA);
-  static const Color secondaryDark2 = Color(0xFF017BA5);
-
   static const Color success = Color(0xFF469408);
   static const Color successLight3 = Color(0xFF7DB452);
   static const Color successLight5 = Color(0xFFA2C983);
@@ -238,13 +243,21 @@ class AppColorsLight {
   static const Color errorLight9 = Color(0xFFFBE9E9);
   static const Color errorDark2 = Color(0xFFAF2020);
 
-  static const Color info = Color(0xFF909399);
-  static const Color infoLight3 = Color(0xFFB1B3B7);
-  static const Color infoLight5 = Color(0xFFC7C9CC);
-  static const Color infoLight7 = Color(0xFFDDDEE0);
-  static const Color infoLight8 = Color(0xFFE8E9EB);
-  static const Color infoLight9 = Color(0xFFF3F4F5);
-  static const Color infoDark2 = Color(0xFF73767A);
+  static const Color info = Color(0xFF029acf);
+  static const Color infoLight3 = Color(0xFF4DB8DD);
+  static const Color infoLight5 = Color(0xFF80CCE7);
+  static const Color infoLight7 = Color(0xFFB3E0F0);
+  static const Color infoLight8 = Color(0xFFCCEAF5);
+  static const Color infoLight9 = Color(0xFFE5F4FA);
+  static const Color infoDark2 = Color(0xFF017BA5);
+
+  static const Color neutral = Color(0xFF909399);
+  static const Color neutralLight3 = Color(0xFFB1B3B7);
+  static const Color neutralLight5 = Color(0xFFC7C9CC);
+  static const Color neutralLight7 = Color(0xFFDDDEE0);
+  static const Color neutralLight8 = Color(0xFFE8E9EB);
+  static const Color neutralLight9 = Color(0xFFF3F4F5);
+  static const Color neutralDark2 = Color(0xFF73767A);
 
   static const Color flutter = Color(0xFF6200EE);
   static const Color flutterLight3 = Color(0xFF9F8FF5);
@@ -253,12 +266,50 @@ class AppColorsLight {
   static const Color flutterLight8 = Color(0xFFF7F9FE);
   static const Color flutterLight9 = Color(0xFFFBFDFF);
   static const Color flutterDark2 = Color(0xFF4F00BD);
+
+  static const Color teal = Color(0xFF26A69A);
+  static const Color tealLight3 = Color(0xFF67C1B8);
+  static const Color tealLight5 = Color(0xFF92D2CC);
+  static const Color tealLight7 = Color(0xFFBEE4E1);
+  static const Color tealLight8 = Color(0xFFD3EDEA);
+  static const Color tealLight9 = Color(0xFFE9F6F5);
+  static const Color tealDark2 = Color(0xFF1E857B);
+
+  static const Color cyan = Color(0xFF00BCD4);
+  static const Color cyanLight3 = Color(0xFF4DD0E1);
+  static const Color cyanLight5 = Color(0xFF80DEEA);
+  static const Color cyanLight7 = Color(0xFFB2EBF2);
+  static const Color cyanLight8 = Color(0xFFCCF2F6);
+  static const Color cyanLight9 = Color(0xFFE5F8FA);
+  static const Color cyanDark2 = Color(0xFF0097A7);
+
+  static const Color pink = Color(0xFFE91E63);
+  static const Color pinkLight3 = Color(0xFFEF5B8A);
+  static const Color pinkLight5 = Color(0xFFF48EB1);
+  static const Color pinkLight7 = Color(0xFFF9C1D7);
+  static const Color pinkLight8 = Color(0xFFFBD7E5);
+  static const Color pinkLight9 = Color(0xFFFDECF3);
+  static const Color pinkDark2 = Color(0xFFBA184F);
+
+  static const Color indigo = Color(0xFF3F51B5);
+  static const Color indigoLight3 = Color(0xFF7986CB);
+  static const Color indigoLight5 = Color(0xFF9FA8DA);
+  static const Color indigoLight7 = Color(0xFFC5CAE9);
+  static const Color indigoLight8 = Color(0xFFD9DCF0);
+  static const Color indigoLight9 = Color(0xFFECEFF7);
+  static const Color indigoDark2 = Color(0xFF324191);
 }
 
 class AppBgColorLight {
   static const Color base = Color(0xFFffffff);
   static const Color page = Color(0xFFf2f3f5);
   static const Color overlay = Color(0xFFffffff);
+
+  /// Semi-transparent page overlay (50% opacity)
+  static const Color pageOverlay50 = Color.fromRGBO(242, 243, 245, 0.5);
+
+  /// Semi-transparent page overlay (70% opacity)
+  static const Color pageOverlay70 = Color.fromRGBO(242, 243, 245, 0.7);
 }
 
 class AppTextColorLight {
@@ -346,13 +397,21 @@ class AppColorsDark {
   static const Color errorLight9 = Color(0xFF2A1C1C);
   static const Color errorDark2 = Color(0xFFF78989);
 
-  static const Color info = Color(0xFF909399);
-  static const Color infoLight3 = Color(0xFF6A6C71);
-  static const Color infoLight5 = Color(0xFF525355);
-  static const Color infoLight7 = Color(0xFF393B3C);
-  static const Color infoLight8 = Color(0xFF2C2D2F);
-  static const Color infoLight9 = Color(0xFF202121);
-  static const Color infoDark2 = Color(0xFFA6A8AD);
+  static const Color info = Color(0xFF409EFF);
+  static const Color infoLight3 = Color(0xFF337ECC);
+  static const Color infoLight5 = Color(0xFF265F99);
+  static const Color infoLight7 = Color(0xFF1A3F66);
+  static const Color infoLight8 = Color(0xFF132F4D);
+  static const Color infoLight9 = Color(0xFF0D2033);
+  static const Color infoDark2 = Color(0xFF66B1FF);
+
+  static const Color neutral = Color(0xFF909399);
+  static const Color neutralLight3 = Color(0xFF6A6C71);
+  static const Color neutralLight5 = Color(0xFF525355);
+  static const Color neutralLight7 = Color(0xFF393B3C);
+  static const Color neutralLight8 = Color(0xFF2C2D2F);
+  static const Color neutralLight9 = Color(0xFF202121);
+  static const Color neutralDark2 = Color(0xFFA6A8AD);
 
   static const Color flutter = Color(0xFF4F00BD);
   static const Color flutterLight3 = Color(0xFF3E0098);
@@ -361,12 +420,50 @@ class AppColorsDark {
   static const Color flutterLight8 = Color(0xFF1B0047);
   static const Color flutterLight9 = Color(0xFF120032);
   static const Color flutterDark2 = Color(0xFF6A33CF);
+
+  static const Color teal = Color(0xFF4DB6AC);
+  static const Color tealLight3 = Color(0xFF3D8B83);
+  static const Color tealLight5 = Color(0xFF2E6963);
+  static const Color tealLight7 = Color(0xFF1F4743);
+  static const Color tealLight8 = Color(0xFF173533);
+  static const Color tealLight9 = Color(0xFF0F2423);
+  static const Color tealDark2 = Color(0xFF70C4BC);
+
+  static const Color cyan = Color(0xFF26C6DA);
+  static const Color cyanLight3 = Color(0xFF1E9AA9);
+  static const Color cyanLight5 = Color(0xFF17757F);
+  static const Color cyanLight7 = Color(0xFF0F4F55);
+  static const Color cyanLight8 = Color(0xFF0B3B40);
+  static const Color cyanLight9 = Color(0xFF07282B);
+  static const Color cyanDark2 = Color(0xFF4DD0E1);
+
+  static const Color pink = Color(0xFFF06292);
+  static const Color pinkLight3 = Color(0xFFB34A6E);
+  static const Color pinkLight5 = Color(0xFF863852);
+  static const Color pinkLight7 = Color(0xFF592637);
+  static const Color pinkLight8 = Color(0xFF421C29);
+  static const Color pinkLight9 = Color(0xFF2C131B);
+  static const Color pinkDark2 = Color(0xFFF48AAF);
+
+  static const Color indigo = Color(0xFF5C6BC0);
+  static const Color indigoLight3 = Color(0xFF465293);
+  static const Color indigoLight5 = Color(0xFF353E6E);
+  static const Color indigoLight7 = Color(0xFF242A49);
+  static const Color indigoLight8 = Color(0xFF1A1F37);
+  static const Color indigoLight9 = Color(0xFF111525);
+  static const Color indigoDark2 = Color(0xFF7E8BD0);
 }
 
 class AppBgColorDark {
   static const Color page = Color(0xFF0a0a0a);
   static const Color base = Color(0xFF141414);
   static const Color overlay = Color(0xFF1d1e1f);
+
+  /// Semi-transparent overlay (50% opacity)
+  static const Color overlayOverlay50 = Color.fromRGBO(29, 30, 31, 0.5);
+
+  /// Semi-transparent overlay (70% opacity)
+  static const Color overlayOverlay70 = Color.fromRGBO(29, 30, 31, 0.7);
 }
 
 class AppTextColorDark {
@@ -411,6 +508,17 @@ class AppOverlayColorDark {
 class AppMaskColorDark {
   static const Color extraLight = Color.fromRGBO(0, 0, 0, 0.8);
   static const Color base = Color.fromRGBO(0, 0, 0, 0.8);
+}
+
+class AppShadowColor {
+  /// Light shadow for subtle depth (cards, buttons)
+  static const Color light = Color.fromRGBO(0, 0, 0, 0.1);
+
+  /// Medium shadow for elevated elements
+  static const Color medium = Color.fromRGBO(0, 0, 0, 0.2);
+
+  /// Strong shadow for modals, dropdowns
+  static const Color strong = Color.fromRGBO(0, 0, 0, 0.3);
 }
 
 class AppBorderRadius {
@@ -473,6 +581,9 @@ class AppSpacings {
   static double get pLg =>
       _screenService.scale(16.0, density: _visualDensityService.density);
 
+  static double get pXl =>
+      _screenService.scale(32.0, density: _visualDensityService.density);
+
   static EdgeInsets get paddingXs => EdgeInsets.all(pXs);
 
   static EdgeInsets get paddingSm => EdgeInsets.all(pSm);
@@ -480,6 +591,8 @@ class AppSpacings {
   static EdgeInsets get paddingMd => EdgeInsets.all(pMd);
 
   static EdgeInsets get paddingLg => EdgeInsets.all(pLg);
+
+  static EdgeInsets get paddingXl => EdgeInsets.all(pXl);
 
   static SizedBox get spacingXsVertical => SizedBox(height: pXs);
 
@@ -489,6 +602,8 @@ class AppSpacings {
 
   static SizedBox get spacingLgVertical => SizedBox(height: pLg);
 
+  static SizedBox get spacingXlVertical => SizedBox(height: pXl);
+
   static SizedBox get spacingXsHorizontal => SizedBox(width: pXs);
 
   static SizedBox get spacingSmHorizontal => SizedBox(width: pSm);
@@ -496,6 +611,23 @@ class AppSpacings {
   static SizedBox get spacingMdHorizontal => SizedBox(width: pMd);
 
   static SizedBox get spacingLgHorizontal => SizedBox(width: pLg);
+
+  static SizedBox get spacingXlHorizontal => SizedBox(width: pXl);
+}
+
+// Standard animation durations
+class AppAnimation {
+  /// Standard duration for UI state changes (200ms)
+  /// Used for: button states, tile selection, color transitions
+  static const Duration standard = Duration(milliseconds: 200);
+
+  /// Fast duration for micro-interactions (100ms)
+  /// Used for: icon changes, small feedback animations
+  static const Duration fast = Duration(milliseconds: 100);
+
+  /// Slow duration for complex animations (300ms)
+  /// Used for: page transitions, modal appearances
+  static const Duration slow = Duration(milliseconds: 300);
 }
 
 class AppFilledButtonsLightThemes {
@@ -617,6 +749,23 @@ class AppFilledButtonsLightThemes {
       disabledBorderColor: AppColorsLight.infoLight5,
     ),
   );
+
+  static FilledButtonThemeData get neutral => FilledButtonThemeData(
+    style: createButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColors.white,
+      bgColor: AppColorsLight.neutral,
+      pressedBgColor: AppColorsLight.neutralDark2,
+      hoveredBgColor: AppColorsLight.neutralLight3,
+      disabledBgColor: AppColorsLight.neutralLight5,
+      borderColor: AppColorsLight.neutral,
+      pressedBorderColor: AppColorsLight.neutralDark2,
+      hoveredBorderColor: AppColorsLight.neutralLight3,
+      disabledBorderColor: AppColorsLight.neutralLight5,
+    ),
+  );
 }
 
 class AppFilledButtonsDarkThemes {
@@ -736,6 +885,23 @@ class AppFilledButtonsDarkThemes {
       pressedBorderColor: AppColorsDark.infoDark2,
       hoveredBorderColor: AppColorsDark.infoLight3,
       disabledBorderColor: AppColorsDark.infoLight5,
+    ),
+  );
+
+  static FilledButtonThemeData get neutral => FilledButtonThemeData(
+    style: createButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
+      bgColor: AppColorsDark.neutral,
+      pressedBgColor: AppColorsDark.neutralDark2,
+      hoveredBgColor: AppColorsDark.neutralLight3,
+      disabledBgColor: AppColorsDark.neutralLight5,
+      borderColor: AppColorsDark.neutral,
+      pressedBorderColor: AppColorsDark.neutralDark2,
+      hoveredBorderColor: AppColorsDark.neutralLight3,
+      disabledBorderColor: AppColorsDark.neutralLight5,
     ),
   );
 }

@@ -449,10 +449,10 @@ class SensorCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: isLight
               ? (isAlert
-                  ? AppColorsLight.warning.withValues(alpha: 0.1)
+                  ? AppColorsLight.warningLight9
                   : AppFillColorLight.base)
               : (isAlert
-                  ? AppColorsDark.warning.withValues(alpha: 0.1)
+                  ? AppColorsDark.warningLight9
                   : AppFillColorDark.base),
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: Border.all(
@@ -614,7 +614,7 @@ class SensorCard extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.blank,
       builder: (context) => SensorDetailBottomSheet(sensor: sensor),
     );
   }
@@ -855,7 +855,7 @@ class _SensorDetailBottomSheetState extends State<SensorDetailBottomSheet> {
                       ? (isLight
                           ? AppColorsLight.primary
                           : AppColorsDark.primary)
-                      : Colors.transparent,
+                      : AppColors.blank,
                   borderRadius: BorderRadius.circular(AppBorderRadius.small),
                   border: Border.all(
                     color: isLight
@@ -870,7 +870,7 @@ class _SensorDetailBottomSheetState extends State<SensorDetailBottomSheet> {
                     fontWeight:
                         isSelected ? FontWeight.w600 : FontWeight.normal,
                     color: isSelected
-                        ? Colors.white
+                        ? AppColors.white
                         : (isLight
                             ? AppTextColorLight.primary
                             : AppTextColorDark.primary),

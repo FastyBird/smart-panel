@@ -13,6 +13,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart'
         AppBorderColorDark,
         AppBorderColorLight,
         AppBorderRadius,
+        AppColors,
         AppColorsDark,
         AppColorsLight,
         AppFillColorDark,
@@ -739,7 +740,7 @@ class _BackendListItem extends StatelessWidget {
         ? Theme.of(context).brightness == Brightness.light
             ? AppColorsLight.primaryLight9
             : AppColorsDark.primaryLight9
-        : Colors.transparent;
+        : AppColors.blank;
 
     return Material(
       color: bgColor,

@@ -122,7 +122,7 @@ class _ColoredSwitchState extends State<ColoredSwitch> {
               alignment: Alignment.center,
               children: [
                 AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
+                  duration: const Duration(milliseconds: 200),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(AppBorderRadius.base),
                     border: Border.all(
@@ -155,7 +155,7 @@ class _ColoredSwitchState extends State<ColoredSwitch> {
                     horizontal: (_trackHeight - _thumbHeight) / 2,
                   ),
                   child: AnimatedAlign(
-                    duration: const Duration(milliseconds: 300),
+                    duration: const Duration(milliseconds: 200),
                     alignment: _switchState
                         ? Alignment.centerRight
                         : Alignment.centerLeft,
@@ -163,7 +163,7 @@ class _ColoredSwitchState extends State<ColoredSwitch> {
                       width: thumbWidth,
                       height: _thumbHeight,
                       decoration: BoxDecoration(
-                        color: Colors.transparent,
+                        color: AppColors.blank,
                         borderRadius:
                             BorderRadius.circular(AppBorderRadius.base),
                         border: Border.all(

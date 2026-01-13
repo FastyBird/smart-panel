@@ -7,6 +7,7 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
+import 'package:fastybird_smart_panel/modules/deck/types/swipe_event.dart';
 import 'package:fastybird_smart_panel/plugins/pages-device-detail/views/view.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -38,8 +39,10 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen> {
   PageController? _pageController;
   int _currentIndex = 0;
   bool _initialized = false;
+  bool _swipeBlocked = false;
 
   StreamSubscription<NavigateToDeckItemEvent>? _deckNavigateSubscription;
+  StreamSubscription<PageSwipeBlockEvent>? _swipeBlockSubscription;
 
   @override
   void initState() {
@@ -47,11 +50,22 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen> {
     // Listen for deck navigation events
     _deckNavigateSubscription =
         _eventBus.on<NavigateToDeckItemEvent>().listen(_onNavigateToDeckItem);
+    // Listen for swipe block events (from interactive widgets like dials)
+    _swipeBlockSubscription =
+        _eventBus.on<PageSwipeBlockEvent>().listen(_onSwipeBlockEvent);
+  }
+
+  void _onSwipeBlockEvent(PageSwipeBlockEvent event) {
+    if (!mounted) return;
+    setState(() {
+      _swipeBlocked = event.blocked;
+    });
   }
 
   @override
   void dispose() {
     _deckNavigateSubscription?.cancel();
+    _swipeBlockSubscription?.cancel();
     _pageController?.dispose();
     super.dispose();
   }
@@ -151,6 +165,9 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen> {
             children: [
               PageView.builder(
                 controller: _pageController,
+                physics: _swipeBlocked
+                    ? const NeverScrollableScrollPhysics()
+                    : null,
                 onPageChanged: (index) {
                   setState(() {
                     _currentIndex = index;

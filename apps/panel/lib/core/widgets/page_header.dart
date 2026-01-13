@@ -37,8 +37,11 @@ class PageHeader extends StatelessWidget {
   /// Optional colored border at bottom (for error/warning states)
   final Color? borderColor;
 
-  /// Background color override
+  /// Background color override (use Colors.transparent for no background)
   final Color? backgroundColor;
+
+  /// Custom subtitle color (overrides default secondary color)
+  final Color? subtitleColor;
 
   PageHeader({
     super.key,
@@ -50,6 +53,7 @@ class PageHeader extends StatelessWidget {
     this.trailing,
     this.borderColor,
     this.backgroundColor,
+    this.subtitleColor,
   });
 
   double _scale(double size) =>
@@ -65,7 +69,7 @@ class PageHeader extends StatelessWidget {
         isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
     final titleColor =
         isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
-    final subtitleColor =
+    final defaultSubtitleColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
     final iconColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
 
@@ -87,7 +91,7 @@ class PageHeader extends StatelessWidget {
         children: [
           // Leading: back button, icon, or custom widget
           _buildLeading(context, iconColor),
-          SizedBox(width: AppSpacings.pMd),
+          AppSpacings.spacingMdHorizontal,
 
           // Title and subtitle
           Expanded(
@@ -106,11 +110,11 @@ class PageHeader extends StatelessWidget {
                   maxLines: 1,
                 ),
                 if (subtitle != null) ...[
-                  SizedBox(height: _scale(1)),
+                  AppSpacings.spacingXsVertical,
                   Text(
                     subtitle!,
                     style: TextStyle(
-                      color: subtitleColor,
+                      color: subtitleColor ?? defaultSubtitleColor,
                       fontSize: AppFontSize.small,
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -123,7 +127,7 @@ class PageHeader extends StatelessWidget {
 
           // Trailing widget
           if (trailing != null) ...[
-            SizedBox(width: AppSpacings.pMd),
+            AppSpacings.spacingMdHorizontal,
             trailing!,
           ],
         ],
@@ -148,7 +152,7 @@ class PageHeader extends StatelessWidget {
             isDark: Theme.of(context).brightness == Brightness.dark,
           ),
           if (icon != null) ...[
-            SizedBox(width: AppSpacings.pMd),
+            AppSpacings.spacingMdHorizontal,
             Icon(
               icon,
               color: iconColor,
@@ -194,8 +198,9 @@ class _HeaderIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bgColor = isDark ? AppFillColorDark.light : AppFillColorLight.light;
-    final iconColor =
-        isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
+    final borderColor = isDark ? null : AppBorderColorLight.base;
+    final color =
+        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 
     return GestureDetector(
       onTap: onTap,
@@ -204,12 +209,15 @@ class _HeaderIconButton extends StatelessWidget {
         height: _scale(36),
         decoration: BoxDecoration(
           color: bgColor,
-          borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+          borderRadius: BorderRadius.circular(AppBorderRadius.round),
+          border: borderColor != null
+              ? Border.all(color: borderColor, width: _scale(1))
+              : null,
         ),
         child: Icon(
           icon,
           size: _scale(18),
-          color: iconColor,
+          color: color,
         ),
       ),
     );
@@ -243,8 +251,9 @@ class HeaderIconButton extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = backgroundColor ??
         (isDark ? AppFillColorDark.light : AppFillColorLight.light);
+    final borderColor = isDark ? null : AppBorderColorLight.base;
     final color = iconColor ??
-        (isDark ? AppTextColorDark.primary : AppTextColorLight.primary);
+        (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary);
 
     return GestureDetector(
       onTap: onTap,
@@ -253,12 +262,99 @@ class HeaderIconButton extends StatelessWidget {
         height: _scale(36),
         decoration: BoxDecoration(
           color: bgColor,
-          borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+          borderRadius: BorderRadius.circular(AppBorderRadius.round),
+          border: borderColor != null
+              ? Border.all(color: borderColor, width: _scale(1))
+              : null,
         ),
         child: Icon(
           icon,
           size: _scale(18),
           color: color,
+        ),
+      ),
+    );
+  }
+}
+
+/// Icon in a colored container for device/domain headers
+class HeaderDeviceIcon extends StatelessWidget {
+  final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
+
+  final IconData icon;
+  final Color backgroundColor;
+  final Color iconColor;
+  final double? size;
+
+  HeaderDeviceIcon({
+    super.key,
+    required this.icon,
+    required this.backgroundColor,
+    required this.iconColor,
+    this.size,
+  });
+
+  double _scale(double s) =>
+      _screenService.scale(s, density: _visualDensityService.density);
+
+  @override
+  Widget build(BuildContext context) {
+    final containerSize = size ?? _scale(44);
+
+    return Container(
+      width: containerSize,
+      height: containerSize,
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+      ),
+      child: Icon(
+        icon,
+        color: iconColor,
+        size: _scale(24),
+      ),
+    );
+  }
+}
+
+/// Home button for navigation back to home
+class HeaderHomeButton extends StatelessWidget {
+  final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
+
+  final VoidCallback? onTap;
+
+  HeaderHomeButton({
+    super.key,
+    this.onTap,
+  });
+
+  double _scale(double s) =>
+      _screenService.scale(s, density: _visualDensityService.density);
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? AppFillColorDark.light : AppFillColorLight.darker;
+    final iconColor =
+        isDark ? AppTextColorDark.secondary : AppTextColorLight.primary;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: _scale(32),
+        height: _scale(32),
+        decoration: BoxDecoration(
+          color: bgColor,
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          Icons.home_outlined,
+          size: _scale(18),
+          color: iconColor,
         ),
       ),
     );

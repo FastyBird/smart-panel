@@ -66,7 +66,7 @@ class AppBottomNavigation extends StatelessWidget {
                       : AppTextColorDark.regular;
 
               return Material(
-                color: Color.lerp(Colors.transparent, Colors.transparent, t),
+                color: Color.lerp(AppColors.blank, AppColors.blank, t),
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
                   onTap: () => onTap.call(items.indexOf(item)),
@@ -150,7 +150,7 @@ class AppBottomNavigationBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return enableFloatingNavBar
         ? BottomAppBar(
-            color: Colors.transparent,
+            color: AppColors.blank,
             elevation: 0,
             child: Container(
               decoration: BoxDecoration(
@@ -160,7 +160,7 @@ class AppBottomNavigationBar extends StatelessWidget {
                     : AppBgColorDark.base,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
+                    color: AppShadowColor.light,
                     blurRadius: 4,
                     spreadRadius: 1,
                     offset: const Offset(0, 2),
@@ -184,7 +184,7 @@ class AppBottomNavigationBar extends StatelessWidget {
                   : AppBgColorDark.base,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
+                  color: AppShadowColor.light,
                   blurRadius: 4,
                   spreadRadius: 1,
                   offset: const Offset(0, -2),

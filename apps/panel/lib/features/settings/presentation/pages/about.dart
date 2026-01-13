@@ -86,7 +86,9 @@ class _AboutPageState extends State<AboutPage> {
                       'Version $_appVersion',
                       style: TextStyle(
                         fontSize: AppFontSize.extraSmall,
-                        color: Colors.grey,
+                        color: Theme.of(context).brightness == Brightness.light
+                            ? AppTextColorLight.secondary
+                            : AppTextColorDark.secondary,
                       ),
                     ),
                   ],
@@ -320,7 +322,7 @@ class _AboutPageState extends State<AboutPage> {
           AppSpacings.pSm / 2, // Grid spacing
       child: Material(
         elevation: 0,
-        color: Colors.transparent,
+        color: AppColors.blank,
         child: ListTile(
           leading: showLoading
               ? CircularProgressIndicator()

@@ -52,4 +52,5 @@ export 'package:fastybird_smart_panel/modules/deck/presentation/system_pages/mas
 export 'package:fastybird_smart_panel/modules/deck/presentation/system_pages/room_overview.dart';
 
 // Views
+export 'package:fastybird_smart_panel/modules/deck/views/climate_role_detail_page.dart';
 export 'package:fastybird_smart_panel/modules/deck/views/light_role_detail_page.dart';

@@ -111,8 +111,8 @@ class _DomainViewPageState extends State<DomainViewPage> {
       padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
         color: Theme.of(context).brightness == Brightness.light
-            ? AppBgColorLight.page.withValues(alpha: 0.5)
-            : AppBgColorDark.overlay.withValues(alpha: 0.5),
+            ? AppBgColorLight.pageOverlay50
+            : AppBgColorDark.overlayOverlay50,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
       child: Row(

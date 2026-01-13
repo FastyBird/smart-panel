@@ -1232,7 +1232,7 @@ class _ThermostatTilesState extends State<ThermostatTiles> {
 
     return Material(
       elevation: 0,
-      color: Colors.transparent,
+      color: AppColors.blank,
       child: ListTile(
         minTileHeight: _screenService.scale(
           35,
@@ -1324,7 +1324,7 @@ class _ThermostatTilesState extends State<ThermostatTiles> {
 
     return Material(
       elevation: 0,
-      color: Colors.transparent,
+      color: AppColors.blank,
       child: ListTile(
         minTileHeight: _screenService.scale(
           25,

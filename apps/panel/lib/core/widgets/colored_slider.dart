@@ -42,7 +42,7 @@ class ColoredSlider extends StatefulWidget {
     this.thumbWidth,
     this.background,
     this.thumbColor = AppColors.white,
-    this.thumbDividerColor = Colors.grey,
+    this.thumbDividerColor = AppBorderColorLight.dark,
     this.vertical = false,
     this.onValueChanged,
     this.activeTrackColor,
@@ -153,16 +153,16 @@ class _ColoredSliderState extends State<ColoredSlider> {
             SliderTheme(
               data: SliderTheme.of(context).copyWith(
                 activeTrackColor: widget.background != null
-                    ? Colors.transparent
+                    ? AppColors.blank
                     : widget.activeTrackColor,
                 inactiveTrackColor: widget.background != null
-                    ? Colors.transparent
+                    ? AppColors.blank
                     : widget.inactiveTrackColor,
                 disabledActiveTrackColor: widget.background != null
-                    ? Colors.transparent
+                    ? AppColors.blank
                     : widget.disabledActiveTrackColor,
                 disabledInactiveTrackColor: widget.background != null
-                    ? Colors.transparent
+                    ? AppColors.blank
                     : widget.disabledInactiveTrackColor,
                 trackHeight: trackHeight,
                 trackShape: RoundedRectTrackShape(
@@ -178,7 +178,7 @@ class _ColoredSliderState extends State<ColoredSlider> {
                       )
                     : SliderComponentShape.noThumb,
                 overlayShape: SliderComponentShape.noOverlay,
-                overlayColor: Colors.transparent,
+                overlayColor: AppColors.blank,
               ),
               child: Slider(
                 value: actualValue.toDouble(),
@@ -214,8 +214,8 @@ class RoundedRectThumbShape extends SliderComponentShape {
     required this.thumbWidth,
     required this.thumbHeight,
     required this.borderRadius,
-    this.thumbColor = Colors.white,
-    this.dividerColor = Colors.grey,
+    this.thumbColor = AppColors.white,
+    this.dividerColor = AppBorderColorLight.dark,
   });
 
   @override

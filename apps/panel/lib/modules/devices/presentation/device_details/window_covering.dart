@@ -168,7 +168,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                           position: _position,
                           animationController: _animationController,
                         ),
-                        SizedBox(width: AppSpacings.pSm),
+                        AppSpacings.spacingSmHorizontal,
                         _WindowCoveringPositionSlider(
                           device: widget._device,
                           position: _position,
@@ -316,7 +316,7 @@ class _WindowCoveringStatus extends StatelessWidget {
                 size: AppFontSize.base,
                 color: _getStatusColor(context, _device.windowCoveringStatus),
               ),
-              SizedBox(width: AppSpacings.pXs),
+              AppSpacings.spacingXsHorizontal,
               Text(
                 _getStatusText(localizations, _device.windowCoveringStatus),
                 style: TextStyle(
@@ -419,7 +419,7 @@ class _WindowCoveringCommandButtons extends StatelessWidget {
             isActive: _device.isWindowCoveringOpening,
           ),
         ),
-        SizedBox(width: AppSpacings.pSm),
+        AppSpacings.spacingSmHorizontal,
         Expanded(
           child: _CommandButton(
             icon: MdiIcons.stop,
@@ -429,7 +429,7 @@ class _WindowCoveringCommandButtons extends StatelessWidget {
             isStopButton: true,
           ),
         ),
-        SizedBox(width: AppSpacings.pSm),
+        AppSpacings.spacingSmHorizontal,
         Expanded(
           child: _CommandButton(
             icon: MdiIcons.chevronDown,
@@ -569,7 +569,7 @@ class _CommandButtonState extends State<_CommandButton>
               ),
               color: iconColor,
             ),
-            SizedBox(height: AppSpacings.pXs),
+            AppSpacings.spacingXsVertical,
             Text(
               widget._label,
               style: TextStyle(
@@ -991,8 +991,8 @@ class _WindowCoveringPainter extends CustomPainter {
     // Draw tube highlight
     final highlightPaint = Paint()
       ..color = brightness == Brightness.light
-          ? Colors.white.withValues(alpha: 0.3)
-          : Colors.white.withValues(alpha: 0.2)
+          ? AppColors.white.withValues(alpha: 0.3)
+          : AppColors.white.withValues(alpha: 0.2)
       ..style = PaintingStyle.fill;
 
     canvas.drawRect(
@@ -1163,7 +1163,7 @@ class _WindowCoveringTiltControlState extends State<_WindowCoveringTiltControl> 
               MdiIcons.rotateLeft,
               size: AppFontSize.base,
             ),
-            SizedBox(width: AppSpacings.pXs),
+            AppSpacings.spacingXsHorizontal,
             Text(
               localizations.window_covering_tilt_label,
               style: TextStyle(
@@ -1180,7 +1180,7 @@ class _WindowCoveringTiltControlState extends State<_WindowCoveringTiltControl> 
             ),
           ],
         ),
-        SizedBox(height: AppSpacings.pXs),
+        AppSpacings.spacingXsVertical,
         SizedBox(
           height: _screenService.scale(
             40,
@@ -1336,7 +1336,7 @@ class _WarningTile extends StatelessWidget {
             size: AppFontSize.large,
             color: _color,
           ),
-          SizedBox(width: AppSpacings.pSm),
+          AppSpacings.spacingSmHorizontal,
           Expanded(
             child: Text(
               _message,
@@ -1516,7 +1516,7 @@ class _WindowCoveringTiles extends StatelessWidget {
         .map(
           (item) => Material(
             elevation: 0,
-            color: Colors.transparent,
+            color: AppColors.blank,
             child: ListTile(
               minTileHeight: _screenService.scale(
                 25,

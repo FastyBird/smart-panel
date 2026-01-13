@@ -76,7 +76,7 @@ class ButtonTileBox extends StatelessWidget {
         boxShadow: isOn
             ? [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
+                  color: AppShadowColor.light,
                   blurRadius: shadowBlur,
                   spreadRadius: shadowSpread,
                   offset: Offset(0, shadowOffsetY),

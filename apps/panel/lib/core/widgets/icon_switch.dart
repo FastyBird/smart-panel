@@ -75,7 +75,7 @@ class _IconSwitchState extends State<IconSwitch>
           children: [
             // Background Track
             AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
+              duration: const Duration(milliseconds: 200),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(screenService.scale(
                   20,
@@ -121,7 +121,7 @@ class _IconSwitchState extends State<IconSwitch>
             ),
             // Thumb with Icon
             AnimatedAlign(
-              duration: const Duration(milliseconds: 300),
+              duration: const Duration(milliseconds: 200),
               alignment:
                   switchState ? Alignment.centerRight : Alignment.centerLeft,
               child: Container(
@@ -135,7 +135,7 @@ class _IconSwitchState extends State<IconSwitch>
                 ),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.transparent,
+                  color: AppColors.blank,
                   border: Border.all(
                     color: widget.toggleMode
                         ? (Theme.of(context).brightness == Brightness.light

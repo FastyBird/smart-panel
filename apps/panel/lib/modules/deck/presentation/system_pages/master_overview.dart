@@ -367,11 +367,11 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
       decoration: BoxDecoration(
         color: allOnline
             ? (Theme.of(context).brightness == Brightness.light
-                ? AppColorsLight.success.withValues(alpha: 0.15)
-                : AppColorsDark.success.withValues(alpha: 0.2))
+                ? AppColorsLight.successLight9
+                : AppColorsDark.successLight9)
             : (Theme.of(context).brightness == Brightness.light
-                ? AppColorsLight.warning.withValues(alpha: 0.15)
-                : AppColorsDark.warning.withValues(alpha: 0.2)),
+                ? AppColorsLight.warningLight9
+                : AppColorsDark.warningLight9),
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
       child: Row(
@@ -388,7 +388,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
                     ? AppColorsLight.warning
                     : AppColorsDark.warning),
           ),
-          SizedBox(width: AppSpacings.pXs),
+          AppSpacings.spacingXsHorizontal,
           Text(
             '$_onlineDevices/$_totalDevices',
             style: TextStyle(
@@ -421,8 +421,8 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
       ),
       decoration: BoxDecoration(
         color: Theme.of(context).brightness == Brightness.light
-            ? AppColorsLight.danger.withValues(alpha: 0.15)
-            : AppColorsDark.danger.withValues(alpha: 0.2),
+            ? AppColorsLight.dangerLight9
+            : AppColorsDark.dangerLight9,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
       child: Row(
@@ -435,7 +435,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
                 ? AppColorsLight.danger
                 : AppColorsDark.danger,
           ),
-          SizedBox(width: AppSpacings.pXs),
+          AppSpacings.spacingXsHorizontal,
           Text(
             '$_alertsCount',
             style: TextStyle(
@@ -559,8 +559,8 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
       padding: AppSpacings.paddingSm,
       decoration: BoxDecoration(
         color: Theme.of(context).brightness == Brightness.light
-            ? AppBgColorLight.page.withValues(alpha: 0.5)
-            : AppBgColorDark.overlay.withValues(alpha: 0.5),
+            ? AppBgColorLight.pageOverlay50
+            : AppBgColorDark.overlayOverlay50,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
       child: Column(
@@ -661,7 +661,13 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
                 color: Theme.of(context).colorScheme.primary,
               ),
             )
-          : Icon(scene.iconData, size: 18),
+          : Icon(
+              scene.iconData,
+              size: _screenService.scale(
+                18,
+                density: _visualDensityService.density,
+              ),
+            ),
       label: Text(scene.name),
       onPressed: _isSceneTriggering ? null : () => _triggerScene(scene),
     );
@@ -719,8 +725,8 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
         padding: AppSpacings.paddingSm,
         decoration: BoxDecoration(
           color: Theme.of(context).brightness == Brightness.light
-              ? AppBgColorLight.page.withValues(alpha: 0.5)
-              : AppBgColorDark.overlay.withValues(alpha: 0.5),
+              ? AppBgColorLight.pageOverlay50
+              : AppBgColorDark.overlayOverlay50,
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
         ),
         child: Row(
