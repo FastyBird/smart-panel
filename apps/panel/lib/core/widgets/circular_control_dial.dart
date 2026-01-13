@@ -227,6 +227,10 @@ class _CircularControlDialState extends State<CircularControlDial>
 
   @override
   void dispose() {
+    // Ensure swipe is unblocked if disposed while dragging
+    if (_isDragging) {
+      _eventBus.fire(PageSwipeBlockEvent(blocked: false));
+    }
     _glowController.dispose();
     super.dispose();
   }
@@ -301,16 +305,22 @@ class _CircularControlDialState extends State<CircularControlDial>
 
   void _handleDragEnd() {
     if (_isDragging) {
-      setState(() => _isDragging = false);
+      // Fire unblock event before setState to ensure it fires even if widget is disposed
       _eventBus.fire(PageSwipeBlockEvent(blocked: false));
+      if (mounted) {
+        setState(() => _isDragging = false);
+      }
       widget.onChanged?.call(_value);
     }
   }
 
   void _handleDragCancel() {
     if (_isDragging) {
-      setState(() => _isDragging = false);
+      // Fire unblock event before setState to ensure it fires even if widget is disposed
       _eventBus.fire(PageSwipeBlockEvent(blocked: false));
+      if (mounted) {
+        setState(() => _isDragging = false);
+      }
     }
   }
 
