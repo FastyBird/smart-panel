@@ -49,7 +49,7 @@ class DeviceToggleSwitch extends StatelessWidget {
           child: Container(
             width: _scale(22),
             height: _scale(22),
-            margin: EdgeInsets.all(_scale(3)),
+            margin: AppSpacings.paddingXs,
             decoration: BoxDecoration(
               color: thumbColor,
               shape: BoxShape.circle,

@@ -75,7 +75,7 @@ class InfoTile extends StatelessWidget {
         isDark ? AppColorsDark.warningLight7 : AppColorsLight.warningLight7;
 
     return Container(
-      padding: EdgeInsets.all(_scale(14)),
+      padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
         color: isWarning ? warningBgColor : cardColor,
         borderRadius: BorderRadius.circular(AppBorderRadius.medium),

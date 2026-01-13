@@ -125,10 +125,10 @@ class ValueSelectorRow<T> extends StatelessWidget {
       onTap: onChanged != null ? () => _showSelectorSheet(context, isDark) : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        margin: EdgeInsets.symmetric(vertical: _scale(4)),
+        margin: EdgeInsets.symmetric(vertical: AppSpacings.pSm),
         padding: EdgeInsets.symmetric(
           horizontal: AppSpacings.pMd,
-          vertical: layout == ValueSelectorRowLayout.compact ? _scale(10) : _scale(14),
+          vertical: AppSpacings.pMd,
         ),
         decoration: BoxDecoration(
           color: _isActive
@@ -400,7 +400,7 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
                           ),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
-                            padding: EdgeInsets.symmetric(vertical: _scale(13)),
+                            padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
                             decoration: BoxDecoration(
                               color: innerBgColor,
                               borderRadius:

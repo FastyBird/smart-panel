@@ -95,7 +95,7 @@ class SpeedSlider extends StatelessWidget {
     return Opacity(
       opacity: enabled ? 1.0 : 0.5,
       child: Container(
-        padding: EdgeInsets.all(_scale(20)),
+        padding: AppSpacings.paddingLg,
         decoration: BoxDecoration(
           color: cardColor,
           borderRadius: BorderRadius.circular(AppBorderRadius.round),

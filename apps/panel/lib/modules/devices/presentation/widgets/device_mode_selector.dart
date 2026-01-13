@@ -25,7 +25,7 @@ class DeviceModeSelector extends StatelessWidget {
         isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
 
     return Container(
-      padding: EdgeInsets.all(_scale(8)),
+      padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(AppBorderRadius.medium),

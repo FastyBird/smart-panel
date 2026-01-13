@@ -41,10 +41,10 @@ class DeviceToggleRow extends StatelessWidget {
         isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled;
 
     return Container(
-      margin: EdgeInsets.symmetric(vertical: _scale(4)),
+      margin: EdgeInsets.symmetric(vertical: AppSpacings.pSm),
       padding: EdgeInsets.symmetric(
         horizontal: AppSpacings.pMd,
-        vertical: _scale(14),
+        vertical: AppSpacings.pMd,
       ),
       decoration: BoxDecoration(
         color: cardColor,
