@@ -452,8 +452,9 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () =>
-                      widget.onConfirm?.call(widget.options[_selectedIndex].value),
+                  onPressed: widget.options.isEmpty
+                      ? null
+                      : () => widget.onConfirm?.call(widget.options[_selectedIndex].value),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: effectiveActiveColor,
                     foregroundColor: AppColors.white,
