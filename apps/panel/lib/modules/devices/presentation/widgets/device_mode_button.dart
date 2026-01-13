@@ -67,7 +67,7 @@ class DeviceModeButton extends StatelessWidget {
                 size: _scale(22),
                 color: isSelected ? effectiveActiveColor : mutedColor,
               ),
-              SizedBox(height: _scale(4)),
+              AppSpacings.spacingXsVertical,
               Text(
                 label,
                 style: TextStyle(

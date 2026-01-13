@@ -517,7 +517,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                       ? AppTextColorDark.secondary
                       : AppTextColorLight.secondary,
                 ),
-                SizedBox(width: AppSpacings.pXs),
+                AppSpacings.spacingXsHorizontal,
                 Text(
                   '${_state.currentTemp.toStringAsFixed(1)}°',
                   style: TextStyle(
@@ -531,7 +531,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
               ],
             ),
           ),
-          SizedBox(width: AppSpacings.pMd),
+          AppSpacings.spacingMdHorizontal,
           HeaderHomeButton(
             onTap: _navigateToHome,
           ),
@@ -567,10 +567,10 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildPrimaryControlCard(context, dialSize: _scale(200)),
-                SizedBox(height: AppSpacings.pLg),
+                AppSpacings.spacingLgVertical,
                 if (hasSensors) ...[
                   SectionTitle(title: 'Sensors', icon: MdiIcons.eyeSettings),
-                  SizedBox(height: AppSpacings.pMd),
+                  AppSpacings.spacingMdVertical,
                   if (isSmallScreen)
                     // Small: horizontal scroll with horizontal tiles (original behavior)
                     SizedBox(
@@ -600,11 +600,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                       aspectRatio: 1.0,
                       statusFontSize: AppFontSize.extraSmall,
                     ),
-                  SizedBox(height: AppSpacings.pLg),
+                  AppSpacings.spacingLgVertical,
                 ],
                 if (hasAuxiliary) ...[
                   SectionTitle(title: 'Auxiliary', icon: MdiIcons.devices),
-                  SizedBox(height: AppSpacings.pMd),
+                  AppSpacings.spacingMdVertical,
                   _buildAuxiliaryGrid(
                     context,
                     crossAxisCount: 2,
@@ -616,7 +616,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           ),
         ),
         // Fixed space at bottom for swipe dots
-        SizedBox(height: AppSpacings.pLg),
+        AppSpacings.spacingLgVertical,
       ],
     );
   }
@@ -692,16 +692,16 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                 children: [
                   if (hasSensors) ...[
                     SectionTitle(title: 'Sensors', icon: MdiIcons.eyeSettings),
-                    SizedBox(height: AppSpacings.pMd),
+                    AppSpacings.spacingMdVertical,
                     _buildSensorsGrid(context,
                         crossAxisCount: 2,
                         aspectRatio: 2.5,
                         showInactiveBorder: true),
-                    if (hasAuxiliary) SizedBox(height: AppSpacings.pLg),
+                    if (hasAuxiliary) AppSpacings.spacingLgVertical,
                   ],
                   if (hasAuxiliary) ...[
                     SectionTitle(title: 'Auxiliary', icon: MdiIcons.devices),
-                    SizedBox(height: AppSpacings.pMd),
+                    AppSpacings.spacingMdVertical,
                     _buildAuxiliaryGrid(context,
                         crossAxisCount: 2,
                         aspectRatio: 2.5,
@@ -763,16 +763,16 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                 children: [
                   if (hasSensors) ...[
                     SectionTitle(title: 'Sensors', icon: MdiIcons.eyeSettings),
-                    SizedBox(height: AppSpacings.pMd),
+                    AppSpacings.spacingMdVertical,
                     _buildSensorsGrid(context,
                         crossAxisCount: 1,
                         aspectRatio: 3.0,
                         showInactiveBorder: true),
-                    if (hasAuxiliary) SizedBox(height: AppSpacings.pLg),
+                    if (hasAuxiliary) AppSpacings.spacingLgVertical,
                   ],
                   if (hasAuxiliary) ...[
                     SectionTitle(title: 'Auxiliary', icon: MdiIcons.devices),
-                    SizedBox(height: AppSpacings.pMd),
+                    AppSpacings.spacingMdVertical,
                     _buildAuxiliaryGrid(context,
                         crossAxisCount: 1,
                         aspectRatio: 3.0,
@@ -883,7 +883,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                         fontSize: AppFontSize.extraSmall,
                       ),
                     ),
-                    SizedBox(width: AppSpacings.pXs),
+                    AppSpacings.spacingXsHorizontal,
                     Icon(
                       Icons.chevron_right,
                       color: isDark
@@ -985,9 +985,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
               displayFormat: DialDisplayFormat.temperature,
               onChanged: _setTargetTemp,
             ),
-            SizedBox(height: AppSpacings.pMd),
+            AppSpacings.spacingMdVertical,
             _buildModeSelector(context),
-            SizedBox(height: AppSpacings.pSm),
+            AppSpacings.spacingSmVertical,
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -1000,7 +1000,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                     fontSize: AppFontSize.extraSmall,
                   ),
                 ),
-                SizedBox(width: AppSpacings.pXs),
+                AppSpacings.spacingXsHorizontal,
                 Icon(
                   Icons.chevron_right,
                   color: isDark
@@ -1049,7 +1049,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         return ListView.separated(
           scrollDirection: Axis.horizontal,
           itemCount: _state.sensors.length,
-          separatorBuilder: (context, index) => SizedBox(width: AppSpacings.pMd),
+          separatorBuilder: (context, index) => AppSpacings.spacingMdHorizontal,
           itemBuilder: (context, index) {
             return SizedBox(
               width: tileWidth,

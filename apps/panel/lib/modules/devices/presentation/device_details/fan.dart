@@ -133,7 +133,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
             icon: Icons.arrow_back_ios_new,
             onTap: widget.onBack,
           ),
-          SizedBox(width: _scale(12)),
+          AppSpacings.spacingMdHorizontal,
           Container(
             width: _scale(44),
             height: _scale(44),
@@ -192,7 +192,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
                       onChanged: (v) =>
                           setState(() => _state = _state.copyWith(speed: v)),
                     ),
-                    SizedBox(height: AppSpacings.pLg),
+                    AppSpacings.spacingLgVertical,
                     _buildOptions(isDark),
                   ],
                 ),
@@ -238,7 +238,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
                     onChanged: (v) =>
                         setState(() => _state = _state.copyWith(speed: v ?? 0)),
                   ),
-                  SizedBox(height: _scale(8)),
+                  AppSpacings.spacingSmVertical,
                   _buildOptions(isDark),
                 ],
               ),
@@ -257,7 +257,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
       child: Column(
         children: [
           _buildControlCard(isDark, fanColor),
-          SizedBox(height: AppSpacings.pMd),
+          AppSpacings.spacingMdVertical,
           SpeedSlider(
             value: _state.speed,
             activeColor: fanColor,
@@ -265,7 +265,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
             onChanged: (v) =>
                 setState(() => _state = _state.copyWith(speed: v)),
           ),
-          SizedBox(height: AppSpacings.pMd),
+          AppSpacings.spacingMdVertical,
           _buildOptions(isDark),
         ],
       ),
@@ -298,7 +298,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
               speed: _state.isOn ? 0 : 0.6,
             )),
           ),
-          SizedBox(height: AppSpacings.pLg),
+          AppSpacings.spacingLgVertical,
           _buildModeSelector(isDark, fanColor),
         ],
       ),
@@ -448,7 +448,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
           showDoubleBorder: false,
           showInactiveBorder: true,
         ),
-        SizedBox(height: _scale(8)),
+        AppSpacings.spacingSmVertical,
         UniversalTile(
           layout: TileLayout.horizontal,
           icon: Icons.swap_vert,
@@ -462,7 +462,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
           showDoubleBorder: false,
           showInactiveBorder: true,
         ),
-        SizedBox(height: _scale(8)),
+        AppSpacings.spacingSmVertical,
         UniversalTile(
           layout: TileLayout.horizontal,
           icon: Icons.park,
@@ -476,7 +476,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
           showDoubleBorder: false,
           showInactiveBorder: true,
         ),
-        SizedBox(height: _scale(8)),
+        AppSpacings.spacingSmVertical,
         ValueSelectorRow<Duration?>(
           currentValue: _state.timer,
           label: 'Timer',

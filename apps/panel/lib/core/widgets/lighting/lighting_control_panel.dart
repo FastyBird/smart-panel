@@ -318,7 +318,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
             icon: Icons.arrow_back_ios_new,
             onTap: widget.onBack,
           ),
-          SizedBox(width: _scale(12)),
+          AppSpacings.spacingMdHorizontal,
           Container(
             width: _scale(44),
             height: _scale(44),
@@ -560,7 +560,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
                     size: _scale(44),
                     color: widget.isOn ? primaryColor : inactiveColor,
                   ),
-                  SizedBox(height: AppSpacings.pMd),
+                  AppSpacings.spacingMdVertical,
                   Text(
                     widget.isOn ? 'On' : 'Off',
                     style: TextStyle(
@@ -573,7 +573,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
               ),
             ),
           ),
-          SizedBox(height: AppSpacings.pLg),
+          AppSpacings.spacingLgVertical,
           Text(
             infoText,
             style: TextStyle(
@@ -691,7 +691,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
             child: Row(
               children: [
                 for (var j = 0; j < 2; j++) ...[
-                  if (j > 0) SizedBox(width: AppSpacings.pMd),
+                  if (j > 0) AppSpacings.spacingMdHorizontal,
                   Expanded(
                     child: j < rowChannels.length
                         ? UniversalTile(
@@ -1022,7 +1022,7 @@ class _CapabilityTab extends StatelessWidget {
             size: _scale(isLandscape ? 16 : 20),
             color: isSelected ? primaryColor : inactiveColor,
           ),
-          SizedBox(height: AppSpacings.pSm),
+          AppSpacings.spacingSmVertical,
           Text(
             _label,
             style: TextStyle(
@@ -1258,10 +1258,10 @@ class _SliderPanel extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(child: _buildDisplay()),
-            SizedBox(width: AppSpacings.pLg),
+            AppSpacings.spacingLgHorizontal,
             _buildVerticalSlider(),
             if (presets != null) ...[
-              SizedBox(width: AppSpacings.pMd),
+              AppSpacings.spacingMdHorizontal,
               _buildVerticalPresets(),
             ],
           ],
@@ -1273,10 +1273,10 @@ class _SliderPanel extends StatelessWidget {
         child: Column(
           children: [
             Expanded(child: _buildDisplay()),
-            SizedBox(height: AppSpacings.pLg),
+            AppSpacings.spacingLgVertical,
             _buildHorizontalSlider(),
             if (presets != null) ...[
-              SizedBox(height: AppSpacings.pLg),
+              AppSpacings.spacingLgVertical,
               _buildHorizontalPresets(),
             ],
           ],
@@ -1341,7 +1341,7 @@ class _SliderPanel extends StatelessWidget {
                 ],
               ),
               if (sublabel != null) ...[
-                SizedBox(height: AppSpacings.pSm),
+                AppSpacings.spacingSmVertical,
                 Text(
                   sublabel!,
                   style: TextStyle(
@@ -1709,14 +1709,14 @@ class _ColorPanel extends StatelessWidget {
                     flex: 2,
                     child: _buildDisplay(color),
                   ),
-                  SizedBox(height: AppSpacings.pMd),
+                  AppSpacings.spacingMdVertical,
                   _buildColorPresets(presetColors),
                 ],
               ),
             ),
-            SizedBox(width: AppSpacings.pLg),
+            AppSpacings.spacingLgHorizontal,
             _buildVerticalHueSlider(),
-            SizedBox(width: AppSpacings.pMd),
+            AppSpacings.spacingMdHorizontal,
             _buildVerticalSatSlider(),
           ],
         ),
@@ -1731,12 +1731,12 @@ class _ColorPanel extends StatelessWidget {
                 flex: 2,
                 child: _buildDisplay(color),
               ),
-              SizedBox(height: AppSpacings.pLg),
+              AppSpacings.spacingLgVertical,
             ],
             Expanded(child: _buildColorPresets(presetColors)),
-            SizedBox(height: AppSpacings.pLg),
+            AppSpacings.spacingLgVertical,
             _buildHorizontalHueSlider(),
-            SizedBox(height: AppSpacings.pLg),
+            AppSpacings.spacingLgVertical,
             _buildHorizontalSatSlider(),
           ],
         ),
@@ -1770,7 +1770,7 @@ class _ColorPanel extends StatelessWidget {
             return _buildColorSwatch(presetColor);
           }).toList(),
         ),
-        SizedBox(height: AppSpacings.pSm),
+        AppSpacings.spacingSmVertical,
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: presetColors.sublist(4, 8).map((presetColor) {

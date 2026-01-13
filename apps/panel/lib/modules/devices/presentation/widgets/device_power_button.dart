@@ -102,7 +102,7 @@ class DevicePowerButton extends StatelessWidget {
                     size: _scale(44),
                     color: isOn ? effectiveActiveColor : inactiveColor,
                   ),
-                  SizedBox(height: AppSpacings.pMd),
+                  AppSpacings.spacingMdVertical,
                   Text(
                     isOn ? 'On' : 'Off',
                     style: TextStyle(
@@ -116,7 +116,7 @@ class DevicePowerButton extends StatelessWidget {
             ),
           ),
           if (showInfoText) ...[
-            SizedBox(height: AppSpacings.pLg),
+            AppSpacings.spacingLgVertical,
             Text(
               infoText,
               style: TextStyle(

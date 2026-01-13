@@ -124,7 +124,7 @@ class SpeedSlider extends StatelessWidget {
                 ),
               ],
             ),
-            SizedBox(height: AppSpacings.pMd),
+            AppSpacings.spacingMdVertical,
             SliderTheme(
               data: SliderTheme.of(context).copyWith(
                 activeTrackColor: effectiveActiveColor,
@@ -146,7 +146,7 @@ class SpeedSlider extends StatelessWidget {
                 onChanged: enabled ? onChanged : null,
               ),
             ),
-            SizedBox(height: _scale(4)),
+            AppSpacings.spacingXsVertical,
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: steps

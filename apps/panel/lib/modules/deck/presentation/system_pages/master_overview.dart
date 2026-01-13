@@ -388,7 +388,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
                     ? AppColorsLight.warning
                     : AppColorsDark.warning),
           ),
-          SizedBox(width: AppSpacings.pXs),
+          AppSpacings.spacingXsHorizontal,
           Text(
             '$_onlineDevices/$_totalDevices',
             style: TextStyle(
@@ -435,7 +435,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
                 ? AppColorsLight.danger
                 : AppColorsDark.danger,
           ),
-          SizedBox(width: AppSpacings.pXs),
+          AppSpacings.spacingXsHorizontal,
           Text(
             '$_alertsCount',
             style: TextStyle(

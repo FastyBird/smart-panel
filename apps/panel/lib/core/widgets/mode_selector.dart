@@ -261,7 +261,7 @@ class ModeSelector<T> extends StatelessWidget {
             color: isSelected ? colors.active : secondaryColor,
             size: _scale(18),
           ),
-          SizedBox(height: AppSpacings.pXs),
+          AppSpacings.spacingXsVertical,
           Flexible(
             child: Text(
               mode.label,
@@ -299,7 +299,7 @@ class ModeSelector<T> extends StatelessWidget {
             color: isSelected ? colors.active : secondaryColor,
             size: _scale(18),
           ),
-          SizedBox(width: AppSpacings.pSm),
+          AppSpacings.spacingSmHorizontal,
           // When scrollable, don't use Flexible (unbounded width)
           isScrollable ? textWidget : Flexible(child: textWidget),
         ],

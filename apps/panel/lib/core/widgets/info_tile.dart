@@ -94,7 +94,7 @@ class InfoTile extends StatelessWidget {
               fontSize: AppFontSize.extraSmall,
             ),
           ),
-          SizedBox(height: _scale(4)),
+          AppSpacings.spacingXsVertical,
           RichText(
             text: TextSpan(
               style: TextStyle(

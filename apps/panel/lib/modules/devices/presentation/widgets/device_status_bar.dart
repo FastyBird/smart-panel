@@ -79,7 +79,7 @@ class DeviceStatusBar extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: _scale(12)),
+          AppSpacings.spacingMdVertical,
           ClipRRect(
             borderRadius: BorderRadius.circular(_scale(3)),
             child: LinearProgressIndicator(
@@ -90,7 +90,7 @@ class DeviceStatusBar extends StatelessWidget {
             ),
           ),
           if (hint != null) ...[
-            SizedBox(height: _scale(8)),
+            AppSpacings.spacingSmVertical,
             Text(
               hint!,
               style: TextStyle(

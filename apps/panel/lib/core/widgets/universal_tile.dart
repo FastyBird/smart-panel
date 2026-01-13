@@ -166,7 +166,7 @@ class UniversalTile extends StatelessWidget {
                         ),
                       ),
                     ),
-                    SizedBox(height: AppSpacings.pSm),
+                    AppSpacings.spacingSmVertical,
 
                     // Name
                     Text(
@@ -265,7 +265,7 @@ class UniversalTile extends StatelessWidget {
               _scale(32),
               _scale(18),
             ),
-            SizedBox(width: AppSpacings.pMd),
+            AppSpacings.spacingMdHorizontal,
 
             // Text content
             Expanded(

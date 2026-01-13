@@ -149,7 +149,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             icon: Icons.arrow_back_ios_new,
             onTap: widget.onBack,
           ),
-          SizedBox(width: _scale(12)),
+          AppSpacings.spacingMdHorizontal,
           Container(
             width: _scale(44),
             height: _scale(44),
@@ -250,7 +250,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       child: Column(
         children: [
           _buildControlCard(context, isDark, airColor),
-          SizedBox(height: AppSpacings.pMd),
+          AppSpacings.spacingMdVertical,
           _buildStatus(isDark),
         ],
       ),
@@ -282,9 +282,9 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             onTap: () =>
                 setState(() => _state = _state.copyWith(isOn: !_state.isOn)),
           ),
-          SizedBox(height: AppSpacings.pMd),
+          AppSpacings.spacingMdVertical,
           _buildAirQualityBar(context, isDark),
-          SizedBox(height: AppSpacings.pLg),
+          AppSpacings.spacingLgVertical,
           _buildModeSelector(isDark, airColor),
         ],
       ),
@@ -449,7 +449,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             ),
           ],
         ),
-        SizedBox(height: _scale(8)),
+        AppSpacings.spacingSmVertical,
         Container(
           height: _scale(8),
           decoration: BoxDecoration(
@@ -531,20 +531,20 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           ...infoTiles
               .expand((tile) => [
                     SizedBox(width: double.infinity, child: tile),
-                    SizedBox(height: _scale(8)),
+                    AppSpacings.spacingSmVertical,
                   ])
               .take(infoTiles.length * 2 - 1)
         else
           Row(
             children: [
               Expanded(child: infoTiles[0]),
-              SizedBox(width: _scale(10)),
+              AppSpacings.spacingSmHorizontal,
               Expanded(child: infoTiles[1]),
-              SizedBox(width: _scale(10)),
+              AppSpacings.spacingSmHorizontal,
               Expanded(child: infoTiles[2]),
             ],
           ),
-        SizedBox(height: _scale(12)),
+        AppSpacings.spacingMdVertical,
         if (useVerticalLayout)
           ValueSelectorRow<double>(
             currentValue: _state.speed,
@@ -570,7 +570,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             onChanged: (v) =>
                 setState(() => _state = _state.copyWith(speed: v)),
           ),
-        SizedBox(height: _scale(12)),
+        AppSpacings.spacingMdVertical,
         UniversalTile(
           layout: TileLayout.horizontal,
           icon: Icons.lock,
@@ -584,7 +584,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           showDoubleBorder: false,
           showInactiveBorder: true,
         ),
-        SizedBox(height: _scale(8)),
+        AppSpacings.spacingSmVertical,
         ValueSelectorRow<Duration?>(
           currentValue: _state.timer,
           label: 'Timer',

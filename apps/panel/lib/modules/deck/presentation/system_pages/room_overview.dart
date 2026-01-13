@@ -487,7 +487,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
                       ? AppTextColorLight.placeholder
                       : AppTextColorDark.placeholder),
             ),
-            SizedBox(width: AppSpacings.pXs),
+            AppSpacings.spacingXsHorizontal,
             Text(
               isOn ? '$_lightsOnCount/$lightsCount' : 'Off',
               style: TextStyle(
@@ -535,7 +535,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
                 ? AppColorsLight.info
                 : AppColorsDark.info,
           ),
-          SizedBox(width: AppSpacings.pXs),
+          AppSpacings.spacingXsHorizontal,
           Text(
             '${_temperature!.toStringAsFixed(1)}°',
             style: TextStyle(

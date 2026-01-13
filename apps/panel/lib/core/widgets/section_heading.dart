@@ -61,7 +61,7 @@ class SectionTitle extends StatelessWidget {
           color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
           size: _scale(18),
         ),
-        SizedBox(width: AppSpacings.pMd),
+        AppSpacings.spacingMdHorizontal,
         Expanded(
           child: Text(
             title,
@@ -141,7 +141,7 @@ class SectionTitleButton extends StatelessWidget {
                 size: _scale(14),
                 color: contentColor,
               ),
-              SizedBox(width: AppSpacings.pSm),
+              AppSpacings.spacingSmHorizontal,
             ],
             Text(
               label,
@@ -239,7 +239,7 @@ class SectionHeader extends StatelessWidget {
             color: iconColor,
             size: _scale(14),
           ),
-          SizedBox(width: AppSpacings.pMd),
+          AppSpacings.spacingMdHorizontal,
           Text(
             title,
             style: TextStyle(
@@ -249,7 +249,7 @@ class SectionHeader extends StatelessWidget {
             ),
           ),
           if (count != null) ...[
-            SizedBox(width: AppSpacings.pMd),
+            AppSpacings.spacingMdHorizontal,
             Container(
               padding: EdgeInsets.symmetric(
                 horizontal: AppSpacings.pSm,

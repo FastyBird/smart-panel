@@ -341,7 +341,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                     ? AppColorsLight.warning
                     : AppColorsDark.warning),
           ),
-          SizedBox(width: AppSpacings.pXs),
+          AppSpacings.spacingXsHorizontal,
           Text(
             allLocked ? 'Locked' : '$_locksLockedCount/$_locksCount',
             style: TextStyle(
@@ -396,7 +396,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                     ? AppTextColorLight.placeholder
                     : AppTextColorDark.placeholder),
           ),
-          SizedBox(width: AppSpacings.pXs),
+          AppSpacings.spacingXsHorizontal,
           Text(
             _alarmArmed ? 'Armed' : 'Disarmed',
             style: TextStyle(

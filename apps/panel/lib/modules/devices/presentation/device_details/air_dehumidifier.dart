@@ -139,7 +139,7 @@ class _AirDehumidifierDeviceDetailState
             icon: Icons.arrow_back_ios_new,
             onTap: widget.onBack,
           ),
-          SizedBox(width: _scale(12)),
+          AppSpacings.spacingMdHorizontal,
           Container(
             width: _scale(44),
             height: _scale(44),
@@ -282,7 +282,7 @@ class _AirDehumidifierDeviceDetailState
             onChanged: (v) =>
                 setState(() => _state = _state.copyWith(targetHumidity: v)),
           ),
-          SizedBox(height: AppSpacings.pLg),
+          AppSpacings.spacingLgVertical,
           _buildModeSelector(isDark, humidityColor),
         ],
       ),
@@ -391,12 +391,12 @@ class _AirDehumidifierDeviceDetailState
                   onChanged: (v) =>
                       setState(() => _state = _state.copyWith(targetHumidity: v)),
                 ),
-                SizedBox(height: AppSpacings.pMd),
+                AppSpacings.spacingMdVertical,
                 _buildModeSelector(isDark, humidityColor),
               ],
             ),
           ),
-          SizedBox(height: AppSpacings.pMd),
+          AppSpacings.spacingMdVertical,
           _buildStatus(isDark),
         ],
       ),
@@ -488,20 +488,20 @@ class _AirDehumidifierDeviceDetailState
           ...infoTiles
               .expand((tile) => [
                     SizedBox(width: double.infinity, child: tile),
-                    SizedBox(height: _scale(8)),
+                    AppSpacings.spacingSmVertical,
                   ])
               .take(infoTiles.length * 2 - 1)
         else
           Row(
             children: [
               Expanded(child: infoTiles[0]),
-              SizedBox(width: _scale(10)),
+              AppSpacings.spacingSmHorizontal,
               Expanded(child: infoTiles[1]),
-              SizedBox(width: _scale(10)),
+              AppSpacings.spacingSmHorizontal,
               Expanded(child: infoTiles[2]),
             ],
           ),
-        SizedBox(height: _scale(12)),
+        AppSpacings.spacingMdVertical,
         if (useVerticalLayout)
           ValueSelectorRow<double>(
             currentValue: _state.fanSpeed,
@@ -527,7 +527,7 @@ class _AirDehumidifierDeviceDetailState
             enabled: _state.isOn,
             onChanged: (v) => setState(() => _state = _state.copyWith(fanSpeed: v)),
           ),
-        SizedBox(height: _scale(12)),
+        AppSpacings.spacingMdVertical,
         ValueSelectorRow<Duration?>(
           currentValue: _state.timer,
           label: 'Timer',

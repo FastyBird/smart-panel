@@ -149,7 +149,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
               color: _isActive ? effectiveActiveColor : mutedColor,
               size: _scale(20),
             ),
-            SizedBox(width: _scale(10)),
+            AppSpacings.spacingSmHorizontal,
             Expanded(
               child: layout == ValueSelectorRowLayout.compact
                   ? Column(
@@ -164,7 +164,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
                             fontWeight: _isActive ? FontWeight.w500 : FontWeight.w400,
                           ),
                         ),
-                        SizedBox(height: _scale(2)),
+                        AppSpacings.spacingXsVertical,
                         Text(
                           _displayValue,
                           style: TextStyle(
@@ -193,7 +193,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
                   fontWeight: _isActive ? FontWeight.w600 : FontWeight.w400,
                 ),
               ),
-              SizedBox(width: _scale(6)),
+              AppSpacings.spacingXsHorizontal,
             ],
             Icon(
               Icons.chevron_right,
@@ -328,7 +328,7 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
                   ),
                 ),
               ),
-              SizedBox(height: AppSpacings.pMd),
+              AppSpacings.spacingMdVertical,
 
               // Header
               Row(
@@ -360,7 +360,7 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
                   ),
                 ],
               ),
-              SizedBox(height: AppSpacings.pLg),
+              AppSpacings.spacingLgVertical,
 
               // Options Grid
               LayoutBuilder(
@@ -420,7 +420,7 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
                                       : secondaryColor,
                                   size: _scale(20),
                                 ),
-                                SizedBox(height: _scale(4)),
+                                AppSpacings.spacingXsVertical,
                               ],
                               Text(
                                 option.label,
@@ -444,7 +444,7 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
                   );
                 },
               ),
-              SizedBox(height: AppSpacings.pLg),
+              AppSpacings.spacingLgVertical,
 
               // Confirm Button
               SizedBox(

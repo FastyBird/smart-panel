@@ -258,7 +258,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
             icon: Icons.arrow_back_ios_new,
             onTap: () => Navigator.pop(context),
           ),
-          SizedBox(width: _scale(12)),
+          AppSpacings.spacingMdHorizontal,
           HeaderDeviceIcon(
             icon: MdiIcons.thermostat,
             backgroundColor: _getModeLightColor(context),
@@ -285,7 +285,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
                   ? AppTextColorDark.secondary
                   : AppTextColorLight.secondary,
             ),
-            SizedBox(width: AppSpacings.pXs),
+            AppSpacings.spacingXsHorizontal,
             Text(
               '${_state.currentTemp.toStringAsFixed(1)}°',
               style: TextStyle(
@@ -451,7 +451,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
             child: Row(
               children: [
                 for (var j = 0; j < 2; j++) ...[
-                  if (j > 0) SizedBox(width: AppSpacings.pMd),
+                  if (j > 0) AppSpacings.spacingMdHorizontal,
                   Expanded(
                     child: j < rowDevices.length
                         ? _buildDeviceTile(context, rowDevices[j],
@@ -646,7 +646,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
             displayFormat: DialDisplayFormat.temperature,
             onChanged: _setTargetTemp,
           ),
-          SizedBox(height: AppSpacings.pMd),
+          AppSpacings.spacingMdVertical,
           _buildModeSelector(context),
         ],
       ),

@@ -54,7 +54,7 @@ class DeviceToggleRow extends StatelessWidget {
       child: Row(
         children: [
           Icon(icon, color: iconColor, size: _scale(20)),
-          SizedBox(width: _scale(10)),
+          AppSpacings.spacingSmHorizontal,
           Expanded(
             child: Text(
               label,

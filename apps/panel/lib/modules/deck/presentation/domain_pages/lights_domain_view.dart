@@ -498,9 +498,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
                 // Quick Scenes Section
                 if (hasScenes) ...[
-                  if (hasRoles) SizedBox(height: AppSpacings.pLg),
+                  if (hasRoles) AppSpacings.spacingLgVertical,
                   SectionTitle(title: localizations.space_scenes_title, icon: Icons.auto_awesome),
-                  SizedBox(height: AppSpacings.pMd),
+                  AppSpacings.spacingMdVertical,
                   // Use horizontal scroll when other lights present (less vertical space)
                   if (hasOtherLights)
                     SizedBox(
@@ -516,9 +516,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
                 // Other Lights Section
                 if (hasOtherLights) ...[
-                  if (hasRoles || hasScenes) SizedBox(height: AppSpacings.pLg),
+                  if (hasRoles || hasScenes) AppSpacings.spacingLgVertical,
                   _buildOtherLightsTitle(otherLights, otherTargets, localizations),
-                  SizedBox(height: AppSpacings.pMd),
+                  AppSpacings.spacingMdVertical,
                   _buildLightsGrid(
                     context,
                     otherLights,
@@ -532,7 +532,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           ),
         ),
         // Fixed space at bottom for swipe dots
-        SizedBox(height: AppSpacings.pLg),
+        AppSpacings.spacingLgVertical,
       ],
     );
   }
@@ -585,10 +585,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                       tilesPerRow: tilesPerRow,
                     ),
                   ),
-                  SizedBox(height: AppSpacings.pLg),
+                  AppSpacings.spacingLgVertical,
                   // Other Lights header
                   _buildOtherLightsTitle(otherLights, otherTargets, localizations),
-                  SizedBox(height: AppSpacings.pMd),
+                  AppSpacings.spacingMdVertical,
                   // Other Lights grid - fills remaining space
                   Flexible(
                     flex: isLargeScreen ? 2 : 1,
@@ -614,7 +614,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                 ] else if (hasOtherLights) ...[
                   // Only other lights, no roles
                   _buildOtherLightsTitle(otherLights, otherTargets, localizations),
-                  SizedBox(height: AppSpacings.pMd),
+                  AppSpacings.spacingMdVertical,
                   Expanded(
                     child: _buildLandscapeLightsGrid(
                       context,
@@ -650,7 +650,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SectionTitle(title: localizations.space_scenes_title, icon: Icons.auto_awesome),
-                    SizedBox(height: AppSpacings.pMd),
+                    AppSpacings.spacingMdVertical,
                     // Vertical scroll with responsive columns, no limit
                     // 1 column = horizontal tiles, 2+ columns = vertical tiles
                     Expanded(
@@ -686,7 +686,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         return ListView.separated(
           scrollDirection: Axis.horizontal,
           itemCount: roles.length,
-          separatorBuilder: (context, index) => SizedBox(width: AppSpacings.pMd),
+          separatorBuilder: (context, index) => AppSpacings.spacingMdHorizontal,
           itemBuilder: (context, index) {
             return SizedBox(
               width: tileWidth,
@@ -717,7 +717,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         return ListView.separated(
           scrollDirection: Axis.horizontal,
           itemCount: scenes.length,
-          separatorBuilder: (context, index) => SizedBox(width: AppSpacings.pMd),
+          separatorBuilder: (context, index) => AppSpacings.spacingMdHorizontal,
           itemBuilder: (context, index) {
             return SizedBox(
               width: tileWidth,
@@ -756,14 +756,14 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         return ListView.separated(
           scrollDirection: Axis.horizontal,
           itemCount: columnCount,
-          separatorBuilder: (context, index) => SizedBox(width: AppSpacings.pMd),
+          separatorBuilder: (context, index) => AppSpacings.spacingMdHorizontal,
           itemBuilder: (context, colIndex) {
             return SizedBox(
               width: tileWidth,
               child: Column(
                 children: [
                   for (var row = 0; row < maxRows; row++) ...[
-                    if (row > 0) SizedBox(height: AppSpacings.pMd),
+                    if (row > 0) AppSpacings.spacingMdVertical,
                     SizedBox(
                       height: tileHeight,
                       child: () {

@@ -91,7 +91,7 @@ class PageHeader extends StatelessWidget {
         children: [
           // Leading: back button, icon, or custom widget
           _buildLeading(context, iconColor),
-          SizedBox(width: AppSpacings.pMd),
+          AppSpacings.spacingMdHorizontal,
 
           // Title and subtitle
           Expanded(
@@ -127,7 +127,7 @@ class PageHeader extends StatelessWidget {
 
           // Trailing widget
           if (trailing != null) ...[
-            SizedBox(width: AppSpacings.pMd),
+            AppSpacings.spacingMdHorizontal,
             trailing!,
           ],
         ],
@@ -152,7 +152,7 @@ class PageHeader extends StatelessWidget {
             isDark: Theme.of(context).brightness == Brightness.dark,
           ),
           if (icon != null) ...[
-            SizedBox(width: AppSpacings.pMd),
+            AppSpacings.spacingMdHorizontal,
             Icon(
               icon,
               color: iconColor,
