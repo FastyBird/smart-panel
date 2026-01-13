@@ -275,10 +275,12 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
   @override
   void initState() {
     super.initState();
-    _selectedIndex = widget.options
-        .indexWhere((o) => o.value == widget.currentValue)
-        .clamp(0, widget.options.length - 1);
-    if (_selectedIndex < 0) _selectedIndex = 0;
+    if (widget.options.isEmpty) {
+      _selectedIndex = 0;
+    } else {
+      final index = widget.options.indexWhere((o) => o.value == widget.currentValue);
+      _selectedIndex = index < 0 ? 0 : index.clamp(0, widget.options.length - 1);
+    }
   }
 
   double _scale(double value) =>
