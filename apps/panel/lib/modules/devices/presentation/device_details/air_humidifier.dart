@@ -203,7 +203,7 @@ class _AirHumidifierDeviceDetailState
     final humidityColor = DeviceColors.humidity(isDark);
     final borderColor =
         isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
-    final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
+    final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.light;
     final isLargeScreen = _screenService.isLargeScreen;
 
     if (isLargeScreen) {

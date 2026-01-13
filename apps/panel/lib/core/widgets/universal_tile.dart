@@ -398,7 +398,7 @@ class UniversalTile extends StatelessWidget {
           ? activeColor!.withValues(alpha: 0.1)
           : accentColorLight9;
     } else {
-      tileBgColor = isDark ? AppFillColorDark.light : AppFillColorLight.light;
+      tileBgColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
     }
 
     // Border colors
@@ -435,7 +435,7 @@ class UniversalTile extends StatelessWidget {
           ? activeColor!.withValues(alpha: 0.15)
           : accentColorLight5;
     } else {
-      iconBgColor = isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
+      iconBgColor = isDark ? AppFillColorDark.darker : AppFillColorLight.light;
     }
 
     // Icon color

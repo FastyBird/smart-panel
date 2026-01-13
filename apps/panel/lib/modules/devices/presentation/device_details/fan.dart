@@ -160,7 +160,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     final fanColor = DeviceColors.fan(isDark);
     final borderColor =
         isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
-    final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
+    final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.light;
     final isLargeScreen = _screenService.isLargeScreen;
 
     // Large screen: control card only in left column
@@ -192,7 +192,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
                       onChanged: (v) =>
                           setState(() => _state = _state.copyWith(speed: v)),
                     ),
-                    AppSpacings.spacingLgVertical,
+                    AppSpacings.spacingMdVertical,
                     _buildOptions(isDark),
                   ],
                 ),
@@ -238,7 +238,6 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
                     onChanged: (v) =>
                         setState(() => _state = _state.copyWith(speed: v ?? 0)),
                   ),
-                  AppSpacings.spacingSmVertical,
                   _buildOptions(isDark),
                 ],
               ),

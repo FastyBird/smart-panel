@@ -194,7 +194,7 @@ class _AirDehumidifierDeviceDetailState
     final humidityColor = DeviceColors.humidity(isDark);
     final borderColor =
         isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
-    final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
+    final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.light;
     final isLargeScreen = _screenService.isLargeScreen;
 
     if (isLargeScreen) {
@@ -527,7 +527,7 @@ class _AirDehumidifierDeviceDetailState
             enabled: _state.isOn,
             onChanged: (v) => setState(() => _state = _state.copyWith(fanSpeed: v)),
           ),
-        AppSpacings.spacingMdVertical,
+        AppSpacings.spacingSmVertical,
         ValueSelectorRow<Duration?>(
           currentValue: _state.timer,
           label: 'Timer',
