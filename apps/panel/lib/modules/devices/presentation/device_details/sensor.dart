@@ -449,10 +449,10 @@ class SensorCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: isLight
               ? (isAlert
-                  ? AppColorsLight.warning.withValues(alpha: 0.1)
+                  ? AppColorsLight.warningLight9
                   : AppFillColorLight.base)
               : (isAlert
-                  ? AppColorsDark.warning.withValues(alpha: 0.1)
+                  ? AppColorsDark.warningLight9
                   : AppFillColorDark.base),
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: Border.all(

@@ -4,6 +4,9 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
+import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
@@ -437,82 +440,21 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
-    final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+    final primaryColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+    final primaryBgColor =
+        isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight5;
 
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: AppSpacings.pLg,
-        vertical: AppSpacings.pMd,
+    return PageHeader(
+      title: localizations.domain_lights,
+      subtitle: '$lightsOn of $totalLights on',
+      backgroundColor: Colors.transparent,
+      leading: HeaderDeviceIcon(
+        icon: MdiIcons.lightbulbOutline,
+        backgroundColor: primaryBgColor,
+        iconColor: primaryColor,
       ),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: borderColor,
-            width: _scale(1),
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            MdiIcons.lightbulbOutline,
-            color: isDark ? AppColorsDark.primary : AppColorsLight.primary,
-            size: _scale(24),
-          ),
-          SizedBox(width: AppSpacings.pMd),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  localizations.domain_lights,
-                  style: TextStyle(
-                    color: isDark
-                        ? AppTextColorDark.primary
-                        : AppTextColorLight.primary,
-                    fontSize: AppFontSize.large,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  '$roomName \u2022 $lightsOn of $totalLights on',
-                  style: TextStyle(
-                    color: isDark
-                        ? AppTextColorDark.secondary
-                        : AppTextColorLight.secondary,
-                    fontSize: AppFontSize.small,
-                    fontWeight: FontWeight.w400,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          SizedBox(width: AppSpacings.pMd),
-          GestureDetector(
-            onTap: _navigateToHome,
-            child: Container(
-              width: _scale(32),
-              height: _scale(32),
-              decoration: BoxDecoration(
-                color: isDark ? AppFillColorDark.light : AppFillColorLight.darker,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.home_outlined,
-                size: _scale(18),
-                color: isDark
-                    ? AppTextColorDark.secondary
-                    : AppTextColorLight.primary,
-              ),
-            ),
-          ),
-        ],
+      trailing: HeaderHomeButton(
+        onTap: _navigateToHome,
       ),
     );
   }
@@ -533,8 +475,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final hasOtherLights = otherLights.isNotEmpty;
     final hasScenes = _lightingScenes.isNotEmpty;
 
-    // Fixed 4 tiles per row for scenes in portrait
-    const scenesPerRow = 4;
+    // Responsive scenes per row based on screen size
+    // Small: 3, Medium/Large: 4
+    final isSmallScreen = _screenService.isSmallScreen;
+    final scenesPerRow = isSmallScreen ? 3 : 4;
 
     // Use higher aspect ratio (shorter tiles) on medium+ portrait displays
     final isAtLeastMedium = _screenService.isAtLeastMedium;
@@ -555,7 +499,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                 // Quick Scenes Section
                 if (hasScenes) ...[
                   if (hasRoles) SizedBox(height: AppSpacings.pLg),
-                  _buildSectionTitle(context, localizations.space_scenes_title, Icons.auto_awesome),
+                  SectionTitle(title: localizations.space_scenes_title, icon: Icons.auto_awesome),
                   SizedBox(height: AppSpacings.pMd),
                   // Use horizontal scroll when other lights present (less vertical space)
                   if (hasOtherLights)
@@ -567,14 +511,14 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                       ),
                     )
                   else
-                    _buildScenesGrid(context, crossAxisCount: 4),
+                    _buildScenesGrid(context, crossAxisCount: scenesPerRow),
                 ],
 
                 // Other Lights Section
                 if (hasOtherLights) ...[
                   if (hasRoles || hasScenes) SizedBox(height: AppSpacings.pLg),
-                  _buildOtherLightsHeader(context, otherLights, otherTargets, localizations),
-                  SizedBox(height: AppSpacings.pSm),
+                  _buildOtherLightsTitle(otherLights, otherTargets, localizations),
+                  SizedBox(height: AppSpacings.pMd),
                   _buildLightsGrid(
                     context,
                     otherLights,
@@ -612,9 +556,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     // Use ScreenService breakpoints for responsive layout
     // ScreenService auto-updates on rotation via WidgetsBindingObserver
+    // Landscape breakpoints: small ≤800, medium ≤1150, large >1150
     final isLargeScreen = _screenService.isLargeScreen;
     final tilesPerRow = isLargeScreen ? 4 : 3;
-    final maxScenes = isLargeScreen ? 6 : 4;
+    // Scenes: 1 column on small/medium, 2 columns on large
+    final scenesPerRow = isLargeScreen ? 2 : 1;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -641,7 +587,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                   ),
                   SizedBox(height: AppSpacings.pLg),
                   // Other Lights header
-                  _buildOtherLightsHeader(context, otherLights, otherTargets, localizations),
+                  _buildOtherLightsTitle(otherLights, otherTargets, localizations),
                   SizedBox(height: AppSpacings.pMd),
                   // Other Lights grid - fills remaining space
                   Flexible(
@@ -667,7 +613,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                   ),
                 ] else if (hasOtherLights) ...[
                   // Only other lights, no roles
-                  _buildOtherLightsHeader(context, otherLights, otherTargets, localizations),
+                  _buildOtherLightsTitle(otherLights, otherTargets, localizations),
                   SizedBox(height: AppSpacings.pMd),
                   Expanded(
                     child: _buildLandscapeLightsGrid(
@@ -703,11 +649,18 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSectionTitle(context, localizations.space_scenes_title, Icons.auto_awesome),
+                    SectionTitle(title: localizations.space_scenes_title, icon: Icons.auto_awesome),
                     SizedBox(height: AppSpacings.pMd),
-                    // Show more scenes on wider screens
+                    // Vertical scroll with responsive columns, no limit
+                    // 1 column = horizontal tiles, 2+ columns = vertical tiles
                     Expanded(
-                      child: _buildScenesGrid(context, crossAxisCount: 2, maxItems: maxScenes),
+                      child: _buildScenesGrid(
+                        context,
+                        crossAxisCount: scenesPerRow,
+                        scrollable: true,
+                        tileLayout: scenesPerRow == 1 ? TileLayout.horizontal : TileLayout.vertical,
+                        showInactiveBorder: true,
+                      ),
                     ),
                   ],
                 ),
@@ -837,98 +790,24 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
   }
 
-  // --------------------------------------------------------------------------
-  // SECTION TITLE
-  // --------------------------------------------------------------------------
-
-  Widget _buildSectionTitle(BuildContext context, String title, IconData icon) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Row(
-      children: [
-        Icon(
-          icon,
-          color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-          size: _scale(18),
-        ),
-        SizedBox(width: AppSpacings.pMd),
-        Text(
-          title,
-          style: TextStyle(
-            color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-            fontSize: AppFontSize.small,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildOtherLightsHeader(
-    BuildContext context,
+  Widget _buildOtherLightsTitle(
     List<LightDeviceData> otherLights,
     List<LightTargetView> otherTargets,
     AppLocalizations localizations,
   ) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final anyOn = otherLights.any((light) => light.isOn);
     final buttonLabel = anyOn
         ? localizations.domain_lights_button_all_off
         : localizations.domain_lights_button_all_on;
 
-    return Row(
-      children: [
-        Icon(
-          MdiIcons.lightbulbOutline,
-          color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-          size: _scale(18),
-        ),
-        SizedBox(width: AppSpacings.pMd),
-        Expanded(
-          child: Text(
-            localizations.domain_lights_other,
-            style: TextStyle(
-              color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-              fontSize: AppFontSize.small,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ),
-        GestureDetector(
-          onTap: () => _toggleAllOtherLights(otherTargets, anyOn),
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: AppSpacings.pMd,
-              vertical: AppSpacings.pSm,
-            ),
-            decoration: BoxDecoration(
-              color: isDark ? AppFillColorDark.light : AppFillColorLight.darker,
-              borderRadius: BorderRadius.circular(AppBorderRadius.round),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.power_settings_new,
-                  size: _scale(14),
-                  color: isDark ? AppTextColorDark.secondary : AppTextColorLight.primary,
-                ),
-                SizedBox(width: AppSpacings.pSm),
-                Text(
-                  buttonLabel,
-                  style: TextStyle(
-                    color: isDark ? AppTextColorDark.secondary : AppTextColorLight.primary,
-                    fontSize: AppFontSize.extraSmall,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
+    return SectionTitle(
+      title: localizations.domain_lights_other,
+      icon: MdiIcons.lightbulbOutline,
+      trailing: SectionTitleButton(
+        label: buttonLabel,
+        icon: Icons.power_settings_new,
+        onTap: () => _toggleAllOtherLights(otherTargets, anyOn),
+      ),
     );
   }
 
@@ -1114,20 +993,26 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     BuildContext context, {
     required int crossAxisCount,
     int? maxItems,
+    bool scrollable = false,
+    TileLayout tileLayout = TileLayout.vertical,
+    bool showInactiveBorder = false,
   }) {
     final allScenes = _lightingScenes;
     final scenes = maxItems != null && allScenes.length > maxItems
         ? allScenes.take(maxItems).toList()
         : allScenes;
 
+    // Use different aspect ratio for horizontal tiles
+    final aspectRatio = tileLayout == TileLayout.horizontal ? 3.0 : 1.0;
+
     return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+      shrinkWrap: !scrollable,
+      physics: scrollable ? null : const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
         crossAxisSpacing: AppSpacings.pMd,
         mainAxisSpacing: AppSpacings.pMd,
-        childAspectRatio: 1.0,
+        childAspectRatio: aspectRatio,
       ),
       itemCount: scenes.length,
       itemBuilder: (context, index) {
@@ -1135,6 +1020,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           scene: scenes[index],
           icon: _getSceneIcon(scenes[index]),
           onTap: () => _activateScene(scenes[index]),
+          layout: tileLayout,
+          showInactiveBorder: showInactiveBorder,
         );
       },
     );
@@ -1244,187 +1131,47 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 }
 
 // ============================================================================
-// ROLE CARD
+// ROLE CARD (uses UniversalTile)
 // ============================================================================
 
 class _RoleCard extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   final LightingRoleData role;
   final VoidCallback? onTap;
   final VoidCallback? onIconTap;
 
-  _RoleCard({
+  const _RoleCard({
     required this.role,
     this.onTap,
     this.onIconTap,
   });
 
-  double _scale(double size) =>
-      _screenService.scale(size, density: _visualDensityService.density);
-
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isOn = role.hasLightsOn;
-
-    // Colors based on state (matching LightingChannelTile)
-    final tileBgColor = isOn
-        ? (isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9)
-        : (isDark ? AppFillColorDark.light : AppFillColorLight.light);
-
-    // Box-in-box border approach: always 2px total (1px outer + 1px inner)
-    final Color outerBorderColor;
-    final Color innerBorderColor;
-
-    if (isOn) {
-      // On: primary colored double border
-      outerBorderColor =
-          isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight5;
-      innerBorderColor =
-          isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight5;
-    } else {
-      // Off: light theme shows gray border, dark theme is borderless
-      outerBorderColor = isDark ? tileBgColor : AppBorderColorLight.light;
-      innerBorderColor = tileBgColor;
-    }
-
-    final iconBgColor = isOn
-        ? (isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight5)
-        : (isDark ? AppFillColorDark.darker : AppFillColorLight.darker);
-
-    final iconColor = isOn
-        ? (isDark ? AppColorsDark.primary : AppColorsLight.primary)
-        : (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary);
-
-    final textColor = isOn
-        ? (isDark ? AppColorsDark.primary : AppColorsLight.primary)
-        : (isDark ? AppTextColorDark.primary : AppTextColorLight.primary);
-
-    final subtitleColor =
-        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-
-    final borderWidth = _scale(1);
-
-    return GestureDetector(
-      onTap: onTap,
-      // Outer box with 1px border
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-          border: Border.all(
-            color: outerBorderColor,
-            width: borderWidth,
-          ),
-          boxShadow: isOn
-              ? [
-                  BoxShadow(
-                    color: (isDark
-                            ? AppColorsDark.primary
-                            : AppColorsLight.primary)
-                        .withValues(alpha: 0.2),
-                    blurRadius: _scale(8),
-                    spreadRadius: _scale(1),
-                  ),
-                ]
-              : [],
-        ),
-        // Inner box with 1px border
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          decoration: BoxDecoration(
-            color: tileBgColor,
-            borderRadius:
-                BorderRadius.circular(AppBorderRadius.medium - borderWidth),
-            border: Border.all(
-              color: innerBorderColor,
-              width: borderWidth,
-            ),
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(AppSpacings.pMd),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Icon - tappable for toggle
-                Expanded(
-                  child: Center(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final iconSize = constraints.maxHeight;
-                        return GestureDetector(
-                          onTap: onIconTap,
-                          child: Container(
-                            width: iconSize,
-                            height: iconSize,
-                            decoration: BoxDecoration(
-                              color: iconBgColor,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              role.icon,
-                              color: iconColor,
-                              size: iconSize * 0.5,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                SizedBox(height: AppSpacings.pSm),
-                // Name
-                Text(
-                  role.name,
-                  style: TextStyle(
-                    color: textColor,
-                    fontSize: AppFontSize.extraSmall,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                // Status
-                SizedBox(height: _scale(1)),
-                Text(
-                  role.statusText,
-                  style: TextStyle(
-                    color: subtitleColor,
-                    fontSize: AppFontSize.extraExtraSmall,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+    return UniversalTile(
+      layout: TileLayout.vertical,
+      icon: role.icon,
+      name: role.name,
+      status: role.statusText,
+      isActive: role.hasLightsOn,
+      onTileTap: onTap,
+      onIconTap: onIconTap,
+      showWarningBadge: false,
     );
   }
 }
 
 // ============================================================================
-// LIGHT TILE
+// LIGHT TILE (uses UniversalTile)
 // ============================================================================
 
 class _LightTile extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   final LightDeviceData light;
   final AppLocalizations localizations;
   final VoidCallback? onTap;
   final VoidCallback? onIconTap;
   final bool isVertical;
 
-  _LightTile({
+  const _LightTile({
     required this.light,
     required this.localizations,
     this.onTap,
@@ -1437,403 +1184,60 @@ class _LightTile extends StatelessWidget {
       case LightState.off:
         return localizations.light_state_off;
       case LightState.on:
-        return light.brightness != null ? '${light.brightness}%' : localizations.light_state_on;
+        return light.brightness != null
+            ? '${light.brightness}%'
+            : localizations.light_state_on;
       case LightState.offline:
         return localizations.device_status_offline;
     }
   }
 
-  double _scale(double size) =>
-      _screenService.scale(size, density: _visualDensityService.density);
-
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isOn = light.isOn;
-    final isDisabled = light.isOffline;
-
-    // Colors based on state (matching LightingChannelTile)
-    final tileBgColor = isDisabled
-        ? (isDark ? AppFillColorDark.darker : AppFillColorLight.darker)
-        : (isOn
-            ? (isDark
-                ? AppColorsDark.primaryLight9
-                : AppColorsLight.primaryLight9)
-            : (isDark ? AppFillColorDark.light : AppFillColorLight.light));
-
-    // Box-in-box border approach: always 2px total (1px outer + 1px inner)
-    final Color outerBorderColor;
-    final Color innerBorderColor;
-
-    if (isDisabled) {
-      // Disabled: subtle border
-      outerBorderColor =
-          isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
-      innerBorderColor = tileBgColor;
-    } else if (isOn) {
-      // On: primary colored double border
-      outerBorderColor =
-          isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight5;
-      innerBorderColor =
-          isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight5;
-    } else {
-      // Off: light theme shows gray border, dark theme is borderless
-      outerBorderColor = isDark ? tileBgColor : AppBorderColorLight.light;
-      innerBorderColor = tileBgColor;
-    }
-
-    final iconBgColor = isDisabled
-        ? (isDark ? AppFillColorDark.light : AppFillColorLight.light)
-        : (isOn
-            ? (isDark
-                ? AppColorsDark.primaryLight5
-                : AppColorsLight.primaryLight5)
-            : (isDark ? AppFillColorDark.darker : AppFillColorLight.darker));
-
-    final iconColor = isDisabled
-        ? (isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled)
-        : (isOn
-            ? (isDark ? AppColorsDark.primary : AppColorsLight.primary)
-            : (isDark
-                ? AppTextColorDark.secondary
-                : AppTextColorLight.secondary));
-
-    final textColor = isDisabled
-        ? (isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled)
-        : (isOn
-            ? (isDark ? AppColorsDark.primary : AppColorsLight.primary)
-            : (isDark ? AppTextColorDark.primary : AppTextColorLight.primary));
-
-    final subtitleColor = isDisabled
-        ? (isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled)
-        : (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary);
-
-    final warningColor =
-        isDark ? AppColorsDark.warning : AppColorsLight.warning;
-
-    final borderWidth = _scale(1);
-
-    return GestureDetector(
-      onTap: onTap,
-      // Outer box with 1px border
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-          border: Border.all(
-            color: outerBorderColor,
-            width: borderWidth,
-          ),
-          boxShadow: isOn
-              ? [
-                  BoxShadow(
-                    color: (isDark
-                            ? AppColorsDark.primary
-                            : AppColorsLight.primary)
-                        .withValues(alpha: 0.2),
-                    blurRadius: _scale(8),
-                    spreadRadius: _scale(1),
-                  ),
-                ]
-              : [],
-        ),
-        // Inner box with 1px border
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          decoration: BoxDecoration(
-            color: tileBgColor,
-            borderRadius:
-                BorderRadius.circular(AppBorderRadius.medium - borderWidth),
-            border: Border.all(
-              color: innerBorderColor,
-              width: borderWidth,
-            ),
-          ),
-          child: Padding(
-            padding: isVertical
-                ? EdgeInsets.all(AppSpacings.pMd)
-                : EdgeInsets.symmetric(horizontal: AppSpacings.pSm, vertical: 0),
-            child: isVertical
-                ? _buildVerticalLayout(iconBgColor, iconColor, textColor, subtitleColor, warningColor, isOn, isDisabled)
-                : _buildHorizontalLayout(iconBgColor, iconColor, textColor, subtitleColor, warningColor, isOn, isDisabled),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVerticalLayout(
-    Color iconBgColor,
-    Color iconColor,
-    Color textColor,
-    Color subtitleColor,
-    Color warningColor,
-    bool isOn,
-    bool isDisabled,
-  ) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Icon - tappable for toggle
-        Expanded(
-          child: Center(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final iconSize = constraints.maxHeight;
-                return GestureDetector(
-                  onTap: onIconTap,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        width: iconSize,
-                        height: iconSize,
-                        decoration: BoxDecoration(
-                          color: iconBgColor,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          isOn ? Icons.lightbulb : Icons.lightbulb_outline,
-                          color: iconColor,
-                          size: iconSize * 0.5,
-                        ),
-                      ),
-                      if (isDisabled)
-                        Positioned(
-                          right: -_scale(2),
-                          bottom: -_scale(2),
-                          child: Icon(
-                            Icons.warning_rounded,
-                            size: _scale(14),
-                            color: warningColor,
-                          ),
-                        ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-        SizedBox(height: AppSpacings.pSm),
-        // Name
-        Text(
-          light.name,
-          style: TextStyle(
-            color: textColor,
-            fontSize: AppFontSize.extraSmall,
-            fontWeight: FontWeight.w600,
-          ),
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        // Status
-        SizedBox(height: _scale(1)),
-        Text(
-          _localizedStatusText,
-          style: TextStyle(
-            color: isDisabled ? warningColor : subtitleColor,
-            fontSize: AppFontSize.extraExtraSmall,
-          ),
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildHorizontalLayout(
-    Color iconBgColor,
-    Color iconColor,
-    Color textColor,
-    Color subtitleColor,
-    Color warningColor,
-    bool isOn,
-    bool isDisabled,
-  ) {
-    return Row(
-      children: [
-        // Icon with offline badge - tappable for toggle
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final iconSize = constraints.maxHeight * 0.6;
-            return GestureDetector(
-              onTap: onIconTap,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    width: iconSize,
-                    height: iconSize,
-                    decoration: BoxDecoration(
-                      color: iconBgColor,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      isOn ? Icons.lightbulb : Icons.lightbulb_outline,
-                      color: iconColor,
-                      size: iconSize * 0.5,
-                    ),
-                  ),
-                  if (isDisabled)
-                    Positioned(
-                      right: -_scale(2),
-                      bottom: -_scale(2),
-                      child: Icon(
-                        Icons.warning_rounded,
-                        size: _scale(12),
-                        color: warningColor,
-                      ),
-                    ),
-                ],
-              ),
-            );
-          },
-        ),
-        SizedBox(width: AppSpacings.pMd),
-        // Info
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                light.name,
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: AppFontSize.extraSmall,
-                  fontWeight: FontWeight.w600,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              SizedBox(height: _scale(1)),
-              Text(
-                _localizedStatusText,
-                style: TextStyle(
-                  color: isDisabled ? warningColor : subtitleColor,
-                  fontSize: AppFontSize.extraExtraSmall,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-      ],
+    return UniversalTile(
+      layout: isVertical ? TileLayout.vertical : TileLayout.horizontal,
+      icon: Icons.lightbulb_outline,
+      activeIcon: Icons.lightbulb,
+      name: light.name,
+      status: _localizedStatusText,
+      isActive: light.isOn,
+      isOffline: light.isOffline,
+      onTileTap: onTap,
+      onIconTap: onIconTap,
     );
   }
 }
 
 // ============================================================================
-// SCENE TILE
+// SCENE TILE (uses UniversalTile)
 // ============================================================================
 
 class _SceneTile extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   final SceneView scene;
   final IconData icon;
   final VoidCallback? onTap;
+  final TileLayout layout;
+  final bool showInactiveBorder;
 
-  _SceneTile({
+  const _SceneTile({
     required this.scene,
     required this.icon,
     this.onTap,
+    this.layout = TileLayout.vertical,
+    this.showInactiveBorder = false,
   });
-
-  double _scale(double size) =>
-      _screenService.scale(size, density: _visualDensityService.density);
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final tileBgColor =
-        isDark ? AppFillColorDark.light : AppFillColorLight.light;
-    final outerBorderColor =
-        isDark ? tileBgColor : AppBorderColorLight.light;
-    final innerBorderColor = tileBgColor;
-
-    final iconBgColor =
-        isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
-    final iconColor =
-        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-    final textColor =
-        isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
-
-    final borderWidth = _scale(1);
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-          border: Border.all(
-            color: outerBorderColor,
-            width: borderWidth,
-          ),
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            color: tileBgColor,
-            borderRadius:
-                BorderRadius.circular(AppBorderRadius.medium - borderWidth),
-            border: Border.all(
-              color: innerBorderColor,
-              width: borderWidth,
-            ),
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(AppSpacings.pXs),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Icon
-                Expanded(
-                  child: Center(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final iconSize = constraints.maxHeight * 0.85;
-                        return Container(
-                          width: iconSize,
-                          height: iconSize,
-                          decoration: BoxDecoration(
-                            color: iconBgColor,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            icon,
-                            color: iconColor,
-                            size: iconSize * 0.5,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                SizedBox(height: AppSpacings.pXs),
-                // Name
-                Text(
-                  scene.name,
-                  style: TextStyle(
-                    color: textColor,
-                    fontSize: AppFontSize.extraExtraSmall,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+    return UniversalTile(
+      layout: layout,
+      icon: icon,
+      name: scene.name,
+      isActive: false,
+      onTileTap: onTap,
+      showGlow: false,
+      showWarningBadge: false,
+      showInactiveBorder: showInactiveBorder,
     );
   }
 }

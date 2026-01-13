@@ -30,3 +30,12 @@ export 'package:fastybird_smart_panel/modules/devices/services/role_control_stat
 
 // Device control state (optimistic UI)
 export 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
+
+// Device details
+export 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_dehumidifier.dart';
+export 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_humidifier.dart';
+export 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_purifier.dart';
+export 'package:fastybird_smart_panel/modules/devices/presentation/device_details/fan.dart';
+
+// Widgets
+export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/export.dart';

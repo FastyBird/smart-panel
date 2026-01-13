@@ -320,11 +320,11 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
       decoration: BoxDecoration(
         color: allLocked
             ? (Theme.of(context).brightness == Brightness.light
-                ? AppColorsLight.success.withValues(alpha: 0.15)
-                : AppColorsDark.success.withValues(alpha: 0.2))
+                ? AppColorsLight.successLight9
+                : AppColorsDark.successLight9)
             : (Theme.of(context).brightness == Brightness.light
-                ? AppColorsLight.warning.withValues(alpha: 0.15)
-                : AppColorsDark.warning.withValues(alpha: 0.2)),
+                ? AppColorsLight.warningLight9
+                : AppColorsDark.warningLight9),
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
       child: Row(
@@ -375,8 +375,8 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
       decoration: BoxDecoration(
         color: _alarmArmed
             ? (Theme.of(context).brightness == Brightness.light
-                ? AppColorsLight.danger.withValues(alpha: 0.15)
-                : AppColorsDark.danger.withValues(alpha: 0.2))
+                ? AppColorsLight.dangerLight9
+                : AppColorsDark.dangerLight9)
             : (Theme.of(context).brightness == Brightness.light
                 ? AppFillColorLight.base
                 : AppFillColorDark.base),
@@ -673,8 +673,8 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(AppBorderRadius.base),
                     color: Theme.of(context).brightness == Brightness.light
-                        ? AppBgColorLight.page.withValues(alpha: 0.7)
-                        : AppBgColorDark.overlay.withValues(alpha: 0.7),
+                        ? AppBgColorLight.pageOverlay70
+                        : AppBgColorDark.overlayOverlay70,
                   ),
                   child: Center(
                     child: SizedBox(
@@ -757,8 +757,8 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
       child: Card(
         elevation: 0,
         color: Theme.of(context).brightness == Brightness.light
-            ? AppBgColorLight.page.withValues(alpha: 0.5)
-            : AppBgColorDark.overlay.withValues(alpha: 0.5),
+            ? AppBgColorLight.pageOverlay50
+            : AppBgColorDark.overlayOverlay50,
         child: Padding(
           padding: AppSpacings.paddingMd,
           child: Column(

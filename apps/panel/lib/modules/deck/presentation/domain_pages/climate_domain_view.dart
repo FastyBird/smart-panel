@@ -1,107 +1,210 @@
-import 'dart:async';
+import 'dart:math' as math;
 
-import 'package:fastybird_smart_panel/api/models/spaces_module_climate_intent_delta.dart';
+import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
-import 'package:fastybird_smart_panel/core/widgets/button_tile.dart';
-import 'package:fastybird_smart_panel/core/widgets/rounded_slider.dart';
-import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
+import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
+import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
+import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/modules/deck/export.dart';
-import 'package:fastybird_smart_panel/modules/devices/export.dart'
-    hide IntentOverlayService;
-import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/payloads.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/devices/air_conditioner.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/devices/air_dehumidifier.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/devices/air_humidifier.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/devices/air_purifier.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/devices/fan.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/devices/heater.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/channels/cooler.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/channels/heater.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/channels/humidity.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/channels/temperature.dart';
-import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
-import 'package:fastybird_smart_panel/modules/intents/service.dart';
-import 'package:fastybird_smart_panel/modules/spaces/export.dart';
-import 'package:fastybird_smart_panel/modules/weather/service.dart';
-import 'package:fastybird_smart_panel/modules/weather/types/configuration.dart';
+import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
+import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_dehumidifier.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_humidifier.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_purifier.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/fan.dart';
+import 'package:fastybird_smart_panel/modules/deck/views/climate_role_detail_page.dart';
+import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
+import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/spaces/service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+import 'package:provider/provider.dart';
 
 // ============================================================================
-// Climate Device Type Classification
+// DATA MODELS
 // ============================================================================
 
-/// Classification of climate devices for UI rendering
-enum ClimateDeviceType {
-  thermostat,
-  heater,
-  cooler,
-  fan,
-  humidifier,
-  dehumidifier,
-  purifier,
-}
+enum ClimateMode { off, heat, cool }
 
-/// Get the climate device type from a device view
-ClimateDeviceType? getClimateDeviceType(DeviceView device) {
-  if (device is ThermostatDeviceView) return ClimateDeviceType.thermostat;
-  if (device is HeaterDeviceView) return ClimateDeviceType.heater;
-  if (device is AirConditionerDeviceView) return ClimateDeviceType.cooler;
-  if (device is FanDeviceView) return ClimateDeviceType.fan;
-  if (device is AirHumidifierDeviceView) return ClimateDeviceType.humidifier;
-  if (device is AirDehumidifierDeviceView) return ClimateDeviceType.dehumidifier;
-  if (device is AirPurifierDeviceView) return ClimateDeviceType.purifier;
-  return null;
-}
+enum RoomCapability { heaterOnly, coolerOnly, heaterAndCooler }
 
-/// Check if device type is a "hero" device (shown prominently with dial)
-bool isHeroClimateDevice(ClimateDeviceType type) {
-  return type == ClimateDeviceType.thermostat ||
-      type == ClimateDeviceType.heater ||
-      type == ClimateDeviceType.cooler;
-}
+class ClimateDevice {
+  final String id;
+  final String name;
+  final String type;
+  final bool isActive;
+  final String? status;
+  final bool isPrimary;
 
-/// Get icon for climate device type
-IconData getClimateDeviceIcon(ClimateDeviceType type) {
-  switch (type) {
-    case ClimateDeviceType.thermostat:
-      return MdiIcons.thermostat;
-    case ClimateDeviceType.heater:
-      return MdiIcons.fireCircle;
-    case ClimateDeviceType.cooler:
-      return MdiIcons.snowflake;
-    case ClimateDeviceType.fan:
-      return MdiIcons.fan;
-    case ClimateDeviceType.humidifier:
-      return MdiIcons.airHumidifier;
-    case ClimateDeviceType.dehumidifier:
-      return MdiIcons.airHumidifierOff;
-    case ClimateDeviceType.purifier:
-      return MdiIcons.airPurifier;
+  const ClimateDevice({
+    required this.id,
+    required this.name,
+    required this.type,
+    this.isActive = false,
+    this.status,
+    this.isPrimary = false,
+  });
+
+  IconData get icon {
+    switch (type) {
+      case 'thermostat':
+        return MdiIcons.thermostat;
+      case 'ac':
+        return MdiIcons.snowflake;
+      case 'heater':
+        return MdiIcons.fireCircle;
+      case 'radiator':
+        return MdiIcons.radiator;
+      case 'floor_heating':
+        return MdiIcons.waves;
+      default:
+        return MdiIcons.thermostat;
+    }
   }
 }
 
+enum AuxiliaryType { fan, purifier, humidifier, dehumidifier }
+
+class AuxiliaryDevice {
+  final String id;
+  final String name;
+  final AuxiliaryType type;
+  final bool isActive;
+  final String? status;
+
+  const AuxiliaryDevice({
+    required this.id,
+    required this.name,
+    required this.type,
+    this.isActive = false,
+    this.status,
+  });
+
+  IconData get icon {
+    switch (type) {
+      case AuxiliaryType.fan:
+        return MdiIcons.fan;
+      case AuxiliaryType.purifier:
+        return MdiIcons.airPurifier;
+      case AuxiliaryType.humidifier:
+        return MdiIcons.airHumidifier;
+      case AuxiliaryType.dehumidifier:
+        return MdiIcons.airHumidifierOff;
+    }
+  }
+
+  bool get isHumidityControl =>
+      type == AuxiliaryType.humidifier || type == AuxiliaryType.dehumidifier;
+}
+
+class ClimateSensor {
+  final String id;
+  final String label;
+  final String value;
+  final String type;
+
+  const ClimateSensor({
+    required this.id,
+    required this.label,
+    required this.value,
+    required this.type,
+  });
+
+  IconData get icon {
+    switch (type) {
+      case 'temp':
+        return MdiIcons.thermometer;
+      case 'humidity':
+        return MdiIcons.waterPercent;
+      case 'air':
+        return MdiIcons.airFilter;
+      default:
+        return MdiIcons.eyeSettings;
+    }
+  }
+}
+
+class ClimateRoomState {
+  final String roomName;
+  final ClimateMode mode;
+  final RoomCapability capability;
+  final double targetTemp;
+  final double currentTemp;
+  final double? targetHumidity;
+  final double? currentHumidity;
+  final List<ClimateDevice> climateDevices;
+  final List<AuxiliaryDevice> auxiliaryDevices;
+  final List<ClimateSensor> sensors;
+
+  const ClimateRoomState({
+    required this.roomName,
+    this.mode = ClimateMode.off,
+    this.capability = RoomCapability.heaterAndCooler,
+    this.targetTemp = 22.0,
+    this.currentTemp = 21.0,
+    this.targetHumidity,
+    this.currentHumidity,
+    this.climateDevices = const [],
+    this.auxiliaryDevices = const [],
+    this.sensors = const [],
+  });
+
+  ClimateRoomState copyWith({
+    String? roomName,
+    ClimateMode? mode,
+    RoomCapability? capability,
+    double? targetTemp,
+    double? currentTemp,
+    double? targetHumidity,
+    double? currentHumidity,
+    List<ClimateDevice>? climateDevices,
+    List<AuxiliaryDevice>? auxiliaryDevices,
+    List<ClimateSensor>? sensors,
+  }) {
+    return ClimateRoomState(
+      roomName: roomName ?? this.roomName,
+      mode: mode ?? this.mode,
+      capability: capability ?? this.capability,
+      targetTemp: targetTemp ?? this.targetTemp,
+      currentTemp: currentTemp ?? this.currentTemp,
+      targetHumidity: targetHumidity ?? this.targetHumidity,
+      currentHumidity: currentHumidity ?? this.currentHumidity,
+      climateDevices: climateDevices ?? this.climateDevices,
+      auxiliaryDevices: auxiliaryDevices ?? this.auxiliaryDevices,
+      sensors: sensors ?? this.sensors,
+    );
+  }
+
+  String get modeLabel {
+    switch (mode) {
+      case ClimateMode.off:
+        return 'Off';
+      case ClimateMode.heat:
+        return 'Heating';
+      case ClimateMode.cool:
+        return 'Cooling';
+    }
+  }
+
+  List<AuxiliaryDevice> get humidityDevices =>
+      auxiliaryDevices.where((d) => d.isHumidityControl).toList();
+
+  List<AuxiliaryDevice> get otherAuxiliary =>
+      auxiliaryDevices.where((d) => !d.isHumidityControl).toList();
+
+  bool get hasHumidityControl => humidityDevices.isNotEmpty;
+}
+
 // ============================================================================
-// Climate Domain Page
+// CLIMATE DOMAIN VIEW PAGE
 // ============================================================================
 
-/// Climate domain page - displays climate devices with hero thermostat design.
-///
-/// Features:
-/// - Hero section with circular dial for primary thermostat/heater/AC
-/// - Mode selection buttons for thermostats
-/// - Secondary tiles for fans, humidifiers, purifiers
-/// - Current and target temperature display
-/// - Status indicators (heating/cooling/idle)
 class ClimateDomainViewPage extends StatefulWidget {
   final DomainViewItem viewItem;
 
@@ -115,34 +218,16 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
-  final _PropertyValueHelper _valueHelper = _PropertyValueHelper();
 
   SpacesService? _spacesService;
   DevicesService? _devicesService;
-  IntentOverlayService? _intentOverlayService;
-  DeviceControlStateService? _deviceControlStateService;
-  WeatherService? _weatherService;
+  DeckService? _deckService;
+  EventBus? _eventBus;
 
-  // Track which devices are currently being toggled (prevents double-taps)
-  final Set<String> _togglingDevices = {};
-
-  // Debounce timer for temperature dial to prevent overwhelming the backend
-  Timer? _temperatureDebounceTimer;
-
+  late ClimateRoomState _state;
   bool _isLoading = true;
 
   String get _roomId => widget.viewItem.roomId;
-
-  /// Climate device categories
-  static const List<DevicesModuleDeviceCategory> _climateCategories = [
-    DevicesModuleDeviceCategory.thermostat,
-    DevicesModuleDeviceCategory.heater,
-    DevicesModuleDeviceCategory.airConditioner,
-    DevicesModuleDeviceCategory.fan,
-    DevicesModuleDeviceCategory.airHumidifier,
-    DevicesModuleDeviceCategory.airDehumidifier,
-    DevicesModuleDeviceCategory.airPurifier,
-  ];
 
   @override
   void initState() {
@@ -150,299 +235,665 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
     try {
       _spacesService = locator<SpacesService>();
-      _spacesService?.addListener(_onSpacesDataChanged);
+      _spacesService?.addListener(_onDataChanged);
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('[ClimateDomainView] Failed to get SpacesService: $e');
+        debugPrint('[ClimateDomainViewPage] Failed to get SpacesService: $e');
       }
     }
 
     try {
       _devicesService = locator<DevicesService>();
-      _devicesService?.addListener(_onDevicesDataChanged);
+      _devicesService?.addListener(_onDataChanged);
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('[ClimateDomainView] Failed to get DevicesService: $e');
+        debugPrint('[ClimateDomainViewPage] Failed to get DevicesService: $e');
       }
     }
 
     try {
-      _intentOverlayService = locator<IntentOverlayService>();
-      _intentOverlayService?.addListener(_onIntentDataChanged);
+      _deckService = locator<DeckService>();
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('[ClimateDomainView] Failed to get IntentOverlayService: $e');
+        debugPrint('[ClimateDomainViewPage] Failed to get DeckService: $e');
       }
     }
 
     try {
-      _deviceControlStateService = locator<DeviceControlStateService>();
-      _deviceControlStateService?.addListener(_onControlStateChanged);
+      _eventBus = locator<EventBus>();
     } catch (e) {
       if (kDebugMode) {
-        debugPrint(
-            '[ClimateDomainView] Failed to get DeviceControlStateService: $e');
+        debugPrint('[ClimateDomainViewPage] Failed to get EventBus: $e');
       }
     }
 
-    try {
-      _weatherService = locator<WeatherService>();
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[ClimateDomainView] Failed to get WeatherService: $e');
-      }
-    }
-
-    // Fetch climate targets for this space
-    _fetchClimateTargets();
+    _initializeState();
   }
 
-  Future<void> _fetchClimateTargets() async {
-    try {
-      await _spacesService?.fetchClimateTargetsForSpace(_roomId);
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+  void _initializeState() {
+    final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
+
+    // TODO: Build real state from devices/climate targets
+    _state = ClimateRoomState(
+      roomName: roomName,
+      mode: ClimateMode.heat,
+      capability: RoomCapability.heaterAndCooler,
+      targetTemp: 22,
+      currentTemp: 20.3,
+      targetHumidity: 45,
+      currentHumidity: 52,
+      sensors: const [
+        ClimateSensor(
+            id: 't1', label: 'Temperature', value: '20.3°C', type: 'temp'),
+        ClimateSensor(
+            id: 'h1', label: 'Humidity', value: '52%', type: 'humidity'),
+        ClimateSensor(id: 'a1', label: 'Air Quality', value: 'Good', type: 'air'),
+      ],
+      auxiliaryDevices: const [
+        AuxiliaryDevice(
+            id: 'hum1',
+            name: 'Humidifier',
+            type: AuxiliaryType.humidifier,
+            isActive: false),
+        AuxiliaryDevice(
+            id: 'dehum1',
+            name: 'Dehumidifier',
+            type: AuxiliaryType.dehumidifier,
+            isActive: true,
+            status: 'Running'),
+        AuxiliaryDevice(
+            id: 'fan1',
+            name: 'Ceiling Fan',
+            type: AuxiliaryType.fan,
+            isActive: false),
+        AuxiliaryDevice(
+            id: 'pur1',
+            name: 'Air Purifier',
+            type: AuxiliaryType.purifier,
+            isActive: true,
+            status: 'Auto'),
+      ],
+    );
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
   @override
   void dispose() {
-    _temperatureDebounceTimer?.cancel();
-    _spacesService?.removeListener(_onSpacesDataChanged);
-    _devicesService?.removeListener(_onDevicesDataChanged);
-    _intentOverlayService?.removeListener(_onIntentDataChanged);
-    _deviceControlStateService?.removeListener(_onControlStateChanged);
-
+    _spacesService?.removeListener(_onDataChanged);
+    _devicesService?.removeListener(_onDataChanged);
     super.dispose();
   }
 
-  void _onSpacesDataChanged() {
-    if (mounted) {
-      setState(() {});
+  void _onDataChanged() {
+    if (!mounted) return;
+    // Defer setState to avoid calling during build phase
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  double _scale(double size) =>
+      _screenService.scale(size, density: _visualDensityService.density);
+
+  void _navigateToHome() {
+    final deck = _deckService?.deck;
+    if (deck == null || deck.items.isEmpty) {
+      Navigator.pop(context);
+      return;
+    }
+
+    final homeIndex = deck.startIndex;
+    if (homeIndex >= 0 && homeIndex < deck.items.length) {
+      final homeItem = deck.items[homeIndex];
+      _eventBus?.fire(NavigateToDeckItemEvent(homeItem.id));
     }
   }
 
-  void _onDevicesDataChanged() {
-    if (mounted) {
-      setState(() {});
+  void _setMode(ClimateMode mode) {
+    setState(() => _state = _state.copyWith(mode: mode));
+  }
+
+  void _setTargetTemp(double temp) {
+    setState(
+        () => _state = _state.copyWith(targetTemp: temp.clamp(16.0, 30.0)));
+  }
+
+  void _navigateToDetail() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ClimateRoleDetailPage(
+          roomName: _state.roomName,
+          initialMode: _state.mode,
+          initialTargetTemp: _state.targetTemp,
+          currentTemp: _state.currentTemp,
+        ),
+      ),
+    );
+  }
+
+  // Theme-aware color getters
+  Color _getModeColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    switch (_state.mode) {
+      case ClimateMode.off:
+        return isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+      case ClimateMode.heat:
+        return isDark ? AppColorsDark.warning : AppColorsLight.warning;
+      case ClimateMode.cool:
+        return isDark ? AppColorsDark.info : AppColorsLight.info;
     }
   }
 
-  void _onIntentDataChanged() {
-    if (mounted) {
-      setState(() {});
+  Color _getModeLightColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    switch (_state.mode) {
+      case ClimateMode.off:
+        return isDark ? AppFillColorDark.light : AppFillColorLight.light;
+      case ClimateMode.heat:
+        return isDark
+            ? AppColorsDark.warningLight5
+            : AppColorsLight.warningLight5;
+      case ClimateMode.cool:
+        return isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight5;
     }
   }
 
-  void _onControlStateChanged() {
-    if (mounted) {
-      setState(() {});
+  Color _getSensorColor(BuildContext context, String type) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    switch (type) {
+      case 'temp':
+        return isDark ? AppColorsDark.info : AppColorsLight.info;
+      case 'humidity':
+        return isDark ? AppColorsDark.success : AppColorsLight.success;
+      case 'air':
+        return isDark ? AppColorsDark.success : AppColorsLight.success;
+      default:
+        return isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
     }
   }
 
-  /// Get climate devices for the current room
-  List<DeviceView> _getClimateDevices() {
-    final devicesService = _devicesService;
-    if (devicesService == null) return [];
-
-    return devicesService
-        .getDevicesForRoom(_roomId)
-        .where((device) => _climateCategories.contains(device.category))
-        .toList();
-  }
-
-  /// Get temperature unit string from weather service configuration.
-  /// Falls back to Celsius if weather service is not available.
-  String _getTemperatureUnit() {
-    final currentDay = _weatherService?.currentDay;
-    if (currentDay != null && currentDay.unit == WeatherUnit.fahrenheit) {
-      return '°F';
+  DialAccentColor _getDialAccentType() {
+    switch (_state.mode) {
+      case ClimateMode.off:
+        return DialAccentColor.neutral;
+      case ClimateMode.heat:
+        return DialAccentColor.warning;
+      case ClimateMode.cool:
+        return DialAccentColor.info;
     }
-    return '°C';
   }
 
-  /// Format temperature with validation
-  /// Returns '--' for invalid/default values (0.0, out of range)
-  String _formatTemperature(double temp, String unit, {int decimals = 1}) {
-    // Check for invalid/default values
-    if (temp == 0.0 || temp < -50 || temp > 100) {
-      return '--$unit';
+  bool _isDialActive() {
+    if (_state.mode == ClimateMode.off) return false;
+    if (_state.mode == ClimateMode.heat) {
+      return _state.currentTemp < _state.targetTemp;
     }
-    return '${temp.toStringAsFixed(decimals)}$unit';
-  }
-
-  /// Check if temperature value is valid
-  bool _isValidTemperature(double temp) {
-    return temp != 0.0 && temp >= -50 && temp <= 100;
-  }
-
-  /// Get climate targets for the current room
-  List<ClimateTargetView> _getClimateTargets() {
-    final spacesService = _spacesService;
-    if (spacesService == null) return [];
-
-    return spacesService
-        .getClimateTargetsForSpace(_roomId)
-        .where((t) => t.role != ClimateTargetRole.hidden)
-        .toList();
-  }
-
-  /// Get the PRIMARY climate target (hero device)
-  ClimateTargetView? _getPrimaryTarget(List<ClimateTargetView> targets) {
-    // Look for PRIMARY role first
-    final primaryTarget = targets
-        .where((t) => t.role == ClimateTargetRole.primary)
-        .firstOrNull;
-    if (primaryTarget != null) return primaryTarget;
-
-    // Fallback: first actuator target with temperature control
-    return targets
-        .where((t) => t.isActuator && t.hasTemperature)
-        .firstOrNull;
-  }
-
-  /// Get the temperature sensor target for room temperature display
-  ClimateTargetView? _getTemperatureSensorTarget(List<ClimateTargetView> targets) {
-    // Look for TEMPERATURE_SENSOR role
-    return targets
-        .where((t) => t.role == ClimateTargetRole.temperatureSensor)
-        .firstOrNull;
-  }
-
-  /// Get the humidity sensor target for room humidity display
-  ClimateTargetView? _getHumiditySensorTarget(List<ClimateTargetView> targets) {
-    // Look for HUMIDITY_SENSOR role
-    return targets
-        .where((t) => t.role == ClimateTargetRole.humiditySensor)
-        .firstOrNull;
-  }
-
-  /// Get hero device from PRIMARY target or fallback to type-based priority
-  DeviceView? _getHeroDevice(
-    List<ClimateTargetView> targets,
-    DevicesService devicesService,
-  ) {
-    // Priority 1: Use PRIMARY role climate target
-    final primaryTarget = _getPrimaryTarget(targets);
-    if (primaryTarget != null) {
-      final device = devicesService.getDevice(primaryTarget.deviceId);
-      if (device != null) return device;
-    }
-
-    // Priority 2: Fallback to type-based detection from devices in room
-    final devices = _getClimateDevices();
-
-    // typed device views (thermostat first, then heater, then cooler)
-    for (final device in devices) {
-      if (device is ThermostatDeviceView) return device;
-    }
-    for (final device in devices) {
-      if (device is HeaterDeviceView) return device;
-    }
-    for (final device in devices) {
-      if (device is AirConditionerDeviceView) return device;
-    }
-
-    return null;
-  }
-
-  /// Get secondary climate targets (non-PRIMARY, non-sensor roles)
-  List<ClimateTargetView> _getSecondaryTargets(
-    List<ClimateTargetView> targets,
-    ClimateTargetView? primaryTarget,
-  ) {
-    return targets
-        .where((t) =>
-            t.id != primaryTarget?.id &&
-            t.role != ClimateTargetRole.temperatureSensor &&
-            t.role != ClimateTargetRole.humiditySensor)
-        .toList();
+    return _state.currentTemp > _state.targetTemp;
   }
 
   @override
   Widget build(BuildContext context) {
-    final spacesService = _spacesService;
-    final devicesService = _devicesService;
+    return Consumer<DevicesService>(
+      builder: (context, devicesService, _) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      appBar: AppTopBar(
-        title: widget.viewItem.title,
-        icon: DomainType.climate.icon,
+        if (_isLoading) {
+          return Scaffold(
+            backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        return Scaffold(
+          backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+          body: SafeArea(
+            child: Column(
+              children: [
+                _buildHeader(context),
+                Expanded(
+                  child: OrientationBuilder(
+                    builder: (context, orientation) {
+                      return orientation == Orientation.landscape
+                          ? _buildLandscapeLayout(context)
+                          : _buildPortraitLayout(context);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // --------------------------------------------------------------------------
+  // HEADER
+  // --------------------------------------------------------------------------
+
+  Widget _buildHeader(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final modeColor = _getModeColor(context);
+    final localizations = AppLocalizations.of(context)!;
+
+    return PageHeader(
+      title: localizations.domain_climate,
+      subtitle: _state.mode == ClimateMode.off
+          ? 'Off'
+          : '${_state.modeLabel} to ${_state.targetTemp.toInt()}°',
+      subtitleColor: modeColor,
+      backgroundColor: Colors.transparent,
+      leading: HeaderDeviceIcon(
+        icon: MdiIcons.thermostat,
+        backgroundColor: _getModeLightColor(context),
+        iconColor: modeColor,
       ),
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            if (spacesService == null || devicesService == null) {
-              return _buildEmptyState(context);
-            }
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Current temperature display
+          Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacings.pMd,
+              vertical: AppSpacings.pSm,
+            ),
+            decoration: BoxDecoration(
+              color: isDark ? AppFillColorDark.light : AppFillColorLight.darker,
+              borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  MdiIcons.thermometer,
+                  size: _scale(16),
+                  color: isDark
+                      ? AppTextColorDark.secondary
+                      : AppTextColorLight.secondary,
+                ),
+                SizedBox(width: AppSpacings.pXs),
+                Text(
+                  '${_state.currentTemp.toStringAsFixed(1)}°',
+                  style: TextStyle(
+                    color: isDark
+                        ? AppTextColorDark.primary
+                        : AppTextColorLight.primary,
+                    fontSize: AppFontSize.base,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: AppSpacings.pMd),
+          HeaderHomeButton(
+            onTap: _navigateToHome,
+          ),
+        ],
+      ),
+    );
+  }
 
-            if (_isLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
+  // --------------------------------------------------------------------------
+  // PORTRAIT LAYOUT
+  // --------------------------------------------------------------------------
 
-            final climateTargets = _getClimateTargets();
+  Widget _buildPortraitLayout(BuildContext context) {
+    final hasAuxiliary = _state.auxiliaryDevices.isNotEmpty;
+    final hasSensors = _state.sensors.isNotEmpty;
+    final isAtLeastMedium = _screenService.isAtLeastMedium;
+    final isSmallScreen = _screenService.isSmallScreen;
 
-            // If no climate targets, fallback to device-based detection
-            if (climateTargets.isEmpty) {
-              final climateDevices = _getClimateDevices();
-              if (climateDevices.isEmpty) {
-                return _buildEmptyState(context);
-              }
+    // Sensors layout:
+    // - Small: 2 columns, horizontal scroll, horizontal tiles (original)
+    // - Medium/Large: same as "quick scenes" - 3/4 columns, vertical tiles
+    final sensorColumns = isSmallScreen ? 2 : (isAtLeastMedium ? 4 : 3);
 
-              // Fallback: use old device-based approach
-              final heroDevice = _getHeroDevice(climateTargets, devicesService);
-              final secondaryDevices = climateDevices
-                  .where((d) => d.id != heroDevice?.id)
-                  .toList();
+    // Auxiliary layout: same as "other lights" - 2 cols, aspect ratio based on screen size
+    final auxiliaryAspectRatio = isAtLeastMedium ? 3.0 : 2.5;
 
-              return _buildLegacyLayout(
-                context,
-                heroDevice,
-                secondaryDevices,
-                devicesService,
-                constraints,
-              );
-            }
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: AppSpacings.paddingLg,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildPrimaryControlCard(context, dialSize: _scale(200)),
+                SizedBox(height: AppSpacings.pLg),
+                if (hasSensors) ...[
+                  SectionTitle(title: 'Sensors', icon: MdiIcons.eyeSettings),
+                  SizedBox(height: AppSpacings.pMd),
+                  if (isSmallScreen)
+                    // Small: horizontal scroll with horizontal tiles (original behavior)
+                    SizedBox(
+                      height: _scale(50),
+                      child: _buildSensorsScrollRow(
+                        context,
+                        columns: sensorColumns,
+                        useVerticalTiles: false,
+                      ),
+                    )
+                  else if (hasAuxiliary)
+                    // Medium/Large with auxiliary: horizontal scroll with vertical tiles
+                    SizedBox(
+                      height: _scale(100),
+                      child: _buildSensorsScrollRow(
+                        context,
+                        columns: sensorColumns,
+                        useVerticalTiles: true,
+                        statusFontSize: AppFontSize.extraSmall,
+                      ),
+                    )
+                  else
+                    // Medium/Large without auxiliary: grid with vertical tiles
+                    _buildSensorsGrid(
+                      context,
+                      crossAxisCount: sensorColumns,
+                      aspectRatio: 1.0,
+                      statusFontSize: AppFontSize.extraSmall,
+                    ),
+                  SizedBox(height: AppSpacings.pLg),
+                ],
+                if (hasAuxiliary) ...[
+                  SectionTitle(title: 'Auxiliary', icon: MdiIcons.devices),
+                  SizedBox(height: AppSpacings.pMd),
+                  _buildAuxiliaryGrid(
+                    context,
+                    crossAxisCount: 2,
+                    aspectRatio: auxiliaryAspectRatio,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        // Fixed space at bottom for swipe dots
+        SizedBox(height: AppSpacings.pLg),
+      ],
+    );
+  }
 
-            final primaryTarget = _getPrimaryTarget(climateTargets);
-            final heroDevice = _getHeroDevice(climateTargets, devicesService);
-            final temperatureSensorTarget =
-                _getTemperatureSensorTarget(climateTargets);
-            final humiditySensorTarget =
-                _getHumiditySensorTarget(climateTargets);
-            final secondaryTargets =
-                _getSecondaryTargets(climateTargets, primaryTarget);
+  // --------------------------------------------------------------------------
+  // LANDSCAPE LAYOUT
+  // --------------------------------------------------------------------------
 
-            return SingleChildScrollView(
-              padding: AppSpacings.paddingMd,
+  Widget _buildLandscapeLayout(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor =
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+    final isLargeScreen = _screenService.isLargeScreen;
+
+    final hasSensors = _state.sensors.isNotEmpty;
+    final hasAuxiliary = _state.auxiliaryDevices.isNotEmpty;
+
+    // For large screens: standard layout with dial card
+    // For small/medium: compact layout with dial + icon-only mode selector
+    if (isLargeScreen) {
+      return _buildLargeLandscapeLayout(
+        context,
+        isDark: isDark,
+        borderColor: borderColor,
+        hasSensors: hasSensors,
+        hasAuxiliary: hasAuxiliary,
+      );
+    }
+
+    // Small/medium landscape: compact layout
+    return _buildCompactLandscapeLayout(
+      context,
+      isDark: isDark,
+      borderColor: borderColor,
+      hasSensors: hasSensors,
+      hasAuxiliary: hasAuxiliary,
+    );
+  }
+
+  /// Large landscape layout: standard two-column with full dial card
+  Widget _buildLargeLandscapeLayout(
+    BuildContext context, {
+    required bool isDark,
+    required Color borderColor,
+    required bool hasSensors,
+    required bool hasAuxiliary,
+  }) {
+    final dialSize = _scale(200);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Left column: dial (1/2 screen)
+        Expanded(
+          flex: 1,
+          child: Center(
+            child: SingleChildScrollView(
+              padding: AppSpacings.paddingLg,
+              child: _buildPrimaryControlCard(context, dialSize: dialSize),
+            ),
+          ),
+        ),
+        Container(width: _scale(1), color: borderColor),
+        // Right column: sensors + auxiliary (1/2 screen) - same layout as "scenes"
+        Expanded(
+          flex: 1,
+          child: Container(
+            color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
+            child: SingleChildScrollView(
+              padding: AppSpacings.paddingLg,
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Hero section with circular dial
-                  if (heroDevice != null)
-                    _buildHeroSection(
-                      context,
-                      heroDevice,
-                      devicesService,
-                      constraints,
-                      temperatureSensorTarget: temperatureSensorTarget,
-                      humiditySensorTarget: humiditySensorTarget,
-                    ),
-
-                  // Secondary devices section
-                  if (secondaryTargets.isNotEmpty) ...[
-                    if (heroDevice != null) AppSpacings.spacingLgVertical,
-                    _buildSecondaryTargetsSection(
-                      context,
-                      secondaryTargets,
-                      devicesService,
-                    ),
+                  if (hasSensors) ...[
+                    SectionTitle(title: 'Sensors', icon: MdiIcons.eyeSettings),
+                    SizedBox(height: AppSpacings.pMd),
+                    _buildSensorsGrid(context,
+                        crossAxisCount: 2,
+                        aspectRatio: 2.5,
+                        showInactiveBorder: true),
+                    if (hasAuxiliary) SizedBox(height: AppSpacings.pLg),
                   ],
+                  if (hasAuxiliary) ...[
+                    SectionTitle(title: 'Auxiliary', icon: MdiIcons.devices),
+                    SizedBox(height: AppSpacings.pMd),
+                    _buildAuxiliaryGrid(context,
+                        crossAxisCount: 2,
+                        aspectRatio: 2.5,
+                        showInactiveBorder: true),
+                  ],
+                  if (!hasSensors && !hasAuxiliary)
+                    Center(
+                      child: Padding(
+                        padding: EdgeInsets.only(top: AppSpacings.pLg * 2),
+                        child: Text(
+                          'No devices',
+                          style: TextStyle(
+                            color: isDark
+                                ? AppTextColorDark.secondary
+                                : AppTextColorLight.secondary,
+                            fontSize: AppFontSize.small,
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Compact landscape layout for small/medium: dial with side icons, smaller right column
+  Widget _buildCompactLandscapeLayout(
+    BuildContext context, {
+    required bool isDark,
+    required Color borderColor,
+    required bool hasSensors,
+    required bool hasAuxiliary,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Left column: dial + mode icons (larger - 2/3 of screen)
+        Expanded(
+          flex: 2,
+          child: Padding(
+            padding: AppSpacings.paddingLg,
+            child: _buildCompactDialWithModes(context),
+          ),
+        ),
+        Container(width: _scale(1), color: borderColor),
+        // Right column: sensors + auxiliary (smaller - 1/3 of screen) - same layout as "scenes"
+        Expanded(
+          flex: 1,
+          child: Container(
+            color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
+            child: SingleChildScrollView(
+              padding: AppSpacings.paddingLg,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (hasSensors) ...[
+                    SectionTitle(title: 'Sensors', icon: MdiIcons.eyeSettings),
+                    SizedBox(height: AppSpacings.pMd),
+                    _buildSensorsGrid(context,
+                        crossAxisCount: 1,
+                        aspectRatio: 3.0,
+                        showInactiveBorder: true),
+                    if (hasAuxiliary) SizedBox(height: AppSpacings.pLg),
+                  ],
+                  if (hasAuxiliary) ...[
+                    SectionTitle(title: 'Auxiliary', icon: MdiIcons.devices),
+                    SizedBox(height: AppSpacings.pMd),
+                    _buildAuxiliaryGrid(context,
+                        crossAxisCount: 1,
+                        aspectRatio: 3.0,
+                        showInactiveBorder: true),
+                  ],
+                  if (!hasSensors && !hasAuxiliary)
+                    Center(
+                      child: Padding(
+                        padding: EdgeInsets.only(top: AppSpacings.pLg * 2),
+                        child: Text(
+                          'No devices',
+                          style: TextStyle(
+                            color: isDark
+                                ? AppTextColorDark.secondary
+                                : AppTextColorLight.secondary,
+                            fontSize: AppFontSize.small,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Compact dial with vertical icon-only mode selector on the right
+  Widget _buildCompactDialWithModes(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final modeColor = _getModeColor(context);
+    final borderColor = _state.mode != ClimateMode.off
+        ? modeColor.withValues(alpha: 0.3)
+        : (isDark ? AppBorderColorDark.light : AppBorderColorLight.light);
+
+    // Use darker bg in dark mode for better contrast with dial inner background
+    final cardColor =
+        isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
+
+    // Use less bottom padding on small/medium to fit hint text
+    final cardPadding = _screenService.isLargeScreen
+        ? AppSpacings.paddingLg
+        : EdgeInsets.fromLTRB(
+            AppSpacings.pLg, AppSpacings.pLg, AppSpacings.pLg, AppSpacings.pSm);
+
+    return GestureDetector(
+      onTap: _navigateToDetail,
+      child: Container(
+        padding: cardPadding,
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(AppBorderRadius.round),
+          border: Border.all(color: borderColor, width: _scale(1)),
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final modeIconsWidth = _scale(50);
+            final spacing = AppSpacings.pXl;
+            final availableForDial =
+                constraints.maxWidth - modeIconsWidth - spacing;
+            // Reserve space for hint text + spacing on small/medium devices
+            final hintHeight = _screenService.isLargeScreen
+                ? 0.0
+                : _scale(16) + AppSpacings.pXs;
+            final maxDialHeight = constraints.maxHeight - hintHeight;
+            final dialSize =
+                math.min(availableForDial, maxDialHeight).clamp(120.0, 400.0);
+
+            final hintSpacing =
+                _screenService.isLargeScreen ? AppSpacings.pSm : AppSpacings.pXs;
+
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularControlDial(
+                      value: _state.targetTemp,
+                      currentValue: _state.currentTemp,
+                      minValue: 16.0,
+                      maxValue: 30.0,
+                      step: 0.5,
+                      size: dialSize,
+                      accentType: _getDialAccentType(),
+                      isActive: _isDialActive(),
+                      enabled: _state.mode != ClimateMode.off,
+                      modeLabel: _state.mode.name,
+                      displayFormat: DialDisplayFormat.temperature,
+                      onChanged: _setTargetTemp,
+                    ),
+                    AppSpacings.spacingXlHorizontal,
+                    _buildVerticalModeIcons(context),
+                  ],
+                ),
+                SizedBox(height: hintSpacing),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Tap for details',
+                      style: TextStyle(
+                        color: isDark
+                            ? AppTextColorDark.secondary
+                            : AppTextColorLight.secondary,
+                        fontSize: AppFontSize.extraSmall,
+                      ),
+                    ),
+                    SizedBox(width: AppSpacings.pXs),
+                    Icon(
+                      Icons.chevron_right,
+                      color: isDark
+                          ? AppTextColorDark.secondary
+                          : AppTextColorLight.secondary,
+                      size: _scale(14),
+                    ),
+                  ],
+                ),
+              ],
             );
           },
         ),
@@ -450,2142 +901,333 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     );
   }
 
-  /// Build legacy layout when no climate targets available
-  Widget _buildLegacyLayout(
-    BuildContext context,
-    DeviceView? heroDevice,
-    List<DeviceView> secondaryDevices,
-    DevicesService devicesService,
-    BoxConstraints constraints,
-  ) {
-    return SingleChildScrollView(
-      padding: AppSpacings.paddingMd,
-      child: Column(
-        children: [
-          if (heroDevice != null)
-            _buildHeroSection(
-              context,
-              heroDevice,
-              devicesService,
-              constraints,
-              useIntents: false,
-            ),
-          if (secondaryDevices.isNotEmpty) ...[
-            if (heroDevice != null) AppSpacings.spacingLgVertical,
-            _buildSecondaryDevicesSection(
-              context,
-              secondaryDevices,
-              devicesService,
-            ),
-          ],
-        ],
-      ),
+  /// Vertical column of icon-only mode buttons
+  Widget _buildVerticalModeIcons(BuildContext context) {
+    return ModeSelector<ClimateMode>(
+      modes: _getClimateModeOptions(),
+      selectedValue: _state.mode,
+      onChanged: _setMode,
+      orientation: ModeSelectorOrientation.vertical,
+      showLabels: false,
     );
   }
 
-  /// Build empty state when no climate devices
-  Widget _buildEmptyState(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            MdiIcons.thermometerOff,
-            size: _screenService.scale(
-              80,
-              density: _visualDensityService.density,
-            ),
-            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
-          ),
-          AppSpacings.spacingLgVertical,
-          Text(
-            'No climate devices',
-            style: TextStyle(
-              fontSize: AppFontSize.extraLarge,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          AppSpacings.spacingSmVertical,
-          Text(
-            'Add climate devices to this room to control them here',
-            style: TextStyle(
-              fontSize: AppFontSize.base,
-              color: Theme.of(context).brightness == Brightness.light
-                  ? AppTextColorLight.regular
-                  : AppTextColorDark.regular,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
+  List<ModeOption<ClimateMode>> _getClimateModeOptions() {
+    final modes = <ModeOption<ClimateMode>>[];
+
+    if (_state.capability == RoomCapability.heaterOnly ||
+        _state.capability == RoomCapability.heaterAndCooler) {
+      modes.add(ModeOption(
+        value: ClimateMode.heat,
+        icon: MdiIcons.fireCircle,
+        label: 'Heat',
+        color: ModeSelectorColor.warning,
+      ));
+    }
+    if (_state.capability == RoomCapability.coolerOnly ||
+        _state.capability == RoomCapability.heaterAndCooler) {
+      modes.add(ModeOption(
+        value: ClimateMode.cool,
+        icon: MdiIcons.snowflake,
+        label: 'Cool',
+        color: ModeSelectorColor.info,
+      ));
+    }
+    modes.add(ModeOption(
+      value: ClimateMode.off,
+      icon: Icons.power_settings_new,
+      label: 'Off',
+      color: ModeSelectorColor.neutral,
+    ));
+
+    return modes;
   }
 
-  /// Build hero section with circular dial
-  Widget _buildHeroSection(
-    BuildContext context,
-    DeviceView device,
-    DevicesService devicesService,
-    BoxConstraints constraints, {
-    ClimateTargetView? temperatureSensorTarget,
-    ClimateTargetView? humiditySensorTarget,
-    bool useIntents = true,
+  // --------------------------------------------------------------------------
+  // PRIMARY CONTROL CARD
+  // --------------------------------------------------------------------------
+
+  Widget _buildPrimaryControlCard(
+    BuildContext context, {
+    required double dialSize,
   }) {
-    // Get room temperature from sensor if available
-    final sensorTemperature = _getSensorTemperature(
-      temperatureSensorTarget,
-      devicesService,
-    );
-    // Get room humidity from sensor if available
-    final sensorHumidity = _getSensorHumidity(
-      humiditySensorTarget,
-      devicesService,
-    );
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final modeColor = _getModeColor(context);
+    final borderColor = _state.mode != ClimateMode.off
+        ? modeColor.withValues(alpha: 0.3)
+        : (isDark ? AppBorderColorDark.light : AppBorderColorLight.light);
+    // Use darker bg in dark mode for better contrast with dial inner background
+    final cardColor =
+        isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
 
     return GestureDetector(
-      onTap: () => _openDeviceDetail(context, device),
+      onTap: _navigateToDetail,
       child: Container(
-        padding: AppSpacings.paddingMd,
+        padding: AppSpacings.paddingLg,
         decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.light
-              ? AppColorsLight.infoLight5.withValues(alpha: 0.3)
-              : AppColorsDark.infoLight5.withValues(alpha: 0.3),
+          color: cardColor,
           borderRadius: BorderRadius.circular(AppBorderRadius.round),
+          border: Border.all(color: borderColor, width: _scale(1)),
         ),
         child: Column(
           children: [
-            // Device name
-            Text(
-              device.name,
-              style: TextStyle(
-                fontSize: AppFontSize.large,
-                fontWeight: FontWeight.bold,
-              ),
+            CircularControlDial(
+              value: _state.targetTemp,
+              currentValue: _state.currentTemp,
+              minValue: 16.0,
+              maxValue: 30.0,
+              step: 0.5,
+              size: dialSize,
+              accentType: _getDialAccentType(),
+              isActive: _isDialActive(),
+              enabled: _state.mode != ClimateMode.off,
+              modeLabel: _state.mode.name,
+              displayFormat: DialDisplayFormat.temperature,
+              onChanged: _setTargetTemp,
             ),
-            AppSpacings.spacingSmVertical,
-
-            // Dial or temperature display based on device type
-            if (device is ThermostatDeviceView)
-              _buildThermostatHero(
-                context,
-                device,
-                devicesService,
-                constraints,
-                sensorTemperature: sensorTemperature,
-                useIntents: useIntents,
-              )
-            else if (device is HeaterDeviceView)
-              _buildHeaterHero(
-                context,
-                device,
-                devicesService,
-                constraints,
-                sensorTemperature: sensorTemperature,
-                useIntents: useIntents,
-              )
-            else if (device is AirConditionerDeviceView)
-              _buildCoolerHero(
-                context,
-                device,
-                devicesService,
-                constraints,
-                sensorTemperature: sensorTemperature,
-                useIntents: useIntents,
-              )
-            else
-              // Fallback hero for category-based devices (when typed mapping failed)
-              _buildFallbackHero(context, device, constraints),
-
-            AppSpacings.spacingMdVertical,
-
-            // Humidity indicator (if sensor available)
-            if (sensorHumidity != null)
-              _buildHumidityIndicator(context, sensorHumidity),
-
-            // Status indicator
-            _buildStatusIndicator(context, device),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Build humidity indicator chip
-  Widget _buildHumidityIndicator(BuildContext context, int humidity) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: AppSpacings.pSm),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            MdiIcons.waterPercent,
-            size: AppFontSize.base,
-            color: Theme.of(context).brightness == Brightness.light
-                ? AppTextColorLight.secondary
-                : AppTextColorDark.secondary,
-          ),
-          SizedBox(width: AppSpacings.pXs),
-          Text(
-            '$humidity%',
-            style: TextStyle(
-              fontSize: AppFontSize.small,
-              color: Theme.of(context).brightness == Brightness.light
-                  ? AppTextColorLight.secondary
-                  : AppTextColorDark.secondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Get temperature reading from a temperature sensor target
-  double? _getSensorTemperature(
-    ClimateTargetView? sensorTarget,
-    DevicesService devicesService,
-  ) {
-    if (sensorTarget == null) return null;
-
-    final device = devicesService.getDevice(sensorTarget.deviceId);
-    if (device == null) return null;
-
-    // Sensor targets have a channelId - find the specific temperature channel
-    final channelId = sensorTarget.channelId;
-    if (channelId != null) {
-      // Find the channel by ID and check if it's a temperature channel
-      final channel = device.channels.where((c) => c.id == channelId).firstOrNull;
-      if (channel is TemperatureChannelView) {
-        return channel.temperature;
-      }
-    }
-
-    // Fallback: look for any temperature channel on the device
-    final tempChannel =
-        device.channels.whereType<TemperatureChannelView>().firstOrNull;
-    if (tempChannel != null) {
-      return tempChannel.temperature;
-    }
-
-    // For thermostat devices, temperature comes from temperatureChannel
-    if (device is ThermostatDeviceView) {
-      return device.temperatureChannel.temperature;
-    }
-
-    return null;
-  }
-
-  /// Get humidity reading from a humidity sensor target
-  int? _getSensorHumidity(
-    ClimateTargetView? sensorTarget,
-    DevicesService devicesService,
-  ) {
-    if (sensorTarget == null) return null;
-
-    final device = devicesService.getDevice(sensorTarget.deviceId);
-    if (device == null) return null;
-
-    // Sensor targets have a channelId - find the specific humidity channel
-    final channelId = sensorTarget.channelId;
-    if (channelId != null) {
-      // Find the channel by ID and check if it's a humidity channel
-      final channel = device.channels.where((c) => c.id == channelId).firstOrNull;
-      if (channel is HumidityChannelView) {
-        return channel.humidity;
-      }
-    }
-
-    // Fallback: look for any humidity channel on the device
-    final humidityChannel =
-        device.channels.whereType<HumidityChannelView>().firstOrNull;
-    if (humidityChannel != null) {
-      return humidityChannel.humidity;
-    }
-
-    return null;
-  }
-
-  /// Build thermostat hero with temperature display and mode buttons
-  Widget _buildThermostatHero(
-    BuildContext context,
-    ThermostatDeviceView device,
-    DevicesService devicesService,
-    BoxConstraints constraints, {
-    double? sensorTemperature,
-    bool useIntents = true,
-  }) {
-    final thermostatChannel = device.thermostatChannel;
-    final unit = thermostatChannel.showInFahrenheit ? '°F' : '°C';
-
-    // Check if device has heater/cooler channel with controllable temperature
-    final heaterChannel = device.heaterChannel;
-    final coolerChannel = device.coolerChannel;
-    final hasControllableTemp =
-        (heaterChannel != null && heaterChannel.temperatureProp.isWritable) ||
-        (coolerChannel != null && coolerChannel.temperatureProp.isWritable);
-
-    final dialSize = (constraints.maxWidth * 0.5).clamp(150.0, 250.0);
-
-    return Column(
-      children: [
-        // Circular dial or temperature display
-        SizedBox(
-          width: dialSize,
-          height: dialSize,
-          child: hasControllableTemp
-              ? _buildThermostatDial(
-                  context,
-                  device,
-                  devicesService,
-                  dialSize,
-                  unit,
-                  sensorTemperature: sensorTemperature,
-                  useIntents: useIntents,
-                )
-              : _buildTemperatureDialDisplay(context, device),
-        ),
-
-        // Quick +/- buttons for temperature adjustment
-        if (hasControllableTemp)
-          _buildQuickTemperatureButtons(
-            context,
-            device,
-            devicesService,
-            heaterChannel,
-            coolerChannel,
-            useIntents: useIntents,
-          ),
-
-        AppSpacings.spacingMdVertical,
-
-        // Mode buttons for thermostat
-        _buildThermostatModeButtons(context, device, devicesService),
-      ],
-    );
-  }
-
-  /// Build thermostat dial using heater or cooler channel
-  Widget _buildThermostatDial(
-    BuildContext context,
-    ThermostatDeviceView device,
-    DevicesService devicesService,
-    double dialSize,
-    String unit, {
-    double? sensorTemperature,
-    bool useIntents = true,
-  }) {
-    // Prefer heater channel, fall back to cooler
-    final heaterChannel = device.heaterChannel;
-    final coolerChannel = device.coolerChannel;
-
-    if (heaterChannel != null && heaterChannel.temperatureProp.isWritable) {
-      return _buildTemperatureDial(
-        context,
-        device,
-        heaterChannel.temperature,
-        heaterChannel.minTemperature,
-        heaterChannel.maxTemperature,
-        unit,
-        dialSize,
-        useIntents
-            ? (value) => _setTemperatureViaIntent(context, value)
-            : (value) =>
-                _setHeaterTemperature(context, device, value, devicesService),
-        sensorTemperature: sensorTemperature,
-      );
-    } else if (coolerChannel != null &&
-        coolerChannel.temperatureProp.isWritable) {
-      return _buildTemperatureDial(
-        context,
-        device,
-        coolerChannel.temperature,
-        coolerChannel.minTemperature,
-        coolerChannel.maxTemperature,
-        unit,
-        dialSize,
-        useIntents
-            ? (value) => _setTemperatureViaIntent(context, value)
-            : (value) =>
-                _setCoolerTemperature(context, device, value, devicesService),
-        sensorTemperature: sensorTemperature,
-      );
-    }
-
-    return _buildTemperatureDialDisplay(context, device);
-  }
-
-  /// Build heater hero with dial
-  Widget _buildHeaterHero(
-    BuildContext context,
-    HeaterDeviceView device,
-    DevicesService devicesService,
-    BoxConstraints constraints, {
-    double? sensorTemperature,
-    bool useIntents = true,
-  }) {
-    final heaterChannel = device.heaterChannel;
-    final hasSetpoint = heaterChannel.temperatureProp.isWritable;
-
-    final dialSize = (constraints.maxWidth * 0.5).clamp(150.0, 250.0);
-
-    return SizedBox(
-      width: dialSize,
-      height: dialSize,
-      child: hasSetpoint
-          ? _buildTemperatureDial(
-              context,
-              device,
-              heaterChannel.temperature,
-              heaterChannel.minTemperature,
-              heaterChannel.maxTemperature,
-              _getTemperatureUnit(),
-              dialSize,
-              useIntents
-                  ? (value) => _setTemperatureViaIntent(context, value)
-                  : (value) =>
-                      _setHeaterTemperature(context, device, value, devicesService),
-              sensorTemperature: sensorTemperature,
-            )
-          : _buildHeaterDialDisplay(context, device),
-    );
-  }
-
-  /// Build cooler (AC) hero with dial
-  Widget _buildCoolerHero(
-    BuildContext context,
-    AirConditionerDeviceView device,
-    DevicesService devicesService,
-    BoxConstraints constraints, {
-    double? sensorTemperature,
-    bool useIntents = true,
-  }) {
-    final coolerChannel = device.coolerChannel;
-    final hasSetpoint = coolerChannel.temperatureProp.isWritable;
-
-    final dialSize = (constraints.maxWidth * 0.5).clamp(150.0, 250.0);
-
-    return SizedBox(
-      width: dialSize,
-      height: dialSize,
-      child: hasSetpoint
-          ? _buildTemperatureDial(
-              context,
-              device,
-              coolerChannel.temperature,
-              coolerChannel.minTemperature,
-              coolerChannel.maxTemperature,
-              _getTemperatureUnit(),
-              dialSize,
-              useIntents
-                  ? (value) => _setTemperatureViaIntent(context, value)
-                  : (value) =>
-                      _setCoolerTemperature(context, device, value, devicesService),
-              sensorTemperature: sensorTemperature,
-            )
-          : _buildCoolerDialDisplay(context, device),
-    );
-  }
-
-  /// Build temperature dial with RoundedSlider
-  Widget _buildTemperatureDial(
-    BuildContext context,
-    DeviceView device,
-    double currentValue,
-    double minValue,
-    double maxValue,
-    String unit,
-    double dialSize,
-    Function(double) onChanged, {
-    double? sensorTemperature,
-  }) {
-    return RoundedSlider(
-      value: currentValue.clamp(minValue, maxValue),
-      min: minValue,
-      max: maxValue,
-      enabled: true,
-      availableWidth: dialSize,
-      availableHeight: dialSize,
-      onValueChanged: (value) {
-        // Debounce the API call to prevent overwhelming the backend
-        _temperatureDebounceTimer?.cancel();
-        _temperatureDebounceTimer = Timer(
-          const Duration(milliseconds: LightingConstants.sliderDebounceMs),
-          () => onChanged(value.toDouble()),
-        );
-      },
-      inner: _buildDialCenterContent(
-        context,
-        device,
-        unit,
-        sensorTemperature: sensorTemperature,
-      ),
-    );
-  }
-
-  /// Build dial center content showing temperatures
-  Widget _buildDialCenterContent(
-    BuildContext context,
-    DeviceView device,
-    String unit, {
-    double? sensorTemperature,
-  }) {
-    if (device is ThermostatDeviceView) {
-      return _buildThermostatDialCenter(
-        context,
-        device,
-        unit,
-        sensorTemperature: sensorTemperature,
-      );
-    } else if (device is HeaterDeviceView) {
-      return _buildHeaterDialCenter(
-        context,
-        device,
-        unit,
-        sensorTemperature: sensorTemperature,
-      );
-    } else if (device is AirConditionerDeviceView) {
-      return _buildCoolerDialCenter(
-        context,
-        device,
-        unit,
-        sensorTemperature: sensorTemperature,
-      );
-    }
-    return SizedBox.shrink();
-  }
-
-  /// Build thermostat dial center
-  Widget _buildThermostatDialCenter(
-    BuildContext context,
-    ThermostatDeviceView device,
-    String unit, {
-    double? sensorTemperature,
-  }) {
-    // Use sensor temperature if available, otherwise device's temperature
-    final currentTemp =
-        sensorTemperature ?? device.temperatureChannel.temperature;
-    // Get target from heater or cooler channel if available
-    final heaterChannel = device.heaterChannel;
-    final coolerChannel = device.coolerChannel;
-    double? targetTemp;
-    if (heaterChannel != null) {
-      targetTemp = heaterChannel.temperature;
-    } else if (coolerChannel != null) {
-      targetTemp = coolerChannel.temperature;
-    }
-    final localizations = AppLocalizations.of(context);
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Current temperature
-        Text(
-          localizations?.space_climate_current_label ?? 'Current',
-          style: TextStyle(
-            fontSize: AppFontSize.extraSmall,
-            color: Theme.of(context).brightness == Brightness.light
-                ? AppTextColorLight.secondary
-                : AppTextColorDark.secondary,
-          ),
-        ),
-        Text(
-          _formatTemperature(currentTemp, unit),
-          style: TextStyle(
-            fontSize: _screenService.scale(
-              32,
-              density: _visualDensityService.density,
-            ),
-            fontWeight: FontWeight.bold,
-            color: _isValidTemperature(currentTemp)
-                ? null
-                : (Theme.of(context).brightness == Brightness.light
-                    ? AppTextColorLight.disabled
-                    : AppTextColorDark.disabled),
-          ),
-        ),
-        if (targetTemp != null && _isValidTemperature(targetTemp)) ...[
-          AppSpacings.spacingSmVertical,
-
-          // Target/setpoint temperature
-          Text(
-            localizations?.space_climate_target_label ?? 'Target',
-            style: TextStyle(
-              fontSize: AppFontSize.extraSmall,
-              color: Theme.of(context).brightness == Brightness.light
-                  ? AppTextColorLight.secondary
-                  : AppTextColorDark.secondary,
-            ),
-          ),
-          Text(
-            _formatTemperature(targetTemp, unit),
-            style: TextStyle(
-              fontSize: AppFontSize.large,
-              fontWeight: FontWeight.w500,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  /// Build heater dial center
-  Widget _buildHeaterDialCenter(
-    BuildContext context,
-    HeaterDeviceView device,
-    String unit, {
-    double? sensorTemperature,
-  }) {
-    // Use sensor temperature if available, otherwise device's temperature
-    final currentTemp =
-        sensorTemperature ?? device.temperatureChannel.temperature;
-    final targetTemp = device.heaterChannel.temperature;
-    final localizations = AppLocalizations.of(context);
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          localizations?.space_climate_current_label ?? 'Current',
-          style: TextStyle(
-            fontSize: AppFontSize.extraSmall,
-            color: Theme.of(context).brightness == Brightness.light
-                ? AppTextColorLight.secondary
-                : AppTextColorDark.secondary,
-          ),
-        ),
-        Text(
-          _formatTemperature(currentTemp, unit),
-          style: TextStyle(
-            fontSize: _screenService.scale(
-              32,
-              density: _visualDensityService.density,
-            ),
-            fontWeight: FontWeight.bold,
-            color: _isValidTemperature(currentTemp)
-                ? null
-                : (Theme.of(context).brightness == Brightness.light
-                    ? AppTextColorLight.disabled
-                    : AppTextColorDark.disabled),
-          ),
-        ),
-        if (_isValidTemperature(targetTemp)) ...[
-          AppSpacings.spacingSmVertical,
-          Text(
-            localizations?.space_climate_target_label ?? 'Target',
-            style: TextStyle(
-              fontSize: AppFontSize.extraSmall,
-              color: Theme.of(context).brightness == Brightness.light
-                  ? AppTextColorLight.secondary
-                  : AppTextColorDark.secondary,
-            ),
-          ),
-          Text(
-            _formatTemperature(targetTemp, unit),
-            style: TextStyle(
-              fontSize: AppFontSize.large,
-              fontWeight: FontWeight.w500,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  /// Build cooler dial center
-  Widget _buildCoolerDialCenter(
-    BuildContext context,
-    AirConditionerDeviceView device,
-    String unit, {
-    double? sensorTemperature,
-  }) {
-    // Use sensor temperature if available, otherwise device's temperature
-    final currentTemp =
-        sensorTemperature ?? device.temperatureChannel.temperature;
-    final targetTemp = device.coolerChannel.temperature;
-    final localizations = AppLocalizations.of(context);
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          localizations?.space_climate_current_label ?? 'Current',
-          style: TextStyle(
-            fontSize: AppFontSize.extraSmall,
-            color: Theme.of(context).brightness == Brightness.light
-                ? AppTextColorLight.secondary
-                : AppTextColorDark.secondary,
-          ),
-        ),
-        Text(
-          _formatTemperature(currentTemp, unit),
-          style: TextStyle(
-            fontSize: _screenService.scale(
-              32,
-              density: _visualDensityService.density,
-            ),
-            fontWeight: FontWeight.bold,
-            color: _isValidTemperature(currentTemp)
-                ? null
-                : (Theme.of(context).brightness == Brightness.light
-                    ? AppTextColorLight.disabled
-                    : AppTextColorDark.disabled),
-          ),
-        ),
-        if (_isValidTemperature(targetTemp)) ...[
-          AppSpacings.spacingSmVertical,
-          Text(
-            localizations?.space_climate_target_label ?? 'Target',
-            style: TextStyle(
-              fontSize: AppFontSize.extraSmall,
-              color: Theme.of(context).brightness == Brightness.light
-                  ? AppTextColorLight.secondary
-                  : AppTextColorDark.secondary,
-            ),
-          ),
-          Text(
-            _formatTemperature(targetTemp, unit),
-            style: TextStyle(
-              fontSize: AppFontSize.large,
-              fontWeight: FontWeight.w500,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  /// Build temperature-only display (when no dial available)
-  Widget _buildTemperatureDialDisplay(
-    BuildContext context,
-    ThermostatDeviceView device,
-  ) {
-    final currentTemp = device.temperatureChannel.temperature;
-    final unit = device.thermostatChannel.showInFahrenheit ? '°F' : '°C';
-    final isValid = _isValidTemperature(currentTemp);
-
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            MdiIcons.thermostat,
-            size: _screenService.scale(
-              48,
-              density: _visualDensityService.density,
-            ),
-            color: isValid
-                ? Theme.of(context).colorScheme.primary
-                : (Theme.of(context).brightness == Brightness.light
-                    ? AppTextColorLight.disabled
-                    : AppTextColorDark.disabled),
-          ),
-          AppSpacings.spacingMdVertical,
-          Text(
-            _formatTemperature(currentTemp, unit),
-            style: TextStyle(
-              fontSize: _screenService.scale(
-                48,
-                density: _visualDensityService.density,
-              ),
-              fontWeight: FontWeight.bold,
-              color: isValid
-                  ? null
-                  : (Theme.of(context).brightness == Brightness.light
-                      ? AppTextColorLight.disabled
-                      : AppTextColorDark.disabled),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Build heater display (when no dial available)
-  Widget _buildHeaterDialDisplay(
-    BuildContext context,
-    HeaterDeviceView device,
-  ) {
-    final currentTemp = device.temperatureChannel.temperature;
-    final unit = _getTemperatureUnit();
-    final isValid = _isValidTemperature(currentTemp);
-
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            MdiIcons.fireCircle,
-            size: _screenService.scale(
-              48,
-              density: _visualDensityService.density,
-            ),
-            color: isValid
-                ? Theme.of(context).colorScheme.primary
-                : (Theme.of(context).brightness == Brightness.light
-                    ? AppTextColorLight.disabled
-                    : AppTextColorDark.disabled),
-          ),
-          AppSpacings.spacingMdVertical,
-          Text(
-            _formatTemperature(currentTemp, unit),
-            style: TextStyle(
-              fontSize: _screenService.scale(
-                48,
-                density: _visualDensityService.density,
-              ),
-              fontWeight: FontWeight.bold,
-              color: isValid
-                  ? null
-                  : (Theme.of(context).brightness == Brightness.light
-                      ? AppTextColorLight.disabled
-                      : AppTextColorDark.disabled),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Build cooler display (when no dial available)
-  Widget _buildCoolerDialDisplay(
-    BuildContext context,
-    AirConditionerDeviceView device,
-  ) {
-    final currentTemp = device.temperatureChannel.temperature;
-    final unit = _getTemperatureUnit();
-    final isValid = _isValidTemperature(currentTemp);
-
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            MdiIcons.snowflake,
-            size: _screenService.scale(
-              48,
-              density: _visualDensityService.density,
-            ),
-            color: isValid
-                ? Theme.of(context).colorScheme.primary
-                : (Theme.of(context).brightness == Brightness.light
-                    ? AppTextColorLight.disabled
-                    : AppTextColorDark.disabled),
-          ),
-          AppSpacings.spacingMdVertical,
-          Text(
-            _formatTemperature(currentTemp, unit),
-            style: TextStyle(
-              fontSize: _screenService.scale(
-                48,
-                density: _visualDensityService.density,
-              ),
-              fontWeight: FontWeight.bold,
-              color: isValid
-                  ? null
-                  : (Theme.of(context).brightness == Brightness.light
-                      ? AppTextColorLight.disabled
-                      : AppTextColorDark.disabled),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Build fallback hero for category-based devices (when typed mapping failed)
-  /// This provides a degraded but functional UI for devices that couldn't be
-  /// properly mapped to their typed view classes
-  Widget _buildFallbackHero(
-    BuildContext context,
-    DeviceView device,
-    BoxConstraints constraints,
-  ) {
-    final localizations = AppLocalizations.of(context);
-    final unit = _getTemperatureUnit();
-
-    // Determine icon based on category
-    IconData icon;
-    Color iconColor;
-    switch (device.category) {
-      case DevicesModuleDeviceCategory.thermostat:
-        icon = MdiIcons.thermostat;
-        iconColor = Theme.of(context).colorScheme.primary;
-        break;
-      case DevicesModuleDeviceCategory.heater:
-        icon = MdiIcons.fireCircle;
-        iconColor = Theme.of(context).warning;
-        break;
-      case DevicesModuleDeviceCategory.airConditioner:
-        icon = MdiIcons.snowflake;
-        iconColor = Theme.of(context).info;
-        break;
-      default:
-        icon = MdiIcons.thermometer;
-        iconColor = Theme.of(context).colorScheme.primary;
-    }
-
-    // Check device status
-    final isOnline = device.isOnline;
-    final isValid = device.isValid;
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Device icon with status indicator
-        Stack(
-          alignment: Alignment.center,
-          children: [
-            Icon(
-              icon,
-              size: _screenService.scale(
-                80,
-                density: _visualDensityService.density,
-              ),
-              color: isOnline
-                  ? iconColor
-                  : (Theme.of(context).brightness == Brightness.light
-                      ? AppTextColorLight.disabled
-                      : AppTextColorDark.disabled),
-            ),
-            if (!isOnline)
-              Positioned(
-                right: 0,
-                bottom: 0,
-                child: Container(
-                  padding: EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).brightness == Brightness.light
-                        ? AppColorsLight.danger
-                        : AppColorsDark.danger,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    MdiIcons.cloudOffOutline,
-                    size: _screenService.scale(
-                      20,
-                      density: _visualDensityService.density,
-                    ),
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-          ],
-        ),
-
-        AppSpacings.spacingMdVertical,
-
-        // Temperature display (show -- if device is offline or invalid)
-        Text(
-          isOnline ? '--$unit' : (localizations?.device_status_offline ?? 'Offline'),
-          style: TextStyle(
-            fontSize: _screenService.scale(
-              48,
-              density: _visualDensityService.density,
-            ),
-            fontWeight: FontWeight.bold,
-            color: isOnline
-                ? null
-                : (Theme.of(context).brightness == Brightness.light
-                    ? AppTextColorLight.disabled
-                    : AppTextColorDark.disabled),
-          ),
-        ),
-
-        AppSpacings.spacingMdVertical,
-
-        // Configuration warning
-        if (!isValid || !isOnline)
-          Container(
-            padding: AppSpacings.paddingSm,
-            decoration: BoxDecoration(
-              color: Theme.of(context).brightness == Brightness.light
-                  ? AppColorsLight.warningLight5
-                  : AppColorsDark.warningLight5,
-              borderRadius: BorderRadius.circular(AppBorderRadius.base),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+            SizedBox(height: AppSpacings.pMd),
+            _buildModeSelector(context),
+            SizedBox(height: AppSpacings.pSm),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  MdiIcons.alertCircleOutline,
-                  size: AppFontSize.base,
-                  color: Theme.of(context).brightness == Brightness.light
-                      ? AppColorsLight.warning
-                      : AppColorsDark.warning,
-                ),
-                AppSpacings.spacingXsHorizontal,
-                Flexible(
-                  child: Text(
-                    !isOnline
-                        ? (localizations?.device_offline_message ??
-                            'Device is offline')
-                        : (localizations?.device_config_issue ??
-                            'Configuration issue'),
-                    style: TextStyle(
-                      fontSize: AppFontSize.small,
-                      color: Theme.of(context).brightness == Brightness.light
-                          ? AppColorsLight.warning
-                          : AppColorsDark.warning,
-                    ),
+                Text(
+                  'Tap for details',
+                  style: TextStyle(
+                    color: isDark
+                        ? AppTextColorDark.secondary
+                        : AppTextColorLight.secondary,
+                    fontSize: AppFontSize.extraSmall,
                   ),
+                ),
+                SizedBox(width: AppSpacings.pXs),
+                Icon(
+                  Icons.chevron_right,
+                  color: isDark
+                      ? AppTextColorDark.secondary
+                      : AppTextColorLight.secondary,
+                  size: _scale(14),
                 ),
               ],
             ),
-          ),
-
-        AppSpacings.spacingMdVertical,
-
-        // Open device details button
-        TextButton.icon(
-          onPressed: () => _openDeviceDetail(context, device),
-          icon: Icon(MdiIcons.cogOutline),
-          label: Text(localizations?.device_details ?? 'Device Details'),
-        ),
-      ],
-    );
-  }
-
-  /// Build thermostat mode buttons
-  Widget _buildThermostatModeButtons(
-    BuildContext context,
-    ThermostatDeviceView device,
-    DevicesService devicesService,
-  ) {
-    final currentMode = device.thermostatMode;
-    final modeProp = device.thermostatChannel.modeProp;
-
-    if (!modeProp.isWritable) {
-      return SizedBox.shrink();
-    }
-
-    // Get available modes
-    final List<ThermostatModeValue> availableModes = [];
-
-    // Always add off
-    availableModes.add(ThermostatModeValue.off);
-
-    // Add available modes
-    for (final mode in device.thermostatAvailableModes) {
-      if (mode != ThermostatModeValue.off) {
-        availableModes.add(mode);
-      }
-    }
-
-    return Wrap(
-      spacing: AppSpacings.pSm,
-      runSpacing: AppSpacings.pSm,
-      alignment: WrapAlignment.center,
-      children: availableModes.map((mode) {
-        final isSelected = mode == currentMode;
-        return _buildModeButton(
-          context,
-          mode,
-          isSelected,
-          () => _setThermostatMode(context, device, mode, devicesService),
-        );
-      }).toList(),
-    );
-  }
-
-  /// Build a single mode button
-  Widget _buildModeButton(
-    BuildContext context,
-    ThermostatModeValue mode,
-    bool isSelected,
-    VoidCallback onTap,
-  ) {
-    return Material(
-      color: isSelected
-          ? Theme.of(context).colorScheme.primary
-          : Theme.of(context).brightness == Brightness.light
-              ? AppColorsLight.infoLight5
-              : AppColorsDark.infoLight5,
-      borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacings.pMd,
-            vertical: AppSpacings.pSm,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                _getModeIcon(mode),
-                size: AppFontSize.base,
-                color: isSelected
-                    ? AppColors.white
-                    : Theme.of(context).brightness == Brightness.light
-                        ? AppTextColorLight.regular
-                        : AppTextColorDark.regular,
-              ),
-              SizedBox(width: 4),
-              Text(
-                _getLocalizedModeName(context, mode),
-                style: TextStyle(
-                  fontSize: AppFontSize.small,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  color: isSelected
-                      ? AppColors.white
-                      : Theme.of(context).brightness == Brightness.light
-                          ? AppTextColorLight.regular
-                          : AppTextColorDark.regular,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Build quick +/- temperature adjustment buttons
-  Widget _buildQuickTemperatureButtons(
-    BuildContext context,
-    ThermostatDeviceView device,
-    DevicesService devicesService,
-    HeaterChannelView? heaterChannel,
-    CoolerChannelView? coolerChannel, {
-    bool useIntents = true,
-  }) {
-    final localizations = AppLocalizations.of(context);
-
-    // Determine which channel to use for adjustment
-    double currentTarget;
-    double minTemp;
-    double maxTemp;
-    Future<void> Function(double) setTemperature;
-
-    if (heaterChannel != null && heaterChannel.temperatureProp.isWritable) {
-      currentTarget = heaterChannel.temperature;
-      minTemp = heaterChannel.minTemperature;
-      maxTemp = heaterChannel.maxTemperature;
-      setTemperature =
-          (value) => _setHeaterTemperature(context, device, value, devicesService);
-    } else if (coolerChannel != null && coolerChannel.temperatureProp.isWritable) {
-      currentTarget = coolerChannel.temperature;
-      minTemp = coolerChannel.minTemperature;
-      maxTemp = coolerChannel.maxTemperature;
-      setTemperature =
-          (value) => _setCoolerTemperature(context, device, value, devicesService);
-    } else {
-      return SizedBox.shrink();
-    }
-
-    const double step = 0.5;
-    final bool canDecrease = currentTarget - step >= minTemp;
-    final bool canIncrease = currentTarget + step <= maxTemp;
-
-    return Padding(
-      padding: EdgeInsets.only(top: AppSpacings.pMd),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Decrease button
-          _buildQuickAdjustButton(
-            context,
-            icon: MdiIcons.minus,
-            label: '-${step.toStringAsFixed(1)}°',
-            enabled: canDecrease,
-            onTap: useIntents
-                ? () => _adjustTemperatureViaIntent(context, increase: false)
-                : () => setTemperature(currentTarget - step),
-          ),
-
-          AppSpacings.spacingMdHorizontal,
-
-          // Current target display
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: AppSpacings.pMd,
-              vertical: AppSpacings.pSm,
-            ),
-            decoration: BoxDecoration(
-              color: Theme.of(context).brightness == Brightness.light
-                  ? AppColorsLight.infoLight5.withValues(alpha: 0.5)
-                  : AppColorsDark.infoLight5.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-            ),
-            child: Text(
-              localizations?.space_climate_target_label ?? 'Target',
-              style: TextStyle(
-                fontSize: AppFontSize.small,
-                color: Theme.of(context).brightness == Brightness.light
-                    ? AppTextColorLight.secondary
-                    : AppTextColorDark.secondary,
-              ),
-            ),
-          ),
-
-          AppSpacings.spacingMdHorizontal,
-
-          // Increase button
-          _buildQuickAdjustButton(
-            context,
-            icon: MdiIcons.plus,
-            label: '+${step.toStringAsFixed(1)}°',
-            enabled: canIncrease,
-            onTap: useIntents
-                ? () => _adjustTemperatureViaIntent(context, increase: true)
-                : () => setTemperature(currentTarget + step),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Build a single quick adjust button
-  Widget _buildQuickAdjustButton(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required bool enabled,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: enabled
-          ? (Theme.of(context).brightness == Brightness.light
-              ? AppColorsLight.infoLight5
-              : AppColorsDark.infoLight5)
-          : (Theme.of(context).brightness == Brightness.light
-              ? AppColorsLight.infoLight5.withValues(alpha: 0.3)
-              : AppColorsDark.infoLight5.withValues(alpha: 0.3)),
-      borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-      child: InkWell(
-        onTap: enabled ? onTap : null,
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacings.pMd,
-            vertical: AppSpacings.pSm,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: AppFontSize.base,
-                color: enabled
-                    ? Theme.of(context).colorScheme.primary
-                    : (Theme.of(context).brightness == Brightness.light
-                        ? AppTextColorLight.disabled
-                        : AppTextColorDark.disabled),
-              ),
-              SizedBox(width: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: AppFontSize.small,
-                  fontWeight: FontWeight.w500,
-                  color: enabled
-                      ? Theme.of(context).colorScheme.primary
-                      : (Theme.of(context).brightness == Brightness.light
-                          ? AppTextColorLight.disabled
-                          : AppTextColorDark.disabled),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Get icon for thermostat mode
-  IconData _getModeIcon(ThermostatModeValue mode) {
-    switch (mode) {
-      case ThermostatModeValue.off:
-        return MdiIcons.power;
-      case ThermostatModeValue.heat:
-        return MdiIcons.fire;
-      case ThermostatModeValue.cool:
-        return MdiIcons.snowflake;
-      case ThermostatModeValue.auto:
-        return MdiIcons.autoFix;
-      case ThermostatModeValue.manual:
-        return MdiIcons.handBackRight;
-    }
-  }
-
-  /// Get localized mode name
-  String _getLocalizedModeName(BuildContext context, ThermostatModeValue mode) {
-    final localizations = AppLocalizations.of(context);
-    switch (mode) {
-      case ThermostatModeValue.off:
-        return localizations?.thermostat_mode_off ?? 'Off';
-      case ThermostatModeValue.heat:
-        return localizations?.thermostat_mode_heat ?? 'Heat';
-      case ThermostatModeValue.cool:
-        return localizations?.thermostat_mode_cool ?? 'Cool';
-      case ThermostatModeValue.auto:
-        return localizations?.thermostat_mode_auto ?? 'Auto';
-      case ThermostatModeValue.manual:
-        return localizations?.thermostat_mode_manual ?? 'Manual';
-    }
-  }
-
-  /// Build status indicator (heating/cooling/idle)
-  Widget _buildStatusIndicator(BuildContext context, DeviceView device) {
-    final localizations = AppLocalizations.of(context);
-
-    IconData icon;
-    String label;
-    Color color;
-
-    bool isHeating = false;
-    bool isCooling = false;
-
-    if (device is ThermostatDeviceView) {
-      isHeating = device.heaterChannel?.isHeating ?? false;
-      isCooling = device.coolerChannel?.isCooling ?? false;
-    } else if (device is HeaterDeviceView) {
-      isHeating = device.heaterChannel.isHeating;
-    } else if (device is AirConditionerDeviceView) {
-      isCooling = device.coolerChannel.isCooling;
-    }
-
-    if (isHeating) {
-      icon = MdiIcons.fire;
-      label = localizations?.thermostat_state_heating ?? 'Heating';
-      color = Theme.of(context).warning;
-    } else if (isCooling) {
-      icon = MdiIcons.snowflake;
-      label = localizations?.thermostat_state_cooling ?? 'Cooling';
-      color = Theme.of(context).info;
-    } else {
-      icon = MdiIcons.checkCircle;
-      label = localizations?.thermostat_state_idling ?? 'Idle';
-      color = Theme.of(context).brightness == Brightness.light
-          ? AppTextColorLight.secondary
-          : AppTextColorDark.secondary;
-    }
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, size: AppFontSize.base, color: color),
-        SizedBox(width: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: AppFontSize.small,
-            color: color,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Build secondary climate targets section (role-based)
-  Widget _buildSecondaryTargetsSection(
-    BuildContext context,
-    List<ClimateTargetView> targets,
-    DevicesService devicesService,
-  ) {
-    final localizations = AppLocalizations.of(context);
-
-    // Group targets by role for better organization
-    final auxiliaryTargets =
-        targets.where((t) => t.role == ClimateTargetRole.auxiliary).toList();
-    final ventilationTargets =
-        targets.where((t) => t.role == ClimateTargetRole.ventilation).toList();
-    final humidityTargets =
-        targets.where((t) => t.role == ClimateTargetRole.humidityControl).toList();
-    final otherTargets = targets
-        .where((t) =>
-            t.role == ClimateTargetRole.other || t.role == null)
-        .toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Auxiliary heating/cooling devices
-        if (auxiliaryTargets.isNotEmpty) ...[
-          _buildRoleSection(
-            context,
-            localizations?.climate_role_auxiliary ?? 'Auxiliary',
-            auxiliaryTargets,
-            devicesService,
-          ),
-          AppSpacings.spacingMdVertical,
-        ],
-
-        // Ventilation devices (fans, purifiers)
-        if (ventilationTargets.isNotEmpty) ...[
-          _buildRoleSection(
-            context,
-            localizations?.climate_role_ventilation ?? 'Ventilation',
-            ventilationTargets,
-            devicesService,
-          ),
-          AppSpacings.spacingMdVertical,
-        ],
-
-        // Humidity control devices
-        if (humidityTargets.isNotEmpty) ...[
-          _buildRoleSection(
-            context,
-            localizations?.climate_role_humidity ?? 'Humidity Control',
-            humidityTargets,
-            devicesService,
-          ),
-          AppSpacings.spacingMdVertical,
-        ],
-
-        // Other devices
-        if (otherTargets.isNotEmpty)
-          _buildRoleSection(
-            context,
-            localizations?.climate_role_other ?? 'Other Devices',
-            otherTargets,
-            devicesService,
-          ),
-      ],
-    );
-  }
-
-  /// Build a section for a specific climate role
-  Widget _buildRoleSection(
-    BuildContext context,
-    String title,
-    List<ClimateTargetView> targets,
-    DevicesService devicesService,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: AppFontSize.base,
-            fontWeight: FontWeight.w500,
-            color: Theme.of(context).brightness == Brightness.light
-                ? AppTextColorLight.secondary
-                : AppTextColorDark.secondary,
-          ),
-        ),
-        AppSpacings.spacingSmVertical,
-        Wrap(
-          spacing: AppSpacings.pSm,
-          runSpacing: AppSpacings.pSm,
-          children: targets.map((target) {
-            final device = devicesService.getDevice(target.deviceId);
-            if (device == null) return const SizedBox.shrink();
-            return _buildSecondaryDeviceTile(context, device, devicesService);
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  /// Build secondary devices section (legacy - device based)
-  Widget _buildSecondaryDevicesSection(
-    BuildContext context,
-    List<DeviceView> devices,
-    DevicesService devicesService,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Section header
-        Text(
-          'Other devices',
-          style: TextStyle(
-            fontSize: AppFontSize.base,
-            fontWeight: FontWeight.w500,
-            color: Theme.of(context).brightness == Brightness.light
-                ? AppTextColorLight.secondary
-                : AppTextColorDark.secondary,
-          ),
-        ),
-        AppSpacings.spacingSmVertical,
-
-        // Device tiles in a wrap
-        Wrap(
-          spacing: AppSpacings.pSm,
-          runSpacing: AppSpacings.pSm,
-          children: devices.map((device) {
-            return _buildSecondaryDeviceTile(context, device, devicesService);
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  /// Build a secondary device tile with improved layout
-  Widget _buildSecondaryDeviceTile(
-    BuildContext context,
-    DeviceView device,
-    DevicesService devicesService,
-  ) {
-    final deviceType = getClimateDeviceType(device);
-    final isToggling = _togglingDevices.contains(device.id);
-    final bool isOn = _getDeviceOnState(device);
-    final canToggle = _canToggleDevice(device);
-    final isOnline = device.isOnline;
-
-    // Get temperature info if available
-    final temperatureInfo = _getDeviceTemperatureInfo(device);
-
-    return SizedBox(
-      width: 160,
-      height: 130,
-      child: ButtonTileBox(
-        onTap: isToggling ? null : () => _openDeviceDetail(context, device),
-        isOn: isOn,
-        child: Stack(
-          children: [
-            // Main content
-            Padding(
-              padding: EdgeInsets.all(AppSpacings.pSm),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Top row: Name and icon
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          device.name,
-                          style: TextStyle(
-                            fontSize: AppFontSize.small,
-                            fontWeight: FontWeight.w600,
-                            color: isOn
-                                ? (Theme.of(context).brightness == Brightness.light
-                                    ? AppTextColorLight.primary
-                                    : AppTextColorDark.primary)
-                                : (Theme.of(context).brightness == Brightness.light
-                                    ? AppTextColorLight.secondary
-                                    : AppTextColorDark.secondary),
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      ButtonTileIcon(
-                        icon: deviceType != null
-                            ? getClimateDeviceIcon(deviceType)
-                            : MdiIcons.thermometer,
-                        onTap: (canToggle && !isToggling)
-                            ? () => _toggleDevice(context, device, devicesService)
-                            : null,
-                        isOn: isOn,
-                        rawIconSize: 28,
-                      ),
-                    ],
-                  ),
-
-                  // Middle: Temperature display (if available)
-                  if (temperatureInfo != null)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          temperatureInfo.currentFormatted,
-                          style: TextStyle(
-                            fontSize: _screenService.scale(
-                              24,
-                              density: _visualDensityService.density,
-                            ),
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'DIN1451',
-                            color: isOnline
-                                ? (isOn
-                                    ? Theme.of(context).colorScheme.primary
-                                    : (Theme.of(context).brightness ==
-                                            Brightness.light
-                                        ? AppTextColorLight.primary
-                                        : AppTextColorDark.primary))
-                                : (Theme.of(context).brightness == Brightness.light
-                                    ? AppTextColorLight.disabled
-                                    : AppTextColorDark.disabled),
-                          ),
-                        ),
-                        if (temperatureInfo.targetFormatted != null)
-                          Text(
-                            '→ ${temperatureInfo.targetFormatted}',
-                            style: TextStyle(
-                              fontSize: AppFontSize.extraSmall,
-                              color: Theme.of(context).brightness == Brightness.light
-                                  ? AppTextColorLight.secondary
-                                  : AppTextColorDark.secondary,
-                            ),
-                          ),
-                      ],
-                    ),
-
-                  // Bottom: Status
-                  Row(
-                    children: [
-                      Icon(
-                        _getDeviceStatusIcon(device),
-                        size: AppFontSize.small,
-                        color: _getDeviceStatusColor(context, device),
-                      ),
-                      AppSpacings.spacingXsHorizontal,
-                      Expanded(
-                        child: Text(
-                          _getDeviceStatusText(context, device),
-                          style: TextStyle(
-                            fontSize: AppFontSize.extraSmall,
-                            color: _getDeviceStatusColor(context, device),
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // Offline indicator
-            if (!isOnline)
-              Positioned(
-                top: 4,
-                right: 4,
-                child: Container(
-                  padding: EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).brightness == Brightness.light
-                        ? AppColorsLight.danger
-                        : AppColorsDark.danger,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    MdiIcons.cloudOffOutline,
-                    size: 10,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
           ],
         ),
       ),
     );
   }
 
-  /// Temperature info for a device
-  _DeviceTemperatureInfo? _getDeviceTemperatureInfo(DeviceView device) {
-    final unit = _getTemperatureUnit();
-
-    if (device is ThermostatDeviceView) {
-      final current = device.temperatureChannel.temperature;
-      final heater = device.heaterChannel;
-      final cooler = device.coolerChannel;
-      double? target;
-      if (heater != null) {
-        target = heater.temperature;
-      } else if (cooler != null) {
-        target = cooler.temperature;
-      }
-      return _DeviceTemperatureInfo(
-        current: current,
-        target: target,
-        unit: unit,
-      );
-    } else if (device is HeaterDeviceView) {
-      return _DeviceTemperatureInfo(
-        current: device.temperatureChannel.temperature,
-        target: device.heaterChannel.temperature,
-        unit: unit,
-      );
-    } else if (device is AirConditionerDeviceView) {
-      return _DeviceTemperatureInfo(
-        current: device.temperatureChannel.temperature,
-        target: device.coolerChannel.temperature,
-        unit: unit,
-      );
-    }
-
-    return null;
-  }
-
-  /// Get status icon for device
-  IconData _getDeviceStatusIcon(DeviceView device) {
-    if (!(device.isOnline)) {
-      return MdiIcons.cloudOffOutline;
-    }
-
-    if (device is ThermostatDeviceView) {
-      if (device.heaterChannel?.isHeating ?? false) return MdiIcons.fire;
-      if (device.coolerChannel?.isCooling ?? false) return MdiIcons.snowflake;
-    } else if (device is HeaterDeviceView) {
-      if (device.heaterChannel.isHeating) return MdiIcons.fire;
-    } else if (device is AirConditionerDeviceView) {
-      if (device.coolerChannel.isCooling) return MdiIcons.snowflake;
-    } else if (device is FanDeviceView) {
-      return device.isOn ? MdiIcons.fan : MdiIcons.fanOff;
-    } else if (device is AirHumidifierDeviceView) {
-      return device.isOn ? MdiIcons.airHumidifier : MdiIcons.airHumidifierOff;
-    } else if (device is AirPurifierDeviceView) {
-      return device.isOn ? MdiIcons.airPurifier : MdiIcons.airPurifier;
-    }
-
-    return MdiIcons.checkCircle;
-  }
-
-  /// Get status color for device
-  Color _getDeviceStatusColor(BuildContext context, DeviceView device) {
-    if (!(device.isOnline)) {
-      return Theme.of(context).brightness == Brightness.light
-          ? AppColorsLight.danger
-          : AppColorsDark.danger;
-    }
-
-    if (device is ThermostatDeviceView) {
-      if (device.heaterChannel?.isHeating ?? false) {
-        return Theme.of(context).warning;
-      }
-      if (device.coolerChannel?.isCooling ?? false) {
-        return Theme.of(context).info;
-      }
-    } else if (device is HeaterDeviceView) {
-      if (device.heaterChannel.isHeating) {
-        return Theme.of(context).warning;
-      }
-    } else if (device is AirConditionerDeviceView) {
-      if (device.coolerChannel.isCooling) {
-        return Theme.of(context).info;
-      }
-    }
-
-    return Theme.of(context).brightness == Brightness.light
-        ? AppTextColorLight.secondary
-        : AppTextColorDark.secondary;
-  }
-
-  // ============================================================================
-  // Intent-Based Temperature Control Methods
-  // ============================================================================
-
-  /// Execute a setpoint set intent (dial changes)
-  Future<void> _setTemperatureViaIntent(
-    BuildContext context,
-    double value,
-  ) async {
-    final spacesService = _spacesService;
-    if (spacesService == null) return;
-
-    final localizations = AppLocalizations.of(context);
-    final errorMessage = localizations?.action_failed ?? 'Failed to set temperature';
-
-    final success = await spacesService.executeClimateSetpointSet(
-      spaceId: _roomId,
-      value: value,
+  Widget _buildModeSelector(BuildContext context) {
+    return ModeSelector<ClimateMode>(
+      modes: _getClimateModeOptions(),
+      selectedValue: _state.mode,
+      onChanged: _setMode,
+      orientation: ModeSelectorOrientation.horizontal,
+      iconPlacement: ModeSelectorIconPlacement.left,
     );
-
-    if (!success && mounted) {
-      AlertBar.showError(
-        this.context,
-        message: errorMessage,
-      );
-    }
   }
 
-  /// Execute a setpoint delta intent (+/- buttons)
-  Future<void> _adjustTemperatureViaIntent(
+  // --------------------------------------------------------------------------
+  // SENSORS
+  // --------------------------------------------------------------------------
+
+  /// Builds a horizontal scrollable row of sensor tiles.
+  /// Tiles are sized based on column count to match grid layout sizing.
+  Widget _buildSensorsScrollRow(
     BuildContext context, {
-    required bool increase,
-    SpacesModuleClimateIntentDelta delta = SpacesModuleClimateIntentDelta.small,
-  }) async {
-    final spacesService = _spacesService;
-    if (spacesService == null) return;
+    required int columns,
+    bool useVerticalTiles = true,
+    double? statusFontSize,
+  }) {
+    final tileLayout =
+        useVerticalTiles ? TileLayout.vertical : TileLayout.horizontal;
 
-    final localizations = AppLocalizations.of(context);
-    final errorMessage =
-        localizations?.action_failed ?? 'Failed to adjust temperature';
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final totalSpacing = AppSpacings.pMd * (columns - 1);
+        final tileWidth = (constraints.maxWidth - totalSpacing) / columns;
 
-    final success = await spacesService.executeClimateSetpointDelta(
-      spaceId: _roomId,
-      delta: delta,
-      increase: increase,
-    );
-
-    if (!success && mounted) {
-      AlertBar.showError(
-        this.context,
-        message: errorMessage,
-      );
-    }
-  }
-
-  // ============================================================================
-  // Legacy Temperature Setting Methods (fallback for non-intent devices)
-  // ============================================================================
-
-  Future<void> _setHeaterTemperature(
-    BuildContext context,
-    DeviceView device,
-    double value,
-    DevicesService devicesService,
-  ) async {
-    // Works for both HeaterDeviceView and ThermostatDeviceView with heater channel
-    if (device is HeaterDeviceView) {
-      final temperatureProp = device.heaterChannel.temperatureProp;
-      await _valueHelper.setPropertyValue(context, temperatureProp, value);
-    } else if (device is ThermostatDeviceView) {
-      final heaterChannel = device.heaterChannel;
-      if (heaterChannel != null) {
-        await _valueHelper.setPropertyValue(
-            context, heaterChannel.temperatureProp, value);
-      }
-    }
-  }
-
-  Future<void> _setCoolerTemperature(
-    BuildContext context,
-    DeviceView device,
-    double value,
-    DevicesService devicesService,
-  ) async {
-    // Works for both AirConditionerDeviceView and ThermostatDeviceView with cooler channel
-    if (device is AirConditionerDeviceView) {
-      final temperatureProp = device.coolerChannel.temperatureProp;
-      await _valueHelper.setPropertyValue(context, temperatureProp, value);
-    } else if (device is ThermostatDeviceView) {
-      final coolerChannel = device.coolerChannel;
-      if (coolerChannel != null) {
-        await _valueHelper.setPropertyValue(
-            context, coolerChannel.temperatureProp, value);
-      }
-    }
-  }
-
-  Future<void> _setThermostatMode(
-    BuildContext context,
-    ThermostatDeviceView device,
-    ThermostatModeValue mode,
-    DevicesService devicesService,
-  ) async {
-    final modeProp = device.thermostatChannel.modeProp;
-
-    await _valueHelper.setPropertyValue(
-      context,
-      modeProp,
-      mode.value,
-    );
-  }
-
-  // ============================================================================
-  // Device State Helpers
-  // ============================================================================
-
-  /// Check if device can be toggled on/off
-  bool _canToggleDevice(DeviceView device) {
-    if (device is FanDeviceView) {
-      return device.fanChannel.onProp?.isWritable ?? false;
-    }
-    if (device is AirHumidifierDeviceView) {
-      return device.switcherChannel.onProp?.isWritable ?? false;
-    }
-    if (device is AirPurifierDeviceView) {
-      return device.fanChannel.onProp?.isWritable ?? false;
-    }
-    return false;
-  }
-
-  /// Get the on/off state of a device
-  bool _getDeviceOnState(DeviceView device) {
-    final controlStateService = _deviceControlStateService;
-
-    if (device is ThermostatDeviceView) {
-      return device.isOn;
-    }
-    if (device is HeaterDeviceView) {
-      return device.isOn;
-    }
-    if (device is AirConditionerDeviceView) {
-      return device.isOn;
-    }
-    if (device is FanDeviceView) {
-      final onProp = device.fanChannel.onProp;
-      if (onProp != null && controlStateService != null) {
-        if (controlStateService.isLocked(
-            device.id, device.fanChannel.id, onProp.id)) {
-          final desiredValue = controlStateService.getDesiredValue(
-              device.id, device.fanChannel.id, onProp.id);
-          if (desiredValue is bool) return desiredValue;
-        }
-      }
-      return device.isOn;
-    }
-    if (device is AirHumidifierDeviceView) {
-      final onProp = device.switcherChannel.onProp;
-      if (onProp != null && controlStateService != null) {
-        if (controlStateService.isLocked(
-            device.id, device.switcherChannel.id, onProp.id)) {
-          final desiredValue = controlStateService.getDesiredValue(
-              device.id, device.switcherChannel.id, onProp.id);
-          if (desiredValue is bool) return desiredValue;
-        }
-      }
-      return device.isOn;
-    }
-    if (device is AirDehumidifierDeviceView) {
-      return device.isOn;
-    }
-    if (device is AirPurifierDeviceView) {
-      final onProp = device.fanChannel.onProp;
-      if (onProp != null && controlStateService != null) {
-        if (controlStateService.isLocked(
-            device.id, device.fanChannel.id, onProp.id)) {
-          final desiredValue = controlStateService.getDesiredValue(
-              device.id, device.fanChannel.id, onProp.id);
-          if (desiredValue is bool) return desiredValue;
-        }
-      }
-      return device.isOn;
-    }
-
-    return false;
-  }
-
-  /// Get status text for device
-  String _getDeviceStatusText(BuildContext context, DeviceView device) {
-    final localizations = AppLocalizations.of(context);
-
-    if (device is ThermostatDeviceView) {
-      return _getLocalizedModeName(context, device.thermostatMode);
-    }
-    if (device is HeaterDeviceView) {
-      final isHeating = device.heaterChannel.isHeating;
-      return isHeating
-          ? (localizations?.thermostat_state_heating ?? 'Heating')
-          : (localizations?.thermostat_state_idling ?? 'Idle');
-    }
-    if (device is AirConditionerDeviceView) {
-      final isCooling = device.coolerChannel.isCooling;
-      return isCooling
-          ? (localizations?.thermostat_state_cooling ?? 'Cooling')
-          : (localizations?.thermostat_state_idling ?? 'Idle');
-    }
-    if (device is FanDeviceView) {
-      return device.isOn
-          ? (localizations?.on_state_on ?? 'On')
-          : (localizations?.on_state_off ?? 'Off');
-    }
-    if (device is AirHumidifierDeviceView) {
-      return device.isOn
-          ? (localizations?.on_state_on ?? 'On')
-          : (localizations?.on_state_off ?? 'Off');
-    }
-    if (device is AirDehumidifierDeviceView) {
-      return device.isOn
-          ? (localizations?.on_state_on ?? 'On')
-          : (localizations?.on_state_off ?? 'Off');
-    }
-    if (device is AirPurifierDeviceView) {
-      return device.isOn
-          ? (localizations?.on_state_on ?? 'On')
-          : (localizations?.on_state_off ?? 'Off');
-    }
-
-    return '';
-  }
-
-  Future<void> _toggleDevice(
-    BuildContext context,
-    DeviceView device,
-    DevicesService devicesService,
-  ) async {
-    final localizations = AppLocalizations.of(context);
-    final controlStateService = _deviceControlStateService;
-
-    String? channelId;
-    String? propertyId;
-    bool actualState = false;
-
-    if (device is FanDeviceView) {
-      final onProp = device.fanChannel.onProp;
-      if (onProp != null && onProp.isWritable) {
-        channelId = device.fanChannel.id;
-        propertyId = onProp.id;
-        actualState = device.fanChannel.on;
-      }
-    } else if (device is AirHumidifierDeviceView) {
-      final onProp = device.switcherChannel.onProp;
-      if (onProp != null && onProp.isWritable) {
-        channelId = device.switcherChannel.id;
-        propertyId = onProp.id;
-        actualState = device.switcherChannel.on;
-      }
-    } else if (device is AirPurifierDeviceView) {
-      final onProp = device.fanChannel.onProp;
-      if (onProp != null && onProp.isWritable) {
-        channelId = device.fanChannel.id;
-        propertyId = onProp.id;
-        actualState = device.fanChannel.on;
-      }
-    }
-
-    if (channelId == null || propertyId == null) return;
-
-    // Use optimistic UI state if available, otherwise use actual state
-    bool currentState = actualState;
-    if (controlStateService != null &&
-        controlStateService.isLocked(device.id, channelId, propertyId)) {
-      final desiredValue =
-          controlStateService.getDesiredValue(device.id, channelId, propertyId);
-      if (desiredValue is bool) {
-        currentState = desiredValue;
-      }
-    }
-
-    final newState = !currentState;
-
-    controlStateService?.setPending(device.id, channelId, propertyId, newState);
-    setState(() {
-      _togglingDevices.add(device.id);
-    });
-
-    _intentOverlayService?.createLocalOverlay(
-      deviceId: device.id,
-      channelId: channelId,
-      propertyId: propertyId,
-      value: newState,
-      ttlMs: 5000,
-    );
-
-    try {
-      final displayRepository = locator<DisplayRepository>();
-      final displayId = displayRepository.display?.id;
-
-      final commandContext = PropertyCommandContext(
-        origin: 'panel.system.room',
-        displayId: displayId,
-        spaceId: _roomId,
-      );
-
-      final success = await devicesService.setMultiplePropertyValues(
-        properties: [
-          PropertyCommandItem(
-            deviceId: device.id,
-            channelId: channelId,
-            propertyId: propertyId,
-            value: newState,
-          ),
-        ],
-        context: commandContext,
-      );
-
-      if (!mounted) return;
-
-      if (!success) {
-        AlertBar.showError(
-          this.context,
-          message: localizations?.action_failed ?? 'Failed to toggle device',
+        return ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: _state.sensors.length,
+          separatorBuilder: (context, index) => SizedBox(width: AppSpacings.pMd),
+          itemBuilder: (context, index) {
+            return SizedBox(
+              width: tileWidth,
+              child: _buildSensorTile(
+                context,
+                _state.sensors[index],
+                layout: tileLayout,
+                statusFontSize: statusFontSize,
+              ),
+            );
+          },
         );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      AlertBar.showError(
-        this.context,
-        message: localizations?.action_failed ?? 'Failed to toggle device',
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _togglingDevices.remove(device.id);
-        });
-        controlStateService?.setSettling(device.id, channelId, propertyId);
-      }
-    }
+      },
+    );
   }
 
-  void _openDeviceDetail(BuildContext context, DeviceView device) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => DeviceDetailPage(device.id),
+  /// Builds a grid of sensor tiles that fill the available width.
+  /// Used on large screens without auxiliary devices.
+  Widget _buildSensorsGrid(
+    BuildContext context, {
+    required int crossAxisCount,
+    double? aspectRatio,
+    double? statusFontSize,
+    bool showInactiveBorder = false,
+  }) {
+    // Use horizontal layout for single column (aspect ratio > 1)
+    final useHorizontalLayout =
+        crossAxisCount == 1 || (aspectRatio != null && aspectRatio > 1.5);
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        crossAxisSpacing: AppSpacings.pMd,
+        mainAxisSpacing: AppSpacings.pMd,
+        childAspectRatio: aspectRatio ?? 1.0,
       ),
+      itemCount: _state.sensors.length,
+      itemBuilder: (context, index) {
+        return _buildSensorTile(
+          context,
+          _state.sensors[index],
+          layout:
+              useHorizontalLayout ? TileLayout.horizontal : TileLayout.vertical,
+          statusFontSize: statusFontSize,
+          showInactiveBorder: showInactiveBorder,
+        );
+      },
     );
   }
-}
 
-// ============================================================================
-// Property Value Helper
-// ============================================================================
-
-/// Helper class to set property values with error handling
-class _PropertyValueHelper {
-  final DevicesService _service = locator<DevicesService>();
-
-  Future<bool> setPropertyValue(
+  /// Builds a single sensor tile widget using UniversalTile.
+  Widget _buildSensorTile(
     BuildContext context,
-    ChannelPropertyView property,
-    dynamic value,
-  ) async {
-    final localizations = AppLocalizations.of(context)!;
+    ClimateSensor sensor, {
+    TileLayout layout = TileLayout.horizontal,
+    double? statusFontSize,
+    bool showInactiveBorder = false,
+  }) {
+    final sensorColor = _getSensorColor(context, sensor.type);
 
-    try {
-      bool res = await _service.setPropertyValue(
-        property.id,
-        value,
-      );
+    return UniversalTile(
+      layout: layout,
+      icon: sensor.icon,
+      name: sensor.value,
+      status: sensor.label,
+      iconAccentColor: sensorColor,
+      statusFontSize: statusFontSize,
+      showDoubleBorder: false,
+      showWarningBadge: false,
+      showInactiveBorder: showInactiveBorder,
+      onTileTap: () {
+        // TODO: Sensor detail
+      },
+    );
+  }
 
-      if (!res && context.mounted) {
-        AlertBar.showError(
-          context,
-          message: localizations.action_failed,
+  // --------------------------------------------------------------------------
+  // AUXILIARY
+  // --------------------------------------------------------------------------
+
+  /// Builds a grid of auxiliary device tiles that fill the available width.
+  Widget _buildAuxiliaryGrid(
+    BuildContext context, {
+    required int crossAxisCount,
+    double? aspectRatio,
+    bool showInactiveBorder = false,
+  }) {
+    // Use horizontal layout for single column or wide aspect ratio
+    final useHorizontalLayout =
+        crossAxisCount == 1 || (aspectRatio != null && aspectRatio > 1.5);
+    final tileLayout =
+        useHorizontalLayout ? TileLayout.horizontal : TileLayout.vertical;
+
+    final items =
+        _buildAuxiliaryItems(tileLayout, showInactiveBorder: showInactiveBorder);
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        crossAxisSpacing: AppSpacings.pMd,
+        mainAxisSpacing: AppSpacings.pMd,
+        childAspectRatio: aspectRatio ?? 1.0,
+      ),
+      itemCount: items.length,
+      itemBuilder: (context, index) => items[index],
+    );
+  }
+
+  /// Builds list of auxiliary tile widgets
+  List<Widget> _buildAuxiliaryItems(TileLayout layout,
+      {bool showInactiveBorder = false}) {
+    final items = <Widget>[];
+
+    // Show all auxiliary devices individually
+    for (final device in _state.auxiliaryDevices) {
+      items.add(UniversalTile(
+        layout: layout,
+        icon: device.icon,
+        name: device.name,
+        status: device.status ?? (device.isActive ? 'On' : 'Off'),
+        isActive: device.isActive,
+        showDoubleBorder: false,
+        showWarningBadge: false,
+        showInactiveBorder: showInactiveBorder,
+        onIconTap: () {
+          // TODO: Toggle device state
+        },
+        onTileTap: () => _openAuxiliaryDeviceDetail(device),
+      ));
+    }
+
+    return items;
+  }
+
+  /// Opens the detail page for an auxiliary device
+  void _openAuxiliaryDeviceDetail(AuxiliaryDevice device) {
+    Widget detailPage;
+
+    switch (device.type) {
+      case AuxiliaryType.fan:
+        detailPage = FanDeviceDetail(
+          name: device.name,
+          initialState: FanDeviceState(
+            isOn: device.isActive,
+            speed: device.isActive ? 0.6 : 0.0,
+          ),
+          onBack: () => Navigator.of(context).pop(),
         );
-      }
-
-      return res;
-    } catch (e) {
-      if (!context.mounted) return false;
-
-      AlertBar.showError(
-        context,
-        message: localizations.action_failed,
-      );
+        break;
+      case AuxiliaryType.purifier:
+        detailPage = AirPurifierDeviceDetail(
+          name: device.name,
+          initialState: PurifierDeviceState(isOn: device.isActive),
+          onBack: () => Navigator.of(context).pop(),
+        );
+        break;
+      case AuxiliaryType.humidifier:
+        detailPage = AirHumidifierDeviceDetail(
+          name: device.name,
+          initialState: HumidifierDeviceState(isOn: device.isActive),
+          onBack: () => Navigator.of(context).pop(),
+        );
+        break;
+      case AuxiliaryType.dehumidifier:
+        detailPage = AirDehumidifierDeviceDetail(
+          name: device.name,
+          initialState: DehumidifierDeviceState(isOn: device.isActive),
+          onBack: () => Navigator.of(context).pop(),
+        );
+        break;
     }
 
-    return false;
-  }
-}
-
-// ============================================================================
-// Temperature Info Helper
-// ============================================================================
-
-/// Helper class to hold temperature information for display
-class _DeviceTemperatureInfo {
-  final double current;
-  final double? target;
-  final String unit;
-
-  _DeviceTemperatureInfo({
-    required this.current,
-    this.target,
-    required this.unit,
-  });
-
-  /// Format current temperature with validation
-  String get currentFormatted {
-    // Check for invalid/default values
-    if (current == 0.0 || current < -50 || current > 100) {
-      return '--$unit';
-    }
-    return '${current.toStringAsFixed(1)}$unit';
-  }
-
-  /// Format target temperature with validation
-  String? get targetFormatted {
-    if (target == null) return null;
-    // Check for invalid/default values
-    if (target == 0.0 || target! < -50 || target! > 100) {
-      return null;
-    }
-    return '${target!.toStringAsFixed(1)}$unit';
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => detailPage),
+    );
   }
 }
