@@ -95,6 +95,11 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
 
   @override
   Widget build(BuildContext context) {
+    // Guard against empty channels list
+    if (_channels.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     // Multi-channel device: tiles grid
     if (_isMultiChannel) {
       return _buildMultiChannelLayout(context);
