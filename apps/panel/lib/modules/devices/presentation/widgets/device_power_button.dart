@@ -69,7 +69,7 @@ class DevicePowerButton extends StatelessWidget {
                   color: isOn
                       ? effectiveActiveColor
                       : (isDark
-                          ? Colors.transparent
+                          ? AppColors.blank
                           : AppBorderColorLight.light),
                   width: isOn ? _scale(4) : _scale(1),
                 ),

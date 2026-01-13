@@ -163,7 +163,7 @@ class _ColoredSwitchState extends State<ColoredSwitch> {
                       width: thumbWidth,
                       height: _thumbHeight,
                       decoration: BoxDecoration(
-                        color: Colors.transparent,
+                        color: AppColors.blank,
                         borderRadius:
                             BorderRadius.circular(AppBorderRadius.base),
                         border: Border.all(

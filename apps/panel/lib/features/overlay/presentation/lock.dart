@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 
 class LockScreen extends StatelessWidget {
@@ -12,7 +13,7 @@ class LockScreen extends StatelessWidget {
           Navigator.of(context).pop();
         },
         child: Container(
-          color: Colors.black,
+          color: AppColors.black,
         ),
       ),
     );

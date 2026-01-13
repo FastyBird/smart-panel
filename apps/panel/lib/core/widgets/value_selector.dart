@@ -215,7 +215,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.blank,
       builder: (context) => ValueSelectorSheet<T>(
         currentValue: currentValue,
         options: options,
@@ -456,7 +456,7 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
                       widget.onConfirm?.call(widget.options[_selectedIndex].value),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: effectiveActiveColor,
-                    foregroundColor: Colors.white,
+                    foregroundColor: AppColors.white,
                     padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
                     shape: RoundedRectangleBorder(
                       borderRadius:

@@ -488,7 +488,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           ? 'Off'
           : '${_state.modeLabel} to ${_state.targetTemp.toInt()}°',
       subtitleColor: modeColor,
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.blank,
       leading: HeaderDeviceIcon(
         icon: MdiIcons.thermostat,
         backgroundColor: _getModeLightColor(context),

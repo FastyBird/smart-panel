@@ -310,7 +310,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
     return PageHeader(
       title: widget.title,
       subtitle: widget.subtitle,
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.blank,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -357,7 +357,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
                   Icons.power_settings_new,
                   size: _scale(18),
                   color: widget.isOn
-                      ? Colors.white
+                      ? AppColors.white
                       : (isDark
                           ? AppTextColorDark.secondary
                           : AppTextColorLight.secondary),
@@ -527,7 +527,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
                   color: widget.isOn
                       ? primaryColor
                       : (isDark
-                          ? Colors.transparent
+                          ? AppColors.blank
                           : AppBorderColorLight.light),
                   width: widget.isOn ? _scale(4) : _scale(1),
                 ),
@@ -916,7 +916,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
                 child: Text(
                   widget.state == LightingState.mixed ? 'Sync All' : 'Retry',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.white,
                     fontSize: AppFontSize.extraSmall,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1521,7 +1521,7 @@ class _SliderPanel extends StatelessWidget {
     final inactiveColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.primary;
     final inactiveBorderColor =
-        isDark ? Colors.transparent : AppBorderColorLight.light;
+        isDark ? AppColors.blank : AppBorderColorLight.light;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -1595,7 +1595,7 @@ class _SliderPanel extends StatelessWidget {
     final inactiveColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.primary;
     final inactiveBorderColor =
-        isDark ? Colors.transparent : AppBorderColorLight.light;
+        isDark ? AppColors.blank : AppBorderColorLight.light;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -1801,7 +1801,7 @@ class _ColorPanel extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppBorderRadius.base),
             border: isSelected
                 ? Border.all(
-                    color: Colors.white,
+                    color: AppColors.white,
                     width: _scale(2),
                   )
                 : null,
@@ -1914,7 +1914,7 @@ class _ColorPanel extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [currentColor, Colors.white],
+                  colors: [currentColor, AppColors.white],
                 ),
                 borderRadius: BorderRadius.circular(_scale(26)),
                 border: isDark
@@ -2032,7 +2032,7 @@ class _ColorPanel extends StatelessWidget {
             child: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.white, currentColor],
+                  colors: [AppColors.white, currentColor],
                 ),
                 borderRadius: BorderRadius.circular(_scale(26)),
                 border: isDark

@@ -52,10 +52,10 @@ class DeviceModeButton extends StatelessWidget {
             horizontal: _scale(8),
           ),
           decoration: BoxDecoration(
-            color: isSelected ? effectiveSelectedBgColor : Colors.transparent,
+            color: isSelected ? effectiveSelectedBgColor : AppColors.blank,
             borderRadius: BorderRadius.circular(AppBorderRadius.small),
             border: Border.all(
-              color: isSelected ? effectiveActiveColor : Colors.transparent,
+              color: isSelected ? effectiveActiveColor : AppColors.blank,
               width: _scale(2),
             ),
           ),

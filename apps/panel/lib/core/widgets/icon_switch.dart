@@ -135,7 +135,7 @@ class _IconSwitchState extends State<IconSwitch>
                 ),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.transparent,
+                  color: AppColors.blank,
                   border: Border.all(
                     color: widget.toggleMode
                         ? (Theme.of(context).brightness == Brightness.light

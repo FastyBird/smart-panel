@@ -327,10 +327,10 @@ class ModeSelector<T> extends StatelessWidget {
                 horizontal: isScrollable ? AppSpacings.pMd : AppSpacings.pSm,
               ),
         decoration: BoxDecoration(
-          color: isSelected ? colors.background : Colors.transparent,
+          color: isSelected ? colors.background : AppColors.blank,
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: Border.all(
-            color: isSelected ? colors.active : Colors.transparent,
+            color: isSelected ? colors.active : AppColors.blank,
             width: _scale(2),
           ),
         ),

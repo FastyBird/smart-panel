@@ -84,7 +84,7 @@ class SpeedSlider extends StatelessWidget {
     final trackColor =
         isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
     final thumbFillColor =
-        isDark ? AppFillColorDark.darker : Colors.white;
+        isDark ? AppFillColorDark.darker : AppColors.white;
 
     // For discrete mode, calculate divisions based on steps
     // divisions must be null or > 0, so use null if steps has fewer than 2 items

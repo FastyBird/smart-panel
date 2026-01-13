@@ -1,5 +1,6 @@
 import 'dart:ui' as ui;
 
+import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 
 class ColorPicker extends StatefulWidget {
@@ -42,11 +43,11 @@ class _ColorPickerState extends State<ColorPicker> {
 
   // Get color at thumb position
   Future<Color> _getColorAtPosition(double x, double y) async {
-    if (pickerImage == null) return Colors.transparent;
+    if (pickerImage == null) return AppColors.blank;
 
     final byteData =
         await pickerImage!.toByteData(format: ui.ImageByteFormat.rawRgba);
-    if (byteData == null) return Colors.transparent;
+    if (byteData == null) return AppColors.blank;
 
     final int pixelIndex = (y.toInt() * pickerWidth.toInt() + x.toInt()) * 4;
 
@@ -97,8 +98,8 @@ class _ColorPickerState extends State<ColorPicker> {
                 width: 20,
                 height: 20,
                 decoration: BoxDecoration(
-                  color: Colors.transparent, // Color is updated dynamically
-                  border: Border.all(color: Colors.white, width: 2),
+                  color: AppColors.blank, // Color is updated dynamically
+                  border: Border.all(color: AppColors.white, width: 2),
                   shape: BoxShape.circle,
                   boxShadow: const [
                     BoxShadow(

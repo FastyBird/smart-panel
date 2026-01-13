@@ -125,7 +125,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
           ? 'Speed ${(_state.speed * 100).toInt()}%'
           : 'Off',
       subtitleColor: _state.isOn ? fanColor : secondaryColor,
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.blank,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

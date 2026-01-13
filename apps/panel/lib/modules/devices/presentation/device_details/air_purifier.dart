@@ -141,7 +141,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           ? '${_state.mode.name[0].toUpperCase()}${_state.mode.name.substring(1)} • ${_state.aqiLabel}'
           : 'Off',
       subtitleColor: _state.isOn ? airColor : secondaryColor,
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.blank,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

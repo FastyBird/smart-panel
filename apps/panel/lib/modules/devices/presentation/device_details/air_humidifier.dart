@@ -140,7 +140,7 @@ class _AirHumidifierDeviceDetailState
           ? 'Target ${(_state.targetHumidity * 100).toInt()}% • ${_state.isRunning ? "Running" : "Idle"}'
           : 'Off',
       subtitleColor: _state.isOn ? humidityColor : secondaryColor,
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.blank,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -189,7 +189,7 @@ class _AirHumidifierDeviceDetailState
             Icons.power_settings_new,
             size: _scale(18),
             color: _state.isOn
-                ? Colors.white
+                ? AppColors.white
                 : (isDark
                     ? AppTextColorDark.secondary
                     : AppTextColorLight.secondary),

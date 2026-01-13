@@ -447,7 +447,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     return PageHeader(
       title: localizations.domain_lights,
       subtitle: '$lightsOn of $totalLights on',
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.blank,
       leading: HeaderDeviceIcon(
         icon: MdiIcons.lightbulbOutline,
         backgroundColor: primaryBgColor,

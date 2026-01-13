@@ -991,8 +991,8 @@ class _WindowCoveringPainter extends CustomPainter {
     // Draw tube highlight
     final highlightPaint = Paint()
       ..color = brightness == Brightness.light
-          ? Colors.white.withValues(alpha: 0.3)
-          : Colors.white.withValues(alpha: 0.2)
+          ? AppColors.white.withValues(alpha: 0.3)
+          : AppColors.white.withValues(alpha: 0.2)
       ..style = PaintingStyle.fill;
 
     canvas.drawRect(
@@ -1516,7 +1516,7 @@ class _WindowCoveringTiles extends StatelessWidget {
         .map(
           (item) => Material(
             elevation: 0,
-            color: Colors.transparent,
+            color: AppColors.blank,
             child: ListTile(
               minTileHeight: _screenService.scale(
                 25,

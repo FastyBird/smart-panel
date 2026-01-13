@@ -250,7 +250,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
           ? 'Off'
           : '${_state.modeLabel} to ${_state.targetTemp.toInt()}°',
       subtitleColor: modeColor,
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.blank,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

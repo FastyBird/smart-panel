@@ -66,7 +66,7 @@ class AppBottomNavigation extends StatelessWidget {
                       : AppTextColorDark.regular;
 
               return Material(
-                color: Color.lerp(Colors.transparent, Colors.transparent, t),
+                color: Color.lerp(AppColors.blank, AppColors.blank, t),
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
                   onTap: () => onTap.call(items.indexOf(item)),
@@ -150,7 +150,7 @@ class AppBottomNavigationBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return enableFloatingNavBar
         ? BottomAppBar(
-            color: Colors.transparent,
+            color: AppColors.blank,
             elevation: 0,
             child: Container(
               decoration: BoxDecoration(
