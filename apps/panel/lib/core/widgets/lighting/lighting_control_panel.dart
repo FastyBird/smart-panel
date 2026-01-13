@@ -678,11 +678,19 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
     Color dividerColor,
     Color? stateColor,
   ) {
-    final tileHeight = _scale(70);
+    // On wider screens, use 2 columns with vertical layout
+    // On smaller screens, use 1 column with horizontal layout for better visibility
+    final isWideScreen = _screenService.isLargeScreen;
+    final useWideLayout = isWideScreen;
+    final columns = useWideLayout ? 2 : 1;
+    final tileLayout = useWideLayout ? TileLayout.vertical : TileLayout.horizontal;
+    final tileHeight = _scale(useWideLayout ? 70 : 56);
+    final panelWidth = _scale(useWideLayout ? 240 : 180);
+
     final rows = <Widget>[];
 
-    for (var i = 0; i < widget.channels.length; i += 2) {
-      final rowChannels = widget.channels.skip(i).take(2).toList();
+    for (var i = 0; i < widget.channels.length; i += columns) {
+      final rowChannels = widget.channels.skip(i).take(columns).toList();
       rows.add(
         Padding(
           padding: EdgeInsets.only(bottom: AppSpacings.pMd),
@@ -690,12 +698,12 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
             height: tileHeight,
             child: Row(
               children: [
-                for (var j = 0; j < 2; j++) ...[
+                for (var j = 0; j < columns; j++) ...[
                   if (j > 0) AppSpacings.spacingMdHorizontal,
                   Expanded(
                     child: j < rowChannels.length
                         ? UniversalTile(
-                            layout: TileLayout.vertical,
+                            layout: tileLayout,
                             icon: Icons.lightbulb_outline,
                             activeIcon: Icons.lightbulb,
                             name: rowChannels[j].name,
@@ -718,10 +726,6 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
         ),
       );
     }
-
-    // On wider screens, make the channels panel wider for better tile proportions
-    final isWideScreen = _screenService.isLargeScreen;
-    final panelWidth = _scale(isWideScreen ? 240 : 180);
 
     return Container(
       width: panelWidth,
