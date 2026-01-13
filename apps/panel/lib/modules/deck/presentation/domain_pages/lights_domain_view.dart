@@ -1104,7 +1104,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                 localizations.domain_lights_empty_title,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: _scale(18),
+                  fontSize: AppFontSize.extraLarge,
                   fontWeight: FontWeight.w600,
                   color: isDark
                       ? AppTextColorDark.primary
@@ -1116,7 +1116,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                 localizations.domain_lights_empty_description,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: _scale(14),
+                  fontSize: AppFontSize.base,
                   color: isDark
                       ? AppTextColorDark.secondary
                       : AppTextColorLight.secondary,

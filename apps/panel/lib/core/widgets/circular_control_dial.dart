@@ -472,7 +472,7 @@ class _CircularControlDialState extends State<CircularControlDial>
                               widget.modeLabel!.toUpperCase(),
                               style: TextStyle(
                                 color: displayColor,
-                                fontSize: _scale(9),
+                                fontSize: AppFontSize.extraSmall,
                                 fontWeight: FontWeight.w600,
                                 letterSpacing: 1,
                               ),
