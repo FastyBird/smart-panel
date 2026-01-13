@@ -314,6 +314,12 @@ class ModeSelector<T> extends StatelessWidget {
         ? _scale(48)
         : null;
 
+    // Use transparent white for light theme to avoid dark flash during animation
+    // (transparent black interpolates through dark colors on light backgrounds)
+    final transparentColor = isDark
+        ? AppColors.blank
+        : AppColors.white.withValues(alpha: 0);
+
     return GestureDetector(
       onTap: () => onChanged(mode.value),
       child: AnimatedContainer(
@@ -327,10 +333,10 @@ class ModeSelector<T> extends StatelessWidget {
                 horizontal: isScrollable ? AppSpacings.pMd : AppSpacings.pSm,
               ),
         decoration: BoxDecoration(
-          color: isSelected ? colors.background : AppColors.blank,
+          color: isSelected ? colors.background : transparentColor,
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: Border.all(
-            color: isSelected ? colors.active : AppColors.blank,
+            color: isSelected ? colors.active : transparentColor,
             width: _scale(2),
           ),
         ),
