@@ -132,7 +132,8 @@ class CircularControlDial extends StatefulWidget {
     this.showButtons = true,
     this.showTicks = true,
     this.majorTickCount = 10,
-  }) : assert(maxValue > minValue, 'maxValue must be greater than minValue');
+  })  : assert(maxValue > minValue, 'maxValue must be greater than minValue'),
+        assert(step > 0, 'step must be greater than zero');
 
   @override
   State<CircularControlDial> createState() => _CircularControlDialState();
@@ -257,6 +258,7 @@ class _CircularControlDialState extends State<CircularControlDial>
     final normalized = normalizedAngle / (math.pi * 1.5);
     final value =
         widget.minValue + (normalized * (widget.maxValue - widget.minValue));
+    if (widget.step <= 0) return value;
     return (value / widget.step).round() * widget.step;
   }
 
@@ -667,7 +669,7 @@ class _DialPainter extends CustomPainter {
     }
 
     // Tick marks
-    if (showTicks) {
+    if (showTicks && step > 0) {
       final range = maxValue - minValue;
       final tickStep = range / majorTickCount;
       final minorTickCount = (range / step).round();
