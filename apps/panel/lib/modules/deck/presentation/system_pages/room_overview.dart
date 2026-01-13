@@ -868,7 +868,13 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
     SuggestedAction action,
   ) {
     return ActionChip(
-      avatar: Icon(action.icon, size: 18),
+      avatar: Icon(
+        action.icon,
+        size: _screenService.scale(
+          18,
+          density: _visualDensityService.density,
+        ),
+      ),
       label: Text(action.label),
       onPressed: () => _handleSuggestedAction(action),
     );

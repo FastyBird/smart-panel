@@ -661,7 +661,13 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
                 color: Theme.of(context).colorScheme.primary,
               ),
             )
-          : Icon(scene.iconData, size: 18),
+          : Icon(
+              scene.iconData,
+              size: _screenService.scale(
+                18,
+                density: _visualDensityService.density,
+              ),
+            ),
       label: Text(scene.name),
       onPressed: _isSceneTriggering ? null : () => _triggerScene(scene),
     );
