@@ -615,6 +615,21 @@ class AppSpacings {
   static SizedBox get spacingXlHorizontal => SizedBox(width: pXl);
 }
 
+// Standard animation durations
+class AppAnimation {
+  /// Standard duration for UI state changes (200ms)
+  /// Used for: button states, tile selection, color transitions
+  static const Duration standard = Duration(milliseconds: 200);
+
+  /// Fast duration for micro-interactions (100ms)
+  /// Used for: icon changes, small feedback animations
+  static const Duration fast = Duration(milliseconds: 100);
+
+  /// Slow duration for complex animations (300ms)
+  /// Used for: page transitions, modal appearances
+  static const Duration slow = Duration(milliseconds: 300);
+}
+
 class AppFilledButtonsLightThemes {
   static FilledButtonThemeData get base => FilledButtonThemeData(
     style: createButtonTheme(

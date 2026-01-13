@@ -113,7 +113,7 @@ class UniversalTile extends StatelessWidget {
     return GestureDetector(
       onTap: onTileTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
+        duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AppBorderRadius.medium),
           border: Border.all(
@@ -131,7 +131,7 @@ class UniversalTile extends StatelessWidget {
               : [],
         ),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
+          duration: const Duration(milliseconds: 200),
           decoration: BoxDecoration(
             color: colors.tileBgColor,
             borderRadius: BorderRadius.circular(
@@ -233,7 +233,7 @@ class UniversalTile extends StatelessWidget {
     return GestureDetector(
       onTap: onTileTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
+        duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.symmetric(
           horizontal: AppSpacings.pMd,
           vertical: AppSpacings.pSm,

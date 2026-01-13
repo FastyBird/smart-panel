@@ -1002,7 +1002,7 @@ class _CapabilityTab extends StatelessWidget {
     final paddingCompensation = isSelected ? 0.0 : _scale(1);
 
     final content = AnimatedContainer(
-      duration: const Duration(milliseconds: 150),
+      duration: const Duration(milliseconds: 200),
       padding: EdgeInsets.symmetric(
         vertical:
             (isLandscape ? AppSpacings.pMd : _scale(8)) + paddingCompensation,
@@ -1553,7 +1553,7 @@ class _SliderPanel extends StatelessWidget {
                   onChanged(preset);
                 },
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
+                  duration: const Duration(milliseconds: 200),
                   padding: EdgeInsets.all(buttonPadding + paddingCompensation),
                   decoration: BoxDecoration(
                     color: isActive
@@ -1618,7 +1618,7 @@ class _SliderPanel extends StatelessWidget {
               onChanged(preset);
             },
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
+              duration: const Duration(milliseconds: 200),
               padding: EdgeInsets.all(AppSpacings.pMd + paddingCompensation),
               decoration: BoxDecoration(
                 color: isActive

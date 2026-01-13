@@ -507,7 +507,7 @@ class _CircularControlDialState extends State<CircularControlDial>
                     child: AnimatedContainer(
                       duration: _isDragging
                           ? Duration.zero
-                          : const Duration(milliseconds: 150),
+                          : const Duration(milliseconds: 200),
                       width: _scale(28),
                       height: _scale(28),
                       decoration: BoxDecoration(
