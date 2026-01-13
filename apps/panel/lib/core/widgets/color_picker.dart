@@ -101,9 +101,9 @@ class _ColorPickerState extends State<ColorPicker> {
                   color: AppColors.blank, // Color is updated dynamically
                   border: Border.all(color: AppColors.white, width: 2),
                   shape: BoxShape.circle,
-                  boxShadow: const [
+                  boxShadow: [
                     BoxShadow(
-                      color: Colors.black26,
+                      color: AppShadowColor.strong,
                       blurRadius: 4,
                     ),
                   ],
