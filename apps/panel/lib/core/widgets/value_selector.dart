@@ -326,7 +326,7 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
                   height: _scale(4),
                   decoration: BoxDecoration(
                     color: handleColor,
-                    borderRadius: BorderRadius.circular(_scale(2)),
+                    borderRadius: BorderRadius.circular(AppBorderRadius.small),
                   ),
                 ),
               ),

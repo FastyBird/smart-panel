@@ -453,7 +453,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         Container(
           height: _scale(8),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(_scale(4)),
+            borderRadius: BorderRadius.circular(AppBorderRadius.base),
             color: trackColor,
           ),
           child: LayoutBuilder(
@@ -464,7 +464,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
                 children: [
                   Container(
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(_scale(4)),
+                      borderRadius: BorderRadius.circular(AppBorderRadius.base),
                       gradient: LinearGradient(
                         colors: [
                           DeviceColors.air(isDark),
@@ -486,7 +486,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
                         color: isDark
                             ? AppTextColorDark.primary
                             : AppTextColorLight.primary,
-                        borderRadius: BorderRadius.circular(_scale(2)),
+                        borderRadius: BorderRadius.circular(AppBorderRadius.small),
                       ),
                     ),
                   ),

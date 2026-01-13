@@ -81,7 +81,7 @@ class DeviceStatusBar extends StatelessWidget {
           ),
           AppSpacings.spacingMdVertical,
           ClipRRect(
-            borderRadius: BorderRadius.circular(_scale(3)),
+            borderRadius: BorderRadius.circular(AppBorderRadius.small),
             child: LinearProgressIndicator(
               value: value,
               minHeight: _scale(6),
