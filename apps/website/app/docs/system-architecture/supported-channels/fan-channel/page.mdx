@@ -42,11 +42,11 @@ Defines the operating mode of the fan:
 
 ## Optional Properties
 
-| **Property** | **Data Type** | **Range**                     | **Unit** | **Permissions** |
-|--------------|---------------|-------------------------------|----------|-----------------|
-| `swing`      | `Bool`        | `true/false`                  | -        | RW (Read/Write) |
-| `speed`      | `Uchar`       | `0–100`                       | %        | RW (Read/Write) |
-| `direction`  | `Enum`        | `clockwise/counter_clockwise` | -        | RW (Read/Write) |
+| **Property** | **Data Type**     | **Range**                               | **Unit** | **Permissions** |
+|--------------|-------------------|-----------------------------------------|----------|-----------------|
+| `swing`      | `Bool`            | `true/false`                            | -        | RW (Read/Write) |
+| `speed`      | `Uchar` or `Enum` | `0–100` or `off/low/medium/high/turbo`  | %        | RW (Read/Write) |
+| `direction`  | `Enum`            | `clockwise/counter_clockwise`           | -        | RW (Read/Write) |
 
 ---
 
@@ -61,13 +61,21 @@ Indicates whether the swing mode is enabled:
 
 #### `speed`
 
-Represents the rotation speed of the fan:
+Represents the rotation speed of the fan. This property supports multiple data types:
 
-- Expressed as a percentage (`0–100%`) of the maximum supported speed.
+**Option 1 - Percentage:**
+- **Data Type**: `Uchar`
+- **Range**: `0–100%`
+- Expressed as a percentage of the maximum supported speed.
+
+**Option 2 - Discrete Levels:**
+- **Data Type**: `Enum`
+- **Values**: `off`, `low`, `medium`, `high`, `turbo`
+- Predefined speed levels.
 
 #### `direction`
 
-Specifies the direction of the fan’s rotation:
+Specifies the direction of the fan's rotation:
 
 - Possible values:
     - `clockwise`

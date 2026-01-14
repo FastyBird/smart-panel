@@ -9,15 +9,20 @@ import { Callout } from 'nextra/components'
 Monitors the concentration of particulate matter (e.g., PM2.5 and PM10) in the air, providing insights into air quality
 and pollution levels.
 
+<Callout type="warning">
+	At least one of `detected` or `density` must be provided.
+</Callout>
+
 ---
 
 ## Required Properties
 
-| **Property** | **Data Type** | **Range**        | **Unit** | **Permissions** |
-|--------------|---------------|------------------|----------|-----------------|
-| `detected`   | `Bool`        | `true/false`     | -        | RO (Read-Only)  |
-| `density`    | `Float`       | `0.0–1,000.0`    | µg/m³    | RO (Read-Only)  |
-| `mode`       | `Enum`        | `pm1/pm2_5/pm10` | -        | RO (Read-Only)  |
+At least one of the following properties must be present:
+
+| **Property** | **Data Type** | **Range**      | **Unit** | **Permissions** |
+|--------------|---------------|----------------|----------|-----------------|
+| `detected`   | `Bool`        | `true/false`   | -        | RO (Read-Only)  |
+| `density`    | `Float`       | `0.0–1,000.0`  | µg/m³    | RO (Read-Only)  |
 
 ---
 
@@ -37,28 +42,30 @@ Indicates the current density of particulate matter:
 - Measured in micrograms per cubic meter (`µg/m³`).
 - Represents either PM2.5 or PM10 particles, depending on the `mode` property.
 
+---
+
+## Optional Properties
+
+| **Property** | **Data Type** | **Range**        | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `mode`       | `Enum`        | `pm1/pm2_5/pm10` | -        | RO (Read-Only)  |
+| `active`     | `Bool`        | `true/false`     | -        | RO (Read-Only)  |
+| `fault`      | `Uchar`       | `0–255`          | -        | RO (Read-Only)  |
+| `tampered`   | `Bool`        | `true/false`     | -        | RO (Read-Only)  |
+
+---
+
+### Property Details
+
 #### `mode`
 
 Specifies the type of particulate matter being measured:
 
 - Possible values:
+    - `pm1`: Measures particulate matter smaller than 1 µm.
     - `pm2_5`: Measures particulate matter smaller than 2.5 µm.
     - `pm10`: Measures particulate matter smaller than 10 µm.
 - Determines how the `density` property is interpreted.
-
----
-
-## Optional Properties
-
-| **Property** | **Data Type** | **Range**    | **Unit** | **Permissions** |
-|--------------|---------------|--------------|----------|-----------------|
-| `active`     | `Bool`        | `true/false` | -        | RO (Read-Only)  |
-| `fault`      | `Uchar`       | `0–255`      | -        | RO (Read-Only)  |
-| `tampered`   | `Bool`        | `true/false` | -        | RO (Read-Only)  |
-
----
-
-### Property Details
 
 #### `active`
 
