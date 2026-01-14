@@ -12,9 +12,10 @@ Controls fan devices, including speed, oscillation, and modes for air circulatio
 
 ## Required Properties
 
-| **Property** | **Data Type** | **Range**    | **Unit** | **Permissions** |
-|--------------|---------------|--------------|----------|-----------------|
-| `on`         | `Bool`        | `true/false` | -        | RW (Read/Write) |
+| **Property** | **Data Type** | **Range**                                       | **Unit** | **Permissions** |
+|--------------|---------------|-------------------------------------------------|----------|-----------------|
+| `on`         | `Bool`        | `true/false`                                    | -        | RW (Read/Write) |
+| `mode`       | `Enum`        | `auto/manual/off/1/2/3/4/5/6/7/8/9/10`          | -        | RW (Read/Write) |
 
 ---
 
@@ -26,6 +27,16 @@ Indicates the on/off state of the fan:
 
 - `true`: The fan is on.
 - `false`: The fan is off.
+
+#### `mode`
+
+Defines the operating mode of the fan:
+
+- Possible values:
+    - `auto`: The fan speed is automatically adjusted.
+    - `manual`: The fan is controlled manually.
+    - `off`: The fan is off.
+    - `1` to `10`: Discrete speed levels.
 
 ---
 
