@@ -133,19 +133,40 @@
         "category": "percentage",
         "required": true,
         "description": {
-          "en": ""
+          "en": "Battery level - integrator can choose between percentage or discrete levels"
         },
         "permissions": [
           "ro"
         ],
-        "data_type": "uchar",
-        "unit": "%",
-        "format": [
-          0,
-          100
-        ],
-        "invalid": null,
-        "step": 1
+        "data_types": [
+          {
+            "id": "percentage",
+            "data_type": "uchar",
+            "unit": "%",
+            "format": [
+              0,
+              100
+            ],
+            "step": 1,
+            "description": {
+              "en": "Battery as percentage (0-100%)"
+            }
+          },
+          {
+            "id": "level",
+            "data_type": "enum",
+            "format": [
+              "critical",
+              "low",
+              "medium",
+              "high",
+              "full"
+            ],
+            "description": {
+              "en": "Battery as discrete levels"
+            }
+          }
+        ]
       },
       "status": {
         "category": "status",
@@ -824,16 +845,39 @@
         "category": "brightness",
         "required": false,
         "description": {
-          "en": ""
+          "en": "Doorbell brightness - integrator can choose between percentage or discrete levels"
         },
         "permissions": [
           "rw"
         ],
-        "data_type": "uchar",
-        "unit": null,
-        "format": [
-          0,
-          100
+        "data_types": [
+          {
+            "id": "percentage",
+            "data_type": "uchar",
+            "unit": "%",
+            "format": [
+              0,
+              100
+            ],
+            "step": 1,
+            "description": {
+              "en": "Brightness as percentage (0-100%)"
+            }
+          },
+          {
+            "id": "level",
+            "data_type": "enum",
+            "format": [
+              "off",
+              "low",
+              "medium",
+              "high",
+              "full"
+            ],
+            "description": {
+              "en": "Brightness as discrete levels"
+            }
+          }
         ]
       },
       "tampered": {
@@ -1796,16 +1840,39 @@
         "category": "brightness",
         "required": false,
         "description": {
-          "en": ""
+          "en": "Brightness control - integrator can choose between percentage or discrete levels"
         },
         "permissions": [
           "rw"
         ],
-        "data_type": "uchar",
-        "unit": "%",
-        "format": [
-          0,
-          100
+        "data_types": [
+          {
+            "id": "percentage",
+            "data_type": "uchar",
+            "unit": "%",
+            "format": [
+              0,
+              100
+            ],
+            "step": 1,
+            "description": {
+              "en": "Brightness as percentage (0-100%)"
+            }
+          },
+          {
+            "id": "level",
+            "data_type": "enum",
+            "format": [
+              "off",
+              "low",
+              "medium",
+              "high",
+              "full"
+            ],
+            "description": {
+              "en": "Brightness as discrete levels"
+            }
+          }
         ]
       },
       "color_red": {
@@ -2145,16 +2212,39 @@
         "category": "volume",
         "required": false,
         "description": {
-          "en": ""
+          "en": "Microphone volume/gain - integrator can choose between percentage or discrete levels"
         },
         "permissions": [
           "ro"
         ],
-        "data_type": "uchar",
-        "unit": "%",
-        "format": [
-          0,
-          100
+        "data_types": [
+          {
+            "id": "percentage",
+            "data_type": "uchar",
+            "unit": "%",
+            "format": [
+              0,
+              100
+            ],
+            "step": 1,
+            "description": {
+              "en": "Volume as percentage (0-100%)"
+            }
+          },
+          {
+            "id": "level",
+            "data_type": "enum",
+            "format": [
+              "mute",
+              "low",
+              "medium",
+              "high",
+              "max"
+            ],
+            "description": {
+              "en": "Volume as discrete levels"
+            }
+          }
         ]
       }
     }
@@ -3004,16 +3094,39 @@
         "category": "brightness",
         "required": true,
         "description": {
-          "en": ""
+          "en": "TV brightness - integrator can choose between percentage or discrete levels"
         },
         "permissions": [
           "rw"
         ],
-        "data_type": "uchar",
-        "unit": "%",
-        "format": [
-          0,
-          100
+        "data_types": [
+          {
+            "id": "percentage",
+            "data_type": "uchar",
+            "unit": "%",
+            "format": [
+              0,
+              100
+            ],
+            "step": 1,
+            "description": {
+              "en": "Brightness as percentage (0-100%)"
+            }
+          },
+          {
+            "id": "level",
+            "data_type": "enum",
+            "format": [
+              "off",
+              "low",
+              "medium",
+              "high",
+              "full"
+            ],
+            "description": {
+              "en": "Brightness as discrete levels"
+            }
+          }
         ]
       },
       "input_source": {
@@ -3280,19 +3393,40 @@
         "category": "position",
         "required": false,
         "description": {
-          "en": ""
+          "en": "Valve position - integrator can choose between percentage or discrete states"
         },
         "permissions": [
           "rw"
         ],
-        "data_type": "uchar",
-        "unit": "%",
-        "format": [
-          0,
-          100
-        ],
-        "invalid": null,
-        "step": 1
+        "data_types": [
+          {
+            "id": "percentage",
+            "data_type": "uchar",
+            "unit": "%",
+            "format": [
+              0,
+              100
+            ],
+            "step": 1,
+            "description": {
+              "en": "Position as percentage (0-100%)"
+            }
+          },
+          {
+            "id": "state",
+            "data_type": "enum",
+            "format": [
+              "closed",
+              "quarter",
+              "half",
+              "three_quarter",
+              "open"
+            ],
+            "description": {
+              "en": "Position as discrete states"
+            }
+          }
+        ]
       },
       "fault": {
         "category": "fault",
@@ -3455,19 +3589,40 @@
         "category": "position",
         "required": true,
         "description": {
-          "en": ""
+          "en": "Window covering position - integrator can choose between percentage or discrete states"
         },
         "permissions": [
           "rw"
         ],
-        "data_type": "uchar",
-        "unit": "%",
-        "format": [
-          0,
-          100
-        ],
-        "invalid": null,
-        "step": 1
+        "data_types": [
+          {
+            "id": "percentage",
+            "data_type": "uchar",
+            "unit": "%",
+            "format": [
+              0,
+              100
+            ],
+            "step": 1,
+            "description": {
+              "en": "Position as percentage (0-100%)"
+            }
+          },
+          {
+            "id": "state",
+            "data_type": "enum",
+            "format": [
+              "closed",
+              "quarter",
+              "half",
+              "three_quarter",
+              "open"
+            ],
+            "description": {
+              "en": "Position as discrete states"
+            }
+          }
+        ]
       },
       "type": {
         "category": "type",
