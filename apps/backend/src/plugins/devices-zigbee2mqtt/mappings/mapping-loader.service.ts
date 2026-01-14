@@ -391,16 +391,17 @@ export class MappingLoaderService implements OnModuleInit {
 		}
 
 		// Check has_features
-		if (condition.has_features && features) {
-			const hasAllFeatures = condition.has_features.every((f) => features.includes(f));
-			if (!hasAllFeatures) {
+		// If has_features is specified, require features to be defined and contain all listed features
+		if (condition.has_features) {
+			if (!features || !condition.has_features.every((f) => features.includes(f))) {
 				return false;
 			}
 		}
 
 		// Check any_property
-		if (condition.any_property && propertyName) {
-			if (!condition.any_property.includes(propertyName)) {
+		// If any_property is specified, require propertyName to be defined and in the list
+		if (condition.any_property) {
+			if (!propertyName || !condition.any_property.includes(propertyName)) {
 				return false;
 			}
 		}
