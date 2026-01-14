@@ -17,11 +17,17 @@ Manages heating devices, allowing control of temperature settings and modes.
 | `on`          | `Bool`        | `true/false` | -        | RW (Read/Write) |
 | `temperature` | `Float`       | `0.0–100.0`  | °C       | RW (Read/Write) |
 | `status`      | `Bool`        | `true/false` | -        | RO (Read-Only)  |
-| `position`    | `Uchar`       | `0–100`      | %        | RW (Read/Write) |
 
 ---
 
 ### Property Details
+
+#### `on`
+
+Indicates the on/off state of the heater:
+
+- `true`: The heater is on.
+- `false`: The heater is off.
 
 #### `temperature`
 
@@ -39,6 +45,18 @@ Indicates the current state of the heater:
 
 - `true`: The heater is heating.
 - `false`: The heater is inactive.
+
+---
+
+## Optional Properties
+
+| **Property** | **Data Type** | **Range** | **Unit** | **Permissions** |
+|--------------|---------------|-----------|----------|-----------------|
+| `position`   | `Uchar`       | `0–100`   | %        | RW (Read/Write) |
+
+---
+
+### Property Details
 
 #### `position`
 

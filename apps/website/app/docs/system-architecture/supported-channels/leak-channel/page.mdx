@@ -12,9 +12,10 @@ Identifies the presence of water or other liquids to detect leaks and prevent da
 
 ## Required Properties
 
-| **Property** | **Data Type** | **Range**    | **Unit** | **Permissions** |
-|--------------|---------------|--------------|----------|-----------------|
-| `detected`   | `Bool`        | `true/false` | -        | RO (Read-Only)  |
+| **Property** | **Data Type** | **Range**                    | **Unit** | **Permissions** |
+|--------------|---------------|------------------------------|----------|-----------------|
+| `detected`   | `Bool`        | `true/false`                 | -        | RO (Read-Only)  |
+| `level`      | `Enum`        | `bright/moderate/dusky/dark` | -        | RO (Read-Only)  |
 
 ---
 
@@ -26,6 +27,16 @@ Indicates whether the sensor detects a leak event:
 
 - `true`: Leak is detected.
 - `false`: Leak is not detected.
+
+#### `level`
+
+Provides a qualitative assessment of the leak severity:
+
+- Possible values:
+    - `bright`: Minimal leak detected.
+    - `moderate`: Moderate leak detected.
+    - `dusky`: Significant leak detected.
+    - `dark`: Severe leak detected.
 
 ---
 
