@@ -6,6 +6,9 @@
  */
 import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../../common/logger';
+import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME } from '../../devices-zigbee2mqtt.constants';
+
 import { AnyTransformerDefinition, ITransformer, InlineTransform } from './transformer.types';
 import { PassthroughTransformer, createInlineTransformer, createTransformer } from './transformers';
 
@@ -14,6 +17,11 @@ import { PassthroughTransformer, createInlineTransformer, createTransformer } fr
  */
 @Injectable()
 export class TransformerRegistry {
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
+		'TransformerRegistry',
+	);
+
 	private transformers = new Map<string, ITransformer>();
 	private definitions = new Map<string, AnyTransformerDefinition>();
 
@@ -63,8 +71,15 @@ export class TransformerRegistry {
 	 * Returns passthrough if neither is provided
 	 */
 	getOrCreate(name?: string, inline?: InlineTransform): ITransformer {
-		if (name && this.has(name)) {
-			return this.get(name);
+		if (name) {
+			if (this.has(name)) {
+				return this.get(name);
+			}
+			// Named transformer requested but not found - likely a typo in YAML config
+			this.logger.warn(
+				`Transformer '${name}' not found in registry. Using passthrough (no transformation). ` +
+					`Available transformers: ${this.getNames().join(', ')}`,
+			);
 		}
 
 		if (inline) {
