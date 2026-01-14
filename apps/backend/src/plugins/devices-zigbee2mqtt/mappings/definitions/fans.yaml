@@ -10,18 +10,21 @@ transformers:
     true_value: "ON"
     false_value: "OFF"
 
-  # Z2M mode to spec mode mapping
-  # Z2M uses modes like "auto", "smart", "nature", "sleep" which map to spec mode
-  # Z2M speed levels (low/medium/high) are handled separately as speed enum
+  # Z2M operational mode to spec mode mapping
+  # Only maps actual operational modes, not speed levels or on/off
   fan_mode_to_spec:
     type: map
     bidirectional:
       auto: "auto"
-      smart: "auto"      # Smart mode → auto
-      nature: "manual"   # Nature mode → manual
-      sleep: "manual"    # Sleep mode → manual
-      "on": "manual"     # On mode → manual
-      "off": "off"
+      smart: "auto"       # Smart mode → auto
+      nature: "natural"   # Nature mode → natural
+      natural: "natural"
+      sleep: "sleep"
+      quiet: "sleep"      # Quiet mode → sleep
+      eco: "eco"
+      turbo: "turbo"
+      boost: "turbo"      # Boost mode → turbo
+      manual: "manual"
 
   # Z2M mode values that represent speed levels → spec speed enum
   # Z2M: off, low, medium, high, on → spec: off, low, medium, high, turbo
@@ -32,10 +35,62 @@ transformers:
       low: "low"
       medium: "medium"
       high: "high"
-      "on": "high"       # "on" typically means max speed
+      "on": "high"        # "on" typically means max speed
       turbo: "turbo"
+      max: "turbo"
+
+  # Numeric speed levels (1-9) to percentage
+  # Common for IKEA air purifiers: 1=11%, 2=22%, ..., 9=100%
+  numeric_speed_to_percentage:
+    type: formula
+    read: "Math.round(value / 9 * 100)"
+    write: "Math.max(1, Math.min(9, Math.round(value / 100 * 9)))"
+
+  # Numeric speed levels (1-10) to percentage
+  numeric_speed_10_to_percentage:
+    type: formula
+    read: "Math.round(value / 10 * 100)"
+    write: "Math.max(1, Math.min(10, Math.round(value / 100 * 10)))"
 
 mappings:
+  # ============================================
+  # FANS WITH NUMERIC SPEED LEVELS (IKEA-style)
+  # ============================================
+
+  # IKEA air purifier and similar devices with numeric mode values (1-9 or 1-10)
+  # These use mode property for speed levels, not operational modes
+  - name: fan_numeric_speed
+    description: "Fan with numeric speed levels (IKEA-style)"
+    priority: 115
+    match:
+      expose_type: fan
+      # Match fans where mode has numeric values
+      any_property: [fan_mode]
+    device_category: FAN
+    channels:
+      - identifier: fan
+        name: Fan
+        category: FAN
+        features:
+          # On/Off state (required)
+          - z2m_feature: state
+            panel:
+              identifier: ON
+              name: Power
+              data_type: BOOL
+            transformer: fan_state
+
+          # Numeric mode as speed percentage
+          # Z2M mode values like 1-9 are converted to 0-100%
+          - z2m_feature: fan_mode
+            panel:
+              identifier: SPEED
+              name: Speed
+              data_type: UCHAR
+              format: [0, 100]
+              unit: "%"
+            transformer: numeric_speed_to_percentage
+
   # ============================================
   # FANS WITH PERCENTAGE SPEED
   # ============================================
@@ -70,22 +125,14 @@ mappings:
               format: [0, 100]
               unit: "%"
 
-          # Fan mode (optional - some fans have mode separate from speed)
+          # Operational mode (optional - auto, manual, eco, sleep, natural, turbo)
           - z2m_feature: mode
             panel:
               identifier: MODE
               name: Mode
               data_type: ENUM
-              format: ["auto", "manual", "off", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+              format: ["auto", "manual", "eco", "sleep", "natural", "turbo"]
             transformer: fan_mode_to_spec
-
-        # Mode is required by spec, provide default if Z2M doesn't have it
-        static_properties:
-          - identifier: MODE
-            name: Mode
-            data_type: ENUM
-            value: "manual"
-            format: ["auto", "manual", "off"]
 
   # ============================================
   # FANS WITH LEVEL-BASED SPEED
@@ -121,20 +168,56 @@ mappings:
               format: ["off", "low", "medium", "high", "turbo"]
             transformer: fan_speed_levels
 
-        # Mode is required by spec - fans without explicit mode get "manual"
-        static_properties:
-          - identifier: MODE
-            name: Mode
-            data_type: ENUM
-            value: "manual"
-            format: ["auto", "manual", "off"]
-
   # ============================================
   # AIR PURIFIERS
   # ============================================
 
-  # Air purifier (fan with air quality sensors)
-  # Detected by presence of pm25/voc/aqi properties on the device
+  # Air purifier with numeric speed (IKEA STARKVIND style)
+  # Has fan_mode for numeric speed levels
+  - name: air_purifier_numeric
+    description: "Air purifier with numeric speed levels"
+    priority: 125
+    match:
+      expose_type: fan
+      any_property: [pm25, voc, aqi, filter_age, filter_state, fan_mode]
+    device_category: AIR_PURIFIER
+    channels:
+      # Switcher channel for on/off (required by spec)
+      - identifier: switcher
+        name: Power
+        category: SWITCHER
+        features:
+          - z2m_feature: state
+            panel:
+              identifier: ON
+              name: Power
+              data_type: BOOL
+            transformer: fan_state
+
+      # Fan channel for speed control (required by spec)
+      - identifier: fan
+        name: Fan
+        category: FAN
+        features:
+          # On/Off (linked to switcher)
+          - z2m_feature: state
+            panel:
+              identifier: ON
+              name: Power
+              data_type: BOOL
+            transformer: fan_state
+
+          # Numeric mode as speed percentage
+          - z2m_feature: fan_mode
+            panel:
+              identifier: SPEED
+              name: Speed
+              data_type: UCHAR
+              format: [0, 100]
+              unit: "%"
+            transformer: numeric_speed_to_percentage
+
+  # Air purifier with level-based speed (generic)
   - name: air_purifier
     description: "Air purifier with fan and air quality monitoring"
     priority: 120
@@ -160,6 +243,14 @@ mappings:
         name: Fan
         category: FAN
         features:
+          # On/Off (linked to switcher)
+          - z2m_feature: state
+            panel:
+              identifier: ON
+              name: Power
+              data_type: BOOL
+            transformer: fan_state
+
           # Fan speed as percentage if available
           - z2m_feature: fan_speed
             panel:
@@ -177,15 +268,3 @@ mappings:
               data_type: ENUM
               format: ["off", "low", "medium", "high", "turbo"]
             transformer: fan_speed_levels
-
-        # Required properties with defaults
-        static_properties:
-          - identifier: ON
-            name: Power
-            data_type: BOOL
-            value: true
-          - identifier: MODE
-            name: Mode
-            data_type: ENUM
-            value: "manual"
-            format: ["auto", "manual", "off"]
