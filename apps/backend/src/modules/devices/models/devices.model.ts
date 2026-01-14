@@ -107,35 +107,30 @@ export class ChannelPropertySpecModel {
 		description: 'Property data type',
 		enum: DataTypeType,
 		example: DataTypeType.STRING,
-		required: false,
 	})
 	@Expose()
-	@IsOptional()
 	@IsEnum(DataTypeType)
-	data_type?: DataTypeType;
+	data_type: DataTypeType;
 
 	@ApiProperty({
 		description: 'Property unit',
 		type: 'string',
 		nullable: true,
 		example: '°C',
-		required: false,
 	})
 	@Expose()
 	@IsOptional()
 	@IsString()
-	unit?: string | null = null;
+	unit: string | null = null;
 
 	@ApiProperty({
-		description: 'Property format constraints',
+		description: 'Property format constraints (array of strings or numbers)',
 		type: 'array',
 		items: { oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'null' }] },
 		nullable: true,
 		example: ['on', 'off'],
-		required: false,
 	})
 	@Expose()
-	@IsOptional()
 	@IsArray()
 	@ValidateIf((o: { format?: unknown[] }): boolean =>
 		o.format?.every((item: unknown): boolean => typeof item === 'string'),
@@ -145,30 +140,27 @@ export class ChannelPropertySpecModel {
 		o.format?.every((item: unknown): boolean => typeof item === 'number'),
 	)
 	@IsNumber({}, { each: true })
-	format?: string[] | number[] | null = null;
+	format: string[] | number[] | null = null;
 
 	@ApiProperty({
 		description: 'Invalid value indicator',
 		oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
 		nullable: true,
 		example: null,
-		required: false,
 	})
 	@Expose()
-	@IsOptional()
-	invalid?: string | boolean | number | null = null;
+	invalid: string | boolean | number | null = null;
 
 	@ApiProperty({
 		description: 'Property step value for numeric types',
 		type: 'number',
 		nullable: true,
 		example: 0.1,
-		required: false,
 	})
 	@Expose()
 	@IsOptional()
 	@IsNumber()
-	step?: number | null = null;
+	step: number | null = null;
 }
 
 @ApiSchema({ name: 'DevicesModuleDataChannelSpec' })
