@@ -1,4 +1,4 @@
-import { Inject, Injectable, OnModuleInit, Optional } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import {
@@ -7,29 +7,7 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
-import {
-	ActionConverter,
-	AirParticulateSensorConverter,
-	BatterySensorConverter,
-	ClimateConverter,
-	ContactSensorConverter,
-	ConversionContext,
-	ConverterRegistry,
-	CoverConverter,
-	ElectricalConverter,
-	FanConverter,
-	HumiditySensorConverter,
-	IlluminanceSensorConverter,
-	LeakSensorConverter,
-	LightConverter,
-	LockConverter,
-	MotionSensorConverter,
-	OccupancySensorConverter,
-	PressureSensorConverter,
-	SmokeSensorConverter,
-	SwitchConverter,
-	TemperatureSensorConverter,
-} from '../converters';
+import { ConversionContext, ConverterRegistry } from '../converters';
 import {
 	DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
 	Z2M_GENERIC_TYPES,
@@ -77,10 +55,13 @@ export interface MappedProperty {
  *
  * Maps Zigbee2MQTT exposes structure to Smart Panel channels and properties.
  *
- * Uses a modular converter architecture inspired by homebridge-z2m.
- * Each device type has its own dedicated converter for specialized handling.
+ * Uses a config-driven converter architecture where all device mappings
+ * are defined in YAML configuration files. This allows users to add support
+ * for new devices without modifying the source code.
  *
- * Supports config-driven mappings via YAML files for extensibility.
+ * YAML mappings are loaded from:
+ * - Built-in: src/plugins/devices-zigbee2mqtt/mappings/definitions/
+ * - User-defined: var/data/zigbee/mappings/ (higher priority)
  */
 @Injectable()
 export class Z2mExposesMapperService implements OnModuleInit {
@@ -91,57 +72,28 @@ export class Z2mExposesMapperService implements OnModuleInit {
 
 	private readonly converterRegistry: ConverterRegistry;
 
-	constructor(
-		@Optional() private readonly configDrivenConverter?: ConfigDrivenConverter,
-	) {
+	constructor(private readonly configDrivenConverter: ConfigDrivenConverter) {
 		this.converterRegistry = new ConverterRegistry();
 	}
 
 	/**
-	 * Initialize and register all converters
+	 * Initialize and register the config-driven converter
 	 */
 	onModuleInit(): void {
 		this.registerConverters();
 	}
 
 	/**
-	 * Register all available converters with the registry
+	 * Register the config-driven converter with the registry
+	 * All device mappings are now defined in YAML configuration files
 	 */
 	private registerConverters(): void {
-		// Config-driven converter (highest priority - uses YAML mappings)
-		// This allows user-defined and extensible mappings to take precedence
-		if (this.configDrivenConverter) {
-			this.converterRegistry.register(this.configDrivenConverter);
-			this.logger.log('Config-driven converter registered (YAML mappings enabled)');
-		}
-
-		// Device converters (fallback for unmapped devices)
-		this.converterRegistry.register(new LightConverter());
-		this.converterRegistry.register(new SwitchConverter());
-		this.converterRegistry.register(new CoverConverter());
-		this.converterRegistry.register(new ClimateConverter());
-		this.converterRegistry.register(new LockConverter());
-		this.converterRegistry.register(new FanConverter());
-
-		// Sensor converters
-		this.converterRegistry.register(new TemperatureSensorConverter());
-		this.converterRegistry.register(new HumiditySensorConverter());
-		this.converterRegistry.register(new OccupancySensorConverter());
-		this.converterRegistry.register(new ContactSensorConverter());
-		this.converterRegistry.register(new LeakSensorConverter());
-		this.converterRegistry.register(new SmokeSensorConverter());
-		this.converterRegistry.register(new IlluminanceSensorConverter());
-		this.converterRegistry.register(new PressureSensorConverter());
-		this.converterRegistry.register(new MotionSensorConverter());
-		this.converterRegistry.register(new BatterySensorConverter());
-		this.converterRegistry.register(new AirParticulateSensorConverter());
-
-		// Special converters
-		this.converterRegistry.register(new ActionConverter());
-		this.converterRegistry.register(new ElectricalConverter());
+		// Register the config-driven converter (YAML mappings)
+		this.converterRegistry.register(this.configDrivenConverter);
+		this.logger.log('Config-driven converter registered (YAML mappings enabled)');
 
 		this.converterRegistry.markInitialized();
-		this.logger.log('Converter registry initialized with modular converters');
+		this.logger.log('Converter registry initialized with config-driven mappings');
 	}
 
 	/**
@@ -194,16 +146,8 @@ export class Z2mExposesMapperService implements OnModuleInit {
 
 	/**
 	 * Get the config-driven converter for runtime transformations
-	 * Returns undefined if config-driven mappings are not enabled
 	 */
-	getConfigDrivenConverter(): ConfigDrivenConverter | undefined {
+	getConfigDrivenConverter(): ConfigDrivenConverter {
 		return this.configDrivenConverter;
-	}
-
-	/**
-	 * Check if config-driven mappings are enabled
-	 */
-	isConfigDrivenEnabled(): boolean {
-		return !!this.configDrivenConverter;
 	}
 }
