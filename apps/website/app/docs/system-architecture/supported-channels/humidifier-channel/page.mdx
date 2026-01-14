@@ -39,15 +39,16 @@ Target humidity level:
 
 ## Optional Properties
 
-| **Property**       | **Data Type**           | **Range**                          | **Unit** | **Permissions** |
-|--------------------|-------------------------|------------------------------------|----------|-----------------|
-| `mode`             | `Enum`                  | `auto/manual/sleep/baby`           | -        | RW (Read/Write) |
-| `status`           | `Enum`                  | `idle/humidifying`                 | -        | RO (Read-Only)  |
-| `mist_level`       | `Uchar` or `Enum`       | `0–100` or `off/low/medium/high`   | %        | RW (Read/Write) |
-| `warm_mist`        | `Bool`                  | `true/false`                       | -        | RW (Read/Write) |
-| `water_tank_empty` | `Bool`                  | `true/false`                       | -        | RO (Read-Only)  |
-| `water_tank_level` | `Uchar`                 | `0–100`                            | %        | RO (Read-Only)  |
-| `fault`            | `Uchar`                 | `0–255`                            | -        | RO (Read-Only)  |
+| **Property**       | **Data Type**           | **Range**                            | **Unit** | **Permissions** |
+|--------------------|-------------------------|--------------------------------------|----------|-----------------|
+| `mode`             | `Enum`                  | `auto/manual/sleep/baby`             | -        | RW (Read/Write) |
+| `status`           | `Enum`                  | `idle/humidifying`                   | -        | RO (Read-Only)  |
+| `mist_level`       | `Uchar` or `Enum`       | `0–100` or `off/low/medium/high`     | %        | RW (Read/Write) |
+| `warm_mist`        | `Bool`                  | `true/false`                         | -        | RW (Read/Write) |
+| `water_tank_empty` | `Bool`                  | `true/false`                         | -        | RO (Read-Only)  |
+| `water_tank_level` | `Uchar`                 | `0–100`                              | %        | RO (Read-Only)  |
+| `timer`            | `Ushort` or `Enum`      | `0–86400` or `off/30m/1h/2h/4h/8h/12h` | s        | RW (Read/Write) |
+| `fault`            | `Uchar`                 | `0–255`                              | -        | RO (Read-Only)  |
 
 ---
 
@@ -103,6 +104,21 @@ Water tank level as percentage:
 
 - **Range**: `0–100%`
 - Indicates how much water remains in the tank.
+
+#### `timer`
+
+Auto-off timer for the humidifier. This property supports multiple data types:
+
+**Option 1 - Duration:**
+- **Data Type**: `Ushort`
+- **Range**: `0–86400` seconds (0-24 hours)
+- `0`: Timer disabled.
+- Non-zero: Humidifier will turn off after specified seconds.
+
+**Option 2 - Preset Intervals:**
+- **Data Type**: `Enum`
+- **Values**: `off`, `30m`, `1h`, `2h`, `4h`, `8h`, `12h`
+- Predefined timer intervals.
 
 #### `fault`
 

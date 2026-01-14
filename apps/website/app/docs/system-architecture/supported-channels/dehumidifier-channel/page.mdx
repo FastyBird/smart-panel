@@ -39,14 +39,15 @@ Target humidity level:
 
 ## Optional Properties
 
-| **Property**      | **Data Type** | **Range**                         | **Unit** | **Permissions** |
-|-------------------|---------------|-----------------------------------|----------|-----------------|
-| `mode`            | `Enum`        | `auto/manual/continuous/laundry/quiet` | -   | RW (Read/Write) |
-| `status`          | `Enum`        | `idle/dehumidifying/defrosting`   | -        | RO (Read-Only)  |
-| `water_tank_full` | `Bool`        | `true/false`                      | -        | RO (Read-Only)  |
-| `water_tank_level`| `Uchar`       | `0–100`                           | %        | RO (Read-Only)  |
-| `defrost_active`  | `Bool`        | `true/false`                      | -        | RO (Read-Only)  |
-| `fault`           | `Uchar`       | `0–255`                           | -        | RO (Read-Only)  |
+| **Property**      | **Data Type**        | **Range**                            | **Unit** | **Permissions** |
+|-------------------|----------------------|--------------------------------------|----------|-----------------|
+| `mode`            | `Enum`               | `auto/manual/continuous/laundry/quiet` | -      | RW (Read/Write) |
+| `status`          | `Enum`               | `idle/dehumidifying/defrosting`      | -        | RO (Read-Only)  |
+| `water_tank_full` | `Bool`               | `true/false`                         | -        | RO (Read-Only)  |
+| `water_tank_level`| `Uchar`              | `0–100`                              | %        | RO (Read-Only)  |
+| `defrost_active`  | `Bool`               | `true/false`                         | -        | RO (Read-Only)  |
+| `timer`           | `Ushort` or `Enum`   | `0–86400` or `off/30m/1h/2h/4h/8h/12h` | s      | RW (Read/Write) |
+| `fault`           | `Uchar`              | `0–255`                              | -        | RO (Read-Only)  |
 
 ---
 
@@ -90,6 +91,21 @@ Defrost cycle is active:
 
 - `true`: The defrost cycle is currently running.
 - `false`: No defrost cycle is active.
+
+#### `timer`
+
+Auto-off timer for the dehumidifier. This property supports multiple data types:
+
+**Option 1 - Duration:**
+- **Data Type**: `Ushort`
+- **Range**: `0–86400` seconds (0-24 hours)
+- `0`: Timer disabled.
+- Non-zero: Dehumidifier will turn off after specified seconds.
+
+**Option 2 - Preset Intervals:**
+- **Data Type**: `Enum`
+- **Values**: `off`, `30m`, `1h`, `2h`, `4h`, `8h`, `12h`
+- Predefined timer intervals.
 
 #### `fault`
 

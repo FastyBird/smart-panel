@@ -1019,6 +1019,47 @@
         "invalid": null,
         "step": null
       },
+      "timer": {
+        "category": "timer",
+        "required": false,
+        "description": {
+          "en": "Auto-off timer - integrator can choose between duration or preset intervals"
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_types": [
+          {
+            "id": "duration",
+            "data_type": "ushort",
+            "unit": "s",
+            "format": [
+              0,
+              86400
+            ],
+            "step": 60,
+            "description": {
+              "en": "Timer duration in seconds (0-86400)"
+            }
+          },
+          {
+            "id": "preset",
+            "data_type": "enum",
+            "format": [
+              "off",
+              "30m",
+              "1h",
+              "2h",
+              "4h",
+              "8h",
+              "12h"
+            ],
+            "description": {
+              "en": "Preset timer intervals"
+            }
+          }
+        ]
+      },
       "fault": {
         "category": "fault",
         "required": false,
@@ -1564,6 +1605,62 @@
         ],
         "invalid": null,
         "step": null
+      },
+      "natural_breeze": {
+        "category": "natural_breeze",
+        "required": false,
+        "description": {
+          "en": "Natural breeze mode simulates natural wind patterns"
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "timer": {
+        "category": "timer",
+        "required": false,
+        "description": {
+          "en": "Auto-off timer - integrator can choose between duration or preset intervals"
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_types": [
+          {
+            "id": "duration",
+            "data_type": "ushort",
+            "unit": "s",
+            "format": [
+              0,
+              86400
+            ],
+            "step": 60,
+            "description": {
+              "en": "Timer duration in seconds (0-86400)"
+            }
+          },
+          {
+            "id": "preset",
+            "data_type": "enum",
+            "format": [
+              "off",
+              "30m",
+              "1h",
+              "2h",
+              "4h",
+              "8h",
+              "12h"
+            ],
+            "description": {
+              "en": "Preset timer intervals"
+            }
+          }
+        ]
       }
     }
   },
@@ -2110,6 +2207,47 @@
         "format": [
           0,
           100
+        ]
+      },
+      "timer": {
+        "category": "timer",
+        "required": false,
+        "description": {
+          "en": "Auto-off timer - integrator can choose between duration or preset intervals"
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_types": [
+          {
+            "id": "duration",
+            "data_type": "ushort",
+            "unit": "s",
+            "format": [
+              0,
+              86400
+            ],
+            "step": 60,
+            "description": {
+              "en": "Timer duration in seconds (0-86400)"
+            }
+          },
+          {
+            "id": "preset",
+            "data_type": "enum",
+            "format": [
+              "off",
+              "30m",
+              "1h",
+              "2h",
+              "4h",
+              "8h",
+              "12h"
+            ],
+            "description": {
+              "en": "Preset timer intervals"
+            }
+          }
         ]
       },
       "fault": {
@@ -3553,6 +3691,62 @@
         "format": null,
         "invalid": null,
         "step": null
+      },
+      "child_lock": {
+        "category": "child_lock",
+        "required": false,
+        "description": {
+          "en": "Child lock to prevent accidental operation"
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "timer": {
+        "category": "timer",
+        "required": false,
+        "description": {
+          "en": "Auto-off timer - integrator can choose between duration or preset intervals"
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_types": [
+          {
+            "id": "duration",
+            "data_type": "ushort",
+            "unit": "s",
+            "format": [
+              0,
+              86400
+            ],
+            "step": 60,
+            "description": {
+              "en": "Timer duration in seconds (0-86400)"
+            }
+          },
+          {
+            "id": "preset",
+            "data_type": "enum",
+            "format": [
+              "off",
+              "30m",
+              "1h",
+              "2h",
+              "4h",
+              "8h",
+              "12h"
+            ],
+            "description": {
+              "en": "Preset timer intervals"
+            }
+          }
+        ]
       }
     }
   },

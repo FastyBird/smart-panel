@@ -42,11 +42,13 @@ Defines the operating mode of the fan:
 
 ## Optional Properties
 
-| **Property** | **Data Type**     | **Range**                               | **Unit** | **Permissions** |
-|--------------|-------------------|-----------------------------------------|----------|-----------------|
-| `swing`      | `Bool`            | `true/false`                            | -        | RW (Read/Write) |
-| `speed`      | `Uchar` or `Enum` | `0–100` or `off/low/medium/high/turbo`  | %        | RW (Read/Write) |
-| `direction`  | `Enum`            | `clockwise/counter_clockwise`           | -        | RW (Read/Write) |
+| **Property**     | **Data Type**        | **Range**                                | **Unit** | **Permissions** |
+|------------------|----------------------|------------------------------------------|----------|-----------------|
+| `swing`          | `Bool`               | `true/false`                             | -        | RW (Read/Write) |
+| `speed`          | `Uchar` or `Enum`    | `0–100` or `off/low/medium/high/turbo`   | %        | RW (Read/Write) |
+| `direction`      | `Enum`               | `clockwise/counter_clockwise`            | -        | RW (Read/Write) |
+| `natural_breeze` | `Bool`               | `true/false`                             | -        | RW (Read/Write) |
+| `timer`          | `Ushort` or `Enum`   | `0–86400` or `off/30m/1h/2h/4h/8h/12h`   | s        | RW (Read/Write) |
 
 ---
 
@@ -80,3 +82,25 @@ Specifies the direction of the fan's rotation:
 - Possible values:
     - `clockwise`
     - `counter_clockwise`
+
+#### `natural_breeze`
+
+Enables natural breeze mode that simulates natural wind patterns:
+
+- `true`: Natural breeze mode is enabled, fan speed varies to simulate natural wind.
+- `false`: Natural breeze mode is disabled, fan runs at constant speed.
+
+#### `timer`
+
+Auto-off timer for the fan. This property supports multiple data types:
+
+**Option 1 - Duration:**
+- **Data Type**: `Ushort`
+- **Range**: `0–86400` seconds (0-24 hours)
+- `0`: Timer disabled.
+- Non-zero: Fan will turn off after specified seconds.
+
+**Option 2 - Preset Intervals:**
+- **Data Type**: `Enum`
+- **Values**: `off`, `30m`, `1h`, `2h`, `4h`, `8h`, `12h`
+- Predefined timer intervals.
