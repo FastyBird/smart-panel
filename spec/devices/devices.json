@@ -653,14 +653,6 @@
       "en": "The Fan device represents a standalone or integrated fan system with features for speed control, direction adjustment, oscillation, and energy monitoring."
     },
     "channels": {
-      "switcher": {
-        "category": "switcher",
-        "required": true,
-        "multiple": false,
-        "description": {
-          "en": "Controls the on/off state of the fan."
-        }
-      },
       "fan": {
         "category": "fan",
         "required": true,
