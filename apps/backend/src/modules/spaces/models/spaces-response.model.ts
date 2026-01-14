@@ -3,7 +3,7 @@ import { Expose, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
-import { DeviceCategory } from '../../devices/devices.constants';
+import { ChannelCategory, DeviceCategory } from '../../devices/devices.constants';
 import { SpaceClimateRoleEntity } from '../entities/space-climate-role.entity';
 import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
 import { SpaceEntity } from '../entities/space.entity';
@@ -668,10 +668,20 @@ export class ClimateTargetDataModel {
 	channelName: string | null;
 
 	@ApiPropertyOptional({
+		name: 'channel_category',
+		description: 'Category of the channel (for sensor roles) - indicates sensor type',
+		enum: ChannelCategory,
+		nullable: true,
+		example: ChannelCategory.TEMPERATURE,
+	})
+	@Expose({ name: 'channel_category' })
+	channelCategory: ChannelCategory | null;
+
+	@ApiPropertyOptional({
 		description: 'The climate role assigned to this target (null if not assigned)',
 		enum: ClimateRole,
 		nullable: true,
-		example: ClimateRole.PRIMARY,
+		example: ClimateRole.AUTO,
 	})
 	@Expose()
 	role: ClimateRole | null;
@@ -793,7 +803,7 @@ export class BulkClimateRoleResultItemModel {
 		description: 'The role that was set (null if failed)',
 		enum: ClimateRole,
 		nullable: true,
-		example: ClimateRole.PRIMARY,
+		example: ClimateRole.AUTO,
 	})
 	@Expose()
 	role: ClimateRole | null;

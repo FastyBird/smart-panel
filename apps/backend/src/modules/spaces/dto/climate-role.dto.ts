@@ -42,7 +42,7 @@ export class SetClimateRoleDto {
 	@ApiProperty({
 		description: 'The climate role for this device/channel',
 		enum: ClimateRole,
-		example: ClimateRole.PRIMARY,
+		example: ClimateRole.AUTO,
 	})
 	@Expose()
 	@IsEnum(ClimateRole, { message: '[{"field":"role","reason":"Role must be a valid climate role."}]' })

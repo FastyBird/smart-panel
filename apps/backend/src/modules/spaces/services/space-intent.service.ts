@@ -551,33 +551,41 @@ export class SpaceIntentService {
 		// Get climate roles for this space
 		const roleMap = await this.climateRoleService.getRoleMap(spaceId);
 
-		// Determine primary thermostat from climate roles (PRIMARY role)
+		// Determine primary thermostat - use first thermostat that is not HIDDEN
 		let primaryThermostat: ClimateDevice | null = null;
 
 		for (const thermostat of climateDevices.thermostats) {
 			const role = roleMap.get(thermostat.device.id);
-			if (role?.role === ClimateRole.PRIMARY) {
-				primaryThermostat = thermostat;
-				break;
+			// Skip thermostats with HIDDEN role
+			if (role?.role === ClimateRole.HIDDEN) {
+				continue;
 			}
+			primaryThermostat = thermostat;
+			break;
 		}
 
-		// Fallback: first thermostat if no PRIMARY role assigned
+		// Fallback: first thermostat if all are hidden or no roles assigned
 		if (!primaryThermostat && climateDevices.thermostats.length > 0) {
 			primaryThermostat = climateDevices.thermostats[0];
 		}
 
-		// Determine primary temperature sensor from climate roles (TEMPERATURE_SENSOR role)
+		// Determine primary temperature sensor from climate roles (SENSOR role on temperature channel)
 		let primarySensor: ClimateDevice | null = null;
 		let primarySensorChannelId: string | null = null;
 
-		// First, check for explicit TEMPERATURE_SENSOR role on sensor channels
+		// First, check for explicit SENSOR role on temperature channels
 		for (const sensor of climateDevices.sensors) {
 			// For sensors, check each channel's role
 			for (const channel of sensor.device.channels ?? []) {
+				// Only consider temperature channels
+				if (channel.category !== ChannelCategory.TEMPERATURE) {
+					continue;
+				}
 				const key = `${sensor.device.id}:${channel.id}`;
 				const role = roleMap.get(key);
-				if (role?.role === ClimateRole.TEMPERATURE_SENSOR) {
+				// Only use sensors with explicit SENSOR role (not HIDDEN, not unassigned)
+				// This ensures thermostat temperature is preferred by default
+				if (role?.role === ClimateRole.SENSOR) {
 					primarySensor = sensor;
 					primarySensorChannelId = channel.id;
 					break;
@@ -642,16 +650,16 @@ export class SpaceIntentService {
 
 	/**
 	 * Get the primary thermostat device ID for a space using climate roles.
-	 * Returns the device with PRIMARY role, or falls back to the first thermostat.
+	 * Returns the first thermostat that is not HIDDEN, or falls back to the first thermostat.
 	 */
 	async getPrimaryThermostatId(spaceId: string): Promise<string | null> {
 		const climateDevices = await this.getClimateDevicesInSpace(spaceId);
 		const roleMap = await this.climateRoleService.getRoleMap(spaceId);
 
-		// Look for device with PRIMARY role
+		// Look for first thermostat that is not HIDDEN
 		for (const thermostat of climateDevices.thermostats) {
 			const role = roleMap.get(thermostat.device.id);
-			if (role?.role === ClimateRole.PRIMARY) {
+			if (role?.role !== ClimateRole.HIDDEN) {
 				return thermostat.device.id;
 			}
 		}

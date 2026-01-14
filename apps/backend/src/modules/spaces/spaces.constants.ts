@@ -1,3 +1,5 @@
+import { ChannelCategory } from '../devices/devices.constants';
+
 export const SPACES_MODULE_NAME = 'spaces-module';
 export const SPACES_MODULE_PREFIX = 'spaces';
 export const SPACES_MODULE_API_TAG_NAME = 'Spaces module';
@@ -432,30 +434,40 @@ export enum LightingRole {
 	HIDDEN = 'hidden', // Hidden lights (excluded from UI, not controlled by intents)
 }
 
-// Climate Roles - classify climate devices within a space for intent-based control
+// Climate Roles - classify climate devices within a space for climate domain control
 export enum ClimateRole {
-	// Control roles (actuators)
-	PRIMARY = 'primary', // Primary temperature regulation (e.g., main thermostat, central HVAC) - only one per space
-	AUXILIARY = 'auxiliary', // Auxiliary heating/cooling (e.g., portable heater, window AC)
-	VENTILATION = 'ventilation', // Ventilation/air circulation (e.g., fans, air exchange)
-	HUMIDITY_CONTROL = 'humidity_control', // Humidity control (e.g., humidifier, dehumidifier)
-	// Read roles (sensors)
-	TEMPERATURE_SENSOR = 'temperature_sensor', // Temperature sensing (e.g., temperature sensor channel)
-	HUMIDITY_SENSOR = 'humidity_sensor', // Humidity sensing (e.g., humidity sensor channel)
-	// Other
-	OTHER = 'other', // Unclassified climate devices
-	HIDDEN = 'hidden', // Hidden devices (excluded from UI, not controlled by intents)
+	// Control roles (actuators) - specify operating mode for climate devices
+	HEATING_ONLY = 'heating_only', // Device should only be used for heating
+	COOLING_ONLY = 'cooling_only', // Device should only be used for cooling
+	AUTO = 'auto', // Device can be used for both heating and cooling (automatic)
+	// Read roles (sensors) - enable/disable sensors in climate domain
+	SENSOR = 'sensor', // Sensor is included in climate domain readings
+	// Exclusion
+	HIDDEN = 'hidden', // Hidden devices/sensors (excluded from climate domain UI and control)
 }
 
 // Helper arrays for role categorization
 export const CLIMATE_CONTROL_ROLES = [
-	ClimateRole.PRIMARY,
-	ClimateRole.AUXILIARY,
-	ClimateRole.VENTILATION,
-	ClimateRole.HUMIDITY_CONTROL,
+	ClimateRole.HEATING_ONLY,
+	ClimateRole.COOLING_ONLY,
+	ClimateRole.AUTO,
 ] as const;
 
-export const CLIMATE_SENSOR_ROLES = [ClimateRole.TEMPERATURE_SENSOR, ClimateRole.HUMIDITY_SENSOR] as const;
+export const CLIMATE_SENSOR_ROLES = [ClimateRole.SENSOR] as const;
+
+/**
+ * Channel categories that are relevant for the climate domain sensors.
+ * These sensor types will be displayed in the climate domain view page.
+ */
+export const CLIMATE_SENSOR_CHANNEL_CATEGORIES = [
+	ChannelCategory.TEMPERATURE, // Temperature sensing
+	ChannelCategory.HUMIDITY, // Humidity sensing
+	ChannelCategory.AIR_QUALITY, // Air Quality Index (AQI)
+	ChannelCategory.AIR_PARTICULATE, // PM2.5, PM10 particulate matter
+	ChannelCategory.CARBON_DIOXIDE, // CO2 levels
+	ChannelCategory.VOLATILE_ORGANIC_COMPOUNDS, // VOC levels
+	ChannelCategory.PRESSURE, // Atmospheric pressure
+] as const;
 
 /**
  * Role-based lighting orchestration rules
@@ -797,6 +809,42 @@ export const LIGHTING_ROLE_META: Record<LightingRole, IntentEnumValueMeta> = {
 		value: LightingRole.HIDDEN,
 		label: 'Hidden',
 		description: 'Hidden lights (excluded from UI)',
+		icon: 'mdi:eye-off',
+	},
+};
+
+/**
+ * Metadata for climate role values
+ */
+export const CLIMATE_ROLE_META: Record<ClimateRole, IntentEnumValueMeta> = {
+	[ClimateRole.HEATING_ONLY]: {
+		value: ClimateRole.HEATING_ONLY,
+		label: 'Heating Only',
+		description: 'Device is used only for heating',
+		icon: 'mdi:fire',
+	},
+	[ClimateRole.COOLING_ONLY]: {
+		value: ClimateRole.COOLING_ONLY,
+		label: 'Cooling Only',
+		description: 'Device is used only for cooling',
+		icon: 'mdi:snowflake',
+	},
+	[ClimateRole.AUTO]: {
+		value: ClimateRole.AUTO,
+		label: 'Auto',
+		description: 'Device is used for both heating and cooling',
+		icon: 'mdi:thermostat-auto',
+	},
+	[ClimateRole.SENSOR]: {
+		value: ClimateRole.SENSOR,
+		label: 'Sensor',
+		description: 'Sensor is included in climate domain readings',
+		icon: 'mdi:thermometer',
+	},
+	[ClimateRole.HIDDEN]: {
+		value: ClimateRole.HIDDEN,
+		label: 'Hidden',
+		description: 'Device/sensor is excluded from climate domain',
 		icon: 'mdi:eye-off',
 	},
 };
