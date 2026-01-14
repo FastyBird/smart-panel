@@ -434,6 +434,52 @@ describe('Z2mExposesMapperService', () => {
 			expect(gasProperty?.category).toBe(PropertyCategory.DETECTED);
 		});
 
+		it('should map air quality sensors (PM10, PM1, formaldehyde)', () => {
+			// Air quality monitor with multiple particulate sensors
+			const exposes: Z2mExposeNumeric[] = [
+				{
+					type: 'numeric',
+					name: 'pm10',
+					property: 'pm10',
+					access: 1,
+					unit: 'µg/m³',
+				},
+				{
+					type: 'numeric',
+					name: 'pm1',
+					property: 'pm1',
+					access: 1,
+					unit: 'µg/m³',
+				},
+				{
+					type: 'numeric',
+					name: 'formaldehyde',
+					property: 'formaldehyde',
+					access: 1,
+					unit: 'µg/m³',
+				},
+			];
+
+			const result = service.mapExposes(exposes);
+
+			expect(result).toHaveLength(3);
+
+			// PM10 channel
+			const pm10Channel = result.find((c) => c.identifier === 'air_particulate_pm10');
+			expect(pm10Channel).toBeDefined();
+			expect(pm10Channel?.category).toBe(ChannelCategory.AIR_PARTICULATE);
+
+			// PM1 channel
+			const pm1Channel = result.find((c) => c.identifier === 'air_particulate_pm1');
+			expect(pm1Channel).toBeDefined();
+			expect(pm1Channel?.category).toBe(ChannelCategory.AIR_PARTICULATE);
+
+			// Formaldehyde channel
+			const formaldehydeChannel = result.find((c) => c.identifier === 'formaldehyde');
+			expect(formaldehydeChannel).toBeDefined();
+			expect(formaldehydeChannel?.category).toBe(ChannelCategory.VOLATILE_ORGANIC_COMPOUNDS);
+		});
+
 		it('should map light with endpoint', () => {
 			const exposes: Z2mExposeSpecific[] = [
 				{

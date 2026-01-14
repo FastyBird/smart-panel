@@ -382,7 +382,7 @@ mappings:
   # AIR QUALITY
   # ============================================
 
-  # PM2.5 sensor
+  # PM2.5 sensor (fine particulate matter)
   - name: pm25_sensor
     description: "PM2.5 air particulate sensor"
     priority: 50
@@ -400,6 +400,72 @@ mappings:
             panel:
               identifier: MEASURED
               name: PM2.5
+              data_type: UINT
+              unit: "µg/m³"
+              settable: false
+
+  # PM10 sensor (coarse particulate matter)
+  - name: pm10_sensor
+    description: "PM10 air particulate sensor"
+    priority: 50
+    match:
+      expose_type: numeric
+      property: pm10
+    device_category: SENSOR
+    channels:
+      - identifier: air_particulate_pm10
+        name: PM10
+        category: AIR_PARTICULATE
+        properties:
+          - z2m_property: pm10
+            direction: read_only
+            panel:
+              identifier: MEASURED
+              name: PM10
+              data_type: UINT
+              unit: "µg/m³"
+              settable: false
+
+  # PM1 sensor (ultrafine particulate matter)
+  - name: pm1_sensor
+    description: "PM1 air particulate sensor"
+    priority: 50
+    match:
+      expose_type: numeric
+      property: pm1
+    device_category: SENSOR
+    channels:
+      - identifier: air_particulate_pm1
+        name: PM1
+        category: AIR_PARTICULATE
+        properties:
+          - z2m_property: pm1
+            direction: read_only
+            panel:
+              identifier: MEASURED
+              name: PM1
+              data_type: UINT
+              unit: "µg/m³"
+              settable: false
+
+  # Formaldehyde sensor (HCHO)
+  - name: formaldehyde_sensor
+    description: "Formaldehyde (HCHO) sensor"
+    priority: 50
+    match:
+      expose_type: numeric
+      property: formaldehyde
+    device_category: SENSOR
+    channels:
+      - identifier: formaldehyde
+        name: Formaldehyde
+        category: VOLATILE_ORGANIC_COMPOUNDS
+        properties:
+          - z2m_property: formaldehyde
+            direction: read_only
+            panel:
+              identifier: MEASURED
+              name: Formaldehyde
               data_type: UINT
               unit: "µg/m³"
               settable: false
