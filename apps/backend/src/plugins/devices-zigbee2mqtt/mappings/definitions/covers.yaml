@@ -4,9 +4,11 @@
 version: "1.0"
 
 transformers:
-  # Cover state normalization (OPEN/CLOSE/STOP -> opened/closed/stopped)
-  cover_state:
+  # Cover state to status (read direction)
+  # Z2M state values -> spec status values
+  cover_status:
     type: map
+    direction: read_only
     read:
       OPEN: "opened"
       CLOSE: "closed"
@@ -14,15 +16,11 @@ transformers:
       open: "opened"
       close: "closed"
       stop: "stopped"
-    write:
-      open: "OPEN"
-      close: "CLOSE"
-      stop: "STOP"
-      opened: "OPEN"
-      closed: "CLOSE"
-      stopped: "STOP"
+      opening: "opening"
+      closing: "closing"
 
-  # Cover command (write only)
+  # Cover command (write direction)
+  # spec command values -> Z2M state values
   cover_command:
     type: map
     direction: write_only
@@ -44,14 +42,29 @@ mappings:
         name: Window Covering
         category: WINDOW_COVERING
         features:
-          # State (OPEN/CLOSE/STOP -> opened/closed/stopped)
-          # Format is derived from device's actual enum values, transformed via cover_state
+          # Status (read-only) - current state of the cover
+          # Z2M state: OPEN/CLOSE/STOP -> spec status: opened/closed/stopped
           - z2m_feature: state
+            direction: read_only
             panel:
               identifier: STATUS
               name: Status
               data_type: ENUM
-            transformer: cover_state
+              format: ["opened", "closed", "opening", "closing", "stopped"]
+              settable: false
+            transformer: cover_status
+
+          # Command (write-only) - send open/close/stop commands
+          # Uses same Z2M state property but for writing commands
+          - z2m_feature: state
+            direction: write_only
+            panel:
+              identifier: COMMAND
+              name: Command
+              data_type: ENUM
+              format: ["open", "close", "stop"]
+              settable: true
+            transformer: cover_command
 
           # Position (0-100%)
           # Note: Some devices use 0=closed, 100=open; others use inverted
@@ -88,10 +101,3 @@ mappings:
             data_type: ENUM
             format: ["curtain", "blind", "roller", "outdoor_blind"]
             value: "curtain"
-
-          # Command property for manual control (open/close/stop)
-          - identifier: COMMAND
-            name: Command
-            data_type: ENUM
-            format: ["open", "close", "stop"]
-            value: "stop"
