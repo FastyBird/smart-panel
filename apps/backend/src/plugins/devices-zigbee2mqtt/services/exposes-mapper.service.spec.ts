@@ -6,7 +6,12 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
-import { Z2mExposeBinary, Z2mExposeNumeric, Z2mExposeSpecific } from '../interfaces/zigbee2mqtt.interface';
+import {
+	Z2mExposeBinary,
+	Z2mExposeEnum,
+	Z2mExposeNumeric,
+	Z2mExposeSpecific,
+} from '../interfaces/zigbee2mqtt.interface';
 import { ConfigDrivenConverter } from '../mappings/config-driven.converter';
 import { MappingLoaderService } from '../mappings/mapping-loader.service';
 import { TransformerRegistry } from '../mappings/transformers';
@@ -75,6 +80,124 @@ describe('Z2mExposesMapperService', () => {
 			const brightnessProperty = result[0].properties.find((p) => p.z2mProperty === 'brightness');
 			expect(brightnessProperty).toBeDefined();
 			expect(brightnessProperty?.dataType).toBe(DataTypeType.UCHAR);
+		});
+
+		it('should map RGB light with color_hs composite feature', () => {
+			// This matches the Gledopto GL-C-008P LED controller
+			const exposes: Z2mExposeSpecific[] = [
+				{
+					type: 'light',
+					features: [
+						{
+							type: 'binary',
+							name: 'state',
+							property: 'state',
+							access: 7,
+							value_on: 'ON',
+							value_off: 'OFF',
+						} as Z2mExposeBinary,
+						{
+							type: 'numeric',
+							name: 'brightness',
+							property: 'brightness',
+							access: 7,
+							value_min: 0,
+							value_max: 254,
+						} as Z2mExposeNumeric,
+						{
+							type: 'numeric',
+							name: 'color_temp',
+							property: 'color_temp',
+							access: 7,
+							unit: 'mired',
+							value_min: 158,
+							value_max: 500,
+						} as Z2mExposeNumeric,
+						{
+							type: 'composite',
+							name: 'color_xy',
+							property: 'color',
+							access: 7,
+							features: [
+								{ type: 'numeric', name: 'x', property: 'x', access: 7 } as Z2mExposeNumeric,
+								{ type: 'numeric', name: 'y', property: 'y', access: 7 } as Z2mExposeNumeric,
+							],
+						} as unknown as Z2mExposeSpecific,
+						{
+							type: 'composite',
+							name: 'color_hs',
+							property: 'color',
+							access: 7,
+							features: [
+								{ type: 'numeric', name: 'hue', property: 'hue', access: 7 } as Z2mExposeNumeric,
+								{ type: 'numeric', name: 'saturation', property: 'saturation', access: 7 } as Z2mExposeNumeric,
+							],
+						} as unknown as Z2mExposeSpecific,
+					],
+				},
+			];
+
+			const result = service.mapExposes(exposes);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].identifier).toBe('light');
+			expect(result[0].category).toBe(ChannelCategory.LIGHT);
+
+			// Check hue property (from color_hs composite)
+			const hueProperty = result[0].properties.find((p) => p.identifier === 'hue');
+			expect(hueProperty).toBeDefined();
+			expect(hueProperty?.category).toBe(PropertyCategory.HUE);
+			expect(hueProperty?.z2mProperty).toBe('color'); // Parent property
+
+			// Check saturation property (from color_hs composite)
+			const saturationProperty = result[0].properties.find((p) => p.identifier === 'saturation');
+			expect(saturationProperty).toBeDefined();
+			expect(saturationProperty?.category).toBe(PropertyCategory.SATURATION);
+			expect(saturationProperty?.z2mProperty).toBe('color'); // Parent property
+		});
+
+		it('should map cover expose with enum status', () => {
+			// This matches the Lilistore cover motor
+			const exposes: Z2mExposeSpecific[] = [
+				{
+					type: 'cover',
+					features: [
+						{
+							type: 'enum',
+							name: 'state',
+							property: 'state',
+							access: 3,
+							values: ['OPEN', 'CLOSE', 'STOP'],
+						} as Z2mExposeEnum,
+						{
+							type: 'numeric',
+							name: 'position',
+							property: 'position',
+							access: 3,
+							unit: '%',
+							value_min: 0,
+							value_max: 100,
+						} as Z2mExposeNumeric,
+					],
+				},
+			];
+
+			const result = service.mapExposes(exposes);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].identifier).toBe('window_covering');
+			expect(result[0].category).toBe(ChannelCategory.WINDOW_COVERING);
+
+			// Check status property - should be ENUM type
+			const statusProperty = result[0].properties.find((p) => p.identifier === 'status');
+			expect(statusProperty).toBeDefined();
+			expect(statusProperty?.dataType).toBe(DataTypeType.ENUM);
+			expect(statusProperty?.format).toEqual(['opened', 'closed', 'opening', 'closing', 'stopped']);
+
+			// Check position property
+			const positionProperty = result[0].properties.find((p) => p.identifier === 'position');
+			expect(positionProperty).toBeDefined();
+			expect(positionProperty?.dataType).toBe(DataTypeType.UCHAR);
 		});
 
 		it('should map switch expose', () => {
