@@ -232,12 +232,6 @@ export class Z2mDeviceAdoptionService {
 				value: z2mDevice.ieeeAddress,
 			},
 			{
-				identifier: Z2M_DEVICE_INFO_PROPERTY_IDENTIFIERS.FIRMWARE_REVISION,
-				name: 'Firmware Revision',
-				category: PropertyCategory.FIRMWARE_REVISION,
-				value: 'Unknown',
-			},
-			{
 				identifier: Z2M_DEVICE_INFO_PROPERTY_IDENTIFIERS.LINK_QUALITY,
 				name: 'Link Quality',
 				category: PropertyCategory.LINK_QUALITY,
@@ -453,7 +447,6 @@ export class Z2mDeviceAdoptionService {
 					{ category: PropertyCategory.MANUFACTURER },
 					{ category: PropertyCategory.MODEL },
 					{ category: PropertyCategory.SERIAL_NUMBER },
-					{ category: PropertyCategory.FIRMWARE_REVISION },
 				],
 			},
 		];

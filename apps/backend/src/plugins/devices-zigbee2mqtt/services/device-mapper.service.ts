@@ -588,13 +588,6 @@ export class Z2mDeviceMapperService {
 		);
 		await this.createOrUpdateInfoProperty(
 			channel,
-			Z2M_DEVICE_INFO_PROPERTY_IDENTIFIERS.FIRMWARE_REVISION,
-			'Firmware Revision',
-			PropertyCategory.FIRMWARE_REVISION,
-			'Unknown',
-		);
-		await this.createOrUpdateInfoProperty(
-			channel,
 			Z2M_DEVICE_INFO_PROPERTY_IDENTIFIERS.LINK_QUALITY,
 			'Link Quality',
 			PropertyCategory.LINK_QUALITY,

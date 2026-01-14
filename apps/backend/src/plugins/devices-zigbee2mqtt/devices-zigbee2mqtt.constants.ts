@@ -426,7 +426,6 @@ export const Z2M_DEVICE_INFO_PROPERTY_IDENTIFIERS = {
 	MANUFACTURER: 'manufacturer',
 	MODEL: 'model',
 	SERIAL_NUMBER: 'serial_number',
-	FIRMWARE_REVISION: 'firmware_revision',
 	LINK_QUALITY: 'linkquality',
 } as const;
 
