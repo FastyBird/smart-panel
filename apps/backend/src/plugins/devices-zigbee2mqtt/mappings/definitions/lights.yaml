@@ -84,14 +84,14 @@ mappings:
                   format: [0, 100]
                   unit: "%"
 
-          # Transition time - DISABLED: Smart Panel spec doesn't support TRANSITION property yet
+          # Transition time
+          # DISABLED: Smart Panel spec doesn't support TRANSITION property yet
           # Enable when PropertyCategory.TRANSITION is added to the spec
-          - z2m_feature: transition
-            disabled: true
-            direction: write_only
-            panel:
-              identifier: TRANSITION
-              name: Transition
-              data_type: FLOAT
-              unit: "s"
-              queryable: false
+          # - z2m_feature: transition
+          #   direction: write_only
+          #   panel:
+          #     identifier: TRANSITION
+          #     name: Transition
+          #     data_type: FLOAT
+          #     unit: "s"
+          #     queryable: false

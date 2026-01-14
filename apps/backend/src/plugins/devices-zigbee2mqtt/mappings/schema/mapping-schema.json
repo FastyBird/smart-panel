@@ -329,11 +329,6 @@
 					"type": "array",
 					"items": { "$ref": "#/definitions/feature" },
 					"description": "Nested features for composite types (e.g., color with hue/saturation)"
-				},
-				"disabled": {
-					"type": "boolean",
-					"default": false,
-					"description": "Skip this feature (for future/unsupported properties)"
 				}
 			},
 			"allOf": [
@@ -385,11 +380,6 @@
 				"transform": {
 					"$ref": "#/definitions/inlineTransform",
 					"description": "Inline transform definition"
-				},
-				"disabled": {
-					"type": "boolean",
-					"default": false,
-					"description": "Skip this property (for future/unsupported properties)"
 				}
 			}
 		},

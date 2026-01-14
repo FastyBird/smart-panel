@@ -211,11 +211,6 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 		const seenIdentifiers = new Set<string>();
 
 		for (const featureDef of featureDefs) {
-			// Skip disabled features (for future/unsupported properties)
-			if (featureDef.disabled) {
-				continue;
-			}
-
 			// Find matching feature in expose
 			const feature = this.findFeature({ features }, featureDef.z2mFeature);
 
@@ -268,11 +263,6 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 		const parentFeatures = (parentFeature as Z2mExposeSpecific).features ?? [];
 
 		for (const nestedDef of nestedDefs) {
-			// Skip disabled features (for future/unsupported properties)
-			if (nestedDef.disabled) {
-				continue;
-			}
-
 			const nestedFeature = parentFeatures.find(
 				(f) => f.property === nestedDef.z2mFeature || f.name === nestedDef.z2mFeature,
 			);
@@ -459,11 +449,6 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 		const properties: MappedProperty[] = [];
 
 		for (const propDef of propDefs) {
-			// Skip disabled properties (for future/unsupported properties)
-			if (propDef.disabled) {
-				continue;
-			}
-
 			// For generic exposes, check if this property matches
 			const exposeProp = expose.property ?? expose.name;
 			if (exposeProp !== propDef.z2mProperty) {
