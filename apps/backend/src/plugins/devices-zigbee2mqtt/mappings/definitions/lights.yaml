@@ -84,12 +84,5 @@ mappings:
                   format: [0, 100]
                   unit: "%"
 
-          # Transition time (optional)
-          - z2m_feature: transition
-            direction: write_only
-            panel:
-              identifier: TRANSITION
-              name: Transition
-              data_type: FLOAT
-              unit: "s"
-              queryable: false
+          # Note: Z2M transition time is not mapped - Smart Panel spec doesn't support TRANSITION property
+          # Transition timing could be handled at the application/automation level if needed
