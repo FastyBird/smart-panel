@@ -33,9 +33,10 @@ mappings:
         category: LOCK
         features:
           # Lock state (LOCK/UNLOCK or LOCKED/UNLOCKED)
+          # ON property: true = locked, false = unlocked
           - z2m_feature: state
             panel:
-              identifier: LOCKED
+              identifier: ON
               name: Lock State
               data_type: BOOL
             transformer: lock_state
@@ -43,7 +44,7 @@ mappings:
           # Alternative: lock_state property
           - z2m_feature: lock_state
             panel:
-              identifier: LOCKED
+              identifier: ON
               name: Lock State
               data_type: BOOL
             transform:
