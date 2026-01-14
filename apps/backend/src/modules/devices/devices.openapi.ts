@@ -39,6 +39,7 @@ import {
 import {
 	ChannelPropertySpecModel,
 	ChannelSpecModel,
+	DataTypeVariantSpecModel,
 	DeviceChannelSpecModel,
 	DeviceSpecModel,
 	ModuleStatsModel,
@@ -79,6 +80,7 @@ export const DEVICES_SWAGGER_EXTRA_MODELS = [
 	DeviceSpecModel,
 	ChannelPropertySpecModel,
 	ChannelSpecModel,
+	DataTypeVariantSpecModel,
 	RegisteredDevicesModel,
 	RegisteredChannelsModel,
 	UpdatesPerMinModel,
