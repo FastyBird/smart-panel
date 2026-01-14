@@ -315,6 +315,9 @@ export class Z2mDeviceAdoptionService {
 			ieeeAddress: z2mDevice.ieeeAddress,
 		};
 
+		// Track used identifiers to detect duplicates (e.g., multiple properties mapping to same z2mProperty)
+		const usedIdentifiers = new Set<string>();
+
 		// Create properties
 		for (const propDef of channelDef.properties) {
 			const propSpec = channelSpec?.properties?.find((p) => p.category === propDef.category);
@@ -337,14 +340,16 @@ export class Z2mDeviceAdoptionService {
 					initialValue = this.virtualPropertyService.resolveVirtualPropertyValue(virtualDef, virtualContext);
 				}
 			} else {
-				// For properties that share the same z2mProperty (like hue and saturation both mapping to "color"),
-				// we need to use a different identifier to avoid conflicts
-				const isSharedZ2mProperty =
-					propDef.z2mProperty === 'color' &&
-					(propDef.category === PropertyCategory.HUE || propDef.category === PropertyCategory.SATURATION);
+				// For properties that share the same z2mProperty (like hue/saturation both mapping to "color",
+				// or status/command both mapping to "state"), use category as identifier to avoid conflicts
+				const potentialIdentifier = propDef.z2mProperty;
 
-				// Use spec identifier for shared properties, z2mProperty for regular properties
-				identifier = isSharedZ2mProperty ? propDef.category : propDef.z2mProperty;
+				// If this z2mProperty was already used as an identifier, use category instead
+				if (usedIdentifiers.has(potentialIdentifier)) {
+					identifier = propDef.category.toLowerCase();
+				} else {
+					identifier = potentialIdentifier;
+				}
 
 				// Get initial value from cached Z2M state (if available)
 				// The MQTT adapter caches state messages in deviceRegistry[friendlyName].currentState
@@ -435,11 +440,14 @@ export class Z2mDeviceAdoptionService {
 				Zigbee2mqttChannelPropertyEntity,
 				CreateZigbee2mqttChannelPropertyDto
 			>(channel.id, createPropertyDto);
+
+			// Track that this identifier was used
+			usedIdentifiers.add(identifier);
 		}
 
 		// Create static/derived properties from YAML mapping
 		// These properties are not sent by the frontend but defined in the YAML configuration
-		await this.createStaticPropertiesFromMapping(channel, channelDef.category, z2mDevice, channelSpec);
+		await this.createStaticPropertiesFromMapping(channel, channelDef.category, z2mDevice, channelSpec, usedIdentifiers);
 	}
 
 	/**
@@ -451,6 +459,7 @@ export class Z2mDeviceAdoptionService {
 		channelCategory: ChannelCategory,
 		z2mDevice: Z2mRegisteredDevice,
 		channelSpec: ChannelSpecModel | null,
+		usedIdentifiers: Set<string>,
 	): Promise<void> {
 		// Get mapped channels from YAML configuration
 		const mappedChannels = z2mDevice.definition?.exposes
@@ -469,10 +478,18 @@ export class Z2mDeviceAdoptionService {
 		);
 
 		for (const staticProp of staticProperties) {
-			const propSpec = channelSpec?.properties?.find((p) => p.category === staticProp.category);
-
 			// Use the spec identifier (category) as the property identifier
 			const identifier = staticProp.category.toLowerCase();
+
+			// Skip if this identifier was already created (from request properties)
+			if (usedIdentifiers.has(identifier)) {
+				this.logger.debug(
+					`[DEVICE ADOPTION] Skipping static property '${staticProp.category}' - already created from request`,
+				);
+				continue;
+			}
+
+			const propSpec = channelSpec?.properties?.find((p) => p.category === staticProp.category);
 
 			// Get the initial value from staticValue or null for derived properties
 			const initialValue = staticProp.staticValue ?? null;
