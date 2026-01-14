@@ -982,6 +982,9 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 		// Get all mappings from the loader
 		const allMappings = this.mappingLoader.getMappings();
 
+		// Normalize property category to uppercase for comparison
+		const normalizedPropertyCategory = propertyCategory.toUpperCase();
+
 		for (const mapping of allMappings) {
 			for (const channel of mapping.channels) {
 				if (channel.category !== channelCategory) {
@@ -994,7 +997,7 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 						// Handle nested features (composites like color)
 						if (feature.nestedFeatures) {
 							for (const nested of feature.nestedFeatures) {
-								if (nested.panel?.identifier.toUpperCase() === propertyCategory) {
+								if (nested.panel?.identifier.toUpperCase() === normalizedPropertyCategory) {
 									const transformer = this.transformerRegistry.getOrCreate(
 										nested.transformerName,
 										nested.inlineTransform,
@@ -1006,7 +1009,7 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 						}
 
 						// Regular feature
-						if (feature.panel?.identifier.toUpperCase() === propertyCategory) {
+						if (feature.panel?.identifier.toUpperCase() === normalizedPropertyCategory) {
 							const transformer = this.transformerRegistry.getOrCreate(
 								feature.transformerName,
 								feature.inlineTransform,
@@ -1019,7 +1022,7 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 				// Check properties
 				if (channel.properties) {
 					for (const prop of channel.properties) {
-						if (prop.panel.identifier.toUpperCase() === propertyCategory) {
+						if (prop.panel.identifier.toUpperCase() === normalizedPropertyCategory) {
 							const transformer = this.transformerRegistry.getOrCreate(
 								prop.transformerName,
 								prop.inlineTransform,
