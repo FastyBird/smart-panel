@@ -688,7 +688,7 @@
       },
       "firmware_revision": {
         "category": "firmware_revision",
-        "required": true,
+        "required": false,
         "description": {
           "en": ""
         },
