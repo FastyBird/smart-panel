@@ -1,55 +1,27 @@
 # Zigbee2MQTT Climate Mappings
 # Handles thermostats and HVAC devices
+#
+# Thermostat device structure (from spec):
+# - temperature channel (required): current temperature reading
+# - thermostat channel (required): mode control
+# - heater channel (optional): heating setpoint and status
+# - cooler channel (optional): cooling setpoint and status
+# - humidity channel (optional): humidity reading
 
 version: "1.0"
 
 transformers:
-  # HVAC mode normalization
+  # HVAC mode normalization: Z2M -> Panel thermostat mode
+  # Panel modes: off, heat, cool, auto, manual
   hvac_mode:
     type: map
     bidirectional:
-      off: "off"
-      heat: "heating"
-      cool: "cooling"
-      auto: "auto"
-      fan_only: "fan_only"
-      dry: "dry"
-      emergency_heating: "emergency_heating"
-
-  # HVAC running state (read only)
-  hvac_running_state:
-    type: map
-    direction: read_only
-    read:
-      idle: "idle"
-      heat: "heating"
-      cool: "cooling"
-      fan_only: "fan_only"
-
-  # Preset mode mapping
-  preset_mode:
-    type: map
-    bidirectional:
-      none: "none"
-      away: "away"
-      boost: "boost"
-      comfort: "comfort"
-      eco: "eco"
-      home: "home"
-      sleep: "sleep"
-      activity: "activity"
-
-  # Fan mode mapping
-  fan_mode:
-    type: map
-    bidirectional:
-      off: "off"
-      low: "low"
-      medium: "medium"
-      high: "high"
-      on: "on"
-      auto: "auto"
-      smart: "smart"
+      "off": "off"
+      "heat": "heat"
+      "cool": "cool"
+      "auto": "auto"
+      "fan_only": "manual"
+      "dry": "manual"
 
 mappings:
   # Zigbee thermostat/climate device
@@ -60,11 +32,11 @@ mappings:
       expose_type: climate
     device_category: THERMOSTAT
     channels:
-      - identifier: thermostat
-        name: Thermostat
-        category: THERMOSTAT
+      # Temperature channel - current/local temperature (required)
+      - identifier: temperature
+        name: Temperature
+        category: TEMPERATURE
         features:
-          # Current/local temperature (read only)
           - z2m_feature: local_temperature
             direction: read_only
             panel:
@@ -74,10 +46,45 @@ mappings:
               unit: "°C"
               settable: false
 
-          # Heating setpoint
+      # Thermostat channel - mode control (required)
+      - identifier: thermostat
+        name: Thermostat
+        category: THERMOSTAT
+        features:
+          # System mode (off, heat, cool, auto, etc.)
+          - z2m_feature: system_mode
+            panel:
+              identifier: MODE
+              name: Mode
+              data_type: ENUM
+              format: ["off", "heat", "cool", "auto", "manual"]
+            transformer: hvac_mode
+
+          # Running state maps to ACTIVE (is the system currently running?)
+          - z2m_feature: running_state
+            direction: read_only
+            panel:
+              identifier: ACTIVE
+              name: Active
+              data_type: BOOL
+              settable: false
+            transform:
+              type: map
+              read:
+                "idle": false
+                "heat": true
+                "cool": true
+                "fan_only": true
+
+      # Heater channel - heating setpoint and valve control (optional)
+      - identifier: heater
+        name: Heater
+        category: HEATER
+        features:
+          # Heating setpoint temperature
           - z2m_feature: occupied_heating_setpoint
             panel:
-              identifier: HEATING_THRESHOLD_TEMPERATURE
+              identifier: TEMPERATURE
               name: Heating Setpoint
               data_type: FLOAT
               unit: "°C"
@@ -85,73 +92,23 @@ mappings:
           # Alternative heating setpoint name
           - z2m_feature: current_heating_setpoint
             panel:
-              identifier: HEATING_THRESHOLD_TEMPERATURE
+              identifier: TEMPERATURE
               name: Heating Setpoint
               data_type: FLOAT
               unit: "°C"
 
-          # Cooling setpoint
-          - z2m_feature: occupied_cooling_setpoint
-            panel:
-              identifier: COOLING_THRESHOLD_TEMPERATURE
-              name: Cooling Setpoint
-              data_type: FLOAT
-              unit: "°C"
-
-          # System mode (off, heat, cool, auto, etc.)
-          - z2m_feature: system_mode
-            panel:
-              identifier: MODE
-              name: System Mode
-              data_type: STRING
-            transformer: hvac_mode
-
-          # Running state (what the system is currently doing)
-          - z2m_feature: running_state
-            direction: read_only
-            panel:
-              identifier: STATUS
-              name: Running State
-              data_type: STRING
-              settable: false
-            transformer: hvac_running_state
-
-          # Preset mode (away, boost, comfort, eco, etc.)
-          - z2m_feature: preset
-            panel:
-              identifier: PRESET
-              name: Preset Mode
-              data_type: STRING
-            transformer: preset_mode
-
-          # Fan mode
-          - z2m_feature: fan_mode
-            panel:
-              identifier: FAN_MODE
-              name: Fan Mode
-              data_type: STRING
-            transformer: fan_mode
-
-          # Local temperature calibration (optional)
-          - z2m_feature: local_temperature_calibration
-            panel:
-              identifier: TEMPERATURE_CALIBRATION
-              name: Temperature Calibration
-              data_type: FLOAT
-              unit: "°C"
-
-          # PI heating demand (read only, percentage)
+          # PI heating demand (percentage) -> valve position
           - z2m_feature: pi_heating_demand
             direction: read_only
             panel:
-              identifier: HEATING_STATE
+              identifier: POSITION
               name: Heating Demand
               data_type: UCHAR
               format: [0, 100]
               unit: "%"
               settable: false
 
-          # Valve position (read only, percentage)
+          # Valve position (percentage)
           - z2m_feature: valve_position
             direction: read_only
             panel:
@@ -161,3 +118,37 @@ mappings:
               format: [0, 100]
               unit: "%"
               settable: false
+
+      # Cooler channel - cooling setpoint (optional)
+      - identifier: cooler
+        name: Cooler
+        category: COOLER
+        features:
+          # Cooling setpoint temperature
+          - z2m_feature: occupied_cooling_setpoint
+            panel:
+              identifier: TEMPERATURE
+              name: Cooling Setpoint
+              data_type: FLOAT
+              unit: "°C"
+
+      # Humidity channel (optional, if device has humidity sensor)
+      - identifier: humidity
+        name: Humidity
+        category: HUMIDITY
+        features:
+          - z2m_feature: humidity
+            direction: read_only
+            panel:
+              identifier: HUMIDITY
+              name: Humidity
+              data_type: UCHAR
+              format: [0, 100]
+              unit: "%"
+              settable: false
+
+# The following Z2M features are NOT supported by Smart Panel spec:
+# - preset (away, boost, comfort, eco, etc.) - no preset property in thermostat channel
+# - fan_mode - would need separate fan channel, but not part of thermostat device
+# - local_temperature_calibration - no calibration property
+# - running_state detailed values (heat vs cool) - only maps to active bool
