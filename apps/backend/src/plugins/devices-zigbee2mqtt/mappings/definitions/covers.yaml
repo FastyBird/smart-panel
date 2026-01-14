@@ -49,7 +49,8 @@ mappings:
             panel:
               identifier: STATUS
               name: Status
-              data_type: STRING
+              data_type: ENUM
+              format: ["opened", "closed", "opening", "closing", "stopped"]
             transformer: cover_state
 
           # Position (0-100%)

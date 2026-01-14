@@ -63,7 +63,9 @@ mappings:
             transformer: color_temp
 
           # Color (composite with hue/saturation)
-          - z2m_feature: color
+          # Note: Z2M exposes color_xy (x/y) and color_hs (hue/saturation) separately
+          # We use color_hs since Panel uses hue/saturation
+          - z2m_feature: color_hs
             type: composite
             nested_features:
               - z2m_feature: hue
