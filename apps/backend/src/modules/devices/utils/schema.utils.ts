@@ -4,6 +4,18 @@ import { DataTypeType, PermissionType, PropertyCategory } from '../devices.const
 import { ChannelCategory as ChannelCategoryType, DeviceCategory as DeviceCategoryType } from '../devices.constants';
 
 /**
+ * Type for data type variant from schema (for multi-datatype properties)
+ */
+interface DataTypeVariantSpec {
+	id: string;
+	data_type?: string;
+	unit?: string;
+	format?: string[] | number[];
+	invalid?: unknown;
+	step?: number;
+}
+
+/**
  * Type for property spec from schema
  */
 interface PropertySpec {
@@ -14,6 +26,20 @@ interface PropertySpec {
 	format?: string[] | number[];
 	invalid?: unknown;
 	step?: number;
+	// Multi-datatype properties have data_types array instead of single data_type
+	data_types?: DataTypeVariantSpec[];
+}
+
+/**
+ * Data type variant metadata (for multi-datatype properties)
+ */
+export interface DataTypeVariant {
+	id: string;
+	data_type: DataTypeType;
+	unit: string | null;
+	format: string[] | number[] | null;
+	invalid: unknown;
+	step: number | null;
 }
 
 /**
@@ -28,6 +54,10 @@ export interface PropertyMetadata {
 	format: string[] | number[] | null;
 	invalid: unknown;
 	step: number | null;
+	/** True if this property supports multiple data type variants */
+	hasMultipleDataTypes?: boolean;
+	/** Available data type variants (only present if hasMultipleDataTypes is true) */
+	dataTypeVariants?: DataTypeVariant[];
 }
 
 /**
@@ -154,6 +184,34 @@ export function getPropertyMetadata(
 		return null;
 	}
 
+	// Check if this is a multi-datatype property
+	if (propertySpec.data_types && Array.isArray(propertySpec.data_types) && propertySpec.data_types.length > 0) {
+		// Use first variant as the default
+		const firstVariant = propertySpec.data_types[0];
+		const dataTypeVariants = propertySpec.data_types.map((variant) => ({
+			id: variant.id,
+			data_type: mapDataType(variant.data_type ?? ''),
+			unit: variant.unit ?? null,
+			format: variant.format ?? null,
+			invalid: variant.invalid ?? null,
+			step: variant.step ?? null,
+		}));
+
+		return {
+			category: propertyCategory,
+			required: propertySpec.required ?? false,
+			permissions: mapPermissions(propertySpec.permissions ?? []),
+			data_type: mapDataType(firstVariant.data_type ?? ''),
+			unit: firstVariant.unit ?? null,
+			format: firstVariant.format ?? null,
+			invalid: firstVariant.invalid ?? null,
+			step: firstVariant.step ?? null,
+			hasMultipleDataTypes: true,
+			dataTypeVariants,
+		};
+	}
+
+	// Single data type property
 	return {
 		category: propertyCategory,
 		required: propertySpec.required ?? false,
@@ -662,20 +720,103 @@ export function getAllProperties(channelCategory: ChannelCategoryType): Property
 		const propertyCategory = mapPropertyCategory(propKey);
 
 		if (propertyCategory) {
-			properties.push({
-				category: propertyCategory,
-				required: propSpec.required ?? false,
-				permissions: mapPermissions(propSpec.permissions ?? []),
-				data_type: mapDataType(propSpec.data_type ?? ''),
-				unit: propSpec.unit ?? null,
-				format: propSpec.format ?? null,
-				invalid: propSpec.invalid ?? null,
-				step: propSpec.step ?? null,
-			});
+			// Check if this is a multi-datatype property
+			if (propSpec.data_types && Array.isArray(propSpec.data_types) && propSpec.data_types.length > 0) {
+				// Use first variant as the default
+				const firstVariant = propSpec.data_types[0];
+				const dataTypeVariants = propSpec.data_types.map((variant) => ({
+					id: variant.id,
+					data_type: mapDataType(variant.data_type ?? ''),
+					unit: variant.unit ?? null,
+					format: variant.format ?? null,
+					invalid: variant.invalid ?? null,
+					step: variant.step ?? null,
+				}));
+
+				properties.push({
+					category: propertyCategory,
+					required: propSpec.required ?? false,
+					permissions: mapPermissions(propSpec.permissions ?? []),
+					data_type: mapDataType(firstVariant.data_type ?? ''),
+					unit: firstVariant.unit ?? null,
+					format: firstVariant.format ?? null,
+					invalid: firstVariant.invalid ?? null,
+					step: firstVariant.step ?? null,
+					hasMultipleDataTypes: true,
+					dataTypeVariants,
+				});
+			} else {
+				// Single data type property
+				properties.push({
+					category: propertyCategory,
+					required: propSpec.required ?? false,
+					permissions: mapPermissions(propSpec.permissions ?? []),
+					data_type: mapDataType(propSpec.data_type ?? ''),
+					unit: propSpec.unit ?? null,
+					format: propSpec.format ?? null,
+					invalid: propSpec.invalid ?? null,
+					step: propSpec.step ?? null,
+				});
+			}
 		}
 	}
 
 	return properties;
+}
+
+/**
+ * Check if a property supports multiple data types
+ * @param channelCategory The channel category
+ * @param propertyCategory The property category
+ * @returns true if the property has multiple data type variants
+ */
+export function hasMultipleDataTypes(
+	channelCategory: ChannelCategoryType,
+	propertyCategory: PropertyCategory,
+): boolean {
+	const metadata = getPropertyMetadata(channelCategory, propertyCategory);
+	return metadata?.hasMultipleDataTypes === true;
+}
+
+/**
+ * Get all data type variants for a multi-datatype property
+ * @param channelCategory The channel category
+ * @param propertyCategory The property category
+ * @returns Array of data type variants or empty array if not a multi-datatype property
+ */
+export function getPropertyDataTypeVariants(
+	channelCategory: ChannelCategoryType,
+	propertyCategory: PropertyCategory,
+): DataTypeVariant[] {
+	const metadata = getPropertyMetadata(channelCategory, propertyCategory);
+	return metadata?.dataTypeVariants ?? [];
+}
+
+/**
+ * Check if a data type is valid for a property (supports multi-datatype properties)
+ * @param channelCategory The channel category
+ * @param propertyCategory The property category
+ * @param dataType The data type to check
+ * @returns true if the data type is valid for this property
+ */
+export function isValidDataType(
+	channelCategory: ChannelCategoryType,
+	propertyCategory: PropertyCategory,
+	dataType: DataTypeType,
+): boolean {
+	const metadata = getPropertyMetadata(channelCategory, propertyCategory);
+
+	if (!metadata) {
+		return false;
+	}
+
+	// For multi-datatype properties, check if any variant matches
+	if (metadata.hasMultipleDataTypes && metadata.dataTypeVariants) {
+		return metadata.dataTypeVariants.some((variant) => variant.data_type === dataType);
+	}
+
+	// For single data type properties, check direct match
+	return metadata.data_type === dataType;
 }
 
 /**

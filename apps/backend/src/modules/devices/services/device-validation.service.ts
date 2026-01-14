@@ -711,7 +711,20 @@ export class DeviceValidationService {
 		issues: ValidationIssue[],
 	): void {
 		// Validate data type
-		if (spec.data_type && property.dataType !== spec.data_type) {
+		let dataTypeValid = false;
+		let expectedDataTypes: string;
+
+		if (spec.hasMultipleDataTypes && spec.dataTypeVariants && spec.dataTypeVariants.length > 0) {
+			// For multi-datatype properties, check if property matches any variant
+			dataTypeValid = spec.dataTypeVariants.some((variant) => variant.data_type === property.dataType);
+			expectedDataTypes = spec.dataTypeVariants.map((v) => v.data_type).join(' | ');
+		} else {
+			// For single data type properties
+			dataTypeValid = !spec.data_type || property.dataType === spec.data_type;
+			expectedDataTypes = spec.data_type;
+		}
+
+		if (!dataTypeValid) {
 			issues.push({
 				type: ValidationIssueType.INVALID_DATA_TYPE,
 				severity: ValidationIssueSeverity.WARNING,
@@ -720,7 +733,7 @@ export class DeviceValidationService {
 				propertyCategory: property.category,
 				propertyId: property.id,
 				message: `Property '${property.category}' has incorrect data type`,
-				expected: spec.data_type,
+				expected: expectedDataTypes,
 				actual: property.dataType,
 			});
 		}
