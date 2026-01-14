@@ -54,7 +54,7 @@ export class MappingLoaderService implements OnModuleInit {
 	// Default paths for mapping files
 	private readonly builtinMappingsPath = join(__dirname, 'definitions');
 	private readonly userMappingsPath =
-		process.env.ZIGBEE_MAPPINGS_PATH ?? join(process.env.HOME ?? '/root', '.smart-panel', 'zigbee', 'mappings');
+		process.env.ZIGBEE_MAPPINGS_PATH ?? join(__dirname, '../../../../../../var/data/zigbee/mappings');
 
 	constructor(private readonly transformerRegistry: TransformerRegistry) {
 		this.ajv = new Ajv({ allErrors: true, strict: false });

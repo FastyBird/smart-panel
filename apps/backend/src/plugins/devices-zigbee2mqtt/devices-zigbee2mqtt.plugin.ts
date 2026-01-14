@@ -248,8 +248,9 @@ Supports all Zigbee devices compatible with Zigbee2MQTT, including:
 ## Custom Device Mappings
 
 You can add custom device mappings by creating YAML files in:
-~/.smart-panel/zigbee/mappings/
+var/data/zigbee/mappings/
 
+Or set the ZIGBEE_MAPPINGS_PATH environment variable to a custom path.
 See the built-in mapping files for examples.
 
 ## Requirements
