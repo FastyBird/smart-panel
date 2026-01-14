@@ -655,10 +655,10 @@
       }
     }
   },
-  "heater": {
-    "category": "heater",
+  "heating_unit": {
+    "category": "heating_unit",
     "description": {
-      "en": "The Heater device represents a heating system designed to control and monitor environmental temperature, with optional features for energy and humidity management."
+      "en": "The Heating Unit device represents a space or room heating system designed to control and monitor environmental temperature, with optional features for energy and humidity management."
     },
     "channels": {
       "heater": {
@@ -707,6 +707,62 @@
         "multiple": false,
         "description": {
           "en": "Measures the relative humidity in the environment, reported as a percentage."
+        }
+      }
+    }
+  },
+  "water_heater": {
+    "category": "water_heater",
+    "description": {
+      "en": "The Water Heater device represents a water heating system designed to heat and maintain water temperature, with optional features for energy monitoring and leak detection."
+    },
+    "channels": {
+      "heater": {
+        "category": "heater",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Manages heating devices, allowing control of temperature settings and modes."
+        }
+      },
+      "temperature": {
+        "category": "temperature",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Measures the current water temperature, reported in degrees Celsius."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "electrical_energy": {
+        "category": "electrical_energy",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh)."
+        }
+      },
+      "electrical_power": {
+        "category": "electrical_power",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics."
+        }
+      },
+      "leak": {
+        "category": "leak",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Identifies the presence of water leaks to prevent damage."
         }
       }
     }

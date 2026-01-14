@@ -427,7 +427,7 @@ const hasLightingDevices = computed(() =>
 // Climate device categories for role assignment
 const climateDeviceCategories = [
 	DevicesModuleDeviceCategory.thermostat,
-	DevicesModuleDeviceCategory.heater,
+	DevicesModuleDeviceCategory.heating_unit,
 	DevicesModuleDeviceCategory.air_conditioner,
 	DevicesModuleDeviceCategory.fan,
 	DevicesModuleDeviceCategory.air_humidifier,

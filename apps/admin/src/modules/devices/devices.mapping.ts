@@ -127,7 +127,7 @@ const deviceChannelsSortingSpecification: Record<DevicesModuleDeviceCategory, De
 		DevicesModuleChannelCategory.electrical_power,
 		DevicesModuleChannelCategory.device_information,
 	],
-	[DevicesModuleDeviceCategory.heater]: [
+	[DevicesModuleDeviceCategory.heating_unit]: [
 		DevicesModuleChannelCategory.heater,
 		DevicesModuleChannelCategory.temperature,
 		DevicesModuleChannelCategory.humidity,
@@ -245,6 +245,14 @@ const deviceChannelsSortingSpecification: Record<DevicesModuleDeviceCategory, De
 		DevicesModuleChannelCategory.flow,
 		DevicesModuleChannelCategory.leak,
 		DevicesModuleChannelCategory.battery,
+		DevicesModuleChannelCategory.electrical_energy,
+		DevicesModuleChannelCategory.electrical_power,
+		DevicesModuleChannelCategory.device_information,
+	],
+	[DevicesModuleDeviceCategory.water_heater]: [
+		DevicesModuleChannelCategory.heater,
+		DevicesModuleChannelCategory.temperature,
+		DevicesModuleChannelCategory.leak,
 		DevicesModuleChannelCategory.electrical_energy,
 		DevicesModuleChannelCategory.electrical_power,
 		DevicesModuleChannelCategory.device_information,

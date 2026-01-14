@@ -57,7 +57,7 @@ class ClimateDevice {
         return MdiIcons.thermostat;
       case 'ac':
         return MdiIcons.snowflake;
-      case 'heater':
+      case 'heating_unit':
         return MdiIcons.fireCircle;
       case 'radiator':
         return MdiIcons.radiator;

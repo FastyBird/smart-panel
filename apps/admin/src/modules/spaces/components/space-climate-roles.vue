@@ -157,8 +157,10 @@ const getDeviceIcon = (category: string): string => {
 	switch (category) {
 		case 'thermostat':
 			return 'mdi:thermostat';
-		case 'heater':
+		case 'heating_unit':
 			return 'mdi:radiator';
+		case 'water_heater':
+			return 'mdi:water-boiler';
 		case 'air_conditioner':
 			return 'mdi:air-conditioner';
 		case 'fan':

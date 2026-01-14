@@ -18,7 +18,7 @@ export const SCENE_CATEGORY_DEVICE_RECOMMENDATIONS: Record<SceneCategory, Device
 	],
 	[SceneCategory.CLIMATE]: [
 		DevicesModuleDeviceCategory.thermostat,
-		DevicesModuleDeviceCategory.heater,
+		DevicesModuleDeviceCategory.heating_unit,
 		DevicesModuleDeviceCategory.air_conditioner,
 		DevicesModuleDeviceCategory.air_dehumidifier,
 		DevicesModuleDeviceCategory.air_humidifier,

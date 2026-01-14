@@ -19,7 +19,7 @@ import { SpacesService } from './spaces.service';
  */
 const CLIMATE_ACTUATOR_CATEGORIES = [
 	DeviceCategory.THERMOSTAT,
-	DeviceCategory.HEATER,
+	DeviceCategory.HEATING_UNIT,
 	DeviceCategory.AIR_CONDITIONER,
 	DeviceCategory.FAN,
 	DeviceCategory.AIR_HUMIDIFIER,
@@ -494,7 +494,7 @@ export class SpaceClimateRoleService {
 					role = ClimateRole.PRIMARY;
 					primaryFound = true;
 				} else if (
-					target.deviceCategory === DeviceCategory.HEATER ||
+					target.deviceCategory === DeviceCategory.HEATING_UNIT ||
 					target.deviceCategory === DeviceCategory.AIR_CONDITIONER ||
 					target.deviceCategory === DeviceCategory.THERMOSTAT
 				) {

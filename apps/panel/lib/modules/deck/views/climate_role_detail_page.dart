@@ -128,7 +128,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
         ClimateDevice(
           id: 'heater1',
           name: 'Wall Heater',
-          type: 'heater',
+          type: 'heating_unit',
           isActive: true,
           status: 'On',
         ),
