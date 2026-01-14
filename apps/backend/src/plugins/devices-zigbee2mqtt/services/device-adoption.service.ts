@@ -4,7 +4,13 @@ import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
-import { ChannelCategory, ConnectionState, PropertyCategory } from '../../../modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	ConnectionState,
+	DataTypeType,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 import { ChannelSpecModel } from '../../../modules/devices/models/devices.model';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
@@ -37,6 +43,7 @@ import {
 } from '../entities/devices-zigbee2mqtt.entity';
 import { Z2mRegisteredDevice } from '../interfaces/zigbee2mqtt.interface';
 
+import { MappedChannel, Z2mExposesMapperService } from './exposes-mapper.service';
 import { Z2mVirtualPropertyService } from './virtual-property.service';
 import { VirtualPropertyContext, getVirtualPropertyDefinition } from './virtual-property.types';
 import { Zigbee2mqttService } from './zigbee2mqtt.service';
@@ -61,6 +68,7 @@ export class Z2mDeviceAdoptionService {
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly deviceValidationService: DeviceValidationService,
 		private readonly virtualPropertyService: Z2mVirtualPropertyService,
+		private readonly exposesMapper: Z2mExposesMapperService,
 	) {}
 
 	/**
@@ -106,7 +114,8 @@ export class Z2mDeviceAdoptionService {
 		}
 
 		// Pre-validate the device structure
-		this.preValidateDeviceStructure(request);
+		// Pass z2mDevice to get static properties from YAML mappings
+		this.preValidateDeviceStructure(request, z2mDevice);
 
 		// Create device DTO
 		const createDeviceDto = toInstance(CreateZigbee2mqttDeviceDto, {
@@ -427,16 +436,95 @@ export class Z2mDeviceAdoptionService {
 				CreateZigbee2mqttChannelPropertyDto
 			>(channel.id, createPropertyDto);
 		}
+
+		// Create static/derived properties from YAML mapping
+		// These properties are not sent by the frontend but defined in the YAML configuration
+		await this.createStaticPropertiesFromMapping(channel, channelDef.category, z2mDevice, channelSpec);
+	}
+
+	/**
+	 * Create static and derived properties from YAML mapping
+	 * These properties are defined in the YAML but not sent by the frontend
+	 */
+	private async createStaticPropertiesFromMapping(
+		channel: Zigbee2mqttChannelEntity,
+		channelCategory: ChannelCategory,
+		z2mDevice: Z2mRegisteredDevice,
+		channelSpec: ChannelSpecModel | null,
+	): Promise<void> {
+		// Get mapped channels from YAML configuration
+		const mappedChannels = z2mDevice.definition?.exposes
+			? this.exposesMapper.mapExposes(z2mDevice.definition.exposes)
+			: [];
+
+		// Find the mapped channel that matches this category
+		const mappedChannel = mappedChannels.find((mc) => mc.category === channelCategory);
+		if (!mappedChannel) {
+			return;
+		}
+
+		// Find static/derived properties (z2mProperty starts with __static_ or __derived_)
+		const staticProperties = mappedChannel.properties.filter(
+			(p) => p.z2mProperty.startsWith('__static_') || p.z2mProperty.startsWith('__derived_'),
+		);
+
+		for (const staticProp of staticProperties) {
+			const propSpec = channelSpec?.properties?.find((p) => p.category === staticProp.category);
+
+			// Use the spec identifier (category) as the property identifier
+			const identifier = staticProp.category.toLowerCase();
+
+			// Get the initial value from staticValue or null for derived properties
+			const initialValue = staticProp.staticValue ?? null;
+
+			const createPropertyDto = toInstance(CreateZigbee2mqttChannelPropertyDto, {
+				type: DEVICES_ZIGBEE2MQTT_TYPE,
+				identifier,
+				name: this.formatPropertyName(staticProp.name),
+				category: staticProp.category,
+				data_type: staticProp.dataType,
+				permissions: staticProp.permissions,
+				unit: staticProp.unit ?? propSpec?.unit ?? null,
+				format: staticProp.format ?? propSpec?.format ?? null,
+				invalid: propSpec?.invalid ?? null,
+				step: propSpec?.step ?? null,
+				value: initialValue,
+			});
+
+			const propertyErrors = await validate(createPropertyDto, { skipMissingProperties: true });
+			if (propertyErrors.length) {
+				this.logger.warn(
+					`[DEVICE ADOPTION] Static property validation failed for ${staticProp.category}: ${JSON.stringify(propertyErrors)}`,
+				);
+				continue;
+			}
+
+			await this.channelsPropertiesService.create<
+				Zigbee2mqttChannelPropertyEntity,
+				CreateZigbee2mqttChannelPropertyDto
+			>(channel.id, createPropertyDto);
+
+			this.logger.debug(`[DEVICE ADOPTION] Created static property '${staticProp.category}' for channel`);
+		}
 	}
 
 	/**
 	 * Pre-validate device structure before creation using the DeviceValidationService
 	 */
-	private preValidateDeviceStructure(request: AdoptDeviceRequestDto): void {
+	private preValidateDeviceStructure(request: AdoptDeviceRequestDto, z2mDevice: Z2mRegisteredDevice): void {
 		// Check that at least one channel is provided
 		if (!request.channels.length) {
 			throw new DevicesZigbee2mqttValidationException('At least one channel must be defined');
 		}
+
+		// Get mapped channels from YAML configuration to include static/derived properties
+		// These properties are defined in the YAML but not sent by the frontend
+		const mappedChannels = z2mDevice.definition?.exposes
+			? this.exposesMapper.mapExposes(z2mDevice.definition.exposes)
+			: [];
+
+		// Build a map of channel category to static properties from YAML mappings
+		const staticPropertiesByChannel = this.buildStaticPropertiesMap(mappedChannels);
 
 		// Build the device data input for validation
 		// Include device_information channel that will be auto-created
@@ -457,13 +545,27 @@ export class Z2mDeviceAdoptionService {
 				continue;
 			}
 
+			// Get properties from request
+			const requestProperties = channelDef.properties.map((p) => ({
+				category: p.category,
+				dataType: p.dataType,
+				permissions: p.permissions,
+			}));
+
+			// Get static properties from YAML mapping for this channel category
+			const staticProperties = staticPropertiesByChannel.get(channelDef.category) ?? [];
+			const requestCategories = new Set(requestProperties.map((p) => p.category));
+
+			// Add static properties that aren't already in the request
+			for (const staticProp of staticProperties) {
+				if (!requestCategories.has(staticProp.category)) {
+					requestProperties.push(staticProp);
+				}
+			}
+
 			channels.push({
 				category: channelDef.category,
-				properties: channelDef.properties.map((p) => ({
-					category: p.category,
-					dataType: p.dataType,
-					permissions: p.permissions,
-				})),
+				properties: requestProperties,
 			});
 		}
 
@@ -491,6 +593,46 @@ export class Z2mDeviceAdoptionService {
 		if (warnings.length > 0) {
 			this.logger.warn(`[DEVICE ADOPTION] Pre-validation warnings: ${warnings.map((w) => w.message).join(', ')}`);
 		}
+	}
+
+	/**
+	 * Build a map of channel category to static/derived properties from YAML mappings
+	 * These properties are defined in the YAML but not sent by the frontend
+	 */
+	private buildStaticPropertiesMap(
+		mappedChannels: MappedChannel[],
+	): Map<ChannelCategory, Array<{ category: PropertyCategory; dataType: DataTypeType; permissions: PermissionType[] }>> {
+		const result = new Map<
+			ChannelCategory,
+			Array<{ category: PropertyCategory; dataType: DataTypeType; permissions: PermissionType[] }>
+		>();
+
+		for (const channel of mappedChannels) {
+			const staticProps: Array<{
+				category: PropertyCategory;
+				dataType: DataTypeType;
+				permissions: PermissionType[];
+			}> = [];
+
+			for (const prop of channel.properties) {
+				// Static properties have z2mProperty starting with __static_
+				// Derived properties have z2mProperty starting with __derived_
+				if (prop.z2mProperty.startsWith('__static_') || prop.z2mProperty.startsWith('__derived_')) {
+					staticProps.push({
+						category: prop.category,
+						dataType: prop.dataType,
+						permissions: prop.permissions,
+					});
+				}
+			}
+
+			if (staticProps.length > 0) {
+				const existing = result.get(channel.category) ?? [];
+				result.set(channel.category, [...existing, ...staticProps]);
+			}
+		}
+
+		return result;
 	}
 
 	/**
