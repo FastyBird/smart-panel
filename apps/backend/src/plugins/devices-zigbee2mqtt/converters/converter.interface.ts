@@ -83,9 +83,10 @@ export interface IConverter {
 	 * Check if this converter can handle the given expose
 	 *
 	 * @param expose - The Z2M expose to check
+	 * @param context - Optional conversion context with device info (for device-level matching)
 	 * @returns Whether the converter can handle this expose and at what priority
 	 */
-	canHandle(expose: Z2mExpose): CanHandleResult;
+	canHandle(expose: Z2mExpose, context?: ConversionContext): CanHandleResult;
 
 	/**
 	 * Convert the expose to mapped channels

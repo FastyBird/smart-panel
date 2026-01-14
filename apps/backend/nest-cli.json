@@ -3,6 +3,16 @@
   "collection": "@nestjs/schematics",
   "sourceRoot": "src",
   "compilerOptions": {
-    "deleteOutDir": true
+    "deleteOutDir": true,
+    "assets": [
+      {
+        "include": "plugins/devices-zigbee2mqtt/mappings/schema/**/*.json",
+        "outDir": "dist"
+      },
+      {
+        "include": "plugins/devices-zigbee2mqtt/mappings/definitions/**/*.yaml",
+        "outDir": "dist"
+      }
+    ]
   }
 }

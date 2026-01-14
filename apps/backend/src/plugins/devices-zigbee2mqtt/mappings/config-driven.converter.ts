@@ -63,7 +63,7 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 		super();
 	}
 
-	canHandle(expose: Z2mExpose): CanHandleResult {
+	canHandle(expose: Z2mExpose, context?: ConversionContext): CanHandleResult {
 		const exposeType = expose.type;
 		const propertyName = this.getPropertyName(expose);
 
@@ -73,8 +73,13 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 			features = (expose as Z2mExposeSpecific).features?.map((f) => f.property ?? f.name ?? '').filter(Boolean);
 		}
 
+		// Extract all property names from device (for any_property matching)
+		const deviceProperties = context?.allExposes
+			?.map((e) => e.property ?? e.name)
+			.filter((p): p is string => p !== undefined);
+
 		// Find matching mapping
-		const mapping = this.mappingLoader.findMatchingMapping(exposeType, propertyName, features);
+		const mapping = this.mappingLoader.findMatchingMapping(exposeType, propertyName, features, deviceProperties);
 
 		if (mapping) {
 			// Return priority from mapping
@@ -94,8 +99,13 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 			features = (expose as Z2mExposeSpecific).features?.map((f) => f.property ?? f.name ?? '').filter(Boolean);
 		}
 
+		// Extract all property names from device (for any_property matching)
+		const deviceProperties = context.allExposes
+			.map((e) => e.property ?? e.name)
+			.filter((p): p is string => p !== undefined);
+
 		// Find matching mapping
-		const mapping = this.mappingLoader.findMatchingMapping(exposeType, propertyName, features);
+		const mapping = this.mappingLoader.findMatchingMapping(exposeType, propertyName, features, deviceProperties);
 
 		if (!mapping) {
 			return [];
@@ -125,10 +135,16 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 	): MappedChannel | null {
 		const endpoint = (expose as Z2mExposeSpecific).endpoint;
 
-		// Handle endpoint template in identifier
+		// Handle endpoint in identifier
 		let identifier = channelDef.identifier;
 		if (endpoint) {
-			identifier = identifier.replace('{endpoint}', endpoint);
+			if (identifier.includes('{endpoint}')) {
+				// Replace template if present
+				identifier = identifier.replace('{endpoint}', endpoint);
+			} else {
+				// Append endpoint if no template
+				identifier = `${identifier}_${endpoint}`;
+			}
 		}
 
 		const properties: MappedProperty[] = [];
@@ -171,6 +187,9 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 	): MappedProperty[] {
 		const properties: MappedProperty[] = [];
 		const features = expose.features ?? [];
+		// Track seen identifiers to prevent duplicates (e.g., occupied_heating_setpoint and
+		// current_heating_setpoint both mapping to HEATING_THRESHOLD_TEMPERATURE)
+		const seenIdentifiers = new Set<string>();
 
 		for (const featureDef of featureDefs) {
 			// Find matching feature in expose
@@ -182,8 +201,20 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 
 			// Handle composite features (like color with hue/saturation)
 			if (featureDef.type === 'composite' && featureDef.nestedFeatures) {
-				const nestedProps = this.processNestedFeatures(featureDef.nestedFeatures, feature, channelCategory);
+				const nestedProps = this.processNestedFeatures(
+					featureDef.nestedFeatures,
+					feature,
+					channelCategory,
+					seenIdentifiers,
+				);
 				properties.push(...nestedProps);
+				continue;
+			}
+
+			// Skip if this panel identifier was already used (first match wins)
+			const panelIdentifier = featureDef.panel?.identifier.toLowerCase();
+			if (panelIdentifier && seenIdentifiers.has(panelIdentifier)) {
+				this.logger.debug(`Skipping duplicate property '${panelIdentifier}' from feature '${featureDef.z2mFeature}'`);
 				continue;
 			}
 
@@ -191,6 +222,7 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 			const property = this.createPropertyFromFeature(featureDef, feature, channelCategory);
 			if (property) {
 				properties.push(property);
+				seenIdentifiers.add(property.identifier);
 			}
 		}
 
@@ -204,6 +236,7 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 		nestedDefs: ResolvedFeature[],
 		parentFeature: Z2mExpose,
 		channelCategory: ChannelCategory,
+		seenIdentifiers: Set<string>,
 	): MappedProperty[] {
 		const properties: MappedProperty[] = [];
 
@@ -219,6 +252,15 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 				continue;
 			}
 
+			// Skip if this panel identifier was already used (first match wins)
+			const panelIdentifier = nestedDef.panel?.identifier.toLowerCase();
+			if (panelIdentifier && seenIdentifiers.has(panelIdentifier)) {
+				this.logger.debug(
+					`Skipping duplicate nested property '${panelIdentifier}' from feature '${nestedDef.z2mFeature}'`,
+				);
+				continue;
+			}
+
 			// For color composite, z2mProperty should be 'color' (parent), not the nested property
 			const property = this.createPropertyFromFeature(
 				nestedDef,
@@ -228,6 +270,7 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 			);
 			if (property) {
 				properties.push(property);
+				seenIdentifiers.add(property.identifier);
 			}
 		}
 
@@ -243,6 +286,11 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 		channelCategory: ChannelCategory,
 		parentProperty?: string,
 	): MappedProperty | null {
+		// Skip composite features without panel (they use nested_features instead)
+		if (!featureDef.panel) {
+			return null;
+		}
+
 		// Determine permissions based on direction and Z2M access
 		const permissions = this.getPermissions(featureDef.direction, feature.access);
 
@@ -357,6 +405,10 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 					if (feature.type === 'composite' && feature.nestedFeatures) {
 						// Handle nested features
 						for (const nested of feature.nestedFeatures) {
+							// Skip nested features without panel (shouldn't happen, but be safe)
+							if (!nested.panel) {
+								continue;
+							}
 							const transformer = this.transformerRegistry.getOrCreate(nested.transformerName, nested.inlineTransform);
 							runtimeMappings.push({
 								z2mProperty: feature.z2mFeature, // Parent property (e.g., 'color')
@@ -372,6 +424,10 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 							});
 						}
 					} else {
+						// Skip features without panel (composite features without nested_features)
+						if (!feature.panel) {
+							continue;
+						}
 						const transformer = this.transformerRegistry.getOrCreate(feature.transformerName, feature.inlineTransform);
 						runtimeMappings.push({
 							z2mProperty: feature.z2mFeature,

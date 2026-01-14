@@ -294,7 +294,7 @@
 		},
 		"feature": {
 			"type": "object",
-			"required": ["z2m_feature", "panel"],
+			"required": ["z2m_feature"],
 			"additionalProperties": false,
 			"properties": {
 				"z2m_feature": {
@@ -315,7 +315,7 @@
 				},
 				"panel": {
 					"$ref": "#/definitions/panelProperty",
-					"description": "Smart Panel property configuration"
+					"description": "Smart Panel property configuration (required for simple features)"
 				},
 				"transformer": {
 					"type": "string",
@@ -330,7 +330,29 @@
 					"items": { "$ref": "#/definitions/feature" },
 					"description": "Nested features for composite types (e.g., color with hue/saturation)"
 				}
-			}
+			},
+			"allOf": [
+				{
+					"if": {
+						"not": {
+							"properties": { "type": { "const": "composite" } },
+							"required": ["type"]
+						}
+					},
+					"then": {
+						"required": ["z2m_feature", "panel"]
+					}
+				},
+				{
+					"if": {
+						"properties": { "type": { "const": "composite" } },
+						"required": ["type"]
+					},
+					"then": {
+						"required": ["z2m_feature", "nested_features"]
+					}
+				}
+			]
 		},
 		"property": {
 			"type": "object",

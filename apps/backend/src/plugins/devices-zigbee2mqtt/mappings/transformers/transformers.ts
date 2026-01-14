@@ -183,14 +183,86 @@ export class MapTransformer extends BaseTransformer {
 /**
  * Formula Transformer
  *
- * Custom JavaScript expressions for complex transformations.
+ * Safe mathematical expressions for value transformations.
  * Uses 'value' variable in expressions.
+ *
+ * SECURITY: Only allows mathematical operations to prevent arbitrary code execution.
+ * Allowed: arithmetic (+, -, *, /, %), Math functions, numeric literals, 'value' variable
+ * Forbidden: function calls, property access (except Math.*), assignments, keywords
  *
  * Example: color temperature mired <-> Kelvin (1000000 / value)
  */
 export class FormulaTransformer extends BaseTransformer {
-	private readFormula: ((value: unknown, context?: TransformContext) => unknown) | null;
-	private writeFormula: ((value: unknown, context?: TransformContext) => unknown) | null;
+	private readFormula: ((value: number) => number) | null;
+	private writeFormula: ((value: number) => number) | null;
+
+	// Allowed Math functions (safe mathematical operations only)
+	private static readonly ALLOWED_MATH_FUNCTIONS = [
+		'abs',
+		'ceil',
+		'floor',
+		'round',
+		'trunc',
+		'max',
+		'min',
+		'pow',
+		'sqrt',
+		'log',
+		'log10',
+		'log2',
+		'exp',
+		'sign',
+	];
+
+	// Forbidden patterns that could enable code execution
+	private static readonly FORBIDDEN_PATTERNS = [
+		/\bprocess\b/i,
+		/\brequire\b/i,
+		/\bglobal\b/i,
+		/\beval\b/i,
+		/\bFunction\b/,
+		/\bthis\b/,
+		/\bnew\b/,
+		/\bimport\b/i,
+		/\bexport\b/i,
+		/\bclass\b/,
+		/\bfunction\b/,
+		/\breturn\b/, // We add return ourselves
+		/\bvar\b/,
+		/\blet\b/,
+		/\bconst\b/,
+		/\bif\b/,
+		/\belse\b/,
+		/\bfor\b/,
+		/\bwhile\b/,
+		/\bdo\b/,
+		/\bswitch\b/,
+		/\btry\b/,
+		/\bcatch\b/,
+		/\bthrow\b/,
+		/\bawait\b/,
+		/\basync\b/,
+		/\byield\b/,
+		/\bdelete\b/,
+		/\btypeof\b/,
+		/\binstanceof\b/,
+		/\bin\b/,
+		/\bvoid\b/,
+		/\bdebugger\b/,
+		/\bconstructor\b/i,
+		/\bprototype\b/i,
+		/\b__proto__\b/,
+		/\b__defineGetter__\b/,
+		/\b__defineSetter__\b/,
+		/\[\s*['"`]/, // Property access with string literals: obj["prop"]
+		/['"`]\s*\]/, // Property access with string literals: obj["prop"]
+		/`/, // Template literals
+		/;/, // Multiple statements
+		/=>/, // Arrow functions
+		/=(?!=)/, // Assignment (but not == or ===)
+		/\+\+/, // Increment
+		/--/, // Decrement
+	];
 
 	constructor(definition: FormulaTransformerDefinition) {
 		super(definition.direction);
@@ -199,48 +271,129 @@ export class FormulaTransformer extends BaseTransformer {
 		this.writeFormula = definition.write ? this.compileFormula(definition.write) : null;
 	}
 
-	read(value: unknown, context?: TransformContext): unknown {
+	read(value: unknown, _context?: TransformContext): unknown {
 		if (!this.readFormula) {
 			return value;
 		}
 		try {
-			return this.readFormula(value, context);
+			const numValue = this.toNumber(value);
+			if (isNaN(numValue)) {
+				return value;
+			}
+			return this.readFormula(numValue);
 		} catch {
 			return value;
 		}
 	}
 
-	write(value: unknown, context?: TransformContext): unknown {
+	write(value: unknown, _context?: TransformContext): unknown {
 		if (!this.writeFormula) {
 			return value;
 		}
 		try {
-			return this.writeFormula(value, context);
+			const numValue = this.toNumber(value);
+			if (isNaN(numValue)) {
+				return value;
+			}
+			return this.writeFormula(numValue);
 		} catch {
 			return value;
 		}
 	}
 
-	private compileFormula(formula: string): (value: unknown, context?: TransformContext) => unknown {
-		// Create a safe evaluation function
+	/**
+	 * Validate that a formula is safe (only contains mathematical operations)
+	 */
+	private validateFormula(formula: string): void {
+		// Check for forbidden patterns
+		for (const pattern of FormulaTransformer.FORBIDDEN_PATTERNS) {
+			if (pattern.test(formula)) {
+				throw new Error(`Unsafe formula: contains forbidden pattern ${pattern.source}`);
+			}
+		}
+
+		// Check for property access - only Math.* is allowed
+		// Allow: Math.round, Math.floor, etc.
+		// Forbid: anything.else, value.something, obj.method()
+		const propertyAccessPattern = /(\w+)\s*\.\s*(\w+)/g;
+		let match: RegExpExecArray | null;
+		while ((match = propertyAccessPattern.exec(formula)) !== null) {
+			const obj = match[1];
+			const prop = match[2];
+			if (obj !== 'Math') {
+				throw new Error(`Unsafe formula: property access on '${obj}' is not allowed`);
+			}
+			if (!FormulaTransformer.ALLOWED_MATH_FUNCTIONS.includes(prop)) {
+				throw new Error(`Unsafe formula: Math.${prop} is not an allowed function`);
+			}
+		}
+
+		// Check for standalone function calls (not Math.*)
+		// First, remove all valid Math.function() calls, then check for remaining function calls
+		let formulaWithoutMath = formula;
+		for (const fn of FormulaTransformer.ALLOWED_MATH_FUNCTIONS) {
+			formulaWithoutMath = formulaWithoutMath.replace(new RegExp(`Math\\.${fn}\\s*`, 'g'), '');
+		}
+
+		// Now check for any remaining function calls
+		const functionCallPattern = /\b([a-zA-Z_]\w*)\s*\(/g;
+		while ((match = functionCallPattern.exec(formulaWithoutMath)) !== null) {
+			const funcName = match[1];
+			throw new Error(`Unsafe formula: function call '${funcName}()' is not allowed`);
+		}
+
+		// Verify the formula only contains allowed characters and tokens
+		// After removing Math function calls and 'value', should only have numbers and operators
+		let simplified = formula;
+
+		// Remove allowed Math.* calls (including parentheses)
+		for (const fn of FormulaTransformer.ALLOWED_MATH_FUNCTIONS) {
+			simplified = simplified.replace(new RegExp(`Math\\.${fn}`, 'g'), '');
+		}
+
+		// Remove 'value' variable
+		simplified = simplified.replace(/\bvalue\b/g, '');
+
+		// Remove numbers (including decimals and scientific notation)
+		simplified = simplified.replace(/\d+\.?\d*(?:[eE][+-]?\d+)?/g, '');
+
+		// Remove allowed operators and whitespace
+		simplified = simplified.replace(/[\s+\-*/%(),.<>=!&|?:]+/g, '');
+
+		// If anything remains, it's not allowed
+		if (simplified.length > 0) {
+			throw new Error(`Unsafe formula: contains unexpected tokens '${simplified}'`);
+		}
+	}
+
+	/**
+	 * Compile a validated formula into a safe function
+	 */
+	private compileFormula(formula: string): (value: number) => number {
+		// Validate the formula first
+		this.validateFormula(formula);
+
+		// Create a sandboxed Math object with only allowed functions
+		const safeMath: Record<string, (...args: number[]) => number> = {};
+		for (const fn of FormulaTransformer.ALLOWED_MATH_FUNCTIONS) {
+			safeMath[fn] = Math[fn as keyof Math] as (...args: number[]) => number;
+		}
+
+		// Compile the formula with restricted scope
 		// eslint-disable-next-line @typescript-eslint/no-implied-eval
 		const fn = new Function(
 			'value',
-			'context',
 			'Math',
 			`
 			"use strict";
-			try {
-				return ${formula};
-			} catch (e) {
-				return value;
-			}
+			return ${formula};
 		`,
 		);
 
-		return (value: unknown, context?: TransformContext): unknown => {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return
-			return fn(value, context, Math) as unknown;
+		return (value: number): number => {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+			const result = fn(value, safeMath) as unknown;
+			return typeof result === 'number' ? result : NaN;
 		};
 	}
 }

@@ -245,7 +245,8 @@ export class MappingLoaderService implements OnModuleInit {
 			z2mFeature: feature.z2m_feature,
 			type: feature.type ?? 'simple',
 			direction: feature.direction ?? 'bidirectional',
-			panel: this.resolvePanelProperty(feature.panel),
+			// Only resolve panel for simple features (composite features use nested_features instead)
+			panel: feature.panel ? this.resolvePanelProperty(feature.panel) : undefined,
 			transformerName: feature.transformer,
 			inlineTransform: feature.transform,
 			nestedFeatures: feature.nested_features?.map((f) => this.resolveFeature(f)),
@@ -354,11 +355,21 @@ export class MappingLoaderService implements OnModuleInit {
 
 	/**
 	 * Find the best matching mapping for given expose
+	 *
+	 * @param exposeType - The Z2M expose type
+	 * @param propertyName - The property name of the current expose
+	 * @param features - Features of the current expose (for structured types)
+	 * @param deviceProperties - All property names on the device (for any_property matching)
 	 */
-	findMatchingMapping(exposeType: string, propertyName?: string, features?: string[]): ResolvedMapping | undefined {
+	findMatchingMapping(
+		exposeType: string,
+		propertyName?: string,
+		features?: string[],
+		deviceProperties?: string[],
+	): ResolvedMapping | undefined {
 		// Mappings are already sorted by priority
 		for (const mapping of this.resolvedMappings) {
-			if (this.matchesCondition(mapping.match, exposeType, propertyName, features)) {
+			if (this.matchesCondition(mapping.match, exposeType, propertyName, features, deviceProperties)) {
 				return mapping;
 			}
 		}
@@ -367,21 +378,32 @@ export class MappingLoaderService implements OnModuleInit {
 
 	/**
 	 * Check if a match condition is satisfied
+	 *
+	 * @param condition - The match condition to check
+	 * @param exposeType - The Z2M expose type
+	 * @param propertyName - The property name of the current expose
+	 * @param features - Features of the current expose (for structured types)
+	 * @param deviceProperties - All property names on the device (for any_property matching)
 	 */
 	private matchesCondition(
 		condition: MappingDefinition['match'],
 		exposeType: string,
 		propertyName?: string,
 		features?: string[],
+		deviceProperties?: string[],
 	): boolean {
 		// Check all_of conditions
 		if (condition.all_of) {
-			return condition.all_of.every((c) => this.matchesCondition(c, exposeType, propertyName, features));
+			return condition.all_of.every((c) =>
+				this.matchesCondition(c, exposeType, propertyName, features, deviceProperties),
+			);
 		}
 
 		// Check any_of conditions
 		if (condition.any_of) {
-			return condition.any_of.some((c) => this.matchesCondition(c, exposeType, propertyName, features));
+			return condition.any_of.some((c) =>
+				this.matchesCondition(c, exposeType, propertyName, features, deviceProperties),
+			);
 		}
 
 		// Check expose_type
@@ -389,7 +411,7 @@ export class MappingLoaderService implements OnModuleInit {
 			return false;
 		}
 
-		// Check property name
+		// Check property name (matches the current expose's property)
 		if (condition.property && condition.property !== propertyName) {
 			return false;
 		}
@@ -402,10 +424,10 @@ export class MappingLoaderService implements OnModuleInit {
 			}
 		}
 
-		// Check any_property
-		// If any_property is specified, require propertyName to be defined and in the list
+		// Check any_property - matches if the DEVICE has any of these properties (across all exposes)
+		// This is used for device-level classification, e.g., "switch with power monitoring"
 		if (condition.any_property) {
-			if (!propertyName || !condition.any_property.includes(propertyName)) {
+			if (!deviceProperties || !condition.any_property.some((p) => deviceProperties.includes(p))) {
 				return false;
 			}
 		}

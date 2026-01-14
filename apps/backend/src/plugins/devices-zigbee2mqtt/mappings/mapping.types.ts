@@ -71,8 +71,8 @@ export interface FeatureMapping {
 	type?: 'simple' | 'composite';
 	/** Data flow direction */
 	direction?: TransformDirection;
-	/** Smart Panel property configuration */
-	panel: PanelPropertyConfig;
+	/** Smart Panel property configuration (required for simple, optional for composite) */
+	panel?: PanelPropertyConfig;
 	/** Reference to named transformer */
 	transformer?: string;
 	/** Inline transform definition */
@@ -164,7 +164,8 @@ export interface ResolvedFeature {
 	z2mFeature: string;
 	type: 'simple' | 'composite';
 	direction: TransformDirection;
-	panel: ResolvedPanelProperty;
+	/** Panel property (required for simple, undefined for composite) */
+	panel?: ResolvedPanelProperty;
 	transformerName?: string;
 	inlineTransform?: InlineTransform;
 	nestedFeatures?: ResolvedFeature[];
