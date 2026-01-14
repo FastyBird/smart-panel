@@ -243,15 +243,84 @@ Supports all Zigbee devices compatible with Zigbee2MQTT, including:
 - Thermostats and climate controls
 - Covers and blinds
 - Locks
-- Remotes and buttons
 
 ## Custom Device Mappings
 
-You can add custom device mappings by creating YAML files in:
-var/data/zigbee/mappings/
+Place custom YAML files in \`var/data/zigbee/mappings/\` or set \`ZIGBEE_MAPPINGS_PATH\` env variable.
 
-Or set the ZIGBEE_MAPPINGS_PATH environment variable to a custom path.
-See the built-in mapping files for examples.
+### Example: Custom Sensor Property
+
+\`\`\`yaml
+# var/data/zigbee/mappings/my-sensors.yaml
+version: "1.0"
+
+mappings:
+  - name: cpu_temperature_sensor
+    description: "Device internal temperature"
+    priority: 100
+    match:
+      expose_type: numeric
+      property: cpu_temperature
+    device_category: SENSOR
+    channels:
+      - identifier: device_temperature
+        name: Device Temperature
+        category: TEMPERATURE
+        properties:
+          - z2m_property: cpu_temperature
+            direction: read_only
+            panel:
+              identifier: TEMPERATURE
+              data_type: FLOAT
+              unit: "°C"
+              settable: false
+\`\`\`
+
+### Example: Custom Transformer
+
+\`\`\`yaml
+version: "1.0"
+
+transformers:
+  # Custom brightness scale (0-1000 instead of 0-254)
+  brightness_1000:
+    type: scale
+    input_range: [0, 1000]
+    output_range: [0, 100]
+
+mappings:
+  - name: custom_light
+    priority: 200
+    match:
+      expose_type: light
+      any_property: [custom_feature]  # Match specific device
+    device_category: LIGHTING
+    channels:
+      - identifier: light
+        category: LIGHT
+        features:
+          - z2m_feature: brightness
+            panel:
+              identifier: BRIGHTNESS
+              data_type: UCHAR
+              format: [0, 100]
+            transformer: brightness_1000
+\`\`\`
+
+### Match Conditions
+
+- \`expose_type\` - Z2M type: light, switch, numeric, binary, enum, climate, cover, fan, lock
+- \`property\` - Property name for generic exposes (temperature, humidity, etc.)
+- \`has_features\` - Required features: [state, brightness]
+- \`any_property\` - Match if device has any of these properties
+- \`is_list\` - True for multi-endpoint devices
+
+### Transformer Types
+
+- \`scale\` - Linear scaling: input_range, output_range
+- \`map\` - Value mapping: read, write, or bidirectional
+- \`boolean\` - Boolean conversion: true_value, false_value, invert
+- \`formula\` - Custom JS expression: read, write
 
 ## Requirements
 
