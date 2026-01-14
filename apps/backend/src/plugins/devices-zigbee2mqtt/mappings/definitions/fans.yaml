@@ -10,24 +10,90 @@ transformers:
     true_value: "ON"
     false_value: "OFF"
 
-  # Fan mode mapping
-  fan_mode:
+  # Z2M mode to spec mode mapping
+  # Z2M uses modes like "auto", "smart", "nature", "sleep" which map to spec mode
+  # Z2M speed levels (low/medium/high) are handled separately as speed enum
+  fan_mode_to_spec:
     type: map
     bidirectional:
-      off: "off"
+      auto: "auto"
+      smart: "auto"      # Smart mode → auto
+      nature: "manual"   # Nature mode → manual
+      sleep: "manual"    # Sleep mode → manual
+      "on": "manual"     # On mode → manual
+      "off": "off"
+
+  # Z2M mode values that represent speed levels → spec speed enum
+  # Z2M: off, low, medium, high, on → spec: off, low, medium, high, turbo
+  fan_speed_levels:
+    type: map
+    bidirectional:
+      "off": "off"
       low: "low"
       medium: "medium"
       high: "high"
-      on: "on"
-      auto: "auto"
-      smart: "smart"
-      nature: "nature"
-      sleep: "sleep"
+      "on": "high"       # "on" typically means max speed
+      turbo: "turbo"
 
 mappings:
-  # Standard Zigbee fan
-  - name: fan
-    description: "Zigbee fan or air circulator"
+  # ============================================
+  # FANS WITH PERCENTAGE SPEED
+  # ============================================
+
+  # Fan with percentage-based speed control (has fan_speed feature)
+  - name: fan_percentage
+    description: "Fan with percentage speed control"
+    priority: 110
+    match:
+      expose_type: fan
+      has_features: [fan_speed]
+    device_category: FAN
+    channels:
+      - identifier: fan
+        name: Fan
+        category: FAN
+        features:
+          # On/Off state (required)
+          - z2m_feature: state
+            panel:
+              identifier: ON
+              name: Power
+              data_type: BOOL
+            transformer: fan_state
+
+          # Fan speed as percentage
+          - z2m_feature: fan_speed
+            panel:
+              identifier: SPEED
+              name: Speed
+              data_type: UCHAR
+              format: [0, 100]
+              unit: "%"
+
+          # Fan mode (optional - some fans have mode separate from speed)
+          - z2m_feature: mode
+            panel:
+              identifier: MODE
+              name: Mode
+              data_type: ENUM
+              format: ["auto", "manual", "off", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+            transformer: fan_mode_to_spec
+
+        # Mode is required by spec, provide default if Z2M doesn't have it
+        static_properties:
+          - identifier: MODE
+            name: Mode
+            data_type: ENUM
+            value: "manual"
+            format: ["auto", "manual", "off"]
+
+  # ============================================
+  # FANS WITH LEVEL-BASED SPEED
+  # ============================================
+
+  # Standard fan with level-based speed (low/medium/high modes)
+  - name: fan_levels
+    description: "Fan with level-based speed control"
     priority: 100
     match:
       expose_type: fan
@@ -37,28 +103,28 @@ mappings:
         name: Fan
         category: FAN
         features:
-          # On/Off state
+          # On/Off state (required)
           - z2m_feature: state
             panel:
               identifier: ON
-              name: State
+              name: Power
               data_type: BOOL
             transformer: fan_state
 
-          # Fan mode (low/medium/high/auto)
+          # Z2M mode as speed levels (most fans use mode for speed)
+          # Maps low/medium/high to spec speed enum
           - z2m_feature: mode
-            panel:
-              identifier: MODE
-              name: Mode
-              data_type: ENUM
-              format: ["auto", "manual", "off", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
-            transformer: fan_mode
-
-          # Fan speed (percentage, if available)
-          - z2m_feature: fan_speed
             panel:
               identifier: SPEED
               name: Speed
-              data_type: UCHAR
-              format: [0, 100]
-              unit: "%"
+              data_type: ENUM
+              format: ["off", "low", "medium", "high", "turbo"]
+            transformer: fan_speed_levels
+
+        # Mode is required by spec - fans without explicit mode get "manual"
+        static_properties:
+          - identifier: MODE
+            name: Mode
+            data_type: ENUM
+            value: "manual"
+            format: ["auto", "manual", "off"]
