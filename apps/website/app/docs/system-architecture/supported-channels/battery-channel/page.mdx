@@ -12,10 +12,10 @@ Reports the status of a device's battery, including level, charging state, and o
 
 ## Required Properties
 
-| **Property** | **Data Type** | **Range**         | **Unit** | **Permissions** |
-|--------------|---------------|-------------------|----------|-----------------|
-| `percentage` | `Uchar`       | `0–100`           | %        | RO (Read-Only)  |
-| `status`     | `Enum`        | `ok/low/charging` | -        | RO (Read-Only)  |
+| **Property** | **Data Type**       | **Range**                               | **Unit** | **Permissions** |
+|--------------|---------------------|-----------------------------------------|----------|-----------------|
+| `percentage` | `Uchar` or `Enum`   | `0–100` or `critical/low/medium/high/full` | %     | RO (Read-Only)  |
+| `status`     | `Enum`              | `ok/low/charging`                       | -        | RO (Read-Only)  |
 
 ---
 
@@ -23,7 +23,17 @@ Reports the status of a device's battery, including level, charging state, and o
 
 #### `percentage`
 
-Represents the current battery level as a percentage.
+Represents the current battery level. This property supports multiple data types:
+
+**Option 1 - Percentage:**
+- **Data Type**: `Uchar`
+- **Range**: `0–100%`
+- Fine-grained battery level as a percentage.
+
+**Option 2 - Discrete Levels:**
+- **Data Type**: `Enum`
+- **Values**: `critical`, `low`, `medium`, `high`, `full`
+- Predefined battery level categories.
 
 #### `status`
 

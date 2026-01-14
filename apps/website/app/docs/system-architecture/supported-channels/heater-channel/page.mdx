@@ -50,9 +50,9 @@ Indicates the current state of the heater:
 
 ## Optional Properties
 
-| **Property** | **Data Type** | **Range** | **Unit** | **Permissions** |
-|--------------|---------------|-----------|----------|-----------------|
-| `position`   | `Uchar`       | `0–100`   | %        | RW (Read/Write) |
+| **Property** | **Data Type**     | **Range**                                     | **Unit** | **Permissions** |
+|--------------|-------------------|-----------------------------------------------|----------|-----------------|
+| `position`   | `Uchar` or `Enum` | `0–100` or `closed/quarter/half/three_quarter/open` | %  | RW (Read/Write) |
 
 ---
 
@@ -60,10 +60,18 @@ Indicates the current state of the heater:
 
 #### `position`
 
-Represents the current openness of the valve as a percentage:
+Represents the current openness of the valve. This property supports multiple data types:
 
+**Option 1 - Percentage:**
+- **Data Type**: `Uchar`
+- **Range**: `0–100%`
 - `0%`: Fully closed
 - `100%`: Fully open
 - Intermediate values indicate partial opening
+
+**Option 2 - Discrete States:**
+- **Data Type**: `Enum`
+- **Values**: `closed`, `quarter`, `half`, `three_quarter`, `open`
+- Predefined valve positions.
 
 Used to monitor or set the effective opening level for thermostatic radiator valves.

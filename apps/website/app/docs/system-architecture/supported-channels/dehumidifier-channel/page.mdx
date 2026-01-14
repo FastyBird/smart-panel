@@ -1,0 +1,115 @@
+import { Callout } from 'nextra/components'
+
+# Dehumidifier Channel
+
+<Callout type="info">
+	**Channel Category**: `dehumidifier`
+</Callout>
+
+Controls the dehumidifier, including on/off state, target humidity, and operating modes.
+
+---
+
+## Required Properties
+
+| **Property** | **Data Type** | **Range**   | **Unit** | **Permissions**  |
+|--------------|---------------|-------------|----------|------------------|
+| `on`         | `Bool`        | `true/false`| -        | RW (Read/Write)  |
+| `humidity`   | `Uchar`       | `0–100`     | %        | RW (Read/Write)  |
+
+---
+
+### Property Details
+
+#### `on`
+
+Turn the dehumidifier on or off:
+
+- `true`: The dehumidifier is on.
+- `false`: The dehumidifier is off.
+
+#### `humidity`
+
+Target humidity level:
+
+- **Range**: `0–100%`
+- Set the desired humidity level for the dehumidifier to maintain.
+
+---
+
+## Optional Properties
+
+| **Property**      | **Data Type**        | **Range**                            | **Unit** | **Permissions** |
+|-------------------|----------------------|--------------------------------------|----------|-----------------|
+| `mode`            | `Enum`               | `auto/manual/continuous/laundry/quiet` | -      | RW (Read/Write) |
+| `status`          | `Enum`               | `idle/dehumidifying/defrosting`      | -        | RO (Read-Only)  |
+| `water_tank_full` | `Bool`               | `true/false`                         | -        | RO (Read-Only)  |
+| `water_tank_level`| `Uchar`              | `0–100`                              | %        | RO (Read-Only)  |
+| `defrost_active`  | `Bool`               | `true/false`                         | -        | RO (Read-Only)  |
+| `timer`           | `Ushort` or `Enum`   | `0–86400` or `off/30m/1h/2h/4h/8h/12h` | s      | RW (Read/Write) |
+| `fault`           | `Uchar`              | `0–255`                              | -        | RO (Read-Only)  |
+
+---
+
+### Property Details
+
+#### `mode`
+
+Operating mode of the dehumidifier:
+
+- `auto`: Automatic operation based on ambient conditions.
+- `manual`: Manual operation with user-defined settings.
+- `continuous`: Continuous dehumidification without stopping.
+- `laundry`: Optimized mode for drying laundry.
+- `quiet`: Low-noise operation mode.
+
+#### `status`
+
+Current operational status:
+
+- `idle`: The dehumidifier is not actively dehumidifying.
+- `dehumidifying`: The dehumidifier is actively removing moisture.
+- `defrosting`: The dehumidifier is in defrost cycle.
+
+#### `water_tank_full`
+
+Water tank full indicator:
+
+- `true`: The water tank is full and needs to be emptied.
+- `false`: The water tank has space available.
+
+#### `water_tank_level`
+
+Water tank level as percentage:
+
+- **Range**: `0–100%`
+- Indicates how full the water collection tank is.
+
+#### `defrost_active`
+
+Defrost cycle is active:
+
+- `true`: The defrost cycle is currently running.
+- `false`: No defrost cycle is active.
+
+#### `timer`
+
+Auto-off timer for the dehumidifier. This property supports multiple data types:
+
+**Option 1 - Duration:**
+- **Data Type**: `Ushort`
+- **Range**: `0–86400` seconds (0-24 hours)
+- `0`: Timer disabled.
+- Non-zero: Dehumidifier will turn off after specified seconds.
+
+**Option 2 - Preset Intervals:**
+- **Data Type**: `Enum`
+- **Values**: `off`, `30m`, `1h`, `2h`, `4h`, `8h`, `12h`
+- Predefined timer intervals.
+
+#### `fault`
+
+Represents the fault state of the dehumidifier:
+
+- `0`: No fault detected.
+- Non-zero: A fault has been detected, potentially affecting functionality.

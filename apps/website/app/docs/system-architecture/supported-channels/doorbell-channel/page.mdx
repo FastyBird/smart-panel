@@ -35,10 +35,10 @@ Describes an event triggered by the doorbell button.
 
 ## Optional Properties
 
-| **Property** | **Data Type** | **Range**    | **Unit** | **Permissions** |
-|--------------|---------------|--------------|----------|-----------------|
-| `brightness` | `Uchar`       | `0–100`      | %        | RW (Read/Write) |
-| `tampered`   | `Bool`        | `true/false` | -        | RO (Read-Only)  |
+| **Property** | **Data Type**     | **Range**                              | **Unit** | **Permissions** |
+|--------------|-------------------|----------------------------------------|----------|-----------------|
+| `brightness` | `Uchar` or `Enum` | `0–100` or `off/low/medium/high/full`  | %        | RW (Read/Write) |
+| `tampered`   | `Bool`            | `true/false`                           | -        | RO (Read-Only)  |
 
 ---
 
@@ -46,10 +46,17 @@ Describes an event triggered by the doorbell button.
 
 #### `brightness`
 
-Controls the perceived brightness level of the doorbell's backlight:
+Controls the perceived brightness level of the doorbell's backlight. This property supports multiple data types:
 
-- Represents the percentage of the maximum brightness supported by the channel.
-- **Range**: `0–100%`.
+**Option 1 - Percentage:**
+- **Data Type**: `Uchar`
+- **Range**: `0–100%`
+- Fine-grained brightness as a percentage.
+
+**Option 2 - Discrete Levels:**
+- **Data Type**: `Enum`
+- **Values**: `off`, `low`, `medium`, `high`, `full`
+- Predefined brightness levels.
 
 #### `tampered`
 

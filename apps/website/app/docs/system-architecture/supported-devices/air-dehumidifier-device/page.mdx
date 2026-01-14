@@ -17,8 +17,8 @@ These channels are mandatory for the functionality of the air dehumidifier:
 
 | **Channel**          | **Description**                                                                | **Multiple** | **Details**                                                                            |
 |----------------------|--------------------------------------------------------------------------------|--------------|----------------------------------------------------------------------------------------|
-| `cooler`             | Controls the cooling functionality of the dehumidifier.                        | No           | [See details](/docs/system-architecture/supported-channels/cooler-channel)             |
-| `humidity`           | Monitors the ambient humidity level and controls target humidity settings.     | No           | [See details](/docs/system-architecture/supported-channels/humidity-channel)           |
+| `dehumidifier`       | Controls the dehumidifier, including on/off state, target humidity, and operating modes. | No           | [See details](/docs/system-architecture/supported-channels/dehumidifier-channel)       |
+| `humidity`           | Measures the relative humidity in the environment, reported as a percentage.   | No           | [See details](/docs/system-architecture/supported-channels/humidity-channel)           |
 | `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
 
 ---
@@ -40,8 +40,8 @@ These channels are optional and provide additional features:
 ## Use Case Scenarios
 
 1. **Dehumidification Control**:
-    - Adjust humidity levels using the `humidity` channel.
-    - Enhance performance with `cooler` and optional `fan` channels.
+    - Adjust humidity levels using the `dehumidifier` channel.
+    - Monitor current humidity with the `humidity` channel and optional `fan` channels.
 
 2. **Environmental Monitoring**:
     - Monitor room humidity (`humidity`) and temperature (`temperature`) for optimal comfort.
@@ -68,4 +68,4 @@ These channels are optional and provide additional features:
 
 4. **Extensibility**:
     - Add optional channels like `temperature` or `fan` to support additional features.
-    - Use the `humidity` and `cooler` channels to manage environmental conditions effectively.
+    - Use the `dehumidifier` and `humidity` channels to manage environmental conditions effectively.

@@ -1,0 +1,78 @@
+import { Callout } from 'nextra/components'
+
+# Air Quality Channel
+
+<Callout type="info">
+	**Channel Category**: `air_quality`
+</Callout>
+
+Reports overall air quality index (AQI) and quality level.
+
+<Callout type="warning">
+	At least one of `aqi` or `level` must be provided.
+</Callout>
+
+---
+
+## Required Properties
+
+At least one of the following properties must be present:
+
+| **Property** | **Data Type** | **Range**                              | **Unit** | **Permissions** |
+|--------------|---------------|----------------------------------------|----------|-----------------|
+| `aqi`        | `Ushort`      | `0–500`                                | -        | RO (Read-Only)  |
+| `level`      | `Enum`        | `excellent/good/fair/inferior/poor`    | -        | RO (Read-Only)  |
+
+---
+
+### Property Details
+
+#### `aqi`
+
+Air Quality Index (AQI) value:
+
+- **Range**: `0–500`
+- Lower values indicate better air quality.
+- Standard AQI ranges:
+  - `0–50`: Excellent
+  - `51–100`: Good
+  - `101–150`: Fair
+  - `151–200`: Inferior
+  - `201–500`: Poor
+
+#### `level`
+
+Air quality level classification:
+
+- `excellent`: Air quality is excellent with minimal pollution.
+- `good`: Air quality is good and acceptable.
+- `fair`: Air quality is moderate; sensitive individuals may experience issues.
+- `inferior`: Air quality is unhealthy for sensitive groups.
+- `poor`: Air quality is unhealthy for all individuals.
+
+---
+
+## Optional Properties
+
+| **Property** | **Data Type** | **Range**     | **Unit** | **Permissions** |
+|--------------|---------------|---------------|----------|-----------------|
+| `active`     | `Bool`        | `true/false`  | -        | RO (Read-Only)  |
+| `fault`      | `Uchar`       | `0–255`       | -        | RO (Read-Only)  |
+
+---
+
+### Property Details
+
+#### `active`
+
+Indicates the channel's current working status:
+
+- `true`: The sensor is active and functioning correctly.
+- `false`: The sensor is inactive or non-functional.
+
+#### `fault`
+
+Represents the fault state of the sensor:
+
+- `0`: No fault detected.
+- Non-zero: A fault has been detected, potentially affecting functionality.

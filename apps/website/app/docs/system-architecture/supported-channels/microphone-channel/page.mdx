@@ -33,7 +33,7 @@ Indicates whether the microphone is muted:
 
 | **Property** | **Data Type** | **Range** | **Unit** | **Permissions** |
 |--------------|---------------|-----------|----------|-----------------|
-| `volume`     | `Uchar`       | `0–100`   | %        | RW (Read/Write) |
+| `volume`     | `Uchar` or `Enum` | `0–100` or `mute/low/medium/high/max` | %        | RO (Read-Only)  |
 
 ---
 
@@ -41,7 +41,15 @@ Indicates whether the microphone is muted:
 
 #### `volume`
 
-Represents the current volume level as a percentage:
+Represents the current volume/gain level. This property supports multiple data types:
 
+**Option 1 - Percentage:**
+- **Data Type**: `Uchar`
+- **Range**: `0–100%`
 - `0`: Minimum volume (silent).
 - `100`: Maximum volume (full audio input).
+
+**Option 2 - Discrete Levels:**
+- **Data Type**: `Enum`
+- **Values**: `mute`, `low`, `medium`, `high`, `max`
+- Predefined volume levels.
