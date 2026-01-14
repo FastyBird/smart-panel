@@ -1,6 +1,285 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Channel property mapping schema",
+  "definitions": {
+    "dataTypeEnum": {
+      "type": "string",
+      "enum": [
+        "char",
+        "uchar",
+        "short",
+        "ushort",
+        "int",
+        "uint",
+        "float",
+        "bool",
+        "string",
+        "enum",
+        "unknown"
+      ]
+    },
+    "unitType": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string"
+        }
+      ],
+      "default": null
+    },
+    "formatType": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      ]
+    },
+    "invalidType": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "default": null
+    },
+    "stepType": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "default": null
+    },
+    "descriptionType": {
+      "type": "object",
+      "properties": {
+        "en": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "en"
+      ],
+      "additionalProperties": false
+    },
+    "dataTypeVariant": {
+      "type": "object",
+      "description": "A data type variant definition for multi-datatype properties",
+      "required": [
+        "id",
+        "data_type"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for this data type variant"
+        },
+        "data_type": {
+          "$ref": "#/definitions/dataTypeEnum"
+        },
+        "unit": {
+          "$ref": "#/definitions/unitType"
+        },
+        "format": {
+          "$ref": "#/definitions/formatType"
+        },
+        "invalid": {
+          "$ref": "#/definitions/invalidType"
+        },
+        "step": {
+          "$ref": "#/definitions/stepType"
+        },
+        "description": {
+          "$ref": "#/definitions/descriptionType"
+        }
+      },
+      "additionalProperties": false
+    },
+    "propertyCategoryEnum": {
+      "type": "string",
+      "enum": [
+        "generic",
+        "active",
+        "angle",
+        "brightness",
+        "color_blue",
+        "color_green",
+        "color_red",
+        "color_temperature",
+        "color_white",
+        "command",
+        "connection_type",
+        "consumption",
+        "current",
+        "density",
+        "detected",
+        "direction",
+        "distance",
+        "duration",
+        "event",
+        "fault",
+        "firmware_revision",
+        "frequency",
+        "hardware_revision",
+        "hue",
+        "humidity",
+        "in_use",
+        "infrared",
+        "input_source",
+        "level",
+        "link_quality",
+        "locked",
+        "manufacturer",
+        "measured",
+        "model",
+        "mode",
+        "obstruction",
+        "on",
+        "over_current",
+        "over_voltage",
+        "over_power",
+        "pan",
+        "peak_level",
+        "percentage",
+        "position",
+        "power",
+        "rate",
+        "remaining",
+        "remote_key",
+        "saturation",
+        "serial_number",
+        "source",
+        "speed",
+        "status",
+        "swing",
+        "tampered",
+        "temperature",
+        "tilt",
+        "track",
+        "type",
+        "units",
+        "voltage",
+        "volume",
+        "zoom"
+      ]
+    },
+    "permissionsType": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "ro",
+          "rw",
+          "wo",
+          "ev"
+        ]
+      }
+    },
+    "singleDataTypeProperty": {
+      "type": "object",
+      "description": "Property with a single data type definition",
+      "required": [
+        "category",
+        "required"
+      ],
+      "properties": {
+        "category": {
+          "$ref": "#/definitions/propertyCategoryEnum"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "description": {
+          "$ref": "#/definitions/descriptionType"
+        },
+        "permissions": {
+          "$ref": "#/definitions/permissionsType"
+        },
+        "data_type": {
+          "$ref": "#/definitions/dataTypeEnum"
+        },
+        "unit": {
+          "$ref": "#/definitions/unitType"
+        },
+        "format": {
+          "$ref": "#/definitions/formatType"
+        },
+        "invalid": {
+          "$ref": "#/definitions/invalidType"
+        },
+        "step": {
+          "$ref": "#/definitions/stepType"
+        }
+      },
+      "additionalProperties": false
+    },
+    "multiDataTypeProperty": {
+      "type": "object",
+      "description": "Property with multiple data type variants for integrator selection",
+      "required": [
+        "category",
+        "required",
+        "data_types"
+      ],
+      "properties": {
+        "category": {
+          "$ref": "#/definitions/propertyCategoryEnum"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "description": {
+          "$ref": "#/definitions/descriptionType"
+        },
+        "permissions": {
+          "$ref": "#/definitions/permissionsType"
+        },
+        "data_types": {
+          "type": "array",
+          "description": "Array of data type variants the integrator can choose from",
+          "items": {
+            "$ref": "#/definitions/dataTypeVariant"
+          },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  },
   "type": "object",
   "patternProperties": {
     "^[a-zA-Z0-9_]+$": {
@@ -59,206 +338,20 @@
           ]
         },
         "description": {
-          "type": "object",
-          "properties": {
-            "en": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "en"
-          ],
-          "additionalProperties": false
+          "$ref": "#/definitions/descriptionType"
         },
         "properties": {
           "type": "object",
           "patternProperties": {
             "^[a-zA-Z0-9_]+$": {
-              "type": "object",
-              "required": [
-                "category",
-                "required"
-              ],
-              "properties": {
-                "category": {
-                  "type": "string",
-                  "enum": [
-                    "generic",
-                    "active",
-                    "angle",
-                    "brightness",
-                    "color_blue",
-                    "color_green",
-                    "color_red",
-                    "color_temperature",
-                    "color_white",
-                    "command",
-                    "connection_type",
-                    "consumption",
-                    "current",
-                    "density",
-                    "detected",
-                    "direction",
-                    "distance",
-                    "duration",
-                    "event",
-                    "fault",
-                    "firmware_revision",
-                    "frequency",
-                    "hardware_revision",
-                    "hue",
-                    "humidity",
-                    "in_use",
-                    "infrared",
-                    "input_source",
-                    "level",
-                    "link_quality",
-                    "locked",
-                    "manufacturer",
-                    "measured",
-                    "model",
-                    "mode",
-                    "obstruction",
-                    "on",
-                    "over_current",
-                    "over_voltage",
-                    "over_power",
-                    "pan",
-                    "peak_level",
-                    "percentage",
-                    "position",
-                    "power",
-                    "rate",
-                    "remaining",
-                    "remote_key",
-                    "saturation",
-                    "serial_number",
-                    "source",
-                    "speed",
-                    "status",
-                    "swing",
-                    "tampered",
-                    "temperature",
-                    "tilt",
-                    "track",
-                    "type",
-                    "units",
-                    "voltage",
-                    "volume",
-                    "zoom"
-                  ]
+              "oneOf": [
+                {
+                  "$ref": "#/definitions/singleDataTypeProperty"
                 },
-                "required": {
-                  "type": "boolean"
-                },
-                "description": {
-                  "type": "object",
-                  "properties": {
-                    "en": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "en"
-                  ],
-                  "additionalProperties": false
-                },
-                "permissions": {
-                  "type": "array",
-                  "items": {
-                    "type": "string",
-                    "enum": [
-                      "ro",
-                      "rw",
-                      "wo",
-                      "ev"
-                    ]
-                  }
-                },
-                "data_type": {
-                  "type": "string",
-                  "enum": [
-                    "char",
-                    "uchar",
-                    "short",
-                    "ushort",
-                    "int",
-                    "uint",
-                    "float",
-                    "bool",
-                    "string",
-                    "enum",
-                    "unknown"
-                  ]
-                },
-                "unit": {
-                  "oneOf": [
-                    {
-                      "type": "null"
-                    },
-                    {
-                      "type": "string"
-                    }
-                  ],
-                  "default": null
-                },
-                "format": {
-                  "oneOf": [
-                    {
-                      "type": "null"
-                    },
-                    {
-                      "type": "array",
-                      "uniqueItems": true,
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    {
-                      "type": "array",
-                      "uniqueItems": true,
-                      "items": {
-                        "oneOf": [
-                          {
-                            "type": "null"
-                          },
-                          {
-                            "type": "number"
-                          }
-                        ]
-                      },
-                      "minItems": 2,
-                      "maxItems": 2
-                    }
-                  ]
-                },
-                "invalid": {
-                  "oneOf": [
-                    {
-                      "type": "null"
-                    },
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "number"
-                    }
-                  ],
-                  "default": null
-                },
-                "step": {
-                  "oneOf": [
-                    {
-                      "type": "null"
-                    },
-                    {
-                      "type": "number"
-                    }
-                  ],
-                  "default": null
+                {
+                  "$ref": "#/definitions/multiDataTypeProperty"
                 }
-              },
-              "additionalProperties": false
+              ]
             }
           },
           "additionalProperties": false

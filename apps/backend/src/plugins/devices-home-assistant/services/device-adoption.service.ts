@@ -9,6 +9,7 @@ import { ChannelSpecModel } from '../../../modules/devices/models/devices.model'
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { getPropertyMetadata } from '../../../modules/devices/utils/schema.utils';
 import { channelsSchema } from '../../../spec/channels';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import {
@@ -710,10 +711,34 @@ export class DeviceAdoptionService {
 						}
 					}
 
-					if (spec && propDef.dataType !== spec.data_type) {
-						validationErrors.push(
-							`Device information channel, Property ${propDef.category}: Data type mismatch (expected ${spec.data_type}, got ${propDef.dataType})`,
-						);
+					// Validate data type using schema utils which handles multi-datatype properties
+					const propertyMetadata = getPropertyMetadata(ChannelCategory.DEVICE_INFORMATION, propDef.category);
+					if (propertyMetadata && propDef.dataType) {
+						let dataTypeValid = false;
+						let expectedDataTypes: string;
+
+						if (
+							propertyMetadata.hasMultipleDataTypes &&
+							propertyMetadata.dataTypeVariants &&
+							propertyMetadata.dataTypeVariants.length > 0
+						) {
+							dataTypeValid = propertyMetadata.dataTypeVariants.some(
+								(variant) => variant.data_type === propDef.dataType,
+							);
+							expectedDataTypes = propertyMetadata.dataTypeVariants.map((v) => v.data_type).join(' | ');
+						} else if (propertyMetadata.data_type) {
+							dataTypeValid = propDef.dataType === propertyMetadata.data_type;
+							expectedDataTypes = propertyMetadata.data_type;
+						} else {
+							dataTypeValid = true;
+							expectedDataTypes = 'any';
+						}
+
+						if (!dataTypeValid) {
+							validationErrors.push(
+								`Device information channel, Property ${propDef.category}: Data type mismatch (expected ${expectedDataTypes}, got ${propDef.dataType})`,
+							);
+						}
 					}
 				}
 			}
@@ -759,11 +784,32 @@ export class DeviceAdoptionService {
 					continue;
 				}
 
-				// Validate property data type matches spec
-				if (propDef.dataType !== propSpec.data_type) {
-					validationErrors.push(
-						`Channel ${channelDef.category}, Property ${propDef.category}: Data type mismatch (expected ${propSpec.data_type}, got ${propDef.dataType})`,
-					);
+				// Validate property data type matches spec using schema utils for multi-datatype support
+				const propertyMetadata = getPropertyMetadata(channelDef.category, propDef.category);
+				if (propertyMetadata && propDef.dataType) {
+					let dataTypeValid = false;
+					let expectedDataTypes: string;
+
+					if (
+						propertyMetadata.hasMultipleDataTypes &&
+						propertyMetadata.dataTypeVariants &&
+						propertyMetadata.dataTypeVariants.length > 0
+					) {
+						dataTypeValid = propertyMetadata.dataTypeVariants.some((v) => v.data_type === propDef.dataType);
+						expectedDataTypes = propertyMetadata.dataTypeVariants.map((v) => v.data_type).join(' | ');
+					} else if (propertyMetadata.data_type) {
+						dataTypeValid = propDef.dataType === propertyMetadata.data_type;
+						expectedDataTypes = propertyMetadata.data_type;
+					} else {
+						dataTypeValid = true;
+						expectedDataTypes = 'any';
+					}
+
+					if (!dataTypeValid) {
+						validationErrors.push(
+							`Channel ${channelDef.category}, Property ${propDef.category}: Data type mismatch (expected ${expectedDataTypes}, got ${propDef.dataType})`,
+						);
+					}
 				}
 			}
 
@@ -1000,11 +1046,34 @@ export class DeviceAdoptionService {
 					continue;
 				}
 
-				// Validate property data type matches spec
-				if (property.dataType !== propSpec.data_type) {
-					validationErrors.push(
-						`Channel ${channel.id} (${channel.category}), Property ${property.category}: Data type mismatch (expected ${propSpec.data_type}, got ${property.dataType})`,
-					);
+				// Validate property data type matches spec using schema utils for multi-datatype support
+				const propertyMetadata = getPropertyMetadata(channel.category, property.category);
+				if (propertyMetadata && property.dataType) {
+					let dataTypeValid = false;
+					let expectedDataTypes: string;
+
+					if (
+						propertyMetadata.hasMultipleDataTypes &&
+						propertyMetadata.dataTypeVariants &&
+						propertyMetadata.dataTypeVariants.length > 0
+					) {
+						dataTypeValid = propertyMetadata.dataTypeVariants.some(
+							(variant) => variant.data_type === property.dataType,
+						);
+						expectedDataTypes = propertyMetadata.dataTypeVariants.map((v) => v.data_type).join(' | ');
+					} else if (propertyMetadata.data_type) {
+						dataTypeValid = property.dataType === propertyMetadata.data_type;
+						expectedDataTypes = propertyMetadata.data_type;
+					} else {
+						dataTypeValid = true;
+						expectedDataTypes = 'any';
+					}
+
+					if (!dataTypeValid) {
+						validationErrors.push(
+							`Channel ${channel.id} (${channel.category}), Property ${property.category}: Data type mismatch (expected ${expectedDataTypes}, got ${property.dataType})`,
+						);
+					}
 				}
 
 				// Skip permissions validation - they come from the spec and should already match
