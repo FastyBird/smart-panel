@@ -524,8 +524,7 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 					permissions: [PermissionType.READ_ONLY],
 					unit: staticDef.unit,
 					format: staticDef.format,
-					// Store the static value as metadata
-					// This will be used during state updates to provide the fixed value
+					staticValue: staticDef.value,
 				}),
 			);
 		}
@@ -916,5 +915,56 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 		}
 
 		return value;
+	}
+
+	/**
+	 * Get derived property definitions for a channel category
+	 * Used during state updates to compute derived property values
+	 * @param channelCategory - The channel category to get derived properties for
+	 * @param expose - The expose that created this channel (for mapping lookup)
+	 * @param allExposes - Optional array of all device exposes
+	 */
+	getDerivedPropertyDefinitions(
+		channelCategory: ChannelCategory,
+		expose: Z2mExpose,
+		allExposes?: Z2mExpose[],
+	): Array<{
+		identifier: string;
+		sourceProperty: string;
+		derivation: AnyDerivation;
+	}> {
+		const mapping = this.getMappingForExpose(expose, allExposes);
+		if (!mapping) {
+			return [];
+		}
+
+		const results: Array<{
+			identifier: string;
+			sourceProperty: string;
+			derivation: AnyDerivation;
+		}> = [];
+
+		for (const channel of mapping.channels) {
+			if (channel.category !== channelCategory) {
+				continue;
+			}
+
+			if (channel.derivedProperties) {
+				for (const derived of channel.derivedProperties) {
+					// Skip if no derivation rule is defined
+					if (!derived.inlineDerivation) {
+						continue;
+					}
+
+					results.push({
+						identifier: derived.identifier.toLowerCase(),
+						sourceProperty: derived.sourceProperty.toLowerCase(),
+						derivation: derived.inlineDerivation,
+					});
+				}
+			}
+		}
+
+		return results;
 	}
 }

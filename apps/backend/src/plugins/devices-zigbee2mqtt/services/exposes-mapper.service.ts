@@ -48,6 +48,8 @@ export interface MappedProperty {
 	min?: number;
 	max?: number;
 	step?: number;
+	/** Static value for properties that don't come from Z2M (e.g., cover type) */
+	staticValue?: string | number | boolean;
 }
 
 /**

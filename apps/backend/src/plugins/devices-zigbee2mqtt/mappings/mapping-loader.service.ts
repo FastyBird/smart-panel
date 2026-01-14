@@ -494,6 +494,55 @@ export class MappingLoaderService implements OnModuleInit {
 	}
 
 	/**
+	 * Get all derived property definitions for a channel category
+	 * Searches all mappings that can produce the given channel category
+	 *
+	 * @param channelCategory - The channel category to find derived properties for
+	 * @returns Array of derived property definitions with source property and derivation rule
+	 */
+	getDerivedPropertiesForChannel(channelCategory: ChannelCategory): Array<{
+		identifier: string;
+		sourceProperty: string;
+		derivation: AnyDerivation;
+	}> {
+		const results: Array<{
+			identifier: string;
+			sourceProperty: string;
+			derivation: AnyDerivation;
+		}> = [];
+
+		// Search through all mappings for channels with the given category
+		for (const mapping of this.resolvedMappings) {
+			for (const channel of mapping.channels) {
+				if (channel.category !== channelCategory) {
+					continue;
+				}
+
+				if (channel.derivedProperties) {
+					for (const derived of channel.derivedProperties) {
+						// Skip if no derivation rule is defined
+						if (!derived.inlineDerivation) {
+							continue;
+						}
+
+						// Avoid duplicates (same identifier already added)
+						const existing = results.find((r) => r.identifier === derived.identifier.toLowerCase());
+						if (!existing) {
+							results.push({
+								identifier: derived.identifier.toLowerCase(),
+								sourceProperty: derived.sourceProperty.toLowerCase(),
+								derivation: derived.inlineDerivation,
+							});
+						}
+					}
+				}
+			}
+		}
+
+		return results;
+	}
+
+	/**
 	 * Check if a match condition is satisfied
 	 *
 	 * @param condition - The match condition to check

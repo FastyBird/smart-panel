@@ -31,6 +31,8 @@ import {
 	Zigbee2mqttDeviceEntity,
 } from '../entities/devices-zigbee2mqtt.entity';
 import { Z2mDevice, Z2mRegisteredDevice } from '../interfaces/zigbee2mqtt.interface';
+import { ConfigDrivenConverter } from '../mappings/config-driven.converter';
+import { MappingLoaderService } from '../mappings/mapping-loader.service';
 
 import { MappedChannel, MappedProperty, Z2mExposesMapperService } from './exposes-mapper.service';
 import { Z2mVirtualPropertyService } from './virtual-property.service';
@@ -67,6 +69,8 @@ export class Z2mDeviceMapperService {
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly exposesMapper: Z2mExposesMapperService,
 		private readonly virtualPropertyService: Z2mVirtualPropertyService,
+		private readonly mappingLoader: MappingLoaderService,
+		private readonly configDrivenConverter: ConfigDrivenConverter,
 	) {}
 
 	/**
@@ -476,6 +480,87 @@ export class Z2mDeviceMapperService {
 					}
 				}
 			}
+
+			// Handle derived properties (calculated from source properties)
+			await this.updateDerivedProperties(channel, properties, state, device.id);
+		}
+	}
+
+	/**
+	 * Update derived properties for a channel based on source property values
+	 */
+	private async updateDerivedProperties(
+		channel: Zigbee2mqttChannelEntity,
+		properties: Zigbee2mqttChannelPropertyEntity[],
+		state: Record<string, unknown>,
+		deviceId: string,
+	): Promise<void> {
+		// Get derived property definitions for this channel category
+		const derivedDefs = this.mappingLoader.getDerivedPropertiesForChannel(channel.category);
+
+		if (derivedDefs.length === 0) {
+			return;
+		}
+
+		for (const derivedDef of derivedDefs) {
+			// Find the derived property in this channel
+			const derivedProp = properties.find((p) => p.category.toLowerCase() === derivedDef.identifier);
+
+			if (!derivedProp) {
+				continue;
+			}
+
+			// Find the source property in this channel
+			const sourceProp = properties.find((p) => p.category.toLowerCase() === derivedDef.sourceProperty);
+
+			if (!sourceProp) {
+				this.logger.debug(
+					`Source property '${derivedDef.sourceProperty}' not found for derived property '${derivedDef.identifier}'`,
+					{ resource: deviceId },
+				);
+				continue;
+			}
+
+			// Get source value from incoming state (preferred) or from stored property value
+			let sourceValue: unknown = undefined;
+
+			// Try to get value from state using source property identifier
+			if (sourceProp.identifier && sourceProp.identifier in state) {
+				sourceValue = state[sourceProp.identifier];
+			}
+
+			// Fall back to stored property value if not in state
+			if (sourceValue === undefined) {
+				sourceValue = sourceProp.value;
+			}
+
+			// Skip if no source value available
+			if (sourceValue === null || sourceValue === undefined) {
+				continue;
+			}
+
+			// Apply derivation to compute the derived value
+			const derivedValue = this.configDrivenConverter.applyDerivation(derivedDef.derivation, sourceValue);
+
+			if (derivedValue === null) {
+				continue;
+			}
+
+			this.logger.debug(
+				`Updating derived property ${derivedProp.identifier} = ${derivedValue} (from ${sourceProp.identifier} = ${JSON.stringify(sourceValue)})`,
+				{ resource: deviceId },
+			);
+
+			await this.channelsPropertiesService.update<
+				Zigbee2mqttChannelPropertyEntity,
+				UpdateZigbee2mqttChannelPropertyDto
+			>(
+				derivedProp.id,
+				toInstance(UpdateZigbee2mqttChannelPropertyDto, {
+					type: DEVICES_ZIGBEE2MQTT_TYPE,
+					value: derivedValue,
+				}),
+			);
 		}
 	}
 
@@ -869,8 +954,17 @@ export class Z2mDeviceMapperService {
 			mappedProperty.z2mProperty === 'color' &&
 			(mappedProperty.category === PropertyCategory.HUE || mappedProperty.category === PropertyCategory.SATURATION);
 
-		// Use spec identifier for shared properties, z2mProperty for regular properties
-		const propertyIdentifier = isSharedZ2mProperty ? mappedProperty.identifier : mappedProperty.z2mProperty;
+		// Static properties use their spec identifier since they don't come from Z2M state
+		const isStaticProperty = mappedProperty.z2mProperty.startsWith('__static_');
+
+		// Derived properties use their spec identifier since they are computed from other properties
+		const isDerivedProperty = mappedProperty.z2mProperty.startsWith('__derived_');
+
+		// Use spec identifier for shared, static, and derived properties; z2mProperty for regular properties
+		const propertyIdentifier =
+			isSharedZ2mProperty || isStaticProperty || isDerivedProperty
+				? mappedProperty.identifier
+				: mappedProperty.z2mProperty;
 
 		const property = await this.channelsPropertiesService.findOneBy<Zigbee2mqttChannelPropertyEntity>(
 			'identifier',
@@ -899,6 +993,8 @@ export class Z2mDeviceMapperService {
 				unit: mappedProperty.unit ?? null,
 				format,
 				step: mappedProperty.step ?? null,
+				// Static properties have a fixed value that doesn't change
+				value: mappedProperty.staticValue ?? null,
 			};
 
 			await this.channelsPropertiesService.create<
