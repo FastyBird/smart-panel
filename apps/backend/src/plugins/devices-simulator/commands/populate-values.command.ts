@@ -4,6 +4,7 @@ import { Command, CommandRunner, Option } from 'nest-commander';
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { ChannelCategory } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { getAllProperties } from '../../../modules/devices/utils/schema.utils';
@@ -13,6 +14,7 @@ import { DeviceGeneratorService } from '../services/device-generator.service';
 
 interface PopulateValuesOptions {
 	device?: string;
+	channel?: ChannelCategory;
 	all?: boolean;
 	list?: boolean;
 }
@@ -39,6 +41,20 @@ export class PopulateValuesCommand extends CommandRunner {
 	})
 	parseDevice(val: string): string {
 		return val;
+	}
+
+	@Option({
+		flags: '-c, --channel <category>',
+		description: 'Filter by channel category (e.g., device_information, temperature, battery)',
+	})
+	parseChannel(val: string): ChannelCategory | undefined {
+		const validCategories = Object.values(ChannelCategory);
+		if (validCategories.includes(val as ChannelCategory)) {
+			return val as ChannelCategory;
+		}
+		console.error(`\n\x1b[31m❌ Invalid channel category: ${val}\x1b[0m`);
+		console.log(`\nValid categories: ${validCategories.join(', ')}\n`);
+		process.exit(1);
 	}
 
 	@Option({
@@ -116,12 +132,16 @@ export class PopulateValuesCommand extends CommandRunner {
 			}
 		}
 
-		console.log(`\n\x1b[36m🎲 Populating ${devicesToPopulate.length} device(s) with random values...\x1b[0m\n`);
+		const channelFilter = options?.channel;
+		const channelMsg = channelFilter ? ` (channel: ${channelFilter})` : '';
+		console.log(
+			`\n\x1b[36m🎲 Populating ${devicesToPopulate.length} device(s) with random values${channelMsg}...\x1b[0m\n`,
+		);
 
 		let totalPropertiesUpdated = 0;
 
 		for (const device of devicesToPopulate) {
-			const propertiesUpdated = await this.populateDevice(device);
+			const propertiesUpdated = await this.populateDevice(device, channelFilter);
 			totalPropertiesUpdated += propertiesUpdated;
 		}
 
@@ -130,12 +150,17 @@ export class PopulateValuesCommand extends CommandRunner {
 		);
 	}
 
-	private async populateDevice(device: SimulatorDeviceEntity): Promise<number> {
+	private async populateDevice(device: SimulatorDeviceEntity, channelFilter?: ChannelCategory): Promise<number> {
 		console.log(`  \x1b[36m→\x1b[0m ${device.name} (${device.category})`);
 
 		let propertiesUpdated = 0;
 
 		for (const channel of device.channels ?? []) {
+			// Skip channels that don't match the filter
+			if (channelFilter && channel.category !== channelFilter) {
+				continue;
+			}
+
 			const allProperties = getAllProperties(channel.category);
 
 			for (const property of channel.properties ?? []) {
@@ -182,8 +207,14 @@ export class PopulateValuesCommand extends CommandRunner {
 		}
 
 		console.log('\x1b[36mUsage examples:\x1b[0m');
-		console.log('  pnpm run cli simulator:populate --all                    # Populate all devices');
-		console.log('  pnpm run cli simulator:populate --device <device-id>     # Populate specific device');
-		console.log('  pnpm run cli simulator:populate                          # Interactive mode\n');
+		console.log('  pnpm run cli simulator:populate --all                              # Populate all devices');
+		console.log('  pnpm run cli simulator:populate --device <device-id>               # Populate specific device');
+		console.log(
+			'  pnpm run cli simulator:populate --channel device_information       # Populate only device_information channel',
+		);
+		console.log(
+			'  pnpm run cli simulator:populate --all --channel device_information # Populate device_information for all devices',
+		);
+		console.log('  pnpm run cli simulator:populate                                    # Interactive mode\n');
 	}
 }

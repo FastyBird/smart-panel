@@ -205,7 +205,7 @@ export class DeviceGeneratorService {
 				return null;
 
 			case DataTypeType.STRING:
-				return this.generateStringValue(propMeta.category);
+				return this.generateRandomStringValue(propMeta.category);
 
 			case DataTypeType.UCHAR:
 			case DataTypeType.CHAR:
@@ -249,7 +249,7 @@ export class DeviceGeneratorService {
 	}
 
 	/**
-	 * Generate a string value based on property category
+	 * Generate a string value based on property category (static for initial values)
 	 */
 	private generateStringValue(category: PropertyCategory): string {
 		switch (category) {
@@ -269,6 +269,84 @@ export class DeviceGeneratorService {
 				return 'Simulated Track';
 			default:
 				return 'Simulated';
+		}
+	}
+
+	/**
+	 * Generate a random string value based on property category (for populate command)
+	 */
+	generateRandomStringValue(category: PropertyCategory): string {
+		const randomHex = (length: number): string =>
+			Array.from({ length }, () =>
+				Math.floor(Math.random() * 16)
+					.toString(16)
+					.toUpperCase(),
+			).join('');
+
+		const randomVersion = (): string => {
+			const major = Math.floor(Math.random() * 5) + 1;
+			const minor = Math.floor(Math.random() * 10);
+			const patch = Math.floor(Math.random() * 20);
+			return `${major}.${minor}.${patch}`;
+		};
+
+		const manufacturers = [
+			'FastyBird',
+			'Acme Electronics',
+			'SmartHome Corp',
+			'TechVision',
+			'IoT Devices Inc',
+			'HomeConnect',
+			'Nexus Systems',
+			'Digital Home',
+		];
+
+		const prefixes = ['SIM', 'PRO', 'HOME', 'SMART', 'IOT', 'DEV'];
+		const suffixes = ['', '-A', '-B', '-X', '-PRO', '-LITE'];
+		const protocols = ['mqtt', 'http', 'coap', 'ws', 'zigbee', 'ble'];
+		const tracks = [
+			'Living Room Sensor',
+			'Kitchen Monitor',
+			'Bedroom Device',
+			'Garage Unit',
+			'Outdoor Station',
+			'Basement Controller',
+		];
+
+		switch (category) {
+			case PropertyCategory.MANUFACTURER:
+				return manufacturers[Math.floor(Math.random() * manufacturers.length)];
+
+			case PropertyCategory.MODEL: {
+				const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+				const modelNum = Math.floor(Math.random() * 9000) + 1000;
+				const suffix = suffixes[Math.floor(Math.random() * suffixes.length)];
+				return `${prefix}-${modelNum}${suffix}`;
+			}
+
+			case PropertyCategory.SERIAL_NUMBER:
+				// Format: XX-XXXXXXXX-XXXX (e.g., SN-A1B2C3D4-E5F6)
+				return `SN-${randomHex(8)}-${randomHex(4)}`;
+
+			case PropertyCategory.FIRMWARE_REVISION:
+				return randomVersion();
+
+			case PropertyCategory.HARDWARE_REVISION: {
+				const hwMajor = Math.floor(Math.random() * 3) + 1;
+				const hwMinor = Math.floor(Math.random() * 5);
+				return `${hwMajor}.${hwMinor}`;
+			}
+
+			case PropertyCategory.SOURCE: {
+				const protocol = protocols[Math.floor(Math.random() * protocols.length)];
+				return `${protocol}://device-${randomHex(6).toLowerCase()}`;
+			}
+
+			case PropertyCategory.TRACK:
+				return tracks[Math.floor(Math.random() * tracks.length)];
+
+			default:
+				return `Simulated-${randomHex(4)}`;
 		}
 	}
 
