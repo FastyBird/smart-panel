@@ -17,6 +17,7 @@ These channels are mandatory for the functionality of the air purifier:
 
 | **Channel**          | **Description**                                                                | **Multiple** | **Details**                                                                            |
 |----------------------|--------------------------------------------------------------------------------|--------------|----------------------------------------------------------------------------------------|
+| `switcher`           | Controls the on/off state of the air purifier.                                 | No           | [See details](/docs/system-architecture/supported-channels/switcher-channel)           |
 | `fan`                | Controls fan settings, including speed and direction, for air circulation.     | No           | [See details](/docs/system-architecture/supported-channels/fan-channel)                |
 | `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
 
@@ -28,6 +29,8 @@ These channels are optional and provide additional features:
 
 | **Channel**                  | **Description**                                                    | **Multiple** | **Details**                                                                                    |
 |------------------------------|--------------------------------------------------------------------|--------------|------------------------------------------------------------------------------------------------|
+| `air_quality`                | Reports overall air quality index (AQI) and quality level.         | No           | [See details](/docs/system-architecture/supported-channels/air-quality-channel)                |
+| `filter`                     | Monitors filter status and remaining life.                         | No           | [See details](/docs/system-architecture/supported-channels/filter-channel)                     |
 | `air_particulate`            | Monitors particulate matter levels in the air (e.g., PM2.5, PM10). | No           | [See details](/docs/system-architecture/supported-channels/air-particulate-channel)            |
 | `carbon_dioxide`             | Tracks the concentration of CO₂ in the air.                        | No           | [See details](/docs/system-architecture/supported-channels/carbon-dioxide-channel)             |
 | `carbon_monoxide`            | Tracks the concentration of CO in the air.                         | No           | [See details](/docs/system-architecture/supported-channels/carbon-monoxide-channel)            |
@@ -47,8 +50,10 @@ These channels are optional and provide additional features:
 ## Use Case Scenarios
 
 1. **Air Purification**:
+    - Use the `switcher` channel to turn the purifier on/off.
     - Adjust fan settings to control air circulation using the `fan` channel.
-    - Monitor particulate matter (`airParticulate`) to maintain air quality.
+    - Monitor overall air quality using the `air_quality` channel.
+    - Track filter status with the `filter` channel to know when replacement is needed.
 
 2. **Environmental Monitoring**:
     - Track temperature (`temperature`) and humidity (`humidity`) for optimal indoor comfort.

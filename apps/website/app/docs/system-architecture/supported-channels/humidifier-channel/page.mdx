@@ -1,0 +1,112 @@
+import { Callout } from 'nextra/components'
+
+# Humidifier Channel
+
+<Callout type="info">
+	**Channel Category**: `humidifier`
+</Callout>
+
+Controls the humidifier, including on/off state, target humidity, mist settings, and operating modes.
+
+---
+
+## Required Properties
+
+| **Property** | **Data Type** | **Range**   | **Unit** | **Permissions**  |
+|--------------|---------------|-------------|----------|------------------|
+| `on`         | `Bool`        | `true/false`| -        | RW (Read/Write)  |
+| `humidity`   | `Uchar`       | `0–100`     | %        | RW (Read/Write)  |
+
+---
+
+### Property Details
+
+#### `on`
+
+Turn the humidifier on or off:
+
+- `true`: The humidifier is on.
+- `false`: The humidifier is off.
+
+#### `humidity`
+
+Target humidity level:
+
+- **Range**: `0–100%`
+- Set the desired humidity level for the humidifier to maintain.
+
+---
+
+## Optional Properties
+
+| **Property**       | **Data Type**           | **Range**                          | **Unit** | **Permissions** |
+|--------------------|-------------------------|------------------------------------|----------|-----------------|
+| `mode`             | `Enum`                  | `auto/manual/sleep/baby`           | -        | RW (Read/Write) |
+| `status`           | `Enum`                  | `idle/humidifying`                 | -        | RO (Read-Only)  |
+| `mist_level`       | `Uchar` or `Enum`       | `0–100` or `off/low/medium/high`   | %        | RW (Read/Write) |
+| `warm_mist`        | `Bool`                  | `true/false`                       | -        | RW (Read/Write) |
+| `water_tank_empty` | `Bool`                  | `true/false`                       | -        | RO (Read-Only)  |
+| `water_tank_level` | `Uchar`                 | `0–100`                            | %        | RO (Read-Only)  |
+| `fault`            | `Uchar`                 | `0–255`                            | -        | RO (Read-Only)  |
+
+---
+
+### Property Details
+
+#### `mode`
+
+Operating mode of the humidifier:
+
+- `auto`: Automatic operation based on ambient conditions.
+- `manual`: Manual operation with user-defined settings.
+- `sleep`: Quiet operation optimized for sleeping.
+- `baby`: Gentle operation mode optimized for nurseries.
+
+#### `status`
+
+Current operational status:
+
+- `idle`: The humidifier is not actively humidifying.
+- `humidifying`: The humidifier is actively adding moisture.
+
+#### `mist_level`
+
+Mist output intensity level. This property supports multiple data types:
+
+**Option 1 - Percentage:**
+- **Data Type**: `Uchar`
+- **Range**: `0–100%`
+- Fine-grained control over mist output.
+
+**Option 2 - Discrete Levels:**
+- **Data Type**: `Enum`
+- **Values**: `off`, `low`, `medium`, `high`
+- Predefined mist intensity levels.
+
+#### `warm_mist`
+
+Enable warm mist feature:
+
+- `true`: Warm mist is enabled.
+- `false`: Cool mist only.
+
+#### `water_tank_empty`
+
+Water tank empty indicator:
+
+- `true`: The water tank is empty and needs to be refilled.
+- `false`: The water tank has water available.
+
+#### `water_tank_level`
+
+Water tank level as percentage:
+
+- **Range**: `0–100%`
+- Indicates how much water remains in the tank.
+
+#### `fault`
+
+Represents the fault state of the humidifier:
+
+- `0`: No fault detected.
+- Non-zero: A fault has been detected, potentially affecting functionality.
