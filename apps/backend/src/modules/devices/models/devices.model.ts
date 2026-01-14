@@ -267,6 +267,7 @@ export class ChannelPropertySpecModel {
 	@Expose()
 	@IsOptional()
 	@IsArray()
+	@ArrayNotEmpty()
 	@ValidateNested({ each: true })
 	@Type(() => DataTypeVariantSpecModel)
 	data_types?: DataTypeVariantSpecModel[];
