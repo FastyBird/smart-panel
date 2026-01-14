@@ -7,6 +7,7 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { ChannelCategory, ConnectionState, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelSpecModel } from '../../../modules/devices/models/devices.model';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
+import { getPropertyMetadata } from '../../../modules/devices/utils/schema.utils';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { channelsSchema } from '../../../spec/channels';
@@ -710,10 +711,37 @@ export class DeviceAdoptionService {
 						}
 					}
 
-					if (spec && propDef.dataType !== spec.data_type) {
-						validationErrors.push(
-							`Device information channel, Property ${propDef.category}: Data type mismatch (expected ${spec.data_type}, got ${propDef.dataType})`,
-						);
+					// Validate data type using schema utils which handles multi-datatype properties
+					const propertyMetadata = getPropertyMetadata(
+						ChannelCategory.DEVICE_INFORMATION,
+						propDef.category as PropertyCategory,
+					);
+					if (propertyMetadata && propDef.dataType) {
+						let dataTypeValid = false;
+						let expectedDataTypes: string;
+
+						if (
+							propertyMetadata.hasMultipleDataTypes &&
+							propertyMetadata.dataTypeVariants &&
+							propertyMetadata.dataTypeVariants.length > 0
+						) {
+							dataTypeValid = propertyMetadata.dataTypeVariants.some(
+								(variant) => variant.data_type === propDef.dataType,
+							);
+							expectedDataTypes = propertyMetadata.dataTypeVariants.map((v) => v.data_type).join(' | ');
+						} else if (propertyMetadata.data_type) {
+							dataTypeValid = propDef.dataType === propertyMetadata.data_type;
+							expectedDataTypes = propertyMetadata.data_type;
+						} else {
+							dataTypeValid = true;
+							expectedDataTypes = 'any';
+						}
+
+						if (!dataTypeValid) {
+							validationErrors.push(
+								`Device information channel, Property ${propDef.category}: Data type mismatch (expected ${expectedDataTypes}, got ${propDef.dataType})`,
+							);
+						}
 					}
 				}
 			}
