@@ -1,0 +1,77 @@
+# Zigbee2MQTT Remote Control and Button Mappings
+# Handles remote controls, buttons, and devices with action/click events
+
+version: "1.0"
+
+mappings:
+  # ============================================
+  # REMOTE CONTROLS AND BUTTONS
+  # ============================================
+
+  # Action event (most common for remotes/buttons)
+  # Values like: single, double, triple, hold, release, rotate_left, rotate_right, etc.
+  - name: action_event
+    description: "Remote control or button action event"
+    priority: 50
+    match:
+      expose_type: enum
+      property: action
+    device_category: GENERIC
+    channels:
+      - identifier: button
+        name: Button
+        category: GENERIC
+        properties:
+          - z2m_property: action
+            direction: read_only
+            panel:
+              identifier: EVENT
+              name: Action
+              data_type: ENUM
+              settable: false
+              queryable: false
+
+  # Click event (alternative naming used by some devices)
+  # Values like: single, double, long, etc.
+  - name: click_event
+    description: "Button click event"
+    priority: 50
+    match:
+      expose_type: enum
+      property: click
+    device_category: GENERIC
+    channels:
+      - identifier: button
+        name: Button
+        category: GENERIC
+        properties:
+          - z2m_property: click
+            direction: read_only
+            panel:
+              identifier: EVENT
+              name: Click
+              data_type: ENUM
+              settable: false
+              queryable: false
+
+  # Operation event (used by some remotes for mode switching)
+  - name: operation_event
+    description: "Operation mode event"
+    priority: 50
+    match:
+      expose_type: enum
+      property: operation
+    device_category: GENERIC
+    channels:
+      - identifier: remote
+        name: Remote
+        category: GENERIC
+        properties:
+          - z2m_property: operation
+            direction: read_only
+            panel:
+              identifier: EVENT
+              name: Operation
+              data_type: ENUM
+              settable: false
+              queryable: false

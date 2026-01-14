@@ -358,6 +358,34 @@ describe('Z2mExposesMapperService', () => {
 			expect(batteryProperty?.category).toBe(PropertyCategory.PERCENTAGE);
 		});
 
+		it('should map action event for remote controls and buttons', () => {
+			// Remote control action expose (e.g., Aqara wireless switch)
+			const exposes: Z2mExposeEnum[] = [
+				{
+					type: 'enum',
+					name: 'action',
+					property: 'action',
+					access: 1, // read only
+					values: ['single', 'double', 'hold', 'release'],
+				},
+			];
+
+			const result = service.mapExposes(exposes);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].identifier).toBe('button');
+			expect(result[0].category).toBe(ChannelCategory.GENERIC);
+
+			// Action property should be mapped with EVENT category
+			const actionProperty = result[0].properties.find((p) => p.z2mProperty === 'action');
+			expect(actionProperty).toBeDefined();
+			expect(actionProperty?.dataType).toBe(DataTypeType.ENUM);
+			expect(actionProperty?.category).toBe(PropertyCategory.EVENT);
+			expect(actionProperty?.permissions).toContain(PermissionType.READ_ONLY);
+			// Format derived from device values
+			expect(actionProperty?.format).toEqual(['single', 'double', 'hold', 'release']);
+		});
+
 		it('should map light with endpoint', () => {
 			const exposes: Z2mExposeSpecific[] = [
 				{
