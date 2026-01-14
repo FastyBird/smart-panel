@@ -383,6 +383,49 @@ describe('Z2mExposesMapperService', () => {
 			expect(result[0].endpoint).toBe('l1');
 		});
 
+		it('should detect multi-endpoint devices as list exposes', () => {
+			// Multi-endpoint device with 2 lights (e.g., dual relay with light endpoints)
+			const exposes: Z2mExposeSpecific[] = [
+				{
+					type: 'light',
+					endpoint: 'l1',
+					features: [
+						{
+							type: 'binary',
+							name: 'state',
+							property: 'state',
+							access: 7,
+							value_on: 'ON',
+							value_off: 'OFF',
+						} as Z2mExposeBinary,
+					],
+				},
+				{
+					type: 'light',
+					endpoint: 'l2',
+					features: [
+						{
+							type: 'binary',
+							name: 'state',
+							property: 'state',
+							access: 7,
+							value_on: 'ON',
+							value_off: 'OFF',
+						} as Z2mExposeBinary,
+					],
+				},
+			];
+
+			const result = service.mapExposes(exposes);
+
+			// Both lights should be mapped with their respective endpoints
+			expect(result).toHaveLength(2);
+			expect(result[0].identifier).toBe('light_l1');
+			expect(result[0].endpoint).toBe('l1');
+			expect(result[1].identifier).toBe('light_l2');
+			expect(result[1].endpoint).toBe('l2');
+		});
+
 		it('should skip config exposes', () => {
 			const exposes: Z2mExposeNumeric[] = [
 				{

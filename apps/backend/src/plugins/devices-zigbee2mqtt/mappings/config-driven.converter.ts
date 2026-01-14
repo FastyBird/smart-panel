@@ -78,8 +78,18 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 			?.map((e) => e.property ?? e.name)
 			.filter((p): p is string => p !== undefined);
 
+		// Determine if this expose is part of a multi-endpoint array
+		// (e.g., device has 2 lights with endpoints l1, l2)
+		const isListExpose = this.isListExpose(expose, context?.allExposes);
+
 		// Find matching mapping
-		const mapping = this.mappingLoader.findMatchingMapping(exposeType, propertyName, features, deviceProperties);
+		const mapping = this.mappingLoader.findMatchingMapping(
+			exposeType,
+			propertyName,
+			features,
+			deviceProperties,
+			isListExpose,
+		);
 
 		if (mapping) {
 			// Return priority from mapping
@@ -104,8 +114,17 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 			.map((e) => e.property ?? e.name)
 			.filter((p): p is string => p !== undefined);
 
+		// Determine if this expose is part of a multi-endpoint array
+		const isListExpose = this.isListExpose(expose, context.allExposes);
+
 		// Find matching mapping
-		const mapping = this.mappingLoader.findMatchingMapping(exposeType, propertyName, features, deviceProperties);
+		const mapping = this.mappingLoader.findMatchingMapping(
+			exposeType,
+			propertyName,
+			features,
+			deviceProperties,
+			isListExpose,
+		);
 
 		if (!mapping) {
 			return [];
@@ -552,7 +571,20 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 	}
 
 	/**
+	 * Check if an expose is part of a multi-endpoint array
+	 * Returns true if the device has multiple exposes of the same type (e.g., 2 lights with endpoints l1, l2)
+	 */
+	private isListExpose(expose: Z2mExpose, allExposes?: Z2mExpose[]): boolean {
+		if (!allExposes) {
+			return false;
+		}
+		const sameTypeExposes = allExposes.filter((e) => e.type === expose.type);
+		return sameTypeExposes.length > 1;
+	}
+
+	/**
 	 * Get the mapping for a specific expose
+	 * Note: This method does not have access to allExposes context, so it cannot evaluate is_list conditions
 	 */
 	getMappingForExpose(expose: Z2mExpose): ResolvedMapping | undefined {
 		const exposeType = expose.type;

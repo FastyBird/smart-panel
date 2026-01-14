@@ -360,16 +360,18 @@ export class MappingLoaderService implements OnModuleInit {
 	 * @param propertyName - The property name of the current expose
 	 * @param features - Features of the current expose (for structured types)
 	 * @param deviceProperties - All property names on the device (for any_property matching)
+	 * @param isListExpose - True if this expose is part of a multi-endpoint array (e.g., 2 lights)
 	 */
 	findMatchingMapping(
 		exposeType: string,
 		propertyName?: string,
 		features?: string[],
 		deviceProperties?: string[],
+		isListExpose?: boolean,
 	): ResolvedMapping | undefined {
 		// Mappings are already sorted by priority
 		for (const mapping of this.resolvedMappings) {
-			if (this.matchesCondition(mapping.match, exposeType, propertyName, features, deviceProperties)) {
+			if (this.matchesCondition(mapping.match, exposeType, propertyName, features, deviceProperties, isListExpose)) {
 				return mapping;
 			}
 		}
@@ -384,6 +386,7 @@ export class MappingLoaderService implements OnModuleInit {
 	 * @param propertyName - The property name of the current expose
 	 * @param features - Features of the current expose (for structured types)
 	 * @param deviceProperties - All property names on the device (for any_property matching)
+	 * @param isListExpose - True if this expose is part of a multi-endpoint array
 	 */
 	private matchesCondition(
 		condition: MappingDefinition['match'],
@@ -391,18 +394,19 @@ export class MappingLoaderService implements OnModuleInit {
 		propertyName?: string,
 		features?: string[],
 		deviceProperties?: string[],
+		isListExpose?: boolean,
 	): boolean {
 		// Check all_of conditions
 		if (condition.all_of) {
 			return condition.all_of.every((c) =>
-				this.matchesCondition(c, exposeType, propertyName, features, deviceProperties),
+				this.matchesCondition(c, exposeType, propertyName, features, deviceProperties, isListExpose),
 			);
 		}
 
 		// Check any_of conditions
 		if (condition.any_of) {
 			return condition.any_of.some((c) =>
-				this.matchesCondition(c, exposeType, propertyName, features, deviceProperties),
+				this.matchesCondition(c, exposeType, propertyName, features, deviceProperties, isListExpose),
 			);
 		}
 
@@ -414,6 +418,17 @@ export class MappingLoaderService implements OnModuleInit {
 		// Check property name (matches the current expose's property)
 		if (condition.property && condition.property !== propertyName) {
 			return false;
+		}
+
+		// Check is_list - matches multi-endpoint devices (e.g., 2 lights with endpoints l1, l2)
+		if (condition.is_list !== undefined) {
+			// If isListExpose is not provided, we can't evaluate this condition
+			if (isListExpose === undefined) {
+				return false;
+			}
+			if (condition.is_list !== isListExpose) {
+				return false;
+			}
 		}
 
 		// Check has_features
