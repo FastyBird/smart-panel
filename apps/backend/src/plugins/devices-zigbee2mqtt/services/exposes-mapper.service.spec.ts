@@ -386,6 +386,54 @@ describe('Z2mExposesMapperService', () => {
 			expect(actionProperty?.format).toEqual(['single', 'double', 'hold', 'release']);
 		});
 
+		it('should map carbon monoxide sensor (safety-critical)', () => {
+			const exposes: Z2mExposeBinary[] = [
+				{
+					type: 'binary',
+					name: 'carbon_monoxide',
+					property: 'carbon_monoxide',
+					access: 1, // read only
+					value_on: true,
+					value_off: false,
+				},
+			];
+
+			const result = service.mapExposes(exposes);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].identifier).toBe('carbon_monoxide');
+			expect(result[0].category).toBe(ChannelCategory.CARBON_MONOXIDE);
+
+			const coProperty = result[0].properties.find((p) => p.z2mProperty === 'carbon_monoxide');
+			expect(coProperty).toBeDefined();
+			expect(coProperty?.dataType).toBe(DataTypeType.BOOL);
+			expect(coProperty?.category).toBe(PropertyCategory.DETECTED);
+		});
+
+		it('should map gas leak sensor (safety-critical)', () => {
+			const exposes: Z2mExposeBinary[] = [
+				{
+					type: 'binary',
+					name: 'gas',
+					property: 'gas',
+					access: 1, // read only
+					value_on: true,
+					value_off: false,
+				},
+			];
+
+			const result = service.mapExposes(exposes);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].identifier).toBe('gas');
+			expect(result[0].category).toBe(ChannelCategory.GAS);
+
+			const gasProperty = result[0].properties.find((p) => p.z2mProperty === 'gas');
+			expect(gasProperty).toBeDefined();
+			expect(gasProperty?.dataType).toBe(DataTypeType.BOOL);
+			expect(gasProperty?.category).toBe(PropertyCategory.DETECTED);
+		});
+
 		it('should map light with endpoint', () => {
 			const exposes: Z2mExposeSpecific[] = [
 				{

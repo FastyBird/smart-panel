@@ -246,6 +246,48 @@ mappings:
               data_type: BOOL
               settable: false
 
+  # Carbon monoxide sensor (safety-critical)
+  - name: carbon_monoxide_sensor
+    description: "Carbon monoxide (CO) detector"
+    priority: 50
+    match:
+      expose_type: binary
+      property: carbon_monoxide
+    device_category: SENSOR
+    channels:
+      - identifier: carbon_monoxide
+        name: Carbon Monoxide
+        category: CARBON_MONOXIDE
+        properties:
+          - z2m_property: carbon_monoxide
+            direction: read_only
+            panel:
+              identifier: DETECTED
+              name: CO Detected
+              data_type: BOOL
+              settable: false
+
+  # Gas leak sensor (safety-critical)
+  - name: gas_sensor
+    description: "Gas leak detector (natural gas, LPG)"
+    priority: 50
+    match:
+      expose_type: binary
+      property: gas
+    device_category: SENSOR
+    channels:
+      - identifier: gas
+        name: Gas
+        category: GAS
+        properties:
+          - z2m_property: gas
+            direction: read_only
+            panel:
+              identifier: DETECTED
+              name: Gas Detected
+              data_type: BOOL
+              settable: false
+
   # Vibration sensor
   - name: vibration_sensor
     description: "Vibration sensor"
