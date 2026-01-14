@@ -71,6 +71,72 @@ export class DeviceSpecModel {
 	channels: DeviceChannelSpecModel[];
 }
 
+@ApiSchema({ name: 'DevicesModuleDataTypeVariantSpec' })
+export class DataTypeVariantSpecModel {
+	@ApiProperty({
+		description: 'Unique identifier for this data type variant',
+		type: 'string',
+		example: 'percentage',
+	})
+	@Expose()
+	@IsString()
+	id: string;
+
+	@ApiProperty({
+		name: 'data_type',
+		description: 'Data type for this variant',
+		enum: DataTypeType,
+		example: DataTypeType.UCHAR,
+	})
+	@Expose()
+	@IsEnum(DataTypeType)
+	data_type: DataTypeType;
+
+	@ApiProperty({
+		description: 'Unit for this variant',
+		type: 'string',
+		nullable: true,
+		example: '%',
+	})
+	@Expose()
+	@IsOptional()
+	@IsString()
+	unit: string | null = null;
+
+	@ApiProperty({
+		description: 'Format constraints for this variant (array of strings or numbers)',
+		type: 'array',
+		items: { oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'null' }] },
+		nullable: true,
+		example: [0, 100],
+	})
+	@Expose()
+	@IsOptional()
+	@IsArray()
+	format: string[] | number[] | null = null;
+
+	@ApiProperty({
+		description: 'Invalid value indicator for this variant',
+		oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
+		nullable: true,
+		example: null,
+	})
+	@Expose()
+	@IsOptional()
+	invalid: string | boolean | number | null = null;
+
+	@ApiProperty({
+		description: 'Step value for numeric types in this variant',
+		type: 'number',
+		nullable: true,
+		example: 1,
+	})
+	@Expose()
+	@IsOptional()
+	@IsNumber()
+	step: number | null = null;
+}
+
 @ApiSchema({ name: 'DevicesModuleDataChannelPropertySpec' })
 export class ChannelPropertySpecModel {
 	@ApiProperty({
@@ -104,33 +170,38 @@ export class ChannelPropertySpecModel {
 
 	@ApiProperty({
 		name: 'data_type',
-		description: 'Property data type',
+		description: 'Property data type (for single data type properties)',
 		enum: DataTypeType,
 		example: DataTypeType.STRING,
+		required: false,
 	})
 	@Expose()
+	@IsOptional()
 	@IsEnum(DataTypeType)
-	data_type: DataTypeType;
+	data_type?: DataTypeType;
 
 	@ApiProperty({
-		description: 'Property unit',
+		description: 'Property unit (for single data type properties)',
 		type: 'string',
 		nullable: true,
 		example: '°C',
+		required: false,
 	})
 	@Expose()
 	@IsOptional()
 	@IsString()
-	unit: string | null = null;
+	unit?: string | null = null;
 
 	@ApiProperty({
-		description: 'Property format constraints (array of strings or numbers)',
+		description: 'Property format constraints (for single data type properties)',
 		type: 'array',
 		items: { oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'null' }] },
 		nullable: true,
 		example: ['on', 'off'],
+		required: false,
 	})
 	@Expose()
+	@IsOptional()
 	@IsArray()
 	@ValidateIf((o: { format?: unknown[] }): boolean =>
 		o.format?.every((item: unknown): boolean => typeof item === 'string'),
@@ -140,27 +211,44 @@ export class ChannelPropertySpecModel {
 		o.format?.every((item: unknown): boolean => typeof item === 'number'),
 	)
 	@IsNumber({}, { each: true })
-	format: string[] | number[] | null = null;
+	format?: string[] | number[] | null = null;
 
 	@ApiProperty({
-		description: 'Invalid value indicator',
+		description: 'Invalid value indicator (for single data type properties)',
 		oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
 		nullable: true,
 		example: null,
+		required: false,
 	})
 	@Expose()
-	invalid: string | boolean | number | null = null;
+	@IsOptional()
+	invalid?: string | boolean | number | null = null;
 
 	@ApiProperty({
-		description: 'Property step value for numeric types',
+		description: 'Property step value for numeric types (for single data type properties)',
 		type: 'number',
 		nullable: true,
 		example: 0.1,
+		required: false,
 	})
 	@Expose()
 	@IsOptional()
 	@IsNumber()
-	step: number | null = null;
+	step?: number | null = null;
+
+	@ApiProperty({
+		name: 'data_types',
+		description: 'Array of data type variants (for multi data type properties)',
+		type: 'array',
+		items: { $ref: getSchemaPath(DataTypeVariantSpecModel) },
+		required: false,
+	})
+	@Expose()
+	@IsOptional()
+	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => DataTypeVariantSpecModel)
+	data_types?: DataTypeVariantSpecModel[];
 }
 
 @ApiSchema({ name: 'DevicesModuleDataChannelSpec' })
