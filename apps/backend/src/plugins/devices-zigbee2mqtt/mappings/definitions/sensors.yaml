@@ -68,6 +68,73 @@ mappings:
               unit: "%"
               settable: false
 
+  # Device temperature (internal device temperature)
+  - name: device_temperature_sensor
+    description: "Internal device temperature"
+    priority: 50
+    match:
+      expose_type: numeric
+      property: device_temperature
+    device_category: SENSOR
+    channels:
+      - identifier: device_temperature
+        name: Device Temperature
+        category: TEMPERATURE
+        properties:
+          - z2m_property: device_temperature
+            direction: read_only
+            panel:
+              identifier: TEMPERATURE
+              name: Device Temperature
+              data_type: FLOAT
+              unit: "°C"
+              settable: false
+
+  # Soil temperature (agricultural sensors)
+  - name: soil_temperature_sensor
+    description: "Soil temperature sensor for agriculture"
+    priority: 50
+    match:
+      expose_type: numeric
+      property: soil_temperature
+    device_category: SENSOR
+    channels:
+      - identifier: soil_temperature
+        name: Soil Temperature
+        category: TEMPERATURE
+        properties:
+          - z2m_property: soil_temperature
+            direction: read_only
+            panel:
+              identifier: TEMPERATURE
+              name: Soil Temperature
+              data_type: FLOAT
+              unit: "°C"
+              settable: false
+
+  # Soil moisture (agricultural sensors)
+  - name: soil_moisture_sensor
+    description: "Soil moisture sensor for agriculture"
+    priority: 50
+    match:
+      expose_type: numeric
+      property: soil_moisture
+    device_category: SENSOR
+    channels:
+      - identifier: soil_moisture
+        name: Soil Moisture
+        category: HUMIDITY
+        properties:
+          - z2m_property: soil_moisture
+            direction: read_only
+            panel:
+              identifier: HUMIDITY
+              name: Soil Moisture
+              data_type: UCHAR
+              format: [0, 100]
+              unit: "%"
+              settable: false
+
   # Pressure sensor
   - name: pressure_sensor
     description: "Atmospheric pressure sensor"

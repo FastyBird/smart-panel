@@ -480,6 +480,54 @@ describe('Z2mExposesMapperService', () => {
 			expect(formaldehydeChannel?.category).toBe(ChannelCategory.VOLATILE_ORGANIC_COMPOUNDS);
 		});
 
+		it('should map agricultural and device temperature sensors', () => {
+			// Agricultural sensor with soil properties and device temperature
+			const exposes: Z2mExposeNumeric[] = [
+				{
+					type: 'numeric',
+					name: 'soil_temperature',
+					property: 'soil_temperature',
+					access: 1,
+					unit: '°C',
+				},
+				{
+					type: 'numeric',
+					name: 'soil_moisture',
+					property: 'soil_moisture',
+					access: 1,
+					unit: '%',
+					value_min: 0,
+					value_max: 100,
+				},
+				{
+					type: 'numeric',
+					name: 'device_temperature',
+					property: 'device_temperature',
+					access: 1,
+					unit: '°C',
+				},
+			];
+
+			const result = service.mapExposes(exposes);
+
+			expect(result).toHaveLength(3);
+
+			// Soil temperature channel
+			const soilTempChannel = result.find((c) => c.identifier === 'soil_temperature');
+			expect(soilTempChannel).toBeDefined();
+			expect(soilTempChannel?.category).toBe(ChannelCategory.TEMPERATURE);
+
+			// Soil moisture channel
+			const soilMoistureChannel = result.find((c) => c.identifier === 'soil_moisture');
+			expect(soilMoistureChannel).toBeDefined();
+			expect(soilMoistureChannel?.category).toBe(ChannelCategory.HUMIDITY);
+
+			// Device temperature channel
+			const deviceTempChannel = result.find((c) => c.identifier === 'device_temperature');
+			expect(deviceTempChannel).toBeDefined();
+			expect(deviceTempChannel?.category).toBe(ChannelCategory.TEMPERATURE);
+		});
+
 		it('should map light with endpoint', () => {
 			const exposes: Z2mExposeSpecific[] = [
 				{
