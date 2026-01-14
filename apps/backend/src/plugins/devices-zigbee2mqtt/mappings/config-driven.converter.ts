@@ -4,16 +4,19 @@
  * Converter that uses YAML mapping definitions to convert Z2M exposes
  * to Smart Panel channels and properties.
  */
-
 import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
-import { ChannelCategory, DataTypeType, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	DataTypeType,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 import { BaseConverter } from '../converters/base.converter';
 import {
 	CanHandleResult,
 	ConversionContext,
-	ConverterPriority,
 	IConverter,
 	MappedChannel,
 	MappedProperty,
@@ -217,7 +220,12 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 			}
 
 			// For color composite, z2mProperty should be 'color' (parent), not the nested property
-			const property = this.createPropertyFromFeature(nestedDef, nestedFeature, channelCategory, parentFeature.property);
+			const property = this.createPropertyFromFeature(
+				nestedDef,
+				nestedFeature,
+				channelCategory,
+				parentFeature.property,
+			);
 			if (property) {
 				properties.push(property);
 			}
@@ -238,9 +246,6 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 		// Determine permissions based on direction and Z2M access
 		const permissions = this.getPermissions(featureDef.direction, feature.access);
 
-		// Get transformer
-		const transformer = this.transformerRegistry.getOrCreate(featureDef.transformerName, featureDef.inlineTransform);
-
 		// Determine the z2m property name
 		// For nested features (like hue inside color), use the parent property name
 		const z2mProperty = parentProperty ?? feature.property ?? feature.name ?? featureDef.z2mFeature;
@@ -248,7 +253,7 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 		return this.createProperty({
 			identifier: featureDef.panel.identifier.toLowerCase(),
 			name: featureDef.panel.name ?? this.formatName(featureDef.z2mFeature),
-			category: featureDef.panel.identifier as PropertyCategory,
+			category: featureDef.panel.identifier,
 			channelCategory,
 			dataType: featureDef.panel.dataType,
 			z2mProperty,
@@ -281,7 +286,7 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 				this.createProperty({
 					identifier: propDef.panel.identifier.toLowerCase(),
 					name: propDef.panel.name ?? this.formatName(propDef.z2mProperty),
-					category: propDef.panel.identifier as PropertyCategory,
+					category: propDef.panel.identifier,
 					channelCategory,
 					dataType: propDef.panel.dataType,
 					z2mProperty: propDef.z2mProperty,
@@ -352,14 +357,11 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 					if (feature.type === 'composite' && feature.nestedFeatures) {
 						// Handle nested features
 						for (const nested of feature.nestedFeatures) {
-							const transformer = this.transformerRegistry.getOrCreate(
-								nested.transformerName,
-								nested.inlineTransform,
-							);
+							const transformer = this.transformerRegistry.getOrCreate(nested.transformerName, nested.inlineTransform);
 							runtimeMappings.push({
 								z2mProperty: feature.z2mFeature, // Parent property (e.g., 'color')
 								panelIdentifier: nested.panel.identifier.toLowerCase(),
-								panelCategory: nested.panel.identifier as PropertyCategory,
+								panelCategory: nested.panel.identifier,
 								channelCategory: channel.category,
 								dataType: nested.panel.dataType,
 								permissions: this.getPermissions(nested.direction, Z2M_ACCESS.STATE | Z2M_ACCESS.SET),
@@ -370,14 +372,11 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 							});
 						}
 					} else {
-						const transformer = this.transformerRegistry.getOrCreate(
-							feature.transformerName,
-							feature.inlineTransform,
-						);
+						const transformer = this.transformerRegistry.getOrCreate(feature.transformerName, feature.inlineTransform);
 						runtimeMappings.push({
 							z2mProperty: feature.z2mFeature,
 							panelIdentifier: feature.panel.identifier.toLowerCase(),
-							panelCategory: feature.panel.identifier as PropertyCategory,
+							panelCategory: feature.panel.identifier,
 							channelCategory: channel.category,
 							dataType: feature.panel.dataType,
 							permissions: this.getPermissions(feature.direction, Z2M_ACCESS.STATE | Z2M_ACCESS.SET),
@@ -397,7 +396,7 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 					runtimeMappings.push({
 						z2mProperty: prop.z2mProperty,
 						panelIdentifier: prop.panel.identifier.toLowerCase(),
-						panelCategory: prop.panel.identifier as PropertyCategory,
+						panelCategory: prop.panel.identifier,
 						channelCategory: channel.category,
 						dataType: prop.panel.dataType,
 						permissions: this.getPermissions(prop.direction, Z2M_ACCESS.STATE),

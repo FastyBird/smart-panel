@@ -4,16 +4,20 @@
  * Loads, validates, and resolves YAML mapping configuration files.
  * Supports built-in mappings and user custom mappings.
  */
-
-import { existsSync, readdirSync, readFileSync } from 'fs';
-import { join } from 'path';
-
-import { Injectable, OnModuleInit } from '@nestjs/common';
 import Ajv from 'ajv';
+import { existsSync, readFileSync, readdirSync } from 'fs';
+import { join } from 'path';
 import { parse as parseYaml } from 'yaml';
 
+import { Injectable, OnModuleInit } from '@nestjs/common';
+
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
-import { ChannelCategory, DataTypeType, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	DataTypeType,
+	DeviceCategory,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME } from '../devices-zigbee2mqtt.constants';
 
 import {
@@ -60,30 +64,30 @@ export class MappingLoaderService implements OnModuleInit {
 
 		// Load JSON schema at runtime to avoid ts-node issues with JSON imports
 		const schemaPath = join(__dirname, 'schema', 'mapping-schema.json');
-		const mappingSchema = JSON.parse(readFileSync(schemaPath, 'utf-8'));
+		const mappingSchema = JSON.parse(readFileSync(schemaPath, 'utf-8')) as Record<string, unknown>;
 		this.validateSchema = this.ajv.compile(mappingSchema);
 	}
 
-	async onModuleInit(): Promise<void> {
+	onModuleInit(): void {
 		// Register built-in transformers
 		this.transformerRegistry.registerAll(BUILTIN_TRANSFORMERS);
 		this.logger.log(`Registered ${this.transformerRegistry.size} built-in transformers`);
 
 		// Load all mapping files
-		await this.loadAllMappings();
+		this.loadAllMappings();
 	}
 
 	/**
 	 * Load all mapping files from built-in and user directories
 	 */
-	async loadAllMappings(): Promise<void> {
+	loadAllMappings(): void {
 		this.resolvedMappings = [];
 		this.loadedSources = [];
 
 		// Load built-in mappings first
 		const builtinFiles = this.discoverMappingFiles(this.builtinMappingsPath, 'builtin', 0);
 		for (const fileInfo of builtinFiles) {
-			const result = await this.loadMappingFile(fileInfo);
+			const result = this.loadMappingFile(fileInfo);
 			this.loadedSources.push(result);
 			if (result.success && result.resolvedMappings) {
 				this.resolvedMappings.push(...result.resolvedMappings);
@@ -94,7 +98,7 @@ export class MappingLoaderService implements OnModuleInit {
 		if (existsSync(this.userMappingsPath)) {
 			const userFiles = this.discoverMappingFiles(this.userMappingsPath, 'user', 1000);
 			for (const fileInfo of userFiles) {
-				const result = await this.loadMappingFile(fileInfo);
+				const result = this.loadMappingFile(fileInfo);
 				this.loadedSources.push(result);
 				if (result.success && result.resolvedMappings) {
 					this.resolvedMappings.push(...result.resolvedMappings);
@@ -142,8 +146,8 @@ export class MappingLoaderService implements OnModuleInit {
 	/**
 	 * Load and validate a single mapping file
 	 */
-	async loadMappingFile(fileInfo: MappingFileInfo): Promise<MappingLoadResult> {
-		const { path: filePath, source } = fileInfo;
+	loadMappingFile(fileInfo: MappingFileInfo): MappingLoadResult {
+		const { path: filePath } = fileInfo;
 
 		try {
 			// Read file
@@ -419,9 +423,9 @@ export class MappingLoaderService implements OnModuleInit {
 	/**
 	 * Reload all mappings (for hot-reload support)
 	 */
-	async reload(): Promise<void> {
+	reload(): void {
 		this.logger.log('Reloading mapping configurations...');
-		await this.loadAllMappings();
+		this.loadAllMappings();
 	}
 
 	/**

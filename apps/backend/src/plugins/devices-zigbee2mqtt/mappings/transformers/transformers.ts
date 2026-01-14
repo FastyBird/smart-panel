@@ -4,14 +4,13 @@
  * Concrete implementations of all transformer types for converting
  * values between Zigbee2MQTT and Smart Panel formats.
  */
-
 import {
 	AnyTransformerDefinition,
 	BooleanTransformerDefinition,
 	ClampTransformerDefinition,
 	FormulaTransformerDefinition,
-	InlineTransform,
 	ITransformer,
+	InlineTransform,
 	MapTransformerDefinition,
 	RoundTransformerDefinition,
 	ScaleTransformerDefinition,
@@ -64,7 +63,17 @@ abstract class BaseTransformer implements ITransformer {
 		if (value === null || value === undefined) {
 			return '';
 		}
-		return String(value);
+		if (typeof value === 'string') {
+			return value;
+		}
+		if (typeof value === 'number' || typeof value === 'boolean') {
+			return String(value);
+		}
+		if (typeof value === 'object') {
+			return JSON.stringify(value);
+		}
+		// For symbols and other types, use JSON.stringify as fallback
+		return JSON.stringify(value);
 	}
 }
 
@@ -229,8 +238,9 @@ export class FormulaTransformer extends BaseTransformer {
 		`,
 		);
 
-		return (value: unknown, context?: TransformContext) => {
-			return fn(value, context, Math);
+		return (value: unknown, context?: TransformContext): unknown => {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return
+			return fn(value, context, Math) as unknown;
 		};
 	}
 }
@@ -415,17 +425,17 @@ export class CompositeTransformer extends BaseTransformer {
 export function createTransformer(definition: AnyTransformerDefinition): ITransformer {
 	switch (definition.type) {
 		case 'scale':
-			return new ScaleTransformer(definition as ScaleTransformerDefinition);
+			return new ScaleTransformer(definition);
 		case 'map':
-			return new MapTransformer(definition as MapTransformerDefinition);
+			return new MapTransformer(definition);
 		case 'formula':
-			return new FormulaTransformer(definition as FormulaTransformerDefinition);
+			return new FormulaTransformer(definition);
 		case 'boolean':
-			return new BooleanTransformer(definition as BooleanTransformerDefinition);
+			return new BooleanTransformer(definition);
 		case 'clamp':
-			return new ClampTransformer(definition as ClampTransformerDefinition);
+			return new ClampTransformer(definition);
 		case 'round':
-			return new RoundTransformer(definition as RoundTransformerDefinition);
+			return new RoundTransformer(definition);
 		default:
 			return new PassthroughTransformer();
 	}

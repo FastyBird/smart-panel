@@ -3,8 +3,12 @@
  *
  * TypeScript types for the YAML mapping configuration files.
  */
-
-import { ChannelCategory, DataTypeType, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	DataTypeType,
+	DeviceCategory,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 
 import { AnyTransformerDefinition, InlineTransform, TransformDirection } from './transformers';
 
