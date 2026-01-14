@@ -13,6 +13,7 @@ interface DataTypeVariantSpec {
 	format?: string[] | number[];
 	invalid?: unknown;
 	step?: number;
+	description?: { en: string };
 }
 
 /**
@@ -40,6 +41,7 @@ export interface DataTypeVariant {
 	format: string[] | number[] | null;
 	invalid: unknown;
 	step: number | null;
+	description: { en: string } | null;
 }
 
 /**
@@ -195,6 +197,7 @@ export function getPropertyMetadata(
 			format: variant.format ?? null,
 			invalid: variant.invalid ?? null,
 			step: variant.step ?? null,
+			description: variant.description ?? null,
 		}));
 
 		return {
@@ -731,6 +734,7 @@ export function getAllProperties(channelCategory: ChannelCategoryType): Property
 					format: variant.format ?? null,
 					invalid: variant.invalid ?? null,
 					step: variant.step ?? null,
+					description: variant.description ?? null,
 				}));
 
 				properties.push({

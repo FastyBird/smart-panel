@@ -143,6 +143,19 @@ export class DataTypeVariantSpecModel {
 	@IsOptional()
 	@IsNumber()
 	step: number | null = null;
+
+	@ApiProperty({
+		description: 'Human-readable description of this variant',
+		type: 'object',
+		properties: {
+			en: { type: 'string' },
+		},
+		nullable: true,
+		example: { en: 'Speed as percentage (0-100%)' },
+	})
+	@Expose()
+	@IsOptional()
+	description?: { en: string } | null = null;
 }
 
 @ApiSchema({ name: 'DevicesModuleDataChannelPropertySpec' })
