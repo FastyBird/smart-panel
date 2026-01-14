@@ -15,12 +15,12 @@
     "category": "air_quality",
     "constraints": {
       "oneOrMoreOf": [
-        ["index", "level"]
+        ["aqi", "level"]
       ]
     },
     "properties": {
-      "index": {
-        "category": "index",
+      "aqi": {
+        "category": "aqi",
         "required": false,
         "description": {
           "en": "Air Quality Index (AQI) value"
