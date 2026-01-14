@@ -100,6 +100,14 @@
         "description": {
           "en": "Identifies the presence of water or other liquids to detect leaks and prevent damage."
         }
+      },
+      "filter": {
+        "category": "filter",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Monitors the filter status and remaining life, with option to reset after replacement."
+        }
       }
     }
   },
@@ -109,12 +117,12 @@
       "en": "The Air Dehumidifier device represents a system designed to reduce humidity levels in the environment while providing additional monitoring and control capabilities."
     },
     "channels": {
-      "cooler": {
-        "category": "cooler",
+      "dehumidifier": {
+        "category": "dehumidifier",
         "required": true,
         "multiple": false,
         "description": {
-          "en": "Controls devices that lower air or liquid temperatures, such as air conditioners or refrigeration systems."
+          "en": "Controls the dehumidifier, including on/off state, target humidity, and operating modes."
         }
       },
       "humidity": {
@@ -133,6 +141,14 @@
           "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
         }
       },
+      "fan": {
+        "category": "fan",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Controls fan devices, including speed, oscillation, and modes for air circulation."
+        }
+      },
       "electrical_energy": {
         "category": "electrical_energy",
         "required": false,
@@ -147,14 +163,6 @@
         "multiple": false,
         "description": {
           "en": "Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics."
-        }
-      },
-      "fan": {
-        "category": "fan",
-        "required": false,
-        "multiple": false,
-        "description": {
-          "en": "Controls fan devices, including speed, oscillation, and modes for air circulation."
         }
       },
       "leak": {
@@ -181,6 +189,14 @@
       "en": "The Air Humidifier device represents a system designed to increase humidity levels in the environment while providing additional monitoring and control capabilities."
     },
     "channels": {
+      "humidifier": {
+        "category": "humidifier",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Controls the humidifier, including on/off state, target humidity, mist settings, and operating modes."
+        }
+      },
       "humidity": {
         "category": "humidity",
         "required": true,
@@ -189,20 +205,20 @@
           "en": "Measures the relative humidity in the environment, reported as a percentage."
         }
       },
-      "switcher": {
-        "category": "switcher",
-        "required": true,
-        "multiple": false,
-        "description": {
-          "en": "Represents binary switches to control devices like lights, fans, or appliances."
-        }
-      },
       "device_information": {
         "category": "device_information",
         "required": true,
         "multiple": false,
         "description": {
           "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "fan": {
+        "category": "fan",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Controls fan devices, including speed, oscillation, and modes for air circulation."
         }
       },
       "electrical_energy": {
@@ -219,14 +235,6 @@
         "multiple": false,
         "description": {
           "en": "Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics."
-        }
-      },
-      "fan": {
-        "category": "fan",
-        "required": false,
-        "multiple": false,
-        "description": {
-          "en": "Controls fan devices, including speed, oscillation, and modes for air circulation."
         }
       },
       "leak": {
@@ -253,6 +261,14 @@
       "en": "The Air Purifier device represents a system designed to improve indoor air quality by removing contaminants and monitoring environmental conditions."
     },
     "channels": {
+      "switcher": {
+        "category": "switcher",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Controls the on/off state of the air purifier."
+        }
+      },
       "fan": {
         "category": "fan",
         "required": true,
@@ -267,6 +283,22 @@
         "multiple": false,
         "description": {
           "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "air_quality": {
+        "category": "air_quality",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports overall air quality index (AQI) and quality level."
+        }
+      },
+      "filter": {
+        "category": "filter",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Monitors the filter status and remaining life, with option to reset after replacement."
         }
       },
       "air_particulate": {
@@ -618,7 +650,7 @@
   "fan": {
     "category": "fan",
     "description": {
-      "en": "The Fan device represents a standalone or integrated fan system with features for speed control, direction adjustment, and energy monitoring."
+      "en": "The Fan device represents a standalone or integrated fan system with features for speed control, direction adjustment, oscillation, and energy monitoring."
     },
     "channels": {
       "fan": {
@@ -626,7 +658,7 @@
         "required": true,
         "multiple": false,
         "description": {
-          "en": "Controls fan devices, including speed, oscillation, and modes for air circulation."
+          "en": "Controls fan devices, including speed, oscillation, direction, and modes for air circulation."
         }
       },
       "device_information": {
@@ -1067,6 +1099,14 @@
         "multiple": false,
         "description": {
           "en": "Identifies the presence of water or other liquids to detect leaks and prevent damage."
+        }
+      },
+      "filter": {
+        "category": "filter",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Monitors the filter status and remaining life, with option to reset after replacement."
         }
       }
     }

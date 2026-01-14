@@ -11,6 +11,86 @@
       }
     }
   },
+  "air_quality": {
+    "category": "air_quality",
+    "constraints": {
+      "oneOrMoreOf": [
+        ["aqi", "level"]
+      ]
+    },
+    "properties": {
+      "aqi": {
+        "category": "aqi",
+        "required": false,
+        "description": {
+          "en": "Air Quality Index (AQI) value"
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "ushort",
+        "unit": null,
+        "format": [
+          0,
+          500
+        ]
+      },
+      "level": {
+        "category": "level",
+        "required": false,
+        "description": {
+          "en": "Air quality level classification"
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "excellent",
+          "good",
+          "fair",
+          "inferior",
+          "poor"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "active": {
+        "category": "active",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
   "air_particulate": {
     "category": "air_particulate",
     "constraints": {
@@ -819,6 +899,146 @@
       }
     }
   },
+  "dehumidifier": {
+    "category": "dehumidifier",
+    "properties": {
+      "on": {
+        "category": "on",
+        "required": true,
+        "description": {
+          "en": "Turn the dehumidifier on or off"
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "humidity": {
+        "category": "humidity",
+        "required": true,
+        "description": {
+          "en": "Target humidity level"
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "uchar",
+        "unit": "%",
+        "format": [
+          0,
+          100
+        ]
+      },
+      "mode": {
+        "category": "mode",
+        "required": false,
+        "description": {
+          "en": "Operating mode of the dehumidifier"
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "auto",
+          "manual",
+          "continuous",
+          "laundry",
+          "quiet"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "status": {
+        "category": "status",
+        "required": false,
+        "description": {
+          "en": "Current operational status"
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "idle",
+          "dehumidifying",
+          "defrosting"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "water_tank_full": {
+        "category": "water_tank_full",
+        "required": false,
+        "description": {
+          "en": "Water tank full indicator"
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "water_tank_level": {
+        "category": "water_tank_level",
+        "required": false,
+        "description": {
+          "en": "Water tank level as percentage"
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": "%",
+        "format": [
+          0,
+          100
+        ]
+      },
+      "defrost_active": {
+        "category": "defrost_active",
+        "required": false,
+        "description": {
+          "en": "Defrost cycle is active"
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
   "doorbell": {
     "category": "doorbell",
     "properties": {
@@ -1347,6 +1567,94 @@
       }
     }
   },
+  "filter": {
+    "category": "filter",
+    "properties": {
+      "life_remaining": {
+        "category": "life_remaining",
+        "required": true,
+        "description": {
+          "en": "Remaining filter life as percentage"
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": "%",
+        "format": [
+          0,
+          100
+        ]
+      },
+      "status": {
+        "category": "status",
+        "required": true,
+        "description": {
+          "en": "Current filter status"
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "good",
+          "replace_soon",
+          "replace_now"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "change_needed": {
+        "category": "change_needed",
+        "required": false,
+        "description": {
+          "en": "Indicates if filter change is needed"
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "reset": {
+        "category": "reset",
+        "required": false,
+        "description": {
+          "en": "Reset filter life indicator after replacement"
+        },
+        "permissions": [
+          "wo"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
   "flow": {
     "category": "flow",
     "properties": {
@@ -1627,6 +1935,182 @@
         "format": null,
         "invalid": null,
         "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "humidifier": {
+    "category": "humidifier",
+    "properties": {
+      "on": {
+        "category": "on",
+        "required": true,
+        "description": {
+          "en": "Turn the humidifier on or off"
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "humidity": {
+        "category": "humidity",
+        "required": true,
+        "description": {
+          "en": "Target humidity level"
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "uchar",
+        "unit": "%",
+        "format": [
+          0,
+          100
+        ]
+      },
+      "mode": {
+        "category": "mode",
+        "required": false,
+        "description": {
+          "en": "Operating mode of the humidifier"
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "auto",
+          "manual",
+          "sleep",
+          "baby"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "status": {
+        "category": "status",
+        "required": false,
+        "description": {
+          "en": "Current operational status"
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "idle",
+          "humidifying"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "mist_level": {
+        "category": "mist_level",
+        "required": false,
+        "description": {
+          "en": "Mist output intensity level"
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_types": [
+          {
+            "id": "percentage",
+            "data_type": "uchar",
+            "unit": "%",
+            "format": [
+              0,
+              100
+            ],
+            "step": 1,
+            "description": {
+              "en": "Mist level as percentage (0-100%)"
+            }
+          },
+          {
+            "id": "level",
+            "data_type": "enum",
+            "format": [
+              "off",
+              "low",
+              "medium",
+              "high"
+            ],
+            "description": {
+              "en": "Mist level as discrete levels"
+            }
+          }
+        ]
+      },
+      "warm_mist": {
+        "category": "warm_mist",
+        "required": false,
+        "description": {
+          "en": "Enable warm mist feature"
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "water_tank_empty": {
+        "category": "water_tank_empty",
+        "required": false,
+        "description": {
+          "en": "Water tank empty indicator"
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "water_tank_level": {
+        "category": "water_tank_level",
+        "required": false,
+        "description": {
+          "en": "Water tank level as percentage"
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": "%",
+        "format": [
+          0,
+          100
+        ]
       },
       "fault": {
         "category": "fault",
