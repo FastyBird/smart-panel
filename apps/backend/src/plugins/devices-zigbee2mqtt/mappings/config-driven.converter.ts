@@ -749,9 +749,10 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 
 	/**
 	 * Get the mapping for a specific expose
-	 * Note: This method does not have access to allExposes context, so it cannot evaluate is_list conditions
+	 * @param expose - The expose to get mapping for
+	 * @param allExposes - Optional array of all device exposes (needed for any_property and is_list conditions)
 	 */
-	getMappingForExpose(expose: Z2mExpose): ResolvedMapping | undefined {
+	getMappingForExpose(expose: Z2mExpose, allExposes?: Z2mExpose[]): ResolvedMapping | undefined {
 		const exposeType = expose.type;
 		const propertyName = this.getPropertyName(expose);
 
@@ -760,15 +761,23 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 			features = (expose as Z2mExposeSpecific).features?.map((f) => f.property ?? f.name ?? '').filter(Boolean);
 		}
 
-		return this.mappingLoader.findMatchingMapping(exposeType, propertyName, features);
+		// Extract device properties for any_property matching
+		const deviceProperties = allExposes?.map((e) => e.property ?? e.name).filter((p): p is string => p !== undefined);
+
+		// Determine if this expose is part of a multi-endpoint array
+		const isListExpose = this.isListExpose(expose, allExposes);
+
+		return this.mappingLoader.findMatchingMapping(exposeType, propertyName, features, deviceProperties, isListExpose);
 	}
 
 	/**
 	 * Get runtime property mappings for a device's expose
 	 * Used for value transformations during state updates
+	 * @param expose - The expose to get mappings for
+	 * @param allExposes - Optional array of all device exposes (needed for any_property and is_list conditions)
 	 */
-	getRuntimeMappings(expose: Z2mExpose): RuntimePropertyMapping[] {
-		const mapping = this.getMappingForExpose(expose);
+	getRuntimeMappings(expose: Z2mExpose, allExposes?: Z2mExpose[]): RuntimePropertyMapping[] {
+		const mapping = this.getMappingForExpose(expose, allExposes);
 		if (!mapping) {
 			return [];
 		}
@@ -847,9 +856,13 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 
 	/**
 	 * Transform a value from Z2M format to Panel format (read)
+	 * @param z2mProperty - The Z2M property name
+	 * @param value - The value to transform
+	 * @param expose - Optional expose for context
+	 * @param allExposes - Optional array of all device exposes (needed for any_property and is_list conditions)
 	 */
-	transformRead(z2mProperty: string, value: unknown, expose?: Z2mExpose): unknown {
-		const mappings = expose ? this.getRuntimeMappings(expose) : [];
+	transformRead(z2mProperty: string, value: unknown, expose?: Z2mExpose, allExposes?: Z2mExpose[]): unknown {
+		const mappings = expose ? this.getRuntimeMappings(expose, allExposes) : [];
 		const mapping = mappings.find((m) => m.z2mProperty === z2mProperty);
 
 		if (mapping) {
@@ -886,9 +899,13 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 
 	/**
 	 * Transform a value from Panel format to Z2M format (write)
+	 * @param panelIdentifier - The Panel property identifier
+	 * @param value - The value to transform
+	 * @param expose - Optional expose for context
+	 * @param allExposes - Optional array of all device exposes (needed for any_property and is_list conditions)
 	 */
-	transformWrite(panelIdentifier: string, value: unknown, expose?: Z2mExpose): unknown {
-		const mappings = expose ? this.getRuntimeMappings(expose) : [];
+	transformWrite(panelIdentifier: string, value: unknown, expose?: Z2mExpose, allExposes?: Z2mExpose[]): unknown {
+		const mappings = expose ? this.getRuntimeMappings(expose, allExposes) : [];
 		const mapping = mappings.find((m) => m.panelIdentifier === panelIdentifier.toLowerCase());
 
 		if (mapping) {
