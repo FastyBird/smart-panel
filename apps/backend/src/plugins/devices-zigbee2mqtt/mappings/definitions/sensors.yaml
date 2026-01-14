@@ -393,27 +393,28 @@ mappings:
               settable: false
 
   # Tamper detection
-  # Note: Tamper is typically a property on other channels (contact, motion, smoke, etc.)
-  # When exposed standalone, we use GENERIC channel with TAMPERED property
-  - name: tamper_sensor
-    description: "Tamper detection"
-    priority: 40
-    match:
-      expose_type: binary
-      property: tamper
-    device_category: SENSOR
-    channels:
-      - identifier: security
-        name: Security
-        category: GENERIC
-        properties:
-          - z2m_property: tamper
-            direction: read_only
-            panel:
-              identifier: TAMPERED
-              name: Tampered
-              data_type: BOOL
-              settable: false
+  # DISABLED: Tamper is typically a property on other channels (contact, motion, smoke, etc.)
+  # GENERIC category is only a fallback and not used by the system.
+  # Enable when a dedicated tamper/security channel is added to the spec.
+  # - name: tamper_sensor
+  #   description: "Tamper detection"
+  #   priority: 40
+  #   match:
+  #     expose_type: binary
+  #     property: tamper
+  #   device_category: SENSOR
+  #   channels:
+  #     - identifier: security
+  #       name: Security
+  #       category: GENERIC
+  #       properties:
+  #         - z2m_property: tamper
+  #           direction: read_only
+  #           panel:
+  #             identifier: TAMPERED
+  #             name: Tampered
+  #             data_type: BOOL
+  #             settable: false
 
   # ============================================
   # BATTERY
