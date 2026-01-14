@@ -22,7 +22,7 @@ import {
 	MappedProperty,
 } from '../converters/converter.interface';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME, Z2M_ACCESS } from '../devices-zigbee2mqtt.constants';
-import { Z2mExpose, Z2mExposeEnum, Z2mExposeSpecific } from '../interfaces/zigbee2mqtt.interface';
+import { Z2mExpose, Z2mExposeEnum, Z2mExposeNumeric, Z2mExposeSpecific } from '../interfaces/zigbee2mqtt.interface';
 
 import { MappingLoaderService } from './mapping-loader.service';
 import { ResolvedChannel, ResolvedFeature, ResolvedMapping, ResolvedProperty } from './mapping.types';
@@ -298,10 +298,12 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 		// For nested features (like hue inside color), use the parent property name
 		const z2mProperty = parentProperty ?? feature.property ?? feature.name ?? featureDef.z2mFeature;
 
-		// Determine format - for ENUM types, derive from device's actual values
+		// Determine format - derive from device's actual values when available
 		let format = featureDef.panel.format;
 		if (featureDef.panel.dataType === DataTypeType.ENUM && this.isEnumExpose(feature)) {
 			format = this.deriveEnumFormat(feature, featureDef);
+		} else if (this.isNumericDataType(featureDef.panel.dataType) && this.isNumericExpose(feature)) {
+			format = this.deriveNumericFormat(feature, featureDef);
 		}
 
 		return this.createProperty({
@@ -352,6 +354,72 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 	}
 
 	/**
+	 * Check if a data type is numeric
+	 */
+	private isNumericDataType(dataType: DataTypeType): boolean {
+		return [
+			DataTypeType.CHAR,
+			DataTypeType.UCHAR,
+			DataTypeType.SHORT,
+			DataTypeType.USHORT,
+			DataTypeType.INT,
+			DataTypeType.UINT,
+			DataTypeType.FLOAT,
+		].includes(dataType);
+	}
+
+	/**
+	 * Check if an expose is a numeric type with value_min/value_max
+	 */
+	private isNumericExpose(expose: Z2mExpose): expose is Z2mExposeNumeric {
+		return expose.type === 'numeric';
+	}
+
+	/**
+	 * Derive numeric format from device's actual range, applying transformer if defined
+	 * Returns [min, max] array representing the device's supported range
+	 */
+	private deriveNumericFormat(expose: Z2mExposeNumeric, featureDef: ResolvedFeature): [number, number] | undefined {
+		// If device doesn't specify range, fall back to spec format
+		if (expose.value_min === undefined && expose.value_max === undefined) {
+			return featureDef.panel.format as [number, number] | undefined;
+		}
+
+		// Get device's range (use spec format as fallback for missing bounds)
+		const specFormat = featureDef.panel.format as [number, number] | undefined;
+		let min = expose.value_min ?? specFormat?.[0];
+		let max = expose.value_max ?? specFormat?.[1];
+
+		// If still no bounds, return undefined
+		if (min === undefined && max === undefined) {
+			return undefined;
+		}
+
+		// Apply transformer to the range if defined
+		if (featureDef.transformerName || featureDef.inlineTransform) {
+			const transformer = this.transformerRegistry.getOrCreate(featureDef.transformerName, featureDef.inlineTransform);
+			if (min !== undefined) {
+				const transformedMin = transformer.read(min);
+				if (typeof transformedMin === 'number') {
+					min = transformedMin;
+				}
+			}
+			if (max !== undefined) {
+				const transformedMax = transformer.read(max);
+				if (typeof transformedMax === 'number') {
+					max = transformedMax;
+				}
+			}
+		}
+
+		// Return the range, handling cases where only one bound is defined
+		if (min !== undefined && max !== undefined) {
+			return [min, max];
+		}
+		return undefined;
+	}
+
+	/**
 	 * Process property mappings for generic exposes
 	 */
 	private processProperties(
@@ -370,6 +438,14 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 
 			const permissions = this.getPermissions(propDef.direction, expose.access);
 
+			// Derive format from device's actual values when available
+			let format = propDef.panel.format;
+			if (propDef.panel.dataType === DataTypeType.ENUM && this.isEnumExpose(expose)) {
+				format = this.deriveEnumFormatForProperty(expose, propDef);
+			} else if (this.isNumericDataType(propDef.panel.dataType) && this.isNumericExpose(expose)) {
+				format = this.deriveNumericFormatForProperty(expose, propDef);
+			}
+
 			return [
 				this.createProperty({
 					identifier: propDef.panel.identifier.toLowerCase(),
@@ -380,12 +456,76 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 					z2mProperty: propDef.z2mProperty,
 					permissions,
 					unit: propDef.panel.unit,
-					format: propDef.panel.format,
+					format,
 				}),
 			];
 		}
 
 		return properties;
+	}
+
+	/**
+	 * Derive enum format for property mapping
+	 */
+	private deriveEnumFormatForProperty(expose: Z2mExposeEnum, propDef: ResolvedProperty): string[] {
+		const deviceValues = expose.values;
+
+		if (!propDef.transformerName && !propDef.inlineTransform) {
+			return deviceValues;
+		}
+
+		const transformer = this.transformerRegistry.getOrCreate(propDef.transformerName, propDef.inlineTransform);
+		return deviceValues.map((value) => {
+			const transformed = transformer.read(value);
+			if (typeof transformed === 'string') {
+				return transformed;
+			}
+			if (typeof transformed === 'number' || typeof transformed === 'boolean') {
+				return String(transformed);
+			}
+			return value;
+		});
+	}
+
+	/**
+	 * Derive numeric format for property mapping
+	 */
+	private deriveNumericFormatForProperty(
+		expose: Z2mExposeNumeric,
+		propDef: ResolvedProperty,
+	): [number, number] | undefined {
+		if (expose.value_min === undefined && expose.value_max === undefined) {
+			return propDef.panel.format as [number, number] | undefined;
+		}
+
+		const specFormat = propDef.panel.format as [number, number] | undefined;
+		let min = expose.value_min ?? specFormat?.[0];
+		let max = expose.value_max ?? specFormat?.[1];
+
+		if (min === undefined && max === undefined) {
+			return undefined;
+		}
+
+		if (propDef.transformerName || propDef.inlineTransform) {
+			const transformer = this.transformerRegistry.getOrCreate(propDef.transformerName, propDef.inlineTransform);
+			if (min !== undefined) {
+				const transformedMin = transformer.read(min);
+				if (typeof transformedMin === 'number') {
+					min = transformedMin;
+				}
+			}
+			if (max !== undefined) {
+				const transformedMax = transformer.read(max);
+				if (typeof transformedMax === 'number') {
+					max = transformedMax;
+				}
+			}
+		}
+
+		if (min !== undefined && max !== undefined) {
+			return [min, max];
+		}
+		return undefined;
 	}
 
 	/**

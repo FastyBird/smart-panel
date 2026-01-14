@@ -196,10 +196,70 @@ describe('Z2mExposesMapperService', () => {
 			// transformed via cover_state to ['opened', 'closed', 'stopped']
 			expect(statusProperty?.format).toEqual(['opened', 'closed', 'stopped']);
 
-			// Check position property
+			// Check position property - format derived from device range [0, 100]
 			const positionProperty = result[0].properties.find((p) => p.identifier === 'position');
 			expect(positionProperty).toBeDefined();
 			expect(positionProperty?.dataType).toBe(DataTypeType.UCHAR);
+			expect(positionProperty?.format).toEqual([0, 100]);
+		});
+
+		it('should derive numeric format from device range with transformer', () => {
+			// Light brightness: device exposes [0, 254], transformer scales to [0, 100]
+			const exposes: Z2mExposeSpecific[] = [
+				{
+					type: 'light',
+					features: [
+						{
+							type: 'binary',
+							name: 'state',
+							property: 'state',
+							access: 7,
+							value_on: 'ON',
+							value_off: 'OFF',
+						} as Z2mExposeBinary,
+						{
+							type: 'numeric',
+							name: 'brightness',
+							property: 'brightness',
+							access: 7,
+							value_min: 0,
+							value_max: 254,
+						} as Z2mExposeNumeric,
+					],
+				},
+			];
+
+			const result = service.mapExposes(exposes);
+
+			// Brightness property should have format derived from device range [0, 254]
+			// transformed via brightness transformer (scale 0-254 -> 0-100)
+			const brightnessProperty = result[0].properties.find((p) => p.identifier === 'brightness');
+			expect(brightnessProperty).toBeDefined();
+			expect(brightnessProperty?.dataType).toBe(DataTypeType.UCHAR);
+			// After transformation: 0 -> 0, 254 -> 100
+			expect(brightnessProperty?.format).toEqual([0, 100]);
+		});
+
+		it('should use device numeric range when narrower than spec', () => {
+			// Temperature sensor: spec allows [-40, 125] but device only supports [-10, 50]
+			const exposes: Z2mExposeNumeric[] = [
+				{
+					type: 'numeric',
+					name: 'temperature',
+					property: 'temperature',
+					access: 1,
+					unit: '°C',
+					value_min: -10,
+					value_max: 50,
+				},
+			];
+
+			const result = service.mapExposes(exposes);
+
+			const tempProperty = result[0].properties.find((p) => p.z2mProperty === 'temperature');
+			expect(tempProperty).toBeDefined();
+			// Format should use device's actual range, not spec's wider range
+			expect(tempProperty?.format).toEqual([-10, 50]);
 		});
 
 		it('should map switch expose', () => {
