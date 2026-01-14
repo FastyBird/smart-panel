@@ -32,7 +32,6 @@ import {
 	ResolvedPanelProperty,
 	ResolvedProperty,
 } from './mapping.types';
-import mappingSchema from './schema/mapping-schema.json';
 import { BUILTIN_TRANSFORMERS, TransformerRegistry } from './transformers';
 
 /**
@@ -58,6 +57,10 @@ export class MappingLoaderService implements OnModuleInit {
 
 	constructor(private readonly transformerRegistry: TransformerRegistry) {
 		this.ajv = new Ajv({ allErrors: true, strict: false });
+
+		// Load JSON schema at runtime to avoid ts-node issues with JSON imports
+		const schemaPath = join(__dirname, 'schema', 'mapping-schema.json');
+		const mappingSchema = JSON.parse(readFileSync(schemaPath, 'utf-8'));
 		this.validateSchema = this.ajv.compile(mappingSchema);
 	}
 
