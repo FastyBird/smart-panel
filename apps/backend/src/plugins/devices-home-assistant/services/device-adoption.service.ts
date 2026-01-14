@@ -7,9 +7,9 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { ChannelCategory, ConnectionState, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelSpecModel } from '../../../modules/devices/models/devices.model';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
-import { getPropertyMetadata } from '../../../modules/devices/utils/schema.utils';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { getPropertyMetadata } from '../../../modules/devices/utils/schema.utils';
 import { channelsSchema } from '../../../spec/channels';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import {
@@ -712,10 +712,7 @@ export class DeviceAdoptionService {
 					}
 
 					// Validate data type using schema utils which handles multi-datatype properties
-					const propertyMetadata = getPropertyMetadata(
-						ChannelCategory.DEVICE_INFORMATION,
-						propDef.category as PropertyCategory,
-					);
+					const propertyMetadata = getPropertyMetadata(ChannelCategory.DEVICE_INFORMATION, propDef.category);
 					if (propertyMetadata && propDef.dataType) {
 						let dataTypeValid = false;
 						let expectedDataTypes: string;
