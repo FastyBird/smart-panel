@@ -184,7 +184,7 @@
         "doorbell": "The Doorbell device represents a smart doorbell system that provides video, audio, and additional monitoring features for enhanced home security.",
         "door": "The Door device represents automated or monitored doors, such as garage doors, entrance doors, or other types of doors, with additional features for security and environmental awareness.",
         "fan": "The Fan device represents a standalone or integrated fan system with features for speed control, direction adjustment, and energy monitoring.",
-        "heater": "The Heater device represents a heating system designed to control and monitor environmental temperature, with optional features for energy and humidity management.",
+        "heating_unit": "The Heating Unit device represents a space or room heating system designed to control and monitor environmental temperature, with optional features for energy and humidity management.",
         "lighting": "The Lighting device represents a lighting system designed to provide illumination with optional features for energy tracking, brightness control, and adaptive lighting based on ambient conditions.",
         "lock": "The Lock device represents an electronic or smart locking system, providing control and monitoring of access points such as doors or gates.",
         "media": "The Media device represents a multimedia system capable of playing, recording, or managing audio and video content.",
@@ -198,6 +198,7 @@
         "television": "The Television device represents a smart TV or similar media device that can be controlled and monitored for its audio and display functionality.",
         "thermostat": "The Thermostat device represents a climate control system that monitors and adjusts temperature and related environmental factors.",
         "valve": "The Valve device represents a controllable valve used for managing the flow of liquids or gases in various systems.",
+        "water_heater": "The Water Heater device represents a water heating system designed to heat and maintain water temperature, with optional features for energy monitoring and leak detection.",
         "window_covering": "The Window Covering device represents automated window treatments such as blinds, shades, or curtains."
       },
       "selectPlugin": "To create a new device, please select a compatible plugin from the list. Plugins provide the necessary configuration options for specific device type.",
@@ -697,7 +698,7 @@
       "door": "Door",
       "doorbell": "Doorbell",
       "fan": "Fan",
-      "heater": "Heater",
+      "heating_unit": "Heating unit",
       "lighting": "Lighting",
       "lock": "Lock",
       "media": "Media",
@@ -711,6 +712,7 @@
       "television": "Television",
       "thermostat": "Thermostat",
       "valve": "Valve",
+      "water_heater": "Water heater",
       "window_covering": "Window covering"
     },
     "channels": {

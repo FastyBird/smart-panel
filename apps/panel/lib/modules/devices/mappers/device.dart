@@ -152,7 +152,10 @@ Map<DevicesModuleDeviceCategory, DeviceView Function(DeviceModel, List<ChannelVi
   DevicesModuleDeviceCategory.fan: (device, channels, isValid, validationIssues) {
     return _createDeviceView(device, channels, isValid, validationIssues, FanDeviceView.new);
   },
-  DevicesModuleDeviceCategory.heater: (device, channels, isValid, validationIssues) {
+  DevicesModuleDeviceCategory.heatingUnit: (device, channels, isValid, validationIssues) {
+    return _createDeviceView(device, channels, isValid, validationIssues, HeaterDeviceView.new);
+  },
+  DevicesModuleDeviceCategory.waterHeater: (device, channels, isValid, validationIssues) {
     return _createDeviceView(device, channels, isValid, validationIssues, HeaterDeviceView.new);
   },
   DevicesModuleDeviceCategory.lighting: (device, channels, isValid, validationIssues) {
@@ -246,8 +249,11 @@ Map<DevicesModuleDeviceCategory, IconData Function()> deviceIconMappers = {
   DevicesModuleDeviceCategory.fan: () {
     return MdiIcons.fan;
   },
-  DevicesModuleDeviceCategory.heater: () {
+  DevicesModuleDeviceCategory.heatingUnit: () {
     return MdiIcons.radiator;
+  },
+  DevicesModuleDeviceCategory.waterHeater: () {
+    return MdiIcons.waterBoiler;
   },
   DevicesModuleDeviceCategory.lighting: () {
     return MdiIcons.lightbulb;
@@ -394,10 +400,18 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
       initialState: const FanDeviceState(),
     );
   },
-  DevicesModuleDeviceCategory.heater: (device) {
+  DevicesModuleDeviceCategory.heatingUnit: (device) {
     if (device is! HeaterDeviceView) {
       throw ArgumentError(
-        'Device view is not valid for Heater device detail',
+        'Device view is not valid for Heating Unit device detail',
+      );
+    }
+    return HeaterDeviceDetail(device: device);
+  },
+  DevicesModuleDeviceCategory.waterHeater: (device) {
+    if (device is! HeaterDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Water Heater device detail',
       );
     }
     return HeaterDeviceDetail(device: device);

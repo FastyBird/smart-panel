@@ -24,7 +24,7 @@
             "door",
             "doorbell",
             "fan",
-            "heater",
+            "heating_unit",
             "lighting",
             "lock",
             "media",
@@ -38,6 +38,7 @@
             "television",
             "thermostat",
             "valve",
+            "water_heater",
             "window_covering"
           ]
         },

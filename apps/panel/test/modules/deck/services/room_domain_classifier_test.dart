@@ -22,9 +22,9 @@ void main() {
         );
       });
 
-      test('should classify heater to climate domain', () {
+      test('should classify heatingUnit to climate domain', () {
         expect(
-          classifyDeviceToDomain(DevicesModuleDeviceCategory.heater),
+          classifyDeviceToDomain(DevicesModuleDeviceCategory.heatingUnit),
           DomainType.climate,
         );
       });
@@ -253,7 +253,7 @@ void main() {
     test('should count climate devices', () {
       final categories = [
         DevicesModuleDeviceCategory.thermostat,
-        DevicesModuleDeviceCategory.heater,
+        DevicesModuleDeviceCategory.heatingUnit,
         DevicesModuleDeviceCategory.airConditioner,
       ];
 

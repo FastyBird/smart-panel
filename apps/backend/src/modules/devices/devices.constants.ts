@@ -65,7 +65,7 @@ export enum DeviceCategory {
 	DOOR = 'door',
 	DOORBELL = 'doorbell',
 	FAN = 'fan',
-	HEATER = 'heater',
+	HEATING_UNIT = 'heating_unit',
 	LIGHTING = 'lighting',
 	LOCK = 'lock',
 	MEDIA = 'media',
@@ -79,6 +79,7 @@ export enum DeviceCategory {
 	TELEVISION = 'television',
 	THERMOSTAT = 'thermostat',
 	VALVE = 'valve',
+	WATER_HEATER = 'water_heater',
 	WINDOW_COVERING = 'window_covering',
 }
 

@@ -781,7 +781,7 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		domain: HomeAssistantDomain.WATER_HEATER,
 		device_class: null,
 		channel_category: ChannelCategory.HEATER,
-		device_category_hint: DeviceCategory.HEATER,
+		device_category_hint: DeviceCategory.WATER_HEATER,
 		priority: 50,
 		property_bindings: [
 			{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.MODE },

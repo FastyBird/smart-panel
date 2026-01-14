@@ -17,7 +17,7 @@ DomainType? classifyDeviceToDomain(DevicesModuleDeviceCategory category) {
 
     // CLIMATE domain
     case DevicesModuleDeviceCategory.thermostat:
-    case DevicesModuleDeviceCategory.heater:
+    case DevicesModuleDeviceCategory.heatingUnit:
     case DevicesModuleDeviceCategory.airConditioner:
     case DevicesModuleDeviceCategory.fan:
     case DevicesModuleDeviceCategory.airHumidifier:
@@ -48,6 +48,7 @@ DomainType? classifyDeviceToDomain(DevicesModuleDeviceCategory category) {
     case DevicesModuleDeviceCategory.sprinkler:
     case DevicesModuleDeviceCategory.switcher:
     case DevicesModuleDeviceCategory.valve:
+    case DevicesModuleDeviceCategory.waterHeater:
     case DevicesModuleDeviceCategory.windowCovering:
     case DevicesModuleDeviceCategory.$unknown:
       return null;

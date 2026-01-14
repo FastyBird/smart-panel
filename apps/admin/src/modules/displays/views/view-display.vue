@@ -409,7 +409,7 @@ const { devices, fetchDevices, loaded: devicesLoaded } = useDevices();
 const climateCategories = [
 	DevicesModuleDeviceCategory.thermostat,
 	DevicesModuleDeviceCategory.air_conditioner,
-	DevicesModuleDeviceCategory.heater,
+	DevicesModuleDeviceCategory.heating_unit,
 	DevicesModuleDeviceCategory.air_humidifier,
 	DevicesModuleDeviceCategory.air_dehumidifier,
 	DevicesModuleDeviceCategory.air_purifier,
