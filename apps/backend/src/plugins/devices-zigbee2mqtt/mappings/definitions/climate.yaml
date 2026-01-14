@@ -167,4 +167,3 @@ mappings:
 # - preset (away, boost, comfort, eco, etc.) - no preset property in thermostat channel
 # - fan_mode - would need separate fan channel, but not part of thermostat device
 # - local_temperature_calibration - no calibration property
-# - running_state detailed values (heat vs cool) - only maps to active bool
