@@ -194,6 +194,14 @@ mappings:
               data_type: FLOAT
               unit: "lx"
               settable: false
+        # Illuminance level is derived from lux density
+        derived_properties:
+          - identifier: LEVEL
+            name: Light Level
+            data_type: ENUM
+            format: ["dark", "dusky", "moderate", "bright"]
+            source_property: DENSITY
+            derivation: illuminance_level_from_density
 
   # Illuminance sensor (lux variant)
   - name: illuminance_lux_sensor
@@ -216,6 +224,14 @@ mappings:
               data_type: FLOAT
               unit: "lx"
               settable: false
+        # Illuminance level is derived from lux density
+        derived_properties:
+          - identifier: LEVEL
+            name: Light Level
+            data_type: ENUM
+            format: ["dark", "dusky", "moderate", "bright"]
+            source_property: DENSITY
+            derivation: illuminance_level_from_density
 
   # ============================================
   # BINARY SENSORS
@@ -307,6 +323,14 @@ mappings:
               name: Leak Detected
               data_type: BOOL
               settable: false
+        # Leak level is derived from detected boolean
+        derived_properties:
+          - identifier: LEVEL
+            name: Leak Level
+            data_type: ENUM
+            format: ["none", "high"]
+            source_property: DETECTED
+            derivation: leak_level_from_detected
 
   # Smoke sensor
   - name: smoke_sensor
@@ -370,6 +394,14 @@ mappings:
               name: Gas Detected
               data_type: BOOL
               settable: false
+        # Gas status is derived from detected boolean
+        derived_properties:
+          - identifier: STATUS
+            name: Gas Status
+            data_type: ENUM
+            format: ["normal", "alarm"]
+            source_property: DETECTED
+            derivation: gas_status_from_detected
 
   # Vibration sensor
   - name: vibration_sensor
@@ -442,6 +474,15 @@ mappings:
               format: [0, 100]
               unit: "%"
               settable: false
+        # Battery status is derived from percentage
+        # < 20% = low, >= 20% = ok
+        derived_properties:
+          - identifier: STATUS
+            name: Battery Status
+            data_type: ENUM
+            format: ["ok", "low", "charging"]
+            source_property: PERCENTAGE
+            derivation: battery_status_from_percentage
 
   # Battery low indicator
   # Z2M reports battery_low as boolean, Panel uses status enum ["ok", "low", "charging"]

@@ -25,7 +25,15 @@ import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME, Z2M_ACCESS } from '../devices-zigbee2m
 import { Z2mExpose, Z2mExposeEnum, Z2mExposeNumeric, Z2mExposeSpecific } from '../interfaces/zigbee2mqtt.interface';
 
 import { MappingLoaderService } from './mapping-loader.service';
-import { ResolvedChannel, ResolvedFeature, ResolvedMapping, ResolvedProperty } from './mapping.types';
+import {
+	AnyDerivation,
+	ResolvedChannel,
+	ResolvedDerivedProperty,
+	ResolvedFeature,
+	ResolvedMapping,
+	ResolvedProperty,
+	ResolvedStaticProperty,
+} from './mapping.types';
 import { ITransformer, TransformContext, TransformerRegistry } from './transformers';
 
 /**
@@ -179,6 +187,18 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 		if (channelDef.properties) {
 			const propMappings = this.processProperties(channelDef.properties, expose, channelDef.category);
 			properties.push(...propMappings);
+		}
+
+		// Process static properties (fixed values)
+		if (channelDef.staticProperties) {
+			const staticProps = this.processStaticProperties(channelDef.staticProperties, channelDef.category);
+			properties.push(...staticProps);
+		}
+
+		// Process derived properties (calculated from other properties)
+		if (channelDef.derivedProperties) {
+			const derivedProps = this.processDerivedProperties(channelDef.derivedProperties, channelDef.category, properties);
+			properties.push(...derivedProps);
 		}
 
 		if (properties.length === 0) {
@@ -481,6 +501,151 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 		}
 
 		return properties;
+	}
+
+	/**
+	 * Process static properties (fixed values)
+	 */
+	private processStaticProperties(
+		staticDefs: ResolvedStaticProperty[],
+		channelCategory: ChannelCategory,
+	): MappedProperty[] {
+		const properties: MappedProperty[] = [];
+
+		for (const staticDef of staticDefs) {
+			properties.push(
+				this.createProperty({
+					identifier: staticDef.identifier.toLowerCase(),
+					name: staticDef.name ?? this.formatName(staticDef.identifier),
+					category: staticDef.identifier,
+					channelCategory,
+					dataType: staticDef.dataType,
+					z2mProperty: `__static_${staticDef.identifier.toLowerCase()}`,
+					permissions: [PermissionType.READ_ONLY],
+					unit: staticDef.unit,
+					format: staticDef.format,
+					// Store the static value as metadata
+					// This will be used during state updates to provide the fixed value
+				}),
+			);
+		}
+
+		return properties;
+	}
+
+	/**
+	 * Process derived properties (calculated from other properties)
+	 */
+	private processDerivedProperties(
+		derivedDefs: ResolvedDerivedProperty[],
+		channelCategory: ChannelCategory,
+		existingProperties: MappedProperty[],
+	): MappedProperty[] {
+		const properties: MappedProperty[] = [];
+
+		for (const derivedDef of derivedDefs) {
+			// Check if source property exists in the channel
+			const sourceExists = existingProperties.some(
+				(p) => p.category.toLowerCase() === derivedDef.sourceProperty.toLowerCase(),
+			);
+
+			if (!sourceExists) {
+				this.logger.debug(
+					`Skipping derived property '${derivedDef.identifier}': source property '${derivedDef.sourceProperty}' not found`,
+				);
+				continue;
+			}
+
+			properties.push(
+				this.createProperty({
+					identifier: derivedDef.identifier.toLowerCase(),
+					name: derivedDef.name ?? this.formatName(derivedDef.identifier),
+					category: derivedDef.identifier,
+					channelCategory,
+					dataType: derivedDef.dataType,
+					z2mProperty: `__derived_${derivedDef.identifier.toLowerCase()}`,
+					permissions: [PermissionType.READ_ONLY],
+					unit: derivedDef.unit,
+					format: derivedDef.format,
+					// Derivation metadata is stored in the resolved mapping and used at runtime
+				}),
+			);
+		}
+
+		return properties;
+	}
+
+	/**
+	 * Apply derivation rule to calculate derived value from source value
+	 */
+	applyDerivation(derivation: AnyDerivation, sourceValue: unknown): string | null {
+		switch (derivation.type) {
+			case 'threshold':
+				return this.applyThresholdDerivation(derivation, sourceValue);
+			case 'boolean_map':
+				return this.applyBooleanDerivation(derivation, sourceValue);
+			case 'position_status':
+				return this.applyPositionStatusDerivation(derivation, sourceValue);
+			default:
+				return null;
+		}
+	}
+
+	/**
+	 * Apply threshold-based derivation
+	 */
+	private applyThresholdDerivation(
+		derivation: { type: 'threshold'; thresholds: { min?: number; max?: number; value: string }[] },
+		sourceValue: unknown,
+	): string | null {
+		if (typeof sourceValue !== 'number') {
+			return null;
+		}
+
+		for (const threshold of derivation.thresholds) {
+			const meetsMin = threshold.min === undefined || sourceValue >= threshold.min;
+			const meetsMax = threshold.max === undefined || sourceValue <= threshold.max;
+
+			if (meetsMin && meetsMax) {
+				return threshold.value;
+			}
+		}
+
+		// Return last threshold value as default (threshold with no min/max)
+		const defaultThreshold = derivation.thresholds.find((t) => t.min === undefined && t.max === undefined);
+		return defaultThreshold?.value ?? null;
+	}
+
+	/**
+	 * Apply boolean-based derivation
+	 */
+	private applyBooleanDerivation(
+		derivation: { type: 'boolean_map'; true_value: string; false_value: string },
+		sourceValue: unknown,
+	): string {
+		// Coerce to boolean
+		const boolValue = Boolean(sourceValue);
+		return boolValue ? derivation.true_value : derivation.false_value;
+	}
+
+	/**
+	 * Apply position-to-status derivation
+	 */
+	private applyPositionStatusDerivation(
+		derivation: { type: 'position_status'; closed_value: string; opened_value: string; partial_value?: string },
+		sourceValue: unknown,
+	): string {
+		if (typeof sourceValue !== 'number') {
+			return derivation.closed_value;
+		}
+
+		if (sourceValue <= 0) {
+			return derivation.closed_value;
+		}
+		if (sourceValue >= 100) {
+			return derivation.opened_value;
+		}
+		return derivation.partial_value ?? derivation.closed_value;
 	}
 
 	/**

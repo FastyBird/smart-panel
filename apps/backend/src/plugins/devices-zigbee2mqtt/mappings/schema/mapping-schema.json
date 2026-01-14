@@ -19,13 +19,20 @@
 				"$ref": "#/definitions/transformer"
 			}
 		},
+		"derivations": {
+			"type": "object",
+			"description": "Reusable derivation rules for derived properties",
+			"additionalProperties": {
+				"$ref": "#/definitions/derivationDefinition"
+			}
+		},
 		"mappings": {
 			"type": "array",
 			"description": "Device type mappings",
 			"items": {
 				"$ref": "#/definitions/mapping"
 			},
-			"minItems": 1
+			"minItems": 0
 		}
 	},
 	"definitions": {
@@ -289,6 +296,16 @@
 					"type": "array",
 					"items": { "$ref": "#/definitions/property" },
 					"description": "Property mappings for generic exposes (sensors)"
+				},
+				"static_properties": {
+					"type": "array",
+					"items": { "$ref": "#/definitions/staticProperty" },
+					"description": "Static properties with fixed values"
+				},
+				"derived_properties": {
+					"type": "array",
+					"items": { "$ref": "#/definitions/derivedProperty" },
+					"description": "Properties derived from other properties"
 				}
 			}
 		},
@@ -470,6 +487,211 @@
 					"description": "Bidirectional mapping values"
 				}
 			}
+		},
+		"staticProperty": {
+			"type": "object",
+			"required": ["identifier", "data_type", "value"],
+			"additionalProperties": false,
+			"properties": {
+				"identifier": {
+					"type": "string",
+					"description": "Property identifier (maps to PropertyCategory)"
+				},
+				"name": {
+					"type": "string",
+					"description": "Human-readable property name"
+				},
+				"data_type": {
+					"type": "string",
+					"enum": ["BOOL", "CHAR", "UCHAR", "SHORT", "USHORT", "INT", "UINT", "FLOAT", "STRING", "ENUM", "DATE", "TIME", "DATETIME", "COLOR", "BUTTON", "SWITCH", "UNKNOWN"],
+					"description": "Data type"
+				},
+				"format": {
+					"oneOf": [
+						{
+							"type": "array",
+							"items": { "type": "number" },
+							"minItems": 2,
+							"maxItems": 2
+						},
+						{
+							"type": "array",
+							"items": { "type": "string" }
+						}
+					],
+					"description": "Value format/range"
+				},
+				"unit": {
+					"type": "string",
+					"description": "Unit of measurement"
+				},
+				"value": {
+					"oneOf": [
+						{ "type": "string" },
+						{ "type": "number" },
+						{ "type": "boolean" }
+					],
+					"description": "The fixed value for this property"
+				}
+			}
+		},
+		"derivedProperty": {
+			"type": "object",
+			"required": ["identifier", "data_type", "source_property"],
+			"additionalProperties": false,
+			"properties": {
+				"identifier": {
+					"type": "string",
+					"description": "Property identifier (maps to PropertyCategory)"
+				},
+				"name": {
+					"type": "string",
+					"description": "Human-readable property name"
+				},
+				"data_type": {
+					"type": "string",
+					"enum": ["BOOL", "CHAR", "UCHAR", "SHORT", "USHORT", "INT", "UINT", "FLOAT", "STRING", "ENUM", "DATE", "TIME", "DATETIME", "COLOR", "BUTTON", "SWITCH", "UNKNOWN"],
+					"description": "Data type"
+				},
+				"format": {
+					"oneOf": [
+						{
+							"type": "array",
+							"items": { "type": "number" },
+							"minItems": 2,
+							"maxItems": 2
+						},
+						{
+							"type": "array",
+							"items": { "type": "string" }
+						}
+					],
+					"description": "Value format/range"
+				},
+				"unit": {
+					"type": "string",
+					"description": "Unit of measurement"
+				},
+				"source_property": {
+					"type": "string",
+					"description": "Source property identifier to derive from"
+				},
+				"derivation": {
+					"type": "string",
+					"description": "Reference to named derivation rule"
+				},
+				"derive": {
+					"$ref": "#/definitions/derivationRule",
+					"description": "Inline derivation rule definition"
+				}
+			}
+		},
+		"derivationDefinition": {
+			"type": "object",
+			"required": ["rule"],
+			"additionalProperties": false,
+			"properties": {
+				"description": {
+					"type": "string",
+					"description": "Description of what this derivation does"
+				},
+				"rule": {
+					"$ref": "#/definitions/derivationRule"
+				}
+			}
+		},
+		"derivationRule": {
+			"type": "object",
+			"required": ["type"],
+			"properties": {
+				"type": {
+					"type": "string",
+					"enum": ["threshold", "boolean_map", "position_status"],
+					"description": "Type of derivation"
+				}
+			},
+			"allOf": [
+				{
+					"if": {
+						"properties": { "type": { "const": "threshold" } }
+					},
+					"then": {
+						"properties": {
+							"type": { "const": "threshold" },
+							"thresholds": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"required": ["value"],
+									"additionalProperties": false,
+									"properties": {
+										"min": {
+											"type": "number",
+											"description": "Minimum value (inclusive)"
+										},
+										"max": {
+											"type": "number",
+											"description": "Maximum value (inclusive)"
+										},
+										"value": {
+											"type": "string",
+											"description": "Output value when threshold matches"
+										}
+									}
+								},
+								"minItems": 1,
+								"description": "Threshold entries (first matching wins)"
+							}
+						},
+						"required": ["type", "thresholds"],
+						"additionalProperties": false
+					}
+				},
+				{
+					"if": {
+						"properties": { "type": { "const": "boolean_map" } }
+					},
+					"then": {
+						"properties": {
+							"type": { "const": "boolean_map" },
+							"true_value": {
+								"type": "string",
+								"description": "Value when source is true"
+							},
+							"false_value": {
+								"type": "string",
+								"description": "Value when source is false"
+							}
+						},
+						"required": ["type", "true_value", "false_value"],
+						"additionalProperties": false
+					}
+				},
+				{
+					"if": {
+						"properties": { "type": { "const": "position_status" } }
+					},
+					"then": {
+						"properties": {
+							"type": { "const": "position_status" },
+							"closed_value": {
+								"type": "string",
+								"description": "Value when position is 0 (fully closed)"
+							},
+							"opened_value": {
+								"type": "string",
+								"description": "Value when position is 100 (fully open)"
+							},
+							"partial_value": {
+								"type": "string",
+								"description": "Value for any other position"
+							}
+						},
+						"required": ["type", "closed_value", "opened_value"],
+						"additionalProperties": false
+					}
+				}
+			]
 		}
 	}
 }

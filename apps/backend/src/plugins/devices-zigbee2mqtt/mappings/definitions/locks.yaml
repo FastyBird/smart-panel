@@ -63,3 +63,13 @@ mappings:
               format: [0, 100]
               unit: "%"
               settable: false
+
+        # Lock status is derived from ON property
+        # ON=true means locked, ON=false means unlocked
+        derived_properties:
+          - identifier: STATUS
+            name: Lock Status
+            data_type: ENUM
+            format: ["locked", "unlocked", "jammed", "unknown"]
+            source_property: ON
+            derivation: lock_status_from_on

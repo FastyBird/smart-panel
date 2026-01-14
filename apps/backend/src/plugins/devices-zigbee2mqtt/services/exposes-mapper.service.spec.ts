@@ -358,7 +358,9 @@ describe('Z2mExposesMapperService', () => {
 			expect(batteryProperty?.category).toBe(PropertyCategory.PERCENTAGE);
 		});
 
-		it('should map action event for remote controls and buttons', () => {
+		// Remote control action mapping is commented out - GENERIC category not supported by Smart Panel
+		// Button events (push, click, double_click) are not supported by the current UI
+		it.skip('should map action event for remote controls and buttons', () => {
 			// Remote control action expose (e.g., Aqara wireless switch)
 			const exposes: Z2mExposeEnum[] = [
 				{
@@ -480,7 +482,9 @@ describe('Z2mExposesMapperService', () => {
 			expect(formaldehydeChannel?.category).toBe(ChannelCategory.VOLATILE_ORGANIC_COMPOUNDS);
 		});
 
-		it('should map agricultural and device temperature sensors', () => {
+		// Agricultural and device temperature sensors are commented out - no valid property category
+		// soil_temperature, soil_moisture, device_temperature don't have matching PropertyCategory values
+		it.skip('should map agricultural and device temperature sensors', () => {
 			// Agricultural sensor with soil properties and device temperature
 			const exposes: Z2mExposeNumeric[] = [
 				{
@@ -634,7 +638,10 @@ describe('Z2mExposesMapperService', () => {
 			expect(result.length).toBeGreaterThanOrEqual(0);
 		});
 
-		it('should handle climate expose', () => {
+		it('should handle climate expose (multi-channel structure)', () => {
+			// Climate devices now map to multiple channels:
+			// - temperature channel: local_temperature
+			// - heater channel: occupied_heating_setpoint
 			const exposes: Z2mExposeSpecific[] = [
 				{
 					type: 'climate',
@@ -661,10 +668,18 @@ describe('Z2mExposesMapperService', () => {
 
 			const result = service.mapExposes(exposes);
 
-			expect(result).toHaveLength(1);
-			expect(result[0].identifier).toBe('thermostat');
-			expect(result[0].category).toBe(ChannelCategory.THERMOSTAT);
-			expect(result[0].properties.length).toBeGreaterThanOrEqual(1);
+			// Climate now creates multiple channels
+			expect(result).toHaveLength(2);
+
+			// Temperature channel from local_temperature
+			const temperatureChannel = result.find((c) => c.category === ChannelCategory.TEMPERATURE);
+			expect(temperatureChannel).toBeDefined();
+			expect(temperatureChannel?.identifier).toBe('temperature');
+
+			// Heater channel from occupied_heating_setpoint
+			const heaterChannel = result.find((c) => c.category === ChannelCategory.HEATER);
+			expect(heaterChannel).toBeDefined();
+			expect(heaterChannel?.identifier).toBe('heater');
 		});
 
 		it('should deduplicate properties when device has both occupied and current heating setpoints', () => {
@@ -705,13 +720,17 @@ describe('Z2mExposesMapperService', () => {
 
 			const result = service.mapExposes(exposes);
 
-			expect(result).toHaveLength(1);
-			expect(result[0].category).toBe(ChannelCategory.THERMOSTAT);
+			// Climate now creates multiple channels (temperature + heater)
+			expect(result).toHaveLength(2);
 
-			// Find properties that map heating setpoints
+			// Find heater channel
+			const heaterChannel = result.find((c) => c.category === ChannelCategory.HEATER);
+			expect(heaterChannel).toBeDefined();
+
+			// Find properties that map heating setpoints in the heater channel
 			// Both occupied_heating_setpoint and current_heating_setpoint map to the same identifier
 			// so we should only have ONE such property (first match wins - occupied_heating_setpoint)
-			const heatingSetpointProps = result[0].properties.filter(
+			const heatingSetpointProps = heaterChannel!.properties.filter(
 				(p) => p.z2mProperty === 'occupied_heating_setpoint' || p.z2mProperty === 'current_heating_setpoint',
 			);
 

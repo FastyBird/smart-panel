@@ -21,7 +21,11 @@ import {
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME } from '../devices-zigbee2mqtt.constants';
 
 import {
+	AnyDerivation,
 	ChannelMapping,
+	DerivationDefinition,
+	DerivationRulesConfig,
+	DerivedPropertyConfig,
 	FeatureMapping,
 	MappingConfig,
 	MappingDefinition,
@@ -31,12 +35,44 @@ import {
 	PanelPropertyConfig,
 	PropertyMapping,
 	ResolvedChannel,
+	ResolvedDerivedProperty,
 	ResolvedFeature,
 	ResolvedMapping,
 	ResolvedPanelProperty,
 	ResolvedProperty,
+	ResolvedStaticProperty,
+	StaticPropertyConfig,
 } from './mapping.types';
 import { BUILTIN_TRANSFORMERS, TransformerRegistry } from './transformers';
+
+/**
+ * Registry for derivation rules
+ */
+class DerivationRegistry {
+	private derivations: Map<string, DerivationDefinition> = new Map();
+
+	register(name: string, definition: DerivationDefinition): void {
+		this.derivations.set(name, definition);
+	}
+
+	registerAll(definitions: Record<string, DerivationDefinition>): void {
+		for (const [name, definition] of Object.entries(definitions)) {
+			this.register(name, definition);
+		}
+	}
+
+	get(name: string): DerivationDefinition | undefined {
+		return this.derivations.get(name);
+	}
+
+	has(name: string): boolean {
+		return this.derivations.has(name);
+	}
+
+	get size(): number {
+		return this.derivations.size;
+	}
+}
 
 /**
  * Service for loading and managing mapping configurations
@@ -50,6 +86,7 @@ export class MappingLoaderService implements OnModuleInit {
 
 	private readonly ajv: Ajv;
 	private readonly validateSchema: ReturnType<Ajv['compile']>;
+	private readonly derivationRegistry: DerivationRegistry = new DerivationRegistry();
 
 	private resolvedMappings: ResolvedMapping[] = [];
 	private loadedSources: MappingLoadResult[] = [];
@@ -73,8 +110,37 @@ export class MappingLoaderService implements OnModuleInit {
 		this.transformerRegistry.registerAll(BUILTIN_TRANSFORMERS);
 		this.logger.log(`Registered ${this.transformerRegistry.size} built-in transformers`);
 
+		// Load derivation rules
+		this.loadDerivationRules();
+
 		// Load all mapping files
 		this.loadAllMappings();
+	}
+
+	/**
+	 * Load default derivation rules file
+	 */
+	private loadDerivationRules(): void {
+		const derivationRulesPath = join(this.builtinMappingsPath, 'derivation-rules.yaml');
+
+		if (!existsSync(derivationRulesPath)) {
+			this.logger.warn('Derivation rules file not found, derived properties may not work correctly');
+			return;
+		}
+
+		try {
+			const content = readFileSync(derivationRulesPath, 'utf-8');
+			const config = parseYaml(content) as DerivationRulesConfig;
+
+			if (config.derivations) {
+				this.derivationRegistry.registerAll(config.derivations);
+				this.logger.log(`Registered ${this.derivationRegistry.size} derivation rules`);
+			}
+		} catch (error) {
+			this.logger.error('Failed to load derivation rules', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 
 	/**
@@ -172,6 +238,11 @@ export class MappingLoaderService implements OnModuleInit {
 				this.transformerRegistry.registerAll(config.transformers);
 			}
 
+			// Register derivations from this config
+			if (config.derivations) {
+				this.derivationRegistry.registerAll(config.derivations);
+			}
+
 			// Resolve mappings
 			const resolvedMappings: ResolvedMapping[] = [];
 			const warnings: string[] = [];
@@ -234,6 +305,50 @@ export class MappingLoaderService implements OnModuleInit {
 			parentIdentifier: channel.parent_identifier,
 			features: channel.features?.map((f) => this.resolveFeature(f)),
 			properties: channel.properties?.map((p) => this.resolveProperty(p)),
+			staticProperties: channel.static_properties?.map((sp) => this.resolveStaticProperty(sp)),
+			derivedProperties: channel.derived_properties?.map((dp) => this.resolveDerivedProperty(dp)),
+		};
+	}
+
+	/**
+	 * Resolve static property configuration
+	 */
+	private resolveStaticProperty(staticProp: StaticPropertyConfig): ResolvedStaticProperty {
+		return {
+			identifier: this.resolvePropertyCategory(staticProp.identifier),
+			name: staticProp.name,
+			dataType: this.resolveDataType(staticProp.data_type),
+			format: staticProp.format,
+			unit: staticProp.unit,
+			value: staticProp.value,
+		};
+	}
+
+	/**
+	 * Resolve derived property configuration
+	 */
+	private resolveDerivedProperty(derivedProp: DerivedPropertyConfig): ResolvedDerivedProperty {
+		let inlineDerivation: AnyDerivation | undefined = derivedProp.derive;
+
+		// If a named derivation is referenced, look it up
+		if (derivedProp.derivation && !inlineDerivation) {
+			const derivationDef = this.derivationRegistry.get(derivedProp.derivation);
+			if (derivationDef) {
+				inlineDerivation = derivationDef.rule;
+			} else {
+				this.logger.warn(`Derivation '${derivedProp.derivation}' not found for property '${derivedProp.identifier}'`);
+			}
+		}
+
+		return {
+			identifier: this.resolvePropertyCategory(derivedProp.identifier),
+			name: derivedProp.name,
+			dataType: this.resolveDataType(derivedProp.data_type),
+			format: derivedProp.format,
+			unit: derivedProp.unit,
+			sourceProperty: this.resolvePropertyCategory(derivedProp.source_property),
+			derivationName: derivedProp.derivation,
+			inlineDerivation,
 		};
 	}
 
@@ -477,5 +592,19 @@ export class MappingLoaderService implements OnModuleInit {
 	 */
 	getBuiltinMappingsPath(): string {
 		return this.builtinMappingsPath;
+	}
+
+	/**
+	 * Get a derivation rule by name
+	 */
+	getDerivation(name: string): DerivationDefinition | undefined {
+		return this.derivationRegistry.get(name);
+	}
+
+	/**
+	 * Check if a derivation rule exists
+	 */
+	hasDerivation(name: string): boolean {
+		return this.derivationRegistry.has(name);
 	}
 }

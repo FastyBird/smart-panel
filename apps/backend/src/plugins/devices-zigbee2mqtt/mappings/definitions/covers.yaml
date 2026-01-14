@@ -80,3 +80,18 @@ mappings:
               name: Motor Fault
               data_type: BOOL
               settable: false
+
+        # Static type property - covers are typically curtains
+        static_properties:
+          - identifier: TYPE
+            name: Cover Type
+            data_type: ENUM
+            format: ["curtain", "blind", "roller", "outdoor_blind"]
+            value: "curtain"
+
+          # Command property for manual control (open/close/stop)
+          - identifier: COMMAND
+            name: Command
+            data_type: ENUM
+            format: ["open", "close", "stop"]
+            value: "stop"
