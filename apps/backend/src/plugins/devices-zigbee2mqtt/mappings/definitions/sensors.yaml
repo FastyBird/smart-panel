@@ -18,6 +18,16 @@ transformers:
     output_range: [0, 100]
     direction: read_only
 
+  # Battery low: Z2M boolean -> Panel status enum
+  battery_low_status:
+    type: map
+    read:
+      true: "low"
+      false: "ok"
+    write:
+      "low": true
+      "ok": false
+
 mappings:
   # ============================================
   # ENVIRONMENTAL SENSORS
@@ -69,71 +79,77 @@ mappings:
               settable: false
 
   # Device temperature (internal device temperature)
-  - name: device_temperature_sensor
-    description: "Internal device temperature"
-    priority: 50
-    match:
-      expose_type: numeric
-      property: device_temperature
-    device_category: SENSOR
-    channels:
-      - identifier: device_temperature
-        name: Device Temperature
-        category: TEMPERATURE
-        properties:
-          - z2m_property: device_temperature
-            direction: read_only
-            panel:
-              identifier: TEMPERATURE
-              name: Device Temperature
-              data_type: FLOAT
-              unit: "°C"
-              settable: false
+  # DISABLED: Not a valid Smart Panel spec sensor type - device_temperature is not supported
+  # Enable when the spec adds device_temperature support
+  # - name: device_temperature_sensor
+  #   description: "Internal device temperature"
+  #   priority: 50
+  #   match:
+  #     expose_type: numeric
+  #     property: device_temperature
+  #   device_category: SENSOR
+  #   channels:
+  #     - identifier: device_temperature
+  #       name: Device Temperature
+  #       category: TEMPERATURE
+  #       properties:
+  #         - z2m_property: device_temperature
+  #           direction: read_only
+  #           panel:
+  #             identifier: TEMPERATURE
+  #             name: Device Temperature
+  #             data_type: FLOAT
+  #             unit: "°C"
+  #             settable: false
 
   # Soil temperature (agricultural sensors)
-  - name: soil_temperature_sensor
-    description: "Soil temperature sensor for agriculture"
-    priority: 50
-    match:
-      expose_type: numeric
-      property: soil_temperature
-    device_category: SENSOR
-    channels:
-      - identifier: soil_temperature
-        name: Soil Temperature
-        category: TEMPERATURE
-        properties:
-          - z2m_property: soil_temperature
-            direction: read_only
-            panel:
-              identifier: TEMPERATURE
-              name: Soil Temperature
-              data_type: FLOAT
-              unit: "°C"
-              settable: false
+  # DISABLED: Not a valid Smart Panel spec sensor type - soil_temperature is not supported
+  # Enable when the spec adds soil_temperature support
+  # - name: soil_temperature_sensor
+  #   description: "Soil temperature sensor for agriculture"
+  #   priority: 50
+  #   match:
+  #     expose_type: numeric
+  #     property: soil_temperature
+  #   device_category: SENSOR
+  #   channels:
+  #     - identifier: soil_temperature
+  #       name: Soil Temperature
+  #       category: TEMPERATURE
+  #       properties:
+  #         - z2m_property: soil_temperature
+  #           direction: read_only
+  #           panel:
+  #             identifier: TEMPERATURE
+  #             name: Soil Temperature
+  #             data_type: FLOAT
+  #             unit: "°C"
+  #             settable: false
 
   # Soil moisture (agricultural sensors)
-  - name: soil_moisture_sensor
-    description: "Soil moisture sensor for agriculture"
-    priority: 50
-    match:
-      expose_type: numeric
-      property: soil_moisture
-    device_category: SENSOR
-    channels:
-      - identifier: soil_moisture
-        name: Soil Moisture
-        category: HUMIDITY
-        properties:
-          - z2m_property: soil_moisture
-            direction: read_only
-            panel:
-              identifier: HUMIDITY
-              name: Soil Moisture
-              data_type: UCHAR
-              format: [0, 100]
-              unit: "%"
-              settable: false
+  # DISABLED: Not a valid Smart Panel spec sensor type - soil_moisture is not supported
+  # Enable when the spec adds soil_moisture support
+  # - name: soil_moisture_sensor
+  #   description: "Soil moisture sensor for agriculture"
+  #   priority: 50
+  #   match:
+  #     expose_type: numeric
+  #     property: soil_moisture
+  #   device_category: SENSOR
+  #   channels:
+  #     - identifier: soil_moisture
+  #       name: Soil Moisture
+  #       category: HUMIDITY
+  #       properties:
+  #         - z2m_property: soil_moisture
+  #           direction: read_only
+  #           panel:
+  #             identifier: HUMIDITY
+  #             name: Soil Moisture
+  #             data_type: UCHAR
+  #             format: [0, 100]
+  #             unit: "%"
+  #             settable: false
 
   # Pressure sensor
   - name: pressure_sensor
@@ -377,6 +393,8 @@ mappings:
               settable: false
 
   # Tamper detection
+  # Note: Tamper is typically a property on other channels (contact, motion, smoke, etc.)
+  # When exposed standalone, we use GENERIC channel with TAMPERED property
   - name: tamper_sensor
     description: "Tamper detection"
     priority: 40
@@ -385,8 +403,8 @@ mappings:
       property: tamper
     device_category: SENSOR
     channels:
-      - identifier: tamper
-        name: Tamper
+      - identifier: security
+        name: Security
         category: GENERIC
         properties:
           - z2m_property: tamper
@@ -425,6 +443,7 @@ mappings:
               settable: false
 
   # Battery low indicator
+  # Z2M reports battery_low as boolean, Panel uses status enum ["ok", "low", "charging"]
   - name: battery_low_sensor
     description: "Battery low indicator"
     priority: 30
@@ -440,16 +459,20 @@ mappings:
           - z2m_property: battery_low
             direction: read_only
             panel:
-              identifier: FAULT
-              name: Battery Low
-              data_type: BOOL
+              identifier: STATUS
+              name: Battery Status
+              data_type: ENUM
+              format: ["ok", "low"]
               settable: false
+            transformer: battery_low_status
 
   # ============================================
   # AIR QUALITY
   # ============================================
 
   # PM2.5 sensor (fine particulate matter)
+  # Uses air_particulate channel with DENSITY property
+  # Note: MODE property would need to be set to "pm2_5" but static values aren't supported yet
   - name: pm25_sensor
     description: "PM2.5 air particulate sensor"
     priority: 50
@@ -459,19 +482,22 @@ mappings:
     device_category: SENSOR
     channels:
       - identifier: air_particulate
-        name: Air Quality
+        name: PM2.5 Air Quality
         category: AIR_PARTICULATE
         properties:
           - z2m_property: pm25
             direction: read_only
             panel:
-              identifier: MEASURED
-              name: PM2.5
-              data_type: UINT
+              identifier: DENSITY
+              name: PM2.5 Density
+              data_type: FLOAT
+              format: [0.0, 1000.0]
               unit: "µg/m³"
               settable: false
 
   # PM10 sensor (coarse particulate matter)
+  # Uses air_particulate channel with DENSITY property
+  # Note: MODE property would need to be set to "pm10" but static values aren't supported yet
   - name: pm10_sensor
     description: "PM10 air particulate sensor"
     priority: 50
@@ -481,19 +507,22 @@ mappings:
     device_category: SENSOR
     channels:
       - identifier: air_particulate_pm10
-        name: PM10
+        name: PM10 Air Quality
         category: AIR_PARTICULATE
         properties:
           - z2m_property: pm10
             direction: read_only
             panel:
-              identifier: MEASURED
-              name: PM10
-              data_type: UINT
+              identifier: DENSITY
+              name: PM10 Density
+              data_type: FLOAT
+              format: [0.0, 1000.0]
               unit: "µg/m³"
               settable: false
 
   # PM1 sensor (ultrafine particulate matter)
+  # Uses air_particulate channel with DENSITY property
+  # Note: MODE property would need to be set to "pm1" but static values aren't supported yet
   - name: pm1_sensor
     description: "PM1 air particulate sensor"
     priority: 50
@@ -503,19 +532,21 @@ mappings:
     device_category: SENSOR
     channels:
       - identifier: air_particulate_pm1
-        name: PM1
+        name: PM1 Air Quality
         category: AIR_PARTICULATE
         properties:
           - z2m_property: pm1
             direction: read_only
             panel:
-              identifier: MEASURED
-              name: PM1
-              data_type: UINT
+              identifier: DENSITY
+              name: PM1 Density
+              data_type: FLOAT
+              format: [0.0, 1000.0]
               unit: "µg/m³"
               settable: false
 
   # Formaldehyde sensor (HCHO)
+  # Uses volatile_organic_compounds channel with DENSITY property
   - name: formaldehyde_sensor
     description: "Formaldehyde (HCHO) sensor"
     priority: 50
@@ -531,13 +562,15 @@ mappings:
           - z2m_property: formaldehyde
             direction: read_only
             panel:
-              identifier: MEASURED
+              identifier: DENSITY
               name: Formaldehyde
-              data_type: UINT
+              data_type: FLOAT
+              format: [0.0, 1000.0]
               unit: "µg/m³"
               settable: false
 
   # CO2 sensor
+  # Uses carbon_dioxide channel with DENSITY property
   - name: co2_sensor
     description: "CO2 sensor"
     priority: 50
@@ -553,13 +586,15 @@ mappings:
           - z2m_property: co2
             direction: read_only
             panel:
-              identifier: MEASURED
+              identifier: DENSITY
               name: CO2 Level
-              data_type: UINT
+              data_type: FLOAT
+              format: [0.0, 100000.0]
               unit: "ppm"
               settable: false
 
   # VOC sensor
+  # Uses volatile_organic_compounds channel with DENSITY property
   - name: voc_sensor
     description: "VOC (Volatile Organic Compounds) sensor"
     priority: 50
@@ -568,17 +603,18 @@ mappings:
       property: voc
     device_category: SENSOR
     channels:
-      - identifier: air_quality
+      - identifier: volatile_organic_compounds
         name: VOC
-        category: GENERIC
+        category: VOLATILE_ORGANIC_COMPOUNDS
         properties:
           - z2m_property: voc
             direction: read_only
             panel:
-              identifier: MEASURED
+              identifier: DENSITY
               name: VOC Level
-              data_type: UINT
-              unit: "ppb"
+              data_type: FLOAT
+              format: [0.0, 1000.0]
+              unit: "µg/m³"
               settable: false
 
   # ============================================
