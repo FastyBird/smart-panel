@@ -252,10 +252,9 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 			channelCategory,
 			dataType: featureDef.panel.dataType,
 			z2mProperty,
-			access: feature.access,
+			permissions,
 			unit: featureDef.panel.unit,
 			format: featureDef.panel.format,
-			// Store transformer reference for later use
 		});
 	}
 
@@ -286,7 +285,7 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 					channelCategory,
 					dataType: propDef.panel.dataType,
 					z2mProperty: propDef.z2mProperty,
-					access: expose.access,
+					permissions,
 					unit: propDef.panel.unit,
 					format: propDef.panel.format,
 				}),
