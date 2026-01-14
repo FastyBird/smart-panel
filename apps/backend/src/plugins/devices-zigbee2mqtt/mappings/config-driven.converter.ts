@@ -967,4 +967,70 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 
 		return results;
 	}
+
+	/**
+	 * Get write mapping for a property by channel category and property category
+	 * This is used when writing values to find the correct z2mProperty and transformer
+	 * @param channelCategory - The channel category
+	 * @param propertyCategory - The property category (spec identifier)
+	 * @returns The z2mProperty and transformer, or null if not found
+	 */
+	getWriteMapping(
+		channelCategory: ChannelCategory,
+		propertyCategory: PropertyCategory,
+	): { z2mProperty: string; transformer: ITransformer } | null {
+		// Get all mappings from the loader
+		const allMappings = this.mappingLoader.getMappings();
+
+		for (const mapping of allMappings) {
+			for (const channel of mapping.channels) {
+				if (channel.category !== channelCategory) {
+					continue;
+				}
+
+				// Check features
+				if (channel.features) {
+					for (const feature of channel.features) {
+						// Handle nested features (composites like color)
+						if (feature.nestedFeatures) {
+							for (const nested of feature.nestedFeatures) {
+								if (nested.panel?.identifier.toUpperCase() === propertyCategory) {
+									const transformer = this.transformerRegistry.getOrCreate(
+										nested.transformerName,
+										nested.inlineTransform,
+									);
+									// For nested features, z2mProperty is the parent feature name
+									return { z2mProperty: feature.z2mFeature, transformer };
+								}
+							}
+						}
+
+						// Regular feature
+						if (feature.panel?.identifier.toUpperCase() === propertyCategory) {
+							const transformer = this.transformerRegistry.getOrCreate(
+								feature.transformerName,
+								feature.inlineTransform,
+							);
+							return { z2mProperty: feature.z2mFeature, transformer };
+						}
+					}
+				}
+
+				// Check properties
+				if (channel.properties) {
+					for (const prop of channel.properties) {
+						if (prop.panel.identifier.toUpperCase() === propertyCategory) {
+							const transformer = this.transformerRegistry.getOrCreate(
+								prop.transformerName,
+								prop.inlineTransform,
+							);
+							return { z2mProperty: prop.z2mProperty, transformer };
+						}
+					}
+				}
+			}
+		}
+
+		return null;
+	}
 }
