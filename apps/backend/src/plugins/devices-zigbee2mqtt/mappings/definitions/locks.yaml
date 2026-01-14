@@ -1,0 +1,64 @@
+# Zigbee2MQTT Lock Mappings
+# Handles smart locks
+
+version: "1.0"
+
+transformers:
+  # Lock state LOCK/UNLOCK to boolean
+  lock_state:
+    type: boolean
+    true_value: "LOCK"
+    false_value: "UNLOCK"
+
+  # Alternative lock state LOCKED/UNLOCKED
+  lock_state_ed:
+    type: map
+    bidirectional:
+      LOCKED: true
+      UNLOCKED: false
+      locked: true
+      unlocked: false
+
+mappings:
+  # Standard Zigbee lock
+  - name: lock
+    description: "Zigbee smart lock"
+    priority: 100
+    match:
+      expose_type: lock
+    device_category: LOCK
+    channels:
+      - identifier: lock
+        name: Lock
+        category: LOCK
+        features:
+          # Lock state (LOCK/UNLOCK or LOCKED/UNLOCKED)
+          - z2m_feature: state
+            panel:
+              identifier: LOCKED
+              name: Lock State
+              data_type: BOOL
+            transformer: lock_state
+
+          # Alternative: lock_state property
+          - z2m_feature: lock_state
+            panel:
+              identifier: LOCKED
+              name: Lock State
+              data_type: BOOL
+            transform:
+              type: map
+              values:
+                locked: true
+                unlocked: false
+
+          # Battery level (if available)
+          - z2m_feature: battery
+            direction: read_only
+            panel:
+              identifier: PERCENTAGE
+              name: Battery
+              data_type: UCHAR
+              format: [0, 100]
+              unit: "%"
+              settable: false

@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, OnModuleInit, Optional } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import {
@@ -36,6 +36,7 @@ import {
 	Z2M_SPECIFIC_TYPES,
 } from '../devices-zigbee2mqtt.constants';
 import { Z2mExpose } from '../interfaces/zigbee2mqtt.interface';
+import { ConfigDrivenConverter } from '../mappings/config-driven.converter';
 
 /**
  * Mapped channel structure
@@ -78,6 +79,8 @@ export interface MappedProperty {
  *
  * Uses a modular converter architecture inspired by homebridge-z2m.
  * Each device type has its own dedicated converter for specialized handling.
+ *
+ * Supports config-driven mappings via YAML files for extensibility.
  */
 @Injectable()
 export class Z2mExposesMapperService implements OnModuleInit {
@@ -88,7 +91,9 @@ export class Z2mExposesMapperService implements OnModuleInit {
 
 	private readonly converterRegistry: ConverterRegistry;
 
-	constructor() {
+	constructor(
+		@Optional() private readonly configDrivenConverter?: ConfigDrivenConverter,
+	) {
 		this.converterRegistry = new ConverterRegistry();
 	}
 
@@ -103,7 +108,14 @@ export class Z2mExposesMapperService implements OnModuleInit {
 	 * Register all available converters with the registry
 	 */
 	private registerConverters(): void {
-		// Device converters (highest priority)
+		// Config-driven converter (highest priority - uses YAML mappings)
+		// This allows user-defined and extensible mappings to take precedence
+		if (this.configDrivenConverter) {
+			this.converterRegistry.register(this.configDrivenConverter);
+			this.logger.log('Config-driven converter registered (YAML mappings enabled)');
+		}
+
+		// Device converters (fallback for unmapped devices)
 		this.converterRegistry.register(new LightConverter());
 		this.converterRegistry.register(new SwitchConverter());
 		this.converterRegistry.register(new CoverConverter());
@@ -178,5 +190,20 @@ export class Z2mExposesMapperService implements OnModuleInit {
 		}
 
 		return channels;
+	}
+
+	/**
+	 * Get the config-driven converter for runtime transformations
+	 * Returns undefined if config-driven mappings are not enabled
+	 */
+	getConfigDrivenConverter(): ConfigDrivenConverter | undefined {
+		return this.configDrivenConverter;
+	}
+
+	/**
+	 * Check if config-driven mappings are enabled
+	 */
+	isConfigDrivenEnabled(): boolean {
+		return !!this.configDrivenConverter;
 	}
 }

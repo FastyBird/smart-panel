@@ -1,0 +1,453 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://fastybird.com/schemas/zigbee2mqtt-mapping-v1.json",
+	"title": "Zigbee2MQTT Device Mapping Configuration",
+	"description": "Schema for defining Zigbee2MQTT device mappings to Smart Panel channels and properties",
+	"type": "object",
+	"required": ["version", "mappings"],
+	"additionalProperties": false,
+	"properties": {
+		"version": {
+			"type": "string",
+			"pattern": "^[0-9]+\\.[0-9]+$",
+			"description": "Schema version (e.g., '1.0')"
+		},
+		"transformers": {
+			"type": "object",
+			"description": "Reusable value transformers",
+			"additionalProperties": {
+				"$ref": "#/definitions/transformer"
+			}
+		},
+		"mappings": {
+			"type": "array",
+			"description": "Device type mappings",
+			"items": {
+				"$ref": "#/definitions/mapping"
+			},
+			"minItems": 1
+		}
+	},
+	"definitions": {
+		"transformer": {
+			"type": "object",
+			"required": ["type"],
+			"properties": {
+				"type": {
+					"type": "string",
+					"enum": ["scale", "map", "formula", "boolean", "clamp", "round"],
+					"description": "Type of transformer"
+				},
+				"direction": {
+					"type": "string",
+					"enum": ["bidirectional", "read_only", "write_only"],
+					"default": "bidirectional",
+					"description": "Direction of transformation"
+				}
+			},
+			"allOf": [
+				{
+					"if": {
+						"properties": { "type": { "const": "scale" } }
+					},
+					"then": {
+						"properties": {
+							"type": { "const": "scale" },
+							"direction": true,
+							"input_range": {
+								"type": "array",
+								"items": { "type": "number" },
+								"minItems": 2,
+								"maxItems": 2,
+								"description": "Input range [min, max] (Z2M values)"
+							},
+							"output_range": {
+								"type": "array",
+								"items": { "type": "number" },
+								"minItems": 2,
+								"maxItems": 2,
+								"description": "Output range [min, max] (Smart Panel values)"
+							}
+						},
+						"required": ["type", "input_range", "output_range"],
+						"additionalProperties": false
+					}
+				},
+				{
+					"if": {
+						"properties": { "type": { "const": "map" } }
+					},
+					"then": {
+						"properties": {
+							"type": { "const": "map" },
+							"direction": true,
+							"read": {
+								"type": "object",
+								"description": "Z2M value -> Smart Panel value mapping",
+								"additionalProperties": true
+							},
+							"write": {
+								"type": "object",
+								"description": "Smart Panel value -> Z2M value mapping",
+								"additionalProperties": true
+							},
+							"bidirectional": {
+								"type": "object",
+								"description": "Bidirectional mapping (auto-creates inverse for write)",
+								"additionalProperties": true
+							}
+						},
+						"additionalProperties": false
+					}
+				},
+				{
+					"if": {
+						"properties": { "type": { "const": "formula" } }
+					},
+					"then": {
+						"properties": {
+							"type": { "const": "formula" },
+							"direction": true,
+							"read": {
+								"type": "string",
+								"description": "JavaScript expression for Z2M -> Smart Panel (use 'value' variable)"
+							},
+							"write": {
+								"type": "string",
+								"description": "JavaScript expression for Smart Panel -> Z2M (use 'value' variable)"
+							}
+						},
+						"additionalProperties": false
+					}
+				},
+				{
+					"if": {
+						"properties": { "type": { "const": "boolean" } }
+					},
+					"then": {
+						"properties": {
+							"type": { "const": "boolean" },
+							"direction": true,
+							"true_value": {
+								"description": "Z2M value representing true"
+							},
+							"false_value": {
+								"description": "Z2M value representing false"
+							},
+							"invert": {
+								"type": "boolean",
+								"default": false,
+								"description": "Invert the boolean logic"
+							}
+						},
+						"required": ["type", "true_value", "false_value"],
+						"additionalProperties": false
+					}
+				},
+				{
+					"if": {
+						"properties": { "type": { "const": "clamp" } }
+					},
+					"then": {
+						"properties": {
+							"type": { "const": "clamp" },
+							"direction": true,
+							"min": {
+								"type": "number",
+								"description": "Minimum value"
+							},
+							"max": {
+								"type": "number",
+								"description": "Maximum value"
+							}
+						},
+						"required": ["type", "min", "max"],
+						"additionalProperties": false
+					}
+				},
+				{
+					"if": {
+						"properties": { "type": { "const": "round" } }
+					},
+					"then": {
+						"properties": {
+							"type": { "const": "round" },
+							"direction": true,
+							"precision": {
+								"type": "integer",
+								"minimum": 0,
+								"default": 0,
+								"description": "Number of decimal places"
+							}
+						},
+						"additionalProperties": false
+					}
+				}
+			]
+		},
+		"mapping": {
+			"type": "object",
+			"required": ["name", "match", "device_category", "channels"],
+			"additionalProperties": false,
+			"properties": {
+				"name": {
+					"type": "string",
+					"description": "Unique identifier for this mapping"
+				},
+				"description": {
+					"type": "string",
+					"description": "Human-readable description"
+				},
+				"priority": {
+					"type": "integer",
+					"default": 100,
+					"description": "Priority for matching (higher = checked first)"
+				},
+				"match": {
+					"$ref": "#/definitions/matchCondition",
+					"description": "Conditions for matching Z2M exposes"
+				},
+				"device_category": {
+					"type": "string",
+					"description": "Smart Panel device category"
+				},
+				"channels": {
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/channel"
+					},
+					"minItems": 1,
+					"description": "Channels to create for matched devices"
+				}
+			}
+		},
+		"matchCondition": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"expose_type": {
+					"type": "string",
+					"description": "Z2M expose type (light, switch, climate, cover, fan, lock, binary, numeric, enum, text, composite)"
+				},
+				"property": {
+					"type": "string",
+					"description": "Z2M property name (for generic exposes like temperature, humidity)"
+				},
+				"is_list": {
+					"type": "boolean",
+					"description": "True if expose is array (multi-endpoint devices)"
+				},
+				"has_features": {
+					"type": "array",
+					"items": { "type": "string" },
+					"description": "Required features for structured exposes"
+				},
+				"any_property": {
+					"type": "array",
+					"items": { "type": "string" },
+					"description": "Match if device has any of these properties"
+				},
+				"all_of": {
+					"type": "array",
+					"items": { "$ref": "#/definitions/matchCondition" },
+					"description": "All conditions must match"
+				},
+				"any_of": {
+					"type": "array",
+					"items": { "$ref": "#/definitions/matchCondition" },
+					"description": "At least one condition must match"
+				}
+			}
+		},
+		"channel": {
+			"type": "object",
+			"required": ["identifier", "category"],
+			"additionalProperties": false,
+			"properties": {
+				"identifier": {
+					"type": "string",
+					"description": "Channel identifier (supports {endpoint} template)"
+				},
+				"name": {
+					"type": "string",
+					"description": "Human-readable channel name"
+				},
+				"category": {
+					"type": "string",
+					"description": "Smart Panel channel category"
+				},
+				"parent_identifier": {
+					"type": "string",
+					"description": "Parent channel identifier for hierarchical relationships"
+				},
+				"features": {
+					"type": "array",
+					"items": { "$ref": "#/definitions/feature" },
+					"description": "Feature mappings for structured exposes (light, climate, etc.)"
+				},
+				"properties": {
+					"type": "array",
+					"items": { "$ref": "#/definitions/property" },
+					"description": "Property mappings for generic exposes (sensors)"
+				}
+			}
+		},
+		"feature": {
+			"type": "object",
+			"required": ["z2m_feature", "panel"],
+			"additionalProperties": false,
+			"properties": {
+				"z2m_feature": {
+					"type": "string",
+					"description": "Z2M feature property name"
+				},
+				"type": {
+					"type": "string",
+					"enum": ["simple", "composite"],
+					"default": "simple",
+					"description": "Feature type"
+				},
+				"direction": {
+					"type": "string",
+					"enum": ["bidirectional", "read_only", "write_only"],
+					"default": "bidirectional",
+					"description": "Data flow direction"
+				},
+				"panel": {
+					"$ref": "#/definitions/panelProperty",
+					"description": "Smart Panel property configuration"
+				},
+				"transformer": {
+					"type": "string",
+					"description": "Reference to named transformer"
+				},
+				"transform": {
+					"$ref": "#/definitions/inlineTransform",
+					"description": "Inline transform definition"
+				},
+				"nested_features": {
+					"type": "array",
+					"items": { "$ref": "#/definitions/feature" },
+					"description": "Nested features for composite types (e.g., color with hue/saturation)"
+				}
+			}
+		},
+		"property": {
+			"type": "object",
+			"required": ["z2m_property", "panel"],
+			"additionalProperties": false,
+			"properties": {
+				"z2m_property": {
+					"type": "string",
+					"description": "Z2M property name"
+				},
+				"direction": {
+					"type": "string",
+					"enum": ["bidirectional", "read_only", "write_only"],
+					"default": "bidirectional",
+					"description": "Data flow direction"
+				},
+				"panel": {
+					"$ref": "#/definitions/panelProperty",
+					"description": "Smart Panel property configuration"
+				},
+				"transformer": {
+					"type": "string",
+					"description": "Reference to named transformer"
+				},
+				"transform": {
+					"$ref": "#/definitions/inlineTransform",
+					"description": "Inline transform definition"
+				}
+			}
+		},
+		"panelProperty": {
+			"type": "object",
+			"required": ["identifier", "data_type"],
+			"additionalProperties": false,
+			"properties": {
+				"identifier": {
+					"type": "string",
+					"description": "Property identifier (maps to PropertyCategory)"
+				},
+				"name": {
+					"type": "string",
+					"description": "Human-readable property name"
+				},
+				"data_type": {
+					"type": "string",
+					"enum": ["BOOL", "CHAR", "UCHAR", "SHORT", "USHORT", "INT", "UINT", "FLOAT", "STRING", "ENUM", "DATE", "TIME", "DATETIME", "COLOR", "BUTTON", "SWITCH", "UNKNOWN"],
+					"description": "Data type"
+				},
+				"format": {
+					"oneOf": [
+						{
+							"type": "array",
+							"items": { "type": "number" },
+							"minItems": 2,
+							"maxItems": 2
+						},
+						{
+							"type": "array",
+							"items": { "type": "string" }
+						}
+					],
+					"description": "Value format/range"
+				},
+				"unit": {
+					"type": "string",
+					"description": "Unit of measurement"
+				},
+				"settable": {
+					"type": "boolean",
+					"default": true,
+					"description": "Whether property can be set"
+				},
+				"queryable": {
+					"type": "boolean",
+					"default": true,
+					"description": "Whether property can be queried"
+				}
+			}
+		},
+		"inlineTransform": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"type": {
+					"type": "string",
+					"enum": ["scale", "map", "formula", "boolean"],
+					"description": "Transform type"
+				},
+				"read": {
+					"description": "Read transformation (Z2M -> Smart Panel)"
+				},
+				"write": {
+					"description": "Write transformation (Smart Panel -> Z2M)"
+				},
+				"input_range": {
+					"type": "array",
+					"items": { "type": "number" },
+					"minItems": 2,
+					"maxItems": 2
+				},
+				"output_range": {
+					"type": "array",
+					"items": { "type": "number" },
+					"minItems": 2,
+					"maxItems": 2
+				},
+				"true_value": {},
+				"false_value": {},
+				"invert": {
+					"type": "boolean"
+				},
+				"values": {
+					"type": "object",
+					"additionalProperties": true,
+					"description": "Bidirectional mapping values"
+				}
+			}
+		}
+	}
+}

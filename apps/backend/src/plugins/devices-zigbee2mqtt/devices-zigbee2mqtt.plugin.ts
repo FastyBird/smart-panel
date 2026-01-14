@@ -43,6 +43,9 @@ import {
 	Zigbee2mqttChannelPropertyEntity,
 	Zigbee2mqttDeviceEntity,
 } from './entities/devices-zigbee2mqtt.entity';
+import { ConfigDrivenConverter } from './mappings/config-driven.converter';
+import { MappingLoaderService } from './mappings/mapping-loader.service';
+import { TransformerRegistry } from './mappings/transformers';
 import { Zigbee2mqttConfigModel } from './models/config.model';
 import { Zigbee2mqttDevicePlatform } from './platforms/zigbee2mqtt.device.platform';
 import { Z2mDeviceAdoptionService } from './services/device-adoption.service';
@@ -67,6 +70,11 @@ import { Zigbee2mqttService } from './services/zigbee2mqtt.service';
 		ExtensionsModule,
 	],
 	providers: [
+		// Dynamic mapping configuration services
+		TransformerRegistry,
+		MappingLoaderService,
+		ConfigDrivenConverter,
+		// Core services
 		Z2mMqttClientAdapterService,
 		Z2mExposesMapperService,
 		Z2mDeviceMapperService,
@@ -224,6 +232,7 @@ Integration plugin for Zigbee devices through Zigbee2MQTT bridge.
 - **Dynamic Capability Mapping** - Automatically maps Z2M exposes to Smart Panel properties
 - **Real-time State Updates** - Receives state changes via MQTT subscriptions
 - **Bidirectional Control** - Send commands to devices via MQTT
+- **User-Extensible Mappings** - Define custom device mappings via YAML configuration
 
 ## Supported Devices
 
@@ -235,6 +244,13 @@ Supports all Zigbee devices compatible with Zigbee2MQTT, including:
 - Covers and blinds
 - Locks
 - Remotes and buttons
+
+## Custom Device Mappings
+
+You can add custom device mappings by creating YAML files in:
+~/.smart-panel/zigbee/mappings/
+
+See the built-in mapping files for examples.
 
 ## Requirements
 

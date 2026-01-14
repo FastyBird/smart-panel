@@ -1,0 +1,63 @@
+# Zigbee2MQTT Fan Mappings
+# Handles fan and air purifier devices
+
+version: "1.0"
+
+transformers:
+  # Fan state ON/OFF to boolean
+  fan_state:
+    type: boolean
+    true_value: "ON"
+    false_value: "OFF"
+
+  # Fan mode mapping
+  fan_mode:
+    type: map
+    bidirectional:
+      off: "off"
+      low: "low"
+      medium: "medium"
+      high: "high"
+      on: "on"
+      auto: "auto"
+      smart: "smart"
+      nature: "nature"
+      sleep: "sleep"
+
+mappings:
+  # Standard Zigbee fan
+  - name: fan
+    description: "Zigbee fan or air circulator"
+    priority: 100
+    match:
+      expose_type: fan
+    device_category: FAN
+    channels:
+      - identifier: fan
+        name: Fan
+        category: FAN
+        features:
+          # On/Off state
+          - z2m_feature: state
+            panel:
+              identifier: ON
+              name: State
+              data_type: BOOL
+            transformer: fan_state
+
+          # Fan mode (low/medium/high/auto)
+          - z2m_feature: mode
+            panel:
+              identifier: MODE
+              name: Mode
+              data_type: STRING
+            transformer: fan_mode
+
+          # Fan speed (percentage, if available)
+          - z2m_feature: fan_speed
+            panel:
+              identifier: SPEED
+              name: Speed
+              data_type: UCHAR
+              format: [0, 100]
+              unit: "%"

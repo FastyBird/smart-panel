@@ -1,0 +1,435 @@
+# Zigbee2MQTT Sensor Mappings
+# Handles all sensor types including temperature, humidity, motion, contact, etc.
+
+version: "1.0"
+
+transformers:
+  # Contact sensor: Z2M true=closed (no contact), Panel: true=detected (open)
+  # Many contact sensors use inverted logic
+  contact_invert:
+    type: boolean
+    true_value: false
+    false_value: true
+
+  # Link quality: Z2M 0-255 -> Panel 0-100%
+  link_quality:
+    type: scale
+    input_range: [0, 255]
+    output_range: [0, 100]
+    direction: read_only
+
+mappings:
+  # ============================================
+  # ENVIRONMENTAL SENSORS
+  # ============================================
+
+  # Temperature sensor
+  - name: temperature_sensor
+    description: "Temperature sensor"
+    priority: 50
+    match:
+      expose_type: numeric
+      property: temperature
+    device_category: SENSOR
+    channels:
+      - identifier: temperature
+        name: Temperature
+        category: TEMPERATURE
+        properties:
+          - z2m_property: temperature
+            direction: read_only
+            panel:
+              identifier: TEMPERATURE
+              name: Temperature
+              data_type: FLOAT
+              unit: "°C"
+              settable: false
+
+  # Humidity sensor
+  - name: humidity_sensor
+    description: "Humidity sensor"
+    priority: 50
+    match:
+      expose_type: numeric
+      property: humidity
+    device_category: SENSOR
+    channels:
+      - identifier: humidity
+        name: Humidity
+        category: HUMIDITY
+        properties:
+          - z2m_property: humidity
+            direction: read_only
+            panel:
+              identifier: HUMIDITY
+              name: Humidity
+              data_type: UCHAR
+              format: [0, 100]
+              unit: "%"
+              settable: false
+
+  # Pressure sensor
+  - name: pressure_sensor
+    description: "Atmospheric pressure sensor"
+    priority: 50
+    match:
+      expose_type: numeric
+      property: pressure
+    device_category: SENSOR
+    channels:
+      - identifier: pressure
+        name: Pressure
+        category: PRESSURE
+        properties:
+          - z2m_property: pressure
+            direction: read_only
+            panel:
+              identifier: MEASURED
+              name: Pressure
+              data_type: FLOAT
+              unit: "hPa"
+              settable: false
+
+  # Illuminance sensor
+  - name: illuminance_sensor
+    description: "Light level / illuminance sensor"
+    priority: 50
+    match:
+      expose_type: numeric
+      property: illuminance
+    device_category: SENSOR
+    channels:
+      - identifier: illuminance
+        name: Illuminance
+        category: ILLUMINANCE
+        properties:
+          - z2m_property: illuminance
+            direction: read_only
+            panel:
+              identifier: DENSITY
+              name: Illuminance
+              data_type: FLOAT
+              unit: "lx"
+              settable: false
+
+  # Illuminance sensor (lux variant)
+  - name: illuminance_lux_sensor
+    description: "Light level / illuminance sensor (lux)"
+    priority: 50
+    match:
+      expose_type: numeric
+      property: illuminance_lux
+    device_category: SENSOR
+    channels:
+      - identifier: illuminance
+        name: Illuminance
+        category: ILLUMINANCE
+        properties:
+          - z2m_property: illuminance_lux
+            direction: read_only
+            panel:
+              identifier: DENSITY
+              name: Illuminance
+              data_type: FLOAT
+              unit: "lx"
+              settable: false
+
+  # ============================================
+  # BINARY SENSORS
+  # ============================================
+
+  # Occupancy / Motion sensor
+  - name: occupancy_sensor
+    description: "Occupancy or motion sensor"
+    priority: 50
+    match:
+      expose_type: binary
+      property: occupancy
+    device_category: SENSOR
+    channels:
+      - identifier: occupancy
+        name: Occupancy
+        category: OCCUPANCY
+        properties:
+          - z2m_property: occupancy
+            direction: read_only
+            panel:
+              identifier: DETECTED
+              name: Occupancy Detected
+              data_type: BOOL
+              settable: false
+
+  # Presence sensor (radar-based)
+  - name: presence_sensor
+    description: "Presence sensor (radar-based)"
+    priority: 50
+    match:
+      expose_type: binary
+      property: presence
+    device_category: SENSOR
+    channels:
+      - identifier: occupancy
+        name: Presence
+        category: OCCUPANCY
+        properties:
+          - z2m_property: presence
+            direction: read_only
+            panel:
+              identifier: DETECTED
+              name: Presence Detected
+              data_type: BOOL
+              settable: false
+
+  # Contact / Door/Window sensor
+  - name: contact_sensor
+    description: "Door or window contact sensor"
+    priority: 50
+    match:
+      expose_type: binary
+      property: contact
+    device_category: SENSOR
+    channels:
+      - identifier: contact
+        name: Contact
+        category: CONTACT
+        properties:
+          - z2m_property: contact
+            direction: read_only
+            panel:
+              identifier: DETECTED
+              name: Contact
+              data_type: BOOL
+              settable: false
+            # Note: May need contact_invert transformer depending on device
+            # Z2M contact: true = closed (door closed), false = open (door open)
+            # Panel: true = detected (contact made / door closed)
+
+  # Water leak sensor
+  - name: leak_sensor
+    description: "Water leak sensor"
+    priority: 50
+    match:
+      expose_type: binary
+      property: water_leak
+    device_category: SENSOR
+    channels:
+      - identifier: leak
+        name: Water Leak
+        category: LEAK
+        properties:
+          - z2m_property: water_leak
+            direction: read_only
+            panel:
+              identifier: DETECTED
+              name: Leak Detected
+              data_type: BOOL
+              settable: false
+
+  # Smoke sensor
+  - name: smoke_sensor
+    description: "Smoke detector"
+    priority: 50
+    match:
+      expose_type: binary
+      property: smoke
+    device_category: SENSOR
+    channels:
+      - identifier: smoke
+        name: Smoke
+        category: SMOKE
+        properties:
+          - z2m_property: smoke
+            direction: read_only
+            panel:
+              identifier: DETECTED
+              name: Smoke Detected
+              data_type: BOOL
+              settable: false
+
+  # Vibration sensor
+  - name: vibration_sensor
+    description: "Vibration sensor"
+    priority: 50
+    match:
+      expose_type: binary
+      property: vibration
+    device_category: SENSOR
+    channels:
+      - identifier: motion
+        name: Vibration
+        category: MOTION
+        properties:
+          - z2m_property: vibration
+            direction: read_only
+            panel:
+              identifier: DETECTED
+              name: Vibration Detected
+              data_type: BOOL
+              settable: false
+
+  # Tamper detection
+  - name: tamper_sensor
+    description: "Tamper detection"
+    priority: 40
+    match:
+      expose_type: binary
+      property: tamper
+    device_category: SENSOR
+    channels:
+      - identifier: tamper
+        name: Tamper
+        category: GENERIC
+        properties:
+          - z2m_property: tamper
+            direction: read_only
+            panel:
+              identifier: TAMPERED
+              name: Tampered
+              data_type: BOOL
+              settable: false
+
+  # ============================================
+  # BATTERY
+  # ============================================
+
+  # Battery percentage
+  - name: battery_sensor
+    description: "Battery level"
+    priority: 30
+    match:
+      expose_type: numeric
+      property: battery
+    device_category: SENSOR
+    channels:
+      - identifier: battery
+        name: Battery
+        category: BATTERY
+        properties:
+          - z2m_property: battery
+            direction: read_only
+            panel:
+              identifier: PERCENTAGE
+              name: Battery Level
+              data_type: UCHAR
+              format: [0, 100]
+              unit: "%"
+              settable: false
+
+  # Battery low indicator
+  - name: battery_low_sensor
+    description: "Battery low indicator"
+    priority: 30
+    match:
+      expose_type: binary
+      property: battery_low
+    device_category: SENSOR
+    channels:
+      - identifier: battery
+        name: Battery
+        category: BATTERY
+        properties:
+          - z2m_property: battery_low
+            direction: read_only
+            panel:
+              identifier: FAULT
+              name: Battery Low
+              data_type: BOOL
+              settable: false
+
+  # ============================================
+  # AIR QUALITY
+  # ============================================
+
+  # PM2.5 sensor
+  - name: pm25_sensor
+    description: "PM2.5 air particulate sensor"
+    priority: 50
+    match:
+      expose_type: numeric
+      property: pm25
+    device_category: SENSOR
+    channels:
+      - identifier: air_particulate
+        name: Air Quality
+        category: AIR_PARTICULATE
+        properties:
+          - z2m_property: pm25
+            direction: read_only
+            panel:
+              identifier: MEASURED
+              name: PM2.5
+              data_type: UINT
+              unit: "µg/m³"
+              settable: false
+
+  # CO2 sensor
+  - name: co2_sensor
+    description: "CO2 sensor"
+    priority: 50
+    match:
+      expose_type: numeric
+      property: co2
+    device_category: SENSOR
+    channels:
+      - identifier: carbon_dioxide
+        name: CO2
+        category: CARBON_DIOXIDE
+        properties:
+          - z2m_property: co2
+            direction: read_only
+            panel:
+              identifier: MEASURED
+              name: CO2 Level
+              data_type: UINT
+              unit: "ppm"
+              settable: false
+
+  # VOC sensor
+  - name: voc_sensor
+    description: "VOC (Volatile Organic Compounds) sensor"
+    priority: 50
+    match:
+      expose_type: numeric
+      property: voc
+    device_category: SENSOR
+    channels:
+      - identifier: air_quality
+        name: VOC
+        category: GENERIC
+        properties:
+          - z2m_property: voc
+            direction: read_only
+            panel:
+              identifier: MEASURED
+              name: VOC Level
+              data_type: UINT
+              unit: "ppb"
+              settable: false
+
+  # ============================================
+  # DEVICE INFO
+  # ============================================
+
+  # Link quality (always included)
+  - name: link_quality
+    description: "Zigbee link quality"
+    priority: 10
+    match:
+      expose_type: numeric
+      property: linkquality
+    device_category: SENSOR
+    channels:
+      - identifier: device_information
+        name: Device Information
+        category: DEVICE_INFORMATION
+        properties:
+          - z2m_property: linkquality
+            direction: read_only
+            panel:
+              identifier: LINK_QUALITY
+              name: Link Quality
+              data_type: UCHAR
+              format: [0, 100]
+              unit: "%"
+              settable: false
+            transformer: link_quality

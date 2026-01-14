@@ -1,0 +1,101 @@
+# Zigbee2MQTT Switch Mappings
+# Handles switches, relays, and smart plugs
+
+version: "1.0"
+
+transformers:
+  # State ON/OFF to boolean
+  switch_state:
+    type: boolean
+    true_value: "ON"
+    false_value: "OFF"
+
+mappings:
+  # Standard Zigbee switch/relay
+  - name: switch
+    description: "Standard Zigbee switch or relay"
+    priority: 100
+    match:
+      expose_type: switch
+    device_category: SWITCHER
+    channels:
+      - identifier: switcher
+        name: Switch
+        category: SWITCHER
+        features:
+          - z2m_feature: state
+            panel:
+              identifier: ON
+              name: State
+              data_type: BOOL
+            transformer: switch_state
+
+  # Smart plug with power monitoring
+  # This has higher priority than plain switch when power properties exist
+  - name: outlet_with_metering
+    description: "Smart plug with power monitoring"
+    priority: 150
+    match:
+      all_of:
+        - expose_type: switch
+        - any_property: [power, energy, voltage, current]
+    device_category: OUTLET
+    channels:
+      - identifier: outlet
+        name: Outlet
+        category: OUTLET
+        features:
+          - z2m_feature: state
+            panel:
+              identifier: ON
+              name: State
+              data_type: BOOL
+            transformer: switch_state
+
+      # Power monitoring channel (child of outlet)
+      - identifier: electrical_power
+        name: Power Monitoring
+        category: ELECTRICAL_POWER
+        parent_identifier: outlet
+        properties:
+          - z2m_property: power
+            direction: read_only
+            panel:
+              identifier: POWER
+              name: Power
+              data_type: FLOAT
+              unit: "W"
+              settable: false
+
+          - z2m_property: voltage
+            direction: read_only
+            panel:
+              identifier: VOLTAGE
+              name: Voltage
+              data_type: FLOAT
+              unit: "V"
+              settable: false
+
+          - z2m_property: current
+            direction: read_only
+            panel:
+              identifier: CURRENT
+              name: Current
+              data_type: FLOAT
+              unit: "A"
+              settable: false
+
+      # Energy monitoring channel
+      - identifier: electrical_energy
+        name: Energy Monitoring
+        category: ELECTRICAL_ENERGY
+        parent_identifier: outlet
+        properties:
+          - z2m_property: energy
+            direction: read_only
+            panel:
+              identifier: CONSUMPTION
+              name: Energy Consumption
+              data_type: FLOAT
+              unit: "kWh"
+              settable: false

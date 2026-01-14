@@ -1,0 +1,81 @@
+# Zigbee2MQTT Cover Mappings
+# Handles window coverings, blinds, curtains, and shades
+
+version: "1.0"
+
+transformers:
+  # Cover state normalization (OPEN/CLOSE/STOP -> opened/closed/stopped)
+  cover_state:
+    type: map
+    read:
+      OPEN: "opened"
+      CLOSE: "closed"
+      STOP: "stopped"
+      open: "opened"
+      close: "closed"
+      stop: "stopped"
+    write:
+      open: "OPEN"
+      close: "CLOSE"
+      stop: "STOP"
+      opened: "OPEN"
+      closed: "CLOSE"
+      stopped: "STOP"
+
+  # Cover command (write only)
+  cover_command:
+    type: map
+    direction: write_only
+    write:
+      open: "OPEN"
+      close: "CLOSE"
+      stop: "STOP"
+
+mappings:
+  # Standard Zigbee cover (blinds, curtains, shades)
+  - name: cover
+    description: "Zigbee window covering, blind, or curtain"
+    priority: 100
+    match:
+      expose_type: cover
+    device_category: WINDOW_COVERING
+    channels:
+      - identifier: window_covering
+        name: Window Covering
+        category: WINDOW_COVERING
+        features:
+          # State (OPEN/CLOSE/STOP -> opened/closed/stopped)
+          - z2m_feature: state
+            panel:
+              identifier: STATUS
+              name: Status
+              data_type: STRING
+            transformer: cover_state
+
+          # Position (0-100%)
+          # Note: Some devices use 0=closed, 100=open; others use inverted
+          - z2m_feature: position
+            panel:
+              identifier: POSITION
+              name: Position
+              data_type: UCHAR
+              format: [0, 100]
+              unit: "%"
+
+          # Tilt (0-100%, for venetian blinds)
+          - z2m_feature: tilt
+            panel:
+              identifier: TILT
+              name: Tilt
+              data_type: UCHAR
+              format: [0, 100]
+              unit: "%"
+
+          # Motor fault indicator
+          - z2m_feature: motor_fault
+            direction: read_only
+            panel:
+              identifier: FAULT
+              name: Motor Fault
+              data_type: BOOL
+              settable: false
