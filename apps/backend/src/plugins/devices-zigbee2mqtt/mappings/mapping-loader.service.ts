@@ -250,6 +250,7 @@ export class MappingLoaderService implements OnModuleInit {
 			transformerName: feature.transformer,
 			inlineTransform: feature.transform,
 			nestedFeatures: feature.nested_features?.map((f) => this.resolveFeature(f)),
+			disabled: feature.disabled,
 		};
 	}
 
@@ -263,6 +264,7 @@ export class MappingLoaderService implements OnModuleInit {
 			panel: this.resolvePanelProperty(property.panel),
 			transformerName: property.transformer,
 			inlineTransform: property.transform,
+			disabled: property.disabled,
 		};
 	}
 

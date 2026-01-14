@@ -79,6 +79,8 @@ export interface FeatureMapping {
 	transform?: InlineTransform;
 	/** Nested features for composite types */
 	nested_features?: FeatureMapping[];
+	/** Skip this feature (for future/unsupported properties) */
+	disabled?: boolean;
 }
 
 /**
@@ -95,6 +97,8 @@ export interface PropertyMapping {
 	transformer?: string;
 	/** Inline transform definition */
 	transform?: InlineTransform;
+	/** Skip this property (for future/unsupported properties) */
+	disabled?: boolean;
 }
 
 /**
@@ -169,6 +173,8 @@ export interface ResolvedFeature {
 	transformerName?: string;
 	inlineTransform?: InlineTransform;
 	nestedFeatures?: ResolvedFeature[];
+	/** Skip this feature (for future/unsupported properties) */
+	disabled?: boolean;
 }
 
 /**
@@ -180,6 +186,8 @@ export interface ResolvedProperty {
 	panel: ResolvedPanelProperty;
 	transformerName?: string;
 	inlineTransform?: InlineTransform;
+	/** Skip this property (for future/unsupported properties) */
+	disabled?: boolean;
 }
 
 /**
