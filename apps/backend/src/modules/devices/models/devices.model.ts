@@ -113,6 +113,14 @@ export class DataTypeVariantSpecModel {
 	@Expose()
 	@IsOptional()
 	@IsArray()
+	@ValidateIf((o: { format?: unknown[] }): boolean =>
+		o.format?.every((item: unknown): boolean => typeof item === 'string'),
+	)
+	@IsString({ each: true })
+	@ValidateIf((o: { format?: unknown[] }): boolean =>
+		o.format?.every((item: unknown): boolean => typeof item === 'number'),
+	)
+	@IsNumber({}, { each: true })
 	format: string[] | number[] | null = null;
 
 	@ApiProperty({
