@@ -730,7 +730,7 @@ describe('Z2mExposesMapperService', () => {
 			// Find properties that map heating setpoints in the heater channel
 			// Both occupied_heating_setpoint and current_heating_setpoint map to the same identifier
 			// so we should only have ONE such property (first match wins - occupied_heating_setpoint)
-			const heatingSetpointProps = heaterChannel!.properties.filter(
+			const heatingSetpointProps = heaterChannel?.properties.filter(
 				(p) => p.z2mProperty === 'occupied_heating_setpoint' || p.z2mProperty === 'current_heating_setpoint',
 			);
 
