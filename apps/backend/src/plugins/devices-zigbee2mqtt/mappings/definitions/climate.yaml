@@ -60,12 +60,17 @@ mappings:
               format: ["off", "heat", "cool", "auto", "manual"]
             transformer: hvac_mode
 
-          # Running state maps to ACTIVE (is the system currently running?)
+      # Heater channel - heating setpoint and valve control (optional)
+      - identifier: heater
+        name: Heater
+        category: HEATER
+        features:
+          # Running state -> heater status (true when heating)
           - z2m_feature: running_state
             direction: read_only
             panel:
-              identifier: ACTIVE
-              name: Active
+              identifier: STATUS
+              name: Heating Status
               data_type: BOOL
               settable: false
             transform:
@@ -73,14 +78,9 @@ mappings:
               read:
                 "idle": false
                 "heat": true
-                "cool": true
-                "fan_only": true
+                "cool": false
+                "fan_only": false
 
-      # Heater channel - heating setpoint and valve control (optional)
-      - identifier: heater
-        name: Heater
-        category: HEATER
-        features:
           # Heating setpoint temperature
           - z2m_feature: occupied_heating_setpoint
             panel:
@@ -124,6 +124,22 @@ mappings:
         name: Cooler
         category: COOLER
         features:
+          # Running state -> cooler status (true when cooling)
+          - z2m_feature: running_state
+            direction: read_only
+            panel:
+              identifier: STATUS
+              name: Cooling Status
+              data_type: BOOL
+              settable: false
+            transform:
+              type: map
+              read:
+                "idle": false
+                "heat": false
+                "cool": true
+                "fan_only": false
+
           # Cooling setpoint temperature
           - z2m_feature: occupied_cooling_setpoint
             panel:
