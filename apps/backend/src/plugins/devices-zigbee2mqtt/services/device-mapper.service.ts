@@ -119,10 +119,18 @@ export class Z2mDeviceMapperService {
 
 		this.logger.log(`Mapping device: ${friendlyName}`);
 
-		// Determine device category from exposes
+		// Determine device category from YAML mapping (with fallback to hardcoded function)
 		const exposeTypes = definition.exposes.map((e) => e.type);
 		const propertyNames = definition.exposes.map((e) => e.name ?? e.property).filter((n): n is string => !!n);
-		const deviceCategory = mapZ2mCategoryToDeviceCategory(exposeTypes, propertyNames);
+
+		// First try to get category from YAML mapping (supports device-specific mappings)
+		const yamlCategory = this.exposesMapper.getConfigDrivenConverter().getSuggestedDeviceCategory(
+			definition.exposes,
+			{ model: definition.model, manufacturer: definition.vendor },
+		);
+
+		// Use YAML category if found, otherwise fall back to hardcoded function
+		const deviceCategory = yamlCategory ?? mapZ2mCategoryToDeviceCategory(exposeTypes, propertyNames);
 
 		// Create or update device
 		let device = await this.devicesService.findOneBy<Zigbee2mqttDeviceEntity>(
@@ -162,7 +170,10 @@ export class Z2mDeviceMapperService {
 		await this.createDeviceInfoChannel(device, z2mDevice);
 
 		// Map exposes to channels and properties
-		const mappedChannels = this.exposesMapper.mapExposes(definition.exposes);
+		const mappedChannels = this.exposesMapper.mapExposes(definition.exposes, {
+			model: definition.model,
+			manufacturer: definition.vendor,
+		});
 
 		// Build virtual property context
 		const ieeeAddress = 'ieee_address' in z2mDevice ? z2mDevice.ieee_address : z2mDevice.ieeeAddress;

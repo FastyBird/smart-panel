@@ -104,10 +104,15 @@ export class Z2mExposesMapperService implements OnModuleInit {
 	 * @param exposes - Array of Z2M exposes to convert
 	 * @param deviceInfo - Optional device info for context
 	 */
-	mapExposes(exposes: Z2mExpose[], deviceInfo?: { ieeeAddress?: string; friendlyName?: string }): MappedChannel[] {
+	mapExposes(
+		exposes: Z2mExpose[],
+		deviceInfo?: { ieeeAddress?: string; friendlyName?: string; model?: string; manufacturer?: string },
+	): MappedChannel[] {
 		const context: ConversionContext = {
 			ieeeAddress: deviceInfo?.ieeeAddress ?? '',
 			friendlyName: deviceInfo?.friendlyName ?? '',
+			model: deviceInfo?.model,
+			manufacturer: deviceInfo?.manufacturer,
 			allExposes: exposes,
 			mappedProperties: new Set<string>(),
 		};

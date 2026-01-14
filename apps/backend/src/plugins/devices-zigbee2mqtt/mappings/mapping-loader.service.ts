@@ -150,7 +150,7 @@ export class MappingLoaderService implements OnModuleInit {
 		this.resolvedMappings = [];
 		this.loadedSources = [];
 
-		// Load built-in mappings first
+		// Load built-in generic mappings (lowest priority)
 		const builtinFiles = this.discoverMappingFiles(this.builtinMappingsPath, 'builtin', 0);
 		for (const fileInfo of builtinFiles) {
 			const result = this.loadMappingFile(fileInfo);
@@ -160,9 +160,22 @@ export class MappingLoaderService implements OnModuleInit {
 			}
 		}
 
-		// Load user mappings (higher priority, can override built-in)
+		// Load built-in device-specific mappings (higher priority than generic)
+		const deviceMappingsPath = join(this.builtinMappingsPath, 'devices');
+		if (existsSync(deviceMappingsPath)) {
+			const deviceFiles = this.discoverMappingFiles(deviceMappingsPath, 'builtin', 500, true);
+			for (const fileInfo of deviceFiles) {
+				const result = this.loadMappingFile(fileInfo);
+				this.loadedSources.push(result);
+				if (result.success && result.resolvedMappings) {
+					this.resolvedMappings.push(...result.resolvedMappings);
+				}
+			}
+		}
+
+		// Load user mappings (highest priority, can override built-in)
 		if (existsSync(this.userMappingsPath)) {
-			const userFiles = this.discoverMappingFiles(this.userMappingsPath, 'user', 1000);
+			const userFiles = this.discoverMappingFiles(this.userMappingsPath, 'user', 1000, true);
 			for (const fileInfo of userFiles) {
 				const result = this.loadMappingFile(fileInfo);
 				this.loadedSources.push(result);
@@ -179,9 +192,14 @@ export class MappingLoaderService implements OnModuleInit {
 	}
 
 	/**
-	 * Discover YAML mapping files in a directory
+	 * Discover YAML mapping files in a directory (recursively)
 	 */
-	private discoverMappingFiles(dirPath: string, source: MappingSource, basePriority: number): MappingFileInfo[] {
+	private discoverMappingFiles(
+		dirPath: string,
+		source: MappingSource,
+		basePriority: number,
+		recursive: boolean = false,
+	): MappingFileInfo[] {
 		const files: MappingFileInfo[] = [];
 
 		if (!existsSync(dirPath)) {
@@ -192,12 +210,17 @@ export class MappingLoaderService implements OnModuleInit {
 			const entries = readdirSync(dirPath, { withFileTypes: true });
 
 			for (const entry of entries) {
+				const fullPath = join(dirPath, entry.name);
+
 				if (entry.isFile() && (entry.name.endsWith('.yaml') || entry.name.endsWith('.yml'))) {
 					files.push({
-						path: join(dirPath, entry.name),
+						path: fullPath,
 						source,
 						priority: basePriority,
 					});
+				} else if (entry.isDirectory() && recursive) {
+					// Recursively scan subdirectories
+					files.push(...this.discoverMappingFiles(fullPath, source, basePriority, true));
 				}
 			}
 		} catch (error) {
@@ -476,6 +499,7 @@ export class MappingLoaderService implements OnModuleInit {
 	 * @param features - Features of the current expose (for structured types)
 	 * @param deviceProperties - All property names on the device (for any_property matching)
 	 * @param isListExpose - True if this expose is part of a multi-endpoint array (e.g., 2 lights)
+	 * @param deviceInfo - Device model and manufacturer info for device-specific mappings
 	 */
 	findMatchingMapping(
 		exposeType: string,
@@ -483,10 +507,21 @@ export class MappingLoaderService implements OnModuleInit {
 		features?: string[],
 		deviceProperties?: string[],
 		isListExpose?: boolean,
+		deviceInfo?: { model?: string; manufacturer?: string },
 	): ResolvedMapping | undefined {
 		// Mappings are already sorted by priority
 		for (const mapping of this.resolvedMappings) {
-			if (this.matchesCondition(mapping.match, exposeType, propertyName, features, deviceProperties, isListExpose)) {
+			if (
+				this.matchesCondition(
+					mapping.match,
+					exposeType,
+					propertyName,
+					features,
+					deviceProperties,
+					isListExpose,
+					deviceInfo,
+				)
+			) {
 				return mapping;
 			}
 		}
@@ -551,6 +586,7 @@ export class MappingLoaderService implements OnModuleInit {
 	 * @param features - Features of the current expose (for structured types)
 	 * @param deviceProperties - All property names on the device (for any_property matching)
 	 * @param isListExpose - True if this expose is part of a multi-endpoint array
+	 * @param deviceInfo - Device model and manufacturer info for device-specific mappings
 	 */
 	private matchesCondition(
 		condition: MappingDefinition['match'],
@@ -559,18 +595,19 @@ export class MappingLoaderService implements OnModuleInit {
 		features?: string[],
 		deviceProperties?: string[],
 		isListExpose?: boolean,
+		deviceInfo?: { model?: string; manufacturer?: string },
 	): boolean {
 		// Check all_of conditions
 		if (condition.all_of) {
 			return condition.all_of.every((c) =>
-				this.matchesCondition(c, exposeType, propertyName, features, deviceProperties, isListExpose),
+				this.matchesCondition(c, exposeType, propertyName, features, deviceProperties, isListExpose, deviceInfo),
 			);
 		}
 
 		// Check any_of conditions
 		if (condition.any_of) {
 			return condition.any_of.some((c) =>
-				this.matchesCondition(c, exposeType, propertyName, features, deviceProperties, isListExpose),
+				this.matchesCondition(c, exposeType, propertyName, features, deviceProperties, isListExpose, deviceInfo),
 			);
 		}
 
@@ -582,6 +619,26 @@ export class MappingLoaderService implements OnModuleInit {
 		// Check property name (matches the current expose's property)
 		if (condition.property && condition.property !== propertyName) {
 			return false;
+		}
+
+		// Check model - for device-specific mappings
+		if (condition.model) {
+			if (!deviceInfo?.model || condition.model !== deviceInfo.model) {
+				return false;
+			}
+		}
+
+		// Check manufacturer - for device-specific mappings
+		// Uses case-insensitive contains matching so "IKEA" matches "IKEA of Sweden"
+		if (condition.manufacturer) {
+			if (!deviceInfo?.manufacturer) {
+				return false;
+			}
+			const conditionLower = condition.manufacturer.toLowerCase();
+			const deviceManufacturerLower = deviceInfo.manufacturer.toLowerCase();
+			if (!deviceManufacturerLower.includes(conditionLower)) {
+				return false;
+			}
 		}
 
 		// Check is_list - matches multi-endpoint devices (e.g., 2 lights with endpoints l1, l2)

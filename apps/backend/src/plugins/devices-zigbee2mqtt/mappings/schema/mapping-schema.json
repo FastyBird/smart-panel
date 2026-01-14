@@ -254,6 +254,14 @@
 					"items": { "type": "string" },
 					"description": "Match if device has any of these properties"
 				},
+				"model": {
+					"type": "string",
+					"description": "Device model ID (exact match)"
+				},
+				"manufacturer": {
+					"type": "string",
+					"description": "Device manufacturer (exact match)"
+				},
 				"all_of": {
 					"type": "array",
 					"items": { "$ref": "#/definitions/matchCondition" },

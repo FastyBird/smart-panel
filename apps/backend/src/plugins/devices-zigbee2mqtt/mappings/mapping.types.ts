@@ -113,6 +113,10 @@ export interface MatchCondition {
 	has_features?: string[];
 	/** Match if device has any of these properties */
 	any_property?: string[];
+	/** Device model ID (exact match) - for device-specific mappings */
+	model?: string;
+	/** Device manufacturer (exact match) - for device-specific mappings */
+	manufacturer?: string;
 	/** All conditions must match */
 	all_of?: MatchCondition[];
 	/** At least one condition must match */

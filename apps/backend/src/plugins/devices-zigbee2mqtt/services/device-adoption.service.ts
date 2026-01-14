@@ -463,7 +463,10 @@ export class Z2mDeviceAdoptionService {
 	): Promise<void> {
 		// Get mapped channels from YAML configuration
 		const mappedChannels = z2mDevice.definition?.exposes
-			? this.exposesMapper.mapExposes(z2mDevice.definition.exposes)
+			? this.exposesMapper.mapExposes(z2mDevice.definition.exposes, {
+					model: z2mDevice.definition.model,
+					manufacturer: z2mDevice.definition.vendor,
+				})
 			: [];
 
 		// Find the mapped channel that matches this category
@@ -537,11 +540,15 @@ export class Z2mDeviceAdoptionService {
 		// Get mapped channels from YAML configuration to include static/derived properties
 		// These properties are defined in the YAML but not sent by the frontend
 		const mappedChannels = z2mDevice.definition?.exposes
-			? this.exposesMapper.mapExposes(z2mDevice.definition.exposes)
+			? this.exposesMapper.mapExposes(z2mDevice.definition.exposes, {
+					model: z2mDevice.definition.model,
+					manufacturer: z2mDevice.definition.vendor,
+				})
 			: [];
 
-		// Build a map of channel category to static properties from YAML mappings
-		const staticPropertiesByChannel = this.buildStaticPropertiesMap(mappedChannels);
+		// Build a map of channel category to ALL properties from YAML mappings
+		// This ensures validation sees all properties that will be created, not just what frontend submits
+		const mappedPropertiesByChannel = this.buildMappedPropertiesMap(mappedChannels);
 
 		// Build the device data input for validation
 		// Include device_information channel that will be auto-created
@@ -569,14 +576,15 @@ export class Z2mDeviceAdoptionService {
 				permissions: p.permissions,
 			}));
 
-			// Get static properties from YAML mapping for this channel category
-			const staticProperties = staticPropertiesByChannel.get(channelDef.category) ?? [];
+			// Get ALL properties from YAML mapping for this channel category
+			// This includes feature-mapped, static, and derived properties
+			const mappedProperties = mappedPropertiesByChannel.get(channelDef.category) ?? [];
 			const requestCategories = new Set(requestProperties.map((p) => p.category));
 
-			// Add static properties that aren't already in the request
-			for (const staticProp of staticProperties) {
-				if (!requestCategories.has(staticProp.category)) {
-					requestProperties.push(staticProp);
+			// Add mapped properties that aren't already in the request
+			for (const mappedProp of mappedProperties) {
+				if (!requestCategories.has(mappedProp.category)) {
+					requestProperties.push(mappedProp);
 				}
 			}
 
@@ -613,10 +621,11 @@ export class Z2mDeviceAdoptionService {
 	}
 
 	/**
-	 * Build a map of channel category to static/derived properties from YAML mappings
-	 * These properties are defined in the YAML but not sent by the frontend
+	 * Build a map of channel category to ALL properties from YAML mappings
+	 * This includes both regular feature-mapped properties and static/derived properties
+	 * Used for validation to ensure all required properties will be created
 	 */
-	private buildStaticPropertiesMap(
+	private buildMappedPropertiesMap(
 		mappedChannels: MappedChannel[],
 	): Map<ChannelCategory, Array<{ category: PropertyCategory; dataType: DataTypeType; permissions: PermissionType[] }>> {
 		const result = new Map<
@@ -625,27 +634,23 @@ export class Z2mDeviceAdoptionService {
 		>();
 
 		for (const channel of mappedChannels) {
-			const staticProps: Array<{
+			const props: Array<{
 				category: PropertyCategory;
 				dataType: DataTypeType;
 				permissions: PermissionType[];
 			}> = [];
 
 			for (const prop of channel.properties) {
-				// Static properties have z2mProperty starting with __static_
-				// Derived properties have z2mProperty starting with __derived_
-				if (prop.z2mProperty.startsWith('__static_') || prop.z2mProperty.startsWith('__derived_')) {
-					staticProps.push({
-						category: prop.category,
-						dataType: prop.dataType,
-						permissions: prop.permissions,
-					});
-				}
+				props.push({
+					category: prop.category,
+					dataType: prop.dataType,
+					permissions: prop.permissions,
+				});
 			}
 
-			if (staticProps.length > 0) {
+			if (props.length > 0) {
 				const existing = result.get(channel.category) ?? [];
-				result.set(channel.category, [...existing, ...staticProps]);
+				result.set(channel.category, [...existing, ...props]);
 			}
 		}
 

@@ -10,6 +10,7 @@ import { ExtensionLoggerService, createExtensionLogger } from '../../../common/l
 import {
 	ChannelCategory,
 	DataTypeType,
+	DeviceCategory,
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
@@ -90,6 +91,9 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 		// (e.g., device has 2 lights with endpoints l1, l2)
 		const isListExpose = this.isListExpose(expose, context?.allExposes);
 
+		// Device info for device-specific mappings
+		const deviceInfo = context ? { model: context.model, manufacturer: context.manufacturer } : undefined;
+
 		// Find matching mapping
 		const mapping = this.mappingLoader.findMatchingMapping(
 			exposeType,
@@ -97,6 +101,7 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 			features,
 			deviceProperties,
 			isListExpose,
+			deviceInfo,
 		);
 
 		if (mapping) {
@@ -125,6 +130,9 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 		// Determine if this expose is part of a multi-endpoint array
 		const isListExpose = this.isListExpose(expose, context.allExposes);
 
+		// Device info for device-specific mappings
+		const deviceInfo = { model: context.model, manufacturer: context.manufacturer };
+
 		// Find matching mapping
 		const mapping = this.mappingLoader.findMatchingMapping(
 			exposeType,
@@ -132,6 +140,7 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 			features,
 			deviceProperties,
 			isListExpose,
+			deviceInfo,
 		);
 
 		if (!mapping) {
@@ -750,8 +759,13 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 	 * Get the mapping for a specific expose
 	 * @param expose - The expose to get mapping for
 	 * @param allExposes - Optional array of all device exposes (needed for any_property and is_list conditions)
+	 * @param deviceInfo - Optional device info for model/manufacturer matching
 	 */
-	getMappingForExpose(expose: Z2mExpose, allExposes?: Z2mExpose[]): ResolvedMapping | undefined {
+	getMappingForExpose(
+		expose: Z2mExpose,
+		allExposes?: Z2mExpose[],
+		deviceInfo?: { model?: string; manufacturer?: string },
+	): ResolvedMapping | undefined {
 		const exposeType = expose.type;
 		const propertyName = this.getPropertyName(expose);
 
@@ -766,7 +780,48 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 		// Determine if this expose is part of a multi-endpoint array
 		const isListExpose = this.isListExpose(expose, allExposes);
 
-		return this.mappingLoader.findMatchingMapping(exposeType, propertyName, features, deviceProperties, isListExpose);
+		return this.mappingLoader.findMatchingMapping(
+			exposeType,
+			propertyName,
+			features,
+			deviceProperties,
+			isListExpose,
+			deviceInfo,
+		);
+	}
+
+	/**
+	 * Get the suggested device category from YAML mappings
+	 * Finds the best matching mapping for the device's exposes and returns its device category
+	 * @param exposes - All device exposes
+	 * @param deviceInfo - Device info (model, manufacturer)
+	 * @returns The device category from the best matching mapping, or undefined if no mapping found
+	 */
+	getSuggestedDeviceCategory(
+		exposes: Z2mExpose[],
+		deviceInfo?: { model?: string; manufacturer?: string },
+	): DeviceCategory | undefined {
+		// Try to find a mapping for each specific expose (light, fan, switch, etc.)
+		// The first matching mapping with highest priority determines the device category
+		const specificExposes = exposes.filter((e) => this.isSpecificExpose(e));
+
+		for (const expose of specificExposes) {
+			const mapping = this.getMappingForExpose(expose, exposes, deviceInfo);
+			if (mapping) {
+				return mapping.deviceCategory;
+			}
+		}
+
+		// If no specific expose matched, try generic exposes
+		for (const expose of exposes) {
+			if (this.isSpecificExpose(expose)) continue;
+			const mapping = this.getMappingForExpose(expose, exposes, deviceInfo);
+			if (mapping) {
+				return mapping.deviceCategory;
+			}
+		}
+
+		return undefined;
 	}
 
 	/**

@@ -51,6 +51,10 @@ export interface ConversionContext {
 	ieeeAddress: string;
 	/** Friendly name of the device */
 	friendlyName: string;
+	/** Device model ID (for device-specific mappings) */
+	model?: string;
+	/** Device manufacturer (for device-specific mappings) */
+	manufacturer?: string;
 	/** All exposes from the device (for context) */
 	allExposes: Z2mExpose[];
 	/** Properties already mapped in sibling channels (to avoid duplicates) */
