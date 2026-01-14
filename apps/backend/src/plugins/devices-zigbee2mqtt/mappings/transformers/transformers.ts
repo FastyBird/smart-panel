@@ -276,7 +276,8 @@ export class FormulaTransformer extends BaseTransformer {
 			return value;
 		}
 		try {
-			const numValue = this.toNumber(value);
+			// Use NaN as fallback so isNaN check properly detects non-numeric values
+			const numValue = this.toNumber(value, NaN);
 			if (isNaN(numValue)) {
 				return value;
 			}
@@ -291,7 +292,8 @@ export class FormulaTransformer extends BaseTransformer {
 			return value;
 		}
 		try {
-			const numValue = this.toNumber(value);
+			// Use NaN as fallback so isNaN check properly detects non-numeric values
+			const numValue = this.toNumber(value, NaN);
 			if (isNaN(numValue)) {
 				return value;
 			}
@@ -315,7 +317,8 @@ export class FormulaTransformer extends BaseTransformer {
 		// Check for property access - only Math.* is allowed
 		// Allow: Math.round, Math.floor, etc.
 		// Forbid: anything.else, value.something, obj.method()
-		const propertyAccessPattern = /(\w+)\s*\.\s*(\w+)/g;
+		// Use [a-zA-Z_] for first char to avoid matching decimal numbers like 2.54
+		const propertyAccessPattern = /([a-zA-Z_]\w*)\s*\.\s*(\w+)/g;
 		let match: RegExpExecArray | null;
 		while ((match = propertyAccessPattern.exec(formula)) !== null) {
 			const obj = match[1];
