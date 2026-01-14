@@ -22,7 +22,7 @@ import {
 	MappedProperty,
 } from '../converters/converter.interface';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME, Z2M_ACCESS } from '../devices-zigbee2mqtt.constants';
-import { Z2mExpose, Z2mExposeSpecific } from '../interfaces/zigbee2mqtt.interface';
+import { Z2mExpose, Z2mExposeEnum, Z2mExposeSpecific } from '../interfaces/zigbee2mqtt.interface';
 
 import { MappingLoaderService } from './mapping-loader.service';
 import { ResolvedChannel, ResolvedFeature, ResolvedMapping, ResolvedProperty } from './mapping.types';
@@ -298,6 +298,12 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 		// For nested features (like hue inside color), use the parent property name
 		const z2mProperty = parentProperty ?? feature.property ?? feature.name ?? featureDef.z2mFeature;
 
+		// Determine format - for ENUM types, derive from device's actual values
+		let format = featureDef.panel.format;
+		if (featureDef.panel.dataType === DataTypeType.ENUM && this.isEnumExpose(feature)) {
+			format = this.deriveEnumFormat(feature, featureDef);
+		}
+
 		return this.createProperty({
 			identifier: featureDef.panel.identifier.toLowerCase(),
 			name: featureDef.panel.name ?? this.formatName(featureDef.z2mFeature),
@@ -307,7 +313,41 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 			z2mProperty,
 			permissions,
 			unit: featureDef.panel.unit,
-			format: featureDef.panel.format,
+			format,
+		});
+	}
+
+	/**
+	 * Check if an expose is an enum type with values array
+	 */
+	private isEnumExpose(expose: Z2mExpose): expose is Z2mExposeEnum {
+		return expose.type === 'enum' && 'values' in expose && Array.isArray(expose.values);
+	}
+
+	/**
+	 * Derive enum format from device's actual values, applying transformer if defined
+	 */
+	private deriveEnumFormat(expose: Z2mExposeEnum, featureDef: ResolvedFeature): string[] {
+		const deviceValues = expose.values;
+
+		// If no transformer, use device values as-is
+		if (!featureDef.transformerName && !featureDef.inlineTransform) {
+			return deviceValues;
+		}
+
+		// Get transformer and apply read mapping to each value
+		const transformer = this.transformerRegistry.getOrCreate(featureDef.transformerName, featureDef.inlineTransform);
+		return deviceValues.map((value) => {
+			const transformed = transformer.read(value);
+			// Transformer should return string/number/boolean for enums
+			if (typeof transformed === 'string') {
+				return transformed;
+			}
+			if (typeof transformed === 'number' || typeof transformed === 'boolean') {
+				return String(transformed);
+			}
+			// Fall back to original value if transformer returns unsupported type
+			return value;
 		});
 	}
 

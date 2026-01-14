@@ -45,12 +45,12 @@ mappings:
         category: WINDOW_COVERING
         features:
           # State (OPEN/CLOSE/STOP -> opened/closed/stopped)
+          # Format is derived from device's actual enum values, transformed via cover_state
           - z2m_feature: state
             panel:
               identifier: STATUS
               name: Status
               data_type: ENUM
-              format: ["opened", "closed", "opening", "closing", "stopped"]
             transformer: cover_state
 
           # Position (0-100%)
