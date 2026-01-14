@@ -8,9 +8,15 @@ import { Callout } from 'nextra/components'
 
 Measures ozone (O₃) levels in the air, often used in environmental quality assessments.
 
+<Callout type="warning">
+	At least one of `detected`, `density`, or `level` must be provided. Only one of `density` or `level` can be present (not both).
+</Callout>
+
 ---
 
 ## Required Properties
+
+At least one of the following properties must be present:
 
 | **Property** | **Data Type** | **Range**         | **Unit** | **Permissions** |
 |--------------|---------------|-------------------|----------|-----------------|
@@ -35,6 +41,7 @@ Reports the current ozone concentration:
 
 - Measured in micrograms per cubic meter (`µg/m³`).
 - Reflects the real-time level of ozone in the environment.
+- Cannot be used together with `level`.
 
 #### `level`
 
@@ -48,10 +55,7 @@ Provides a qualitative assessment of the ozone levels:
     - `low`: `0–100 µg/m³`
     - `medium`: `101–200 µg/m³`
     - `high`: `>200 µg/m³`
-
-> [!Notes]:
-At least one of the required properties (`detected`, `density`, or `level`) must be present. Additionally, either
-`density` or `level` can be provided, but not both simultaneously.
+- Cannot be used together with `density`.
 
 ---
 

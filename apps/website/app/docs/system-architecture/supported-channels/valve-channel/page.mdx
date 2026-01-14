@@ -15,7 +15,7 @@ Controls fluid or gas valves, managing open/close states or flow rates.
 | **Property** | **Data Type** | **Range**                                     | **Unit** | **Permissions** |
 |--------------|---------------|-----------------------------------------------|----------|-----------------|
 | `on`         | `Bool`        | `true/false`                                  | -        | RW (Read/Write) |
-| `type`       | `Enum`        | `generic/irrigation/shower_head/water_faucet` | -        | RO (Read-Only)  |
+| `type`       | `Enum`        | `generic/irrigation/shower_head/water_faucet` | -        | RW (Read/Write) |
 
 ---
 
@@ -46,8 +46,8 @@ Specifies the type of valve being controlled:
 |--------------|---------------|--------------------|----------|-----------------|
 | `duration`   | `Ushort`      | `0–3600`           | s        | RW (Read/Write) |
 | `remaining`  | `Ushort`      | `0–3600`           | s        | RO (Read-Only)  |
-| `mode`       | `Enum`        | `manual/scheduled` | -        | RW (Read/Write) |
-| `position`   | `Uchar`       | `0–100`            | %        | RW (Read/Write) |
+| `mode`       | `Enum`        | `manual/scheduled` | -        | RO (Read-Only)  |
+| `position`   | `Uchar` or `Enum` | `0–100` or `closed/quarter/half/three_quarter/open` | %        | RW (Read/Write) |
 | `fault`      | `Uchar`       | `0–255`            | -        | RO (Read-Only)  |
 
 ---
@@ -78,11 +78,19 @@ Specifies how the valve is being operated:
 
 #### `position`
 
-Represents the current openness of the valve as a percentage:
+Represents the current openness of the valve. This property supports multiple data types:
 
-- `0%`: Fully closed
-- `100%`: Fully open
-- Intermediate values indicate partial opening
+**Option 1 - Percentage:**
+- **Data Type**: `Uchar`
+- **Range**: `0–100%`
+- `0%`: Fully closed.
+- `100%`: Fully open.
+- Intermediate values indicate partial opening.
+
+**Option 2 - Discrete States:**
+- **Data Type**: `Enum`
+- **Values**: `closed`, `quarter`, `half`, `three_quarter`, `open`
+- Predefined position states.
 
 This property is the primary way to read or set the target position.
 

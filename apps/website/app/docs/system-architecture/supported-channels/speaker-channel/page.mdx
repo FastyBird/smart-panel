@@ -33,7 +33,7 @@ Indicates whether the speaker is muted:
 
 | **Property** | **Data Type** | **Range**              | **Unit** | **Permissions** |
 |--------------|---------------|------------------------|----------|-----------------|
-| `volume`     | `Uchar`       | `0–100`                | %        | RW (Read/Write) |
+| `volume`     | `Uchar` or `Enum` | `0–100` or `mute/low/medium/high/max` | %        | RW (Read/Write) |
 | `mode`       | `Enum`        | `stereo/mono/surround` | -        | RW (Read/Write) |
 
 ---
@@ -42,10 +42,18 @@ Indicates whether the speaker is muted:
 
 #### `volume`
 
-Represents the current volume level as a percentage:
+Represents the current volume level. This property supports multiple data types:
 
+**Option 1 - Percentage:**
+- **Data Type**: `Uchar`
+- **Range**: `0–100%`
 - `0`: Minimum volume (silent).
 - `100`: Maximum volume (full audio output).
+
+**Option 2 - Discrete Levels:**
+- **Data Type**: `Enum`
+- **Values**: `mute`, `low`, `medium`, `high`, `max`
+- Predefined volume levels.
 
 #### `mode`
 

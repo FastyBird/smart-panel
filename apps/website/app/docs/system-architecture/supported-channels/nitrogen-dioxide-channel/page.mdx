@@ -8,15 +8,20 @@ import { Callout } from 'nextra/components'
 
 Monitors the concentration of NO₂ in the air, often used in environmental and industrial monitoring.
 
+<Callout type="warning">
+	At least one of `detected` or `density` must be provided.
+</Callout>
+
 ---
 
 ## Required Properties
+
+At least one of the following properties must be present:
 
 | **Property** | **Data Type** | **Range**       | **Unit** | **Permissions** |
 |--------------|---------------|-----------------|----------|-----------------|
 | `detected`   | `Bool`        | `true/false`    | -        | RO (Read-Only)  |
 | `density`    | `Float`       | `0.0–100,000.0` | µg/m³    | RO (Read-Only)  |
-| `mode `      | `Enum`        | `annual/1_hour` | -        | RO (Read-Only)  |
 
 ---
 
@@ -35,6 +40,22 @@ Reports the current detected nitrogen dioxide (NO₂) concentration:
 
 - Measured in micrograms per cubic meter (`µg/m³`).
 - Reflects real-time NO₂ levels in the environment.
+- Values exceeding **40 µg/m³** (annual mean) or **200 µg/m³** (1-hour mean) are considered poor air quality per WHO guidelines.
+
+---
+
+## Optional Properties
+
+| **Property** | **Data Type** | **Range**       | **Unit** | **Permissions** |
+|--------------|---------------|-----------------|----------|-----------------|
+| `mode`       | `Enum`        | `annual/1_hour` | -        | RO (Read-Only)  |
+| `active`     | `Bool`        | `true/false`    | -        | RO (Read-Only)  |
+| `fault`      | `Uchar`       | `0–255`         | -        | RO (Read-Only)  |
+| `tampered`   | `Bool`        | `true/false`    | -        | RO (Read-Only)  |
+
+---
+
+### Property Details
 
 #### `mode`
 
@@ -42,25 +63,6 @@ Specifies the type of measurement provided by the sensor:
 
 - `annual`: The sensor measures long-term average NO₂ levels over a year.
 - `1_hour`: The sensor measures short-term NO₂ levels as a 1-hour average.
-
-> [!Notes]:
-Either `detected` or `density` must be included, depending on the use case. If only `density` is provided, values
-exceeding **40 µg/m³** (annual mean) or **200 µg/m³** (1-hour mean) are considered poor air quality
-per WHO guidelines and will be displayed as a warning
-
----
-
-## Optional Properties
-
-| **Property** | **Data Type** | **Range**    | **Unit** | **Permissions** |
-|--------------|---------------|--------------|----------|-----------------|
-| `active`     | `Bool`        | `true/false` | -        | RO (Read-Only)  |
-| `fault`      | `Uchar`       | `0–255`      | -        | RO (Read-Only)  |
-| `tampered`   | `Bool`        | `true/false` | -        | RO (Read-Only)  |
-
----
-
-### Property Details
 
 #### `active`
 

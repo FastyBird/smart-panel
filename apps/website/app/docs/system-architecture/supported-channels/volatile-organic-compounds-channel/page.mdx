@@ -8,9 +8,15 @@ import { Callout } from 'nextra/components'
 
 Monitors the concentration of VOCs in the air to track pollution or air quality.
 
+<Callout type="warning">
+	At least one of `detected`, `density`, or `level` must be provided. Only one of `density` or `level` can be present (not both).
+</Callout>
+
 ---
 
 ## Required Properties
+
+At least one of the following properties must be present:
 
 | **Property** | **Data Type** | **Range**         | **Unit** | **Permissions** |
 |--------------|---------------|-------------------|----------|-----------------|
@@ -35,6 +41,7 @@ Reports the current volatile organic compounds (VOC) concentration:
 
 - Measured in micrograms per cubic meter (`µg/m³`).
 - Reflects real-time VOC levels in the environment.
+- Cannot be used together with `level`.
 
 #### `level`
 
@@ -44,24 +51,11 @@ Provides a qualitative assessment of VOC levels:
     - `low`: Safe VOC levels.
     - `medium`: Moderate VOC levels that may require attention.
     - `high`: High VOC levels, potentially hazardous to health.
-
-> [!Notes]:
-At least one of the required properties (`detected`, `density`, or `level`) must be present. Additionally, either
-`density` or `level` can be provided, but not both simultaneously.
-
-### Additional info
-
-For the `density` property, no universally agreed threshold exists for VOCs as their composition can vary significantly.
-
-However:
-- **Low VOC levels** are generally considered safe for humans and the environment.
-- **Medium levels** may indicate the need for better ventilation or caution.
-- **High levels** are often linked to poor air quality and potential health risks.
-
-The `level` property should be mapped to specific `density` ranges based on application or regulatory requirements:
-- `low`: `0–500 µg/m³`
-- `medium`: `501–1,000 µg/m³`
-- `high`: `>1,000 µg/m³`
+- The `level` property should be mapped to specific `density` ranges:
+    - `low`: `0–500 µg/m³`
+    - `medium`: `501–1,000 µg/m³`
+    - `high`: `>1,000 µg/m³`
+- Cannot be used together with `density`.
 
 ---
 
