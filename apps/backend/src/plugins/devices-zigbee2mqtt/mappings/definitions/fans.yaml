@@ -128,3 +128,64 @@ mappings:
             data_type: ENUM
             value: "manual"
             format: ["auto", "manual", "off"]
+
+  # ============================================
+  # AIR PURIFIERS
+  # ============================================
+
+  # Air purifier (fan with air quality sensors)
+  # Detected by presence of pm25/voc/aqi properties on the device
+  - name: air_purifier
+    description: "Air purifier with fan and air quality monitoring"
+    priority: 120
+    match:
+      expose_type: fan
+      any_property: [pm25, voc, aqi, filter_age, filter_state]
+    device_category: AIR_PURIFIER
+    channels:
+      # Switcher channel for on/off (required by spec)
+      - identifier: switcher
+        name: Power
+        category: SWITCHER
+        features:
+          - z2m_feature: state
+            panel:
+              identifier: ON
+              name: Power
+              data_type: BOOL
+            transformer: fan_state
+
+      # Fan channel for speed control (required by spec)
+      - identifier: fan
+        name: Fan
+        category: FAN
+        features:
+          # Fan speed as percentage if available
+          - z2m_feature: fan_speed
+            panel:
+              identifier: SPEED
+              name: Speed
+              data_type: UCHAR
+              format: [0, 100]
+              unit: "%"
+
+          # Or mode as speed levels
+          - z2m_feature: mode
+            panel:
+              identifier: SPEED
+              name: Speed
+              data_type: ENUM
+              format: ["off", "low", "medium", "high", "turbo"]
+            transformer: fan_speed_levels
+
+        # Required properties with defaults
+        static_properties:
+          - identifier: ON
+            name: Power
+            data_type: BOOL
+            value: true
+          - identifier: MODE
+            name: Mode
+            data_type: ENUM
+            value: "manual"
+            format: ["auto", "manual", "off"]

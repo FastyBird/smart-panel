@@ -28,6 +28,28 @@ transformers:
       "low": true
       "ok": false
 
+  # Filter age to percentage: converts usage hours to remaining life %
+  # Assumes 4320 hours (~6 months) max filter life
+  # Formula: 100 - (hours / 4320 * 100)
+  filter_age_to_percentage:
+    type: formula
+    read: "Math.max(0, Math.min(100, Math.round(100 - (value / 4320 * 100))))"
+    write: "Math.round((100 - value) / 100 * 4320)"
+
+  # Filter state: Z2M enum -> Panel status enum
+  filter_state_to_status:
+    type: map
+    read:
+      normal: "good"
+      replace: "replace_now"
+      check: "replace_soon"
+      good: "good"
+      bad: "replace_now"
+    write:
+      "good": "normal"
+      "replace_now": "replace"
+      "replace_soon": "check"
+
 mappings:
   # ============================================
   # ENVIRONMENTAL SENSORS
@@ -658,6 +680,118 @@ mappings:
               format: [0.0, 1000.0]
               unit: "µg/m³"
               settable: false
+
+  # VOC index sensor (0-500 scale)
+  - name: voc_index_sensor
+    description: "VOC index sensor (0-500 scale)"
+    priority: 50
+    match:
+      expose_type: numeric
+      property: voc_index
+    device_category: SENSOR
+    channels:
+      - identifier: volatile_organic_compounds
+        name: VOC Index
+        category: VOLATILE_ORGANIC_COMPOUNDS
+        properties:
+          - z2m_property: voc_index
+            direction: read_only
+            panel:
+              identifier: INDEX
+              name: VOC Index
+              data_type: USHORT
+              format: [0, 500]
+              settable: false
+
+  # Air Quality Index (AQI) sensor
+  # Uses air_quality channel
+  - name: aqi_sensor
+    description: "Air Quality Index (AQI) sensor"
+    priority: 50
+    match:
+      expose_type: numeric
+      property: aqi
+    device_category: SENSOR
+    channels:
+      - identifier: air_quality
+        name: Air Quality
+        category: AIR_QUALITY
+        properties:
+          - z2m_property: aqi
+            direction: read_only
+            panel:
+              identifier: AQI
+              name: Air Quality Index
+              data_type: USHORT
+              format: [0, 500]
+              settable: false
+        # Derive air quality level from AQI value
+        derived_properties:
+          - identifier: LEVEL
+            name: Air Quality Level
+            data_type: ENUM
+            format: ["excellent", "good", "fair", "inferior", "poor"]
+            source_property: AQI
+            derivation: aqi_level_from_value
+
+  # ============================================
+  # FILTER MONITORING
+  # ============================================
+
+  # Filter age/hours sensor (for air purifiers)
+  - name: filter_age_sensor
+    description: "Filter age/usage hours sensor"
+    priority: 50
+    match:
+      expose_type: numeric
+      property: filter_age
+    device_category: SENSOR
+    channels:
+      - identifier: filter
+        name: Filter
+        category: FILTER
+        properties:
+          - z2m_property: filter_age
+            direction: read_only
+            panel:
+              identifier: LIFE_REMAINING
+              name: Filter Life
+              data_type: UCHAR
+              format: [0, 100]
+              unit: "%"
+              settable: false
+            # Transform hours to percentage (assuming 6 months / ~4320 hours max life)
+            transformer: filter_age_to_percentage
+        derived_properties:
+          - identifier: STATUS
+            name: Filter Status
+            data_type: ENUM
+            format: ["good", "replace_soon", "replace_now"]
+            source_property: LIFE_REMAINING
+            derivation: filter_status_from_life
+
+  # Filter state sensor (enum: normal, replace)
+  - name: filter_state_sensor
+    description: "Filter state indicator"
+    priority: 50
+    match:
+      expose_type: enum
+      property: filter_state
+    device_category: SENSOR
+    channels:
+      - identifier: filter
+        name: Filter
+        category: FILTER
+        properties:
+          - z2m_property: filter_state
+            direction: read_only
+            panel:
+              identifier: STATUS
+              name: Filter Status
+              data_type: ENUM
+              format: ["good", "replace_soon", "replace_now"]
+              settable: false
+            transformer: filter_state_to_status
 
   # ============================================
   # DEVICE INFO

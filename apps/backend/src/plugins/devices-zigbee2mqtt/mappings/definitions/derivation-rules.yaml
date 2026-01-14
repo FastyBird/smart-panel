@@ -118,3 +118,48 @@ derivations:
         - max: 349
           value: "poor"
         - value: "very_poor"
+
+  # ============================================
+  # AIR QUALITY INDEX DERIVATIONS
+  # ============================================
+
+  # AQI level from value
+  # Based on standard AQI breakpoints:
+  # - excellent: 0-50 (Good)
+  # - good: 51-100 (Moderate)
+  # - fair: 101-150 (Unhealthy for Sensitive Groups)
+  # - inferior: 151-200 (Unhealthy)
+  # - poor: 201+ (Very Unhealthy/Hazardous)
+  aqi_level_from_value:
+    description: "Derive air quality level from AQI value"
+    rule:
+      type: threshold
+      thresholds:
+        - max: 50
+          value: "excellent"
+        - max: 100
+          value: "good"
+        - max: 150
+          value: "fair"
+        - max: 200
+          value: "inferior"
+        - value: "poor"
+
+  # ============================================
+  # FILTER DERIVATIONS
+  # ============================================
+
+  # Filter status from life remaining percentage
+  # - good: > 20% life remaining
+  # - replace_soon: 5-20% life remaining
+  # - replace_now: < 5% life remaining
+  filter_status_from_life:
+    description: "Derive filter status from life remaining percentage"
+    rule:
+      type: threshold
+      thresholds:
+        - max: 4
+          value: "replace_now"
+        - max: 20
+          value: "replace_soon"
+        - value: "good"
