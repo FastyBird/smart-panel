@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
-import { ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { DevicesResponseModel } from '../../devices/models/devices-response.model';
@@ -59,6 +59,7 @@ import {
 	LightingSummaryDataModel,
 	OtherLightsStateDataModel,
 	RoleAggregatedStateDataModel,
+	RoleLastIntentDataModel,
 	RolesStateMapDataModel,
 	ProposedSpaceDataModel,
 	ProposedSpacesResponseModel,
@@ -95,6 +96,14 @@ import {
 import { SpacesNotFoundException } from '../spaces.exceptions';
 
 @ApiTags(SPACES_MODULE_API_TAG_NAME)
+@ApiExtraModels(
+	LightingStateResponseModel,
+	LightingStateDataModel,
+	RolesStateMapDataModel,
+	RoleAggregatedStateDataModel,
+	RoleLastIntentDataModel,
+	OtherLightsStateDataModel,
+)
 @Controller('spaces')
 export class SpacesController {
 	private readonly logger = createExtensionLogger(SPACES_MODULE_NAME, 'SpacesController');
