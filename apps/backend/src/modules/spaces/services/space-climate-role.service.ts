@@ -22,15 +22,30 @@ import { SpacesValidationException } from '../spaces.exceptions';
 import { SpacesService } from './spaces.service';
 
 /**
- * Climate device categories for filtering (actuators)
- * These are the device types that can be controlled in the climate domain.
- * The panel app works with these devices for heating/cooling control.
+ * Primary climate device categories (main heating/cooling control)
+ * These devices get HEATING_ONLY, COOLING_ONLY, or AUTO roles by default.
  */
-const CLIMATE_ACTUATOR_CATEGORIES = [
+const CLIMATE_PRIMARY_CATEGORIES = [
 	DeviceCategory.THERMOSTAT,
 	DeviceCategory.HEATING_UNIT,
 	DeviceCategory.AIR_CONDITIONER,
 ];
+
+/**
+ * Auxiliary climate device categories (supplemental climate control)
+ * These devices get AUXILIARY role by default.
+ */
+const CLIMATE_AUXILIARY_CATEGORIES = [
+	DeviceCategory.AIR_DEHUMIDIFIER,
+	DeviceCategory.AIR_HUMIDIFIER,
+	DeviceCategory.AIR_PURIFIER,
+	DeviceCategory.FAN,
+];
+
+/**
+ * All climate actuator categories (primary + auxiliary)
+ */
+const CLIMATE_ACTUATOR_CATEGORIES = [...CLIMATE_PRIMARY_CATEGORIES, ...CLIMATE_AUXILIARY_CATEGORIES];
 
 /**
  * All climate device categories (actuators + sensors)
@@ -477,21 +492,24 @@ export class SpaceClimateRoleService {
 			if (target.deviceCategory === DeviceCategory.SENSOR) {
 				// All climate sensors get SENSOR role (included in climate domain)
 				role = ClimateRole.SENSOR;
-			} else {
-				// Actuators get control roles based on device category
+			} else if (CLIMATE_PRIMARY_CATEGORIES.includes(target.deviceCategory)) {
+				// Primary devices get control roles based on device category
 				if (target.deviceCategory === DeviceCategory.THERMOSTAT) {
 					// Thermostats can do both heating and cooling
 					role = ClimateRole.AUTO;
 				} else if (target.deviceCategory === DeviceCategory.HEATING_UNIT) {
 					// Heating units can only heat
 					role = ClimateRole.HEATING_ONLY;
-				} else if (target.deviceCategory === DeviceCategory.AIR_CONDITIONER) {
+				} else {
 					// Air conditioners can only cool
 					role = ClimateRole.COOLING_ONLY;
-				} else {
-					// Default to AUTO for any other climate actuator
-					role = ClimateRole.AUTO;
 				}
+			} else if (CLIMATE_AUXILIARY_CATEGORIES.includes(target.deviceCategory)) {
+				// Auxiliary devices (dehumidifier, humidifier, purifier, fan) get AUXILIARY role
+				role = ClimateRole.AUXILIARY;
+			} else {
+				// Default to AUXILIARY for any other climate device
+				role = ClimateRole.AUXILIARY;
 			}
 
 			defaultRoles.push({

@@ -423,7 +423,7 @@ export function getTemplatesForType(
 export { SpacesModuleLightingRole as LightingRole, SpacesModuleClimateRole as ClimateRole } from '../../openapi.constants';
 
 // Import for local use in helper arrays
-import { SpacesModuleClimateRole } from '../../openapi.constants';
+import { SpacesModuleClimateRole, DevicesModuleDeviceCategory } from '../../openapi.constants';
 
 // Helper arrays for role categorization
 export const CLIMATE_CONTROL_ROLES = [
@@ -434,6 +434,22 @@ export const CLIMATE_CONTROL_ROLES = [
 ] as const;
 
 export const CLIMATE_SENSOR_ROLES = [SpacesModuleClimateRole.sensor] as const;
+
+// Climate device category classifications
+export const CLIMATE_PRIMARY_CATEGORIES = [
+	DevicesModuleDeviceCategory.thermostat,
+	DevicesModuleDeviceCategory.heating_unit,
+	DevicesModuleDeviceCategory.air_conditioner,
+] as const;
+
+export const CLIMATE_AUXILIARY_CATEGORIES = [
+	DevicesModuleDeviceCategory.air_dehumidifier,
+	DevicesModuleDeviceCategory.air_humidifier,
+	DevicesModuleDeviceCategory.air_purifier,
+	DevicesModuleDeviceCategory.fan,
+] as const;
+
+export { DevicesModuleDeviceCategory as DeviceCategory } from '../../openapi.constants';
 
 export enum FormResult {
 	NONE = 'none',

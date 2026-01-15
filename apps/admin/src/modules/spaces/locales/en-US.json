@@ -216,7 +216,7 @@
 					"placeholder": "Select a role"
 				},
 				"applyDefaults": "Apply defaults",
-				"applyDefaultsHint": "Sets thermostat as Primary, heaters/AC as Auxiliary, fans as Ventilation"
+				"applyDefaultsHint": "Sets heaters to Heating Only, AC to Cooling Only, thermostats to Auto, auxiliary devices to Auxiliary, and sensors to Sensor"
 			},
 			"suggestions": {
 				"title": "Smart suggestions"
@@ -247,24 +247,20 @@
 		}
 	},
 	"climateRoles": {
-		"primary": "Primary",
+		"heating_only": "Heating Only",
+		"cooling_only": "Cooling Only",
+		"auto": "Auto",
 		"auxiliary": "Auxiliary",
-		"ventilation": "Ventilation",
-		"humidity_control": "Humidity Control",
-		"temperature_sensor": "Temperature Sensor",
-		"humidity_sensor": "Humidity Sensor",
-		"other": "Other",
+		"sensor": "Sensor",
 		"hidden": "Hidden",
 		"unassigned": "Unassigned",
 		"descriptions": {
-			"primary": "Main temperature regulation device for the space, typically the primary thermostat or HVAC controller.",
-			"auxiliary": "Secondary heating or cooling devices that supplement the primary climate control.",
-			"ventilation": "Air circulation devices like fans and air exchangers for fresh air and comfort.",
-			"humidity_control": "Humidity control devices including humidifiers and dehumidifiers.",
-			"temperature_sensor": "Temperature sensor providing ambient temperature readings for the space.",
-			"humidity_sensor": "Humidity sensor providing ambient humidity readings for the space.",
-			"other": "Climate devices that don't fit into standard categories.",
-			"hidden": "Hidden devices are excluded from the panel UI and intent-based control."
+			"heating_only": "Device is used only for heating in the climate domain.",
+			"cooling_only": "Device is used only for cooling in the climate domain.",
+			"auto": "Device can be used for both heating and cooling automatically.",
+			"auxiliary": "Auxiliary climate devices like dehumidifiers, humidifiers, air purifiers, and fans.",
+			"sensor": "Climate sensor providing readings (temperature, humidity, air quality, etc.) for the space.",
+			"hidden": "Hidden devices are excluded from the climate domain UI and control."
 		}
 	},
 	"filters": {
