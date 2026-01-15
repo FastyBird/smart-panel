@@ -369,7 +369,6 @@ export class ClimateStateDataModel {
 		description: 'The last climate mode that was explicitly applied via intent (from storage)',
 		enum: ClimateMode,
 		nullable: true,
-		example: null,
 	})
 	@Expose({ name: 'last_applied_mode' })
 	lastAppliedMode: ClimateMode | null;
@@ -2199,7 +2198,6 @@ export class LightingStateDataModel {
 		description: 'The last lighting mode that was explicitly applied via intent (from storage)',
 		enum: LightingMode,
 		nullable: true,
-		example: null,
 	})
 	@Expose({ name: 'last_applied_mode' })
 	lastAppliedMode: LightingMode | null;
