@@ -440,6 +440,7 @@ export enum ClimateRole {
 	HEATING_ONLY = 'heating_only', // Device should only be used for heating
 	COOLING_ONLY = 'cooling_only', // Device should only be used for cooling
 	AUTO = 'auto', // Device can be used for both heating and cooling (automatic)
+	AUXILIARY = 'auxiliary', // Auxiliary climate device (e.g., floor heating, towel warmer)
 	// Read roles (sensors) - enable/disable sensors in climate domain
 	SENSOR = 'sensor', // Sensor is included in climate domain readings
 	// Exclusion
@@ -451,6 +452,7 @@ export const CLIMATE_CONTROL_ROLES = [
 	ClimateRole.HEATING_ONLY,
 	ClimateRole.COOLING_ONLY,
 	ClimateRole.AUTO,
+	ClimateRole.AUXILIARY,
 ] as const;
 
 export const CLIMATE_SENSOR_ROLES = [ClimateRole.SENSOR] as const;
@@ -834,6 +836,12 @@ export const CLIMATE_ROLE_META: Record<ClimateRole, IntentEnumValueMeta> = {
 		label: 'Auto',
 		description: 'Device is used for both heating and cooling',
 		icon: 'mdi:thermostat-auto',
+	},
+	[ClimateRole.AUXILIARY]: {
+		value: ClimateRole.AUXILIARY,
+		label: 'Auxiliary',
+		description: 'Auxiliary climate device (e.g., floor heating, towel warmer)',
+		icon: 'mdi:radiator',
 	},
 	[ClimateRole.SENSOR]: {
 		value: ClimateRole.SENSOR,

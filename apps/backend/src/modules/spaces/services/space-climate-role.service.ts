@@ -394,7 +394,7 @@ export class SpaceClimateRoleService {
 						deviceCategory: device.category,
 						channelId: channel.id,
 						channelName: channel.name ?? null,
-						channelCategory: channel.category as ChannelCategory,
+						channelCategory: channel.category,
 						role: existingRole?.role ?? null,
 						priority: existingRole?.priority ?? 0,
 						hasTemperature,
@@ -553,7 +553,7 @@ export class SpaceClimateRoleService {
 			const channel = device.channels?.find((c) => c.id === channelId);
 			if (channel) {
 				channelName = channel.name ?? null;
-				channelCategory = channel.category as ChannelCategory;
+				channelCategory = channel.category;
 				const properties = channel.properties ?? [];
 				hasTemperature = properties.some((p) => p.category === PropertyCategory.TEMPERATURE);
 				hasHumidity = properties.some((p) => p.category === PropertyCategory.HUMIDITY);
