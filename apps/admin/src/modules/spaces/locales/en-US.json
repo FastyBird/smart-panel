@@ -347,11 +347,13 @@
 		"title": "Space detail",
 		"lightingRoles": {
 			"title": "Lighting roles",
-			"lightsAssigned": "Lights assigned"
+			"lightsAssigned": "Lights assigned",
+			"noRolesAssigned": "No roles assigned yet"
 		},
 		"climateRoles": {
 			"title": "Climate roles",
-			"devicesAssigned": "Devices assigned"
+			"devicesAssigned": "Devices assigned",
+			"noRolesAssigned": "No roles assigned yet"
 		},
 		"climateOverrides": {
 			"title": "Climate",

@@ -1,5 +1,5 @@
 <template>
-	<template v-if="roleSummaries.length > 0">
+	<template v-if="hasTargets">
 		<dt
 			class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
 			style="background: var(--el-fill-color-light)"
@@ -7,55 +7,61 @@
 			{{ t('spacesModule.detail.climateRoles.title') }}
 		</dt>
 		<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center justify-between min-w-[8rem]">
-			<div class="flex items-center gap-2 flex-wrap">
-			<el-popover
-				v-for="summary in roleSummaries"
-				:key="summary.role"
-				placement="bottom"
-				:width="400"
-				trigger="click"
-			>
-				<template #reference>
-					<el-tag
-						:type="getRoleTagType(summary.role)"
-						size="small"
-						class="cursor-pointer"
-					>
-						<div class="flex items-center gap-1">
-							<icon :icon="getRoleIcon(summary.role)" />
-							{{ t(`spacesModule.climateRoles.${summary.role}`) }}
-							<el-badge
-								:value="summary.devices.length"
-								:type="getRoleTagType(summary.role)"
-								class="ml-1"
-							/>
-						</div>
-					</el-tag>
-				</template>
-				<div class="space-y-2">
-					<el-alert
-						type="info"
-						:closable="false"
-						show-icon
-						class="mb-2!"
-					>
-						{{ t(`spacesModule.climateRoles.descriptions.${summary.role}`) }}
-					</el-alert>
-					<div class="text-sm font-medium mb-1">
-						{{ t('spacesModule.detail.climateRoles.devicesAssigned') }}:
-					</div>
-					<ul class="list-none p-0 m-0 space-y-1">
-						<li
-							v-for="device in summary.devices"
-							:key="device.deviceId"
-							class="flex items-center gap-2 text-sm py-1"
+			<!-- Show role tags when roles are assigned -->
+			<div v-if="roleSummaries.length > 0" class="flex items-center gap-2 flex-wrap">
+				<el-popover
+					v-for="summary in roleSummaries"
+					:key="summary.role"
+					placement="bottom"
+					:width="400"
+					trigger="click"
+				>
+					<template #reference>
+						<el-tag
+							:type="getRoleTagType(summary.role)"
+							size="small"
+							class="cursor-pointer"
 						>
-							<icon :icon="getDeviceIcon(device.deviceCategory)" class="text-gray-400" />
-							<span>{{ device.deviceName }}</span>
-						</li>
-					</ul>
-				</div>
-			</el-popover>
+							<div class="flex items-center gap-1">
+								<icon :icon="getRoleIcon(summary.role)" />
+								{{ t(`spacesModule.climateRoles.${summary.role}`) }}
+								<el-badge
+									:value="summary.devices.length"
+									:type="getRoleTagType(summary.role)"
+									class="ml-1"
+								/>
+							</div>
+						</el-tag>
+					</template>
+					<div class="space-y-2">
+						<el-alert
+							type="info"
+							:closable="false"
+							show-icon
+							class="mb-2!"
+						>
+							{{ t(`spacesModule.climateRoles.descriptions.${summary.role}`) }}
+						</el-alert>
+						<div class="text-sm font-medium mb-1">
+							{{ t('spacesModule.detail.climateRoles.devicesAssigned') }}:
+						</div>
+						<ul class="list-none p-0 m-0 space-y-1">
+							<li
+								v-for="device in summary.devices"
+								:key="device.deviceId"
+								class="flex items-center gap-2 text-sm py-1"
+							>
+								<icon :icon="getDeviceIcon(device.deviceCategory)" class="text-gray-400" />
+								<span>{{ device.deviceName }}</span>
+							</li>
+						</ul>
+					</div>
+				</el-popover>
+			</div>
+			<!-- Show hint when no roles assigned yet -->
+			<div v-else class="flex items-center gap-2 text-gray-400 text-sm">
+				<icon icon="mdi:thermostat" />
+				{{ t('spacesModule.detail.climateRoles.noRolesAssigned') }}
 			</div>
 			<el-button
 				text
@@ -102,6 +108,7 @@ const { climateSignal } = useSpacesRefreshSignals();
 
 const loading = ref(false);
 const roleSummaries = ref<IClimateRoleSummary[]>([]);
+const hasTargets = ref(false);
 
 const getRoleTagType = (role: string): 'primary' | 'success' | 'warning' | 'info' | 'danger' => {
 	switch (role) {
@@ -176,13 +183,17 @@ const loadClimateRoles = async (): Promise<void> => {
 		);
 
 		if (error || !responseData) {
+			hasTargets.value = false;
 			return;
 		}
+
+		const targets = responseData.data ?? [];
+		hasTargets.value = targets.length > 0;
 
 		// Group targets by role (excluding HIDDEN roles)
 		const roleMap = new Map<string, IClimateRoleSummary>();
 
-		for (const target of responseData.data ?? []) {
+		for (const target of targets) {
 			if (!target.role || (target.role as string) === ClimateRole.hidden) continue;
 
 			const role = target.role as string;
