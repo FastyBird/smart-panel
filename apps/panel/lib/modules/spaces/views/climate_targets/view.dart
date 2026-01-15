@@ -4,32 +4,26 @@ import 'package:fastybird_smart_panel/modules/spaces/models/climate_targets/clim
 
 /// Climate target role enum for convenience
 enum ClimateTargetRole {
-  primary,
+  heatingOnly,
+  coolingOnly,
+  auto,
   auxiliary,
-  ventilation,
-  humidityControl,
-  temperatureSensor,
-  humiditySensor,
-  other,
+  sensor,
   hidden;
 
   static ClimateTargetRole? fromApiRole(SpacesModuleDataClimateTargetRole? role) {
     if (role == null) return null;
     switch (role) {
-      case SpacesModuleDataClimateTargetRole.primary:
-        return ClimateTargetRole.primary;
+      case SpacesModuleDataClimateTargetRole.heatingOnly:
+        return ClimateTargetRole.heatingOnly;
+      case SpacesModuleDataClimateTargetRole.coolingOnly:
+        return ClimateTargetRole.coolingOnly;
+      case SpacesModuleDataClimateTargetRole.auto:
+        return ClimateTargetRole.auto;
       case SpacesModuleDataClimateTargetRole.auxiliary:
         return ClimateTargetRole.auxiliary;
-      case SpacesModuleDataClimateTargetRole.ventilation:
-        return ClimateTargetRole.ventilation;
-      case SpacesModuleDataClimateTargetRole.humidityControl:
-        return ClimateTargetRole.humidityControl;
-      case SpacesModuleDataClimateTargetRole.temperatureSensor:
-        return ClimateTargetRole.temperatureSensor;
-      case SpacesModuleDataClimateTargetRole.humiditySensor:
-        return ClimateTargetRole.humiditySensor;
-      case SpacesModuleDataClimateTargetRole.other:
-        return ClimateTargetRole.other;
+      case SpacesModuleDataClimateTargetRole.sensor:
+        return ClimateTargetRole.sensor;
       case SpacesModuleDataClimateTargetRole.hidden:
         return ClimateTargetRole.hidden;
       case SpacesModuleDataClimateTargetRole.$unknown:
@@ -38,9 +32,7 @@ enum ClimateTargetRole {
   }
 
   /// Check if this role is a sensor role
-  bool get isSensor =>
-      this == ClimateTargetRole.temperatureSensor ||
-      this == ClimateTargetRole.humiditySensor;
+  bool get isSensor => this == ClimateTargetRole.sensor;
 
   /// Check if this role is an actuator/control role
   bool get isActuator => !isSensor && this != ClimateTargetRole.hidden;
