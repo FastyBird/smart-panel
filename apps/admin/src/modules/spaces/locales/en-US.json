@@ -33,7 +33,6 @@
 				"title": "Smart overrides",
 				"badge": "Advanced",
 				"hint": "Optional settings to improve smart behavior and intent-based control.",
-				"climateOverrides": "Climate device overrides",
 				"lightingRoles": "Lighting roles",
 				"climateRoles": "Climate roles",
 				"smartSuggestions": "Smart suggestions"
@@ -182,19 +181,6 @@
 				"title": "Parent zone",
 				"placeholder": "Select a parent zone (optional)",
 				"hint": "You can organize this room by assigning it to a zone, like 'Ground Floor' or 'Upstairs'. This helps group related rooms together."
-			},
-			"climateOverrides": {
-				"title": "Climate device overrides"
-			},
-			"primaryThermostat": {
-				"title": "Primary thermostat",
-				"placeholder": "Auto-detect (first available)",
-				"hint": "Override the default thermostat selection for this space"
-			},
-			"primaryTemperatureSensor": {
-				"title": "Primary temperature sensor",
-				"placeholder": "Auto-detect (thermostat or first sensor)",
-				"hint": "Override the temperature reading source for this space"
 			},
 			"lightingRoles": {
 				"title": "Lighting roles",
@@ -354,15 +340,6 @@
 			"title": "Climate roles",
 			"devicesAssigned": "Devices assigned",
 			"noRolesAssigned": "No roles assigned yet"
-		},
-		"climateOverrides": {
-			"title": "Climate",
-			"popoverTitle": "Climate overrides",
-			"popoverDescription": "These settings define which devices are used to control and measure climate in this space.",
-			"primaryThermostat": "Thermostat",
-			"temperatureSensor": "Temperature",
-			"autoDetected": "Auto-detected",
-			"notConfigured": "Not configured"
 		},
 		"info": {
 			"title": "Space information",
