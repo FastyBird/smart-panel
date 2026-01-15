@@ -261,8 +261,9 @@ export class SpaceLightingStateService {
 	/**
 	 * Aggregate lights by role.
 	 * Values are shown only when uniform across all devices in the role.
-	 * Unassigned lights (role === null) are treated as OTHER for consistency
-	 * with orchestration and role-specific intent handling.
+	 * NOTE: Only EXPLICITLY assigned roles are included here. Unassigned lights
+	 * (role === null) are handled separately in `other` to avoid double-counting.
+	 * Mode detection will consider unassigned lights when matching the OTHER rule.
 	 */
 	private aggregateByRole(
 		lights: LightState[],
@@ -270,23 +271,20 @@ export class SpaceLightingStateService {
 	): Partial<Record<LightingRole, RoleAggregatedState>> {
 		const roleStates: Partial<Record<LightingRole, RoleAggregatedState>> = {};
 
-		// Group lights by role (HIDDEN excluded, null treated as OTHER)
+		// Group lights by EXPLICITLY assigned roles only (null and HIDDEN excluded)
 		const roleGroups = new Map<LightingRole, LightState[]>();
 
 		for (const light of lights) {
-			// Skip HIDDEN lights entirely
-			if (light.role === LightingRole.HIDDEN) {
+			// Skip HIDDEN lights and unassigned lights (null handled in `other`)
+			if (light.role === null || light.role === LightingRole.HIDDEN) {
 				continue;
 			}
 
-			// Treat unassigned lights (null) as OTHER for consistency with orchestration
-			const effectiveRole = light.role ?? LightingRole.OTHER;
-
-			if (!roleGroups.has(effectiveRole)) {
-				roleGroups.set(effectiveRole, []);
+			if (!roleGroups.has(light.role)) {
+				roleGroups.set(light.role, []);
 			}
 
-			roleGroups.get(effectiveRole).push(light);
+			roleGroups.get(light.role).push(light);
 		}
 
 		// Check if NIGHT mode fallback should be used (no night lights exist)
@@ -562,7 +560,7 @@ export class SpaceLightingStateService {
 		let bestMatch: ModeMatch | null = null;
 
 		for (const modeId of allModes.keys()) {
-			const match = this.matchMode(modeId as LightingMode, roleStates);
+			const match = this.matchMode(modeId as LightingMode, roleStates, otherState);
 
 			if (match && (!bestMatch || match.matchPercentage > bestMatch.matchPercentage)) {
 				bestMatch = match;
@@ -573,7 +571,8 @@ export class SpaceLightingStateService {
 	}
 
 	/**
-	 * Detect mode in MVP scenario (no roles configured)
+	 * Detect mode in MVP scenario (no roles configured).
+	 * Uses mvpBrightness values from YAML mode specifications.
 	 */
 	private detectMvpMode(lights: LightState[]): ModeMatch | null {
 		const onLights = lights.filter((l) => l.isOn);
@@ -591,14 +590,23 @@ export class SpaceLightingStateService {
 
 		const avgBrightness = brightnessValues.reduce((a, b) => a + b, 0) / brightnessValues.length;
 
-		// Match against MVP mode brightness levels
-		const modes: Array<{ mode: LightingMode; brightness: number }> = [
-			{ mode: LightingMode.WORK, brightness: 100 },
-			{ mode: LightingMode.RELAX, brightness: 50 },
-			{ mode: LightingMode.NIGHT, brightness: 20 },
-		];
+		// Build MVP brightness lookup from YAML spec
+		const allModes = this.intentSpecLoaderService.getAllLightingModeOrchestrations();
+		const mvpModes: Array<{ mode: LightingMode; brightness: number }> = [];
 
-		for (const { mode, brightness } of modes) {
+		for (const [modeId, config] of allModes) {
+			if (config.mvpBrightness !== undefined && config.mvpBrightness !== null) {
+				mvpModes.push({
+					mode: modeId as LightingMode,
+					brightness: config.mvpBrightness,
+				});
+			}
+		}
+
+		// Sort by brightness descending to match highest first (WORK before RELAX before NIGHT)
+		mvpModes.sort((a, b) => b.brightness - a.brightness);
+
+		for (const { mode, brightness } of mvpModes) {
 			if (Math.abs(avgBrightness - brightness) <= 15) {
 				// Within 15% tolerance
 				return {
@@ -613,11 +621,13 @@ export class SpaceLightingStateService {
 	}
 
 	/**
-	 * Match current state against a specific mode's rules
+	 * Match current state against a specific mode's rules.
+	 * Includes support for OTHER role matching against unassigned lights (otherState).
 	 */
 	private matchMode(
 		mode: LightingMode,
 		roleStates: Partial<Record<LightingRole, RoleAggregatedState>>,
+		otherState: OtherLightsState,
 	): ModeMatch | null {
 		const config = this.intentSpecLoaderService.getLightingModeOrchestration(mode);
 
@@ -637,7 +647,29 @@ export class SpaceLightingStateService {
 
 		for (const [roleStr, rule] of Object.entries(rules)) {
 			const role = roleStr as LightingRole;
-			const roleState = roleStates[role];
+
+			// For OTHER role, use otherState (unassigned lights) if no explicit OTHER assignments exist
+			let roleState: RoleAggregatedState | undefined = roleStates[role];
+
+			if (role === LightingRole.OTHER && !roleState && otherState.devicesCount > 0) {
+				// Create a synthetic RoleAggregatedState from otherState for matching
+				roleState = {
+					role: LightingRole.OTHER,
+					isOn: otherState.isOn,
+					isOnMixed: otherState.isOnMixed,
+					brightness: otherState.brightness,
+					colorTemperature: otherState.colorTemperature,
+					color: otherState.color,
+					white: otherState.white,
+					isBrightnessMixed: otherState.isBrightnessMixed,
+					isColorTemperatureMixed: otherState.isColorTemperatureMixed,
+					isColorMixed: otherState.isColorMixed,
+					isWhiteMixed: otherState.isWhiteMixed,
+					lastIntent: null,
+					devicesCount: otherState.devicesCount,
+					devicesOn: otherState.devicesOn,
+				};
+			}
 
 			// Skip roles that don't exist in current space
 			if (!roleState) {
