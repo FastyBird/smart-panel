@@ -18,10 +18,14 @@ import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
 import { SpaceEntity } from './entities/space.entity';
 import { SpaceActivityListener } from './listeners/space-activity.listener';
 import { SpacesConfigModel } from './models/config.model';
+import { ClimateIntentService } from './services/climate-intent.service';
+import { LightingIntentService } from './services/lighting-intent.service';
 import { SpaceClimateRoleService } from './services/space-climate-role.service';
 import { SpaceContextSnapshotService } from './services/space-context-snapshot.service';
+import { SpaceIntentBaseService } from './services/space-intent-base.service';
 import { SpaceIntentService } from './services/space-intent.service';
 import { SpaceLightingRoleService } from './services/space-lighting-role.service';
+import { SpaceLightingStateService } from './services/space-lighting-state.service';
 import { SpaceSuggestionService } from './services/space-suggestion.service';
 import { SpaceUndoHistoryService } from './services/space-undo-history.service';
 import { SpacesService } from './services/spaces.service';
@@ -50,8 +54,12 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 	controllers: [SpacesController],
 	providers: [
 		SpacesService,
+		SpaceIntentBaseService,
+		LightingIntentService,
+		ClimateIntentService,
 		SpaceIntentService,
 		SpaceLightingRoleService,
+		SpaceLightingStateService,
 		SpaceClimateRoleService,
 		SpaceSuggestionService,
 		SpaceContextSnapshotService,

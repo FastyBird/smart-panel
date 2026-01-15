@@ -6,7 +6,7 @@ import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
 import { SpaceEntity } from '../entities/space.entity';
-import { LightingRole, SpaceType } from '../spaces.constants';
+import { ClimateMode, LightingRole, SpaceType } from '../spaces.constants';
 
 import { SpaceContextSnapshotService } from './space-context-snapshot.service';
 import { ClimateState, SpaceIntentService } from './space-intent.service';
@@ -126,11 +126,19 @@ describe('SpaceContextSnapshotService', () => {
 
 	const createDefaultClimateState = (): ClimateState => ({
 		hasClimate: false,
+		mode: ClimateMode.OFF,
 		currentTemperature: null,
+		currentHumidity: null,
 		targetTemperature: null,
+		heatingSetpoint: null,
+		coolingSetpoint: null,
 		minSetpoint: 5,
 		maxSetpoint: 35,
 		canSetSetpoint: false,
+		supportsHeating: false,
+		supportsCooling: false,
+		isMixed: false,
+		devicesCount: 0,
 	});
 
 	beforeEach(async () => {
@@ -278,11 +286,19 @@ describe('SpaceContextSnapshotService', () => {
 
 			const climateState: ClimateState = {
 				hasClimate: true,
+				mode: ClimateMode.HEAT,
 				currentTemperature: 22.5,
+				currentHumidity: 45,
 				targetTemperature: 21.0,
+				heatingSetpoint: 21.0,
+				coolingSetpoint: null,
 				minSetpoint: 5,
 				maxSetpoint: 35,
 				canSetSetpoint: true,
+				supportsHeating: true,
+				supportsCooling: false,
+				isMixed: false,
+				devicesCount: 1,
 			};
 
 			spacesService.findOne.mockResolvedValue(space);

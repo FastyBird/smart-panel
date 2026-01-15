@@ -17,10 +17,12 @@ import { SpaceClimateRoleService } from '../services/space-climate-role.service'
 import { SpaceContextSnapshotService } from '../services/space-context-snapshot.service';
 import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
+import { SpaceLightingStateService } from '../services/space-lighting-state.service';
 import { SpaceSuggestionService } from '../services/space-suggestion.service';
 import { SpaceUndoHistoryService } from '../services/space-undo-history.service';
 import { SpacesService } from '../services/spaces.service';
 import {
+	ClimateMode,
 	IntentCategory,
 	LightingIntentType,
 	LightingMode,
@@ -100,17 +102,28 @@ describe('SpacesController', () => {
 						}),
 						getClimateState: jest.fn().mockResolvedValue({
 							hasClimate: false,
+							mode: ClimateMode.OFF,
 							currentTemperature: null,
+							currentHumidity: null,
 							targetTemperature: null,
-							minSetpoint: null,
-							maxSetpoint: null,
+							heatingSetpoint: null,
+							coolingSetpoint: null,
+							minSetpoint: 15,
+							maxSetpoint: 30,
 							canSetSetpoint: false,
+							supportsHeating: false,
+							supportsCooling: false,
+							isMixed: false,
+							devicesCount: 0,
 						}),
 						executeClimateIntent: jest.fn().mockResolvedValue({
 							success: true,
 							affectedDevices: 1,
 							failedDevices: 0,
+							mode: ClimateMode.HEAT,
 							newSetpoint: 22.0,
+							heatingSetpoint: null,
+							coolingSetpoint: null,
 						}),
 					},
 				},
@@ -131,6 +144,29 @@ describe('SpacesController', () => {
 						getLightTargetsInSpace: jest.fn().mockResolvedValue([]),
 						inferDefaultLightingRoles: jest.fn().mockResolvedValue([]),
 						getRoleMap: jest.fn().mockResolvedValue(new Map()),
+					},
+				},
+				{
+					provide: SpaceLightingStateService,
+					useValue: {
+						getLightingState: jest.fn().mockResolvedValue({
+							detectedMode: null,
+							modeConfidence: 'none',
+							modeMatchPercentage: null,
+							lastAppliedMode: null,
+							lastAppliedAt: null,
+							totalLights: 0,
+							lightsOn: 0,
+							averageBrightness: null,
+							roles: {},
+							other: {
+								isOn: false,
+								brightness: null,
+								isMixed: false,
+								devicesCount: 0,
+								devicesOn: 0,
+							},
+						}),
 					},
 				},
 				{
@@ -585,11 +621,14 @@ describe('SpacesController', () => {
 				throw new Error('Setpoint set intent not found');
 			}
 
-			expect(setpointSetIntent.params.length).toBe(1);
-			expect(setpointSetIntent.params[0].name).toBe('value');
-			expect(setpointSetIntent.params[0].type).toBe('number');
-			expect(setpointSetIntent.params[0].minValue).toBeDefined();
-			expect(setpointSetIntent.params[0].maxValue).toBeDefined();
+			expect(setpointSetIntent.params.length).toBeGreaterThanOrEqual(1);
+
+			// Check 'value' param exists with min/max
+			const valueParam = setpointSetIntent.params.find((p) => p.name === 'value');
+			expect(valueParam).toBeDefined();
+			expect(valueParam?.type).toBe('number');
+			expect(valueParam?.minValue).toBeDefined();
+			expect(valueParam?.maxValue).toBeDefined();
 		});
 
 		it('should include all quick action types', () => {
@@ -649,11 +688,19 @@ describe('SpacesController', () => {
 		it('should return climate state for a space', async () => {
 			const climateState = {
 				hasClimate: true,
+				mode: ClimateMode.HEAT,
 				currentTemperature: 22.5,
+				currentHumidity: 45,
 				targetTemperature: 21.0,
+				heatingSetpoint: 21.0,
+				coolingSetpoint: null,
 				minSetpoint: 16,
 				maxSetpoint: 30,
 				canSetSetpoint: true,
+				supportsHeating: true,
+				supportsCooling: false,
+				isMixed: false,
+				devicesCount: 1,
 			};
 			jest.spyOn(spaceIntentService, 'getClimateState').mockResolvedValue(climateState);
 
@@ -668,11 +715,19 @@ describe('SpacesController', () => {
 		it('should return hasClimate false when no climate devices', async () => {
 			jest.spyOn(spaceIntentService, 'getClimateState').mockResolvedValue({
 				hasClimate: false,
+				mode: ClimateMode.OFF,
 				currentTemperature: null,
+				currentHumidity: null,
 				targetTemperature: null,
-				minSetpoint: null,
-				maxSetpoint: null,
+				heatingSetpoint: null,
+				coolingSetpoint: null,
+				minSetpoint: 15,
+				maxSetpoint: 30,
 				canSetSetpoint: false,
+				supportsHeating: false,
+				supportsCooling: false,
+				isMixed: false,
+				devicesCount: 0,
 			});
 
 			const result = await controller.getClimateState(mockSpace.id);
@@ -687,7 +742,10 @@ describe('SpacesController', () => {
 				success: true,
 				affectedDevices: 1,
 				failedDevices: 0,
+				mode: ClimateMode.HEAT,
 				newSetpoint: 22.0,
+				heatingSetpoint: 22.0,
+				coolingSetpoint: null,
 			});
 
 			const intentDto = {
@@ -985,11 +1043,19 @@ describe('SpacesController', () => {
 				},
 				climate: {
 					hasClimate: false,
+					mode: ClimateMode.OFF,
 					currentTemperature: null,
+					currentHumidity: null,
 					targetTemperature: null,
-					minSetpoint: null,
-					maxSetpoint: null,
+					heatingSetpoint: null,
+					coolingSetpoint: null,
+					minSetpoint: 15,
+					maxSetpoint: 30,
 					canSetSetpoint: false,
+					supportsHeating: false,
+					supportsCooling: false,
+					isMixed: false,
+					devicesCount: 0,
 					primaryThermostatId: null,
 				},
 			};

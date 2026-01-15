@@ -54,7 +54,12 @@ import {
 	LightingIntentResultDataModel,
 	LightingRoleMetaDataModel,
 	LightingRoleResponseModel,
+	LightingStateDataModel,
+	LightingStateResponseModel,
 	LightingSummaryDataModel,
+	OtherLightsStateDataModel,
+	RoleAggregatedStateDataModel,
+	RolesStateMapDataModel,
 	ProposedSpaceDataModel,
 	ProposedSpacesResponseModel,
 	QuickActionDataModel,
@@ -73,6 +78,7 @@ import { SpaceClimateRoleService } from '../services/space-climate-role.service'
 import { SpaceContextSnapshotService } from '../services/space-context-snapshot.service';
 import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
+import { SpaceLightingStateService } from '../services/space-lighting-state.service';
 import { SpaceSuggestionService } from '../services/space-suggestion.service';
 import { SpaceUndoHistoryService } from '../services/space-undo-history.service';
 import { SpacesService } from '../services/spaces.service';
@@ -97,6 +103,7 @@ export class SpacesController {
 		private readonly spacesService: SpacesService,
 		private readonly spaceIntentService: SpaceIntentService,
 		private readonly spaceLightingRoleService: SpaceLightingRoleService,
+		private readonly spaceLightingStateService: SpaceLightingStateService,
 		private readonly spaceClimateRoleService: SpaceClimateRoleService,
 		private readonly spaceSuggestionService: SpaceSuggestionService,
 		private readonly spaceContextSnapshotService: SpaceContextSnapshotService,
@@ -535,11 +542,19 @@ export class SpacesController {
 
 		const stateData = new ClimateStateDataModel();
 		stateData.hasClimate = state.hasClimate;
+		stateData.mode = state.mode;
 		stateData.currentTemperature = state.currentTemperature;
+		stateData.currentHumidity = state.currentHumidity;
 		stateData.targetTemperature = state.targetTemperature;
+		stateData.heatingSetpoint = state.heatingSetpoint;
+		stateData.coolingSetpoint = state.coolingSetpoint;
 		stateData.minSetpoint = state.minSetpoint;
 		stateData.maxSetpoint = state.maxSetpoint;
 		stateData.canSetSetpoint = state.canSetSetpoint;
+		stateData.supportsHeating = state.supportsHeating;
+		stateData.supportsCooling = state.supportsCooling;
+		stateData.isMixed = state.isMixed;
+		stateData.devicesCount = state.devicesCount;
 
 		const response = new ClimateStateResponseModel();
 		response.data = stateData;
@@ -553,9 +568,10 @@ export class SpacesController {
 		operationId: 'create-spaces-module-space-climate-intent',
 		summary: 'Execute climate intent for space',
 		description:
-			'Executes a climate intent command for the primary thermostat in the space. ' +
-			'Supports setpoint delta (+/- adjustments) and direct setpoint set operations. ' +
-			'The target setpoint is clamped to safe min/max limits.',
+			'Executes a climate intent command for all primary climate devices (thermostats, heating units, air conditioners) in the space. ' +
+			'Supports setpoint delta (+/- adjustments), direct setpoint set, and mode changes (HEAT/COOL/AUTO/OFF). ' +
+			'Devices are filtered by their role (HEATING_ONLY, COOLING_ONLY, AUTO) and capability (presence of HEATER/COOLER channels). ' +
+			'The target setpoint is clamped to the intersection of all device limits (most restrictive range).',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
 	@ApiSuccessResponse(ClimateIntentResponseModel, 'Returns the intent execution result')
@@ -573,7 +589,10 @@ export class SpacesController {
 		resultData.success = result.success;
 		resultData.affectedDevices = result.affectedDevices;
 		resultData.failedDevices = result.failedDevices;
+		resultData.mode = result.mode;
 		resultData.newSetpoint = result.newSetpoint;
+		resultData.heatingSetpoint = result.heatingSetpoint;
+		resultData.coolingSetpoint = result.coolingSetpoint;
 
 		const response = new ClimateIntentResponseModel();
 		response.data = resultData;
@@ -582,8 +601,73 @@ export class SpacesController {
 	}
 
 	// ================================
-	// Lighting Role Endpoints
+	// Lighting State & Role Endpoints
 	// ================================
+
+	@Get(':id/lighting/state')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-lighting-state',
+		summary: 'Get aggregated lighting state for space',
+		description:
+			'Retrieves the aggregated lighting state for a space, including per-role state (on/off, brightness, mixed status), ' +
+			'mode detection (which lighting mode current state matches), and summary statistics. ' +
+			'This endpoint provides pre-calculated values for UI display without panel-side calculation.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(LightingStateResponseModel, 'Returns the aggregated lighting state')
+	@ApiNotFoundResponse('Space not found')
+	async getLightingState(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<LightingStateResponseModel> {
+		this.logger.debug(`Fetching lighting state for space with id=${id}`);
+
+		const state = await this.spaceLightingStateService.getLightingState(id);
+
+		if (!state) {
+			throw new SpacesNotFoundException('Space not found');
+		}
+
+		const stateData = new LightingStateDataModel();
+		stateData.detectedMode = state.detectedMode;
+		stateData.modeConfidence = state.modeConfidence;
+		stateData.modeMatchPercentage = state.modeMatchPercentage;
+		stateData.lastAppliedMode = state.lastAppliedMode;
+		stateData.lastAppliedAt = state.lastAppliedAt;
+		stateData.totalLights = state.totalLights;
+		stateData.lightsOn = state.lightsOn;
+		stateData.averageBrightness = state.averageBrightness;
+
+		// Map roles
+		const rolesMap = new RolesStateMapDataModel();
+
+		for (const [roleKey, roleState] of Object.entries(state.roles)) {
+			const roleData = new RoleAggregatedStateDataModel();
+			roleData.role = roleState.role;
+			roleData.isOn = roleState.isOn;
+			roleData.brightness = roleState.brightness;
+			roleData.isMixed = roleState.isMixed;
+			roleData.devicesCount = roleState.devicesCount;
+			roleData.devicesOn = roleState.devicesOn;
+
+			(rolesMap as Record<string, RoleAggregatedStateDataModel>)[roleKey] = roleData;
+		}
+
+		stateData.roles = rolesMap;
+
+		// Map other lights
+		const otherData = new OtherLightsStateDataModel();
+		otherData.isOn = state.other.isOn;
+		otherData.brightness = state.other.brightness;
+		otherData.isMixed = state.other.isMixed;
+		otherData.devicesCount = state.other.devicesCount;
+		otherData.devicesOn = state.other.devicesOn;
+		stateData.other = otherData;
+
+		const response = new LightingStateResponseModel();
+		response.data = stateData;
+
+		return response;
+	}
 
 	@Get(':id/lighting/targets')
 	@ApiOperation({
@@ -1077,11 +1161,19 @@ export class SpacesController {
 		// Transform climate state to response model
 		const climateState = new ClimateStateDataModel();
 		climateState.hasClimate = snapshot.climate.hasClimate;
+		climateState.mode = snapshot.climate.mode;
 		climateState.currentTemperature = snapshot.climate.currentTemperature;
+		climateState.currentHumidity = snapshot.climate.currentHumidity;
 		climateState.targetTemperature = snapshot.climate.targetTemperature;
+		climateState.heatingSetpoint = snapshot.climate.heatingSetpoint;
+		climateState.coolingSetpoint = snapshot.climate.coolingSetpoint;
 		climateState.minSetpoint = snapshot.climate.minSetpoint;
 		climateState.maxSetpoint = snapshot.climate.maxSetpoint;
 		climateState.canSetSetpoint = snapshot.climate.canSetSetpoint;
+		climateState.supportsHeating = snapshot.climate.supportsHeating;
+		climateState.supportsCooling = snapshot.climate.supportsCooling;
+		climateState.isMixed = snapshot.climate.isMixed;
+		climateState.devicesCount = snapshot.climate.devicesCount;
 
 		const snapshotData = new ContextSnapshotDataModel();
 		snapshotData.spaceId = snapshot.spaceId;

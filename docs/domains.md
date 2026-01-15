@@ -74,36 +74,47 @@ Controls illumination and ambiance throughout the space.
 
 ### Climate Domain
 
-Controls indoor comfort including temperature, humidity, and air quality.
+Controls indoor comfort including temperature, humidity, and air quality. For detailed implementation, see [Climate Domain Documentation](./climate-domain.md).
 
 **Identifier:** `climate`
 
 **Device Categories:**
-| Category | Description |
-|----------|-------------|
-| `thermostat` | Temperature control units |
-| `air_conditioner` | Cooling systems |
-| `heater` | Heating systems |
-| `air_humidifier` | Humidity addition |
-| `air_dehumidifier` | Humidity removal |
-| `air_purifier` | Air filtration |
-| `fan` | Air circulation |
+| Category | Description | Primary Control |
+|----------|-------------|-----------------|
+| `thermostat` | Temperature control units | Yes |
+| `air_conditioner` | Cooling systems | Yes |
+| `heating_unit` | Heating systems | Yes |
+| `air_humidifier` | Humidity addition | No |
+| `air_dehumidifier` | Humidity removal | No |
+| `air_purifier` | Air filtration | No |
+| `fan` | Air circulation | No |
 
 **Roles:**
-| Role | Priority | Description | Typical Devices |
-|------|----------|-------------|-----------------|
-| `primary` | 1 | Main climate control | Central thermostat, main AC unit |
-| `secondary` | 2 | Supplemental control | Portable heaters, window AC, desk fans |
-| `air_quality` | 3 | Air quality management | Purifiers, humidifiers, dehumidifiers |
-| `circulation` | 4 | Air movement only | Ceiling fans, standing fans |
-| `hidden` | 99 | Excluded from UI | HVAC zone controllers |
+| Role | Description | Intent Behavior |
+|------|-------------|-----------------|
+| `auto` | Supports both heating and cooling | Controlled in all modes |
+| `heating_only` | Can only heat | Controlled only in HEAT mode |
+| `cooling_only` | Can only cool | Controlled only in COOL mode |
+| `sensor` | Monitoring only | Not controlled by intents |
+| `hidden` | Excluded from UI | Not controlled by intents |
+
+Note: Devices with no role assigned are treated as `auto`.
+
+**Modes:**
+| Mode | Description |
+|------|-------------|
+| `heat` | Active heating |
+| `cool` | Active cooling |
+| `auto` | Maintain temperature range with dual setpoints |
+| `off` | Climate control disabled |
 
 **Capabilities tracked:**
-- Current temperature
-- Target temperature
+- Current temperature (averaged from all primary devices)
+- Current humidity (averaged from devices with humidity sensors)
+- Target temperature (single setpoint for HEAT/COOL modes)
+- Heating/cooling setpoints (dual setpoints for AUTO mode)
 - Mode (heat/cool/auto/off)
-- Fan speed
-- Humidity level
+- Mixed state (when devices have different setpoints)
 
 ---
 
@@ -275,7 +286,7 @@ These devices can be included in custom scenes or automations but don't fit the 
 Domain      │ Categories
 ────────────┼──────────────────────────────────────────────────────────
 lights      │ lighting
-climate     │ thermostat, air_conditioner, heater, air_humidifier,
+climate     │ thermostat, air_conditioner, heating_unit, air_humidifier,
             │ air_dehumidifier, air_purifier, fan
 covers      │ window_covering
 media       │ media, speaker, television

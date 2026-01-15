@@ -242,8 +242,17 @@ export class ClimateStateDataModel {
 	hasClimate: boolean;
 
 	@ApiProperty({
+		name: 'mode',
+		description: 'Current climate mode detected from device states',
+		enum: ['heat', 'cool', 'auto', 'off'],
+		example: 'heat',
+	})
+	@Expose({ name: 'mode' })
+	mode: string;
+
+	@ApiProperty({
 		name: 'current_temperature',
-		description: 'Current temperature reading in degrees Celsius',
+		description: 'Current temperature reading in degrees Celsius (averaged from all primary devices)',
 		type: 'number',
 		nullable: true,
 		example: 22.5,
@@ -252,8 +261,18 @@ export class ClimateStateDataModel {
 	currentTemperature: number | null;
 
 	@ApiProperty({
+		name: 'current_humidity',
+		description: 'Current humidity reading in percent (averaged from all devices with humidity)',
+		type: 'number',
+		nullable: true,
+		example: 45,
+	})
+	@Expose({ name: 'current_humidity' })
+	currentHumidity: number | null;
+
+	@ApiProperty({
 		name: 'target_temperature',
-		description: 'Current target/setpoint temperature in degrees Celsius',
+		description: 'Current target/setpoint temperature (for HEAT/COOL modes)',
 		type: 'number',
 		nullable: true,
 		example: 21.0,
@@ -262,31 +281,87 @@ export class ClimateStateDataModel {
 	targetTemperature: number | null;
 
 	@ApiProperty({
-		name: 'min_setpoint',
-		description: 'Minimum allowed setpoint temperature',
+		name: 'heating_setpoint',
+		description: 'Heating setpoint (lower bound, for AUTO mode)',
 		type: 'number',
-		example: 5,
+		nullable: true,
+		example: 20.0,
+	})
+	@Expose({ name: 'heating_setpoint' })
+	heatingSetpoint: number | null;
+
+	@ApiProperty({
+		name: 'cooling_setpoint',
+		description: 'Cooling setpoint (upper bound, for AUTO mode)',
+		type: 'number',
+		nullable: true,
+		example: 24.0,
+	})
+	@Expose({ name: 'cooling_setpoint' })
+	coolingSetpoint: number | null;
+
+	@ApiProperty({
+		name: 'min_setpoint',
+		description: 'Minimum allowed setpoint temperature (intersection of all device limits)',
+		type: 'number',
+		example: 15,
 	})
 	@Expose({ name: 'min_setpoint' })
 	minSetpoint: number;
 
 	@ApiProperty({
 		name: 'max_setpoint',
-		description: 'Maximum allowed setpoint temperature',
+		description: 'Maximum allowed setpoint temperature (intersection of all device limits)',
 		type: 'number',
-		example: 35,
+		example: 30,
 	})
 	@Expose({ name: 'max_setpoint' })
 	maxSetpoint: number;
 
 	@ApiProperty({
 		name: 'can_set_setpoint',
-		description: 'Whether the space has a thermostat that can adjust setpoint',
+		description: 'Whether the space has devices that can adjust setpoint',
 		type: 'boolean',
 		example: true,
 	})
 	@Expose({ name: 'can_set_setpoint' })
 	canSetSetpoint: boolean;
+
+	@ApiProperty({
+		name: 'supports_heating',
+		description: 'Whether any device in the space supports heating',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'supports_heating' })
+	supportsHeating: boolean;
+
+	@ApiProperty({
+		name: 'supports_cooling',
+		description: 'Whether any device in the space supports cooling',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'supports_cooling' })
+	supportsCooling: boolean;
+
+	@ApiProperty({
+		name: 'is_mixed',
+		description: 'Whether devices have different setpoint values (out of sync)',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'is_mixed' })
+	isMixed: boolean;
+
+	@ApiProperty({
+		name: 'devices_count',
+		description: 'Number of primary climate devices in the space',
+		type: 'integer',
+		example: 2,
+	})
+	@Expose({ name: 'devices_count' })
+	devicesCount: number;
 }
 
 /**
@@ -320,7 +395,7 @@ export class ClimateIntentResultDataModel {
 		name: 'affected_devices',
 		description: 'Number of devices affected by the intent',
 		type: 'integer',
-		example: 1,
+		example: 2,
 	})
 	@Expose({ name: 'affected_devices' })
 	affectedDevices: number;
@@ -335,14 +410,43 @@ export class ClimateIntentResultDataModel {
 	failedDevices: number;
 
 	@ApiProperty({
+		name: 'mode',
+		description: 'The climate mode after the intent was executed',
+		enum: ['heat', 'cool', 'auto', 'off'],
+		example: 'heat',
+	})
+	@Expose({ name: 'mode' })
+	mode: string;
+
+	@ApiProperty({
 		name: 'new_setpoint',
-		description: 'The new setpoint value after the intent was executed',
+		description: 'The new setpoint value (for HEAT/COOL modes)',
 		type: 'number',
 		nullable: true,
 		example: 21.5,
 	})
 	@Expose({ name: 'new_setpoint' })
 	newSetpoint: number | null;
+
+	@ApiProperty({
+		name: 'heating_setpoint',
+		description: 'The new heating setpoint (for AUTO mode)',
+		type: 'number',
+		nullable: true,
+		example: 20.0,
+	})
+	@Expose({ name: 'heating_setpoint' })
+	heatingSetpoint: number | null;
+
+	@ApiProperty({
+		name: 'cooling_setpoint',
+		description: 'The new cooling setpoint (for AUTO mode)',
+		type: 'number',
+		nullable: true,
+		example: 24.0,
+	})
+	@Expose({ name: 'cooling_setpoint' })
+	coolingSetpoint: number | null;
 }
 
 /**
@@ -1701,4 +1805,292 @@ export class UndoResultResponseModel extends BaseSuccessResponseModel<UndoResult
 	@Expose()
 	@Type(() => UndoResultDataModel)
 	declare data: UndoResultDataModel;
+}
+
+// ================================
+// Lighting State Models
+// ================================
+
+/**
+ * Aggregated state for a single lighting role
+ */
+@ApiSchema({ name: 'SpacesModuleDataRoleAggregatedState' })
+export class RoleAggregatedStateDataModel {
+	@ApiProperty({
+		description: 'The lighting role',
+		enum: LightingRole,
+		example: LightingRole.MAIN,
+	})
+	@Expose()
+	role: LightingRole;
+
+	@ApiProperty({
+		name: 'is_on',
+		description: 'Whether any light in this role is on',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'is_on' })
+	isOn: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Average brightness of ON lights in this role (0-100), null if no brightness data',
+		type: 'number',
+		nullable: true,
+		example: 85,
+	})
+	@Expose()
+	brightness: number | null;
+
+	@ApiProperty({
+		name: 'is_mixed',
+		description: 'Whether lights in this role have different states (some on/off or different brightness)',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'is_mixed' })
+	isMixed: boolean;
+
+	@ApiProperty({
+		name: 'devices_count',
+		description: 'Total number of lights assigned to this role',
+		type: 'integer',
+		example: 2,
+	})
+	@Expose({ name: 'devices_count' })
+	devicesCount: number;
+
+	@ApiProperty({
+		name: 'devices_on',
+		description: 'Number of lights currently on in this role',
+		type: 'integer',
+		example: 2,
+	})
+	@Expose({ name: 'devices_on' })
+	devicesOn: number;
+}
+
+/**
+ * Aggregated state for lights without role ("other" lights)
+ */
+@ApiSchema({ name: 'SpacesModuleDataOtherLightsState' })
+export class OtherLightsStateDataModel {
+	@ApiProperty({
+		name: 'is_on',
+		description: 'Whether any light without role is on',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'is_on' })
+	isOn: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Average brightness of ON lights without role (0-100), null if no brightness data',
+		type: 'number',
+		nullable: true,
+		example: null,
+	})
+	@Expose()
+	brightness: number | null;
+
+	@ApiProperty({
+		name: 'is_mixed',
+		description: 'Whether lights without role have different states',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'is_mixed' })
+	isMixed: boolean;
+
+	@ApiProperty({
+		name: 'devices_count',
+		description: 'Total number of lights without role',
+		type: 'integer',
+		example: 3,
+	})
+	@Expose({ name: 'devices_count' })
+	devicesCount: number;
+
+	@ApiProperty({
+		name: 'devices_on',
+		description: 'Number of lights without role currently on',
+		type: 'integer',
+		example: 0,
+	})
+	@Expose({ name: 'devices_on' })
+	devicesOn: number;
+}
+
+/**
+ * Per-role state map
+ */
+@ApiSchema({ name: 'SpacesModuleDataRolesStateMap' })
+export class RolesStateMapDataModel {
+	@ApiPropertyOptional({
+		description: 'State of MAIN role lights',
+		type: () => RoleAggregatedStateDataModel,
+		nullable: true,
+	})
+	@Expose()
+	@Type(() => RoleAggregatedStateDataModel)
+	main?: RoleAggregatedStateDataModel;
+
+	@ApiPropertyOptional({
+		description: 'State of TASK role lights',
+		type: () => RoleAggregatedStateDataModel,
+		nullable: true,
+	})
+	@Expose()
+	@Type(() => RoleAggregatedStateDataModel)
+	task?: RoleAggregatedStateDataModel;
+
+	@ApiPropertyOptional({
+		description: 'State of AMBIENT role lights',
+		type: () => RoleAggregatedStateDataModel,
+		nullable: true,
+	})
+	@Expose()
+	@Type(() => RoleAggregatedStateDataModel)
+	ambient?: RoleAggregatedStateDataModel;
+
+	@ApiPropertyOptional({
+		description: 'State of ACCENT role lights',
+		type: () => RoleAggregatedStateDataModel,
+		nullable: true,
+	})
+	@Expose()
+	@Type(() => RoleAggregatedStateDataModel)
+	accent?: RoleAggregatedStateDataModel;
+
+	@ApiPropertyOptional({
+		description: 'State of NIGHT role lights',
+		type: () => RoleAggregatedStateDataModel,
+		nullable: true,
+	})
+	@Expose()
+	@Type(() => RoleAggregatedStateDataModel)
+	night?: RoleAggregatedStateDataModel;
+
+	@ApiPropertyOptional({
+		description: 'State of OTHER role lights',
+		type: () => RoleAggregatedStateDataModel,
+		nullable: true,
+	})
+	@Expose()
+	@Type(() => RoleAggregatedStateDataModel)
+	other?: RoleAggregatedStateDataModel;
+}
+
+/**
+ * Complete lighting state for a space
+ */
+@ApiSchema({ name: 'SpacesModuleDataLightingState' })
+export class LightingStateDataModel {
+	@ApiPropertyOptional({
+		name: 'detected_mode',
+		description: 'The lighting mode detected from current device states, null if no mode matches',
+		enum: LightingMode,
+		nullable: true,
+		example: LightingMode.WORK,
+	})
+	@Expose({ name: 'detected_mode' })
+	detectedMode: LightingMode | null;
+
+	@ApiProperty({
+		name: 'mode_confidence',
+		description: 'Confidence level of mode detection: exact (100% match), approximate (70-99% match), none (no match)',
+		enum: ['exact', 'approximate', 'none'],
+		example: 'exact',
+	})
+	@Expose({ name: 'mode_confidence' })
+	modeConfidence: 'exact' | 'approximate' | 'none';
+
+	@ApiPropertyOptional({
+		name: 'mode_match_percentage',
+		description: 'Percentage of role rules that match the detected mode (0-100), null if no mode detected',
+		type: 'number',
+		nullable: true,
+		example: 100,
+	})
+	@Expose({ name: 'mode_match_percentage' })
+	modeMatchPercentage: number | null;
+
+	@ApiPropertyOptional({
+		name: 'last_applied_mode',
+		description: 'The last lighting mode that was explicitly applied via intent (from storage)',
+		enum: LightingMode,
+		nullable: true,
+		example: null,
+	})
+	@Expose({ name: 'last_applied_mode' })
+	lastAppliedMode: LightingMode | null;
+
+	@ApiPropertyOptional({
+		name: 'last_applied_at',
+		description: 'When the last mode was applied',
+		type: 'string',
+		format: 'date-time',
+		nullable: true,
+		example: null,
+	})
+	@Expose({ name: 'last_applied_at' })
+	lastAppliedAt: Date | null;
+
+	@ApiProperty({
+		name: 'total_lights',
+		description: 'Total number of controllable lights in the space',
+		type: 'integer',
+		example: 5,
+	})
+	@Expose({ name: 'total_lights' })
+	totalLights: number;
+
+	@ApiProperty({
+		name: 'lights_on',
+		description: 'Number of lights currently on',
+		type: 'integer',
+		example: 3,
+	})
+	@Expose({ name: 'lights_on' })
+	lightsOn: number;
+
+	@ApiPropertyOptional({
+		name: 'average_brightness',
+		description: 'Average brightness of all ON lights (0-100), null if no lights are on or no brightness data',
+		type: 'number',
+		nullable: true,
+		example: 85,
+	})
+	@Expose({ name: 'average_brightness' })
+	averageBrightness: number | null;
+
+	@ApiProperty({
+		description: 'Aggregated state per lighting role',
+		type: () => RolesStateMapDataModel,
+	})
+	@Expose()
+	@Type(() => RolesStateMapDataModel)
+	roles: RolesStateMapDataModel;
+
+	@ApiProperty({
+		description: 'Aggregated state for lights without role assignment',
+		type: () => OtherLightsStateDataModel,
+	})
+	@Expose()
+	@Type(() => OtherLightsStateDataModel)
+	other: OtherLightsStateDataModel;
+}
+
+/**
+ * Response wrapper for lighting state
+ */
+@ApiSchema({ name: 'SpacesModuleResLightingState' })
+export class LightingStateResponseModel extends BaseSuccessResponseModel<LightingStateDataModel> {
+	@ApiProperty({
+		description: 'The aggregated lighting state for the space',
+		type: () => LightingStateDataModel,
+	})
+	@Expose()
+	@Type(() => LightingStateDataModel)
+	declare data: LightingStateDataModel;
 }

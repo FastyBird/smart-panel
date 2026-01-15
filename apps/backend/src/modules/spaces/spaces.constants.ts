@@ -1,4 +1,4 @@
-import { ChannelCategory } from '../devices/devices.constants';
+import { ChannelCategory, DeviceCategory } from '../devices/devices.constants';
 
 export const SPACES_MODULE_NAME = 'spaces-module';
 export const SPACES_MODULE_PREFIX = 'spaces';
@@ -398,7 +398,40 @@ export const BRIGHTNESS_DELTA_STEPS: Record<BrightnessDelta, number> = {
 export enum ClimateIntentType {
 	SETPOINT_DELTA = 'setpoint_delta',
 	SETPOINT_SET = 'setpoint_set',
+	SET_MODE = 'set_mode',
 }
+
+// Climate Modes - operating mode for climate domain
+export enum ClimateMode {
+	HEAT = 'heat', // Heating only - single setpoint
+	COOL = 'cool', // Cooling only - single setpoint
+	AUTO = 'auto', // Automatic - dual setpoints (heating lower, cooling upper)
+	OFF = 'off', // All climate devices off
+}
+
+/**
+ * Temperature averaging strategy for climate state calculation.
+ * Determines which devices contribute to the averaged temperature reading.
+ */
+export enum TemperatureAveragingStrategy {
+	/** Include all devices with temperature sensors, including SENSOR role devices */
+	ALL_SOURCES = 'all_sources',
+	/** Only include primary climate devices (thermostat, heater, AC) */
+	PRIMARY_ONLY = 'primary_only',
+}
+
+/** Current temperature averaging strategy (MVP default) */
+export const TEMPERATURE_AVERAGING_STRATEGY: TemperatureAveragingStrategy = TemperatureAveragingStrategy.PRIMARY_ONLY;
+
+/**
+ * Primary climate device categories.
+ * These are the main heating/cooling control devices in the climate domain.
+ */
+export const CLIMATE_PRIMARY_DEVICE_CATEGORIES = [
+	DeviceCategory.THERMOSTAT,
+	DeviceCategory.HEATING_UNIT,
+	DeviceCategory.AIR_CONDITIONER,
+] as const;
 
 // Climate setpoint step sizes (in degrees)
 export enum SetpointDelta {
@@ -861,6 +894,36 @@ export const CLIMATE_ROLE_META: Record<ClimateRole, IntentEnumValueMeta> = {
 };
 
 /**
+ * Metadata for climate mode values
+ */
+export const CLIMATE_MODE_META: Record<ClimateMode, IntentEnumValueMeta> = {
+	[ClimateMode.HEAT]: {
+		value: ClimateMode.HEAT,
+		label: 'Heat',
+		description: 'Heating mode - single setpoint for all heaters',
+		icon: 'mdi:fire',
+	},
+	[ClimateMode.COOL]: {
+		value: ClimateMode.COOL,
+		label: 'Cool',
+		description: 'Cooling mode - single setpoint for all coolers',
+		icon: 'mdi:snowflake',
+	},
+	[ClimateMode.AUTO]: {
+		value: ClimateMode.AUTO,
+		label: 'Auto',
+		description: 'Automatic mode - dual setpoints for heating (lower) and cooling (upper)',
+		icon: 'mdi:thermostat-auto',
+	},
+	[ClimateMode.OFF]: {
+		value: ClimateMode.OFF,
+		label: 'Off',
+		description: 'Turn off all climate devices',
+		icon: 'mdi:power-off',
+	},
+};
+
+/**
  * Complete lighting intent catalog
  */
 export const LIGHTING_INTENT_CATALOG: IntentTypeMeta[] = [
@@ -923,7 +986,7 @@ export const CLIMATE_INTENT_CATALOG: IntentTypeMeta[] = [
 	{
 		type: ClimateIntentType.SETPOINT_DELTA,
 		label: 'Adjust Temperature',
-		description: 'Increase or decrease the target temperature',
+		description: 'Increase or decrease the target temperature based on current mode',
 		icon: 'mdi:thermometer',
 		params: [
 			{
@@ -944,16 +1007,48 @@ export const CLIMATE_INTENT_CATALOG: IntentTypeMeta[] = [
 	{
 		type: ClimateIntentType.SETPOINT_SET,
 		label: 'Set Temperature',
-		description: 'Set the target temperature to a specific value',
+		description:
+			'Set the target temperature. In HEAT/COOL mode sets single setpoint, in AUTO mode sets both heating and cooling setpoints.',
 		icon: 'mdi:thermometer-check',
 		params: [
 			{
 				name: 'value',
 				type: 'number',
 				required: true,
-				description: 'The target temperature in degrees Celsius',
+				description: 'The target temperature in degrees Celsius (single setpoint for HEAT/COOL modes)',
 				minValue: ABSOLUTE_MIN_SETPOINT,
 				maxValue: ABSOLUTE_MAX_SETPOINT,
+			},
+			{
+				name: 'heatingSetpoint',
+				type: 'number',
+				required: false,
+				description: 'The heating setpoint (lower bound) for AUTO mode',
+				minValue: ABSOLUTE_MIN_SETPOINT,
+				maxValue: ABSOLUTE_MAX_SETPOINT,
+			},
+			{
+				name: 'coolingSetpoint',
+				type: 'number',
+				required: false,
+				description: 'The cooling setpoint (upper bound) for AUTO mode',
+				minValue: ABSOLUTE_MIN_SETPOINT,
+				maxValue: ABSOLUTE_MAX_SETPOINT,
+			},
+		],
+	},
+	{
+		type: ClimateIntentType.SET_MODE,
+		label: 'Set Climate Mode',
+		description: 'Change the climate operating mode (heat/cool/auto/off)',
+		icon: 'mdi:thermostat',
+		params: [
+			{
+				name: 'mode',
+				type: 'enum',
+				required: true,
+				description: 'The climate mode to set',
+				enumValues: Object.values(CLIMATE_MODE_META),
 			},
 		],
 	},
