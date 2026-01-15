@@ -261,6 +261,8 @@ export class SpaceLightingStateService {
 	/**
 	 * Aggregate lights by role.
 	 * Values are shown only when uniform across all devices in the role.
+	 * Unassigned lights (role === null) are treated as OTHER for consistency
+	 * with orchestration and role-specific intent handling.
 	 */
 	private aggregateByRole(
 		lights: LightState[],
@@ -268,19 +270,23 @@ export class SpaceLightingStateService {
 	): Partial<Record<LightingRole, RoleAggregatedState>> {
 		const roleStates: Partial<Record<LightingRole, RoleAggregatedState>> = {};
 
-		// Group lights by role (excluding null roles and HIDDEN)
+		// Group lights by role (HIDDEN excluded, null treated as OTHER)
 		const roleGroups = new Map<LightingRole, LightState[]>();
 
 		for (const light of lights) {
-			if (light.role === null || light.role === LightingRole.HIDDEN) {
+			// Skip HIDDEN lights entirely
+			if (light.role === LightingRole.HIDDEN) {
 				continue;
 			}
 
-			if (!roleGroups.has(light.role)) {
-				roleGroups.set(light.role, []);
+			// Treat unassigned lights (null) as OTHER for consistency with orchestration
+			const effectiveRole = light.role ?? LightingRole.OTHER;
+
+			if (!roleGroups.has(effectiveRole)) {
+				roleGroups.set(effectiveRole, []);
 			}
 
-			roleGroups.get(light.role).push(light);
+			roleGroups.get(effectiveRole).push(light);
 		}
 
 		// Check if NIGHT mode fallback should be used (no night lights exist)
@@ -719,18 +725,26 @@ export class SpaceLightingStateService {
 	}
 
 	/**
-	 * Check if a role's current state matches a rule
+	 * Check if a role's current state matches a rule.
+	 * Accounts for mixed on/off states - partial on/off is not considered a match.
 	 */
 	private matchRoleRule(
 		roleState: RoleAggregatedState,
 		rule: RoleBrightnessRule,
 	): { matches: boolean; exact: boolean } {
-		// Check on/off state
+		// Handle mixed on/off state - this is never a full match
+		if (roleState.isOnMixed) {
+			// If rule says ON but some devices are off, or rule says OFF but some devices are on,
+			// this is not a proper match (partial state doesn't match expected uniform state)
+			return { matches: false, exact: false };
+		}
+
+		// Check on/off state (all devices are uniform at this point)
 		if (rule.on !== roleState.isOn) {
 			return { matches: false, exact: false };
 		}
 
-		// If rule says OFF, we're done
+		// If rule says OFF and all devices are off, we're done
 		if (!rule.on) {
 			return { matches: true, exact: true };
 		}

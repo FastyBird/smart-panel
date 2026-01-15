@@ -39,8 +39,12 @@ export class LightingIntentDto {
 	@IsEnum(LightingIntentType, { message: '[{"field":"type","reason":"Type must be a valid lighting intent type."}]' })
 	type: LightingIntentType;
 
+	// TODO: Custom YAML-defined modes are supported by IntentSpecLoaderService but currently
+	// cannot be used via API because validation restricts to LightingMode enum values.
+	// To support custom modes: change to string type with custom validator that checks
+	// against intentSpecLoaderService.getAllLightingModeOrchestrations().keys()
 	@ApiPropertyOptional({
-		description: 'Lighting mode (required when type is SET_MODE)',
+		description: 'Lighting mode (required when type is SET_MODE). Currently limited to built-in modes.',
 		enum: LightingMode,
 		example: LightingMode.RELAX,
 	})

@@ -363,6 +363,7 @@ export class LightingIntentService extends SpaceIntentBaseService {
 
 	/**
 	 * Find all light devices in a space with their channels, properties, and roles.
+	 * Iterates ALL light channels per device (multi-channel devices have multiple outputs).
 	 * Excludes lights with HIDDEN role as they should not be controlled by intents.
 	 */
 	private async getLightsInSpace(spaceId: string): Promise<LightDevice[]> {
@@ -378,63 +379,62 @@ export class LightingIntentService extends SpaceIntentBaseService {
 				continue;
 			}
 
-			// Find the light channel
-			const lightChannel = device.channels?.find((ch) => ch.category === ChannelCategory.LIGHT);
+			// Find ALL light channels (multi-channel devices have multiple light outputs)
+			const lightChannels = device.channels?.filter((ch) => ch.category === ChannelCategory.LIGHT) ?? [];
 
-			if (!lightChannel) {
-				continue;
+			for (const lightChannel of lightChannels) {
+				// Find the ON property (required for lights)
+				const onProperty = lightChannel.properties?.find((p) => p.category === PropertyCategory.ON);
+
+				if (!onProperty) {
+					continue;
+				}
+
+				// Find optional properties
+				const brightnessProperty =
+					lightChannel.properties?.find((p) => p.category === PropertyCategory.BRIGHTNESS) ?? null;
+				// RGB color properties
+				const colorRedProperty =
+					lightChannel.properties?.find((p) => p.category === PropertyCategory.COLOR_RED) ?? null;
+				const colorGreenProperty =
+					lightChannel.properties?.find((p) => p.category === PropertyCategory.COLOR_GREEN) ?? null;
+				const colorBlueProperty =
+					lightChannel.properties?.find((p) => p.category === PropertyCategory.COLOR_BLUE) ?? null;
+				// Hue-Saturation color properties
+				const hueProperty = lightChannel.properties?.find((p) => p.category === PropertyCategory.HUE) ?? null;
+				const saturationProperty =
+					lightChannel.properties?.find((p) => p.category === PropertyCategory.SATURATION) ?? null;
+				// Other properties
+				const colorTempProperty =
+					lightChannel.properties?.find((p) => p.category === PropertyCategory.COLOR_TEMPERATURE) ?? null;
+				const whiteProperty = lightChannel.properties?.find((p) => p.category === PropertyCategory.COLOR_WHITE) ?? null;
+
+				// Get role assignment for this light (keyed by deviceId:channelId)
+				const roleKey = `${device.id}:${lightChannel.id}`;
+				const roleEntity = roleMap.get(roleKey);
+				const role = roleEntity?.role ?? null;
+
+				// Skip HIDDEN lights - they should not be controlled by intents
+				if (role === LightingRole.HIDDEN) {
+					this.logger.debug(`Skipping HIDDEN light deviceId=${device.id} channelId=${lightChannel.id}`);
+					continue;
+				}
+
+				lights.push({
+					device,
+					lightChannel,
+					onProperty,
+					brightnessProperty,
+					colorRedProperty,
+					colorGreenProperty,
+					colorBlueProperty,
+					hueProperty,
+					saturationProperty,
+					colorTempProperty,
+					whiteProperty,
+					role,
+				});
 			}
-
-			// Find the ON property (required for lights)
-			const onProperty = lightChannel.properties?.find((p) => p.category === PropertyCategory.ON);
-
-			if (!onProperty) {
-				continue;
-			}
-
-			// Find optional properties
-			const brightnessProperty =
-				lightChannel.properties?.find((p) => p.category === PropertyCategory.BRIGHTNESS) ?? null;
-			// RGB color properties
-			const colorRedProperty = lightChannel.properties?.find((p) => p.category === PropertyCategory.COLOR_RED) ?? null;
-			const colorGreenProperty =
-				lightChannel.properties?.find((p) => p.category === PropertyCategory.COLOR_GREEN) ?? null;
-			const colorBlueProperty =
-				lightChannel.properties?.find((p) => p.category === PropertyCategory.COLOR_BLUE) ?? null;
-			// Hue-Saturation color properties
-			const hueProperty = lightChannel.properties?.find((p) => p.category === PropertyCategory.HUE) ?? null;
-			const saturationProperty =
-				lightChannel.properties?.find((p) => p.category === PropertyCategory.SATURATION) ?? null;
-			// Other properties
-			const colorTempProperty =
-				lightChannel.properties?.find((p) => p.category === PropertyCategory.COLOR_TEMPERATURE) ?? null;
-			const whiteProperty = lightChannel.properties?.find((p) => p.category === PropertyCategory.COLOR_WHITE) ?? null;
-
-			// Get role assignment for this light
-			const roleKey = `${device.id}:${lightChannel.id}`;
-			const roleEntity = roleMap.get(roleKey);
-			const role = roleEntity?.role ?? null;
-
-			// Skip HIDDEN lights - they should not be controlled by intents
-			if (role === LightingRole.HIDDEN) {
-				this.logger.debug(`Skipping HIDDEN light deviceId=${device.id} channelId=${lightChannel.id}`);
-				continue;
-			}
-
-			lights.push({
-				device,
-				lightChannel,
-				onProperty,
-				brightnessProperty,
-				colorRedProperty,
-				colorGreenProperty,
-				colorBlueProperty,
-				hueProperty,
-				saturationProperty,
-				colorTempProperty,
-				whiteProperty,
-				role,
-			});
 		}
 
 		return lights;
