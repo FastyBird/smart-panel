@@ -3,6 +3,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
+import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 
 import { IntentsController } from './controllers/intents.controller';
@@ -13,6 +14,7 @@ import {
 	INTENTS_MODULE_NAME,
 } from './intents.constants';
 import { IntentsConfigModel } from './models/config.model';
+import { IntentTimeseriesService } from './services/intent-timeseries.service';
 import { IntentsService } from './services/intents.service';
 
 @ApiTag({
@@ -21,10 +23,10 @@ import { IntentsService } from './services/intents.service';
 	description: INTENTS_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [forwardRef(() => ExtensionsModule)],
+	imports: [forwardRef(() => ExtensionsModule), forwardRef(() => InfluxDbModule)],
 	controllers: [IntentsController],
-	providers: [IntentsService],
-	exports: [IntentsService],
+	providers: [IntentsService, IntentTimeseriesService],
+	exports: [IntentsService, IntentTimeseriesService],
 })
 export class IntentsModule {
 	constructor(

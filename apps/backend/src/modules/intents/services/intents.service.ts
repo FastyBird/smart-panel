@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid';
 
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, OnModuleDestroy, OnModuleInit, forwardRef } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
@@ -14,13 +14,19 @@ import {
 } from '../intents.constants';
 import { CreateIntentInput, IntentRecord, IntentTargetResult } from '../models/intent.model';
 
+import { IntentTimeseriesService } from './intent-timeseries.service';
+
 @Injectable()
 export class IntentsService implements OnModuleInit, OnModuleDestroy {
 	private readonly intents = new Map<string, IntentRecord>();
 	private cleanupInterval: NodeJS.Timeout | null = null;
 	private readonly logger = createExtensionLogger(INTENTS_MODULE_NAME, 'IntentsService');
 
-	constructor(private readonly eventEmitter: EventEmitter2) {}
+	constructor(
+		private readonly eventEmitter: EventEmitter2,
+		@Inject(forwardRef(() => IntentTimeseriesService))
+		private readonly intentTimeseriesService: IntentTimeseriesService,
+	) {}
 
 	onModuleInit(): void {
 		this.cleanupInterval = setInterval(() => this.expireIntents(), INTENT_CLEANUP_INTERVAL);
@@ -95,6 +101,9 @@ export class IntentsService implements OnModuleInit, OnModuleDestroy {
 		this.logger.debug(`Intent completed: ${intentId} (${status})`);
 
 		this.emitIntentEvent(IntentEventType.COMPLETED, intent);
+
+		// Store to InfluxDB for historical tracking (fire and forget)
+		void this.intentTimeseriesService.storeIntentCompletion(intent);
 
 		// Remove from registry (completed intents don't need cleanup)
 		this.intents.delete(intentId);

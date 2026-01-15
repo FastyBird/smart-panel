@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
+import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
 import {
 	LIGHTING_MODE_ORCHESTRATION,
 	LightingMode,
@@ -96,6 +97,8 @@ export class SpaceLightingStateService {
 	constructor(
 		private readonly spacesService: SpacesService,
 		private readonly lightingRoleService: SpaceLightingRoleService,
+		@Inject(forwardRef(() => IntentTimeseriesService))
+		private readonly intentTimeseriesService: IntentTimeseriesService,
 	) {}
 
 	/**
@@ -131,14 +134,21 @@ export class SpaceLightingStateService {
 		// Detect current mode
 		const modeMatch = this.detectMode(roleStates, otherState, lights);
 
+		// Get last applied mode from InfluxDB
+		const lastApplied = await this.intentTimeseriesService.getLastLightingMode(spaceId);
+		const lastAppliedMode = lastApplied?.mode
+			? Object.values(LightingMode).includes(lastApplied.mode as LightingMode)
+				? (lastApplied.mode as LightingMode)
+				: null
+			: null;
+
 		return {
 			detectedMode: modeMatch?.mode ?? null,
 			modeConfidence: modeMatch ? modeMatch.confidence : 'none',
 			modeMatchPercentage: modeMatch?.matchPercentage ?? null,
 
-			// TODO: Implement InfluxDB persistence for last applied mode
-			lastAppliedMode: null,
-			lastAppliedAt: null,
+			lastAppliedMode,
+			lastAppliedAt: lastApplied?.appliedAt ?? null,
 
 			totalLights: summary.totalLights,
 			lightsOn: summary.lightsOn,
@@ -228,19 +238,19 @@ export class SpaceLightingStateService {
 				roleGroups.set(light.role, []);
 			}
 
-			roleGroups.get(light.role)!.push(light);
+			roleGroups.get(light.role).push(light);
 		}
 
 		// Calculate aggregated state for each role
 		for (const [role, roleLights] of roleGroups) {
 			const onStates = roleLights.map((l) => l.isOn);
-			const brightnessValues = roleLights.filter((l) => l.brightness !== null).map((l) => l.brightness!);
+			const brightnessValues = roleLights.filter((l) => l.brightness !== null).map((l) => l.brightness);
 
 			const devicesOn = onStates.filter((on) => on).length;
 			const isOn = devicesOn > 0;
 
 			// Calculate average brightness (only from ON lights with brightness)
-			const onBrightnessValues = roleLights.filter((l) => l.isOn && l.brightness !== null).map((l) => l.brightness!);
+			const onBrightnessValues = roleLights.filter((l) => l.isOn && l.brightness !== null).map((l) => l.brightness);
 
 			const avgBrightness =
 				onBrightnessValues.length > 0
@@ -282,13 +292,13 @@ export class SpaceLightingStateService {
 		}
 
 		const onStates = otherLights.map((l) => l.isOn);
-		const brightnessValues = otherLights.filter((l) => l.brightness !== null).map((l) => l.brightness!);
+		const brightnessValues = otherLights.filter((l) => l.brightness !== null).map((l) => l.brightness);
 
 		const devicesOn = onStates.filter((on) => on).length;
 		const isOn = devicesOn > 0;
 
 		// Calculate average brightness (only from ON lights with brightness)
-		const onBrightnessValues = otherLights.filter((l) => l.isOn && l.brightness !== null).map((l) => l.brightness!);
+		const onBrightnessValues = otherLights.filter((l) => l.isOn && l.brightness !== null).map((l) => l.brightness);
 
 		const avgBrightness =
 			onBrightnessValues.length > 0
@@ -334,10 +344,14 @@ export class SpaceLightingStateService {
 	/**
 	 * Calculate overall summary
 	 */
-	private calculateSummary(lights: LightState[]): { totalLights: number; lightsOn: number; averageBrightness: number | null } {
+	private calculateSummary(lights: LightState[]): {
+		totalLights: number;
+		lightsOn: number;
+		averageBrightness: number | null;
+	} {
 		const lightsOn = lights.filter((l) => l.isOn).length;
 
-		const onBrightnessValues = lights.filter((l) => l.isOn && l.brightness !== null).map((l) => l.brightness!);
+		const onBrightnessValues = lights.filter((l) => l.isOn && l.brightness !== null).map((l) => l.brightness);
 
 		const averageBrightness =
 			onBrightnessValues.length > 0
@@ -392,7 +406,7 @@ export class SpaceLightingStateService {
 		}
 
 		// Check if all ON lights have similar brightness
-		const brightnessValues = onLights.filter((l) => l.brightness !== null).map((l) => l.brightness!);
+		const brightnessValues = onLights.filter((l) => l.brightness !== null).map((l) => l.brightness);
 
 		if (brightnessValues.length === 0) {
 			return null;
@@ -424,7 +438,10 @@ export class SpaceLightingStateService {
 	/**
 	 * Match current state against a specific mode's rules
 	 */
-	private matchMode(mode: LightingMode, roleStates: Partial<Record<LightingRole, RoleAggregatedState>>): ModeMatch | null {
+	private matchMode(
+		mode: LightingMode,
+		roleStates: Partial<Record<LightingRole, RoleAggregatedState>>,
+	): ModeMatch | null {
 		const config = LIGHTING_MODE_ORCHESTRATION[mode];
 		const rules = config.roles;
 

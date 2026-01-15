@@ -8,6 +8,7 @@ import { ChannelEntity, DeviceEntity } from '../devices/entities/devices.entity'
 import { DisplayEntity } from '../displays/entities/displays.entity';
 import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
+import { IntentsModule } from '../intents/intents.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 
@@ -48,6 +49,7 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 			DisplayEntity,
 		]),
 		forwardRef(() => DevicesModule),
+		forwardRef(() => IntentsModule),
 		forwardRef(() => ExtensionsModule),
 		forwardRef(() => ConfigModule),
 	],

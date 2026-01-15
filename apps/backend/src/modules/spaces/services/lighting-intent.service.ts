@@ -5,6 +5,7 @@ import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
+import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
 import { LightingIntentDto } from '../dto/lighting-intent.dto';
 import {
 	BRIGHTNESS_DELTA_STEPS,
@@ -18,8 +19,8 @@ import {
 	SPACES_MODULE_NAME,
 } from '../spaces.constants';
 
-import { IntentExecutionResult, SpaceIntentBaseService } from './space-intent-base.service';
 import { SpaceContextSnapshotService } from './space-context-snapshot.service';
+import { IntentExecutionResult, SpaceIntentBaseService } from './space-intent-base.service';
 import { SpaceLightingRoleService } from './space-lighting-role.service';
 import { SpaceUndoHistoryService } from './space-undo-history.service';
 import { SpacesService } from './spaces.service';
@@ -128,6 +129,8 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		private readonly contextSnapshotService: SpaceContextSnapshotService,
 		@Inject(forwardRef(() => SpaceUndoHistoryService))
 		private readonly undoHistoryService: SpaceUndoHistoryService,
+		@Inject(forwardRef(() => IntentTimeseriesService))
+		private readonly intentTimeseriesService: IntentTimeseriesService,
 	) {
 		super();
 	}
@@ -230,6 +233,17 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		this.logger.debug(
 			`Mode intent completed spaceId=${spaceId} mode=${mode} affected=${affectedDevices} failed=${failedDevices}`,
 		);
+
+		// Store mode change to InfluxDB for historical tracking (fire and forget)
+		if (overallSuccess) {
+			void this.intentTimeseriesService.storeLightingModeChange(
+				spaceId,
+				mode,
+				selections.length,
+				affectedDevices,
+				failedDevices,
+			);
+		}
 
 		return { success: overallSuccess, affectedDevices, failedDevices };
 	}
