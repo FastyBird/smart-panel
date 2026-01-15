@@ -8,6 +8,7 @@ import { SpaceClimateRoleEntity } from '../entities/space-climate-role.entity';
 import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
 import { SpaceEntity } from '../entities/space.entity';
 import {
+	ClimateMode,
 	ClimateRole,
 	IntentCategory,
 	LightingMode,
@@ -362,6 +363,27 @@ export class ClimateStateDataModel {
 	})
 	@Expose({ name: 'devices_count' })
 	devicesCount: number;
+
+	@ApiPropertyOptional({
+		name: 'last_applied_mode',
+		description: 'The last climate mode that was explicitly applied via intent (from storage)',
+		enum: ClimateMode,
+		nullable: true,
+		example: null,
+	})
+	@Expose({ name: 'last_applied_mode' })
+	lastAppliedMode: ClimateMode | null;
+
+	@ApiPropertyOptional({
+		name: 'last_applied_at',
+		description: 'When the last mode was applied',
+		type: 'string',
+		format: 'date-time',
+		nullable: true,
+		example: null,
+	})
+	@Expose({ name: 'last_applied_at' })
+	lastAppliedAt: Date | null;
 }
 
 /**

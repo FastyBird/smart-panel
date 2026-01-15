@@ -139,6 +139,8 @@ describe('SpaceContextSnapshotService', () => {
 		supportsCooling: false,
 		isMixed: false,
 		devicesCount: 0,
+		lastAppliedMode: null,
+		lastAppliedAt: null,
 	});
 
 	beforeEach(async () => {
@@ -299,6 +301,8 @@ describe('SpaceContextSnapshotService', () => {
 				supportsCooling: false,
 				isMixed: false,
 				devicesCount: 1,
+				lastAppliedMode: null,
+				lastAppliedAt: null,
 			};
 
 			spacesService.findOne.mockResolvedValue(space);

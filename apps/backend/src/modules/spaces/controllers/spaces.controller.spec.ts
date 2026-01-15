@@ -115,6 +115,8 @@ describe('SpacesController', () => {
 							supportsCooling: false,
 							isMixed: false,
 							devicesCount: 0,
+							lastAppliedMode: null,
+							lastAppliedAt: null,
 						}),
 						executeClimateIntent: jest.fn().mockResolvedValue({
 							success: true,
@@ -701,6 +703,8 @@ describe('SpacesController', () => {
 				supportsCooling: false,
 				isMixed: false,
 				devicesCount: 1,
+				lastAppliedMode: null,
+				lastAppliedAt: null,
 			};
 			jest.spyOn(spaceIntentService, 'getClimateState').mockResolvedValue(climateState);
 
@@ -728,6 +732,8 @@ describe('SpacesController', () => {
 				supportsCooling: false,
 				isMixed: false,
 				devicesCount: 0,
+				lastAppliedMode: null,
+				lastAppliedAt: null,
 			});
 
 			const result = await controller.getClimateState(mockSpace.id);
@@ -1056,6 +1062,8 @@ describe('SpacesController', () => {
 					supportsCooling: false,
 					isMixed: false,
 					devicesCount: 0,
+					lastAppliedMode: null,
+					lastAppliedAt: null,
 					primaryThermostatId: null,
 				},
 			};

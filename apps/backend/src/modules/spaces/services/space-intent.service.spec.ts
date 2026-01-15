@@ -110,6 +110,8 @@ describe('SpaceIntentService', () => {
 				supportsCooling: false,
 				isMixed: false,
 				devicesCount: 1,
+				lastAppliedMode: null,
+				lastAppliedAt: null,
 			};
 			mockClimateIntentService.getClimateState.mockResolvedValue(expectedState);
 
@@ -135,6 +137,8 @@ describe('SpaceIntentService', () => {
 				supportsCooling: false,
 				isMixed: false,
 				devicesCount: 0,
+				lastAppliedMode: null,
+				lastAppliedAt: null,
 			};
 			mockClimateIntentService.getClimateState.mockResolvedValue(defaultState);
 

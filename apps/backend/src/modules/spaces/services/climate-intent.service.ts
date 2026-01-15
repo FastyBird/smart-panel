@@ -90,6 +90,9 @@ export interface ClimateState {
 	supportsCooling: boolean;
 	isMixed: boolean;
 	devicesCount: number;
+	// Last applied mode from InfluxDB storage
+	lastAppliedMode: ClimateMode | null;
+	lastAppliedAt: Date | null;
 }
 
 /**
@@ -145,6 +148,8 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 			supportsCooling: false,
 			isMixed: false,
 			devicesCount: 0,
+			lastAppliedMode: null,
+			lastAppliedAt: null,
 		};
 
 		// Verify space exists
@@ -276,6 +281,14 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 
 		const canSetSetpoint = supportsHeating || supportsCooling;
 
+		// Get last applied mode from InfluxDB
+		const lastApplied = await this.intentTimeseriesService.getLastClimateMode(spaceId);
+		const lastAppliedMode = lastApplied?.mode
+			? Object.values(ClimateMode).includes(lastApplied.mode as ClimateMode)
+				? (lastApplied.mode as ClimateMode)
+				: null
+			: null;
+
 		return {
 			hasClimate: true,
 			mode,
@@ -291,6 +304,8 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 			supportsCooling,
 			isMixed,
 			devicesCount: primaryDevices.length,
+			lastAppliedMode,
+			lastAppliedAt: lastApplied?.appliedAt ?? null,
 		};
 	}
 
