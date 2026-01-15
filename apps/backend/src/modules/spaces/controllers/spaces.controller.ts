@@ -804,11 +804,17 @@ export class SpacesController {
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
 		operationId: 'create-spaces-module-space-climate-role',
-		summary: 'Set climate role for a climate device',
-		description: 'Sets or updates the climate role for a specific device in a space. Requires owner or admin role.',
+		summary: 'Set or remove climate role for a climate device',
+		description:
+			'Sets, updates, or removes the climate role for a specific device in a space. ' +
+			'Omit the role field or set it to null to remove an existing role assignment. ' +
+			'Requires owner or admin role.',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
-	@ApiSuccessResponse(ClimateRoleResponseModel, 'Returns the created/updated climate role assignment')
+	@ApiSuccessResponse(
+		ClimateRoleResponseModel,
+		'Returns the created/updated climate role assignment, or null if removed',
+	)
 	@ApiNotFoundResponse('Space not found')
 	@ApiBadRequestResponse('Invalid role data')
 	@ApiUnprocessableEntityResponse('Role assignment validation failed')
@@ -821,7 +827,8 @@ export class SpacesController {
 		const role = await this.spaceClimateRoleService.setRole(id, body.data);
 
 		const response = new ClimateRoleResponseModel();
-		response.data = role;
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		response.data = role as any; // null when role was removed
 
 		return response;
 	}

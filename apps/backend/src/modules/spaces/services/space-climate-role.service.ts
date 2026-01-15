@@ -152,18 +152,26 @@ export class SpaceClimateRoleService {
 	}
 
 	/**
-	 * Set or update a climate role assignment
-	 * - PRIMARY role can only be assigned to one device per space
-	 * - Sensor roles (TEMPERATURE_SENSOR, HUMIDITY_SENSOR) require channelId
+	 * Set, update, or remove a climate role assignment
+	 * - If role is null/undefined, the role assignment is removed
+	 * - Sensor roles require channelId
 	 * - Actuator roles require channelId to be null
+	 * - Universal roles (HIDDEN) can work with or without channelId
 	 */
-	async setRole(spaceId: string, dto: SetClimateRoleDto): Promise<SpaceClimateRoleEntity> {
+	async setRole(spaceId: string, dto: SetClimateRoleDto): Promise<SpaceClimateRoleEntity | null> {
 		// Verify space exists
 		await this.spacesService.getOneOrThrow(spaceId);
 
+		const channelId = dto.channelId ?? null;
+
+		// If role is null/undefined, delete the role assignment
+		if (dto.role === null || dto.role === undefined) {
+			await this.deleteRole(spaceId, dto.deviceId, channelId);
+			return null;
+		}
+
 		const isSensorRole = CLIMATE_SENSOR_ROLES.includes(dto.role as (typeof CLIMATE_SENSOR_ROLES)[number]);
 		const isUniversalRole = CLIMATE_UNIVERSAL_ROLES.includes(dto.role as (typeof CLIMATE_UNIVERSAL_ROLES)[number]);
-		const channelId = dto.channelId ?? null;
 
 		// Validate channelId requirements
 		if (isSensorRole && !channelId) {

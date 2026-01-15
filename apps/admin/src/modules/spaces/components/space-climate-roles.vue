@@ -64,7 +64,7 @@
 				<el-button size="small" :loading="applyingDefaults" @click="onApplyDefaults">
 					{{ t('spacesModule.fields.spaces.climateRoles.applyDefaults') }}
 				</el-button>
-				<div class="text-xs text-gray-400">
+				<div class="text-xs text-gray-400 ml-4">
 					{{ t('spacesModule.fields.spaces.climateRoles.applyDefaultsHint') }}
 				</div>
 			</div>

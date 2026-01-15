@@ -216,7 +216,7 @@
 					"placeholder": "Select a role"
 				},
 				"applyDefaults": "Apply defaults",
-				"applyDefaultsHint": "Sets heaters to Heating Only, AC to Cooling Only, thermostats to Auto, auxiliary devices to Auxiliary, and sensors to Sensor"
+				"applyDefaultsHint": "Auto-assigns roles based on device type"
 			},
 			"suggestions": {
 				"title": "Smart suggestions"
