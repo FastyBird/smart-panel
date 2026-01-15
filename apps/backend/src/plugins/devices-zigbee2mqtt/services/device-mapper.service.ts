@@ -89,6 +89,67 @@ export class Z2mDeviceMapperService {
 	}
 
 	/**
+	 * Restore transformers for all existing devices from YAML mappings
+	 * Called on startup to ensure transformers are available after backend restart
+	 */
+	async restoreTransformersForExistingDevices(registeredDevices: Z2mRegisteredDevice[]): Promise<void> {
+		// Build a map for quick lookup by friendly name
+		const deviceRegistry = new Map<string, Z2mRegisteredDevice>();
+		for (const device of registeredDevices) {
+			deviceRegistry.set(device.friendlyName, device);
+		}
+
+		const devices = await this.devicesService.findAll<Zigbee2mqttDeviceEntity>(DEVICES_ZIGBEE2MQTT_TYPE);
+
+		for (const device of devices) {
+			// Get Z2M device info from registry
+			const z2mDevice = deviceRegistry.get(device.identifier);
+			if (!z2mDevice?.definition) {
+				continue;
+			}
+
+			// Get YAML mappings for this device
+			const mappedChannels = this.exposesMapper.mapExposes(z2mDevice.definition.exposes, {
+				model: z2mDevice.definition.model,
+				manufacturer: z2mDevice.definition.vendor,
+			});
+
+			// Get all channels for this device
+			const channels = await this.channelsService.findAll<Zigbee2mqttChannelEntity>(device.id, DEVICES_ZIGBEE2MQTT_TYPE);
+
+			for (const channel of channels) {
+				// Find the YAML mapping for this channel by category
+				const mappedChannel = mappedChannels.find((mc) => mc.category === channel.category);
+				if (!mappedChannel) {
+					continue;
+				}
+
+				// Get all properties for this channel
+				const properties = await this.channelsPropertiesService.findAll<Zigbee2mqttChannelPropertyEntity>(
+					channel.id,
+					DEVICES_ZIGBEE2MQTT_TYPE,
+				);
+
+				for (const property of properties) {
+					// Find the YAML mapping for this property by category
+					const mappedProperty = mappedChannel.properties.find((mp) => mp.category === property.category);
+					if (!mappedProperty?.transformerName) {
+						continue;
+					}
+
+					// Register the transformer
+					this.logger.debug(
+						`Restoring transformer for property: ${property.id} (${property.category}) -> ${mappedProperty.transformerName}`,
+					);
+					this.registerPropertyTransformer(property.id, mappedProperty.transformerName, mappedProperty.z2mProperty);
+				}
+			}
+		}
+
+		this.logger.log(`Restored transformers for ${this.propertyTransformers.size} properties`);
+	}
+
+	/**
 	 * Apply transformer to read a value from Z2M
 	 */
 	transformReadValue(propertyId: string, value: unknown): unknown {
@@ -1055,7 +1116,7 @@ export class Z2mDeviceMapperService {
 				? mappedProperty.identifier
 				: mappedProperty.z2mProperty;
 
-		const property = await this.channelsPropertiesService.findOneBy<Zigbee2mqttChannelPropertyEntity>(
+		let property = await this.channelsPropertiesService.findOneBy<Zigbee2mqttChannelPropertyEntity>(
 			'identifier',
 			propertyIdentifier,
 			channel.id,
@@ -1086,10 +1147,16 @@ export class Z2mDeviceMapperService {
 				value: mappedProperty.staticValue ?? null,
 			};
 
-			await this.channelsPropertiesService.create<
+			property = await this.channelsPropertiesService.create<
 				Zigbee2mqttChannelPropertyEntity,
 				CreateZigbee2mqttChannelPropertyDto
 			>(channel.id, createDto);
+		}
+
+		// Register transformer for state updates and writes (for both new and existing properties)
+		// This ensures transformers are restored after backend restart
+		if (mappedProperty.transformerName) {
+			this.registerPropertyTransformer(property.id, mappedProperty.transformerName, mappedProperty.z2mProperty);
 		}
 	}
 

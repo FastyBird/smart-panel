@@ -42,6 +42,7 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	private bridgeOnline = false;
 	private pendingDevices: Z2mDevice[] | null = null;
 	private isSyncing = false; // Prevents concurrent sync operations
+	private transformersRestored = false; // Tracks if transformers have been restored after restart
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -255,6 +256,7 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	 */
 	private async doStop(): Promise<void> {
 		this.state = 'stopping';
+		this.transformersRestored = false;
 
 		this.logger.log('Stopping Zigbee2MQTT plugin service');
 
@@ -337,6 +339,7 @@ export class Zigbee2mqttService implements IManagedPluginService {
 		this.bridgeOnline = false;
 		this.pendingDevices = null;
 		this.isSyncing = false;
+		this.transformersRestored = false;
 
 		// Set all devices to unknown state
 		try {
@@ -370,7 +373,27 @@ export class Zigbee2mqttService implements IManagedPluginService {
 			return;
 		}
 
-		// Skip if neither auto-add nor sync is needed
+		// Always restore transformers for existing devices when we receive device list
+		// This ensures transformers are available after backend restart, even if sync is disabled
+		const registeredDevices = this.mqttAdapter.getRegisteredDevices();
+		await this.deviceMapper.restoreTransformersForExistingDevices(registeredDevices);
+		this.transformersRestored = true;
+
+		// Process cached state for all existing devices
+		// State updates arriving before transformers were restored were skipped but cached
+		const existingDevices = await this.devicesService.findAll<Zigbee2mqttDeviceEntity>(DEVICES_ZIGBEE2MQTT_TYPE);
+		for (const device of existingDevices) {
+			const cachedState = this.mqttAdapter.getCachedState(device.identifier);
+			if (Object.keys(cachedState).length > 0) {
+				try {
+					await this.deviceMapper.updateDeviceState(device.identifier, cachedState);
+				} catch (error) {
+					this.logger.debug(`Failed to process cached state for ${device.identifier}: ${error}`);
+				}
+			}
+		}
+
+		// Skip device sync if neither auto-add nor sync is needed
 		if (!shouldAddNew && !shouldSyncExisting) {
 			return;
 		}
@@ -412,6 +435,13 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	 * Handle device state changed event
 	 */
 	private async handleDeviceStateChanged(friendlyName: string, state: Record<string, unknown>): Promise<void> {
+		// Skip state updates until transformers have been restored
+		// State is cached by MQTT adapter and will be available when device is queried later
+		if (!this.transformersRestored) {
+			this.logger.debug(`Skipping state update for ${friendlyName} - transformers not yet restored`);
+			return;
+		}
+
 		this.logger.debug(`Device state changed: ${friendlyName}, state keys: ${Object.keys(state).join(', ')}`);
 
 		try {
