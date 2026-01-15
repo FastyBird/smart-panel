@@ -9,17 +9,15 @@ import { PlatformRegistryService } from '../../devices/services/platform.registr
 import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
 import { LightingIntentDto } from '../dto/lighting-intent.dto';
 import {
-	BRIGHTNESS_DELTA_STEPS,
 	BrightnessDelta,
 	EventType,
-	LIGHTING_MODE_BRIGHTNESS,
-	LIGHTING_MODE_ORCHESTRATION,
 	LightingIntentType,
 	LightingMode,
 	LightingRole,
 	RoleBrightnessRule,
 	SPACES_MODULE_NAME,
 } from '../spaces.constants';
+import { IntentSpecLoaderService, ResolvedModeOrchestration } from '../spec';
 
 import { SpaceContextSnapshotService } from './space-context-snapshot.service';
 import { IntentExecutionResult, SpaceIntentBaseService } from './space-intent-base.service';
@@ -68,10 +66,14 @@ export interface LightModeSelection {
  *
  * @param lights - All lights in the space with their role assignments
  * @param mode - The lighting mode to apply
+ * @param config - The mode orchestration config (from YAML spec)
  * @returns Array of light selections with rules to apply
  */
-export function selectLightsForMode(lights: LightDevice[], mode: LightingMode): LightModeSelection[] {
-	const config = LIGHTING_MODE_ORCHESTRATION[mode];
+export function selectLightsForMode(
+	lights: LightDevice[],
+	mode: LightingMode,
+	config: ResolvedModeOrchestration,
+): LightModeSelection[] {
 	const selections: LightModeSelection[] = [];
 
 	// Check if any lights have roles configured
@@ -79,7 +81,7 @@ export function selectLightsForMode(lights: LightDevice[], mode: LightingMode): 
 
 	if (!hasAnyRoles) {
 		// MVP fallback: no roles configured, apply mode brightness to all lights
-		const mvpBrightness = LIGHTING_MODE_BRIGHTNESS[mode];
+		const mvpBrightness = config.mvpBrightness;
 
 		for (const light of lights) {
 			selections.push({
@@ -110,14 +112,16 @@ export function selectLightsForMode(lights: LightDevice[], mode: LightingMode): 
 
 		if (light.role === null) {
 			// Light has no role assigned - treat as OTHER
-			rule = config.roles[LightingRole.OTHER] ?? { on: false, brightness: null };
+			const otherRule = config.roles[LightingRole.OTHER];
+			rule = otherRule ? { on: otherRule.on, brightness: otherRule.brightness } : { on: false, brightness: null };
 		} else if (useFallback && config.fallbackRoles?.includes(light.role)) {
 			// Night mode fallback: use main lights at low brightness
 			rule = { on: true, brightness: config.fallbackBrightness ?? 20 };
 			isFallback = true;
 		} else {
 			// Apply the rule for this role
-			rule = config.roles[light.role] ?? { on: false, brightness: null };
+			const roleRule = config.roles[light.role];
+			rule = roleRule ? { on: roleRule.on, brightness: roleRule.brightness } : { on: false, brightness: null };
 		}
 
 		selections.push({ light, rule, isFallback });
@@ -147,6 +151,7 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		private readonly intentTimeseriesService: IntentTimeseriesService,
 		@Inject(forwardRef(() => SpaceLightingStateService))
 		private readonly lightingStateService: SpaceLightingStateService,
+		private readonly intentSpecLoaderService: IntentSpecLoaderService,
 	) {
 		super();
 	}
@@ -248,8 +253,17 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		lights: LightDevice[],
 		mode: LightingMode,
 	): Promise<IntentExecutionResult> {
+		// Get mode orchestration config from YAML spec
+		const modeConfig = this.intentSpecLoaderService.getLightingModeOrchestration(mode);
+
+		if (!modeConfig) {
+			this.logger.warn(`No orchestration config found for mode=${mode}, using defaults`);
+
+			return { success: false, affectedDevices: 0, failedDevices: 0 };
+		}
+
 		// Use the pure function to determine what to do with each light
-		const selections = selectLightsForMode(lights, mode);
+		const selections = selectLightsForMode(lights, mode, modeConfig);
 
 		// Log telemetry for role-based selection
 		const onLights = selections.filter((s) => s.rule.on);
@@ -382,8 +396,7 @@ export class LightingIntentService extends SpaceIntentBaseService {
 			const brightnessProperty =
 				lightChannel.properties?.find((p) => p.category === PropertyCategory.BRIGHTNESS) ?? null;
 			// RGB color properties
-			const colorRedProperty =
-				lightChannel.properties?.find((p) => p.category === PropertyCategory.COLOR_RED) ?? null;
+			const colorRedProperty = lightChannel.properties?.find((p) => p.category === PropertyCategory.COLOR_RED) ?? null;
 			const colorGreenProperty =
 				lightChannel.properties?.find((p) => p.category === PropertyCategory.COLOR_GREEN) ?? null;
 			const colorBlueProperty =
@@ -395,8 +408,7 @@ export class LightingIntentService extends SpaceIntentBaseService {
 			// Other properties
 			const colorTempProperty =
 				lightChannel.properties?.find((p) => p.category === PropertyCategory.COLOR_TEMPERATURE) ?? null;
-			const whiteProperty =
-				lightChannel.properties?.find((p) => p.category === PropertyCategory.COLOR_WHITE) ?? null;
+			const whiteProperty = lightChannel.properties?.find((p) => p.category === PropertyCategory.COLOR_WHITE) ?? null;
 
 			// Get role assignment for this light
 			const roleKey = `${device.id}:${lightChannel.id}`;
@@ -541,8 +553,8 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		// Get current brightness value
 		const currentBrightness = this.getPropertyNumericValue(light.brightnessProperty) ?? 50;
 
-		// Calculate new brightness
-		const deltaValue = BRIGHTNESS_DELTA_STEPS[delta];
+		// Calculate new brightness using YAML-defined delta steps
+		const deltaValue = this.intentSpecLoaderService.getBrightnessDeltaStep(delta) ?? 25; // Default to 25 if not found
 		let newBrightness = increase ? currentBrightness + deltaValue : currentBrightness - deltaValue;
 
 		// Clamp to [0, 100]
@@ -679,9 +691,7 @@ export class LightingIntentService extends SpaceIntentBaseService {
 			return { success: true, affectedDevices: 0, failedDevices: 0 };
 		}
 
-		this.logger.debug(
-			`Executing role intent type=${intent.type} role=${intent.role} lightsCount=${roleLights.length}`,
-		);
+		this.logger.debug(`Executing role intent type=${intent.type} role=${intent.role} lightsCount=${roleLights.length}`);
 
 		let affectedDevices = 0;
 		let failedDevices = 0;
@@ -754,7 +764,7 @@ export class LightingIntentService extends SpaceIntentBaseService {
 				});
 				break;
 
-			case LightingIntentType.ROLE_COLOR:
+			case LightingIntentType.ROLE_COLOR: {
 				if (!intent.color) {
 					this.logger.warn('ROLE_COLOR intent missing color parameter');
 					return false;
@@ -779,19 +789,19 @@ export class LightingIntentService extends SpaceIntentBaseService {
 					commands.push({
 						device: light.device,
 						channel: light.lightChannel,
-						property: light.colorRedProperty!,
+						property: light.colorRedProperty,
 						value: rgb.red,
 					});
 					commands.push({
 						device: light.device,
 						channel: light.lightChannel,
-						property: light.colorGreenProperty!,
+						property: light.colorGreenProperty,
 						value: rgb.green,
 					});
 					commands.push({
 						device: light.device,
 						channel: light.lightChannel,
-						property: light.colorBlueProperty!,
+						property: light.colorBlueProperty,
 						value: rgb.blue,
 					});
 				} else if (hasHueSat) {
@@ -804,17 +814,18 @@ export class LightingIntentService extends SpaceIntentBaseService {
 					commands.push({
 						device: light.device,
 						channel: light.lightChannel,
-						property: light.hueProperty!,
+						property: light.hueProperty,
 						value: hsl.hue,
 					});
 					commands.push({
 						device: light.device,
 						channel: light.lightChannel,
-						property: light.saturationProperty!,
+						property: light.saturationProperty,
 						value: hsl.saturation,
 					});
 				}
 				break;
+			}
 
 			case LightingIntentType.ROLE_COLOR_TEMP:
 				if (intent.colorTemperature === undefined) {
@@ -885,19 +896,19 @@ export class LightingIntentService extends SpaceIntentBaseService {
 							commands.push({
 								device: light.device,
 								channel: light.lightChannel,
-								property: light.colorRedProperty!,
+								property: light.colorRedProperty,
 								value: rgb.red,
 							});
 							commands.push({
 								device: light.device,
 								channel: light.lightChannel,
-								property: light.colorGreenProperty!,
+								property: light.colorGreenProperty,
 								value: rgb.green,
 							});
 							commands.push({
 								device: light.device,
 								channel: light.lightChannel,
-								property: light.colorBlueProperty!,
+								property: light.colorBlueProperty,
 								value: rgb.blue,
 							});
 						}
@@ -907,13 +918,13 @@ export class LightingIntentService extends SpaceIntentBaseService {
 							commands.push({
 								device: light.device,
 								channel: light.lightChannel,
-								property: light.hueProperty!,
+								property: light.hueProperty,
 								value: hsl.hue,
 							});
 							commands.push({
 								device: light.device,
 								channel: light.lightChannel,
-								property: light.saturationProperty!,
+								property: light.saturationProperty,
 								value: hsl.saturation,
 							});
 						}

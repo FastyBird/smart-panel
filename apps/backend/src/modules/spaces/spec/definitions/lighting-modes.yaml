@@ -14,6 +14,7 @@ modes:
     label: "Work"
     description: "Bright lighting for focus and productivity"
     icon: "mdi:briefcase"
+    mvp_brightness: 100  # Brightness when no roles are configured
     roles:
       main:
         on: true
@@ -34,6 +35,7 @@ modes:
     label: "Relax"
     description: "Soft ambient lighting for relaxation"
     icon: "mdi:sofa"
+    mvp_brightness: 50  # Brightness when no roles are configured
     roles:
       main:
         on: true
@@ -56,6 +58,7 @@ modes:
     label: "Night"
     description: "Minimal lighting for nighttime"
     icon: "mdi:weather-night"
+    mvp_brightness: 20  # Brightness when no roles are configured
     roles:
       main:
         on: false

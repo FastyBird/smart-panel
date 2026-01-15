@@ -10,7 +10,7 @@ import { parse as parseYaml } from 'yaml';
 
 import { Injectable, OnModuleInit } from '@nestjs/common';
 
-import { createExtensionLogger, ExtensionLoggerService } from '../../../common/logger';
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { LightingMode, LightingRole, SPACES_MODULE_NAME } from '../spaces.constants';
 
 import {
@@ -23,7 +23,6 @@ import {
 	SpecLoadResult,
 	SpecSource,
 	YamlEnumsConfig,
-	YamlEnumValueMeta,
 	YamlIntentConfig,
 	YamlIntentDefinition,
 	YamlIntentParam,
@@ -380,7 +379,7 @@ export class IntentSpecLoaderService implements OnModuleInit {
 	private getEnumValues(enumRef: string, excludeValues?: string[]): ResolvedEnumValue[] | null {
 		if (!this.enums) return null;
 
-		const enumData = this.enums[enumRef as keyof YamlEnumsConfig] as Record<string, YamlEnumValueMeta> | undefined;
+		const enumData = this.enums[enumRef as keyof YamlEnumsConfig];
 
 		if (!enumData) {
 			this.logger.warn(`Enum reference '${enumRef}' not found`);
@@ -441,6 +440,7 @@ export class IntentSpecLoaderService implements OnModuleInit {
 			label: modeDef.label,
 			description: modeDef.description,
 			icon: modeDef.icon,
+			mvpBrightness: modeDef.mvp_brightness ?? 100, // Default to 100 if not specified
 			roles,
 		};
 
@@ -516,7 +516,10 @@ export class IntentSpecLoaderService implements OnModuleInit {
 	 * Get lighting mode orchestration for a specific role
 	 * Used by the lighting intent service
 	 */
-	getLightingModeRoleConfig(mode: LightingMode | string, role: LightingRole | string): ResolvedRoleBrightnessRule | null {
+	getLightingModeRoleConfig(
+		mode: LightingMode | string,
+		role: LightingRole | string,
+	): ResolvedRoleBrightnessRule | null {
 		const modeConfig = this.lightingModes.get(mode);
 
 		if (!modeConfig) return null;

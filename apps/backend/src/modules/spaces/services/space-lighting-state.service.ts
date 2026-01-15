@@ -4,14 +4,8 @@ import { createExtensionLogger } from '../../../common/logger/extension-logger.s
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
-import {
-	LIGHTING_MODE_BRIGHTNESS,
-	LIGHTING_MODE_ORCHESTRATION,
-	LightingMode,
-	LightingRole,
-	RoleBrightnessRule,
-	SPACES_MODULE_NAME,
-} from '../spaces.constants';
+import { LightingMode, LightingRole, RoleBrightnessRule, SPACES_MODULE_NAME } from '../spaces.constants';
+import { IntentSpecLoaderService } from '../spec';
 
 import { SpaceLightingRoleService } from './space-lighting-role.service';
 import { SpacesService } from './spaces.service';
@@ -132,6 +126,7 @@ export class SpaceLightingStateService {
 		private readonly lightingRoleService: SpaceLightingRoleService,
 		@Inject(forwardRef(() => IntentTimeseriesService))
 		private readonly intentTimeseriesService: IntentTimeseriesService,
+		private readonly intentSpecLoaderService: IntentSpecLoaderService,
 	) {}
 
 	/**
@@ -285,7 +280,7 @@ export class SpaceLightingStateService {
 				roleGroups.set(light.role, []);
 			}
 
-			roleGroups.get(light.role)!.push(light);
+			roleGroups.get(light.role).push(light);
 		}
 
 		// Calculate aggregated state for each role
@@ -425,33 +420,31 @@ export class SpaceLightingStateService {
 	 */
 	private getUniformColor(lights: LightState[]): { value: string | null; isMixed: boolean } {
 		// Get lights that have all RGB components
-		const colorLights = lights.filter(
-			(l) => l.colorRed !== null && l.colorGreen !== null && l.colorBlue !== null,
-		);
+		const colorLights = lights.filter((l) => l.colorRed !== null && l.colorGreen !== null && l.colorBlue !== null);
 
 		if (colorLights.length === 0) {
 			return { value: null, isMixed: false };
 		}
 
 		// Check if all colors are the same (within tolerance)
-		const firstR = colorLights[0].colorRed!;
-		const firstG = colorLights[0].colorGreen!;
-		const firstB = colorLights[0].colorBlue!;
+		const firstR = colorLights[0].colorRed;
+		const firstG = colorLights[0].colorGreen;
+		const firstB = colorLights[0].colorBlue;
 
 		const tolerance = 10; // Allow ±10 per channel
 
 		const allSame = colorLights.every(
 			(l) =>
-				Math.abs(l.colorRed! - firstR) <= tolerance &&
-				Math.abs(l.colorGreen! - firstG) <= tolerance &&
-				Math.abs(l.colorBlue! - firstB) <= tolerance,
+				Math.abs(l.colorRed - firstR) <= tolerance &&
+				Math.abs(l.colorGreen - firstG) <= tolerance &&
+				Math.abs(l.colorBlue - firstB) <= tolerance,
 		);
 
 		if (allSame) {
 			// Calculate average and convert to hex
-			const avgR = Math.round(colorLights.reduce((a, l) => a + l.colorRed!, 0) / colorLights.length);
-			const avgG = Math.round(colorLights.reduce((a, l) => a + l.colorGreen!, 0) / colorLights.length);
-			const avgB = Math.round(colorLights.reduce((a, l) => a + l.colorBlue!, 0) / colorLights.length);
+			const avgR = Math.round(colorLights.reduce((a, l) => a + l.colorRed, 0) / colorLights.length);
+			const avgG = Math.round(colorLights.reduce((a, l) => a + l.colorGreen, 0) / colorLights.length);
+			const avgB = Math.round(colorLights.reduce((a, l) => a + l.colorBlue, 0) / colorLights.length);
 
 			const hex = `#${avgR.toString(16).padStart(2, '0')}${avgG.toString(16).padStart(2, '0')}${avgB.toString(16).padStart(2, '0')}`;
 
@@ -463,14 +456,14 @@ export class SpaceLightingStateService {
 
 	/**
 	 * Derive last intent values for a role from the last applied mode.
-	 * Uses LIGHTING_MODE_ORCHESTRATION to get what values were set.
+	 * Uses YAML mode orchestration config to get what values were set.
 	 */
 	private deriveLastIntent(role: LightingRole, lastAppliedMode: LightingMode | null): RoleLastIntent | null {
 		if (!lastAppliedMode) {
 			return null;
 		}
 
-		const config = LIGHTING_MODE_ORCHESTRATION[lastAppliedMode];
+		const config = this.intentSpecLoaderService.getLightingModeOrchestration(lastAppliedMode);
 
 		if (!config) {
 			return null;
@@ -481,9 +474,9 @@ export class SpaceLightingStateService {
 		if (!rule) {
 			// Role not in mode's rules - check if it's OTHER role
 			if (role === LightingRole.OTHER) {
-				// OTHER lights use mode's fallback brightness in MVP mode
+				// OTHER lights use mode's MVP brightness in fallback mode
 				return {
-					brightness: LIGHTING_MODE_BRIGHTNESS[lastAppliedMode],
+					brightness: config.mvpBrightness,
 				};
 			}
 
@@ -512,7 +505,7 @@ export class SpaceLightingStateService {
 	} {
 		const lightsOn = lights.filter((l) => l.isOn).length;
 
-		const onBrightnessValues = lights.filter((l) => l.isOn && l.brightness !== null).map((l) => l.brightness!);
+		const onBrightnessValues = lights.filter((l) => l.isOn && l.brightness !== null).map((l) => l.brightness);
 
 		const averageBrightness =
 			onBrightnessValues.length > 0
@@ -567,7 +560,7 @@ export class SpaceLightingStateService {
 		}
 
 		// Check if all ON lights have similar brightness
-		const brightnessValues = onLights.filter((l) => l.brightness !== null).map((l) => l.brightness!);
+		const brightnessValues = onLights.filter((l) => l.brightness !== null).map((l) => l.brightness);
 
 		if (brightnessValues.length === 0) {
 			return null;
@@ -603,7 +596,12 @@ export class SpaceLightingStateService {
 		mode: LightingMode,
 		roleStates: Partial<Record<LightingRole, RoleAggregatedState>>,
 	): ModeMatch | null {
-		const config = LIGHTING_MODE_ORCHESTRATION[mode];
+		const config = this.intentSpecLoaderService.getLightingModeOrchestration(mode);
+
+		if (!config) {
+			return null;
+		}
+
 		const rules = config.roles;
 
 		let matchingRoles = 0;

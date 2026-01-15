@@ -109,6 +109,7 @@ export interface YamlModeOrchestration {
 	label: string;
 	description: string;
 	icon: string;
+	mvp_brightness?: number; // Brightness when no roles are configured
 	roles: Record<string, YamlRoleBrightnessRule>;
 	fallback?: YamlModeFallback;
 }
@@ -185,6 +186,7 @@ export interface ResolvedModeOrchestration {
 	label: string;
 	description: string;
 	icon: string;
+	mvpBrightness: number; // Brightness when no roles are configured (default 100)
 	roles: Record<string, ResolvedRoleBrightnessRule>;
 	fallbackRoles?: string[];
 	fallbackBrightness?: number;

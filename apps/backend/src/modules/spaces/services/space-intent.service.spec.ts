@@ -1,6 +1,5 @@
 /*
 eslint-disable @typescript-eslint/unbound-method,
-@typescript-eslint/no-unsafe-assignment,
 @typescript-eslint/no-unnecessary-type-assertion
 */
 /*
@@ -16,18 +15,65 @@ import {
 	ClimateMode,
 	DEFAULT_MAX_SETPOINT,
 	DEFAULT_MIN_SETPOINT,
-	LIGHTING_MODE_BRIGHTNESS,
-	LIGHTING_MODE_ORCHESTRATION,
 	LightingIntentType,
 	LightingMode,
 	LightingRole,
 	SetpointDelta,
 } from '../spaces.constants';
+import { ResolvedModeOrchestration } from '../spec';
 
 import { ClimateIntentResult, ClimateIntentService, ClimateState } from './climate-intent.service';
 import { LightingIntentService } from './lighting-intent.service';
 import { IntentExecutionResult } from './space-intent-base.service';
 import { SpaceIntentService, selectLightsForMode } from './space-intent.service';
+
+// Mock mode orchestration configs matching YAML structure
+const mockModeConfigs: Record<LightingMode, ResolvedModeOrchestration> = {
+	[LightingMode.WORK]: {
+		label: 'Work',
+		description: 'Bright lighting for focus and productivity',
+		icon: 'mdi:briefcase',
+		mvpBrightness: 100,
+		roles: {
+			[LightingRole.MAIN]: { on: true, brightness: 100 },
+			[LightingRole.TASK]: { on: true, brightness: 100 },
+			[LightingRole.AMBIENT]: { on: false, brightness: null },
+			[LightingRole.ACCENT]: { on: false, brightness: null },
+			[LightingRole.NIGHT]: { on: false, brightness: null },
+			[LightingRole.OTHER]: { on: false, brightness: null },
+		},
+	},
+	[LightingMode.RELAX]: {
+		label: 'Relax',
+		description: 'Soft ambient lighting for relaxation',
+		icon: 'mdi:sofa',
+		mvpBrightness: 50,
+		roles: {
+			[LightingRole.MAIN]: { on: true, brightness: 50 },
+			[LightingRole.TASK]: { on: false, brightness: null },
+			[LightingRole.AMBIENT]: { on: true, brightness: 50 },
+			[LightingRole.ACCENT]: { on: true, brightness: 30 },
+			[LightingRole.NIGHT]: { on: false, brightness: null },
+			[LightingRole.OTHER]: { on: true, brightness: 50 },
+		},
+	},
+	[LightingMode.NIGHT]: {
+		label: 'Night',
+		description: 'Minimal lighting for nighttime',
+		icon: 'mdi:weather-night',
+		mvpBrightness: 20,
+		roles: {
+			[LightingRole.MAIN]: { on: false, brightness: null },
+			[LightingRole.TASK]: { on: false, brightness: null },
+			[LightingRole.AMBIENT]: { on: false, brightness: null },
+			[LightingRole.ACCENT]: { on: false, brightness: null },
+			[LightingRole.NIGHT]: { on: true, brightness: 20 },
+			[LightingRole.OTHER]: { on: false, brightness: null },
+		},
+		fallbackRoles: [LightingRole.MAIN],
+		fallbackBrightness: 20,
+	},
+};
 
 describe('SpaceIntentService', () => {
 	let service: SpaceIntentService;
@@ -281,33 +327,35 @@ describe('SpaceIntentService', () => {
 					createMockLightDeviceForSelection({ deviceId: 'light-2', hasBrightness: true, role: null }),
 				];
 
-				const selections = selectLightsForMode(lights, LightingMode.WORK);
+				const selections = selectLightsForMode(lights, LightingMode.WORK, mockModeConfigs[LightingMode.WORK]);
 
 				expect(selections).toHaveLength(2);
 				expect(selections.every((s) => s.rule.on === true)).toBe(true);
-				expect(selections.every((s) => s.rule.brightness === LIGHTING_MODE_BRIGHTNESS[LightingMode.WORK])).toBe(true);
+				expect(selections.every((s) => s.rule.brightness === mockModeConfigs[LightingMode.WORK].mvpBrightness)).toBe(
+					true,
+				);
 				expect(selections.every((s) => s.isFallback === true)).toBe(true);
 			});
 
 			it('should turn all lights ON with mode brightness for RELAX', () => {
 				const lights = [createMockLightDeviceForSelection({ deviceId: 'light-1', hasBrightness: true, role: null })];
 
-				const selections = selectLightsForMode(lights, LightingMode.RELAX);
+				const selections = selectLightsForMode(lights, LightingMode.RELAX, mockModeConfigs[LightingMode.RELAX]);
 
 				expect(selections).toHaveLength(1);
 				expect(selections[0].rule.on).toBe(true);
-				expect(selections[0].rule.brightness).toBe(LIGHTING_MODE_BRIGHTNESS[LightingMode.RELAX]);
+				expect(selections[0].rule.brightness).toBe(mockModeConfigs[LightingMode.RELAX].mvpBrightness);
 				expect(selections[0].isFallback).toBe(true);
 			});
 
 			it('should turn all lights ON with mode brightness for NIGHT', () => {
 				const lights = [createMockLightDeviceForSelection({ deviceId: 'light-1', hasBrightness: true, role: null })];
 
-				const selections = selectLightsForMode(lights, LightingMode.NIGHT);
+				const selections = selectLightsForMode(lights, LightingMode.NIGHT, mockModeConfigs[LightingMode.NIGHT]);
 
 				expect(selections).toHaveLength(1);
 				expect(selections[0].rule.on).toBe(true);
-				expect(selections[0].rule.brightness).toBe(LIGHTING_MODE_BRIGHTNESS[LightingMode.NIGHT]);
+				expect(selections[0].rule.brightness).toBe(mockModeConfigs[LightingMode.NIGHT].mvpBrightness);
 				expect(selections[0].isFallback).toBe(true);
 			});
 		});
@@ -329,7 +377,7 @@ describe('SpaceIntentService', () => {
 					}),
 				];
 
-				const selections = selectLightsForMode(lights, LightingMode.WORK);
+				const selections = selectLightsForMode(lights, LightingMode.WORK, mockModeConfigs[LightingMode.WORK]);
 
 				const mainSelection = selections.find((s) => s.light.device.id === 'main-light')!;
 				const taskSelection = selections.find((s) => s.light.device.id === 'task-light')!;
@@ -355,7 +403,7 @@ describe('SpaceIntentService', () => {
 					}),
 				];
 
-				const selections = selectLightsForMode(lights, LightingMode.RELAX);
+				const selections = selectLightsForMode(lights, LightingMode.RELAX, mockModeConfigs[LightingMode.RELAX]);
 
 				const mainSelection = selections.find((s) => s.light.device.id === 'main-light')!;
 				const taskSelection = selections.find((s) => s.light.device.id === 'task-light')!;
@@ -383,7 +431,7 @@ describe('SpaceIntentService', () => {
 					}),
 				];
 
-				const selections = selectLightsForMode(lights, LightingMode.NIGHT);
+				const selections = selectLightsForMode(lights, LightingMode.NIGHT, mockModeConfigs[LightingMode.NIGHT]);
 
 				const mainSelection = selections.find((s) => s.light.device.id === 'main-light')!;
 				const nightSelection = selections.find((s) => s.light.device.id === 'night-light')!;
@@ -406,7 +454,7 @@ describe('SpaceIntentService', () => {
 					}),
 				];
 
-				const selections = selectLightsForMode(lights, LightingMode.NIGHT);
+				const selections = selectLightsForMode(lights, LightingMode.NIGHT, mockModeConfigs[LightingMode.NIGHT]);
 
 				const mainSelection = selections.find((s) => s.light.device.id === 'main-light')!;
 				const taskSelection = selections.find((s) => s.light.device.id === 'task-light')!;
@@ -414,7 +462,7 @@ describe('SpaceIntentService', () => {
 
 				// Main light should be ON at fallback brightness
 				expect(mainSelection.rule.on).toBe(true);
-				expect(mainSelection.rule.brightness).toBe(LIGHTING_MODE_ORCHESTRATION[LightingMode.NIGHT].fallbackBrightness);
+				expect(mainSelection.rule.brightness).toBe(mockModeConfigs[LightingMode.NIGHT].fallbackBrightness);
 				expect(mainSelection.isFallback).toBe(true);
 
 				// Others should be OFF
@@ -431,13 +479,13 @@ describe('SpaceIntentService', () => {
 				];
 
 				// In WORK mode, OTHER lights are OFF
-				const workSelections = selectLightsForMode(lights, LightingMode.WORK);
+				const workSelections = selectLightsForMode(lights, LightingMode.WORK, mockModeConfigs[LightingMode.WORK]);
 				const unassignedWork = workSelections.find((s) => s.light.device.id === 'unassigned-light')!;
 
 				expect(unassignedWork.rule.on).toBe(false);
 
 				// In RELAX mode, OTHER lights are ON at 50%
-				const relaxSelections = selectLightsForMode(lights, LightingMode.RELAX);
+				const relaxSelections = selectLightsForMode(lights, LightingMode.RELAX, mockModeConfigs[LightingMode.RELAX]);
 				const unassignedRelax = relaxSelections.find((s) => s.light.device.id === 'unassigned-light')!;
 
 				expect(unassignedRelax.rule.on).toBe(true);
@@ -450,7 +498,7 @@ describe('SpaceIntentService', () => {
 					createMockLightDeviceForSelection({ deviceId: 'unknown-light', hasBrightness: true, role: null }),
 				];
 
-				const selections = selectLightsForMode(lights, LightingMode.WORK);
+				const selections = selectLightsForMode(lights, LightingMode.WORK, mockModeConfigs[LightingMode.WORK]);
 
 				const mainSelection = selections.find((s) => s.light.device.id === 'main-light')!;
 				const unknownSelection = selections.find((s) => s.light.device.id === 'unknown-light')!;
