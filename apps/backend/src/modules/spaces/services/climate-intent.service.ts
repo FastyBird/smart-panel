@@ -21,6 +21,7 @@ import {
 	TEMPERATURE_AVERAGING_STRATEGY,
 	TemperatureAveragingStrategy,
 } from '../spaces.constants';
+import { IntentSpecLoaderService } from '../spec';
 
 import { SpaceClimateRoleService } from './space-climate-role.service';
 import { SpaceContextSnapshotService } from './space-context-snapshot.service';
@@ -115,6 +116,7 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		@Inject(forwardRef(() => IntentTimeseriesService))
 		private readonly intentTimeseriesService: IntentTimeseriesService,
 		private readonly eventEmitter: EventEmitter2,
+		private readonly intentSpecLoaderService: IntentSpecLoaderService,
 	) {
 		super();
 	}
@@ -1024,10 +1026,12 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 			};
 		}
 
-		const deltaValue = SETPOINT_DELTA_STEPS[intent.delta];
+		// Get delta value from YAML spec first, fall back to hardcoded constants
+		const yamlDeltaValue = this.intentSpecLoaderService.getSetpointDeltaStep(intent.delta);
+		const deltaValue = yamlDeltaValue ?? SETPOINT_DELTA_STEPS[intent.delta];
 
 		// Validate delta lookup to prevent NaN from propagating
-		if (deltaValue === undefined) {
+		if (deltaValue === undefined || deltaValue === null) {
 			this.logger.error(`Invalid setpoint delta value: ${intent.delta}`);
 			return {
 				success: false,

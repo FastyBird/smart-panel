@@ -20,6 +20,7 @@ import {
 	ClimateMode,
 	SetpointDelta,
 } from '../spaces.constants';
+import { IsValidSetpointOrder } from '../validators/setpoint-order-constraint.validator';
 
 @ApiSchema({ name: 'SpacesModuleClimateIntent' })
 export class ClimateIntentDto {
@@ -98,6 +99,10 @@ export class ClimateIntentDto {
 	})
 	@Max(ABSOLUTE_MAX_SETPOINT, {
 		message: `[{"field":"heatingSetpoint","reason":"Heating setpoint must be at most ${ABSOLUTE_MAX_SETPOINT} degrees."}]`,
+	})
+	@IsValidSetpointOrder({
+		message:
+			'[{"field":"heatingSetpoint","reason":"Heating setpoint must be less than cooling setpoint when both are provided."}]',
 	})
 	heatingSetpoint?: number;
 

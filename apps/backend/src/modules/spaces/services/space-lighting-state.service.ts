@@ -622,7 +622,8 @@ export class SpaceLightingStateService {
 
 	/**
 	 * Match current state against a specific mode's rules.
-	 * Includes support for OTHER role matching against unassigned lights (otherState).
+	 * Includes support for OTHER role matching - combines explicit OTHER assignments
+	 * with unassigned lights (otherState) for complete coverage.
 	 */
 	private matchMode(
 		mode: LightingMode,
@@ -648,27 +649,11 @@ export class SpaceLightingStateService {
 		for (const [roleStr, rule] of Object.entries(rules)) {
 			const role = roleStr as LightingRole;
 
-			// For OTHER role, use otherState (unassigned lights) if no explicit OTHER assignments exist
+			// For OTHER role, combine explicit OTHER assignments with unassigned lights
 			let roleState: RoleAggregatedState | undefined = roleStates[role];
 
-			if (role === LightingRole.OTHER && !roleState && otherState.devicesCount > 0) {
-				// Create a synthetic RoleAggregatedState from otherState for matching
-				roleState = {
-					role: LightingRole.OTHER,
-					isOn: otherState.isOn,
-					isOnMixed: otherState.isOnMixed,
-					brightness: otherState.brightness,
-					colorTemperature: otherState.colorTemperature,
-					color: otherState.color,
-					white: otherState.white,
-					isBrightnessMixed: otherState.isBrightnessMixed,
-					isColorTemperatureMixed: otherState.isColorTemperatureMixed,
-					isColorMixed: otherState.isColorMixed,
-					isWhiteMixed: otherState.isWhiteMixed,
-					lastIntent: null,
-					devicesCount: otherState.devicesCount,
-					devicesOn: otherState.devicesOn,
-				};
+			if (role === LightingRole.OTHER) {
+				roleState = this.getCombinedOtherState(roleStates[LightingRole.OTHER], otherState);
 			}
 
 			// Skip roles that don't exist in current space
@@ -706,6 +691,146 @@ export class SpaceLightingStateService {
 			mode,
 			confidence: exactMatches === totalRoles ? 'exact' : 'approximate',
 			matchPercentage,
+		};
+	}
+
+	/**
+	 * Combine explicit OTHER role state with unassigned lights (otherState) for mode matching.
+	 * Returns null if neither source has any devices.
+	 */
+	private getCombinedOtherState(
+		explicitOther: RoleAggregatedState | undefined,
+		otherState: OtherLightsState,
+	): RoleAggregatedState | undefined {
+		const hasExplicit = explicitOther && explicitOther.devicesCount > 0;
+		const hasUnassigned = otherState.devicesCount > 0;
+
+		if (!hasExplicit && !hasUnassigned) {
+			return undefined;
+		}
+
+		// Only explicit OTHER exists
+		if (hasExplicit && !hasUnassigned) {
+			return explicitOther;
+		}
+
+		// Only unassigned lights exist - create synthetic state
+		if (!hasExplicit && hasUnassigned) {
+			return {
+				role: LightingRole.OTHER,
+				isOn: otherState.isOn,
+				isOnMixed: otherState.isOnMixed,
+				brightness: otherState.brightness,
+				colorTemperature: otherState.colorTemperature,
+				color: otherState.color,
+				white: otherState.white,
+				isBrightnessMixed: otherState.isBrightnessMixed,
+				isColorTemperatureMixed: otherState.isColorTemperatureMixed,
+				isColorMixed: otherState.isColorMixed,
+				isWhiteMixed: otherState.isWhiteMixed,
+				lastIntent: null,
+				devicesCount: otherState.devicesCount,
+				devicesOn: otherState.devicesOn,
+			};
+		}
+
+		// Both exist - merge them
+		const totalDevices = explicitOther.devicesCount + otherState.devicesCount;
+		const totalDevicesOn = explicitOther.devicesOn + otherState.devicesOn;
+
+		// Determine combined on/off state
+		const isOn = totalDevicesOn > 0;
+		const isOnMixed =
+			explicitOther.isOnMixed || otherState.isOnMixed || (explicitOther.isOn !== otherState.isOn && isOn);
+
+		// Combine brightness - if either is mixed or values differ, mark as mixed
+		let brightness: number | null = null;
+		let isBrightnessMixed = explicitOther.isBrightnessMixed || otherState.isBrightnessMixed;
+
+		if (!isBrightnessMixed && explicitOther.brightness !== null && otherState.brightness !== null) {
+			const diff = Math.abs(explicitOther.brightness - otherState.brightness);
+
+			if (diff <= 5) {
+				// Similar enough - use weighted average
+				brightness = Math.round(
+					(explicitOther.brightness * explicitOther.devicesCount + otherState.brightness * otherState.devicesCount) /
+						totalDevices,
+				);
+			} else {
+				isBrightnessMixed = true;
+			}
+		} else if (!isBrightnessMixed) {
+			// One is null - use the other if available
+			brightness = explicitOther.brightness ?? otherState.brightness;
+		}
+
+		// Combine color temperature
+		let colorTemperature: number | null = null;
+		let isColorTemperatureMixed = explicitOther.isColorTemperatureMixed || otherState.isColorTemperatureMixed;
+
+		if (!isColorTemperatureMixed && explicitOther.colorTemperature !== null && otherState.colorTemperature !== null) {
+			const diff = Math.abs(explicitOther.colorTemperature - otherState.colorTemperature);
+
+			if (diff <= 100) {
+				colorTemperature = Math.round(
+					(explicitOther.colorTemperature * explicitOther.devicesCount +
+						otherState.colorTemperature * otherState.devicesCount) /
+						totalDevices,
+				);
+			} else {
+				isColorTemperatureMixed = true;
+			}
+		} else if (!isColorTemperatureMixed) {
+			colorTemperature = explicitOther.colorTemperature ?? otherState.colorTemperature;
+		}
+
+		// Combine color - if both have color and they differ significantly, mark as mixed
+		let color: string | null = null;
+		let isColorMixed = explicitOther.isColorMixed || otherState.isColorMixed;
+
+		if (!isColorMixed) {
+			if (explicitOther.color !== null && otherState.color !== null) {
+				isColorMixed = explicitOther.color !== otherState.color;
+				color = isColorMixed ? null : explicitOther.color;
+			} else {
+				color = explicitOther.color ?? otherState.color;
+			}
+		}
+
+		// Combine white
+		let white: number | null = null;
+		let isWhiteMixed = explicitOther.isWhiteMixed || otherState.isWhiteMixed;
+
+		if (!isWhiteMixed && explicitOther.white !== null && otherState.white !== null) {
+			const diff = Math.abs(explicitOther.white - otherState.white);
+
+			if (diff <= 5) {
+				white = Math.round(
+					(explicitOther.white * explicitOther.devicesCount + otherState.white * otherState.devicesCount) /
+						totalDevices,
+				);
+			} else {
+				isWhiteMixed = true;
+			}
+		} else if (!isWhiteMixed) {
+			white = explicitOther.white ?? otherState.white;
+		}
+
+		return {
+			role: LightingRole.OTHER,
+			isOn,
+			isOnMixed,
+			brightness,
+			colorTemperature,
+			color,
+			white,
+			isBrightnessMixed,
+			isColorTemperatureMixed,
+			isColorMixed,
+			isWhiteMixed,
+			lastIntent: explicitOther.lastIntent,
+			devicesCount: totalDevices,
+			devicesOn: totalDevicesOn,
 		};
 	}
 
@@ -759,6 +884,7 @@ export class SpaceLightingStateService {
 	/**
 	 * Check if a role's current state matches a rule.
 	 * Accounts for mixed on/off states - partial on/off is not considered a match.
+	 * Returns non-match if rule requires brightness but actual brightness is unknown.
 	 */
 	private matchRoleRule(
 		roleState: RoleAggregatedState,
@@ -781,8 +907,20 @@ export class SpaceLightingStateService {
 			return { matches: true, exact: true };
 		}
 
-		// Check brightness if specified and not mixed
-		if (rule.brightness !== null && roleState.brightness !== null && !roleState.isBrightnessMixed) {
+		// Rule says ON and all devices are on - check brightness
+		if (rule.brightness !== null) {
+			// Rule requires specific brightness
+			if (roleState.brightness === null) {
+				// Brightness unknown - can't verify match, report as non-match
+				return { matches: false, exact: false };
+			}
+
+			if (roleState.isBrightnessMixed) {
+				// Brightness is mixed - can't match exactly
+				return { matches: true, exact: false };
+			}
+
+			// Compare brightness values
 			const diff = Math.abs(rule.brightness - roleState.brightness);
 
 			if (diff <= 5) {
@@ -794,7 +932,7 @@ export class SpaceLightingStateService {
 			}
 		}
 
-		// If brightness is mixed, can't match exactly
+		// If brightness is mixed but rule doesn't require specific brightness, approximate match
 		if (roleState.isBrightnessMixed) {
 			return { matches: true, exact: false };
 		}
