@@ -1834,7 +1834,24 @@ export class UndoResultResponseModel extends BaseSuccessResponseModel<UndoResult
 // ================================
 
 /**
- * Aggregated state for a single lighting role
+ * Last intent values for a role - what was last set via mode/intent
+ */
+@ApiSchema({ name: 'SpacesModuleDataRoleLastIntent' })
+export class RoleLastIntentDataModel {
+	@ApiPropertyOptional({
+		description: 'Last brightness value set via intent (0-100), null if role was set to OFF or no intent',
+		type: 'number',
+		nullable: true,
+		example: 100,
+	})
+	@Expose()
+	brightness: number | null;
+}
+
+/**
+ * Aggregated state for a single lighting role.
+ * Current values are shown only when uniform across all devices in the role.
+ * When devices have different values, current value is null and the corresponding isMixed flag is true.
  */
 @ApiSchema({ name: 'SpacesModuleDataRoleAggregatedState' })
 export class RoleAggregatedStateDataModel {
@@ -1855,8 +1872,17 @@ export class RoleAggregatedStateDataModel {
 	@Expose({ name: 'is_on' })
 	isOn: boolean;
 
+	@ApiProperty({
+		name: 'is_on_mixed',
+		description: 'Whether lights in this role have different on/off states',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'is_on_mixed' })
+	isOnMixed: boolean;
+
 	@ApiPropertyOptional({
-		description: 'Average brightness of ON lights in this role (0-100), null if no brightness data',
+		description: 'Uniform brightness of lights in this role (0-100), null if devices have different values (mixed)',
 		type: 'number',
 		nullable: true,
 		example: 85,
@@ -1864,14 +1890,79 @@ export class RoleAggregatedStateDataModel {
 	@Expose()
 	brightness: number | null;
 
+	@ApiPropertyOptional({
+		name: 'color_temperature',
+		description: 'Uniform color temperature in Kelvin, null if devices have different values (mixed)',
+		type: 'number',
+		nullable: true,
+		example: 4000,
+	})
+	@Expose({ name: 'color_temperature' })
+	colorTemperature: number | null;
+
+	@ApiPropertyOptional({
+		description: 'Uniform color as hex string (e.g. "#ff6b35"), null if devices have different values (mixed)',
+		type: 'string',
+		nullable: true,
+		example: '#ffffff',
+	})
+	@Expose()
+	color: string | null;
+
+	@ApiPropertyOptional({
+		description: 'Uniform white level (0-100), null if devices have different values (mixed)',
+		type: 'number',
+		nullable: true,
+		example: null,
+	})
+	@Expose()
+	white: number | null;
+
 	@ApiProperty({
-		name: 'is_mixed',
-		description: 'Whether lights in this role have different states (some on/off or different brightness)',
+		name: 'is_brightness_mixed',
+		description: 'Whether lights in this role have different brightness values',
 		type: 'boolean',
 		example: false,
 	})
-	@Expose({ name: 'is_mixed' })
-	isMixed: boolean;
+	@Expose({ name: 'is_brightness_mixed' })
+	isBrightnessMixed: boolean;
+
+	@ApiProperty({
+		name: 'is_color_temperature_mixed',
+		description: 'Whether lights in this role have different color temperature values',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'is_color_temperature_mixed' })
+	isColorTemperatureMixed: boolean;
+
+	@ApiProperty({
+		name: 'is_color_mixed',
+		description: 'Whether lights in this role have different color values',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'is_color_mixed' })
+	isColorMixed: boolean;
+
+	@ApiProperty({
+		name: 'is_white_mixed',
+		description: 'Whether lights in this role have different white level values',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'is_white_mixed' })
+	isWhiteMixed: boolean;
+
+	@ApiPropertyOptional({
+		name: 'last_intent',
+		description: 'Last values set via mode/intent for this role, null if no mode was applied',
+		type: () => RoleLastIntentDataModel,
+		nullable: true,
+	})
+	@Expose({ name: 'last_intent' })
+	@Type(() => RoleLastIntentDataModel)
+	lastIntent: RoleLastIntentDataModel | null;
 
 	@ApiProperty({
 		name: 'devices_count',
@@ -1893,7 +1984,9 @@ export class RoleAggregatedStateDataModel {
 }
 
 /**
- * Aggregated state for lights without role ("other" lights)
+ * Aggregated state for lights without role ("other" lights).
+ * Current values are shown only when uniform across all devices.
+ * When devices have different values, current value is null and the corresponding isMixed flag is true.
  */
 @ApiSchema({ name: 'SpacesModuleDataOtherLightsState' })
 export class OtherLightsStateDataModel {
@@ -1906,8 +1999,17 @@ export class OtherLightsStateDataModel {
 	@Expose({ name: 'is_on' })
 	isOn: boolean;
 
+	@ApiProperty({
+		name: 'is_on_mixed',
+		description: 'Whether lights without role have different on/off states',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'is_on_mixed' })
+	isOnMixed: boolean;
+
 	@ApiPropertyOptional({
-		description: 'Average brightness of ON lights without role (0-100), null if no brightness data',
+		description: 'Uniform brightness of lights without role (0-100), null if devices have different values (mixed)',
 		type: 'number',
 		nullable: true,
 		example: null,
@@ -1915,14 +2017,69 @@ export class OtherLightsStateDataModel {
 	@Expose()
 	brightness: number | null;
 
+	@ApiPropertyOptional({
+		name: 'color_temperature',
+		description: 'Uniform color temperature in Kelvin, null if devices have different values (mixed)',
+		type: 'number',
+		nullable: true,
+		example: null,
+	})
+	@Expose({ name: 'color_temperature' })
+	colorTemperature: number | null;
+
+	@ApiPropertyOptional({
+		description: 'Uniform color as hex string (e.g. "#ff6b35"), null if devices have different values (mixed)',
+		type: 'string',
+		nullable: true,
+		example: null,
+	})
+	@Expose()
+	color: string | null;
+
+	@ApiPropertyOptional({
+		description: 'Uniform white level (0-100), null if devices have different values (mixed)',
+		type: 'number',
+		nullable: true,
+		example: null,
+	})
+	@Expose()
+	white: number | null;
+
 	@ApiProperty({
-		name: 'is_mixed',
-		description: 'Whether lights without role have different states',
+		name: 'is_brightness_mixed',
+		description: 'Whether lights without role have different brightness values',
 		type: 'boolean',
 		example: false,
 	})
-	@Expose({ name: 'is_mixed' })
-	isMixed: boolean;
+	@Expose({ name: 'is_brightness_mixed' })
+	isBrightnessMixed: boolean;
+
+	@ApiProperty({
+		name: 'is_color_temperature_mixed',
+		description: 'Whether lights without role have different color temperature values',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'is_color_temperature_mixed' })
+	isColorTemperatureMixed: boolean;
+
+	@ApiProperty({
+		name: 'is_color_mixed',
+		description: 'Whether lights without role have different color values',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'is_color_mixed' })
+	isColorMixed: boolean;
+
+	@ApiProperty({
+		name: 'is_white_mixed',
+		description: 'Whether lights without role have different white level values',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'is_white_mixed' })
+	isWhiteMixed: boolean;
 
 	@ApiProperty({
 		name: 'devices_count',

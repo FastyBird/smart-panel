@@ -644,8 +644,16 @@ export class SpacesController {
 			const roleData = new RoleAggregatedStateDataModel();
 			roleData.role = roleState.role;
 			roleData.isOn = roleState.isOn;
+			roleData.isOnMixed = roleState.isOnMixed;
 			roleData.brightness = roleState.brightness;
-			roleData.isMixed = roleState.isMixed;
+			roleData.colorTemperature = roleState.colorTemperature;
+			roleData.color = roleState.color;
+			roleData.white = roleState.white;
+			roleData.isBrightnessMixed = roleState.isBrightnessMixed;
+			roleData.isColorTemperatureMixed = roleState.isColorTemperatureMixed;
+			roleData.isColorMixed = roleState.isColorMixed;
+			roleData.isWhiteMixed = roleState.isWhiteMixed;
+			roleData.lastIntent = roleState.lastIntent;
 			roleData.devicesCount = roleState.devicesCount;
 			roleData.devicesOn = roleState.devicesOn;
 
@@ -657,8 +665,15 @@ export class SpacesController {
 		// Map other lights
 		const otherData = new OtherLightsStateDataModel();
 		otherData.isOn = state.other.isOn;
+		otherData.isOnMixed = state.other.isOnMixed;
 		otherData.brightness = state.other.brightness;
-		otherData.isMixed = state.other.isMixed;
+		otherData.colorTemperature = state.other.colorTemperature;
+		otherData.color = state.other.color;
+		otherData.white = state.other.white;
+		otherData.isBrightnessMixed = state.other.isBrightnessMixed;
+		otherData.isColorTemperatureMixed = state.other.isColorTemperatureMixed;
+		otherData.isColorMixed = state.other.isColorMixed;
+		otherData.isWhiteMixed = state.other.isWhiteMixed;
 		otherData.devicesCount = state.other.devicesCount;
 		otherData.devicesOn = state.other.devicesOn;
 		stateData.other = otherData;

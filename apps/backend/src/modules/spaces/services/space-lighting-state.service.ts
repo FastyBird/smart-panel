@@ -5,6 +5,7 @@ import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
 import {
+	LIGHTING_MODE_BRIGHTNESS,
 	LIGHTING_MODE_ORCHESTRATION,
 	LightingMode,
 	LightingRole,
@@ -16,18 +17,38 @@ import { SpaceLightingRoleService } from './space-lighting-role.service';
 import { SpacesService } from './spaces.service';
 
 /**
- * Aggregated state for a single lighting role
+ * Last intent values for a role - derived from last applied mode
+ */
+export interface RoleLastIntent {
+	brightness: number | null;
+	// Color properties can be extended when mode orchestration supports them
+}
+
+/**
+ * Aggregated state for a single lighting role.
+ * Current values are shown only when uniform across all devices in the role.
+ * When devices have different values, current value is null and isMixed is true.
  */
 export interface RoleAggregatedState {
 	role: LightingRole;
+	// On/off state
 	isOn: boolean;
+	isOnMixed: boolean;
+	// Current values - null when devices have different values (mixed)
 	brightness: number | null;
-	isMixed: boolean;
+	colorTemperature: number | null;
+	color: string | null; // Hex color string e.g. "#ff6b35"
+	white: number | null;
+	// Mixed flags for each property
+	isBrightnessMixed: boolean;
+	isColorTemperatureMixed: boolean;
+	isColorMixed: boolean;
+	isWhiteMixed: boolean;
+	// Last intent values - what was last set via mode/intent
+	lastIntent: RoleLastIntent | null;
+	// Device counts
 	devicesCount: number;
 	devicesOn: number;
-	// Detailed values for mixed state detection
-	brightnessValues: number[];
-	onStates: boolean[];
 }
 
 /**
@@ -35,8 +56,15 @@ export interface RoleAggregatedState {
  */
 export interface OtherLightsState {
 	isOn: boolean;
+	isOnMixed: boolean;
 	brightness: number | null;
-	isMixed: boolean;
+	colorTemperature: number | null;
+	color: string | null;
+	white: number | null;
+	isBrightnessMixed: boolean;
+	isColorTemperatureMixed: boolean;
+	isColorMixed: boolean;
+	isWhiteMixed: boolean;
 	devicesCount: number;
 	devicesOn: number;
 }
@@ -59,7 +87,7 @@ export interface SpaceLightingState {
 	modeConfidence: 'exact' | 'approximate' | 'none';
 	modeMatchPercentage: number | null;
 
-	// Last applied mode (from storage - null until InfluxDB persistence is added)
+	// Last applied mode (from storage)
 	lastAppliedMode: LightingMode | null;
 	lastAppliedAt: Date | null;
 
@@ -84,6 +112,11 @@ interface LightState {
 	role: LightingRole | null;
 	isOn: boolean;
 	brightness: number | null;
+	colorTemperature: number | null;
+	colorRed: number | null;
+	colorGreen: number | null;
+	colorBlue: number | null;
+	white: number | null;
 }
 
 /**
@@ -122,8 +155,16 @@ export class SpaceLightingStateService {
 			return this.buildEmptyState();
 		}
 
-		// Aggregate by role
-		const roleStates = this.aggregateByRole(lights);
+		// Get last applied mode from InfluxDB
+		const lastApplied = await this.intentTimeseriesService.getLastLightingMode(spaceId);
+		const lastAppliedMode = lastApplied?.mode
+			? Object.values(LightingMode).includes(lastApplied.mode as LightingMode)
+				? (lastApplied.mode as LightingMode)
+				: null
+			: null;
+
+		// Aggregate by role (passing lastAppliedMode for lastIntent derivation)
+		const roleStates = this.aggregateByRole(lights, lastAppliedMode);
 
 		// Aggregate "other" lights (no role)
 		const otherState = this.aggregateOther(lights);
@@ -133,14 +174,6 @@ export class SpaceLightingStateService {
 
 		// Detect current mode
 		const modeMatch = this.detectMode(roleStates, otherState, lights);
-
-		// Get last applied mode from InfluxDB
-		const lastApplied = await this.intentTimeseriesService.getLastLightingMode(spaceId);
-		const lastAppliedMode = lastApplied?.mode
-			? Object.values(LightingMode).includes(lastApplied.mode as LightingMode)
-				? (lastApplied.mode as LightingMode)
-				: null
-			: null;
 
 		return {
 			detectedMode: modeMatch?.mode ?? null,
@@ -207,6 +240,11 @@ export class SpaceLightingStateService {
 		}
 
 		const brightnessProperty = channel.properties?.find((p) => p.category === PropertyCategory.BRIGHTNESS);
+		const colorTempProperty = channel.properties?.find((p) => p.category === PropertyCategory.COLOR_TEMPERATURE);
+		const colorRedProperty = channel.properties?.find((p) => p.category === PropertyCategory.COLOR_RED);
+		const colorGreenProperty = channel.properties?.find((p) => p.category === PropertyCategory.COLOR_GREEN);
+		const colorBlueProperty = channel.properties?.find((p) => p.category === PropertyCategory.COLOR_BLUE);
+		const whiteProperty = channel.properties?.find((p) => p.category === PropertyCategory.COLOR_WHITE);
 
 		const roleKey = `${device.id}:${channel.id}`;
 		const roleEntity = roleMap.get(roleKey);
@@ -217,13 +255,22 @@ export class SpaceLightingStateService {
 			role: roleEntity?.role ?? null,
 			isOn: this.getPropertyBooleanValue(onProperty),
 			brightness: this.getPropertyNumericValue(brightnessProperty),
+			colorTemperature: this.getPropertyNumericValue(colorTempProperty),
+			colorRed: this.getPropertyNumericValue(colorRedProperty),
+			colorGreen: this.getPropertyNumericValue(colorGreenProperty),
+			colorBlue: this.getPropertyNumericValue(colorBlueProperty),
+			white: this.getPropertyNumericValue(whiteProperty),
 		};
 	}
 
 	/**
-	 * Aggregate lights by role
+	 * Aggregate lights by role.
+	 * Values are shown only when uniform across all devices in the role.
 	 */
-	private aggregateByRole(lights: LightState[]): Partial<Record<LightingRole, RoleAggregatedState>> {
+	private aggregateByRole(
+		lights: LightState[],
+		lastAppliedMode: LightingMode | null,
+	): Partial<Record<LightingRole, RoleAggregatedState>> {
 		const roleStates: Partial<Record<LightingRole, RoleAggregatedState>> = {};
 
 		// Group lights by role (excluding null roles and HIDDEN)
@@ -238,41 +285,63 @@ export class SpaceLightingStateService {
 				roleGroups.set(light.role, []);
 			}
 
-			roleGroups.get(light.role).push(light);
+			roleGroups.get(light.role)!.push(light);
 		}
 
 		// Calculate aggregated state for each role
 		for (const [role, roleLights] of roleGroups) {
-			const onStates = roleLights.map((l) => l.isOn);
-			const brightnessValues = roleLights.filter((l) => l.brightness !== null).map((l) => l.brightness);
-
-			const devicesOn = onStates.filter((on) => on).length;
-			const isOn = devicesOn > 0;
-
-			// Calculate average brightness (only from ON lights with brightness)
-			const onBrightnessValues = roleLights.filter((l) => l.isOn && l.brightness !== null).map((l) => l.brightness);
-
-			const avgBrightness =
-				onBrightnessValues.length > 0
-					? Math.round(onBrightnessValues.reduce((a, b) => a + b, 0) / onBrightnessValues.length)
-					: null;
-
-			// Detect mixed state
-			const isMixed = this.detectMixedState(onStates, brightnessValues);
-
-			roleStates[role] = {
-				role,
-				isOn,
-				brightness: avgBrightness,
-				isMixed,
-				devicesCount: roleLights.length,
-				devicesOn,
-				brightnessValues,
-				onStates,
-			};
+			roleStates[role] = this.aggregateLightGroup(role, roleLights, lastAppliedMode);
 		}
 
 		return roleStates;
+	}
+
+	/**
+	 * Aggregate a group of lights into a single state.
+	 * Returns uniform values when all devices match, null when mixed.
+	 */
+	private aggregateLightGroup(
+		role: LightingRole,
+		lights: LightState[],
+		lastAppliedMode: LightingMode | null,
+	): RoleAggregatedState {
+		// On/off state
+		const onStates = lights.map((l) => l.isOn);
+		const devicesOn = onStates.filter((on) => on).length;
+		const isOn = devicesOn > 0;
+		const isOnMixed = !onStates.every((on) => on === onStates[0]);
+
+		// Brightness - uniform value or null if mixed
+		const brightnessResult = this.getUniformValue(lights.map((l) => l.brightness));
+
+		// Color temperature - uniform value or null if mixed
+		const colorTempResult = this.getUniformValue(lights.map((l) => l.colorTemperature));
+
+		// Color (RGB) - uniform value or null if mixed
+		const colorResult = this.getUniformColor(lights);
+
+		// White - uniform value or null if mixed
+		const whiteResult = this.getUniformValue(lights.map((l) => l.white));
+
+		// Derive last intent from last applied mode
+		const lastIntent = this.deriveLastIntent(role, lastAppliedMode);
+
+		return {
+			role,
+			isOn,
+			isOnMixed,
+			brightness: brightnessResult.value,
+			colorTemperature: colorTempResult.value,
+			color: colorResult.value,
+			white: whiteResult.value,
+			isBrightnessMixed: brightnessResult.isMixed,
+			isColorTemperatureMixed: colorTempResult.isMixed,
+			isColorMixed: colorResult.isMixed,
+			isWhiteMixed: whiteResult.isMixed,
+			lastIntent,
+			devicesCount: lights.length,
+			devicesOn,
+		};
 	}
 
 	/**
@@ -284,61 +353,153 @@ export class SpaceLightingStateService {
 		if (otherLights.length === 0) {
 			return {
 				isOn: false,
+				isOnMixed: false,
 				brightness: null,
-				isMixed: false,
+				colorTemperature: null,
+				color: null,
+				white: null,
+				isBrightnessMixed: false,
+				isColorTemperatureMixed: false,
+				isColorMixed: false,
+				isWhiteMixed: false,
 				devicesCount: 0,
 				devicesOn: 0,
 			};
 		}
 
 		const onStates = otherLights.map((l) => l.isOn);
-		const brightnessValues = otherLights.filter((l) => l.brightness !== null).map((l) => l.brightness);
-
 		const devicesOn = onStates.filter((on) => on).length;
 		const isOn = devicesOn > 0;
+		const isOnMixed = !onStates.every((on) => on === onStates[0]);
 
-		// Calculate average brightness (only from ON lights with brightness)
-		const onBrightnessValues = otherLights.filter((l) => l.isOn && l.brightness !== null).map((l) => l.brightness);
-
-		const avgBrightness =
-			onBrightnessValues.length > 0
-				? Math.round(onBrightnessValues.reduce((a, b) => a + b, 0) / onBrightnessValues.length)
-				: null;
-
-		const isMixed = this.detectMixedState(onStates, brightnessValues);
+		const brightnessResult = this.getUniformValue(otherLights.map((l) => l.brightness));
+		const colorTempResult = this.getUniformValue(otherLights.map((l) => l.colorTemperature));
+		const colorResult = this.getUniformColor(otherLights);
+		const whiteResult = this.getUniformValue(otherLights.map((l) => l.white));
 
 		return {
 			isOn,
-			brightness: avgBrightness,
-			isMixed,
+			isOnMixed,
+			brightness: brightnessResult.value,
+			colorTemperature: colorTempResult.value,
+			color: colorResult.value,
+			white: whiteResult.value,
+			isBrightnessMixed: brightnessResult.isMixed,
+			isColorTemperatureMixed: colorTempResult.isMixed,
+			isColorMixed: colorResult.isMixed,
+			isWhiteMixed: whiteResult.isMixed,
 			devicesCount: otherLights.length,
 			devicesOn,
 		};
 	}
 
 	/**
-	 * Detect if lights are in a mixed state
+	 * Get uniform value from array of values.
+	 * Returns the value if all non-null values are the same (within tolerance),
+	 * null if values differ (mixed).
 	 */
-	private detectMixedState(onStates: boolean[], brightnessValues: number[]): boolean {
-		// Mixed if some lights are on and some are off
-		const allOn = onStates.every((on) => on);
-		const allOff = onStates.every((on) => !on);
+	private getUniformValue(values: (number | null)[]): { value: number | null; isMixed: boolean } {
+		const nonNullValues = values.filter((v): v is number => v !== null);
 
-		if (!allOn && !allOff) {
-			return true;
+		if (nonNullValues.length === 0) {
+			return { value: null, isMixed: false };
 		}
 
-		// Mixed if brightness values differ significantly (>10% difference)
-		if (brightnessValues.length > 1) {
-			const min = Math.min(...brightnessValues);
-			const max = Math.max(...brightnessValues);
+		// Check if all values are within tolerance (±5)
+		const first = nonNullValues[0];
+		const allSame = nonNullValues.every((v) => Math.abs(v - first) <= 5);
 
-			if (max - min > 10) {
-				return true;
+		if (allSame) {
+			// Return the rounded average when uniform
+			const avg = Math.round(nonNullValues.reduce((a, b) => a + b, 0) / nonNullValues.length);
+
+			return { value: avg, isMixed: false };
+		}
+
+		return { value: null, isMixed: true };
+	}
+
+	/**
+	 * Get uniform color from lights.
+	 * Returns hex color string if all lights have same RGB, null if mixed.
+	 */
+	private getUniformColor(lights: LightState[]): { value: string | null; isMixed: boolean } {
+		// Get lights that have all RGB components
+		const colorLights = lights.filter(
+			(l) => l.colorRed !== null && l.colorGreen !== null && l.colorBlue !== null,
+		);
+
+		if (colorLights.length === 0) {
+			return { value: null, isMixed: false };
+		}
+
+		// Check if all colors are the same (within tolerance)
+		const firstR = colorLights[0].colorRed!;
+		const firstG = colorLights[0].colorGreen!;
+		const firstB = colorLights[0].colorBlue!;
+
+		const tolerance = 10; // Allow ±10 per channel
+
+		const allSame = colorLights.every(
+			(l) =>
+				Math.abs(l.colorRed! - firstR) <= tolerance &&
+				Math.abs(l.colorGreen! - firstG) <= tolerance &&
+				Math.abs(l.colorBlue! - firstB) <= tolerance,
+		);
+
+		if (allSame) {
+			// Calculate average and convert to hex
+			const avgR = Math.round(colorLights.reduce((a, l) => a + l.colorRed!, 0) / colorLights.length);
+			const avgG = Math.round(colorLights.reduce((a, l) => a + l.colorGreen!, 0) / colorLights.length);
+			const avgB = Math.round(colorLights.reduce((a, l) => a + l.colorBlue!, 0) / colorLights.length);
+
+			const hex = `#${avgR.toString(16).padStart(2, '0')}${avgG.toString(16).padStart(2, '0')}${avgB.toString(16).padStart(2, '0')}`;
+
+			return { value: hex, isMixed: false };
+		}
+
+		return { value: null, isMixed: true };
+	}
+
+	/**
+	 * Derive last intent values for a role from the last applied mode.
+	 * Uses LIGHTING_MODE_ORCHESTRATION to get what values were set.
+	 */
+	private deriveLastIntent(role: LightingRole, lastAppliedMode: LightingMode | null): RoleLastIntent | null {
+		if (!lastAppliedMode) {
+			return null;
+		}
+
+		const config = LIGHTING_MODE_ORCHESTRATION[lastAppliedMode];
+
+		if (!config) {
+			return null;
+		}
+
+		const rule = config.roles[role];
+
+		if (!rule) {
+			// Role not in mode's rules - check if it's OTHER role
+			if (role === LightingRole.OTHER) {
+				// OTHER lights use mode's fallback brightness in MVP mode
+				return {
+					brightness: LIGHTING_MODE_BRIGHTNESS[lastAppliedMode],
+				};
 			}
+
+			return null;
 		}
 
-		return false;
+		// If rule says OFF, brightness intent is 0
+		if (!rule.on) {
+			return {
+				brightness: 0,
+			};
+		}
+
+		return {
+			brightness: rule.brightness,
+		};
 	}
 
 	/**
@@ -351,7 +512,7 @@ export class SpaceLightingStateService {
 	} {
 		const lightsOn = lights.filter((l) => l.isOn).length;
 
-		const onBrightnessValues = lights.filter((l) => l.isOn && l.brightness !== null).map((l) => l.brightness);
+		const onBrightnessValues = lights.filter((l) => l.isOn && l.brightness !== null).map((l) => l.brightness!);
 
 		const averageBrightness =
 			onBrightnessValues.length > 0
@@ -406,7 +567,7 @@ export class SpaceLightingStateService {
 		}
 
 		// Check if all ON lights have similar brightness
-		const brightnessValues = onLights.filter((l) => l.brightness !== null).map((l) => l.brightness);
+		const brightnessValues = onLights.filter((l) => l.brightness !== null).map((l) => l.brightness!);
 
 		if (brightnessValues.length === 0) {
 			return null;
@@ -506,8 +667,8 @@ export class SpaceLightingStateService {
 			return { matches: true, exact: true };
 		}
 
-		// Check brightness if specified
-		if (rule.brightness !== null && roleState.brightness !== null) {
+		// Check brightness if specified and not mixed
+		if (rule.brightness !== null && roleState.brightness !== null && !roleState.isBrightnessMixed) {
 			const diff = Math.abs(rule.brightness - roleState.brightness);
 
 			if (diff <= 5) {
@@ -517,6 +678,11 @@ export class SpaceLightingStateService {
 			} else {
 				return { matches: false, exact: false };
 			}
+		}
+
+		// If brightness is mixed, can't match exactly
+		if (roleState.isBrightnessMixed) {
+			return { matches: true, exact: false };
 		}
 
 		// ON with no brightness requirement - matches
@@ -539,8 +705,15 @@ export class SpaceLightingStateService {
 			roles: {},
 			other: {
 				isOn: false,
+				isOnMixed: false,
 				brightness: null,
-				isMixed: false,
+				colorTemperature: null,
+				color: null,
+				white: null,
+				isBrightnessMixed: false,
+				isColorTemperatureMixed: false,
+				isColorMixed: false,
+				isWhiteMixed: false,
 				devicesCount: 0,
 				devicesOn: 0,
 			},
