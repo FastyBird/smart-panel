@@ -17,6 +17,9 @@ export enum EventType {
 	CLIMATE_TARGET_CREATED = 'SpacesModule.ClimateTarget.Created',
 	CLIMATE_TARGET_UPDATED = 'SpacesModule.ClimateTarget.Updated',
 	CLIMATE_TARGET_DELETED = 'SpacesModule.ClimateTarget.Deleted',
+	// Aggregated state change events - emitted when intents are executed
+	LIGHTING_STATE_CHANGED = 'SpacesModule.Space.LightingStateChanged',
+	CLIMATE_STATE_CHANGED = 'SpacesModule.Space.ClimateStateChanged',
 }
 
 export enum SpaceType {

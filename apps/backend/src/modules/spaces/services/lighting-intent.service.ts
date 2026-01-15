@@ -1,4 +1,5 @@
 import { Inject, Injectable, forwardRef } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
@@ -10,6 +11,7 @@ import { LightingIntentDto } from '../dto/lighting-intent.dto';
 import {
 	BRIGHTNESS_DELTA_STEPS,
 	BrightnessDelta,
+	EventType,
 	LIGHTING_MODE_BRIGHTNESS,
 	LIGHTING_MODE_ORCHESTRATION,
 	LightingIntentType,
@@ -22,6 +24,7 @@ import {
 import { SpaceContextSnapshotService } from './space-context-snapshot.service';
 import { IntentExecutionResult, SpaceIntentBaseService } from './space-intent-base.service';
 import { SpaceLightingRoleService } from './space-lighting-role.service';
+import { SpaceLightingStateService } from './space-lighting-state.service';
 import { SpaceUndoHistoryService } from './space-undo-history.service';
 import { SpacesService } from './spaces.service';
 
@@ -125,12 +128,15 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		private readonly spacesService: SpacesService,
 		private readonly platformRegistryService: PlatformRegistryService,
 		private readonly lightingRoleService: SpaceLightingRoleService,
+		private readonly eventEmitter: EventEmitter2,
 		@Inject(forwardRef(() => SpaceContextSnapshotService))
 		private readonly contextSnapshotService: SpaceContextSnapshotService,
 		@Inject(forwardRef(() => SpaceUndoHistoryService))
 		private readonly undoHistoryService: SpaceUndoHistoryService,
 		@Inject(forwardRef(() => IntentTimeseriesService))
 		private readonly intentTimeseriesService: IntentTimeseriesService,
+		@Inject(forwardRef(() => SpaceLightingStateService))
+		private readonly lightingStateService: SpaceLightingStateService,
 	) {
 		super();
 	}
@@ -162,32 +168,62 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		// Capture snapshot for undo BEFORE executing the intent
 		await this.captureUndoSnapshot(spaceId, intent);
 
+		let result: IntentExecutionResult;
+
 		// For SET_MODE, use role-based orchestration
 		if (intent.type === LightingIntentType.SET_MODE && intent.mode) {
-			return this.executeModeIntent(spaceId, lights, intent.mode);
-		}
+			result = await this.executeModeIntent(spaceId, lights, intent.mode);
+		} else {
+			// For other intents (ON, OFF, BRIGHTNESS_DELTA), apply to all lights
+			let affectedDevices = 0;
+			let failedDevices = 0;
 
-		// For other intents (ON, OFF, BRIGHTNESS_DELTA), apply to all lights
-		let affectedDevices = 0;
-		let failedDevices = 0;
+			for (const light of lights) {
+				const success = await this.executeIntentForLight(light, intent);
 
-		for (const light of lights) {
-			const success = await this.executeIntentForLight(light, intent);
-
-			if (success) {
-				affectedDevices++;
-			} else {
-				failedDevices++;
+				if (success) {
+					affectedDevices++;
+				} else {
+					failedDevices++;
+				}
 			}
+
+			const overallSuccess = failedDevices === 0 || affectedDevices > 0;
+
+			this.logger.debug(
+				`Lighting intent completed spaceId=${spaceId} affected=${affectedDevices} failed=${failedDevices}`,
+			);
+
+			result = { success: overallSuccess, affectedDevices, failedDevices };
 		}
 
-		const overallSuccess = failedDevices === 0 || affectedDevices > 0;
+		// Emit state change event for WebSocket clients (fire and forget)
+		if (result.success) {
+			void this.emitLightingStateChange(spaceId);
+		}
 
-		this.logger.debug(
-			`Lighting intent completed spaceId=${spaceId} affected=${affectedDevices} failed=${failedDevices}`,
-		);
+		return result;
+	}
 
-		return { success: overallSuccess, affectedDevices, failedDevices };
+	/**
+	 * Emit a lighting state change event for WebSocket clients.
+	 * Fetches the current aggregated state and broadcasts it.
+	 */
+	private async emitLightingStateChange(spaceId: string): Promise<void> {
+		try {
+			const state = await this.lightingStateService.getLightingState(spaceId);
+
+			if (state) {
+				this.eventEmitter.emit(EventType.LIGHTING_STATE_CHANGED, {
+					space_id: spaceId,
+					state,
+				});
+
+				this.logger.debug(`Emitted lighting state change event spaceId=${spaceId}`);
+			}
+		} catch (error) {
+			this.logger.error(`Failed to emit lighting state change event spaceId=${spaceId}: ${error}`);
+		}
 	}
 
 	/**

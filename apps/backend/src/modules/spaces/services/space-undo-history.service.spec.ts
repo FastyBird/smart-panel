@@ -54,6 +54,8 @@ describe('SpaceUndoHistoryService', () => {
 			isMixed: false,
 			devicesCount: 0,
 			primaryThermostatId: null,
+			lastAppliedMode: null,
+			lastAppliedAt: null,
 		},
 	});
 
@@ -153,6 +155,8 @@ describe('SpaceUndoHistoryService', () => {
 			isMixed: false,
 			devicesCount: thermostatId !== null ? 1 : 0,
 			primaryThermostatId: thermostatId,
+			lastAppliedMode: null,
+			lastAppliedAt: null,
 		},
 	});
 

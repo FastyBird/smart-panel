@@ -1,4 +1,5 @@
 import { Inject, Injectable, forwardRef } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
@@ -14,6 +15,7 @@ import {
 	ClimateRole,
 	DEFAULT_MAX_SETPOINT,
 	DEFAULT_MIN_SETPOINT,
+	EventType,
 	SETPOINT_DELTA_STEPS,
 	SPACES_MODULE_NAME,
 	TEMPERATURE_AVERAGING_STRATEGY,
@@ -123,6 +125,7 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		private readonly undoHistoryService: SpaceUndoHistoryService,
 		@Inject(forwardRef(() => IntentTimeseriesService))
 		private readonly intentTimeseriesService: IntentTimeseriesService,
+		private readonly eventEmitter: EventEmitter2,
 	) {
 		super();
 	}
@@ -355,20 +358,32 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		await this.captureUndoSnapshot(spaceId, intent);
 
 		// Handle different intent types
+		let result: ClimateIntentResult;
+
 		switch (intent.type) {
 			case ClimateIntentType.SET_MODE:
-				return this.executeSetModeIntent(spaceId, primaryDevices, intent, climateState);
+				result = await this.executeSetModeIntent(spaceId, primaryDevices, intent, climateState);
+				break;
 
 			case ClimateIntentType.SETPOINT_SET:
-				return this.executeSetpointSetIntent(primaryDevices, intent, climateState);
+				result = await this.executeSetpointSetIntent(primaryDevices, intent, climateState);
+				break;
 
 			case ClimateIntentType.SETPOINT_DELTA:
-				return this.executeSetpointDeltaIntent(primaryDevices, intent, climateState);
+				result = await this.executeSetpointDeltaIntent(primaryDevices, intent, climateState);
+				break;
 
 			default:
 				this.logger.warn(`Unknown climate intent type: ${String(intent.type)}`);
 				return defaultResult;
 		}
+
+		// Emit state change event for WebSocket clients (fire and forget)
+		if (result.success) {
+			void this.emitClimateStateChange(spaceId);
+		}
+
+		return result;
 	}
 
 	/**
@@ -1115,6 +1130,27 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 				return `Set temperature to ${intent.value ?? 'unknown'}°C`;
 			default:
 				return 'Climate intent';
+		}
+	}
+
+	/**
+	 * Emit climate state change event for WebSocket clients.
+	 * Fetches the latest climate state and emits it via the event emitter.
+	 */
+	private async emitClimateStateChange(spaceId: string): Promise<void> {
+		try {
+			const state = await this.getClimateState(spaceId);
+
+			if (state.hasClimate) {
+				this.eventEmitter.emit(EventType.CLIMATE_STATE_CHANGED, {
+					space_id: spaceId,
+					state,
+				});
+
+				this.logger.debug(`Emitted climate state change event spaceId=${spaceId}`);
+			}
+		} catch (error) {
+			this.logger.error(`Failed to emit climate state change event spaceId=${spaceId}: ${error}`);
 		}
 	}
 }
