@@ -4,7 +4,6 @@ import {
 	IsDefined,
 	IsEnum,
 	IsInt,
-	IsOptional,
 	IsString,
 	Matches,
 	Max,
@@ -106,8 +105,11 @@ export class LightingIntentDto {
 	@Expose()
 	@ValidateIf((o: LightingIntentDto) => o.type === LightingIntentType.ROLE_BRIGHTNESS)
 	@IsDefined({ message: '[{"field":"brightness","reason":"Brightness is required when type is ROLE_BRIGHTNESS."}]' })
-	@ValidateIf((o: LightingIntentDto) => o.type === LightingIntentType.ROLE_SET && o.brightness !== undefined)
-	@IsOptional()
+	@ValidateIf(
+		(o: LightingIntentDto) =>
+			o.type === LightingIntentType.ROLE_BRIGHTNESS ||
+			(o.type === LightingIntentType.ROLE_SET && o.brightness !== undefined),
+	)
 	@IsInt({ message: '[{"field":"brightness","reason":"Brightness must be an integer."}]' })
 	@Min(0, { message: '[{"field":"brightness","reason":"Brightness must be at least 0."}]' })
 	@Max(100, { message: '[{"field":"brightness","reason":"Brightness must be at most 100."}]' })
@@ -121,15 +123,20 @@ export class LightingIntentDto {
 	@Expose()
 	@ValidateIf((o: LightingIntentDto) => o.type === LightingIntentType.ROLE_COLOR)
 	@IsDefined({ message: '[{"field":"color","reason":"Color is required when type is ROLE_COLOR."}]' })
-	@ValidateIf((o: LightingIntentDto) => o.type === LightingIntentType.ROLE_SET && o.color !== undefined)
-	@IsOptional()
+	@ValidateIf(
+		(o: LightingIntentDto) =>
+			o.type === LightingIntentType.ROLE_COLOR || (o.type === LightingIntentType.ROLE_SET && o.color !== undefined),
+	)
 	@IsString({ message: '[{"field":"color","reason":"Color must be a string."}]' })
-	@Matches(/^#[0-9a-fA-F]{6}$/, { message: '[{"field":"color","reason":"Color must be a valid hex color (e.g. #ff6b35)."}]' })
+	@Matches(/^#[0-9a-fA-F]{6}$/, {
+		message: '[{"field":"color","reason":"Color must be a valid hex color (e.g. #ff6b35)."}]',
+	})
 	color?: string;
 
 	@ApiPropertyOptional({
 		name: 'color_temperature',
-		description: 'Color temperature in Kelvin e.g. 2700-6500 (required when type is ROLE_COLOR_TEMP, optional for ROLE_SET)',
+		description:
+			'Color temperature in Kelvin e.g. 2700-6500 (required when type is ROLE_COLOR_TEMP, optional for ROLE_SET)',
 		type: 'integer',
 		minimum: 1000,
 		maximum: 10000,
@@ -137,9 +144,14 @@ export class LightingIntentDto {
 	})
 	@Expose({ name: 'color_temperature' })
 	@ValidateIf((o: LightingIntentDto) => o.type === LightingIntentType.ROLE_COLOR_TEMP)
-	@IsDefined({ message: '[{"field":"color_temperature","reason":"Color temperature is required when type is ROLE_COLOR_TEMP."}]' })
-	@ValidateIf((o: LightingIntentDto) => o.type === LightingIntentType.ROLE_SET && o.colorTemperature !== undefined)
-	@IsOptional()
+	@IsDefined({
+		message: '[{"field":"color_temperature","reason":"Color temperature is required when type is ROLE_COLOR_TEMP."}]',
+	})
+	@ValidateIf(
+		(o: LightingIntentDto) =>
+			o.type === LightingIntentType.ROLE_COLOR_TEMP ||
+			(o.type === LightingIntentType.ROLE_SET && o.colorTemperature !== undefined),
+	)
 	@IsInt({ message: '[{"field":"color_temperature","reason":"Color temperature must be an integer."}]' })
 	@Min(1000, { message: '[{"field":"color_temperature","reason":"Color temperature must be at least 1000K."}]' })
 	@Max(10000, { message: '[{"field":"color_temperature","reason":"Color temperature must be at most 10000K."}]' })
@@ -155,8 +167,10 @@ export class LightingIntentDto {
 	@Expose()
 	@ValidateIf((o: LightingIntentDto) => o.type === LightingIntentType.ROLE_WHITE)
 	@IsDefined({ message: '[{"field":"white","reason":"White is required when type is ROLE_WHITE."}]' })
-	@ValidateIf((o: LightingIntentDto) => o.type === LightingIntentType.ROLE_SET && o.white !== undefined)
-	@IsOptional()
+	@ValidateIf(
+		(o: LightingIntentDto) =>
+			o.type === LightingIntentType.ROLE_WHITE || (o.type === LightingIntentType.ROLE_SET && o.white !== undefined),
+	)
 	@IsInt({ message: '[{"field":"white","reason":"White must be an integer."}]' })
 	@Min(0, { message: '[{"field":"white","reason":"White must be at least 0."}]' })
 	@Max(100, { message: '[{"field":"white","reason":"White must be at most 100."}]' })
