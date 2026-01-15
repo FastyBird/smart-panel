@@ -534,12 +534,12 @@ export class SpaceLightingStateService {
 			return this.detectMvpMode(lights);
 		}
 
-		// Try to match against each mode's orchestration rules
-		const modes = [LightingMode.WORK, LightingMode.RELAX, LightingMode.NIGHT];
+		// Get all available modes from YAML spec (includes user-defined custom modes)
+		const allModes = this.intentSpecLoaderService.getAllLightingModeOrchestrations();
 		let bestMatch: ModeMatch | null = null;
 
-		for (const mode of modes) {
-			const match = this.matchMode(mode, roleStates);
+		for (const modeId of allModes.keys()) {
+			const match = this.matchMode(modeId as LightingMode, roleStates);
 
 			if (match && (!bestMatch || match.matchPercentage > bestMatch.matchPercentage)) {
 				bestMatch = match;

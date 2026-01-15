@@ -205,7 +205,7 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		let intersectionMax = DEFAULT_MAX_SETPOINT;
 		let unionMin = DEFAULT_MAX_SETPOINT; // Start high for union min
 		let unionMax = DEFAULT_MIN_SETPOINT; // Start low for union max
-		let isFirstDevice = true;
+		let hasSetBounds = false; // Track if we've set any bounds yet
 
 		for (const device of primaryDevices) {
 			if (device.supportsHeating) {
@@ -215,9 +215,10 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 					heatingSetpoints.push(setpoint);
 				}
 				// Calculate intersection of min/max (most restrictive)
-				if (isFirstDevice) {
+				if (!hasSetBounds) {
 					intersectionMin = device.heaterMinSetpoint;
 					intersectionMax = device.heaterMaxSetpoint;
+					hasSetBounds = true;
 				} else {
 					intersectionMin = Math.max(intersectionMin, device.heaterMinSetpoint);
 					intersectionMax = Math.min(intersectionMax, device.heaterMaxSetpoint);
@@ -233,9 +234,10 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 					coolingSetpoints.push(setpoint);
 				}
 				// Calculate intersection of min/max (most restrictive)
-				if (isFirstDevice) {
+				if (!hasSetBounds) {
 					intersectionMin = device.coolerMinSetpoint;
 					intersectionMax = device.coolerMaxSetpoint;
+					hasSetBounds = true;
 				} else {
 					intersectionMin = Math.max(intersectionMin, device.coolerMinSetpoint);
 					intersectionMax = Math.min(intersectionMax, device.coolerMaxSetpoint);
@@ -243,9 +245,6 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 				// Calculate union (widest bounds)
 				unionMin = Math.min(unionMin, device.coolerMinSetpoint);
 				unionMax = Math.max(unionMax, device.coolerMaxSetpoint);
-			}
-			if (device.supportsHeating || device.supportsCooling) {
-				isFirstDevice = false;
 			}
 		}
 
@@ -681,23 +680,41 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 
 	/**
 	 * Get min/max range from a property's format field for climate setpoints.
+	 * Handles both array format [min, max] and string formats "min:max" or "min|max".
 	 */
 	private getClimatePropertyMinMax(property: ChannelPropertyEntity | null | undefined): { min: number; max: number } {
-		let min = DEFAULT_MIN_SETPOINT;
-		let max = DEFAULT_MAX_SETPOINT;
+		if (!property?.format) {
+			return { min: DEFAULT_MIN_SETPOINT, max: DEFAULT_MAX_SETPOINT };
+		}
 
-		if (property?.format && Array.isArray(property.format) && property.format.length >= 2) {
-			const propMin = property.format[0];
-			const propMax = property.format[1];
-			if (typeof propMin === 'number') {
-				min = propMin;
-			}
-			if (typeof propMax === 'number') {
-				max = propMax;
+		// Cast to unknown for runtime type checking (format may be string at runtime despite entity typing)
+		const format: unknown = property.format;
+
+		// Handle array format [min, max]
+		if (Array.isArray(format) && format.length >= 2) {
+			const propMin = typeof format[0] === 'number' ? format[0] : parseFloat(String(format[0]));
+			const propMax = typeof format[1] === 'number' ? format[1] : parseFloat(String(format[1]));
+
+			if (!isNaN(propMin) && !isNaN(propMax)) {
+				return { min: propMin, max: propMax };
 			}
 		}
 
-		return { min, max };
+		// Handle string format "min:max" or "min|max" (may occur at runtime despite entity typing)
+		if (typeof format === 'string') {
+			const parts = format.split(/[:|]/);
+
+			if (parts.length >= 2) {
+				const propMin = parseFloat(parts[0]);
+				const propMax = parseFloat(parts[1]);
+
+				if (!isNaN(propMin) && !isNaN(propMax)) {
+					return { min: propMin, max: propMax };
+				}
+			}
+		}
+
+		return { min: DEFAULT_MIN_SETPOINT, max: DEFAULT_MAX_SETPOINT };
 	}
 
 	/**
@@ -913,8 +930,14 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		let coolingSetpoint: number | null = null;
 
 		if (intent.heatingSetpoint !== undefined && intent.coolingSetpoint !== undefined) {
-			// AUTO mode with explicit setpoints
+			// AUTO mode with explicit setpoints for both
 			heatingSetpoint = this.clampSetpoint(intent.heatingSetpoint, climateState.minSetpoint, climateState.maxSetpoint);
+			coolingSetpoint = this.clampSetpoint(intent.coolingSetpoint, climateState.minSetpoint, climateState.maxSetpoint);
+		} else if (intent.heatingSetpoint !== undefined) {
+			// Only heating setpoint provided - apply to heating devices
+			heatingSetpoint = this.clampSetpoint(intent.heatingSetpoint, climateState.minSetpoint, climateState.maxSetpoint);
+		} else if (intent.coolingSetpoint !== undefined) {
+			// Only cooling setpoint provided - apply to cooling devices
 			coolingSetpoint = this.clampSetpoint(intent.coolingSetpoint, climateState.minSetpoint, climateState.maxSetpoint);
 		} else if (intent.value !== undefined) {
 			// Single value - apply based on mode
