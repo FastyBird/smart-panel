@@ -5,7 +5,7 @@ import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
 import { LightingMode, LightingRole, RoleBrightnessRule, SPACES_MODULE_NAME } from '../spaces.constants';
-import { IntentSpecLoaderService } from '../spec';
+import { IntentSpecLoaderService, ResolvedModeOrchestration } from '../spec';
 
 import { SpaceLightingRoleService } from './space-lighting-role.service';
 import { SpacesService } from './spaces.service';
@@ -283,9 +283,12 @@ export class SpaceLightingStateService {
 			roleGroups.get(light.role).push(light);
 		}
 
+		// Check if NIGHT mode fallback should be used (no night lights exist)
+		const nightFallbackActive = lastAppliedMode === LightingMode.NIGHT && !roleGroups.has(LightingRole.NIGHT);
+
 		// Calculate aggregated state for each role
 		for (const [role, roleLights] of roleGroups) {
-			roleStates[role] = this.aggregateLightGroup(role, roleLights, lastAppliedMode);
+			roleStates[role] = this.aggregateLightGroup(role, roleLights, lastAppliedMode, nightFallbackActive);
 		}
 
 		return roleStates;
@@ -299,6 +302,7 @@ export class SpaceLightingStateService {
 		role: LightingRole,
 		lights: LightState[],
 		lastAppliedMode: LightingMode | null,
+		nightFallbackActive: boolean = false,
 	): RoleAggregatedState {
 		// On/off state
 		const onStates = lights.map((l) => l.isOn);
@@ -319,7 +323,7 @@ export class SpaceLightingStateService {
 		const whiteResult = this.getUniformValue(lights.map((l) => l.white));
 
 		// Derive last intent from last applied mode
-		const lastIntent = this.deriveLastIntent(role, lastAppliedMode);
+		const lastIntent = this.deriveLastIntent(role, lastAppliedMode, nightFallbackActive);
 
 		return {
 			role,
@@ -457,8 +461,13 @@ export class SpaceLightingStateService {
 	/**
 	 * Derive last intent values for a role from the last applied mode.
 	 * Uses YAML mode orchestration config to get what values were set.
+	 * Accounts for fallback behavior (e.g., night mode using main lights).
 	 */
-	private deriveLastIntent(role: LightingRole, lastAppliedMode: LightingMode | null): RoleLastIntent | null {
+	private deriveLastIntent(
+		role: LightingRole,
+		lastAppliedMode: LightingMode | null,
+		nightFallbackActive: boolean = false,
+	): RoleLastIntent | null {
 		if (!lastAppliedMode) {
 			return null;
 		}
@@ -467,6 +476,14 @@ export class SpaceLightingStateService {
 
 		if (!config) {
 			return null;
+		}
+
+		// Check if this role was affected by fallback
+		if (nightFallbackActive && config.fallbackRoles?.includes(role)) {
+			// Fallback role gets fallback brightness instead of normal rule
+			return {
+				brightness: config.fallbackBrightness ?? 20,
+			};
 		}
 
 		const rule = config.roles[role];
@@ -604,6 +621,10 @@ export class SpaceLightingStateService {
 
 		const rules = config.roles;
 
+		// Check if mode has fallback and no lights exist for the primary roles
+		// (e.g., NIGHT mode with no night lights falls back to main)
+		const useFallback = this.shouldUseFallback(mode, config, roleStates);
+
 		let matchingRoles = 0;
 		let totalRoles = 0;
 		let exactMatches = 0;
@@ -619,7 +640,9 @@ export class SpaceLightingStateService {
 
 			totalRoles++;
 
-			const matches = this.matchRoleRule(roleState, rule);
+			// Get effective rule considering fallback
+			const effectiveRule = this.getEffectiveRule(role, rule, useFallback, config);
+			const matches = this.matchRoleRule(roleState, effectiveRule);
 
 			if (matches.matches) {
 				matchingRoles++;
@@ -646,6 +669,53 @@ export class SpaceLightingStateService {
 			confidence: exactMatches === totalRoles ? 'exact' : 'approximate',
 			matchPercentage,
 		};
+	}
+
+	/**
+	 * Check if fallback should be used for mode matching.
+	 * For example, NIGHT mode falls back to MAIN lights if no NIGHT lights exist.
+	 */
+	private shouldUseFallback(
+		mode: LightingMode | string,
+		config: ResolvedModeOrchestration,
+		roleStates: Partial<Record<LightingRole, RoleAggregatedState>>,
+	): boolean {
+		// Only check fallback for modes that have fallback config
+		if (!config.fallbackRoles || config.fallbackRoles.length === 0) {
+			return false;
+		}
+
+		// For NIGHT mode, check if there are any night lights
+		if (mode === (LightingMode.NIGHT as string)) {
+			const nightState = roleStates[LightingRole.NIGHT];
+			return !nightState || nightState.devicesCount === 0;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Get the effective rule for a role, considering fallback.
+	 */
+	private getEffectiveRule(
+		role: LightingRole,
+		originalRule: RoleBrightnessRule,
+		useFallback: boolean,
+		config: ResolvedModeOrchestration,
+	): RoleBrightnessRule {
+		if (!useFallback) {
+			return originalRule;
+		}
+
+		// If using fallback and this role is a fallback role, adjust the expected state
+		if (config.fallbackRoles?.includes(role)) {
+			return {
+				on: true,
+				brightness: config.fallbackBrightness ?? 20,
+			};
+		}
+
+		return originalRule;
 	}
 
 	/**

@@ -1026,6 +1026,20 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 
 		const deltaValue = SETPOINT_DELTA_STEPS[intent.delta];
 
+		// Validate delta lookup to prevent NaN from propagating
+		if (deltaValue === undefined) {
+			this.logger.error(`Invalid setpoint delta value: ${intent.delta}`);
+			return {
+				success: false,
+				affectedDevices: 0,
+				failedDevices: 0,
+				mode: climateState.mode,
+				newSetpoint: null,
+				heatingSetpoint: null,
+				coolingSetpoint: null,
+			};
+		}
+
 		// Calculate new setpoints based on current values
 		let heatingSetpoint: number | null = null;
 		let coolingSetpoint: number | null = null;
@@ -1148,8 +1162,11 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		intent: ClimateIntentDto,
 		climateState: ClimateState,
 	): Promise<ClimateIntentResult> {
-		let affectedDevices = 0;
-		let failedDevices = 0;
+		// Track mode and setpoint changes separately
+		let modeAffected = 0;
+		let modeFailed = 0;
+		let setpointAffected = 0;
+		let setpointFailed = 0;
 		const mode = intent.mode ?? climateState.mode;
 		let heatingSetpoint: number | null = null;
 		let coolingSetpoint: number | null = null;
@@ -1159,26 +1176,22 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 			for (const device of devices) {
 				const success = await this.setDeviceMode(device, intent.mode);
 				if (success) {
-					affectedDevices++;
+					modeAffected++;
 				} else {
-					failedDevices++;
+					modeFailed++;
 				}
 			}
 
 			// Store mode change to InfluxDB
-			if (affectedDevices > 0) {
+			if (modeAffected > 0) {
 				void this.intentTimeseriesService.storeClimateModeChange(
 					spaceId,
 					intent.mode,
 					devices.length,
-					affectedDevices,
-					failedDevices,
+					modeAffected,
+					modeFailed,
 				);
 			}
-
-			// Reset counters for setpoint operation
-			affectedDevices = 0;
-			failedDevices = 0;
 		}
 
 		// Step 2: Set setpoints if provided
@@ -1255,21 +1268,26 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 				);
 
 				if (success) {
-					affectedDevices++;
+					setpointAffected++;
 				} else {
-					failedDevices++;
+					setpointFailed++;
 				}
 			}
 		}
+
+		// Combine mode and setpoint counts for the response
+		// This ensures the response accurately reflects all changes made
+		const totalAffected = modeAffected + setpointAffected;
+		const totalFailed = modeFailed + setpointFailed;
 
 		// Determine the "primary" setpoint for the response
 		const newSetpoint =
 			mode === ClimateMode.HEAT ? heatingSetpoint : mode === ClimateMode.COOL ? coolingSetpoint : heatingSetpoint;
 
 		return {
-			success: failedDevices === 0 || affectedDevices > 0,
-			affectedDevices,
-			failedDevices,
+			success: totalFailed === 0 || totalAffected > 0,
+			affectedDevices: totalAffected,
+			failedDevices: totalFailed,
 			mode,
 			newSetpoint,
 			heatingSetpoint,

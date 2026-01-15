@@ -684,7 +684,13 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		}
 
 		// Filter lights to only those with the specified role
-		const roleLights = allLights.filter((light) => light.role === intent.role);
+		// Special case: OTHER role also matches unassigned lights (role = null)
+		const roleLights = allLights.filter((light) => {
+			if (intent.role === LightingRole.OTHER) {
+				return light.role === LightingRole.OTHER || light.role === null;
+			}
+			return light.role === intent.role;
+		});
 
 		if (roleLights.length === 0) {
 			this.logger.debug(`No lights found with role=${intent.role} in space id=${spaceId}`);
