@@ -28,6 +28,7 @@ import { Z2mExpose, Z2mExposeEnum, Z2mExposeNumeric, Z2mExposeSpecific } from '.
 import { MappingLoaderService } from './mapping-loader.service';
 import {
 	AnyDerivation,
+	MatchCondition,
 	ResolvedChannel,
 	ResolvedDerivedProperty,
 	ResolvedFeature,
@@ -1044,6 +1045,11 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 	/**
 	 * Get write mapping for a property by channel category and property category
 	 * This is used when writing values to find the correct z2mProperty and transformer
+	 *
+	 * Note: This function is a fallback when no device-specific transformer was registered
+	 * during adoption. It skips device-specific mappings (those with model/manufacturer
+	 * conditions) to avoid applying wrong transformers to generic devices.
+	 *
 	 * @param channelCategory - The channel category
 	 * @param propertyCategory - The property category (spec identifier)
 	 * @returns The z2mProperty and transformer, or null if not found
@@ -1059,6 +1065,12 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 		const normalizedPropertyCategory = propertyCategory.toUpperCase();
 
 		for (const mapping of allMappings) {
+			// Skip device-specific mappings - they should be handled via per-property
+			// transformers registered during adoption, not via this generic fallback
+			if (this.hasDeviceSpecificConditions(mapping.match)) {
+				continue;
+			}
+
 			for (const channel of mapping.channels) {
 				if (channel.category !== channelCategory) {
 					continue;
@@ -1105,5 +1117,37 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Check if a match condition has device-specific conditions (model, manufacturer)
+	 * These conditions require device info to evaluate, so mappings with them should
+	 * be skipped in generic contexts where device info is not available.
+	 */
+	private hasDeviceSpecificConditions(match: MatchCondition): boolean {
+		// Direct device-specific conditions
+		if (match.model || match.manufacturer) {
+			return true;
+		}
+
+		// Check nested all_of conditions
+		if (match.all_of) {
+			for (const nested of match.all_of) {
+				if (this.hasDeviceSpecificConditions(nested)) {
+					return true;
+				}
+			}
+		}
+
+		// Check nested any_of conditions
+		if (match.any_of) {
+			for (const nested of match.any_of) {
+				if (this.hasDeviceSpecificConditions(nested)) {
+					return true;
+				}
+			}
+		}
+
+		return false;
 	}
 }
