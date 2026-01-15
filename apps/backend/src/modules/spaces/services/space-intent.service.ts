@@ -564,10 +564,8 @@ export class SpaceIntentService {
 			break;
 		}
 
-		// Fallback: first thermostat if all are hidden or no roles assigned
-		if (!primaryThermostat && climateDevices.thermostats.length > 0) {
-			primaryThermostat = climateDevices.thermostats[0];
-		}
+		// Note: If all thermostats are HIDDEN, primaryThermostat remains null.
+		// This respects user intent - HIDDEN means excluded from climate domain.
 
 		// Determine primary temperature sensor from climate roles (SENSOR role on temperature channel)
 		let primarySensor: ClimateDevice | null = null;
@@ -664,11 +662,7 @@ export class SpaceIntentService {
 			}
 		}
 
-		// Fallback: first thermostat
-		if (climateDevices.thermostats.length > 0) {
-			return climateDevices.thermostats[0].device.id;
-		}
-
+		// If all thermostats are HIDDEN, return null to respect user intent
 		return null;
 	}
 
