@@ -9,6 +9,12 @@ export enum EventType {
 	SPACE_CREATED = 'SpacesModule.Space.Created',
 	SPACE_UPDATED = 'SpacesModule.Space.Updated',
 	SPACE_DELETED = 'SpacesModule.Space.Deleted',
+	CLIMATE_TARGET_CREATED = 'SpacesModule.ClimateTarget.Created',
+	CLIMATE_TARGET_UPDATED = 'SpacesModule.ClimateTarget.Updated',
+	CLIMATE_TARGET_DELETED = 'SpacesModule.ClimateTarget.Deleted',
+	LIGHT_TARGET_CREATED = 'SpacesModule.LightTarget.Created',
+	LIGHT_TARGET_UPDATED = 'SpacesModule.LightTarget.Updated',
+	LIGHT_TARGET_DELETED = 'SpacesModule.LightTarget.Deleted',
 }
 
 export const RouteNames = {

@@ -81,6 +81,7 @@ import { useI18n } from 'vue-i18n';
 
 import { useBackend } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
+import { useSpacesRefreshSignals } from '../composables';
 import { LightingRole, SPACES_MODULE_PREFIX } from '../spaces.constants';
 
 import type { ILightingRoleSummary, ISpaceLightingRolesSummaryProps } from './space-lighting-roles-summary.types';
@@ -97,6 +98,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const backend = useBackend();
+const { lightingSignal } = useSpacesRefreshSignals();
 
 const loading = ref(false);
 const roleSummaries = ref<ILightingRoleSummary[]>([]);
@@ -199,6 +201,16 @@ watch(
 	() => props.space?.id,
 	(newId) => {
 		if (newId) {
+			loadLightingRoles();
+		}
+	}
+);
+
+// Watch for lighting refresh signal from websocket events
+watch(
+	() => lightingSignal?.value,
+	() => {
+		if (props.space?.id) {
 			loadLightingRoles();
 		}
 	}

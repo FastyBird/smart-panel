@@ -1,4 +1,5 @@
 import type { App } from 'vue';
+import { ref } from 'vue';
 import type { RouteRecordRaw } from 'vue-router';
 
 import { defaultsDeep } from 'lodash';
@@ -11,7 +12,7 @@ import { EventType, SPACES_MODULE_EVENT_PREFIX, SPACES_MODULE_NAME } from './spa
 import enUS from './locales/en-US.json';
 import { ModuleRoutes } from './router';
 import { registerSpacesStore } from './store/spaces.store';
-import { spacesStoreKey } from './store/keys';
+import { spacesRefreshSignalsKey, spacesStoreKey } from './store/keys';
 
 export default {
 	install: (app: App, options: IModuleOptions): void => {
@@ -33,6 +34,14 @@ export default {
 
 		app.provide(spacesStoreKey, spacesStore);
 		storesManager.addStore(spacesStoreKey, spacesStore);
+
+		// Create refresh signals for climate and lighting targets
+		const refreshSignals = {
+			climate: ref(0),
+			lighting: ref(0),
+		};
+
+		app.provide(spacesRefreshSignalsKey, refreshSignals);
 
 		// Register module metadata
 		modulesManager.addModule(Symbol('FB-Module-Spaces'), {
@@ -76,6 +85,18 @@ export default {
 					spacesStore.unset({
 						id: data.payload.id,
 					});
+					break;
+
+				case EventType.CLIMATE_TARGET_CREATED:
+				case EventType.CLIMATE_TARGET_UPDATED:
+				case EventType.CLIMATE_TARGET_DELETED:
+					refreshSignals.climate.value++;
+					break;
+
+				case EventType.LIGHT_TARGET_CREATED:
+				case EventType.LIGHT_TARGET_UPDATED:
+				case EventType.LIGHT_TARGET_DELETED:
+					refreshSignals.lighting.value++;
 					break;
 
 				default:

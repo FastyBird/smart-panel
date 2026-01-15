@@ -97,6 +97,7 @@ import { useI18n } from 'vue-i18n';
 
 import { IconWithChild, useBackend, useFlashMessage } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
+import { useSpacesRefreshSignals } from '../composables';
 import { LightingRole, SPACES_MODULE_PREFIX } from '../spaces.constants';
 import type { ISpace } from '../store';
 
@@ -124,6 +125,7 @@ const props = withDefaults(defineProps<IProps>(), {
 const { t } = useI18n();
 const backend = useBackend();
 const flashMessage = useFlashMessage();
+const { lightingSignal } = useSpacesRefreshSignals();
 
 const loading = ref(false);
 const applyingDefaults = ref(false);
@@ -248,6 +250,16 @@ watch(
 	() => props.space?.id,
 	(newId) => {
 		if (newId) {
+			loadLightTargets();
+		}
+	}
+);
+
+// Watch for lighting refresh signal from websocket events
+watch(
+	() => lightingSignal?.value,
+	() => {
+		if (props.space?.id) {
 			loadLightTargets();
 		}
 	}

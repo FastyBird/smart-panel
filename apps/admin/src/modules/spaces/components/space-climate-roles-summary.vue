@@ -81,6 +81,7 @@ import { useI18n } from 'vue-i18n';
 
 import { useBackend } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
+import { useSpacesRefreshSignals } from '../composables';
 import { ClimateRole, SPACES_MODULE_PREFIX } from '../spaces.constants';
 
 import type { IClimateRoleSummary, ISpaceClimateRolesSummaryProps } from './space-climate-roles-summary.types';
@@ -97,6 +98,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const backend = useBackend();
+const { climateSignal } = useSpacesRefreshSignals();
 
 const loading = ref(false);
 const roleSummaries = ref<IClimateRoleSummary[]>([]);
@@ -223,6 +225,16 @@ watch(
 	() => props.space?.id,
 	(newId) => {
 		if (newId) {
+			loadClimateRoles();
+		}
+	}
+);
+
+// Watch for climate refresh signal from websocket events
+watch(
+	() => climateSignal?.value,
+	() => {
+		if (props.space?.id) {
 			loadClimateRoles();
 		}
 	}
