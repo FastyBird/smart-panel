@@ -467,6 +467,10 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 
 		// Return the range, handling cases where only one bound is defined
 		if (min !== undefined && max !== undefined) {
+			// Ensure min <= max (transformers like mired->Kelvin can invert the range)
+			if (min > max) {
+				return [max, min];
+			}
 			return [min, max];
 		}
 		return undefined;
@@ -725,6 +729,10 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 		}
 
 		if (min !== undefined && max !== undefined) {
+			// Ensure min <= max (transformers like mired->Kelvin can invert the range)
+			if (min > max) {
+				return [max, min];
+			}
 			return [min, max];
 		}
 		return undefined;
