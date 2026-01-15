@@ -457,6 +457,9 @@ export const CLIMATE_CONTROL_ROLES = [
 
 export const CLIMATE_SENSOR_ROLES = [ClimateRole.SENSOR] as const;
 
+// Roles that can apply to both actuators (device-level) and sensors (channel-level)
+export const CLIMATE_UNIVERSAL_ROLES = [ClimateRole.HIDDEN] as const;
+
 /**
  * Channel categories that are relevant for the climate domain sensors.
  * These sensor types will be displayed in the climate domain view page.

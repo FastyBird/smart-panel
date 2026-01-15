@@ -12,6 +12,7 @@ import { SpaceClimateRoleEntity } from '../entities/space-climate-role.entity';
 import {
 	CLIMATE_SENSOR_CHANNEL_CATEGORIES,
 	CLIMATE_SENSOR_ROLES,
+	CLIMATE_UNIVERSAL_ROLES,
 	ClimateRole,
 	EventType,
 	SPACES_MODULE_NAME,
@@ -146,13 +147,15 @@ export class SpaceClimateRoleService {
 		await this.spacesService.getOneOrThrow(spaceId);
 
 		const isSensorRole = CLIMATE_SENSOR_ROLES.includes(dto.role as (typeof CLIMATE_SENSOR_ROLES)[number]);
+		const isUniversalRole = CLIMATE_UNIVERSAL_ROLES.includes(dto.role as (typeof CLIMATE_UNIVERSAL_ROLES)[number]);
 		const channelId = dto.channelId ?? null;
 
 		// Validate channelId requirements
 		if (isSensorRole && !channelId) {
 			throw new SpacesValidationException(`Sensor roles (${dto.role}) require a channel_id to be specified`);
 		}
-		if (!isSensorRole && channelId) {
+		// Universal roles (like HIDDEN) can be used with or without channelId
+		if (!isSensorRole && !isUniversalRole && channelId) {
 			throw new SpacesValidationException(
 				`Actuator roles (${dto.role}) must not have a channel_id - they operate at device level`,
 			);
