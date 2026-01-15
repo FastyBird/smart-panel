@@ -490,7 +490,6 @@ export class SpacesController {
 	}
 
 	@Post(':id/intents/lighting')
-	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
 		operationId: 'create-spaces-module-space-lighting-intent',
 		summary: 'Execute lighting intent for space',
@@ -563,7 +562,6 @@ export class SpacesController {
 	}
 
 	@Post(':id/intents/climate')
-	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
 		operationId: 'create-spaces-module-space-climate-intent',
 		summary: 'Execute climate intent for space',
@@ -690,7 +688,7 @@ export class SpacesController {
 		summary: 'List light targets in space',
 		description:
 			'Retrieves all controllable light targets (device/channel pairs) in a space ' +
-			'along with their current role assignments and capabilities. Requires owner or admin role.',
+			'along with their current role assignments and capabilities.',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
 	@ApiSuccessResponse(LightTargetsResponseModel, 'Returns the list of light targets with role assignments')
@@ -1090,7 +1088,6 @@ export class SpacesController {
 	}
 
 	@Post(':id/suggestion/feedback')
-	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
 		operationId: 'create-spaces-module-space-suggestion-feedback',
 		summary: 'Submit suggestion feedback',
