@@ -5,6 +5,7 @@ import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
+import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
 import { ClimateIntentDto } from '../dto/climate-intent.dto';
 import {
 	CLIMATE_PRIMARY_DEVICE_CATEGORIES,
@@ -19,9 +20,9 @@ import {
 	TemperatureAveragingStrategy,
 } from '../spaces.constants';
 
-import { IntentExecutionResult, SpaceIntentBaseService } from './space-intent-base.service';
 import { SpaceClimateRoleService } from './space-climate-role.service';
 import { SpaceContextSnapshotService } from './space-context-snapshot.service';
+import { IntentExecutionResult, SpaceIntentBaseService } from './space-intent-base.service';
 import { SpaceUndoHistoryService } from './space-undo-history.service';
 import { SpacesService } from './spaces.service';
 
@@ -117,6 +118,8 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		private readonly contextSnapshotService: SpaceContextSnapshotService,
 		@Inject(forwardRef(() => SpaceUndoHistoryService))
 		private readonly undoHistoryService: SpaceUndoHistoryService,
+		@Inject(forwardRef(() => IntentTimeseriesService))
+		private readonly intentTimeseriesService: IntentTimeseriesService,
 	) {
 		super();
 	}
@@ -339,7 +342,7 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		// Handle different intent types
 		switch (intent.type) {
 			case ClimateIntentType.SET_MODE:
-				return this.executeSetModeIntent(primaryDevices, intent, climateState);
+				return this.executeSetModeIntent(spaceId, primaryDevices, intent, climateState);
 
 			case ClimateIntentType.SETPOINT_SET:
 				return this.executeSetpointSetIntent(primaryDevices, intent, climateState);
@@ -647,6 +650,7 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 	 * Execute SET_MODE intent - change climate mode on all applicable devices.
 	 */
 	private async executeSetModeIntent(
+		spaceId: string,
 		devices: PrimaryClimateDevice[],
 		intent: ClimateIntentDto,
 		climateState: ClimateState,
@@ -664,8 +668,21 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 			}
 		}
 
+		const overallSuccess = failedDevices === 0 || affectedDevices > 0;
+
+		// Store mode change to InfluxDB for historical tracking (fire and forget)
+		if (overallSuccess) {
+			void this.intentTimeseriesService.storeClimateModeChange(
+				spaceId,
+				mode,
+				devices.length,
+				affectedDevices,
+				failedDevices,
+			);
+		}
+
 		return {
-			success: failedDevices === 0 || affectedDevices > 0,
+			success: overallSuccess,
 			affectedDevices,
 			failedDevices,
 			mode,
