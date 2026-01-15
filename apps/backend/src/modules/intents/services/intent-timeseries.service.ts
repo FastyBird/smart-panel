@@ -196,7 +196,7 @@ export class IntentTimeseriesService {
 		}
 
 		const query = `
-			SELECT intentId, mode, targetsCount, successCount, failedCount
+			SELECT intentId, intentType, status, mode, targetsCount, successCount, failedCount
 			FROM space_intent
 			WHERE ${whereClause}
 			ORDER BY time DESC
