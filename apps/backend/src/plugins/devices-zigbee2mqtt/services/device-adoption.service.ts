@@ -43,6 +43,7 @@ import {
 } from '../entities/devices-zigbee2mqtt.entity';
 import { Z2mRegisteredDevice } from '../interfaces/zigbee2mqtt.interface';
 
+import { Z2mDeviceMapperService } from './device-mapper.service';
 import { MappedChannel, Z2mExposesMapperService } from './exposes-mapper.service';
 import { Z2mVirtualPropertyService } from './virtual-property.service';
 import { VirtualPropertyContext, getVirtualPropertyDefinition } from './virtual-property.types';
@@ -69,6 +70,7 @@ export class Z2mDeviceAdoptionService {
 		private readonly deviceValidationService: DeviceValidationService,
 		private readonly virtualPropertyService: Z2mVirtualPropertyService,
 		private readonly exposesMapper: Z2mExposesMapperService,
+		private readonly deviceMapper: Z2mDeviceMapperService,
 	) {}
 
 	/**
@@ -286,6 +288,22 @@ export class Z2mDeviceAdoptionService {
 		// Get channel spec
 		const channelSpec = this.getChannelSpec(channelDef.category);
 
+		// Get mapped properties from YAML to access transformer names
+		const mappedChannels = z2mDevice.definition?.exposes
+			? this.exposesMapper.mapExposes(z2mDevice.definition.exposes, {
+					model: z2mDevice.definition.model,
+					manufacturer: z2mDevice.definition.vendor,
+				})
+			: [];
+		const mappedChannel = mappedChannels.find((mc) => mc.category === channelDef.category);
+
+		// Helper to find transformer name for a property
+		const findTransformerName = (z2mProperty: string, category: PropertyCategory): string | undefined => {
+			if (!mappedChannel) return undefined;
+			const mappedProp = mappedChannel.properties.find((p) => p.z2mProperty === z2mProperty && p.category === category);
+			return mappedProp?.transformerName;
+		};
+
 		// Create channel
 		const channelIdentifier = channelDef.identifier ?? channelDef.category;
 		const createChannelDto = toInstance(CreateZigbee2mqttChannelDto, {
@@ -436,10 +454,16 @@ export class Z2mDeviceAdoptionService {
 				continue;
 			}
 
-			await this.channelsPropertiesService.create<
+			const createdProperty = await this.channelsPropertiesService.create<
 				Zigbee2mqttChannelPropertyEntity,
 				CreateZigbee2mqttChannelPropertyDto
 			>(channel.id, createPropertyDto);
+
+			// Register transformer for state updates and writes if one is defined in YAML mapping
+			const transformerName = findTransformerName(propDef.z2mProperty, propDef.category);
+			if (transformerName) {
+				this.deviceMapper.registerPropertyTransformer(createdProperty.id, transformerName, propDef.z2mProperty);
+			}
 
 			// Track that this identifier was used
 			usedIdentifiers.add(identifier);
@@ -627,7 +651,10 @@ export class Z2mDeviceAdoptionService {
 	 */
 	private buildMappedPropertiesMap(
 		mappedChannels: MappedChannel[],
-	): Map<ChannelCategory, Array<{ category: PropertyCategory; dataType: DataTypeType; permissions: PermissionType[] }>> {
+	): Map<
+		ChannelCategory,
+		Array<{ category: PropertyCategory; dataType: DataTypeType; permissions: PermissionType[] }>
+	> {
 		const result = new Map<
 			ChannelCategory,
 			Array<{ category: PropertyCategory; dataType: DataTypeType; permissions: PermissionType[] }>

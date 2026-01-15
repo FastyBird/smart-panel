@@ -255,7 +255,7 @@ export abstract class BaseConverter implements IConverter {
 			z2mProperty: string;
 			access?: number;
 			permissions?: PermissionType[];
-		} & Partial<Pick<MappedProperty, 'unit' | 'format' | 'min' | 'max' | 'step' | 'staticValue'>>,
+		} & Partial<Pick<MappedProperty, 'unit' | 'format' | 'min' | 'max' | 'step' | 'staticValue' | 'transformerName'>>,
 	): MappedProperty {
 		return {
 			identifier: params.identifier,
@@ -271,6 +271,7 @@ export abstract class BaseConverter implements IConverter {
 			max: params.max,
 			step: params.step,
 			staticValue: params.staticValue,
+			transformerName: params.transformerName,
 		};
 	}
 

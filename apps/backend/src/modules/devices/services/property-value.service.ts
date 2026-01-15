@@ -17,7 +17,12 @@ export class PropertyValueService {
 	 * Write property value to storage
 	 * @returns true if value changed, false if value was the same or invalid
 	 */
-	async write(property: ChannelPropertyEntity, value: string | boolean | number): Promise<boolean> {
+	async write(property: ChannelPropertyEntity, value: string | boolean | number | null): Promise<boolean> {
+		// Skip null values - device hasn't reported this property yet
+		if (value === null || value === undefined) {
+			return false;
+		}
+
 		if (this.valuesMap.has(property.id) && this.valuesMap.get(property.id) === value) {
 			// no change → skip Influx write
 			return false;

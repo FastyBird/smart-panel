@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
-import { ChannelCategory, DataTypeType, PropertyCategory } from '../../../modules/devices/devices.constants';
+import { DataTypeType, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME, DEVICES_ZIGBEE2MQTT_TYPE } from '../devices-zigbee2mqtt.constants';
 import {
@@ -11,6 +11,7 @@ import {
 } from '../entities/devices-zigbee2mqtt.entity';
 import { Z2mSetPayload } from '../interfaces/zigbee2mqtt.interface';
 import { ConfigDrivenConverter } from '../mappings/config-driven.converter';
+import { Z2mDeviceMapperService } from '../services/device-mapper.service';
 import { Z2mMqttClientAdapterService } from '../services/mqtt-client-adapter.service';
 import { Z2mVirtualPropertyService } from '../services/virtual-property.service';
 
@@ -36,6 +37,7 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 		private readonly mqttAdapter: Z2mMqttClientAdapterService,
 		private readonly virtualPropertyService: Z2mVirtualPropertyService,
 		private readonly configDrivenConverter: ConfigDrivenConverter,
+		private readonly deviceMapper: Z2mDeviceMapperService,
 	) {}
 
 	getType(): string {
@@ -187,27 +189,37 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 				continue;
 			}
 
-			// Look up the write mapping to get the correct z2mProperty and transformer
-			const writeMapping = this.configDrivenConverter.getWriteMapping(
-				channel.category as ChannelCategory,
-				property.category as PropertyCategory,
-			);
+			// First try device-specific transformer (registered during adoption from YAML mappings)
+			const deviceSpecificTransform = this.deviceMapper.transformWriteValue(property.id, value);
 
 			let z2mProperty: string;
 			let convertedValue: string | number | boolean | Record<string, unknown>;
 
-			if (writeMapping) {
-				// Use the mapping's z2mProperty and apply the write transformer
-				z2mProperty = writeMapping.z2mProperty;
-				const transformedValue = writeMapping.transformer.write(value);
+			if (deviceSpecificTransform) {
+				// Use the device-specific transformer (e.g., for IKEA air purifier fan mode)
+				z2mProperty = deviceSpecificTransform.z2mProperty;
+				const transformedValue = deviceSpecificTransform.transformedValue;
 				convertedValue =
 					typeof transformedValue === 'object' && transformedValue !== null
 						? (transformedValue as Record<string, unknown>)
 						: (transformedValue as string | number | boolean);
 			} else {
-				// Fallback to using identifier as z2m property (legacy behavior)
-				z2mProperty = property.identifier;
-				convertedValue = this.convertValue(property, value);
+				// Fall back to generic write mapping from YAML
+				const writeMapping = this.configDrivenConverter.getWriteMapping(channel.category, property.category);
+
+				if (writeMapping) {
+					// Use the mapping's z2mProperty and apply the write transformer
+					z2mProperty = writeMapping.z2mProperty;
+					const transformedValue = writeMapping.transformer.write(value);
+					convertedValue =
+						typeof transformedValue === 'object' && transformedValue !== null
+							? (transformedValue as Record<string, unknown>)
+							: (transformedValue as string | number | boolean);
+				} else {
+					// Fallback to using identifier as z2m property (legacy behavior)
+					z2mProperty = property.identifier;
+					convertedValue = this.convertValue(property, value);
+				}
 			}
 
 			payload[z2mProperty] = convertedValue;

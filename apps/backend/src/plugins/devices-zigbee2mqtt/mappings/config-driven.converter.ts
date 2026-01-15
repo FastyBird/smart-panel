@@ -346,12 +346,15 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 		// For nested features (like hue inside color), use the parent property name
 		const z2mProperty = parentProperty ?? feature.property ?? feature.name ?? featureDef.z2mFeature;
 
-		// Determine format - derive from device's actual values when available
+		// Determine format - use explicit YAML format if provided, otherwise derive from device
 		let format = featureDef.panel.format;
-		if (featureDef.panel.dataType === DataTypeType.ENUM && this.isEnumExpose(feature)) {
-			format = this.deriveEnumFormat(feature, featureDef);
-		} else if (this.isNumericDataType(featureDef.panel.dataType) && this.isNumericExpose(feature)) {
-			format = this.deriveNumericFormat(feature, featureDef);
+		if (!format || format.length === 0) {
+			// No explicit format in YAML, derive from device's actual values
+			if (featureDef.panel.dataType === DataTypeType.ENUM && this.isEnumExpose(feature)) {
+				format = this.deriveEnumFormat(feature, featureDef);
+			} else if (this.isNumericDataType(featureDef.panel.dataType) && this.isNumericExpose(feature)) {
+				format = this.deriveNumericFormat(feature, featureDef);
+			}
 		}
 
 		return this.createProperty({
@@ -364,6 +367,7 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 			permissions,
 			unit: featureDef.panel.unit,
 			format,
+			transformerName: featureDef.transformerName,
 		});
 	}
 
@@ -486,12 +490,15 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 
 			const permissions = this.getPermissions(propDef.direction, expose.access);
 
-			// Derive format from device's actual values when available
+			// Use explicit YAML format if provided, otherwise derive from device
 			let format = propDef.panel.format;
-			if (propDef.panel.dataType === DataTypeType.ENUM && this.isEnumExpose(expose)) {
-				format = this.deriveEnumFormatForProperty(expose, propDef);
-			} else if (this.isNumericDataType(propDef.panel.dataType) && this.isNumericExpose(expose)) {
-				format = this.deriveNumericFormatForProperty(expose, propDef);
+			if (!format || format.length === 0) {
+				// No explicit format in YAML, derive from device's actual values
+				if (propDef.panel.dataType === DataTypeType.ENUM && this.isEnumExpose(expose)) {
+					format = this.deriveEnumFormatForProperty(expose, propDef);
+				} else if (this.isNumericDataType(propDef.panel.dataType) && this.isNumericExpose(expose)) {
+					format = this.deriveNumericFormatForProperty(expose, propDef);
+				}
 			}
 
 			return [
@@ -505,6 +512,7 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 					permissions,
 					unit: propDef.panel.unit,
 					format,
+					transformerName: propDef.transformerName,
 				}),
 			];
 		}
@@ -1078,10 +1086,7 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 				if (channel.properties) {
 					for (const prop of channel.properties) {
 						if (prop.panel.identifier.toUpperCase() === normalizedPropertyCategory) {
-							const transformer = this.transformerRegistry.getOrCreate(
-								prop.transformerName,
-								prop.inlineTransform,
-							);
+							const transformer = this.transformerRegistry.getOrCreate(prop.transformerName, prop.inlineTransform);
 							return { z2mProperty: prop.z2mProperty, transformer };
 						}
 					}

@@ -132,12 +132,32 @@ export class ScaleTransformer extends BaseTransformer {
  *
  * Value mapping using lookup tables.
  * Supports separate read/write maps or bidirectional mapping.
+ * Can optionally use a formula for write when no map entry is found.
  *
  * Example: cover state OPEN/CLOSE/STOP <-> opened/closed/stopped
  */
 export class MapTransformer extends BaseTransformer {
 	private readMap: Map<string, unknown>;
 	private writeMap: Map<string, unknown>;
+	private writeFormulaFn: ((value: number) => unknown) | null = null;
+
+	// Allowed Math functions for write_formula (same as FormulaTransformer)
+	private static readonly ALLOWED_MATH_FUNCTIONS = [
+		'abs',
+		'ceil',
+		'floor',
+		'round',
+		'trunc',
+		'max',
+		'min',
+		'pow',
+		'sqrt',
+		'log',
+		'log10',
+		'log2',
+		'exp',
+		'sign',
+	];
 
 	constructor(definition: MapTransformerDefinition) {
 		super(definition.direction);
@@ -167,6 +187,11 @@ export class MapTransformer extends BaseTransformer {
 				this.writeMap.set(this.toStringKey(val), key);
 			}
 		}
+
+		// Compile write formula if provided (used as fallback when no map entry found)
+		if (definition.write_formula) {
+			this.writeFormulaFn = this.compileWriteFormula(definition.write_formula);
+		}
 	}
 
 	read(value: unknown, _context?: TransformContext): unknown {
@@ -176,7 +201,71 @@ export class MapTransformer extends BaseTransformer {
 
 	write(value: unknown, _context?: TransformContext): unknown {
 		const key = this.toStringKey(value);
-		return this.writeMap.has(key) ? this.writeMap.get(key) : value;
+		// First try the write map
+		if (this.writeMap.has(key)) {
+			return this.writeMap.get(key);
+		}
+		// If no map entry and we have a formula, use it
+		if (this.writeFormulaFn) {
+			const numValue = this.toNumber(value, NaN);
+			if (!isNaN(numValue)) {
+				try {
+					return this.writeFormulaFn(numValue);
+				} catch {
+					return value;
+				}
+			}
+		}
+		// Fallback to original value
+		return value;
+	}
+
+	/**
+	 * Compile a write formula into a function
+	 * Uses same security restrictions as FormulaTransformer
+	 */
+	private compileWriteFormula(formula: string): ((value: number) => unknown) | null {
+		try {
+			// Basic validation - reject obviously dangerous patterns
+			const forbidden = [
+				/\bprocess\b/i,
+				/\brequire\b/i,
+				/\bglobal\b/i,
+				/\beval\b/i,
+				/\bFunction\b/,
+				/\bthis\b/,
+				/\bnew\b/,
+			];
+			for (const pattern of forbidden) {
+				if (pattern.test(formula)) {
+					return null;
+				}
+			}
+
+			// Create sandboxed Math object
+			const safeMath: Record<string, (...args: number[]) => number> = {};
+			for (const fn of MapTransformer.ALLOWED_MATH_FUNCTIONS) {
+				safeMath[fn] = Math[fn as keyof Math] as (...args: number[]) => number;
+			}
+
+			// Compile the formula
+			// eslint-disable-next-line @typescript-eslint/no-implied-eval
+			const fn = new Function(
+				'value',
+				'Math',
+				`
+				"use strict";
+				return ${formula};
+			`,
+			);
+
+			return (value: number): unknown => {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
+				return fn(value, safeMath);
+			};
+		} catch {
+			return null;
+		}
 	}
 }
 

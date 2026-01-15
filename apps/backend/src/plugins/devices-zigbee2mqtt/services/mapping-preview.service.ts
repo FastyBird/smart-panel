@@ -122,13 +122,16 @@ export class Z2mMappingPreviewService {
 			.map((e) => e.property);
 
 		// First try to get category from YAML mapping (which supports device-specific mappings)
-		const yamlCategory = this.exposesMapper.getConfigDrivenConverter().getSuggestedDeviceCategory(
-			z2mDevice.definition.exposes,
-			{ model: z2mDevice.definition.model, manufacturer: z2mDevice.definition.vendor },
-		);
+		const yamlCategory = this.exposesMapper
+			.getConfigDrivenConverter()
+			.getSuggestedDeviceCategory(z2mDevice.definition.exposes, {
+				model: z2mDevice.definition.model,
+				manufacturer: z2mDevice.definition.vendor,
+			});
 
 		// Use YAML category if found, otherwise fall back to hardcoded function
-		const suggestedCategory = request?.deviceCategory ?? yamlCategory ?? mapZ2mCategoryToDeviceCategory(exposeTypes, propertyNames);
+		const suggestedCategory =
+			request?.deviceCategory ?? yamlCategory ?? mapZ2mCategoryToDeviceCategory(exposeTypes, propertyNames);
 
 		// Build suggested device
 		// Use user-defined description if available, otherwise format friendlyName

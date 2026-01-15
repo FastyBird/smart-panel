@@ -261,14 +261,6 @@
       "en": "The Air Purifier device represents a system designed to improve indoor air quality by removing contaminants and monitoring environmental conditions."
     },
     "channels": {
-      "switcher": {
-        "category": "switcher",
-        "required": true,
-        "multiple": false,
-        "description": {
-          "en": "Controls the on/off state of the air purifier."
-        }
-      },
       "fan": {
         "category": "fan",
         "required": true,

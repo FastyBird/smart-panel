@@ -1510,7 +1510,8 @@
               "low",
               "medium",
               "high",
-              "turbo"
+              "turbo",
+              "auto"
             ],
             "description": {
               "en": "Speed as discrete levels"

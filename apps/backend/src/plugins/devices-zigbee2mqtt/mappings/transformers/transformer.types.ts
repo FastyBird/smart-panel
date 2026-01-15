@@ -41,6 +41,8 @@ export interface MapTransformerDefinition extends TransformerDefinition {
 	read?: Record<string, unknown>; // Z2M value -> Panel value
 	write?: Record<string, unknown>; // Panel value -> Z2M value
 	bidirectional?: Record<string, unknown>; // Auto-creates inverse for write
+	/** Formula to use for write when no map entry is found (e.g., "Math.round(value / 11)") */
+	write_formula?: string;
 }
 
 /**

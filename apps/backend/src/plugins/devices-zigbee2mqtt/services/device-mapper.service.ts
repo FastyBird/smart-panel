@@ -33,6 +33,7 @@ import {
 import { Z2mDevice, Z2mRegisteredDevice } from '../interfaces/zigbee2mqtt.interface';
 import { ConfigDrivenConverter } from '../mappings/config-driven.converter';
 import { MappingLoaderService } from '../mappings/mapping-loader.service';
+import { TransformerRegistry } from '../mappings/transformers';
 
 import { MappedChannel, MappedProperty, Z2mExposesMapperService } from './exposes-mapper.service';
 import { Z2mVirtualPropertyService } from './virtual-property.service';
@@ -62,6 +63,9 @@ export class Z2mDeviceMapperService {
 	// Per-device locks to prevent concurrent mapping of the same device
 	private readonly deviceLocks = new Map<string, Promise<Zigbee2mqttDeviceEntity | null>>();
 
+	// Property ID → transformer info mapping for applying transformers during state updates and writes
+	private readonly propertyTransformers = new Map<string, { transformerName: string; z2mProperty: string }>();
+
 	constructor(
 		private readonly devicesService: DevicesService,
 		private readonly channelsService: ChannelsService,
@@ -71,7 +75,73 @@ export class Z2mDeviceMapperService {
 		private readonly virtualPropertyService: Z2mVirtualPropertyService,
 		private readonly mappingLoader: MappingLoaderService,
 		private readonly configDrivenConverter: ConfigDrivenConverter,
+		private readonly transformerRegistry: TransformerRegistry,
 	) {}
+
+	/**
+	 * Register a transformer for a property
+	 * @param propertyId - The property ID
+	 * @param transformerName - The name of the transformer
+	 * @param z2mProperty - The Z2M property name for write operations
+	 */
+	registerPropertyTransformer(propertyId: string, transformerName: string, z2mProperty: string): void {
+		this.propertyTransformers.set(propertyId, { transformerName, z2mProperty });
+	}
+
+	/**
+	 * Apply transformer to read a value from Z2M
+	 */
+	transformReadValue(propertyId: string, value: unknown): unknown {
+		const transformerInfo = this.propertyTransformers.get(propertyId);
+		if (!transformerInfo) {
+			return value;
+		}
+
+		const transformer = this.transformerRegistry.get(transformerInfo.transformerName);
+		if (!transformer) {
+			return value;
+		}
+
+		try {
+			return transformer.read(value);
+		} catch (error) {
+			this.logger.warn(`Failed to transform value with ${transformerInfo.transformerName}: ${error}`);
+			return value;
+		}
+	}
+
+	/**
+	 * Apply transformer to write a value to Z2M
+	 * Returns the transformed value and z2mProperty, or null if no transformer is registered
+	 */
+	transformWriteValue(propertyId: string, value: unknown): { z2mProperty: string; transformedValue: unknown } | null {
+		const transformerInfo = this.propertyTransformers.get(propertyId);
+		if (!transformerInfo) {
+			return null;
+		}
+
+		const transformer = this.transformerRegistry.get(transformerInfo.transformerName);
+		if (!transformer) {
+			return null;
+		}
+
+		try {
+			const transformedValue = transformer.write(value);
+			return { z2mProperty: transformerInfo.z2mProperty, transformedValue };
+		} catch (error) {
+			this.logger.warn(`Failed to transform write value with ${transformerInfo.transformerName}: ${error}`);
+			return null;
+		}
+	}
+
+	/**
+	 * Get the z2mProperty for a property if a transformer is registered
+	 * Used to determine which Z2M state key to read for this property
+	 */
+	getZ2mPropertyForProperty(propertyId: string): string | null {
+		const transformerInfo = this.propertyTransformers.get(propertyId);
+		return transformerInfo?.z2mProperty ?? null;
+	}
 
 	/**
 	 * Map and create or update a device from Z2M registry
@@ -124,10 +194,9 @@ export class Z2mDeviceMapperService {
 		const propertyNames = definition.exposes.map((e) => e.name ?? e.property).filter((n): n is string => !!n);
 
 		// First try to get category from YAML mapping (supports device-specific mappings)
-		const yamlCategory = this.exposesMapper.getConfigDrivenConverter().getSuggestedDeviceCategory(
-			definition.exposes,
-			{ model: definition.model, manufacturer: definition.vendor },
-		);
+		const yamlCategory = this.exposesMapper
+			.getConfigDrivenConverter()
+			.getSuggestedDeviceCategory(definition.exposes, { model: definition.model, manufacturer: definition.vendor });
 
 		// Use YAML category if found, otherwise fall back to hardcoded function
 		const deviceCategory = yamlCategory ?? mapZ2mCategoryToDeviceCategory(exposeTypes, propertyNames);
@@ -267,8 +336,14 @@ export class Z2mDeviceMapperService {
 					continue;
 				}
 
+				// Determine which Z2M property to read from
+				// Properties with registered transformers may have different z2mProperty than identifier
+				// (e.g., SPEED property has identifier "speed" but z2mProperty "mode")
+				const registeredZ2mProperty = this.getZ2mPropertyForProperty(property.id);
+				const z2mPropertyKey = registeredZ2mProperty ?? propertyIdentifier;
+
 				// Regular property - update from Z2M state if present
-				if (!(propertyIdentifier in state)) {
+				if (!(z2mPropertyKey in state)) {
 					continue;
 				}
 
@@ -276,7 +351,7 @@ export class Z2mDeviceMapperService {
 				if (
 					channel.category === ChannelCategory.WINDOW_COVERING &&
 					property.category === PropertyCategory.STATUS &&
-					propertyIdentifier === 'state'
+					z2mPropertyKey === 'state'
 				) {
 					continue;
 				}
@@ -307,13 +382,16 @@ export class Z2mDeviceMapperService {
 					continue;
 				}
 
-				const value = state[propertyIdentifier];
+				const rawValue = state[z2mPropertyKey];
+
+				// Apply transformer if one is registered for this property
+				const transformedValue = this.transformReadValue(property.id, rawValue);
 
 				// Convert value to appropriate type based on property's data type
-				const convertedValue = this.convertValue(value, property.dataType);
+				const convertedValue = this.convertValue(transformedValue, property.dataType);
 
 				this.logger.debug(
-					`Updating property ${propertyIdentifier} (${property.dataType}) = ${JSON.stringify(value)} -> ${convertedValue}`,
+					`Updating property ${propertyIdentifier} from z2m[${z2mPropertyKey}] (${property.dataType}) = ${JSON.stringify(rawValue)} -> ${JSON.stringify(transformedValue)} -> ${convertedValue}`,
 				);
 
 				// Update property value

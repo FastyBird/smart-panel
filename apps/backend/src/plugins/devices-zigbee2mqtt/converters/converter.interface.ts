@@ -40,6 +40,8 @@ export interface MappedProperty {
 	step?: number;
 	/** Static value for properties that don't come from Z2M (e.g., cover type) */
 	staticValue?: string | number | boolean;
+	/** Transformer name for converting Z2M values to/from panel values */
+	transformerName?: string;
 }
 
 /**

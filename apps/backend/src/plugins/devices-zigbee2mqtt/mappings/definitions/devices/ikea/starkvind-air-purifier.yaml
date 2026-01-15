@@ -1,18 +1,14 @@
 # IKEA STARKVIND Air Purifier (E2006, E2007, and variants)
-# Device-specific mapping for IKEA air purifiers with numeric speed levels
+# Device-specific mapping for IKEA air purifiers
 #
-# Device has:
-# - fan expose with state (fan_state) and mode (fan_mode)
-# - mode values: "off", "auto", "1"-"9" (speed levels)
-# - fan_speed numeric (1-9)
-# - pm25 numeric (air quality)
+# Z2M exposes for this device:
+# - fan expose with: state (ON/OFF), mode ("off", "auto", "1"-"9")
+# - pm25 numeric (µg/m³)
+# - replace_filter boolean
+# - filter_age numeric (minutes)
 #
-# Spec requires for air_purifier device:
-# - fan channel (required) with: on (required), mode (required), speed (optional)
-# - air_particulate channel with: density, mode (pm2_5 for PM2.5 sensor)
-# - device_information channel (required) - auto-created by adoption service
-#
-# Known models: E2006 (table), E2007 (floor standing)
+# Spec fan channel modes: "off", "auto", "low", "medium", "high", "turbo"
+# Mapping: off->off, auto->auto, 2->low, 5->medium, 7->high, 9->turbo
 
 version: "1.0"
 
@@ -23,60 +19,63 @@ transformers:
     true_value: "ON"
     false_value: "OFF"
 
-  # IKEA fan mode to spec mode (passthrough)
-  # Device values: "off", "auto", "1"-"9"
-  # Spec expects: "auto", "manual", "off", "1"-"10"
-  ikea_fan_mode_to_spec:
+  # IKEA fan mode to spec mode
+  # Z2M values: "off", "auto", "1"-"9"
+  # Spec values: "auto", "low", "medium", "high", "turbo"
+  # Note: "off" is handled by ON property, so we map it to "auto" as default
+  ikea_fan_mode:
     type: map
-    bidirectional:
-      "off": "off"
+    read:
+      "off": "auto"
       "auto": "auto"
-      "1": "1"
-      "2": "2"
-      "3": "3"
-      "4": "4"
-      "5": "5"
-      "6": "6"
-      "7": "7"
-      "8": "8"
-      "9": "9"
+      "1": "low"
+      "2": "low"
+      "3": "low"
+      "4": "medium"
+      "5": "medium"
+      "6": "medium"
+      "7": "high"
+      "8": "high"
+      "9": "turbo"
+    write:
+      "auto": "auto"
+      "low": "2"
+      "medium": "5"
+      "high": "7"
+      "turbo": "9"
 
-  # IKEA fan mode to percentage (for SPEED property)
-  # "off" -> 0%, "1" -> 11%, "2" -> 22%, ..., "9" -> 100%
-  # "auto" is handled separately (set to 50% as middle value)
-  ikea_fan_mode_to_percentage:
+  # Filter age (minutes) to life remaining percentage
+  # IKEA recommends replacing filter every 6 months (~262800 minutes)
+  filter_age_to_life:
+    type: formula
+    read: "Math.max(0, Math.round(100 - (value / 262800 * 100)))"
+    write: "Math.round((100 - value) / 100 * 262800)"
+
+  # Replace filter boolean to status enum
+  replace_filter_to_status:
     type: map
-    bidirectional:
-      "off": 0
-      "auto": 50
-      "1": 11
-      "2": 22
-      "3": 33
-      "4": 44
-      "5": 56
-      "6": 67
-      "7": 78
-      "8": 89
-      "9": 100
+    read:
+      "true": "replace_now"
+      "false": "good"
+    write:
+      "replace_now": "true"
+      "good": "false"
 
 mappings:
-  # IKEA STARKVIND Air Purifier - all variants
-  # Matches by manufacturer containing "IKEA" (e.g., "IKEA of Sweden") + fan expose + pm25 sensor
-  - name: ikea_starkvind
-    description: "IKEA STARKVIND air purifier with numeric speed levels"
-    priority: 200
+  # IKEA STARKVIND Air Purifier - main fan expose
+  - name: ikea_starkvind_fan
+    description: "IKEA STARKVIND air purifier fan control"
+    priority: 500
     match:
       manufacturer: "IKEA"
       expose_type: fan
-      any_property: [pm25]
     device_category: AIR_PURIFIER
     channels:
-      # Fan channel (required by air_purifier device spec)
       - identifier: fan
         name: Fan
         category: FAN
         features:
-          # On/Off (required by fan channel spec)
+          # On/Off state
           - z2m_feature: state
             panel:
               identifier: ON
@@ -84,42 +83,28 @@ mappings:
               data_type: BOOL
             transformer: fan_state
 
-          # Mode (required by fan channel spec) - maps to enum
-          # Spec format: ["auto", "manual", "off", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+          # Mode control
           - z2m_feature: mode
             panel:
               identifier: MODE
               name: Mode
               data_type: ENUM
-              format: ["auto", "off", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-            transformer: ikea_fan_mode_to_spec
+              format: ["auto", "low", "medium", "high", "turbo"]
+            transformer: ikea_fan_mode
 
-          # Speed as percentage (optional) - for UI convenience
-          - z2m_feature: mode
-            panel:
-              identifier: SPEED
-              name: Speed
-              data_type: UCHAR
-              format: [0, 100]
-              unit: "%"
-            transformer: ikea_fan_mode_to_percentage
-
-  # IKEA STARKVIND PM2.5 Sensor - air particulate channel
-  # This mapping handles the pm25 generic expose
+  # IKEA STARKVIND PM2.5 Sensor
   - name: ikea_starkvind_pm25
     description: "IKEA STARKVIND PM2.5 air quality sensor"
-    priority: 200
+    priority: 500
     match:
       manufacturer: "IKEA"
       property: pm25
     device_category: AIR_PURIFIER
     channels:
-      # Air particulate channel for PM2.5 readings
       - identifier: air_particulate
         name: Air Quality
         category: AIR_PARTICULATE
         properties:
-          # PM2.5 density reading
           - z2m_property: pm25
             panel:
               identifier: DENSITY
@@ -129,9 +114,39 @@ mappings:
               unit: "µg/m³"
             direction: read_only
         static_properties:
-          # Mode indicates the type of particulate (PM2.5)
           - identifier: MODE
             name: Particulate Type
             data_type: ENUM
             format: ["pm2_5"]
             value: "pm2_5"
+
+  # IKEA STARKVIND Filter
+  - name: ikea_starkvind_filter
+    description: "IKEA STARKVIND filter status"
+    priority: 500
+    match:
+      manufacturer: "IKEA"
+      any_property: [filter_age, replace_filter]
+    device_category: AIR_PURIFIER
+    channels:
+      - identifier: filter
+        name: Filter
+        category: FILTER
+        properties:
+          - z2m_property: filter_age
+            panel:
+              identifier: LIFE_REMAINING
+              name: Filter Life
+              data_type: UCHAR
+              format: [0, 100]
+              unit: "%"
+            direction: read_only
+            transformer: filter_age_to_life
+          - z2m_property: replace_filter
+            panel:
+              identifier: STATUS
+              name: Filter Status
+              data_type: ENUM
+              format: ["good", "replace_now"]
+            direction: read_only
+            transformer: replace_filter_to_status
