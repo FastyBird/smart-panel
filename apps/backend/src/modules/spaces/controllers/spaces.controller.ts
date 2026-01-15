@@ -789,6 +789,7 @@ export class SpacesController {
 			model.deviceCategory = t.deviceCategory;
 			model.channelId = t.channelId;
 			model.channelName = t.channelName;
+			model.channelCategory = t.channelCategory;
 			model.role = t.role;
 			model.priority = t.priority;
 			model.hasTemperature = t.hasTemperature;
@@ -827,8 +828,7 @@ export class SpacesController {
 		const role = await this.spaceClimateRoleService.setRole(id, body.data);
 
 		const response = new ClimateRoleResponseModel();
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		response.data = role as any; // null when role was removed
+		response.data = role;
 
 		return response;
 	}

@@ -738,16 +738,19 @@ export class ClimateTargetsResponseModel extends BaseSuccessResponseModel<Climat
 
 /**
  * Response wrapper for a single climate role assignment
+ * Note: data can be null when the role assignment was removed
  */
 @ApiSchema({ name: 'SpacesModuleResClimateRole' })
-export class ClimateRoleResponseModel extends BaseSuccessResponseModel<SpaceClimateRoleEntity> {
+export class ClimateRoleResponseModel extends BaseSuccessResponseModel<SpaceClimateRoleEntity | null> {
 	@ApiProperty({
-		description: 'The climate role assignment',
+		description: 'The climate role assignment, or null if the role was removed',
 		type: () => SpaceClimateRoleEntity,
+		nullable: true,
+		required: false,
 	})
 	@Expose()
 	@Type(() => SpaceClimateRoleEntity)
-	declare data: SpaceClimateRoleEntity;
+	declare data: SpaceClimateRoleEntity | null;
 }
 
 /**
