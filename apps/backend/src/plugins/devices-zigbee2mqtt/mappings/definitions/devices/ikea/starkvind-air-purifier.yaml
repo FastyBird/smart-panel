@@ -127,6 +127,7 @@ mappings:
               data_type: FLOAT
               format: [0, 1000]
               unit: "µg/m³"
+              invalid: -1
             direction: read_only
         static_properties:
           - identifier: MODE

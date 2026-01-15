@@ -368,6 +368,7 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 			unit: featureDef.panel.unit,
 			format,
 			transformerName: featureDef.transformerName,
+			invalid: featureDef.panel.invalid,
 		});
 	}
 
@@ -513,6 +514,7 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 					unit: propDef.panel.unit,
 					format,
 					transformerName: propDef.transformerName,
+					invalid: propDef.panel.invalid,
 				}),
 			];
 		}

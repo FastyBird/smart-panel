@@ -379,6 +379,7 @@ export class Z2mMappingPreviewService {
 					format: prop.format ?? null,
 					required: propSpec?.required ?? false,
 					currentValue: this.getCurrentValue(exposeName, currentState, prop.category),
+					invalid: prop.invalid ?? null,
 				});
 			}
 		}

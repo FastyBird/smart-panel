@@ -416,6 +416,7 @@ export class MappingLoaderService implements OnModuleInit {
 			unit: panel.unit,
 			settable: panel.settable ?? true,
 			queryable: panel.queryable ?? true,
+			invalid: panel.invalid,
 		};
 	}
 

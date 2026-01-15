@@ -42,6 +42,8 @@ export interface MappedProperty {
 	staticValue?: string | number | boolean;
 	/** Transformer name for converting Z2M values to/from panel values */
 	transformerName?: string;
+	/** Value that indicates invalid/unavailable data (e.g., -1 when sensor is off) */
+	invalid?: string | number | boolean;
 }
 
 /**

@@ -328,6 +328,15 @@ export class Z2mPropertyMappingPreviewModel {
 	})
 	@Expose({ name: 'current_value' })
 	currentValue: string | number | boolean | null;
+
+	@ApiPropertyOptional({
+		description: 'Value that indicates invalid/unavailable data',
+		oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
+		nullable: true,
+	})
+	@Expose()
+	@IsOptional()
+	invalid?: string | number | boolean | null;
 }
 
 // ============================================================================

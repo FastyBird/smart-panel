@@ -137,6 +137,16 @@ export class AdoptPropertyDefinitionDto {
 	@Expose({ name: 'z2m_property' })
 	@IsString()
 	z2mProperty: string;
+
+	@ApiPropertyOptional({
+		description: 'Value that indicates invalid/unavailable data',
+		example: -1,
+		oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
+		nullable: true,
+	})
+	@Expose()
+	@IsOptional()
+	invalid?: string | number | boolean | null;
 }
 
 @ApiSchema({ name: 'DevicesZigbee2mqttPluginAdoptChannelDefinition' })

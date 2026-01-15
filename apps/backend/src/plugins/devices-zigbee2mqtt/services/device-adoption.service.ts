@@ -304,6 +304,13 @@ export class Z2mDeviceAdoptionService {
 			return mappedProp?.transformerName;
 		};
 
+		// Helper to find invalid value from YAML mapping
+		const findInvalidValue = (z2mProperty: string, category: PropertyCategory): string | number | boolean | undefined => {
+			if (!mappedChannel) return undefined;
+			const mappedProp = mappedChannel.properties.find((p) => p.z2mProperty === z2mProperty && p.category === category);
+			return mappedProp?.invalid;
+		};
+
 		// Create channel
 		const channelIdentifier = channelDef.identifier ?? channelDef.category;
 		const createChannelDto = toInstance(CreateZigbee2mqttChannelDto, {
@@ -431,6 +438,10 @@ export class Z2mDeviceAdoptionService {
 				(propDef.category === PropertyCategory.HUE || propDef.category === PropertyCategory.SATURATION);
 			const propertyName = isVirtualProperty || isColorProperty ? propDef.category : propDef.z2mProperty;
 
+			// Get invalid value from YAML mapping (fallback if frontend doesn't send it)
+			const yamlInvalidValue = findInvalidValue(propDef.z2mProperty, propDef.category);
+			const invalidValue = propDef.invalid ?? yamlInvalidValue ?? propSpec?.invalid ?? null;
+
 			const createPropertyDto = toInstance(CreateZigbee2mqttChannelPropertyDto, {
 				type: DEVICES_ZIGBEE2MQTT_TYPE,
 				identifier,
@@ -440,7 +451,7 @@ export class Z2mDeviceAdoptionService {
 				permissions: propDef.permissions,
 				unit: propDef.unit ?? propSpec?.unit ?? null,
 				format: propDef.format ?? propSpec?.format ?? null,
-				invalid: propSpec?.invalid ?? null,
+				invalid: invalidValue,
 				step: propSpec?.step ?? null,
 				value: initialValue,
 			});
@@ -530,7 +541,7 @@ export class Z2mDeviceAdoptionService {
 				permissions: staticProp.permissions,
 				unit: staticProp.unit ?? propSpec?.unit ?? null,
 				format: staticProp.format ?? propSpec?.format ?? null,
-				invalid: propSpec?.invalid ?? null,
+				invalid: staticProp.invalid ?? propSpec?.invalid ?? null,
 				step: propSpec?.step ?? null,
 				value: initialValue,
 			});

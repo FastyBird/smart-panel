@@ -141,6 +141,8 @@ export interface PanelPropertyConfig {
 	settable?: boolean;
 	/** Whether property can be queried */
 	queryable?: boolean;
+	/** Value that indicates invalid/unavailable data */
+	invalid?: string | number | boolean;
 }
 
 /**
@@ -349,6 +351,7 @@ export interface ResolvedPanelProperty {
 	unit?: string;
 	settable: boolean;
 	queryable: boolean;
+	invalid?: string | number | boolean;
 }
 
 /**

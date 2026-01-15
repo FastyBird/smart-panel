@@ -445,6 +445,14 @@
 					"type": "string",
 					"description": "Unit of measurement"
 				},
+				"invalid": {
+					"oneOf": [
+						{ "type": "string" },
+						{ "type": "number" },
+						{ "type": "boolean" }
+					],
+					"description": "Value that indicates invalid/unavailable data"
+				},
 				"settable": {
 					"type": "boolean",
 					"default": true,
