@@ -182,8 +182,9 @@ export class SpaceClimateRoleService {
 			throw new SpacesValidationException(`Device with id=${dto.deviceId} is not a climate device`);
 		}
 
-		// For sensor roles, verify the channel exists and belongs to the device
-		if (isSensorRole && channelId) {
+		// When channelId is provided (for sensor roles or universal roles like HIDDEN),
+		// verify the channel exists and is a valid climate sensor channel
+		if (channelId) {
 			const channel = device.channels?.find((c) => c.id === channelId);
 			if (!channel) {
 				throw new SpacesValidationException(`Channel with id=${channelId} not found on device ${dto.deviceId}`);
