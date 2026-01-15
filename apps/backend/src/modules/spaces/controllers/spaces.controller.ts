@@ -58,12 +58,12 @@ import {
 	LightingStateResponseModel,
 	LightingSummaryDataModel,
 	OtherLightsStateDataModel,
-	RoleAggregatedStateDataModel,
-	RoleLastIntentDataModel,
-	RolesStateMapDataModel,
 	ProposedSpaceDataModel,
 	ProposedSpacesResponseModel,
 	QuickActionDataModel,
+	RoleAggregatedStateDataModel,
+	RoleLastIntentDataModel,
+	RolesStateMapDataModel,
 	SpaceResponseModel,
 	SpacesResponseModel,
 	SuggestionDataModel,
@@ -260,7 +260,9 @@ export class SpacesController {
 		});
 
 		// Get lighting roles from YAML spec loader (via enums)
-		const lightingRolesFromSpec = this.intentSpecLoaderService.getIntentCatalog().find((c) => c.category === 'lighting');
+		const lightingRolesFromSpec = this.intentSpecLoaderService
+			.getIntentCatalog()
+			.find((c) => c.category === 'lighting');
 		const roleParam = lightingRolesFromSpec?.intents
 			.find((i) => i.type === 'role_on')
 			?.params.find((p) => p.name === 'role');

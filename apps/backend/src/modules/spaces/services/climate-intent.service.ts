@@ -64,17 +64,6 @@ export interface PrimaryClimateDevice {
 }
 
 /**
- * Legacy interface for backward compatibility (used in sensors and undo).
- */
-interface ClimateDevice {
-	device: DeviceEntity;
-	channel: ChannelEntity;
-	setpointChannel: ChannelEntity | null;
-	temperatureProperty: ChannelPropertyEntity | null;
-	setpointProperty: ChannelPropertyEntity | null;
-}
-
-/**
  * Full climate state for a space, including multi-device aggregated values.
  */
 export interface ClimateState {

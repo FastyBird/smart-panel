@@ -1004,7 +1004,7 @@ export const LIGHTING_INTENT_CATALOG: IntentTypeMeta[] = [
 				type: 'enum',
 				required: true,
 				description: 'The lighting role to control',
-				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== LightingRole.HIDDEN),
+				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== (LightingRole.HIDDEN as string)),
 			},
 		],
 	},
@@ -1019,7 +1019,7 @@ export const LIGHTING_INTENT_CATALOG: IntentTypeMeta[] = [
 				type: 'enum',
 				required: true,
 				description: 'The lighting role to control',
-				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== LightingRole.HIDDEN),
+				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== (LightingRole.HIDDEN as string)),
 			},
 		],
 	},
@@ -1034,7 +1034,7 @@ export const LIGHTING_INTENT_CATALOG: IntentTypeMeta[] = [
 				type: 'enum',
 				required: true,
 				description: 'The lighting role to control',
-				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== LightingRole.HIDDEN),
+				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== (LightingRole.HIDDEN as string)),
 			},
 			{
 				name: 'brightness',
@@ -1057,7 +1057,7 @@ export const LIGHTING_INTENT_CATALOG: IntentTypeMeta[] = [
 				type: 'enum',
 				required: true,
 				description: 'The lighting role to control',
-				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== LightingRole.HIDDEN),
+				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== (LightingRole.HIDDEN as string)),
 			},
 			{
 				name: 'color',
@@ -1078,7 +1078,7 @@ export const LIGHTING_INTENT_CATALOG: IntentTypeMeta[] = [
 				type: 'enum',
 				required: true,
 				description: 'The lighting role to control',
-				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== LightingRole.HIDDEN),
+				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== (LightingRole.HIDDEN as string)),
 			},
 			{
 				name: 'color_temperature',
@@ -1101,7 +1101,7 @@ export const LIGHTING_INTENT_CATALOG: IntentTypeMeta[] = [
 				type: 'enum',
 				required: true,
 				description: 'The lighting role to control',
-				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== LightingRole.HIDDEN),
+				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== (LightingRole.HIDDEN as string)),
 			},
 			{
 				name: 'white',
@@ -1116,7 +1116,8 @@ export const LIGHTING_INTENT_CATALOG: IntentTypeMeta[] = [
 	{
 		type: LightingIntentType.ROLE_SET,
 		label: 'Set Role Properties',
-		description: 'Set multiple properties at once for all lights with a specific role (on/off, brightness, color, temperature, white)',
+		description:
+			'Set multiple properties at once for all lights with a specific role (on/off, brightness, color, temperature, white)',
 		icon: 'mdi:tune-variant',
 		params: [
 			{
@@ -1124,7 +1125,7 @@ export const LIGHTING_INTENT_CATALOG: IntentTypeMeta[] = [
 				type: 'enum',
 				required: true,
 				description: 'The lighting role to control',
-				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== LightingRole.HIDDEN),
+				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== (LightingRole.HIDDEN as string)),
 			},
 			{
 				name: 'on',

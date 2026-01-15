@@ -303,7 +303,12 @@ describe('SpacesController', () => {
 												enumValues: [
 													{ value: 'main', label: 'Main', description: 'Primary lights', icon: 'mdi:ceiling-light' },
 													{ value: 'task', label: 'Task', description: 'Task lights', icon: 'mdi:desk-lamp' },
-													{ value: 'ambient', label: 'Ambient', description: 'Ambient lights', icon: 'mdi:led-strip-variant' },
+													{
+														value: 'ambient',
+														label: 'Ambient',
+														description: 'Ambient lights',
+														icon: 'mdi:led-strip-variant',
+													},
 													{ value: 'accent', label: 'Accent', description: 'Accent lights', icon: 'mdi:wall-sconce' },
 													{ value: 'night', label: 'Night', description: 'Night lights', icon: 'mdi:lightbulb-night' },
 													{ value: 'other', label: 'Other', description: 'Unclassified lights', icon: 'mdi:lightbulb' },
@@ -345,7 +350,14 @@ describe('SpacesController', () => {
 										description: 'Set temperature',
 										icon: 'mdi:thermometer-check',
 										params: [
-											{ name: 'value', type: 'number', required: true, description: 'Target temperature', minValue: -10, maxValue: 50 },
+											{
+												name: 'value',
+												type: 'number',
+												required: true,
+												description: 'Target temperature',
+												minValue: -10,
+												maxValue: 50,
+											},
 										],
 									},
 									{

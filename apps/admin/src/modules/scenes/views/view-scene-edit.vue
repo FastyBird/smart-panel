@@ -64,10 +64,10 @@
 			<el-scrollbar class="grow-1 p-2 md:px-4">
 				<scene-edit-form
 					:key="scene.id"
-					:scene="scene"
 					v-model:remote-form-submit="remoteFormSubmit"
 					v-model:remote-form-result="remoteFormResult"
 					v-model:remote-form-changed="formChanged"
+					:scene="scene"
 				/>
 			</el-scrollbar>
 
