@@ -271,7 +271,7 @@ export class PropertyValueService {
 
 	/**
 	 * Check if value matches the property's invalid/sentinel value
-	 * Handles type coercion (e.g., -1 as number vs "-1" as string)
+	 * Handles string↔number conversion (e.g., -1 as number vs "-1" as string)
 	 */
 	private isInvalidValue(invalidValue: string | boolean | number, value: string | boolean | number): boolean {
 		// Direct equality check
@@ -279,10 +279,21 @@ export class PropertyValueService {
 			return true;
 		}
 
-		// Type-coerced equality check (e.g., number -1 vs string "-1")
+		// Handle string↔number conversion explicitly
+		// Avoid loose equality (==) which has unintended side effects:
+		// 0 == false, 1 == true, "" == 0, "1" == true all evaluate to true
+		if (typeof invalidValue === 'number' && typeof value === 'string') {
+			const numValue = Number(value);
+			if (!Number.isNaN(numValue) && invalidValue === numValue) {
+				return true;
+			}
+		}
 
-		if (invalidValue == value) {
-			return true;
+		if (typeof invalidValue === 'string' && typeof value === 'number') {
+			const numInvalid = Number(invalidValue);
+			if (!Number.isNaN(numInvalid) && numInvalid === value) {
+				return true;
+			}
 		}
 
 		return false;
