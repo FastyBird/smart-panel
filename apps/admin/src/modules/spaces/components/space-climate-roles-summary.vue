@@ -103,19 +103,17 @@ const roleSummaries = ref<IClimateRoleSummary[]>([]);
 
 const getRoleTagType = (role: string): 'primary' | 'success' | 'warning' | 'info' | 'danger' => {
 	switch (role) {
-		case ClimateRole.primary:
+		case ClimateRole.heating_only:
+			return 'danger';
+		case ClimateRole.cooling_only:
 			return 'primary';
+		case ClimateRole.auto:
+			return 'success';
 		case ClimateRole.auxiliary:
 			return 'warning';
-		case ClimateRole.ventilation:
-			return 'success';
-		case ClimateRole.humidity_control:
+		case ClimateRole.sensor:
 			return 'info';
-		case ClimateRole.temperature_sensor:
-			return 'warning';
-		case ClimateRole.humidity_sensor:
-			return 'info';
-		case ClimateRole.other:
+		case ClimateRole.hidden:
 		default:
 			return 'info';
 	}
@@ -123,21 +121,19 @@ const getRoleTagType = (role: string): 'primary' | 'success' | 'warning' | 'info
 
 const getRoleIcon = (role: string): string => {
 	switch (role) {
-		case ClimateRole.primary:
-			return 'mdi:thermostat';
+		case ClimateRole.heating_only:
+			return 'mdi:fire';
+		case ClimateRole.cooling_only:
+			return 'mdi:snowflake';
+		case ClimateRole.auto:
+			return 'mdi:thermostat-auto';
 		case ClimateRole.auxiliary:
 			return 'mdi:radiator';
-		case ClimateRole.ventilation:
-			return 'mdi:fan';
-		case ClimateRole.humidity_control:
-			return 'mdi:water-percent';
-		case ClimateRole.temperature_sensor:
+		case ClimateRole.sensor:
 			return 'mdi:thermometer';
-		case ClimateRole.humidity_sensor:
-			return 'mdi:water-percent';
-		case ClimateRole.other:
+		case ClimateRole.hidden:
 		default:
-			return 'mdi:thermostat-box';
+			return 'mdi:eye-off';
 	}
 };
 
@@ -205,13 +201,12 @@ const loadClimateRoles = async (): Promise<void> => {
 
 		// Convert map to array and sort by role order
 		const roleOrder = [
-			ClimateRole.primary,
+			ClimateRole.heating_only,
+			ClimateRole.cooling_only,
+			ClimateRole.auto,
 			ClimateRole.auxiliary,
-			ClimateRole.ventilation,
-			ClimateRole.humidity_control,
-			ClimateRole.temperature_sensor,
-			ClimateRole.humidity_sensor,
-			ClimateRole.other,
+			ClimateRole.sensor,
+			ClimateRole.hidden,
 		];
 
 		roleSummaries.value = Array.from(roleMap.values()).sort((a, b) => {

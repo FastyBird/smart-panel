@@ -427,16 +427,13 @@ import { SpacesModuleClimateRole } from '../../openapi.constants';
 
 // Helper arrays for role categorization
 export const CLIMATE_CONTROL_ROLES = [
-	SpacesModuleClimateRole.primary,
+	SpacesModuleClimateRole.heating_only,
+	SpacesModuleClimateRole.cooling_only,
+	SpacesModuleClimateRole.auto,
 	SpacesModuleClimateRole.auxiliary,
-	SpacesModuleClimateRole.ventilation,
-	SpacesModuleClimateRole.humidity_control,
 ] as const;
 
-export const CLIMATE_SENSOR_ROLES = [
-	SpacesModuleClimateRole.temperature_sensor,
-	SpacesModuleClimateRole.humidity_sensor,
-] as const;
+export const CLIMATE_SENSOR_ROLES = [SpacesModuleClimateRole.sensor] as const;
 
 export enum FormResult {
 	NONE = 'none',

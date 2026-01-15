@@ -133,18 +133,16 @@ const climateTargets = ref<IClimateTarget[]>([]);
 
 // Control roles for actuator devices
 const controlRoleOptions = computed(() => [
-	{ value: ClimateRole.primary, label: t(`spacesModule.climateRoles.${ClimateRole.primary}`) },
+	{ value: ClimateRole.heating_only, label: t(`spacesModule.climateRoles.${ClimateRole.heating_only}`) },
+	{ value: ClimateRole.cooling_only, label: t(`spacesModule.climateRoles.${ClimateRole.cooling_only}`) },
+	{ value: ClimateRole.auto, label: t(`spacesModule.climateRoles.${ClimateRole.auto}`) },
 	{ value: ClimateRole.auxiliary, label: t(`spacesModule.climateRoles.${ClimateRole.auxiliary}`) },
-	{ value: ClimateRole.ventilation, label: t(`spacesModule.climateRoles.${ClimateRole.ventilation}`) },
-	{ value: ClimateRole.humidity_control, label: t(`spacesModule.climateRoles.${ClimateRole.humidity_control}`) },
-	{ value: ClimateRole.other, label: t(`spacesModule.climateRoles.${ClimateRole.other}`) },
 	{ value: ClimateRole.hidden, label: t(`spacesModule.climateRoles.${ClimateRole.hidden}`) },
 ]);
 
 // Sensor roles for sensor device channels
 const sensorRoleOptions = computed(() => [
-	{ value: ClimateRole.temperature_sensor, label: t(`spacesModule.climateRoles.${ClimateRole.temperature_sensor}`) },
-	{ value: ClimateRole.humidity_sensor, label: t(`spacesModule.climateRoles.${ClimateRole.humidity_sensor}`) },
+	{ value: ClimateRole.sensor, label: t(`spacesModule.climateRoles.${ClimateRole.sensor}`) },
 	{ value: ClimateRole.hidden, label: t(`spacesModule.climateRoles.${ClimateRole.hidden}`) },
 ]);
 
