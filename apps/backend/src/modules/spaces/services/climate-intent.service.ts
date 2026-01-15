@@ -210,8 +210,12 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		let supportsCooling = false;
 		const heatingSetpoints: number[] = [];
 		const coolingSetpoints: number[] = [];
-		let minSetpoint = DEFAULT_MIN_SETPOINT;
-		let maxSetpoint = DEFAULT_MAX_SETPOINT;
+
+		// Track both intersection (most restrictive) and union (widest) bounds
+		let intersectionMin = DEFAULT_MIN_SETPOINT;
+		let intersectionMax = DEFAULT_MAX_SETPOINT;
+		let unionMin = DEFAULT_MAX_SETPOINT; // Start high for union min
+		let unionMax = DEFAULT_MIN_SETPOINT; // Start low for union max
 		let isFirstDevice = true;
 
 		for (const device of primaryDevices) {
@@ -223,12 +227,15 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 				}
 				// Calculate intersection of min/max (most restrictive)
 				if (isFirstDevice) {
-					minSetpoint = device.heaterMinSetpoint;
-					maxSetpoint = device.heaterMaxSetpoint;
+					intersectionMin = device.heaterMinSetpoint;
+					intersectionMax = device.heaterMaxSetpoint;
 				} else {
-					minSetpoint = Math.max(minSetpoint, device.heaterMinSetpoint);
-					maxSetpoint = Math.min(maxSetpoint, device.heaterMaxSetpoint);
+					intersectionMin = Math.max(intersectionMin, device.heaterMinSetpoint);
+					intersectionMax = Math.min(intersectionMax, device.heaterMaxSetpoint);
 				}
+				// Calculate union (widest bounds)
+				unionMin = Math.min(unionMin, device.heaterMinSetpoint);
+				unionMax = Math.max(unionMax, device.heaterMaxSetpoint);
 			}
 			if (device.supportsCooling) {
 				supportsCooling = true;
@@ -238,16 +245,40 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 				}
 				// Calculate intersection of min/max (most restrictive)
 				if (isFirstDevice) {
-					minSetpoint = device.coolerMinSetpoint;
-					maxSetpoint = device.coolerMaxSetpoint;
+					intersectionMin = device.coolerMinSetpoint;
+					intersectionMax = device.coolerMaxSetpoint;
 				} else {
-					minSetpoint = Math.max(minSetpoint, device.coolerMinSetpoint);
-					maxSetpoint = Math.min(maxSetpoint, device.coolerMaxSetpoint);
+					intersectionMin = Math.max(intersectionMin, device.coolerMinSetpoint);
+					intersectionMax = Math.min(intersectionMax, device.coolerMaxSetpoint);
 				}
+				// Calculate union (widest bounds)
+				unionMin = Math.min(unionMin, device.coolerMinSetpoint);
+				unionMax = Math.max(unionMax, device.coolerMaxSetpoint);
 			}
 			if (device.supportsHeating || device.supportsCooling) {
 				isFirstDevice = false;
 			}
+		}
+
+		// Determine final setpoint bounds
+		// Use intersection if valid, otherwise fall back to union
+		let minSetpoint: number;
+		let maxSetpoint: number;
+
+		if (intersectionMin <= intersectionMax) {
+			// Valid intersection - use most restrictive bounds
+			minSetpoint = intersectionMin;
+			maxSetpoint = intersectionMax;
+		} else {
+			// Non-overlapping device ranges - fall back to union (widest bounds)
+			// This allows users to set values in any device's range
+			this.logger.warn(
+				`Non-overlapping setpoint ranges detected in space=${spaceId}. ` +
+					`Intersection would be [${intersectionMin}, ${intersectionMax}]. ` +
+					`Falling back to union [${unionMin}, ${unionMax}].`,
+			);
+			minSetpoint = unionMin;
+			maxSetpoint = unionMax;
 		}
 
 		// Detect current mode from device states
@@ -1107,7 +1138,7 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 	): Promise<ClimateIntentResult> {
 		let affectedDevices = 0;
 		let failedDevices = 0;
-		let mode = intent.mode ?? climateState.mode;
+		const mode = intent.mode ?? climateState.mode;
 		let heatingSetpoint: number | null = null;
 		let coolingSetpoint: number | null = null;
 
@@ -1146,8 +1177,16 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 			// Determine setpoints based on intent and mode
 			if (intent.heatingSetpoint !== undefined && intent.coolingSetpoint !== undefined) {
 				// Explicit dual setpoints for AUTO mode
-				heatingSetpoint = this.clampSetpoint(intent.heatingSetpoint, climateState.minSetpoint, climateState.maxSetpoint);
-				coolingSetpoint = this.clampSetpoint(intent.coolingSetpoint, climateState.minSetpoint, climateState.maxSetpoint);
+				heatingSetpoint = this.clampSetpoint(
+					intent.heatingSetpoint,
+					climateState.minSetpoint,
+					climateState.maxSetpoint,
+				);
+				coolingSetpoint = this.clampSetpoint(
+					intent.coolingSetpoint,
+					climateState.minSetpoint,
+					climateState.maxSetpoint,
+				);
 			} else if (intent.value !== undefined) {
 				// Single value - apply based on mode
 				const value = this.clampSetpoint(intent.value, climateState.minSetpoint, climateState.maxSetpoint);
