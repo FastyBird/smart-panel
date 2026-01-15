@@ -121,13 +121,15 @@ export class ClimateIntentDto {
 	coolingSetpoint?: number;
 
 	@ApiPropertyOptional({
-		description: 'Climate mode to set (required when type is SET_MODE)',
+		description: 'Climate mode to set (required when type is SET_MODE, optional for CLIMATE_SET)',
 		enum: ClimateMode,
 		example: ClimateMode.HEAT,
 	})
 	@Expose()
 	@ValidateIf((o: ClimateIntentDto) => o.type === ClimateIntentType.SET_MODE)
 	@IsDefined({ message: '[{"field":"mode","reason":"Mode is required when type is SET_MODE."}]' })
+	@ValidateIf((o: ClimateIntentDto) => o.type === ClimateIntentType.CLIMATE_SET && o.mode !== undefined)
+	@IsOptional()
 	@IsEnum(ClimateMode, { message: '[{"field":"mode","reason":"Mode must be a valid climate mode."}]' })
 	mode?: ClimateMode;
 }

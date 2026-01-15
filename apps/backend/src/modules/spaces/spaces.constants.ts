@@ -412,6 +412,8 @@ export enum ClimateIntentType {
 	SETPOINT_DELTA = 'setpoint_delta',
 	SETPOINT_SET = 'setpoint_set',
 	SET_MODE = 'set_mode',
+	// Combined intent - set multiple properties at once
+	CLIMATE_SET = 'climate_set',
 }
 
 // Climate Modes - operating mode for climate domain
@@ -1234,6 +1236,46 @@ export const CLIMATE_INTENT_CATALOG: IntentTypeMeta[] = [
 				required: true,
 				description: 'The climate mode to set',
 				enumValues: Object.values(CLIMATE_MODE_META),
+			},
+		],
+	},
+	{
+		type: ClimateIntentType.CLIMATE_SET,
+		label: 'Set Climate Properties',
+		description:
+			'Set multiple climate properties at once (mode, setpoints). Allows atomic updates of mode and temperature in a single call.',
+		icon: 'mdi:tune-variant',
+		params: [
+			{
+				name: 'mode',
+				type: 'enum',
+				required: false,
+				description: 'The climate mode to set (optional)',
+				enumValues: Object.values(CLIMATE_MODE_META),
+			},
+			{
+				name: 'value',
+				type: 'number',
+				required: false,
+				description: 'The target temperature in degrees Celsius (single setpoint)',
+				minValue: ABSOLUTE_MIN_SETPOINT,
+				maxValue: ABSOLUTE_MAX_SETPOINT,
+			},
+			{
+				name: 'heatingSetpoint',
+				type: 'number',
+				required: false,
+				description: 'The heating setpoint (lower bound) for AUTO mode',
+				minValue: ABSOLUTE_MIN_SETPOINT,
+				maxValue: ABSOLUTE_MAX_SETPOINT,
+			},
+			{
+				name: 'coolingSetpoint',
+				type: 'number',
+				required: false,
+				description: 'The cooling setpoint (upper bound) for AUTO mode',
+				minValue: ABSOLUTE_MIN_SETPOINT,
+				maxValue: ABSOLUTE_MAX_SETPOINT,
 			},
 		],
 	},
