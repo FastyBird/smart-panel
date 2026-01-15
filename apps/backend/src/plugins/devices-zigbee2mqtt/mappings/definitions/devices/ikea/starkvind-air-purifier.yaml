@@ -51,6 +51,21 @@ transformers:
     read: "Math.max(0, Math.round(100 - (value / 262800 * 100)))"
     write: "Math.round((100 - value) / 100 * 262800)"
 
+  # Air quality level mapping
+  # Z2M values: excellent, good, moderate, poor, unhealthy, hazardous, out_of_range, unknown
+  # Spec values: excellent, good, fair, inferior, poor, unknown
+  air_quality_level:
+    type: map
+    read:
+      "excellent": "excellent"
+      "good": "good"
+      "moderate": "fair"
+      "poor": "inferior"
+      "unhealthy": "poor"
+      "hazardous": "poor"
+      "out_of_range": "poor"
+      "unknown": "unknown"
+
   # Replace filter boolean to status enum
   replace_filter_to_status:
     type: map
@@ -102,7 +117,7 @@ mappings:
     device_category: AIR_PURIFIER
     channels:
       - identifier: air_particulate
-        name: Air Quality
+        name: Air Particulate
         category: AIR_PARTICULATE
         properties:
           - z2m_property: pm25
@@ -119,6 +134,28 @@ mappings:
             data_type: ENUM
             format: ["pm2_5"]
             value: "pm2_5"
+
+  # IKEA STARKVIND Air Quality Level
+  - name: ikea_starkvind_air_quality
+    description: "IKEA STARKVIND air quality level"
+    priority: 500
+    match:
+      manufacturer: "IKEA"
+      property: air_quality
+    device_category: AIR_PURIFIER
+    channels:
+      - identifier: air_quality
+        name: Air Quality
+        category: AIR_QUALITY
+        properties:
+          - z2m_property: air_quality
+            panel:
+              identifier: LEVEL
+              name: Air Quality Level
+              data_type: ENUM
+              format: ["excellent", "good", "fair", "inferior", "poor", "unknown"]
+            direction: read_only
+            transformer: air_quality_level
 
   # IKEA STARKVIND Filter
   - name: ikea_starkvind_filter

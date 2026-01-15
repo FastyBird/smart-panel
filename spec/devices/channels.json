@@ -51,7 +51,8 @@
           "good",
           "fair",
           "inferior",
-          "poor"
+          "poor",
+          "unknown"
         ],
         "invalid": null,
         "step": null
