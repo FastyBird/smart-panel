@@ -168,7 +168,6 @@ const loadClimateRoles = async (): Promise<void> => {
 	if (!props.space?.id) return;
 
 	loading.value = true;
-	roleSummaries.value = [];
 
 	try {
 		const { data: responseData, error } = await backend.client.GET(

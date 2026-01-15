@@ -13,11 +13,11 @@
 			{{ t('spacesModule.fields.spaces.lightingRoles.description') }}
 		</el-alert>
 
-		<div v-if="loading" class="flex justify-center py-4">
+		<div v-if="loading && lightTargets.length === 0" class="flex justify-center py-4">
 			<icon icon="mdi:loading" class="animate-spin text-2xl" />
 		</div>
 
-		<template v-else-if="lightTargets.length > 0">
+		<template v-else-if="lightTargets.length > 0 || loading">
 			<el-table :data="lightTargets" border max-height="400px">
 				<el-table-column prop="deviceName" :label="t('spacesModule.onboarding.deviceName')" min-width="180">
 					<template #default="{ row }">
@@ -143,7 +143,6 @@ const roleOptions = computed(() => [
 
 const loadLightTargets = async (): Promise<void> => {
 	loading.value = true;
-	lightTargets.value = [];
 
 	try {
 		const { data: responseData, error } = await backend.client.GET(

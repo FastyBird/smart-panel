@@ -13,11 +13,11 @@
 			{{ t('spacesModule.fields.spaces.climateRoles.description') }}
 		</el-alert>
 
-		<div v-if="loading" class="flex justify-center py-4">
+		<div v-if="loading && climateTargets.length === 0" class="flex justify-center py-4">
 			<icon icon="mdi:loading" class="animate-spin text-2xl" />
 		</div>
 
-		<template v-else-if="climateTargets.length > 0">
+		<template v-else-if="climateTargets.length > 0 || loading">
 			<el-table :data="climateTargets" border max-height="400px">
 				<el-table-column prop="deviceName" :label="t('spacesModule.onboarding.deviceName')" min-width="180">
 					<template #default="{ row }">
@@ -180,7 +180,6 @@ const getDeviceIcon = (category: string): string => {
 
 const loadClimateTargets = async (): Promise<void> => {
 	loading.value = true;
-	climateTargets.value = [];
 
 	try {
 		const { data: responseData, error } = await backend.client.GET(
