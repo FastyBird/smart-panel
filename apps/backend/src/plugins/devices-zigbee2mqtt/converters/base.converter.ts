@@ -256,8 +256,8 @@ export abstract class BaseConverter implements IConverter {
 			access?: number;
 			permissions?: PermissionType[];
 		} & Partial<
-		Pick<MappedProperty, 'unit' | 'format' | 'min' | 'max' | 'step' | 'staticValue' | 'transformerName' | 'invalid'>
-	>,
+			Pick<MappedProperty, 'unit' | 'format' | 'min' | 'max' | 'step' | 'staticValue' | 'transformerName' | 'invalid'>
+		>,
 	): MappedProperty {
 		return {
 			identifier: params.identifier,

@@ -273,17 +273,14 @@ export class PropertyValueService {
 	 * Check if value matches the property's invalid/sentinel value
 	 * Handles type coercion (e.g., -1 as number vs "-1" as string)
 	 */
-	private isInvalidValue(
-		invalidValue: string | boolean | number,
-		value: string | boolean | number,
-	): boolean {
+	private isInvalidValue(invalidValue: string | boolean | number, value: string | boolean | number): boolean {
 		// Direct equality check
 		if (invalidValue === value) {
 			return true;
 		}
 
 		// Type-coerced equality check (e.g., number -1 vs string "-1")
-		// eslint-disable-next-line eqeqeq
+
 		if (invalidValue == value) {
 			return true;
 		}

@@ -260,7 +260,7 @@ export class MapTransformer extends BaseTransformer {
 			);
 
 			return (value: number): unknown => {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 				return fn(value, safeMath);
 			};
 		} catch {

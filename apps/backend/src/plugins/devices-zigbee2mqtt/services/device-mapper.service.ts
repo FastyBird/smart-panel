@@ -115,7 +115,10 @@ export class Z2mDeviceMapperService {
 			});
 
 			// Get all channels for this device
-			const channels = await this.channelsService.findAll<Zigbee2mqttChannelEntity>(device.id, DEVICES_ZIGBEE2MQTT_TYPE);
+			const channels = await this.channelsService.findAll<Zigbee2mqttChannelEntity>(
+				device.id,
+				DEVICES_ZIGBEE2MQTT_TYPE,
+			);
 
 			for (const channel of channels) {
 				// Find the YAML mapping for this channel by category

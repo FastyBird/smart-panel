@@ -305,7 +305,10 @@ export class Z2mDeviceAdoptionService {
 		};
 
 		// Helper to find invalid value from YAML mapping
-		const findInvalidValue = (z2mProperty: string, category: PropertyCategory): string | number | boolean | undefined => {
+		const findInvalidValue = (
+			z2mProperty: string,
+			category: PropertyCategory,
+		): string | number | boolean | undefined => {
 			if (!mappedChannel) return undefined;
 			const mappedProp = mappedChannel.properties.find((p) => p.z2mProperty === z2mProperty && p.category === category);
 			return mappedProp?.invalid;

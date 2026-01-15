@@ -188,13 +188,12 @@ describe('Z2mExposesMapperService', () => {
 			expect(result[0].identifier).toBe('window_covering');
 			expect(result[0].category).toBe(ChannelCategory.WINDOW_COVERING);
 
-			// Check status property - should be ENUM type with format derived from device values
+			// Check status property - should be ENUM type with format from YAML definition
 			const statusProperty = result[0].properties.find((p) => p.identifier === 'status');
 			expect(statusProperty).toBeDefined();
 			expect(statusProperty?.dataType).toBe(DataTypeType.ENUM);
-			// Format should be derived from device's enum values ['OPEN', 'CLOSE', 'STOP']
-			// transformed via cover_state to ['opened', 'closed', 'stopped']
-			expect(statusProperty?.format).toEqual(['opened', 'closed', 'stopped']);
+			// Format comes from YAML panel.format definition which defines all possible cover states
+			expect(statusProperty?.format).toEqual(['opened', 'closed', 'opening', 'closing', 'stopped']);
 
 			// Check position property - format derived from device range [0, 100]
 			const positionProperty = result[0].properties.find((p) => p.identifier === 'position');
