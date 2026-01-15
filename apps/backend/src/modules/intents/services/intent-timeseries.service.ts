@@ -32,6 +32,36 @@ export interface LastAppliedMode {
 }
 
 /**
+ * UUID v4 regex pattern for validation.
+ * Matches standard UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+ */
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Sanitize a string value for use in InfluxQL queries.
+ * Escapes special characters to prevent injection attacks.
+ *
+ * @param value - The string value to sanitize
+ * @returns Sanitized string safe for use in InfluxQL string literals
+ */
+function sanitizeInfluxString(value: string): string {
+	// Escape backslashes first (must be done before escaping quotes)
+	// Then escape single quotes which are used for string literals in InfluxQL
+	return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+/**
+ * Validate that a string is a valid UUID format.
+ * Provides defense-in-depth even when controller validation exists.
+ *
+ * @param value - The string to validate
+ * @returns true if valid UUID format, false otherwise
+ */
+function isValidUuid(value: string): boolean {
+	return UUID_PATTERN.test(value);
+}
+
+/**
  * Service for persisting intent events to InfluxDB.
  * Enables historical tracking and recovery of last applied modes.
  */
@@ -130,11 +160,21 @@ export class IntentTimeseriesService {
 			return null;
 		}
 
+		// Defense-in-depth: Validate spaceId format even though controllers should validate
+		if (!isValidUuid(spaceId)) {
+			this.logger.warn(`Invalid spaceId format rejected spaceId=${spaceId}`);
+			return null;
+		}
+
+		// Sanitize values to prevent InfluxQL injection
+		const safeSpaceId = sanitizeInfluxString(spaceId);
+		const safeIntentType = sanitizeInfluxString(intentType);
+
 		const query = `
 			SELECT intentId, mode, status
 			FROM space_intent
-			WHERE spaceId = '${spaceId}'
-			AND intentType = '${intentType}'
+			WHERE spaceId = '${safeSpaceId}'
+			AND intentType = '${safeIntentType}'
 			AND mode != ''
 			AND (status = '${IntentStatus.COMPLETED_SUCCESS}' OR status = '${IntentStatus.COMPLETED_PARTIAL}')
 			ORDER BY time DESC
@@ -188,10 +228,20 @@ export class IntentTimeseriesService {
 			return [];
 		}
 
-		let whereClause = `spaceId = '${spaceId}' AND time >= ${from.getTime()}ms AND time <= ${to.getTime()}ms`;
+		// Defense-in-depth: Validate spaceId format even though controllers should validate
+		if (!isValidUuid(spaceId)) {
+			this.logger.warn(`Invalid spaceId format rejected spaceId=${spaceId}`);
+			return [];
+		}
+
+		// Sanitize spaceId to prevent InfluxQL injection
+		const safeSpaceId = sanitizeInfluxString(spaceId);
+
+		let whereClause = `spaceId = '${safeSpaceId}' AND time >= ${from.getTime()}ms AND time <= ${to.getTime()}ms`;
 
 		if (intentTypes && intentTypes.length > 0) {
-			const typeFilter = intentTypes.map((t) => `intentType = '${t}'`).join(' OR ');
+			// Sanitize each intent type value
+			const typeFilter = intentTypes.map((t) => `intentType = '${sanitizeInfluxString(t)}'`).join(' OR ');
 			whereClause += ` AND (${typeFilter})`;
 		}
 
@@ -347,8 +397,17 @@ export class IntentTimeseriesService {
 			return;
 		}
 
+		// Defense-in-depth: Validate spaceId format even though controllers should validate
+		if (!isValidUuid(spaceId)) {
+			this.logger.warn(`Invalid spaceId format rejected for deletion spaceId=${spaceId}`);
+			return;
+		}
+
+		// Sanitize spaceId to prevent InfluxQL injection
+		const safeSpaceId = sanitizeInfluxString(spaceId);
+
 		try {
-			const query = `DELETE FROM space_intent WHERE spaceId = '${spaceId}'`;
+			const query = `DELETE FROM space_intent WHERE spaceId = '${safeSpaceId}'`;
 			await this.influxDbService.query(query);
 			this.logger.log(`Deleted intent history for spaceId=${spaceId}`);
 		} catch (error) {
