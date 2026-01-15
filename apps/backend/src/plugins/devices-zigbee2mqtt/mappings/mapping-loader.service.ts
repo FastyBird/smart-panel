@@ -213,6 +213,10 @@ export class MappingLoaderService implements OnModuleInit {
 				const fullPath = join(dirPath, entry.name);
 
 				if (entry.isFile() && (entry.name.endsWith('.yaml') || entry.name.endsWith('.yml'))) {
+					// Skip derivation-rules.yaml - it's loaded separately and has a different schema
+					if (entry.name === 'derivation-rules.yaml') {
+						continue;
+					}
 					files.push({
 						path: fullPath,
 						source,
