@@ -98,7 +98,10 @@ export class Z2mMappingPreviewService {
 		const existingDevice = existingDevices.find((d) => d.identifier === ieeeAddress);
 
 		// Map exposes to channels
-		const mappedChannels = this.exposesMapper.mapExposes(z2mDevice.definition.exposes);
+		const mappedChannels = this.exposesMapper.mapExposes(z2mDevice.definition.exposes, {
+			model: z2mDevice.definition.model,
+			manufacturer: z2mDevice.definition.vendor,
+		});
 
 		// Apply overrides if provided
 		const overriddenChannels = this.applyOverrides(mappedChannels, request);
@@ -112,13 +115,23 @@ export class Z2mMappingPreviewService {
 			request,
 		);
 
-		// Determine device category
+		// Determine device category from YAML mapping (with fallback to hardcoded function)
 		const exposeTypes = z2mDevice.definition.exposes.map((e) => e.type);
 		const propertyNames = z2mDevice.definition.exposes
 			.filter((e): e is typeof e & { property: string } => !!e.property)
 			.map((e) => e.property);
 
-		const suggestedCategory = request?.deviceCategory ?? mapZ2mCategoryToDeviceCategory(exposeTypes, propertyNames);
+		// First try to get category from YAML mapping (which supports device-specific mappings)
+		const yamlCategory = this.exposesMapper
+			.getConfigDrivenConverter()
+			.getSuggestedDeviceCategory(z2mDevice.definition.exposes, {
+				model: z2mDevice.definition.model,
+				manufacturer: z2mDevice.definition.vendor,
+			});
+
+		// Use YAML category if found, otherwise fall back to hardcoded function
+		const suggestedCategory =
+			request?.deviceCategory ?? yamlCategory ?? mapZ2mCategoryToDeviceCategory(exposeTypes, propertyNames);
 
 		// Build suggested device
 		// Use user-defined description if available, otherwise format friendlyName
@@ -366,6 +379,7 @@ export class Z2mMappingPreviewService {
 					format: prop.format ?? null,
 					required: propSpec?.required ?? false,
 					currentValue: this.getCurrentValue(exposeName, currentState, prop.category),
+					invalid: prop.invalid ?? null,
 				});
 			}
 		}

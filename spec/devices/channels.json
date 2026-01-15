@@ -51,7 +51,8 @@
           "good",
           "fair",
           "inferior",
-          "poor"
+          "poor",
+          "unknown"
         ],
         "invalid": null,
         "step": null
@@ -1551,7 +1552,8 @@
               "low",
               "medium",
               "high",
-              "turbo"
+              "turbo",
+              "auto"
             ],
             "description": {
               "en": "Speed as discrete levels"
@@ -1561,9 +1563,9 @@
       },
       "mode": {
         "category": "mode",
-        "required": true,
+        "required": false,
         "description": {
-          "en": ""
+          "en": "Fan operating mode - controls how fan adjusts speed automatically"
         },
         "permissions": [
           "rw"
@@ -1573,17 +1575,10 @@
         "format": [
           "auto",
           "manual",
-          "off",
-          "1",
-          "2",
-          "3",
-          "4",
-          "5",
-          "6",
-          "7",
-          "8",
-          "9",
-          "10"
+          "eco",
+          "sleep",
+          "natural",
+          "turbo"
         ],
         "invalid": null,
         "step": null

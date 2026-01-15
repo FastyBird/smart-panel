@@ -65,14 +65,15 @@ export class ConverterRegistry {
 	 * Find all converters that can handle an expose, sorted by priority
 	 *
 	 * @param expose - The expose to find converters for
+	 * @param context - Optional conversion context with device info
 	 * @returns Array of matching converters sorted by priority (highest first)
 	 */
-	findConverters(expose: Z2mExpose): ConverterMatch[] {
+	findConverters(expose: Z2mExpose, context?: ConversionContext): ConverterMatch[] {
 		const matches: ConverterMatch[] = [];
 
 		for (const converter of this.converters) {
 			try {
-				const result = converter.canHandle(expose);
+				const result = converter.canHandle(expose, context);
 				if (result.canHandle) {
 					matches.push({ converter, result });
 				}
@@ -91,10 +92,11 @@ export class ConverterRegistry {
 	 * Find the best converter for an expose
 	 *
 	 * @param expose - The expose to find a converter for
+	 * @param context - Optional conversion context with device info
 	 * @returns The best matching converter or null
 	 */
-	findBestConverter(expose: Z2mExpose): IConverter | null {
-		const matches = this.findConverters(expose);
+	findBestConverter(expose: Z2mExpose, context?: ConversionContext): IConverter | null {
+		const matches = this.findConverters(expose, context);
 		return matches.length > 0 ? matches[0].converter : null;
 	}
 
@@ -120,7 +122,7 @@ export class ConverterRegistry {
 				continue;
 			}
 
-			const converter = this.findBestConverter(expose);
+			const converter = this.findBestConverter(expose, context);
 			if (converter) {
 				try {
 					const mappedChannels = converter.convert(expose, context);

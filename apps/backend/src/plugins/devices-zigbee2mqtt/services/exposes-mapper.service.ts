@@ -7,35 +7,14 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
-import {
-	ActionConverter,
-	AirParticulateSensorConverter,
-	BatterySensorConverter,
-	ClimateConverter,
-	ContactSensorConverter,
-	ConversionContext,
-	ConverterRegistry,
-	CoverConverter,
-	ElectricalConverter,
-	FanConverter,
-	HumiditySensorConverter,
-	IlluminanceSensorConverter,
-	LeakSensorConverter,
-	LightConverter,
-	LockConverter,
-	MotionSensorConverter,
-	OccupancySensorConverter,
-	PressureSensorConverter,
-	SmokeSensorConverter,
-	SwitchConverter,
-	TemperatureSensorConverter,
-} from '../converters';
+import { ConversionContext, ConverterRegistry } from '../converters';
 import {
 	DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
 	Z2M_GENERIC_TYPES,
 	Z2M_SPECIFIC_TYPES,
 } from '../devices-zigbee2mqtt.constants';
 import { Z2mExpose } from '../interfaces/zigbee2mqtt.interface';
+import { ConfigDrivenConverter } from '../mappings/config-driven.converter';
 
 /**
  * Mapped channel structure
@@ -69,6 +48,12 @@ export interface MappedProperty {
 	min?: number;
 	max?: number;
 	step?: number;
+	/** Static value for properties that don't come from Z2M (e.g., cover type) */
+	staticValue?: string | number | boolean;
+	/** Transformer name for converting Z2M values to/from panel values */
+	transformerName?: string;
+	/** Value that indicates invalid/unavailable data (e.g., -1 when sensor is off) */
+	invalid?: string | number | boolean;
 }
 
 /**
@@ -76,8 +61,13 @@ export interface MappedProperty {
  *
  * Maps Zigbee2MQTT exposes structure to Smart Panel channels and properties.
  *
- * Uses a modular converter architecture inspired by homebridge-z2m.
- * Each device type has its own dedicated converter for specialized handling.
+ * Uses a config-driven converter architecture where all device mappings
+ * are defined in YAML configuration files. This allows users to add support
+ * for new devices without modifying the source code.
+ *
+ * YAML mappings are loaded from:
+ * - Built-in: src/plugins/devices-zigbee2mqtt/mappings/definitions/
+ * - User-defined: var/data/zigbee/mappings/ (higher priority)
  */
 @Injectable()
 export class Z2mExposesMapperService implements OnModuleInit {
@@ -88,48 +78,28 @@ export class Z2mExposesMapperService implements OnModuleInit {
 
 	private readonly converterRegistry: ConverterRegistry;
 
-	constructor() {
+	constructor(private readonly configDrivenConverter: ConfigDrivenConverter) {
 		this.converterRegistry = new ConverterRegistry();
 	}
 
 	/**
-	 * Initialize and register all converters
+	 * Initialize and register the config-driven converter
 	 */
 	onModuleInit(): void {
 		this.registerConverters();
 	}
 
 	/**
-	 * Register all available converters with the registry
+	 * Register the config-driven converter with the registry
+	 * All device mappings are now defined in YAML configuration files
 	 */
 	private registerConverters(): void {
-		// Device converters (highest priority)
-		this.converterRegistry.register(new LightConverter());
-		this.converterRegistry.register(new SwitchConverter());
-		this.converterRegistry.register(new CoverConverter());
-		this.converterRegistry.register(new ClimateConverter());
-		this.converterRegistry.register(new LockConverter());
-		this.converterRegistry.register(new FanConverter());
-
-		// Sensor converters
-		this.converterRegistry.register(new TemperatureSensorConverter());
-		this.converterRegistry.register(new HumiditySensorConverter());
-		this.converterRegistry.register(new OccupancySensorConverter());
-		this.converterRegistry.register(new ContactSensorConverter());
-		this.converterRegistry.register(new LeakSensorConverter());
-		this.converterRegistry.register(new SmokeSensorConverter());
-		this.converterRegistry.register(new IlluminanceSensorConverter());
-		this.converterRegistry.register(new PressureSensorConverter());
-		this.converterRegistry.register(new MotionSensorConverter());
-		this.converterRegistry.register(new BatterySensorConverter());
-		this.converterRegistry.register(new AirParticulateSensorConverter());
-
-		// Special converters
-		this.converterRegistry.register(new ActionConverter());
-		this.converterRegistry.register(new ElectricalConverter());
+		// Register the config-driven converter (YAML mappings)
+		this.converterRegistry.register(this.configDrivenConverter);
+		this.logger.log('Config-driven converter registered (YAML mappings enabled)');
 
 		this.converterRegistry.markInitialized();
-		this.logger.log('Converter registry initialized with modular converters');
+		this.logger.log('Converter registry initialized with config-driven mappings');
 	}
 
 	/**
@@ -138,10 +108,15 @@ export class Z2mExposesMapperService implements OnModuleInit {
 	 * @param exposes - Array of Z2M exposes to convert
 	 * @param deviceInfo - Optional device info for context
 	 */
-	mapExposes(exposes: Z2mExpose[], deviceInfo?: { ieeeAddress?: string; friendlyName?: string }): MappedChannel[] {
+	mapExposes(
+		exposes: Z2mExpose[],
+		deviceInfo?: { ieeeAddress?: string; friendlyName?: string; model?: string; manufacturer?: string },
+	): MappedChannel[] {
 		const context: ConversionContext = {
 			ieeeAddress: deviceInfo?.ieeeAddress ?? '',
 			friendlyName: deviceInfo?.friendlyName ?? '',
+			model: deviceInfo?.model,
+			manufacturer: deviceInfo?.manufacturer,
 			allExposes: exposes,
 			mappedProperties: new Set<string>(),
 		};
@@ -178,5 +153,12 @@ export class Z2mExposesMapperService implements OnModuleInit {
 		}
 
 		return channels;
+	}
+
+	/**
+	 * Get the config-driven converter for runtime transformations
+	 */
+	getConfigDrivenConverter(): ConfigDrivenConverter {
+		return this.configDrivenConverter;
 	}
 }

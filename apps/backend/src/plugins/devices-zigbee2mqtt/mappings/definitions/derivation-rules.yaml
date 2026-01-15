@@ -1,0 +1,165 @@
+# Default Derivation Rules
+# Reusable derivation rules for calculating derived properties from source properties.
+# These can be referenced by name in derived_properties definitions.
+
+version: "1.0"
+
+derivations:
+  # ============================================
+  # BATTERY DERIVATIONS
+  # ============================================
+
+  # Battery status from percentage
+  # Threshold: < 20% = low, >= 20% = ok
+  battery_status_from_percentage:
+    description: "Derive battery status enum from percentage value"
+    rule:
+      type: threshold
+      thresholds:
+        - max: 19
+          value: "low"
+        - value: "ok"
+
+  # ============================================
+  # ILLUMINANCE DERIVATIONS
+  # ============================================
+
+  # Illuminance level from lux density
+  # Based on typical indoor lighting levels:
+  # - dark: < 10 lux (moonlight, very dim)
+  # - dusky: 10-100 lux (dim indoor lighting)
+  # - moderate: 100-1000 lux (typical indoor lighting)
+  # - bright: >= 1000 lux (bright indoor or daylight)
+  illuminance_level_from_density:
+    description: "Derive illuminance level enum from lux value"
+    rule:
+      type: threshold
+      thresholds:
+        - max: 9
+          value: "dark"
+        - max: 99
+          value: "dusky"
+        - max: 999
+          value: "moderate"
+        - value: "bright"
+
+  # ============================================
+  # LOCK DERIVATIONS
+  # ============================================
+
+  # Lock status from on/off state
+  # on=true means locked, on=false means unlocked
+  lock_status_from_on:
+    description: "Derive lock status enum from on/off boolean"
+    rule:
+      type: boolean_map
+      true_value: "locked"
+      false_value: "unlocked"
+
+  # ============================================
+  # GAS SENSOR DERIVATIONS
+  # ============================================
+
+  # Gas status from detected boolean
+  # detected=true means alarm, detected=false means normal
+  gas_status_from_detected:
+    description: "Derive gas sensor status from detected boolean"
+    rule:
+      type: boolean_map
+      true_value: "alarm"
+      false_value: "normal"
+
+  # ============================================
+  # LEAK SENSOR DERIVATIONS
+  # ============================================
+
+  # Leak level from detected boolean
+  # detected=true means high, detected=false means none
+  leak_level_from_detected:
+    description: "Derive leak level from detected boolean"
+    rule:
+      type: boolean_map
+      true_value: "high"
+      false_value: "none"
+
+  # ============================================
+  # WINDOW COVERING DERIVATIONS
+  # ============================================
+
+  # Window covering status from position percentage
+  # 0% = closed, 100% = opened, between = stopped (in partial position)
+  window_covering_status_from_position:
+    description: "Derive window covering status from position percentage"
+    rule:
+      type: position_status
+      closed_value: "closed"
+      opened_value: "opened"
+      partial_value: "stopped"
+
+  # ============================================
+  # SULPHUR DIOXIDE DERIVATIONS
+  # ============================================
+
+  # SO2 level from density (µg/m³)
+  # Based on WHO guidelines and air quality standards:
+  # - good: < 20 µg/m³ (safe levels)
+  # - moderate: 20-100 µg/m³ (acceptable)
+  # - poor: 100-350 µg/m³ (unhealthy for sensitive groups)
+  # - very_poor: >= 350 µg/m³ (unhealthy)
+  sulphur_dioxide_level_from_density:
+    description: "Derive SO2 air quality level from density"
+    rule:
+      type: threshold
+      thresholds:
+        - max: 19
+          value: "good"
+        - max: 99
+          value: "moderate"
+        - max: 349
+          value: "poor"
+        - value: "very_poor"
+
+  # ============================================
+  # AIR QUALITY INDEX DERIVATIONS
+  # ============================================
+
+  # AQI level from value
+  # Based on standard AQI breakpoints:
+  # - excellent: 0-50 (Good)
+  # - good: 51-100 (Moderate)
+  # - fair: 101-150 (Unhealthy for Sensitive Groups)
+  # - inferior: 151-200 (Unhealthy)
+  # - poor: 201+ (Very Unhealthy/Hazardous)
+  aqi_level_from_value:
+    description: "Derive air quality level from AQI value"
+    rule:
+      type: threshold
+      thresholds:
+        - max: 50
+          value: "excellent"
+        - max: 100
+          value: "good"
+        - max: 150
+          value: "fair"
+        - max: 200
+          value: "inferior"
+        - value: "poor"
+
+  # ============================================
+  # FILTER DERIVATIONS
+  # ============================================
+
+  # Filter status from life remaining percentage
+  # - good: > 20% life remaining
+  # - replace_soon: 5-20% life remaining
+  # - replace_now: < 5% life remaining
+  filter_status_from_life:
+    description: "Derive filter status from life remaining percentage"
+    rule:
+      type: threshold
+      thresholds:
+        - max: 4
+          value: "replace_now"
+        - max: 20
+          value: "replace_soon"
+        - value: "good"

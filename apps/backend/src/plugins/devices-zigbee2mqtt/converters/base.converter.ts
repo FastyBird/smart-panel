@@ -254,7 +254,10 @@ export abstract class BaseConverter implements IConverter {
 			dataType: DataTypeType;
 			z2mProperty: string;
 			access?: number;
-		} & Partial<Pick<MappedProperty, 'unit' | 'format' | 'min' | 'max' | 'step'>>,
+			permissions?: PermissionType[];
+		} & Partial<
+			Pick<MappedProperty, 'unit' | 'format' | 'min' | 'max' | 'step' | 'staticValue' | 'transformerName' | 'invalid'>
+		>,
 	): MappedProperty {
 		return {
 			identifier: params.identifier,
@@ -262,13 +265,16 @@ export abstract class BaseConverter implements IConverter {
 			category: params.category,
 			channelCategory: params.channelCategory,
 			dataType: params.dataType,
-			permissions: this.mapAccessToPermissions(params.access ?? Z2M_ACCESS.STATE),
+			permissions: params.permissions ?? this.mapAccessToPermissions(params.access ?? Z2M_ACCESS.STATE),
 			z2mProperty: params.z2mProperty,
 			unit: params.unit,
 			format: params.format,
 			min: params.min,
 			max: params.max,
 			step: params.step,
+			staticValue: params.staticValue,
+			transformerName: params.transformerName,
+			invalid: params.invalid,
 		};
 	}
 

@@ -1,0 +1,190 @@
+# IKEA STARKVIND Air Purifier (E2006, E2007, and variants)
+# Device-specific mapping for IKEA air purifiers
+#
+# Z2M exposes for this device:
+# - fan expose with: state (ON/OFF), mode ("off", "auto", "1"-"9")
+# - pm25 numeric (µg/m³)
+# - replace_filter boolean
+# - filter_age numeric (minutes)
+#
+# Spec fan channel modes: "off", "auto", "low", "medium", "high", "turbo"
+# Mapping: off->off, auto->auto, 2->low, 5->medium, 7->high, 9->turbo
+
+version: "1.0"
+
+transformers:
+  # Fan state ON/OFF to boolean
+  fan_state:
+    type: boolean
+    true_value: "ON"
+    false_value: "OFF"
+
+  # IKEA fan mode to spec mode
+  # Z2M values: "off", "auto", "1"-"9"
+  # Spec values: "auto", "low", "medium", "high", "turbo"
+  # Note: "off" is handled by ON property, so we map it to "auto" as default
+  ikea_fan_mode:
+    type: map
+    read:
+      "off": "auto"
+      "auto": "auto"
+      "1": "low"
+      "2": "low"
+      "3": "low"
+      "4": "medium"
+      "5": "medium"
+      "6": "medium"
+      "7": "high"
+      "8": "high"
+      "9": "turbo"
+    write:
+      "auto": "auto"
+      "low": "2"
+      "medium": "5"
+      "high": "7"
+      "turbo": "9"
+
+  # Filter age (minutes) to life remaining percentage
+  # IKEA recommends replacing filter every 6 months (~262800 minutes)
+  filter_age_to_life:
+    type: formula
+    read: "Math.max(0, Math.round(100 - (value / 262800 * 100)))"
+    write: "Math.round((100 - value) / 100 * 262800)"
+
+  # Air quality level mapping
+  # Z2M values: excellent, good, moderate, poor, unhealthy, hazardous, out_of_range, unknown
+  # Spec values: excellent, good, fair, inferior, poor, unknown
+  air_quality_level:
+    type: map
+    read:
+      "excellent": "excellent"
+      "good": "good"
+      "moderate": "fair"
+      "poor": "inferior"
+      "unhealthy": "poor"
+      "hazardous": "poor"
+      "out_of_range": "poor"
+      "unknown": "unknown"
+
+  # Replace filter boolean to status enum
+  replace_filter_to_status:
+    type: map
+    read:
+      "true": "replace_now"
+      "false": "good"
+    write:
+      "replace_now": "true"
+      "good": "false"
+
+mappings:
+  # IKEA STARKVIND Air Purifier - main fan expose
+  - name: ikea_starkvind_fan
+    description: "IKEA STARKVIND air purifier fan control"
+    priority: 500
+    match:
+      manufacturer: "IKEA"
+      expose_type: fan
+    device_category: AIR_PURIFIER
+    channels:
+      - identifier: fan
+        name: Fan
+        category: FAN
+        features:
+          # On/Off state
+          - z2m_feature: state
+            panel:
+              identifier: ON
+              name: Power
+              data_type: BOOL
+            transformer: fan_state
+
+          # Mode control
+          - z2m_feature: mode
+            panel:
+              identifier: MODE
+              name: Mode
+              data_type: ENUM
+              format: ["auto", "low", "medium", "high", "turbo"]
+            transformer: ikea_fan_mode
+
+  # IKEA STARKVIND PM2.5 Sensor
+  - name: ikea_starkvind_pm25
+    description: "IKEA STARKVIND PM2.5 air quality sensor"
+    priority: 500
+    match:
+      manufacturer: "IKEA"
+      property: pm25
+    device_category: AIR_PURIFIER
+    channels:
+      - identifier: air_particulate
+        name: Air Particulate
+        category: AIR_PARTICULATE
+        properties:
+          - z2m_property: pm25
+            panel:
+              identifier: DENSITY
+              name: PM2.5 Density
+              data_type: FLOAT
+              format: [0, 1000]
+              unit: "µg/m³"
+              invalid: -1
+            direction: read_only
+        static_properties:
+          - identifier: MODE
+            name: Particulate Type
+            data_type: ENUM
+            format: ["pm2_5"]
+            value: "pm2_5"
+
+  # IKEA STARKVIND Air Quality Level
+  - name: ikea_starkvind_air_quality
+    description: "IKEA STARKVIND air quality level"
+    priority: 500
+    match:
+      manufacturer: "IKEA"
+      property: air_quality
+    device_category: AIR_PURIFIER
+    channels:
+      - identifier: air_quality
+        name: Air Quality
+        category: AIR_QUALITY
+        properties:
+          - z2m_property: air_quality
+            panel:
+              identifier: LEVEL
+              name: Air Quality Level
+              data_type: ENUM
+              format: ["excellent", "good", "fair", "inferior", "poor", "unknown"]
+            direction: read_only
+            transformer: air_quality_level
+
+  # IKEA STARKVIND Filter
+  - name: ikea_starkvind_filter
+    description: "IKEA STARKVIND filter status"
+    priority: 500
+    match:
+      manufacturer: "IKEA"
+      any_property: [filter_age, replace_filter]
+    device_category: AIR_PURIFIER
+    channels:
+      - identifier: filter
+        name: Filter
+        category: FILTER
+        properties:
+          - z2m_property: filter_age
+            panel:
+              identifier: LIFE_REMAINING
+              name: Filter Life
+              data_type: UCHAR
+              format: [0, 100]
+              unit: "%"
+            direction: read_only
+            transformer: filter_age_to_life
+          - z2m_property: replace_filter
+            panel:
+              identifier: STATUS
+              name: Filter Status
+              data_type: ENUM
+              format: ["good", "replace_now"]
+            direction: read_only
+            transformer: replace_filter_to_status

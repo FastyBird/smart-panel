@@ -108,6 +108,7 @@ describe('Zigbee2mqttService', () => {
 						isConnected: jest.fn().mockReturnValue(false),
 						isBridgeOnline: jest.fn().mockReturnValue(false),
 						getRegisteredDevices: jest.fn().mockReturnValue([]),
+						getCachedState: jest.fn().mockReturnValue({}),
 						setCallbacks: jest.fn().mockImplementation((callbacks: Z2mAdapterCallbacks) => {
 							capturedCallbacks = callbacks;
 						}),
@@ -120,6 +121,7 @@ describe('Zigbee2mqttService', () => {
 						updateDeviceState: jest.fn(),
 						setDeviceAvailability: jest.fn(),
 						setDeviceConnectionState: jest.fn(),
+						restoreTransformersForExistingDevices: jest.fn().mockResolvedValue(undefined),
 					},
 				},
 				{
@@ -309,9 +311,7 @@ describe('Zigbee2mqttService', () => {
 	describe('callback: onDevicesReceived', () => {
 		it('should map devices when auto-add is enabled', async () => {
 			// Bridge must be online first for devices to be processed immediately
-			capturedCallbacks.onBridgeOnline?.();
-			// Let the promise settle
-			await Promise.resolve();
+			await capturedCallbacks.onBridgeOnline?.();
 
 			const devices: Z2mDevice[] = [
 				{
@@ -330,9 +330,7 @@ describe('Zigbee2mqttService', () => {
 				},
 			];
 
-			capturedCallbacks.onDevicesReceived?.(devices);
-			// Let the promise settle
-			await Promise.resolve();
+			await capturedCallbacks.onDevicesReceived?.(devices);
 
 			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(devices[0], true);
 		});
@@ -344,9 +342,7 @@ describe('Zigbee2mqttService', () => {
 			} as unknown as Zigbee2mqttConfigModel);
 
 			// Bridge must be online first
-			capturedCallbacks.onBridgeOnline?.();
-			// Let the promise settle
-			await Promise.resolve();
+			await capturedCallbacks.onBridgeOnline?.();
 
 			const devices: Z2mDevice[] = [
 				{
@@ -365,21 +361,30 @@ describe('Zigbee2mqttService', () => {
 				},
 			];
 
-			capturedCallbacks.onDevicesReceived?.(devices);
-			// Let the promise settle
-			await Promise.resolve();
+			await capturedCallbacks.onDevicesReceived?.(devices);
 
 			expect(deviceMapper.mapDevice).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('callback: onDeviceStateChanged', () => {
-		it('should update device state via mapper', async () => {
+		it('should skip update when transformers not restored', async () => {
 			const state = { state: 'ON', brightness: 200 };
 
-			capturedCallbacks.onDeviceStateChanged?.('living_room_light', state);
-			// Let the promise settle
-			await Promise.resolve();
+			await capturedCallbacks.onDeviceStateChanged?.('living_room_light', state);
+
+			// Should not call updateDeviceState because transformersRestored is false
+			expect(deviceMapper.updateDeviceState).not.toHaveBeenCalled();
+		});
+
+		it('should update device state via mapper when transformers restored', async () => {
+			// First, trigger device reception to set transformersRestored = true
+			await capturedCallbacks.onBridgeOnline?.();
+			await capturedCallbacks.onDevicesReceived?.([]);
+
+			const state = { state: 'ON', brightness: 200 };
+
+			await capturedCallbacks.onDeviceStateChanged?.('living_room_light', state);
 
 			expect(deviceMapper.updateDeviceState).toHaveBeenCalledWith('living_room_light', state);
 		});
@@ -387,17 +392,13 @@ describe('Zigbee2mqttService', () => {
 
 	describe('callback: onDeviceAvailabilityChanged', () => {
 		it('should set device availability when online', async () => {
-			capturedCallbacks.onDeviceAvailabilityChanged?.('living_room_light', true);
-			// Let the promise settle
-			await Promise.resolve();
+			await capturedCallbacks.onDeviceAvailabilityChanged?.('living_room_light', true);
 
 			expect(deviceMapper.setDeviceAvailability).toHaveBeenCalledWith('living_room_light', true);
 		});
 
 		it('should set device availability when offline', async () => {
-			capturedCallbacks.onDeviceAvailabilityChanged?.('living_room_light', false);
-			// Let the promise settle
-			await Promise.resolve();
+			await capturedCallbacks.onDeviceAvailabilityChanged?.('living_room_light', false);
 
 			expect(deviceMapper.setDeviceAvailability).toHaveBeenCalledWith('living_room_light', false);
 		});

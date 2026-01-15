@@ -1,0 +1,188 @@
+# Zigbee2MQTT Fan Mappings
+# Handles fan and air purifier devices
+
+version: "1.0"
+
+transformers:
+  # Fan state ON/OFF to boolean
+  fan_state:
+    type: boolean
+    true_value: "ON"
+    false_value: "OFF"
+
+  # Z2M operational mode to spec mode mapping
+  # Only maps actual operational modes, not speed levels or on/off
+  fan_mode_to_spec:
+    type: map
+    bidirectional:
+      auto: "auto"
+      smart: "auto"       # Smart mode → auto
+      nature: "natural"   # Nature mode → natural
+      natural: "natural"
+      sleep: "sleep"
+      quiet: "sleep"      # Quiet mode → sleep
+      eco: "eco"
+      turbo: "turbo"
+      boost: "turbo"      # Boost mode → turbo
+      manual: "manual"
+
+  # Z2M mode values that represent speed levels → spec speed enum
+  # Z2M: off, low, medium, high, on → spec: off, low, medium, high, turbo
+  fan_speed_levels:
+    type: map
+    bidirectional:
+      "off": "off"
+      low: "low"
+      medium: "medium"
+      high: "high"
+      "on": "high"        # "on" typically means max speed
+      turbo: "turbo"
+      max: "turbo"
+
+  # Numeric speed levels (1-9) to percentage (for pure numeric values)
+  # Common for IKEA air purifiers: 1=11%, 2=22%, ..., 9=100%
+  numeric_speed_to_percentage:
+    type: formula
+    read: "Math.round(value / 9 * 100)"
+    write: "Math.max(1, Math.min(9, Math.round(value / 100 * 9)))"
+
+  # Numeric speed levels (1-10) to percentage
+  numeric_speed_10_to_percentage:
+    type: formula
+    read: "Math.round(value / 10 * 100)"
+    write: "Math.max(1, Math.min(10, Math.round(value / 100 * 10)))"
+
+mappings:
+  # ============================================
+  # AIR PURIFIERS (highest priority - check first)
+  # ============================================
+  # Note: Device-specific air purifiers (like IKEA STARKVIND) are in devices/ folder
+
+  # Generic air purifier with level-based speed
+  - name: air_purifier
+    description: "Air purifier with fan and air quality monitoring"
+    priority: 120
+    match:
+      expose_type: fan
+      any_property: [pm25, voc, aqi, filter_age, filter_state]
+    device_category: AIR_PURIFIER
+    channels:
+      # Switcher channel for on/off (required by spec)
+      - identifier: switcher
+        name: Power
+        category: SWITCHER
+        features:
+          - z2m_feature: state
+            panel:
+              identifier: ON
+              name: Power
+              data_type: BOOL
+            transformer: fan_state
+
+      # Fan channel for speed control (required by spec)
+      - identifier: fan
+        name: Fan
+        category: FAN
+        features:
+          # On/Off (linked to switcher)
+          - z2m_feature: state
+            panel:
+              identifier: ON
+              name: Power
+              data_type: BOOL
+            transformer: fan_state
+
+          # Fan speed as percentage if available
+          - z2m_feature: fan_speed
+            panel:
+              identifier: SPEED
+              name: Speed
+              data_type: UCHAR
+              format: [0, 100]
+              unit: "%"
+
+          # Or mode as speed levels
+          - z2m_feature: mode
+            panel:
+              identifier: SPEED
+              name: Speed
+              data_type: ENUM
+              format: ["off", "low", "medium", "high", "turbo"]
+            transformer: fan_speed_levels
+
+  # ============================================
+  # FANS WITH PERCENTAGE SPEED
+  # ============================================
+
+  # Fan with percentage-based speed control (has fan_speed feature)
+  - name: fan_percentage
+    description: "Fan with percentage speed control"
+    priority: 110
+    match:
+      expose_type: fan
+      has_features: [fan_speed]
+    device_category: FAN
+    channels:
+      - identifier: fan
+        name: Fan
+        category: FAN
+        features:
+          # On/Off state (required)
+          - z2m_feature: state
+            panel:
+              identifier: ON
+              name: Power
+              data_type: BOOL
+            transformer: fan_state
+
+          # Fan speed as percentage
+          - z2m_feature: fan_speed
+            panel:
+              identifier: SPEED
+              name: Speed
+              data_type: UCHAR
+              format: [0, 100]
+              unit: "%"
+
+          # Operational mode (optional - auto, manual, eco, sleep, natural, turbo)
+          - z2m_feature: mode
+            panel:
+              identifier: MODE
+              name: Mode
+              data_type: ENUM
+              format: ["auto", "manual", "eco", "sleep", "natural", "turbo"]
+            transformer: fan_mode_to_spec
+
+  # ============================================
+  # FANS WITH LEVEL-BASED SPEED
+  # ============================================
+
+  # Standard fan with level-based speed (low/medium/high modes)
+  - name: fan_levels
+    description: "Fan with level-based speed control"
+    priority: 100
+    match:
+      expose_type: fan
+    device_category: FAN
+    channels:
+      - identifier: fan
+        name: Fan
+        category: FAN
+        features:
+          # On/Off state (required)
+          - z2m_feature: state
+            panel:
+              identifier: ON
+              name: Power
+              data_type: BOOL
+            transformer: fan_state
+
+          # Z2M mode as speed levels (most fans use mode for speed)
+          # Maps low/medium/high to spec speed enum
+          - z2m_feature: mode
+            panel:
+              identifier: SPEED
+              name: Speed
+              data_type: ENUM
+              format: ["off", "low", "medium", "high", "turbo"]
+            transformer: fan_speed_levels

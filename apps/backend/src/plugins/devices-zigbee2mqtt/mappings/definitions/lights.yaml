@@ -1,0 +1,97 @@
+# Zigbee2MQTT Light Mappings
+# Handles all light device types including dimmable, color temp, and RGB lights
+
+version: "1.0"
+
+transformers:
+  # Brightness: Z2M uses 0-254, Panel uses 0-100%
+  brightness:
+    type: scale
+    input_range: [0, 254]
+    output_range: [0, 100]
+
+  # Color temperature: Z2M uses mired, Panel uses Kelvin
+  color_temp:
+    type: formula
+    read: "Math.round(1000000 / value)"
+    write: "Math.round(1000000 / value)"
+
+  # State ON/OFF to boolean
+  light_state:
+    type: boolean
+    true_value: "ON"
+    false_value: "OFF"
+
+mappings:
+  # Standard Zigbee light (dimmable, color temp, RGB)
+  - name: light
+    description: "Standard Zigbee light with optional dimming, color temperature, and RGB"
+    priority: 100
+    match:
+      expose_type: light
+    device_category: LIGHTING
+    channels:
+      - identifier: light
+        name: Light
+        category: LIGHT
+        features:
+          # On/Off state
+          - z2m_feature: state
+            panel:
+              identifier: ON
+              name: State
+              data_type: BOOL
+            transformer: light_state
+
+          # Brightness (0-100%)
+          - z2m_feature: brightness
+            panel:
+              identifier: BRIGHTNESS
+              name: Brightness
+              data_type: UCHAR
+              format: [0, 100]
+              unit: "%"
+            transformer: brightness
+
+          # Color temperature (Kelvin)
+          - z2m_feature: color_temp
+            panel:
+              identifier: COLOR_TEMPERATURE
+              name: Color Temperature
+              data_type: USHORT
+              unit: "K"
+            transformer: color_temp
+
+          # Color (composite with hue/saturation)
+          # Note: Z2M exposes color_xy (x/y) and color_hs (hue/saturation) separately
+          # We use color_hs since Panel uses hue/saturation
+          - z2m_feature: color_hs
+            type: composite
+            nested_features:
+              - z2m_feature: hue
+                panel:
+                  identifier: HUE
+                  name: Hue
+                  data_type: USHORT
+                  format: [0, 360]
+                  unit: "°"
+
+              - z2m_feature: saturation
+                panel:
+                  identifier: SATURATION
+                  name: Saturation
+                  data_type: UCHAR
+                  format: [0, 100]
+                  unit: "%"
+
+          # Transition time
+          # DISABLED: Smart Panel spec doesn't support TRANSITION property yet
+          # Enable when PropertyCategory.TRANSITION is added to the spec
+          # - z2m_feature: transition
+          #   direction: write_only
+          #   panel:
+          #     identifier: TRANSITION
+          #     name: Transition
+          #     data_type: FLOAT
+          #     unit: "s"
+          #     queryable: false

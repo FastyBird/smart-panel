@@ -38,6 +38,12 @@ export interface MappedProperty {
 	min?: number;
 	max?: number;
 	step?: number;
+	/** Static value for properties that don't come from Z2M (e.g., cover type) */
+	staticValue?: string | number | boolean;
+	/** Transformer name for converting Z2M values to/from panel values */
+	transformerName?: string;
+	/** Value that indicates invalid/unavailable data (e.g., -1 when sensor is off) */
+	invalid?: string | number | boolean;
 }
 
 /**
@@ -49,6 +55,10 @@ export interface ConversionContext {
 	ieeeAddress: string;
 	/** Friendly name of the device */
 	friendlyName: string;
+	/** Device model ID (for device-specific mappings) */
+	model?: string;
+	/** Device manufacturer (for device-specific mappings) */
+	manufacturer?: string;
 	/** All exposes from the device (for context) */
 	allExposes: Z2mExpose[];
 	/** Properties already mapped in sibling channels (to avoid duplicates) */
@@ -83,9 +93,10 @@ export interface IConverter {
 	 * Check if this converter can handle the given expose
 	 *
 	 * @param expose - The Z2M expose to check
+	 * @param context - Optional conversion context with device info (for device-level matching)
 	 * @returns Whether the converter can handle this expose and at what priority
 	 */
-	canHandle(expose: Z2mExpose): CanHandleResult;
+	canHandle(expose: Z2mExpose, context?: ConversionContext): CanHandleResult;
 
 	/**
 	 * Convert the expose to mapped channels

@@ -43,6 +43,9 @@ import {
 	Zigbee2mqttChannelPropertyEntity,
 	Zigbee2mqttDeviceEntity,
 } from './entities/devices-zigbee2mqtt.entity';
+import { ConfigDrivenConverter } from './mappings/config-driven.converter';
+import { MappingLoaderService } from './mappings/mapping-loader.service';
+import { TransformerRegistry } from './mappings/transformers';
 import { Zigbee2mqttConfigModel } from './models/config.model';
 import { Zigbee2mqttDevicePlatform } from './platforms/zigbee2mqtt.device.platform';
 import { Z2mDeviceAdoptionService } from './services/device-adoption.service';
@@ -67,6 +70,11 @@ import { Zigbee2mqttService } from './services/zigbee2mqtt.service';
 		ExtensionsModule,
 	],
 	providers: [
+		// Dynamic mapping configuration services
+		TransformerRegistry,
+		MappingLoaderService,
+		ConfigDrivenConverter,
+		// Core services
 		Z2mMqttClientAdapterService,
 		Z2mExposesMapperService,
 		Z2mDeviceMapperService,
@@ -224,6 +232,7 @@ Integration plugin for Zigbee devices through Zigbee2MQTT bridge.
 - **Dynamic Capability Mapping** - Automatically maps Z2M exposes to Smart Panel properties
 - **Real-time State Updates** - Receives state changes via MQTT subscriptions
 - **Bidirectional Control** - Send commands to devices via MQTT
+- **User-Extensible Mappings** - Define custom device mappings via YAML configuration
 
 ## Supported Devices
 
@@ -234,7 +243,84 @@ Supports all Zigbee devices compatible with Zigbee2MQTT, including:
 - Thermostats and climate controls
 - Covers and blinds
 - Locks
-- Remotes and buttons
+
+## Custom Device Mappings
+
+Place custom YAML files in \`var/data/zigbee/mappings/\` or set \`ZIGBEE_MAPPINGS_PATH\` env variable.
+
+### Example: Custom Sensor Property
+
+\`\`\`yaml
+# var/data/zigbee/mappings/my-sensors.yaml
+version: "1.0"
+
+mappings:
+  - name: cpu_temperature_sensor
+    description: "Device internal temperature"
+    priority: 100
+    match:
+      expose_type: numeric
+      property: cpu_temperature
+    device_category: SENSOR
+    channels:
+      - identifier: device_temperature
+        name: Device Temperature
+        category: TEMPERATURE
+        properties:
+          - z2m_property: cpu_temperature
+            direction: read_only
+            panel:
+              identifier: TEMPERATURE
+              data_type: FLOAT
+              unit: "°C"
+              settable: false
+\`\`\`
+
+### Example: Custom Transformer
+
+\`\`\`yaml
+version: "1.0"
+
+transformers:
+  # Custom brightness scale (0-1000 instead of 0-254)
+  brightness_1000:
+    type: scale
+    input_range: [0, 1000]
+    output_range: [0, 100]
+
+mappings:
+  - name: custom_light
+    priority: 200
+    match:
+      expose_type: light
+      any_property: [custom_feature]  # Match specific device
+    device_category: LIGHTING
+    channels:
+      - identifier: light
+        category: LIGHT
+        features:
+          - z2m_feature: brightness
+            panel:
+              identifier: BRIGHTNESS
+              data_type: UCHAR
+              format: [0, 100]
+            transformer: brightness_1000
+\`\`\`
+
+### Match Conditions
+
+- \`expose_type\` - Z2M type: light, switch, numeric, binary, enum, climate, cover, fan, lock
+- \`property\` - Property name for generic exposes (temperature, humidity, etc.)
+- \`has_features\` - Required features: [state, brightness]
+- \`any_property\` - Match if device has any of these properties
+- \`is_list\` - True for multi-endpoint devices
+
+### Transformer Types
+
+- \`scale\` - Linear scaling: input_range, output_range
+- \`map\` - Value mapping: read, write, or bidirectional
+- \`boolean\` - Boolean conversion: true_value, false_value, invert
+- \`formula\` - Custom JS expression: read, write
 
 ## Requirements
 

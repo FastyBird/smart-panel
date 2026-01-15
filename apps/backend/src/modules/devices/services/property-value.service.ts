@@ -17,7 +17,19 @@ export class PropertyValueService {
 	 * Write property value to storage
 	 * @returns true if value changed, false if value was the same or invalid
 	 */
-	async write(property: ChannelPropertyEntity, value: string | boolean | number): Promise<boolean> {
+	async write(property: ChannelPropertyEntity, value: string | boolean | number | null): Promise<boolean> {
+		// Skip null values - device hasn't reported this property yet
+		if (value === null || value === undefined) {
+			return false;
+		}
+
+		// Skip invalid/sentinel values (e.g., -1 when sensor is off)
+		// These are defined in the property's invalid field
+		if (property.invalid !== null && this.isInvalidValue(property.invalid, value)) {
+			this.logger.debug(`Skipping invalid/sentinel value for property id=${property.id}: value=${value}`);
+			return false;
+		}
+
 		if (this.valuesMap.has(property.id) && this.valuesMap.get(property.id) === value) {
 			// no change → skip Influx write
 			return false;
@@ -255,5 +267,35 @@ export class PropertyValueService {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Check if value matches the property's invalid/sentinel value
+	 * Handles string↔number conversion (e.g., -1 as number vs "-1" as string)
+	 */
+	private isInvalidValue(invalidValue: string | boolean | number, value: string | boolean | number): boolean {
+		// Direct equality check
+		if (invalidValue === value) {
+			return true;
+		}
+
+		// Handle string↔number conversion explicitly
+		// Avoid loose equality (==) which has unintended side effects:
+		// 0 == false, 1 == true, "" == 0, "1" == true all evaluate to true
+		if (typeof invalidValue === 'number' && typeof value === 'string') {
+			const numValue = Number(value);
+			if (!Number.isNaN(numValue) && invalidValue === numValue) {
+				return true;
+			}
+		}
+
+		if (typeof invalidValue === 'string' && typeof value === 'number') {
+			const numInvalid = Number(invalidValue);
+			if (!Number.isNaN(numInvalid) && numInvalid === value) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 }
