@@ -84,8 +84,7 @@ import { SpaceSuggestionService } from '../services/space-suggestion.service';
 import { SpaceUndoHistoryService } from '../services/space-undo-history.service';
 import { SpacesService } from '../services/spaces.service';
 import {
-	INTENT_CATEGORY_CATALOG,
-	LIGHTING_ROLE_META,
+	IntentCategory,
 	LightingRole,
 	QUICK_ACTION_CATALOG,
 	SPACES_MODULE_API_TAG_NAME,
@@ -94,6 +93,7 @@ import {
 	SpaceCategory,
 } from '../spaces.constants';
 import { SpacesNotFoundException } from '../spaces.exceptions';
+import { IntentSpecLoaderService } from '../spec';
 
 @ApiTags(SPACES_MODULE_API_TAG_NAME)
 @ApiExtraModels(
@@ -117,6 +117,7 @@ export class SpacesController {
 		private readonly spaceSuggestionService: SpaceSuggestionService,
 		private readonly spaceContextSnapshotService: SpaceContextSnapshotService,
 		private readonly spaceUndoHistoryService: SpaceUndoHistoryService,
+		private readonly intentSpecLoaderService: IntentSpecLoaderService,
 	) {}
 
 	@Get()
@@ -206,10 +207,13 @@ export class SpacesController {
 	getIntentCatalog(): IntentCatalogResponseModel {
 		this.logger.debug('Fetching intent catalog');
 
+		// Get intent categories from YAML spec loader
+		const intentCatalog = this.intentSpecLoaderService.getIntentCatalog();
+
 		// Transform intent categories
-		const categories = INTENT_CATEGORY_CATALOG.map((cat) => {
+		const categories = intentCatalog.map((cat) => {
 			const categoryData = new IntentCategoryDataModel();
-			categoryData.category = cat.category;
+			categoryData.category = cat.category as IntentCategory;
 			categoryData.label = cat.label;
 			categoryData.description = cat.description;
 			categoryData.icon = cat.icon;
@@ -244,7 +248,7 @@ export class SpacesController {
 			return categoryData;
 		});
 
-		// Transform quick actions
+		// Transform quick actions (still from constants for now)
 		const quickActions = QUICK_ACTION_CATALOG.map((qa) => {
 			const actionData = new QuickActionDataModel();
 			actionData.type = qa.type;
@@ -255,8 +259,13 @@ export class SpacesController {
 			return actionData;
 		});
 
-		// Transform lighting roles
-		const lightingRoles = Object.values(LIGHTING_ROLE_META).map((role) => {
+		// Get lighting roles from YAML spec loader (via enums)
+		const lightingRolesFromSpec = this.intentSpecLoaderService.getIntentCatalog().find((c) => c.category === 'lighting');
+		const roleParam = lightingRolesFromSpec?.intents
+			.find((i) => i.type === 'role_on')
+			?.params.find((p) => p.name === 'role');
+
+		const lightingRoles = (roleParam?.enumValues ?? []).map((role) => {
 			const roleData = new LightingRoleMetaDataModel();
 			roleData.value = role.value as LightingRole;
 			roleData.label = role.label;

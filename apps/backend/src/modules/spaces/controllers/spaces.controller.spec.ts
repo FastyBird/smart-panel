@@ -32,6 +32,7 @@ import {
 	SuggestionType,
 } from '../spaces.constants';
 import { SpacesNotFoundException, SpacesValidationException } from '../spaces.exceptions';
+import { IntentSpecLoaderService } from '../spec';
 
 import { SpacesController } from './spaces.controller';
 
@@ -223,6 +224,156 @@ describe('SpacesController', () => {
 							message: '',
 						}),
 						getEntryTtlMs: jest.fn().mockReturnValue(5 * 60 * 1000),
+					},
+				},
+				{
+					provide: IntentSpecLoaderService,
+					useValue: {
+						getIntentCatalog: jest.fn().mockReturnValue([
+							{
+								category: 'lighting',
+								label: 'Lighting',
+								description: 'Control lights',
+								icon: 'mdi:lightbulb-group',
+								intents: [
+									{
+										type: 'off',
+										label: 'Turn Off',
+										description: 'Turn off all lights',
+										icon: 'mdi:lightbulb-off',
+										params: [],
+									},
+									{
+										type: 'on',
+										label: 'Turn On',
+										description: 'Turn on all lights',
+										icon: 'mdi:lightbulb-on',
+										params: [],
+									},
+									{
+										type: 'set_mode',
+										label: 'Set Mode',
+										description: 'Set lighting mode',
+										icon: 'mdi:lightbulb-group',
+										params: [
+											{
+												name: 'mode',
+												type: 'enum',
+												required: true,
+												description: 'The lighting mode',
+												enumValues: [
+													{ value: 'work', label: 'Work' },
+													{ value: 'relax', label: 'Relax' },
+													{ value: 'night', label: 'Night' },
+												],
+											},
+										],
+									},
+									{
+										type: 'brightness_delta',
+										label: 'Adjust Brightness',
+										description: 'Adjust brightness',
+										icon: 'mdi:brightness-6',
+										params: [
+											{
+												name: 'delta',
+												type: 'enum',
+												required: true,
+												description: 'The step size',
+												enumValues: [
+													{ value: 'small', label: 'Small' },
+													{ value: 'medium', label: 'Medium' },
+													{ value: 'large', label: 'Large' },
+												],
+											},
+											{ name: 'increase', type: 'boolean', required: true, description: 'Increase direction' },
+										],
+									},
+									{
+										type: 'role_on',
+										label: 'Turn Role On',
+										description: 'Turn on lights with role',
+										icon: 'mdi:lightbulb-on',
+										params: [
+											{
+												name: 'role',
+												type: 'enum',
+												required: true,
+												description: 'The lighting role',
+												enumValues: [
+													{ value: 'main', label: 'Main', description: 'Primary lights', icon: 'mdi:ceiling-light' },
+													{ value: 'task', label: 'Task', description: 'Task lights', icon: 'mdi:desk-lamp' },
+													{ value: 'ambient', label: 'Ambient', description: 'Ambient lights', icon: 'mdi:led-strip-variant' },
+													{ value: 'accent', label: 'Accent', description: 'Accent lights', icon: 'mdi:wall-sconce' },
+													{ value: 'night', label: 'Night', description: 'Night lights', icon: 'mdi:lightbulb-night' },
+													{ value: 'other', label: 'Other', description: 'Unclassified lights', icon: 'mdi:lightbulb' },
+												],
+											},
+										],
+									},
+								],
+							},
+							{
+								category: 'climate',
+								label: 'Climate',
+								description: 'Control climate',
+								icon: 'mdi:thermostat',
+								intents: [
+									{
+										type: 'setpoint_delta',
+										label: 'Adjust Temperature',
+										description: 'Adjust temperature',
+										icon: 'mdi:thermometer',
+										params: [
+											{
+												name: 'delta',
+												type: 'enum',
+												required: true,
+												description: 'The step size',
+												enumValues: [
+													{ value: 'small', label: 'Small' },
+													{ value: 'medium', label: 'Medium' },
+													{ value: 'large', label: 'Large' },
+												],
+											},
+											{ name: 'increase', type: 'boolean', required: true, description: 'Increase direction' },
+										],
+									},
+									{
+										type: 'setpoint_set',
+										label: 'Set Temperature',
+										description: 'Set temperature',
+										icon: 'mdi:thermometer-check',
+										params: [
+											{ name: 'value', type: 'number', required: true, description: 'Target temperature', minValue: -10, maxValue: 50 },
+										],
+									},
+									{
+										type: 'set_mode',
+										label: 'Set Climate Mode',
+										description: 'Set climate mode',
+										icon: 'mdi:thermostat',
+										params: [
+											{
+												name: 'mode',
+												type: 'enum',
+												required: true,
+												description: 'The climate mode',
+												enumValues: [
+													{ value: 'heat', label: 'Heat' },
+													{ value: 'cool', label: 'Cool' },
+													{ value: 'auto', label: 'Auto' },
+													{ value: 'off', label: 'Off' },
+												],
+											},
+										],
+									},
+								],
+							},
+						]),
+						getLightingModeOrchestration: jest.fn().mockReturnValue(null),
+						getBrightnessDeltaStep: jest.fn().mockReturnValue(25),
+						getSetpointDeltaStep: jest.fn().mockReturnValue(1.0),
 					},
 				},
 			],

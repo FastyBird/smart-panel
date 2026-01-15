@@ -32,6 +32,7 @@ import { SpaceUndoHistoryService } from './services/space-undo-history.service';
 import { SpacesService } from './services/spaces.service';
 import { SPACES_MODULE_API_TAG_DESCRIPTION, SPACES_MODULE_API_TAG_NAME, SPACES_MODULE_NAME } from './spaces.constants';
 import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
+import { IntentSpecLoaderService } from './spec';
 
 @ApiTag({
 	tagName: SPACES_MODULE_NAME,
@@ -67,6 +68,7 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 		SpaceContextSnapshotService,
 		SpaceUndoHistoryService,
 		SpaceActivityListener,
+		IntentSpecLoaderService,
 	],
 	exports: [
 		SpacesService,
@@ -76,6 +78,7 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 		SpaceSuggestionService,
 		SpaceContextSnapshotService,
 		SpaceUndoHistoryService,
+		IntentSpecLoaderService,
 	],
 })
 export class SpacesModule implements OnModuleInit {

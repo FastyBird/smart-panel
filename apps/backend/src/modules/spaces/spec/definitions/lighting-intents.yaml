@@ -1,0 +1,181 @@
+# Lighting intent definitions for spaces module
+# Defines available lighting control intents and their parameters
+
+category:
+  id: "lighting"
+  label: "Lighting"
+  description: "Control lights in the space with modes and brightness adjustments"
+  icon: "mdi:lightbulb-group"
+
+intents:
+  # Space-level intents
+  - type: "off"
+    label: "Turn Off"
+    description: "Turn off all lights in the space"
+    icon: "mdi:lightbulb-off"
+    params: []
+
+  - type: "on"
+    label: "Turn On"
+    description: "Turn on all lights in the space"
+    icon: "mdi:lightbulb-on"
+    params: []
+
+  - type: "set_mode"
+    label: "Set Mode"
+    description: "Set a lighting mode (work/relax/night) with role-based brightness levels"
+    icon: "mdi:lightbulb-group"
+    params:
+      - name: "mode"
+        type: "enum"
+        required: true
+        description: "The lighting mode to apply"
+        enum_ref: "lighting_modes"
+
+  - type: "brightness_delta"
+    label: "Adjust Brightness"
+    description: "Increase or decrease brightness of currently on lights"
+    icon: "mdi:brightness-6"
+    params:
+      - name: "delta"
+        type: "enum"
+        required: true
+        description: "The step size for brightness adjustment"
+        enum_ref: "brightness_deltas"
+      - name: "increase"
+        type: "boolean"
+        required: true
+        description: "True to increase brightness, false to decrease"
+
+  # Role-specific intents
+  - type: "role_on"
+    label: "Turn Role On"
+    description: "Turn on all lights with a specific role"
+    icon: "mdi:lightbulb-on"
+    params:
+      - name: "role"
+        type: "enum"
+        required: true
+        description: "The lighting role to control"
+        enum_ref: "lighting_roles"
+        exclude_values: ["hidden"]
+
+  - type: "role_off"
+    label: "Turn Role Off"
+    description: "Turn off all lights with a specific role"
+    icon: "mdi:lightbulb-off"
+    params:
+      - name: "role"
+        type: "enum"
+        required: true
+        description: "The lighting role to control"
+        enum_ref: "lighting_roles"
+        exclude_values: ["hidden"]
+
+  - type: "role_brightness"
+    label: "Set Role Brightness"
+    description: "Set brightness for all lights with a specific role"
+    icon: "mdi:brightness-6"
+    params:
+      - name: "role"
+        type: "enum"
+        required: true
+        description: "The lighting role to control"
+        enum_ref: "lighting_roles"
+        exclude_values: ["hidden"]
+      - name: "brightness"
+        type: "number"
+        required: true
+        description: "Brightness level (0-100)"
+        min: 0
+        max: 100
+
+  - type: "role_color"
+    label: "Set Role Color"
+    description: "Set color for all lights with a specific role that support color"
+    icon: "mdi:palette"
+    params:
+      - name: "role"
+        type: "enum"
+        required: true
+        description: "The lighting role to control"
+        enum_ref: "lighting_roles"
+        exclude_values: ["hidden"]
+      - name: "color"
+        type: "string"
+        required: true
+        description: "Color as hex string (e.g., #ff6b35)"
+
+  - type: "role_color_temp"
+    label: "Set Role Color Temperature"
+    description: "Set color temperature for all lights with a specific role that support it"
+    icon: "mdi:thermometer-lines"
+    params:
+      - name: "role"
+        type: "enum"
+        required: true
+        description: "The lighting role to control"
+        enum_ref: "lighting_roles"
+        exclude_values: ["hidden"]
+      - name: "color_temperature"
+        type: "number"
+        required: true
+        description: "Color temperature in Kelvin (e.g., 2700-6500)"
+        min: 1000
+        max: 10000
+
+  - type: "role_white"
+    label: "Set Role White Level"
+    description: "Set white channel level for all lights with a specific role that support RGBW"
+    icon: "mdi:lightbulb"
+    params:
+      - name: "role"
+        type: "enum"
+        required: true
+        description: "The lighting role to control"
+        enum_ref: "lighting_roles"
+        exclude_values: ["hidden"]
+      - name: "white"
+        type: "number"
+        required: true
+        description: "White level (0-100)"
+        min: 0
+        max: 100
+
+  - type: "role_set"
+    label: "Set Role Properties"
+    description: "Set multiple properties at once for all lights with a specific role (on/off, brightness, color, temperature, white)"
+    icon: "mdi:tune-variant"
+    params:
+      - name: "role"
+        type: "enum"
+        required: true
+        description: "The lighting role to control"
+        enum_ref: "lighting_roles"
+        exclude_values: ["hidden"]
+      - name: "on"
+        type: "boolean"
+        required: false
+        description: "Turn lights on (true) or off (false)"
+      - name: "brightness"
+        type: "number"
+        required: false
+        description: "Brightness level (0-100)"
+        min: 0
+        max: 100
+      - name: "color"
+        type: "string"
+        required: false
+        description: "Color as hex string (e.g., #ff6b35)"
+      - name: "color_temperature"
+        type: "number"
+        required: false
+        description: "Color temperature in Kelvin (e.g., 2700-6500)"
+        min: 1000
+        max: 10000
+      - name: "white"
+        type: "number"
+        required: false
+        description: "White level (0-100)"
+        min: 0
+        max: 100

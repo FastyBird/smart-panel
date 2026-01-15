@@ -1,0 +1,94 @@
+# Climate intent definitions for spaces module
+# Defines available climate control intents and their parameters
+
+category:
+  id: "climate"
+  label: "Climate"
+  description: "Control temperature and climate settings in the space"
+  icon: "mdi:thermostat"
+
+# Absolute validation limits for API input (covers all reasonable HVAC systems)
+# Device-specific limits are enforced at the service layer
+limits:
+  absolute_min_setpoint: -10
+  absolute_max_setpoint: 50
+
+intents:
+  - type: "setpoint_delta"
+    label: "Adjust Temperature"
+    description: "Increase or decrease the target temperature based on current mode"
+    icon: "mdi:thermometer"
+    params:
+      - name: "delta"
+        type: "enum"
+        required: true
+        description: "The step size for temperature adjustment"
+        enum_ref: "setpoint_deltas"
+      - name: "increase"
+        type: "boolean"
+        required: true
+        description: "True to increase temperature, false to decrease"
+
+  - type: "setpoint_set"
+    label: "Set Temperature"
+    description: "Set the target temperature. In HEAT/COOL mode sets single setpoint, in AUTO mode sets both heating and cooling setpoints."
+    icon: "mdi:thermometer-check"
+    params:
+      - name: "value"
+        type: "number"
+        required: true
+        description: "The target temperature in degrees Celsius (single setpoint for HEAT/COOL modes)"
+        min_ref: "absolute_min_setpoint"
+        max_ref: "absolute_max_setpoint"
+      - name: "heatingSetpoint"
+        type: "number"
+        required: false
+        description: "The heating setpoint (lower bound) for AUTO mode"
+        min_ref: "absolute_min_setpoint"
+        max_ref: "absolute_max_setpoint"
+      - name: "coolingSetpoint"
+        type: "number"
+        required: false
+        description: "The cooling setpoint (upper bound) for AUTO mode"
+        min_ref: "absolute_min_setpoint"
+        max_ref: "absolute_max_setpoint"
+
+  - type: "set_mode"
+    label: "Set Climate Mode"
+    description: "Change the climate operating mode (heat/cool/auto/off)"
+    icon: "mdi:thermostat"
+    params:
+      - name: "mode"
+        type: "enum"
+        required: true
+        description: "The climate mode to set"
+        enum_ref: "climate_modes"
+
+  - type: "climate_set"
+    label: "Set Climate Properties"
+    description: "Set multiple climate properties at once (mode, setpoints). Allows atomic updates of mode and temperature in a single call."
+    icon: "mdi:tune-variant"
+    params:
+      - name: "mode"
+        type: "enum"
+        required: false
+        description: "The climate mode to set (optional)"
+        enum_ref: "climate_modes"
+      - name: "value"
+        type: "number"
+        required: false
+        description: "The target temperature in degrees Celsius (single setpoint)"
+        min_ref: "absolute_min_setpoint"
+        max_ref: "absolute_max_setpoint"
+      - name: "heatingSetpoint"
+        type: "number"
+        required: false
+        description: "The heating setpoint (lower bound) for AUTO mode"
+        min_ref: "absolute_min_setpoint"
+        max_ref: "absolute_max_setpoint"
+      - name: "coolingSetpoint"
+        type: "number"
+        required: false
+        description: "The cooling setpoint (upper bound) for AUTO mode"
+        min_ref: "absolute_min_setpoint"
+        max_ref: "absolute_max_setpoint"
