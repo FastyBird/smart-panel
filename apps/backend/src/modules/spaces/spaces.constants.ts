@@ -365,10 +365,20 @@ export const SPACE_CATEGORY_TEMPLATES: Record<string, Omit<SpaceCategoryTemplate
 
 // Lighting Intent Types
 export enum LightingIntentType {
+	// Space-level intents
 	OFF = 'off',
 	ON = 'on',
 	SET_MODE = 'set_mode',
 	BRIGHTNESS_DELTA = 'brightness_delta',
+	// Role-specific intents
+	ROLE_ON = 'role_on',
+	ROLE_OFF = 'role_off',
+	ROLE_BRIGHTNESS = 'role_brightness',
+	ROLE_COLOR = 'role_color',
+	ROLE_COLOR_TEMP = 'role_color_temp',
+	ROLE_WHITE = 'role_white',
+	// Combined role intent - set multiple properties at once
+	ROLE_SET = 'role_set',
 }
 
 export enum LightingMode {
@@ -688,7 +698,7 @@ export interface IntentEnumValueMeta {
 /**
  * Parameter type for intent catalog
  */
-export type IntentParamType = 'enum' | 'boolean' | 'number';
+export type IntentParamType = 'enum' | 'boolean' | 'number' | 'string';
 
 /**
  * Metadata for an intent parameter
@@ -977,6 +987,178 @@ export const LIGHTING_INTENT_CATALOG: IntentTypeMeta[] = [
 				type: 'boolean',
 				required: true,
 				description: 'True to increase brightness, false to decrease',
+			},
+		],
+	},
+	// Role-specific intents
+	{
+		type: LightingIntentType.ROLE_ON,
+		label: 'Turn Role On',
+		description: 'Turn on all lights with a specific role',
+		icon: 'mdi:lightbulb-on',
+		params: [
+			{
+				name: 'role',
+				type: 'enum',
+				required: true,
+				description: 'The lighting role to control',
+				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== LightingRole.HIDDEN),
+			},
+		],
+	},
+	{
+		type: LightingIntentType.ROLE_OFF,
+		label: 'Turn Role Off',
+		description: 'Turn off all lights with a specific role',
+		icon: 'mdi:lightbulb-off',
+		params: [
+			{
+				name: 'role',
+				type: 'enum',
+				required: true,
+				description: 'The lighting role to control',
+				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== LightingRole.HIDDEN),
+			},
+		],
+	},
+	{
+		type: LightingIntentType.ROLE_BRIGHTNESS,
+		label: 'Set Role Brightness',
+		description: 'Set brightness for all lights with a specific role',
+		icon: 'mdi:brightness-6',
+		params: [
+			{
+				name: 'role',
+				type: 'enum',
+				required: true,
+				description: 'The lighting role to control',
+				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== LightingRole.HIDDEN),
+			},
+			{
+				name: 'brightness',
+				type: 'number',
+				required: true,
+				description: 'Brightness level (0-100)',
+				minValue: 0,
+				maxValue: 100,
+			},
+		],
+	},
+	{
+		type: LightingIntentType.ROLE_COLOR,
+		label: 'Set Role Color',
+		description: 'Set color for all lights with a specific role that support color',
+		icon: 'mdi:palette',
+		params: [
+			{
+				name: 'role',
+				type: 'enum',
+				required: true,
+				description: 'The lighting role to control',
+				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== LightingRole.HIDDEN),
+			},
+			{
+				name: 'color',
+				type: 'string',
+				required: true,
+				description: 'Color as hex string (e.g., #ff6b35)',
+			},
+		],
+	},
+	{
+		type: LightingIntentType.ROLE_COLOR_TEMP,
+		label: 'Set Role Color Temperature',
+		description: 'Set color temperature for all lights with a specific role that support it',
+		icon: 'mdi:thermometer-lines',
+		params: [
+			{
+				name: 'role',
+				type: 'enum',
+				required: true,
+				description: 'The lighting role to control',
+				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== LightingRole.HIDDEN),
+			},
+			{
+				name: 'color_temperature',
+				type: 'number',
+				required: true,
+				description: 'Color temperature in Kelvin (e.g., 2700-6500)',
+				minValue: 1000,
+				maxValue: 10000,
+			},
+		],
+	},
+	{
+		type: LightingIntentType.ROLE_WHITE,
+		label: 'Set Role White Level',
+		description: 'Set white channel level for all lights with a specific role that support RGBW',
+		icon: 'mdi:lightbulb',
+		params: [
+			{
+				name: 'role',
+				type: 'enum',
+				required: true,
+				description: 'The lighting role to control',
+				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== LightingRole.HIDDEN),
+			},
+			{
+				name: 'white',
+				type: 'number',
+				required: true,
+				description: 'White level (0-100)',
+				minValue: 0,
+				maxValue: 100,
+			},
+		],
+	},
+	{
+		type: LightingIntentType.ROLE_SET,
+		label: 'Set Role Properties',
+		description: 'Set multiple properties at once for all lights with a specific role (on/off, brightness, color, temperature, white)',
+		icon: 'mdi:tune-variant',
+		params: [
+			{
+				name: 'role',
+				type: 'enum',
+				required: true,
+				description: 'The lighting role to control',
+				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== LightingRole.HIDDEN),
+			},
+			{
+				name: 'on',
+				type: 'boolean',
+				required: false,
+				description: 'Turn lights on (true) or off (false)',
+			},
+			{
+				name: 'brightness',
+				type: 'number',
+				required: false,
+				description: 'Brightness level (0-100)',
+				minValue: 0,
+				maxValue: 100,
+			},
+			{
+				name: 'color',
+				type: 'string',
+				required: false,
+				description: 'Color as hex string (e.g., #ff6b35)',
+			},
+			{
+				name: 'color_temperature',
+				type: 'number',
+				required: false,
+				description: 'Color temperature in Kelvin (e.g., 2700-6500)',
+				minValue: 1000,
+				maxValue: 10000,
+			},
+			{
+				name: 'white',
+				type: 'number',
+				required: false,
+				description: 'White level (0-100)',
+				minValue: 0,
+				maxValue: 100,
 			},
 		],
 	},

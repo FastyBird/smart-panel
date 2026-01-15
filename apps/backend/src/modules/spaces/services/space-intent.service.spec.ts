@@ -263,6 +263,13 @@ describe('SpaceIntentService', () => {
 				lightChannel,
 				onProperty,
 				brightnessProperty,
+				colorRedProperty: null,
+				colorGreenProperty: null,
+				colorBlueProperty: null,
+				hueProperty: null,
+				saturationProperty: null,
+				colorTempProperty: null,
+				whiteProperty: null,
 				role: input.role,
 			};
 		};
