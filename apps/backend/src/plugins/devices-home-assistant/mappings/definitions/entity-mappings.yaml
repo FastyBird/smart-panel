@@ -958,8 +958,10 @@ mappings:
     property_bindings:
       - ha_attribute: fb.main_state
         property_category: MODE
-      - ha_attribute: current_temperature
-        property_category: TEMPERATURE
+      # Note: HA's temperature attribute is the target setpoint, which matches
+      # the HEATER channel spec's temperature property (read-write for control).
+      # HA's current_temperature (actual water temp) is not mapped as the spec
+      # doesn't have a separate property for current vs target temperature.
       - ha_attribute: temperature
         property_category: TEMPERATURE
 
