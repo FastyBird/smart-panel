@@ -133,6 +133,7 @@ export class MappingLoaderService implements OnModuleInit {
 		for (const fileInfo of builtinFiles) {
 			if (fileInfo.path.endsWith('virtual-properties.yaml')) {
 				const result = this.loadVirtualPropertiesFile(fileInfo);
+				this.logLoadResult(result, fileInfo.path);
 				if (result.success && result.resolvedProperties) {
 					for (const [category, props] of result.resolvedProperties.entries()) {
 						this.virtualProperties.set(category, props);
@@ -141,6 +142,7 @@ export class MappingLoaderService implements OnModuleInit {
 			} else {
 				const result = this.loadMappingFile(fileInfo);
 				this.loadedSources.push(result);
+				this.logLoadResult(result, fileInfo.path);
 				if (result.success && result.resolvedMappings) {
 					this.resolvedMappings.push(...result.resolvedMappings);
 				}
@@ -153,6 +155,7 @@ export class MappingLoaderService implements OnModuleInit {
 			for (const fileInfo of userFiles) {
 				if (fileInfo.path.endsWith('virtual-properties.yaml')) {
 					const result = this.loadVirtualPropertiesFile(fileInfo);
+					this.logLoadResult(result, fileInfo.path);
 					if (result.success && result.resolvedProperties) {
 						for (const [category, props] of result.resolvedProperties.entries()) {
 							const existing = this.virtualProperties.get(category) ?? [];
@@ -162,6 +165,7 @@ export class MappingLoaderService implements OnModuleInit {
 				} else {
 					const result = this.loadMappingFile(fileInfo);
 					this.loadedSources.push(result);
+					this.logLoadResult(result, fileInfo.path);
 					if (result.success && result.resolvedMappings) {
 						this.resolvedMappings.push(...result.resolvedMappings);
 					}
@@ -175,6 +179,22 @@ export class MappingLoaderService implements OnModuleInit {
 		this.logger.log(
 			`Loaded ${this.resolvedMappings.length} mappings, ${this.virtualProperties.size} virtual property categories`,
 		);
+	}
+
+	/**
+	 * Log load result errors and warnings
+	 */
+	private logLoadResult(result: MappingLoadResult | VirtualPropertiesLoadResult, filePath: string): void {
+		if (!result.success && result.errors) {
+			for (const error of result.errors) {
+				this.logger.error(`Failed to load ${filePath}: ${error}`);
+			}
+		}
+		if (result.warnings) {
+			for (const warning of result.warnings) {
+				this.logger.warn(`${filePath}: ${warning}`);
+			}
+		}
 	}
 
 	/**
