@@ -12,6 +12,14 @@
       {
         "include": "plugins/devices-zigbee2mqtt/mappings/definitions/**/*.yaml",
         "outDir": "dist"
+      },
+      {
+        "include": "plugins/devices-home-assistant/mappings/schema/**/*.json",
+        "outDir": "dist"
+      },
+      {
+        "include": "plugins/devices-home-assistant/mappings/definitions/**/*.yaml",
+        "outDir": "dist"
       }
     ]
   }
