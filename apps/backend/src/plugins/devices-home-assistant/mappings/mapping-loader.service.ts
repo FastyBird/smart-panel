@@ -616,7 +616,8 @@ export class MappingLoaderService implements OnModuleInit {
 		}
 
 		// Return the first mapping with null deviceClass as fallback
-		return this.resolvedMappings.find((m) => m.domain === domain && m.deviceClass === null);
+		// Exclude mappings that require a specific entityIdContains pattern
+		return this.resolvedMappings.find((m) => m.domain === domain && m.deviceClass === null && !m.entityIdContains);
 	}
 
 	/**
