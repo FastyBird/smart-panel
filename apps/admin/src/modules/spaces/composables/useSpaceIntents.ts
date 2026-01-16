@@ -190,10 +190,10 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 				delta: request.delta as SpacesModuleLightingIntentDelta | undefined,
 				increase: request.increase,
 				value: request.value,
-				heatingSetpoint: request.heatingSetpoint,
-				coolingSetpoint: request.coolingSetpoint,
+				heating_setpoint: request.heatingSetpoint,
+				cooling_setpoint: request.coolingSetpoint,
 				mode: request.mode as SpacesModuleClimateIntentMode | undefined,
-			} satisfies ClimateIntentBody;
+			} as ClimateIntentBody;
 
 			const { data, error: apiError } = await backend.client.POST(
 				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/intents/climate`,
