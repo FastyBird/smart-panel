@@ -146,7 +146,8 @@ export const useSpaceUndo = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceU
 	};
 
 	const executeUndo = async (): Promise<IUndoResult | null> => {
-		if (!spaceId.value) return null;
+		const currentSpaceId = spaceId.value;
+		if (!currentSpaceId) return null;
 
 		isExecuting.value = true;
 		error.value = null;
@@ -155,12 +156,17 @@ export const useSpaceUndo = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceU
 			const { data, error: apiError } = await backend.client.POST(
 				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/intents/undo`,
 				{
-					params: { path: { id: spaceId.value } },
+					params: { path: { id: currentSpaceId } },
 				}
 			);
 
 			if (apiError || !data) {
 				throw new Error('Failed to execute undo');
+			}
+
+			// Only update state if spaceId hasn't changed during the request
+			if (spaceId.value !== currentSpaceId) {
+				return null;
 			}
 
 			// Clear undo state after execution
@@ -174,10 +180,16 @@ export const useSpaceUndo = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceU
 				message: data.data.message ?? '',
 			};
 		} catch (e) {
-			error.value = e instanceof Error ? e.message : 'Unknown error';
+			// Only update error if spaceId hasn't changed during the request
+			if (spaceId.value === currentSpaceId) {
+				error.value = e instanceof Error ? e.message : 'Unknown error';
+			}
 			return null;
 		} finally {
-			isExecuting.value = false;
+			// Only update loading if spaceId hasn't changed during the request
+			if (spaceId.value === currentSpaceId) {
+				isExecuting.value = false;
+			}
 		}
 	};
 

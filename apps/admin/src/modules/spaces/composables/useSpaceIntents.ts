@@ -124,7 +124,8 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 	// ============================================
 
 	const executeLightingIntent = async (request: ILightingIntentRequest): Promise<ILightingIntentResult | null> => {
-		if (!spaceId.value) return null;
+		const currentSpaceId = spaceId.value;
+		if (!currentSpaceId) return null;
 
 		isExecuting.value = true;
 		error.value = null;
@@ -146,13 +147,18 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 			const { data, error: apiError } = await backend.client.POST(
 				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/intents/lighting`,
 				{
-					params: { path: { id: spaceId.value } },
+					params: { path: { id: currentSpaceId } },
 					body: { data: body },
 				}
 			);
 
 			if (apiError || !data) {
 				throw new Error('Failed to execute lighting intent');
+			}
+
+			// Only update state if spaceId hasn't changed during the request
+			if (spaceId.value !== currentSpaceId) {
+				return null;
 			}
 
 			const result: ILightingIntentResult = {
@@ -164,10 +170,16 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 			lastResult.value = result;
 			return result;
 		} catch (e) {
-			error.value = e instanceof Error ? e.message : 'Unknown error';
+			// Only update error if spaceId hasn't changed during the request
+			if (spaceId.value === currentSpaceId) {
+				error.value = e instanceof Error ? e.message : 'Unknown error';
+			}
 			return null;
 		} finally {
-			isExecuting.value = false;
+			// Only update loading if spaceId hasn't changed during the request
+			if (spaceId.value === currentSpaceId) {
+				isExecuting.value = false;
+			}
 		}
 	};
 
@@ -190,7 +202,8 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 	// ============================================
 
 	const executeClimateIntent = async (request: IClimateIntentRequest): Promise<IClimateIntentResult | null> => {
-		if (!spaceId.value) return null;
+		const currentSpaceId = spaceId.value;
+		if (!currentSpaceId) return null;
 
 		isExecuting.value = true;
 		error.value = null;
@@ -209,13 +222,18 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 			const { data, error: apiError } = await backend.client.POST(
 				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/intents/climate`,
 				{
-					params: { path: { id: spaceId.value } },
+					params: { path: { id: currentSpaceId } },
 					body: { data: body },
 				}
 			);
 
 			if (apiError || !data) {
 				throw new Error('Failed to execute climate intent');
+			}
+
+			// Only update state if spaceId hasn't changed during the request
+			if (spaceId.value !== currentSpaceId) {
+				return null;
 			}
 
 			const result: IClimateIntentResult = {
@@ -231,10 +249,16 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 			lastResult.value = result;
 			return result;
 		} catch (e) {
-			error.value = e instanceof Error ? e.message : 'Unknown error';
+			// Only update error if spaceId hasn't changed during the request
+			if (spaceId.value === currentSpaceId) {
+				error.value = e instanceof Error ? e.message : 'Unknown error';
+			}
 			return null;
 		} finally {
-			isExecuting.value = false;
+			// Only update loading if spaceId hasn't changed during the request
+			if (spaceId.value === currentSpaceId) {
+				isExecuting.value = false;
+			}
 		}
 	};
 
