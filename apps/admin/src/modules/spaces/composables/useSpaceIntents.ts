@@ -16,7 +16,6 @@ import {
 } from '../../../openapi';
 
 type LightingIntentBody = components['schemas']['SpacesModuleLightingIntent'];
-type ClimateIntentBody = components['schemas']['SpacesModuleClimateIntent'];
 
 // Note: The backend expects snake_case for heating_setpoint/cooling_setpoint in requests,
 // but the OpenAPI spec incorrectly shows camelCase. This type reflects the actual API format.
