@@ -57,14 +57,6 @@ void main() {
     });
 
     group('log methods', () {
-      late List<String> logOutput;
-
-      setUp(() {
-        logOutput = [];
-        // Note: In actual tests, we'd need to capture debugPrint output
-        // For unit testing the logger logic, we rely on the internal implementation
-      });
-
       test('debug method exists and can be called', () {
         final logger = AppLogger.instance;
         // Should not throw
