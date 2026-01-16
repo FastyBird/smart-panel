@@ -53,6 +53,8 @@ export const useSpaceSuggestion = (spaceId: Ref<ISpace['id'] | undefined>): IUse
 	const isLoading = computed(() => loadingCount.value > 0);
 	const isSubmitting = computed(() => submittingCount.value > 0);
 	const error = ref<string | null>(null);
+	// Generation counter to distinguish requests across space navigation cycles
+	let spaceGeneration = 0;
 
 	const suggestion = computed(() => suggestionData.value);
 	const hasSuggestion = computed(() => suggestionData.value !== null);
@@ -61,6 +63,8 @@ export const useSpaceSuggestion = (spaceId: Ref<ISpace['id'] | undefined>): IUse
 		const currentSpaceId = spaceId.value;
 		if (!currentSpaceId) return null;
 
+		// Capture generation to detect stale requests even when returning to same space
+		const requestGeneration = spaceGeneration;
 		loadingCount.value++;
 		error.value = null;
 
@@ -76,8 +80,8 @@ export const useSpaceSuggestion = (spaceId: Ref<ISpace['id'] | undefined>): IUse
 				throw new Error('Failed to fetch suggestion');
 			}
 
-			// Only update state if spaceId hasn't changed during the fetch
-			if (spaceId.value !== currentSpaceId) {
+			// Only update state if this request is still current (same space and generation)
+			if (spaceId.value !== currentSpaceId || spaceGeneration !== requestGeneration) {
 				return null;
 			}
 
@@ -95,15 +99,15 @@ export const useSpaceSuggestion = (spaceId: Ref<ISpace['id'] | undefined>): IUse
 
 			return suggestionData.value;
 		} catch (e) {
-			// Only update error if spaceId hasn't changed during the fetch
-			if (spaceId.value === currentSpaceId) {
+			// Only update error if this request is still current
+			if (spaceId.value === currentSpaceId && spaceGeneration === requestGeneration) {
 				error.value = e instanceof Error ? e.message : 'Unknown error';
 			}
 			return null;
 		} finally {
-			// Only update loading if spaceId hasn't changed during the fetch
+			// Only update loading if this request is still current
 			// Guard against going negative if watch handler reset the counter while request was in flight
-			if (spaceId.value === currentSpaceId && loadingCount.value > 0) {
+			if (spaceId.value === currentSpaceId && spaceGeneration === requestGeneration && loadingCount.value > 0) {
 				loadingCount.value--;
 			}
 		}
@@ -113,6 +117,8 @@ export const useSpaceSuggestion = (spaceId: Ref<ISpace['id'] | undefined>): IUse
 		const currentSpaceId = spaceId.value;
 		if (!currentSpaceId || !suggestionData.value) return null;
 
+		// Capture generation to detect stale requests even when returning to same space
+		const requestGeneration = spaceGeneration;
 		submittingCount.value++;
 		error.value = null;
 
@@ -135,8 +141,8 @@ export const useSpaceSuggestion = (spaceId: Ref<ISpace['id'] | undefined>): IUse
 				throw new Error('Failed to submit suggestion feedback');
 			}
 
-			// Only update state if spaceId hasn't changed during the request
-			if (spaceId.value !== currentSpaceId) {
+			// Only update state if this request is still current (same space and generation)
+			if (spaceId.value !== currentSpaceId || spaceGeneration !== requestGeneration) {
 				return null;
 			}
 
@@ -148,15 +154,15 @@ export const useSpaceSuggestion = (spaceId: Ref<ISpace['id'] | undefined>): IUse
 				intentExecuted: data.data.intent_executed ?? false,
 			};
 		} catch (e) {
-			// Only update error if spaceId hasn't changed during the request
-			if (spaceId.value === currentSpaceId) {
+			// Only update error if this request is still current
+			if (spaceId.value === currentSpaceId && spaceGeneration === requestGeneration) {
 				error.value = e instanceof Error ? e.message : 'Unknown error';
 			}
 			return null;
 		} finally {
-			// Only update loading if spaceId hasn't changed during the request
+			// Only update loading if this request is still current
 			// Guard against going negative if watch handler reset the counter while request was in flight
-			if (spaceId.value === currentSpaceId && submittingCount.value > 0) {
+			if (spaceId.value === currentSpaceId && spaceGeneration === requestGeneration && submittingCount.value > 0) {
 				submittingCount.value--;
 			}
 		}
@@ -171,6 +177,8 @@ export const useSpaceSuggestion = (spaceId: Ref<ISpace['id'] | undefined>): IUse
 
 	// Clear suggestion when space ID changes
 	watch(spaceId, () => {
+		// Increment generation to invalidate any in-flight requests
+		spaceGeneration++;
 		suggestionData.value = null;
 		error.value = null;
 		loadingCount.value = 0;

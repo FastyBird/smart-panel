@@ -120,6 +120,8 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 	const isExecuting = computed(() => executingCount.value > 0);
 	const error = ref<string | null>(null);
 	const lastResult = ref<ILightingIntentResult | IClimateIntentResult | null>(null);
+	// Generation counter to distinguish requests across space navigation cycles
+	let spaceGeneration = 0;
 
 	// ============================================
 	// LIGHTING INTENTS
@@ -129,6 +131,8 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 		const currentSpaceId = spaceId.value;
 		if (!currentSpaceId) return null;
 
+		// Capture generation to detect stale requests even when returning to same space
+		const requestGeneration = spaceGeneration;
 		executingCount.value++;
 		error.value = null;
 
@@ -158,8 +162,8 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 				throw new Error('Failed to execute lighting intent');
 			}
 
-			// Only update state if spaceId hasn't changed during the request
-			if (spaceId.value !== currentSpaceId) {
+			// Only update state if this request is still current (same space and generation)
+			if (spaceId.value !== currentSpaceId || spaceGeneration !== requestGeneration) {
 				return null;
 			}
 
@@ -172,15 +176,15 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 			lastResult.value = result;
 			return result;
 		} catch (e) {
-			// Only update error if spaceId hasn't changed during the request
-			if (spaceId.value === currentSpaceId) {
+			// Only update error if this request is still current
+			if (spaceId.value === currentSpaceId && spaceGeneration === requestGeneration) {
 				error.value = e instanceof Error ? e.message : 'Unknown error';
 			}
 			return null;
 		} finally {
-			// Only update loading if spaceId hasn't changed during the request
+			// Only update loading if this request is still current
 			// Guard against going negative if watch handler reset the counter while request was in flight
-			if (spaceId.value === currentSpaceId && executingCount.value > 0) {
+			if (spaceId.value === currentSpaceId && spaceGeneration === requestGeneration && executingCount.value > 0) {
 				executingCount.value--;
 			}
 		}
@@ -208,6 +212,8 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 		const currentSpaceId = spaceId.value;
 		if (!currentSpaceId) return null;
 
+		// Capture generation to detect stale requests even when returning to same space
+		const requestGeneration = spaceGeneration;
 		executingCount.value++;
 		error.value = null;
 
@@ -234,8 +240,8 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 				throw new Error('Failed to execute climate intent');
 			}
 
-			// Only update state if spaceId hasn't changed during the request
-			if (spaceId.value !== currentSpaceId) {
+			// Only update state if this request is still current (same space and generation)
+			if (spaceId.value !== currentSpaceId || spaceGeneration !== requestGeneration) {
 				return null;
 			}
 
@@ -252,15 +258,15 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 			lastResult.value = result;
 			return result;
 		} catch (e) {
-			// Only update error if spaceId hasn't changed during the request
-			if (spaceId.value === currentSpaceId) {
+			// Only update error if this request is still current
+			if (spaceId.value === currentSpaceId && spaceGeneration === requestGeneration) {
 				error.value = e instanceof Error ? e.message : 'Unknown error';
 			}
 			return null;
 		} finally {
-			// Only update loading if spaceId hasn't changed during the request
+			// Only update loading if this request is still current
 			// Guard against going negative if watch handler reset the counter while request was in flight
-			if (spaceId.value === currentSpaceId && executingCount.value > 0) {
+			if (spaceId.value === currentSpaceId && spaceGeneration === requestGeneration && executingCount.value > 0) {
 				executingCount.value--;
 			}
 		}
@@ -273,6 +279,8 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 
 	// Clear state when space changes to prevent stale data from appearing in new space
 	watch(spaceId, () => {
+		// Increment generation to invalidate any in-flight requests
+		spaceGeneration++;
 		error.value = null;
 		lastResult.value = null;
 		executingCount.value = 0;

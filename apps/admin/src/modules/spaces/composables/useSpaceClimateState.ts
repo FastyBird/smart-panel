@@ -70,6 +70,8 @@ export const useSpaceClimateState = (spaceId: Ref<ISpace['id'] | undefined>): IU
 	const loadingCount = ref(0);
 	const isLoading = computed(() => loadingCount.value > 0);
 	const error = ref<string | null>(null);
+	// Generation counter to distinguish requests across space navigation cycles
+	let spaceGeneration = 0;
 
 	const climateState = computed(() => climateStateData.value);
 
@@ -87,6 +89,8 @@ export const useSpaceClimateState = (spaceId: Ref<ISpace['id'] | undefined>): IU
 		const currentSpaceId = spaceId.value;
 		if (!currentSpaceId) return null;
 
+		// Capture generation to detect stale requests even when returning to same space
+		const requestGeneration = spaceGeneration;
 		loadingCount.value++;
 		error.value = null;
 
@@ -102,23 +106,23 @@ export const useSpaceClimateState = (spaceId: Ref<ISpace['id'] | undefined>): IU
 				throw new Error('Failed to fetch climate state');
 			}
 
-			// Only update state if spaceId hasn't changed during the fetch
-			if (spaceId.value !== currentSpaceId) {
+			// Only update state if this request is still current (same space and generation)
+			if (spaceId.value !== currentSpaceId || spaceGeneration !== requestGeneration) {
 				return null;
 			}
 
 			climateStateData.value = transformClimateState(data.data);
 			return climateStateData.value;
 		} catch (e) {
-			// Only update error if spaceId hasn't changed during the fetch
-			if (spaceId.value === currentSpaceId) {
+			// Only update error if this request is still current
+			if (spaceId.value === currentSpaceId && spaceGeneration === requestGeneration) {
 				error.value = e instanceof Error ? e.message : 'Unknown error';
 			}
 			return null;
 		} finally {
-			// Only update loading if spaceId hasn't changed during the fetch
+			// Only update loading if this request is still current
 			// Guard against going negative if watch handler reset the counter while request was in flight
-			if (spaceId.value === currentSpaceId && loadingCount.value > 0) {
+			if (spaceId.value === currentSpaceId && spaceGeneration === requestGeneration && loadingCount.value > 0) {
 				loadingCount.value--;
 			}
 		}
@@ -126,6 +130,8 @@ export const useSpaceClimateState = (spaceId: Ref<ISpace['id'] | undefined>): IU
 
 	// Clear state when space ID changes
 	watch(spaceId, () => {
+		// Increment generation to invalidate any in-flight requests
+		spaceGeneration++;
 		climateStateData.value = null;
 		error.value = null;
 		loadingCount.value = 0;
