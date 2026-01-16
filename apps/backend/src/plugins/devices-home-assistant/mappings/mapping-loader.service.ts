@@ -464,8 +464,11 @@ export class MappingLoaderService implements OnModuleInit {
 		service_data?: Record<string, unknown>;
 	}): ResolvedCommandMapping {
 		const domain = this.resolveDomain(mapping.domain);
+		if (!domain) {
+			throw new Error(`Unknown domain in command mapping: ${mapping.domain}`);
+		}
 		return {
-			domain: domain ?? HomeAssistantDomain.COVER,
+			domain,
 			services: mapping.services,
 			serviceData: mapping.service_data,
 		};
