@@ -16,7 +16,6 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dar
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/intents/service.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
-import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -1361,7 +1360,10 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     try {
       // Convert hue to hex color for backend intent
       final color = HSVColor.fromAHSV(1.0, hue, 1.0, 1.0).toColor();
-      final hexColor = '#${color.value.toRadixString(16).substring(2).toUpperCase()}';
+      final r = color.red.toRadixString(16).padLeft(2, '0');
+      final g = color.green.toRadixString(16).padLeft(2, '0');
+      final b = color.blue.toRadixString(16).padLeft(2, '0');
+      final hexColor = '#$r$g$b'.toUpperCase();
 
       // Use backend intent if available
       bool success = false;

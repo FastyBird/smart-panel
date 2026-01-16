@@ -665,7 +665,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final mode = _currentMode;
     final modeColor = _getModeColor(context, mode);
-    final modeBgColor = _getModeBgColor(context, mode);
 
     // Build mode info subtitle
     String? modeInfo;
@@ -680,7 +679,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
         color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-        borderRadius: BorderRadius.circular(AppBorderRadius.large),
+        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
         border: Border.all(
           color: mode != LightingModeUI.off
               ? modeColor.withValues(alpha: 0.3)
@@ -690,13 +689,18 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       ),
       child: Column(
         children: [
-          ModeSelector<LightingModeUI>(
-            modes: _getLightingModeOptions(),
-            selectedValue: mode,
-            onChanged: _setLightingMode,
-            orientation: ModeSelectorOrientation.horizontal,
-            iconPlacement: ModeSelectorIconPlacement.top,
-            enabled: !_isExecutingIntent,
+          IgnorePointer(
+            ignoring: _isExecutingIntent,
+            child: Opacity(
+              opacity: _isExecutingIntent ? 0.6 : 1.0,
+              child: ModeSelector<LightingModeUI>(
+                modes: _getLightingModeOptions(),
+                selectedValue: mode,
+                onChanged: _setLightingMode,
+                orientation: ModeSelectorOrientation.horizontal,
+                iconPlacement: ModeSelectorIconPlacement.top,
+              ),
+            ),
           ),
           if (modeInfo != null) ...[
             AppSpacings.spacingSmVertical,
@@ -858,13 +862,18 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   Widget _buildLandscapeModeSelector(BuildContext context, AppLocalizations localizations) {
     final mode = _currentMode;
 
-    return ModeSelector<LightingModeUI>(
-      modes: _getLightingModeOptions(),
-      selectedValue: mode,
-      onChanged: _setLightingMode,
-      orientation: ModeSelectorOrientation.horizontal,
-      iconPlacement: ModeSelectorIconPlacement.left,
-      enabled: !_isExecutingIntent,
+    return IgnorePointer(
+      ignoring: _isExecutingIntent,
+      child: Opacity(
+        opacity: _isExecutingIntent ? 0.6 : 1.0,
+        child: ModeSelector<LightingModeUI>(
+          modes: _getLightingModeOptions(),
+          selectedValue: mode,
+          onChanged: _setLightingMode,
+          orientation: ModeSelectorOrientation.horizontal,
+          iconPlacement: ModeSelectorIconPlacement.left,
+        ),
+      ),
     );
   }
 
