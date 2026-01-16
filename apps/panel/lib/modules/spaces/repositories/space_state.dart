@@ -13,7 +13,15 @@ import 'package:fastybird_smart_panel/modules/spaces/models/suggestion/suggestio
 import 'package:fastybird_smart_panel/modules/spaces/models/undo/undo_state.dart';
 import 'package:flutter/foundation.dart';
 
-/// Lighting intent type enum
+/// Types of lighting intents that can be executed on a space.
+///
+/// Each type corresponds to a specific lighting action:
+/// - [off]/[on]: Turn all lights off/on
+/// - [setMode]: Apply a predefined lighting mode (work, relax, night)
+/// - [brightnessDelta]: Adjust brightness by a relative amount
+/// - [roleOn]/[roleOff]: Control lights by their role (main, task, ambient, etc.)
+/// - [roleBrightness]/[roleColor]/[roleColorTemp]/[roleWhite]: Set specific values for a role
+/// - [roleSet]: Set multiple properties for a role at once
 enum LightingIntentType {
   off,
   on,
@@ -28,14 +36,24 @@ enum LightingIntentType {
   roleSet,
 }
 
-/// Brightness delta size
+/// Size of brightness adjustment for delta-based changes.
+///
+/// - [small]: Minor adjustment (e.g., 10%)
+/// - [medium]: Moderate adjustment (e.g., 25%)
+/// - [large]: Significant adjustment (e.g., 50%)
 enum BrightnessDelta {
   small,
   medium,
   large,
 }
 
-/// Climate intent type enum
+/// Types of climate intents that can be executed on a space.
+///
+/// Each type corresponds to a specific climate action:
+/// - [setpointDelta]: Adjust temperature setpoint by a relative amount
+/// - [setpointSet]: Set temperature setpoint to an absolute value
+/// - [setMode]: Change HVAC mode (heat, cool, auto, off)
+/// - [climateSet]: Set multiple climate properties at once
 enum ClimateIntentType {
   setpointDelta,
   setpointSet,
@@ -43,7 +61,11 @@ enum ClimateIntentType {
   climateSet,
 }
 
-/// Setpoint delta size
+/// Size of setpoint adjustment for delta-based temperature changes.
+///
+/// - [small]: Minor adjustment (e.g., 0.5°C)
+/// - [medium]: Moderate adjustment (e.g., 1°C)
+/// - [large]: Significant adjustment (e.g., 2°C)
 enum SetpointDelta {
   small,
   medium,
@@ -146,7 +168,36 @@ String _lightingRoleToString(LightingStateRole role) {
   }
 }
 
-/// Repository for space state (lighting, climate, suggestions, undo)
+/// Repository for managing space state including lighting, climate, suggestions, and undo.
+///
+/// This repository provides:
+/// - **Lighting state**: Current state of lights in a space (on/off, brightness, color, etc.)
+/// - **Climate state**: Current HVAC state (temperature, humidity, mode)
+/// - **Suggestions**: Smart suggestions based on context (time of day, occupancy)
+/// - **Undo**: Ability to revert recent lighting/climate changes within a time window
+///
+/// State can be updated via:
+/// - API fetches (for initial load or refresh)
+/// - WebSocket events (for real-time updates)
+///
+/// The repository uses [ChangeNotifier] to notify listeners when state changes.
+///
+/// Example usage:
+/// ```dart
+/// final repo = SpaceStateRepository(apiClient: client);
+///
+/// // Fetch all state for a space
+/// await repo.fetchAllState('space-123');
+///
+/// // Get cached lighting state
+/// final lighting = repo.getLightingState('space-123');
+///
+/// // Execute a lighting intent
+/// final result = await repo.executeLightingIntent(
+///   'space-123',
+///   LightingIntentType.off,
+/// );
+/// ```
 class SpaceStateRepository extends ChangeNotifier {
   final SpacesModuleClient _apiClient;
 

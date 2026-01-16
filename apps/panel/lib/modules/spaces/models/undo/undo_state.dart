@@ -1,4 +1,8 @@
-/// Intent category for undo
+/// Category of intent that can be undone.
+///
+/// Used to distinguish between different types of undoable actions:
+/// - [lighting]: Lighting-related changes (on/off, brightness, mode)
+/// - [climate]: Climate-related changes (temperature, HVAC mode)
 enum IntentCategory {
   lighting,
   climate,
@@ -17,7 +21,13 @@ IntentCategory? parseIntentCategory(String? category) {
   }
 }
 
-/// Represents the current undo state for a space
+/// Current undo state for a space.
+///
+/// After executing an intent, the backend captures the previous device states
+/// and makes them available for undo within a time window. This model tracks:
+/// - Whether undo is available ([canUndo])
+/// - What action can be undone ([actionDescription])
+/// - How much time remains to perform the undo ([expiresInSeconds])
 class UndoStateModel {
   final bool canUndo;
   final String? actionDescription;
@@ -71,7 +81,9 @@ class UndoStateModel {
   }
 }
 
-/// Result of an undo operation
+/// Result of executing an undo operation.
+///
+/// Reports success/failure and how many devices were affected.
 class UndoResultModel {
   final bool success;
   final int restoredDevices;

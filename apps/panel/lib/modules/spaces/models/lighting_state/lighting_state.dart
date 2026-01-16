@@ -1,18 +1,36 @@
-/// Lighting mode enum
+/// Predefined lighting modes that can be applied to a space.
+///
+/// Each mode represents a different lighting ambiance:
+/// - [work]: Bright, focused lighting for productivity
+/// - [relax]: Warm, dimmed lighting for relaxation
+/// - [night]: Minimal lighting for nighttime
 enum LightingMode {
   work,
   relax,
   night,
 }
 
-/// Confidence level for detected lighting mode
+/// Confidence level for detected lighting mode.
+///
+/// Indicates how closely the current lighting state matches a known mode:
+/// - [exact]: All lights match the mode configuration
+/// - [approximate]: Most lights match but some differ
+/// - [none]: No clear mode detected
 enum ModeConfidence {
   exact,
   approximate,
   none,
 }
 
-/// Lighting role enum for aggregated state
+/// Role assigned to lights for grouped control.
+///
+/// Roles allow controlling specific categories of lights:
+/// - [main]: Primary/general lighting
+/// - [task]: Focused lighting for specific tasks
+/// - [ambient]: Background/mood lighting
+/// - [accent]: Decorative/highlight lighting
+/// - [night]: Low-level nighttime lighting
+/// - [other]: Lights without a specific role
 enum LightingStateRole {
   main,
   task,
@@ -71,7 +89,9 @@ LightingStateRole? parseLightingStateRole(String? role) {
   }
 }
 
-/// Represents the last intent applied to a role
+/// Information about the last lighting intent applied to a role.
+///
+/// Used to track what mode/brightness was last set and when.
 class RoleLastIntent {
   final LightingMode? mode;
   final int? brightness;
@@ -94,7 +114,10 @@ class RoleLastIntent {
   }
 }
 
-/// Aggregated state for a single lighting role
+/// Aggregated state for lights with a specific role.
+///
+/// Provides computed values across all lights assigned to this role,
+/// including average brightness, mixed state indicators, and device counts.
 class RoleAggregatedState {
   final LightingStateRole role;
   final bool isOn;
@@ -209,7 +232,13 @@ class OtherLightsState {
   }
 }
 
-/// Aggregated lighting state for a space
+/// Complete lighting state for a space.
+///
+/// Contains all aggregated information about lights in the space including:
+/// - Detected lighting mode with confidence level
+/// - Total light counts and on/off status
+/// - Per-role breakdowns for granular control
+/// - State of uncategorized lights
 class LightingStateModel {
   final String spaceId;
   final LightingMode? detectedMode;

@@ -17,6 +17,38 @@ import 'package:fastybird_smart_panel/modules/spaces/views/light_targets/view.da
 import 'package:fastybird_smart_panel/modules/spaces/views/spaces/view.dart';
 import 'package:flutter/foundation.dart';
 
+/// Service for managing spaces and their associated state.
+///
+/// This service aggregates data from multiple repositories and provides
+/// a unified view of spaces with their lighting and climate targets.
+/// It also handles real-time state updates and intent execution.
+///
+/// The service provides:
+/// - **Space views**: Aggregated space data with light/climate targets
+/// - **State access**: Lighting state, climate state, suggestions, undo
+/// - **Intent execution**: Execute lighting and climate intents
+/// - **Undo functionality**: Revert recent changes within a time window
+///
+/// Example usage:
+/// ```dart
+/// final service = SpacesService(
+///   spacesRepository: spacesRepo,
+///   lightTargetsRepository: lightTargetsRepo,
+///   climateTargetsRepository: climateTargetsRepo,
+///   spaceStateRepository: stateRepo,
+/// );
+///
+/// await service.initialize();
+///
+/// // Get all rooms
+/// final rooms = service.rooms;
+///
+/// // Execute a lighting intent
+/// final result = await service.executeLightingIntent(
+///   spaceId: 'space-123',
+///   type: LightingIntentType.off,
+/// );
+/// ```
 class SpacesService extends ChangeNotifier {
   final SpacesRepository _spacesRepository;
   final LightTargetsRepository _lightTargetsRepository;
@@ -27,6 +59,7 @@ class SpacesService extends ChangeNotifier {
   Map<String, LightTargetView> _lightTargets = {};
   Map<String, ClimateTargetView> _climateTargets = {};
 
+  /// Creates a new [SpacesService] with the required repositories.
   SpacesService({
     required SpacesRepository spacesRepository,
     required LightTargetsRepository lightTargetsRepository,
@@ -37,6 +70,9 @@ class SpacesService extends ChangeNotifier {
         _climateTargetsRepository = climateTargetsRepository,
         _spaceStateRepository = spaceStateRepository;
 
+  /// Initializes the service by fetching space data and setting up listeners.
+  ///
+  /// This must be called before using the service.
   Future<void> initialize() async {
     await _spacesRepository.fetchAll();
 
