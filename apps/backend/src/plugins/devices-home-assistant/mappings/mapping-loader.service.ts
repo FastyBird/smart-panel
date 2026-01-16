@@ -578,6 +578,7 @@ export class MappingLoaderService implements OnModuleInit {
 			if (mapping.deviceClass === null) {
 				// null means "any device class" - this is a fallback mapping
 				// Continue searching for a more specific match
+				continue;
 			} else if (Array.isArray(mapping.deviceClass)) {
 				if (deviceClass && mapping.deviceClass.includes(deviceClass)) {
 					return mapping;
