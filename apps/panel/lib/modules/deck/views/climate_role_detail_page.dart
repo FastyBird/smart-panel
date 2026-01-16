@@ -182,13 +182,15 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
     }
 
     // Determine capability from climate state
-    RoomCapability capability = _state.capability;
+    RoomCapability capability;
     if (climateState.supportsHeating && climateState.supportsCooling) {
       capability = RoomCapability.heaterAndCooler;
     } else if (climateState.supportsHeating) {
       capability = RoomCapability.heaterOnly;
     } else if (climateState.supportsCooling) {
       capability = RoomCapability.coolerOnly;
+    } else {
+      capability = RoomCapability.none;
     }
 
     setState(() {
