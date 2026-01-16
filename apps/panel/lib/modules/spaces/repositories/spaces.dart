@@ -134,4 +134,12 @@ class SpacesRepository extends ChangeNotifier {
       }
     }
   }
+
+  /// Clear all cached spaces
+  void clearAll() {
+    if (_spaces.isNotEmpty) {
+      _spaces.clear();
+      notifyListeners();
+    }
+  }
 }

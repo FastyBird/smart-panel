@@ -99,6 +99,12 @@ class SpacesModuleService {
       DevicesModuleConstants.deviceUpdatedEvent,
       _deviceSocketEventHandler,
     );
+
+    // Clear all repository data to prevent memory leaks
+    _spacesRepository.clearAll();
+    _lightTargetsRepository.clearAll();
+    _climateTargetsRepository.clearAll();
+    _spaceStateRepository.clearAll();
   }
 
   /// ////////////////
