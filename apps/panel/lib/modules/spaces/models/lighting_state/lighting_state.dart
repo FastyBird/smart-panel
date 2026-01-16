@@ -75,19 +75,21 @@ LightingStateRole? parseLightingStateRole(String? role) {
 class RoleLastIntent {
   final LightingMode? mode;
   final int? brightness;
-  final DateTime appliedAt;
+  final DateTime? appliedAt;
 
   RoleLastIntent({
     this.mode,
     this.brightness,
-    required this.appliedAt,
+    this.appliedAt,
   });
 
   factory RoleLastIntent.fromJson(Map<String, dynamic> json) {
     return RoleLastIntent(
       mode: parseLightingMode(json['mode'] as String?),
       brightness: json['brightness'] as int?,
-      appliedAt: DateTime.parse(json['applied_at'] as String),
+      appliedAt: json['applied_at'] != null
+          ? DateTime.parse(json['applied_at'] as String)
+          : null,
     );
   }
 }
