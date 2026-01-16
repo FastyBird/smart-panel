@@ -179,7 +179,8 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 			return null;
 		} finally {
 			// Only update loading if spaceId hasn't changed during the request
-			if (spaceId.value === currentSpaceId) {
+			// Guard against going negative if watch handler reset the counter while request was in flight
+			if (spaceId.value === currentSpaceId && executingCount.value > 0) {
 				executingCount.value--;
 			}
 		}
@@ -258,7 +259,8 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 			return null;
 		} finally {
 			// Only update loading if spaceId hasn't changed during the request
-			if (spaceId.value === currentSpaceId) {
+			// Guard against going negative if watch handler reset the counter while request was in flight
+			if (spaceId.value === currentSpaceId && executingCount.value > 0) {
 				executingCount.value--;
 			}
 		}
