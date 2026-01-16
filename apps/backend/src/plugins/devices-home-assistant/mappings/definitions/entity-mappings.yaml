@@ -1,0 +1,1144 @@
+# Home Assistant Entity to Smart Panel Mapping Configuration
+# This file defines how HA entities are mapped to Smart Panel channels and properties
+
+version: "1.0"
+
+# Transformers for value conversion between HA and Smart Panel formats
+transformers:
+  # Brightness: HA uses 0-255, Panel uses 0-100%
+  brightness_to_percent:
+    type: scale
+    input_range: [0, 255]
+    output_range: [0, 100]
+
+  # Inverse brightness transform
+  percent_to_brightness:
+    type: scale
+    input_range: [0, 100]
+    output_range: [0, 255]
+
+  # Color temperature: HA mireds to Kelvin
+  mireds_to_kelvin:
+    type: formula
+    read: "Math.round(1000000 / value)"
+    write: "Math.round(1000000 / value)"
+
+  # Invert boolean (for some sensors)
+  invert_boolean:
+    type: boolean
+    true_value: false
+    false_value: true
+
+  # State ON/OFF to boolean
+  state_on_off:
+    type: boolean
+    true_value: "on"
+    false_value: "off"
+
+# Domain role definitions - classify HA domains by their role
+domain_roles:
+  primary:
+    - light
+    - switch
+    - climate
+    - cover
+    - fan
+    - lock
+    - valve
+    - vacuum
+    - media_player
+    - humidifier
+    - alarm_control_panel
+    - water_heater
+    - camera
+    - siren
+    - lawn_mower
+  standalone:
+    - sensor
+    - binary_sensor
+  secondary:
+    - button
+    - input_boolean
+    - input_number
+    - input_select
+    - input_text
+    - remote
+    - scene
+    - script
+    - automation
+    - number
+    - select
+    - text
+    - update
+    - device_tracker
+    - person
+    - zone
+    - weather
+    - calendar
+    - event
+    - image
+    - image_processing
+    - input_button
+    - input_datetime
+    - timer
+
+# Entity mapping rules - how HA entities map to Smart Panel channels
+mappings:
+  # ============================================================================
+  # LIGHT ENTITIES
+  # ============================================================================
+  - name: light_default
+    description: "Standard light entity with optional dimming, color temp, and RGB"
+    domain: light
+    device_class: null
+    priority: 50
+    channel:
+      category: LIGHT
+    device_category: LIGHTING
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: ON
+      - ha_attribute: brightness
+        property_category: BRIGHTNESS
+        transformer: brightness_to_percent
+      - ha_attribute: brightness_pct
+        property_category: BRIGHTNESS
+      - ha_attribute: color_temp_kelvin
+        property_category: COLOR_TEMPERATURE
+      - ha_attribute: hs_color
+        property_category: HUE
+        array_index: 0
+      - ha_attribute: hs_color
+        property_category: SATURATION
+        array_index: 1
+      - ha_attribute: rgb_color
+        property_category: COLOR_RED
+        array_index: 0
+      - ha_attribute: rgb_color
+        property_category: COLOR_GREEN
+        array_index: 1
+      - ha_attribute: rgb_color
+        property_category: COLOR_BLUE
+        array_index: 2
+      - ha_attribute: rgbw_color
+        property_category: COLOR_RED
+        array_index: 0
+      - ha_attribute: rgbw_color
+        property_category: COLOR_GREEN
+        array_index: 1
+      - ha_attribute: rgbw_color
+        property_category: COLOR_BLUE
+        array_index: 2
+      - ha_attribute: rgbw_color
+        property_category: COLOR_WHITE
+        array_index: 3
+      - ha_attribute: white
+        property_category: COLOR_WHITE
+
+  # ============================================================================
+  # SWITCH ENTITIES
+  # ============================================================================
+  - name: switch_outlet
+    description: "Outlet switch"
+    domain: switch
+    device_class: outlet
+    priority: 60
+    channel:
+      category: OUTLET
+    device_category: OUTLET
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: ON
+
+  - name: switch_default
+    description: "Generic switch"
+    domain: switch
+    device_class: null
+    priority: 50
+    channel:
+      category: SWITCHER
+    device_category: SWITCHER
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: ON
+
+  # ============================================================================
+  # SENSOR ENTITIES - Temperature
+  # ============================================================================
+  - name: sensor_temperature
+    description: "Temperature sensor"
+    domain: sensor
+    device_class: temperature
+    priority: 20
+    channel:
+      category: TEMPERATURE
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: TEMPERATURE
+
+  # ============================================================================
+  # SENSOR ENTITIES - Humidity
+  # ============================================================================
+  - name: sensor_humidity
+    description: "Humidity sensor"
+    domain: sensor
+    device_class: humidity
+    priority: 20
+    channel:
+      category: HUMIDITY
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: HUMIDITY
+
+  # ============================================================================
+  # SENSOR ENTITIES - Power
+  # ============================================================================
+  - name: sensor_power
+    description: "Power sensor"
+    domain: sensor
+    device_class: power
+    priority: 20
+    channel:
+      category: ELECTRICAL_POWER
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: POWER
+
+  # ============================================================================
+  # SENSOR ENTITIES - Energy
+  # ============================================================================
+  - name: sensor_energy
+    description: "Energy sensor"
+    domain: sensor
+    device_class: energy
+    priority: 20
+    channel:
+      category: ELECTRICAL_ENERGY
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: CONSUMPTION
+
+  # ============================================================================
+  # SENSOR ENTITIES - Voltage
+  # ============================================================================
+  - name: sensor_voltage
+    description: "Voltage sensor"
+    domain: sensor
+    device_class: voltage
+    priority: 20
+    channel:
+      category: ELECTRICAL_POWER
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: VOLTAGE
+
+  # ============================================================================
+  # SENSOR ENTITIES - Current
+  # ============================================================================
+  - name: sensor_current
+    description: "Current sensor"
+    domain: sensor
+    device_class: current
+    priority: 20
+    channel:
+      category: ELECTRICAL_POWER
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: CURRENT
+
+  # ============================================================================
+  # SENSOR ENTITIES - Battery
+  # ============================================================================
+  - name: sensor_battery
+    description: "Battery sensor"
+    domain: sensor
+    device_class: battery
+    priority: 20
+    channel:
+      category: BATTERY
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: PERCENTAGE
+
+  # ============================================================================
+  # SENSOR ENTITIES - Illuminance
+  # ============================================================================
+  - name: sensor_illuminance
+    description: "Illuminance sensor (lux)"
+    domain: sensor
+    device_class: illuminance
+    priority: 20
+    channel:
+      category: ILLUMINANCE
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: DENSITY
+
+  # ============================================================================
+  # SENSOR ENTITIES - Pressure
+  # ============================================================================
+  - name: sensor_pressure
+    description: "Atmospheric pressure sensor"
+    domain: sensor
+    device_class:
+      - pressure
+      - atmospheric_pressure
+    priority: 20
+    channel:
+      category: PRESSURE
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: MEASURED
+
+  # ============================================================================
+  # SENSOR ENTITIES - CO2
+  # ============================================================================
+  - name: sensor_co2
+    description: "Carbon dioxide sensor"
+    domain: sensor
+    device_class: carbon_dioxide
+    priority: 20
+    channel:
+      category: CARBON_DIOXIDE
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: DENSITY
+
+  # ============================================================================
+  # SENSOR ENTITIES - CO
+  # ============================================================================
+  - name: sensor_co
+    description: "Carbon monoxide sensor"
+    domain: sensor
+    device_class: carbon_monoxide
+    priority: 20
+    channel:
+      category: CARBON_MONOXIDE
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: DENSITY
+
+  # ============================================================================
+  # SENSOR ENTITIES - PM (Air Particulate)
+  # ============================================================================
+  - name: sensor_pm
+    description: "Air particulate sensor (PM1/PM2.5/PM10)"
+    domain: sensor
+    device_class:
+      - pm1
+      - pm25
+      - pm10
+    priority: 20
+    channel:
+      category: AIR_PARTICULATE
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: DENSITY
+
+  # ============================================================================
+  # SENSOR ENTITIES - VOC
+  # ============================================================================
+  - name: sensor_voc
+    description: "Volatile organic compounds sensor"
+    domain: sensor
+    device_class: volatile_organic_compounds
+    priority: 20
+    channel:
+      category: VOLATILE_ORGANIC_COMPOUNDS
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: DENSITY
+
+  # ============================================================================
+  # SENSOR ENTITIES - Signal Strength
+  # ============================================================================
+  - name: sensor_signal_strength
+    description: "Signal strength sensor"
+    domain: sensor
+    device_class: signal_strength
+    priority: 20
+    channel:
+      category: DEVICE_INFORMATION
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: LINK_QUALITY
+
+  # ============================================================================
+  # SENSOR ENTITIES - Zigbee Link Quality (entity_id pattern match)
+  # ============================================================================
+  - name: sensor_linkquality
+    description: "Zigbee link quality sensor (entity_id contains 'linkquality')"
+    domain: sensor
+    device_class: null
+    priority: 25
+    entity_id_contains: linkquality
+    channel:
+      category: DEVICE_INFORMATION
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: LINK_QUALITY
+
+  # ============================================================================
+  # SENSOR ENTITIES - Nitrogen Dioxide
+  # ============================================================================
+  - name: sensor_no2
+    description: "Nitrogen dioxide sensor"
+    domain: sensor
+    device_class: nitrogen_dioxide
+    priority: 20
+    channel:
+      category: NITROGEN_DIOXIDE
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: DENSITY
+
+  # ============================================================================
+  # SENSOR ENTITIES - Ozone
+  # ============================================================================
+  - name: sensor_ozone
+    description: "Ozone sensor"
+    domain: sensor
+    device_class: ozone
+    priority: 20
+    channel:
+      category: OZONE
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: DENSITY
+
+  # ============================================================================
+  # SENSOR ENTITIES - Sulphur Dioxide
+  # ============================================================================
+  - name: sensor_so2
+    description: "Sulphur dioxide sensor"
+    domain: sensor
+    device_class: sulphur_dioxide
+    priority: 20
+    channel:
+      category: SULPHUR_DIOXIDE
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: DENSITY
+
+  # ============================================================================
+  # SENSOR ENTITIES - Water / Flow
+  # ============================================================================
+  - name: sensor_water
+    description: "Water/flow sensor"
+    domain: sensor
+    device_class:
+      - water
+      - volume_flow_rate
+    priority: 20
+    channel:
+      category: FLOW
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: RATE
+
+  # ============================================================================
+  # BINARY SENSOR ENTITIES - Motion
+  # ============================================================================
+  - name: binary_sensor_motion
+    description: "Motion sensor"
+    domain: binary_sensor
+    device_class: motion
+    priority: 20
+    channel:
+      category: MOTION
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: DETECTED
+
+  # ============================================================================
+  # BINARY SENSOR ENTITIES - Occupancy
+  # ============================================================================
+  - name: binary_sensor_occupancy
+    description: "Occupancy/presence sensor"
+    domain: binary_sensor
+    device_class:
+      - occupancy
+      - presence
+    priority: 20
+    channel:
+      category: OCCUPANCY
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: DETECTED
+
+  # ============================================================================
+  # BINARY SENSOR ENTITIES - Contact (Door/Window)
+  # ============================================================================
+  - name: binary_sensor_contact
+    description: "Door/window contact sensor"
+    domain: binary_sensor
+    device_class:
+      - door
+      - window
+      - opening
+      - garage_door
+    priority: 20
+    channel:
+      category: CONTACT
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: DETECTED
+
+  # ============================================================================
+  # BINARY SENSOR ENTITIES - Smoke
+  # ============================================================================
+  - name: binary_sensor_smoke
+    description: "Smoke sensor"
+    domain: binary_sensor
+    device_class: smoke
+    priority: 20
+    channel:
+      category: SMOKE
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: DETECTED
+
+  # ============================================================================
+  # BINARY SENSOR ENTITIES - Gas
+  # ============================================================================
+  - name: binary_sensor_gas
+    description: "Gas sensor"
+    domain: binary_sensor
+    device_class: gas
+    priority: 20
+    channel:
+      category: GAS
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: DETECTED
+
+  # ============================================================================
+  # BINARY SENSOR ENTITIES - Moisture/Leak
+  # ============================================================================
+  - name: binary_sensor_leak
+    description: "Moisture/water leak sensor"
+    domain: binary_sensor
+    device_class:
+      - moisture
+      - water
+    priority: 20
+    channel:
+      category: LEAK
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: DETECTED
+
+  # ============================================================================
+  # BINARY SENSOR ENTITIES - Battery
+  # ============================================================================
+  - name: binary_sensor_battery
+    description: "Battery status sensor"
+    domain: binary_sensor
+    device_class: battery
+    priority: 20
+    channel:
+      category: BATTERY
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: STATUS
+
+  # ============================================================================
+  # BINARY SENSOR ENTITIES - Tamper
+  # ============================================================================
+  - name: binary_sensor_tamper
+    description: "Tamper sensor"
+    domain: binary_sensor
+    device_class: tamper
+    priority: 20
+    channel:
+      category: GENERIC
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: DETECTED
+
+  # ============================================================================
+  # BINARY SENSOR ENTITIES - Vibration
+  # ============================================================================
+  - name: binary_sensor_vibration
+    description: "Vibration sensor"
+    domain: binary_sensor
+    device_class: vibration
+    priority: 20
+    channel:
+      category: MOTION
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: DETECTED
+
+  # ============================================================================
+  # BINARY SENSOR ENTITIES - Plug/Power
+  # ============================================================================
+  - name: binary_sensor_plug
+    description: "Plug/power sensor"
+    domain: binary_sensor
+    device_class:
+      - plug
+      - power
+    priority: 20
+    channel:
+      category: OUTLET
+    device_category: OUTLET
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: IN_USE
+
+  # ============================================================================
+  # BINARY SENSOR ENTITIES - Light (ambient)
+  # ============================================================================
+  - name: binary_sensor_light
+    description: "Ambient light detection sensor"
+    domain: binary_sensor
+    device_class: light
+    priority: 20
+    channel:
+      category: ILLUMINANCE
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: DETECTED
+
+  # ============================================================================
+  # BINARY SENSOR ENTITIES - Lock
+  # ============================================================================
+  - name: binary_sensor_lock
+    description: "Lock sensor"
+    domain: binary_sensor
+    device_class: lock
+    priority: 20
+    channel:
+      category: LOCK
+    device_category: LOCK
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: LOCKED
+
+  # ============================================================================
+  # BINARY SENSOR ENTITIES - Heat/Cold
+  # ============================================================================
+  - name: binary_sensor_heat_cold
+    description: "Heat/cold detection sensor"
+    domain: binary_sensor
+    device_class:
+      - heat
+      - cold
+    priority: 20
+    channel:
+      category: TEMPERATURE
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: DETECTED
+
+  # ============================================================================
+  # CLIMATE ENTITIES
+  # ============================================================================
+  - name: climate_thermostat
+    description: "Climate/thermostat entity"
+    domain: climate
+    device_class: null
+    priority: 50
+    channel:
+      category: THERMOSTAT
+    device_category: THERMOSTAT
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: MODE
+      - ha_attribute: hvac_action
+        property_category: ACTIVE
+
+  # ============================================================================
+  # COVER ENTITIES - Window Covering
+  # ============================================================================
+  - name: cover_window
+    description: "Window covering (blind, curtain, shade, etc.)"
+    domain: cover
+    device_class:
+      - blind
+      - curtain
+      - shade
+      - shutter
+      - awning
+    priority: 60
+    channel:
+      category: WINDOW_COVERING
+    device_category: WINDOW_COVERING
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: STATUS
+      - ha_attribute: current_position
+        property_category: POSITION
+      - ha_attribute: current_tilt_position
+        property_category: TILT
+
+  # ============================================================================
+  # COVER ENTITIES - Door
+  # ============================================================================
+  - name: cover_door
+    description: "Door cover (door, garage, gate)"
+    domain: cover
+    device_class:
+      - door
+      - garage
+      - gate
+    priority: 60
+    channel:
+      category: DOOR
+    device_category: DOOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: STATUS
+      - ha_attribute: current_position
+        property_category: POSITION
+
+  # ============================================================================
+  # COVER ENTITIES - Generic (fallback)
+  # ============================================================================
+  - name: cover_generic
+    description: "Generic cover (fallback)"
+    domain: cover
+    device_class: null
+    priority: 45
+    channel:
+      category: WINDOW_COVERING
+    device_category: WINDOW_COVERING
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: STATUS
+      - ha_attribute: current_position
+        property_category: POSITION
+
+  # ============================================================================
+  # FAN ENTITIES
+  # ============================================================================
+  - name: fan_default
+    description: "Fan entity"
+    domain: fan
+    device_class: null
+    priority: 50
+    channel:
+      category: FAN
+    device_category: FAN
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: ON
+      - ha_attribute: percentage
+        property_category: SPEED
+      - ha_attribute: oscillating
+        property_category: SWING
+      - ha_attribute: direction
+        property_category: DIRECTION
+
+  # ============================================================================
+  # LOCK ENTITIES
+  # ============================================================================
+  - name: lock_default
+    description: "Lock entity"
+    domain: lock
+    device_class: null
+    priority: 50
+    channel:
+      category: LOCK
+    device_category: LOCK
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: STATUS
+
+  # ============================================================================
+  # VALVE ENTITIES
+  # ============================================================================
+  - name: valve_default
+    description: "Valve entity"
+    domain: valve
+    device_class: null
+    priority: 50
+    channel:
+      category: VALVE
+    device_category: VALVE
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: ON
+      - ha_attribute: current_position
+        property_category: POSITION
+
+  # ============================================================================
+  # VACUUM ENTITIES
+  # ============================================================================
+  - name: vacuum_default
+    description: "Vacuum entity"
+    domain: vacuum
+    device_class: null
+    priority: 50
+    channel:
+      category: ROBOT_VACUUM
+    device_category: ROBOT_VACUUM
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: STATUS
+      - ha_attribute: battery_level
+        property_category: PERCENTAGE
+
+  # ============================================================================
+  # CAMERA ENTITIES
+  # ============================================================================
+  - name: camera_default
+    description: "Camera entity"
+    domain: camera
+    device_class: null
+    priority: 50
+    channel:
+      category: CAMERA
+    device_category: CAMERA
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: STATUS
+
+  # ============================================================================
+  # MEDIA PLAYER ENTITIES - TV
+  # ============================================================================
+  - name: media_player_tv
+    description: "Television media player"
+    domain: media_player
+    device_class: tv
+    priority: 60
+    channel:
+      category: TELEVISION
+    device_category: TELEVISION
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: ON
+      - ha_attribute: volume_level
+        property_category: VOLUME
+
+  # ============================================================================
+  # MEDIA PLAYER ENTITIES - Speaker
+  # ============================================================================
+  - name: media_player_speaker
+    description: "Speaker media player"
+    domain: media_player
+    device_class: speaker
+    priority: 60
+    channel:
+      category: SPEAKER
+    device_category: SPEAKER
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: ACTIVE
+      - ha_attribute: volume_level
+        property_category: VOLUME
+
+  # ============================================================================
+  # MEDIA PLAYER ENTITIES - Generic (fallback)
+  # ============================================================================
+  - name: media_player_generic
+    description: "Generic media player (fallback)"
+    domain: media_player
+    device_class: null
+    priority: 45
+    channel:
+      category: MEDIA_PLAYBACK
+    device_category: MEDIA
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: STATUS
+      - ha_attribute: volume_level
+        property_category: VOLUME
+      - ha_attribute: media_title
+        property_category: TRACK
+
+  # ============================================================================
+  # HUMIDIFIER ENTITIES - Humidifier
+  # ============================================================================
+  - name: humidifier_humidifier
+    description: "Humidifier entity"
+    domain: humidifier
+    device_class: humidifier
+    priority: 60
+    channel:
+      category: HUMIDITY
+    device_category: AIR_HUMIDIFIER
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: ON
+      - ha_attribute: humidity
+        property_category: HUMIDITY
+
+  # ============================================================================
+  # HUMIDIFIER ENTITIES - Dehumidifier
+  # ============================================================================
+  - name: humidifier_dehumidifier
+    description: "Dehumidifier entity"
+    domain: humidifier
+    device_class: dehumidifier
+    priority: 60
+    channel:
+      category: HUMIDITY
+    device_category: AIR_DEHUMIDIFIER
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: ON
+      - ha_attribute: humidity
+        property_category: HUMIDITY
+
+  # ============================================================================
+  # ALARM CONTROL PANEL ENTITIES
+  # ============================================================================
+  - name: alarm_control_panel_default
+    description: "Alarm control panel entity"
+    domain: alarm_control_panel
+    device_class: null
+    priority: 50
+    channel:
+      category: ALARM
+    device_category: ALARM
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: STATUS
+      - ha_attribute: changed_by
+        property_category: EVENT
+
+  # ============================================================================
+  # SIREN ENTITIES
+  # ============================================================================
+  - name: siren_default
+    description: "Siren entity"
+    domain: siren
+    device_class: null
+    priority: 50
+    channel:
+      category: ALARM
+    device_category: ALARM
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: ON
+
+  # ============================================================================
+  # WATER HEATER ENTITIES
+  # ============================================================================
+  - name: water_heater_default
+    description: "Water heater entity"
+    domain: water_heater
+    device_class: null
+    priority: 50
+    channel:
+      category: HEATER
+    device_category: WATER_HEATER
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: MODE
+      - ha_attribute: current_temperature
+        property_category: TEMPERATURE
+      - ha_attribute: temperature
+        property_category: TEMPERATURE
+
+  # ============================================================================
+  # INPUT BOOLEAN ENTITIES (Virtual Switches)
+  # ============================================================================
+  - name: input_boolean_default
+    description: "Virtual switch (input_boolean)"
+    domain: input_boolean
+    device_class: null
+    priority: 10
+    channel:
+      category: SWITCHER
+    device_category: SWITCHER
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: ON
+
+  # ============================================================================
+  # INPUT NUMBER ENTITIES
+  # ============================================================================
+  - name: input_number_default
+    description: "Virtual number input"
+    domain: input_number
+    device_class: null
+    priority: 10
+    channel:
+      category: GENERIC
+    device_category: GENERIC
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: GENERIC
+
+  # ============================================================================
+  # INPUT SELECT ENTITIES
+  # ============================================================================
+  - name: input_select_default
+    description: "Virtual dropdown"
+    domain: input_select
+    device_class: null
+    priority: 10
+    channel:
+      category: GENERIC
+    device_category: GENERIC
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: MODE
+
+  # ============================================================================
+  # INPUT TEXT ENTITIES
+  # ============================================================================
+  - name: input_text_default
+    description: "Virtual text input"
+    domain: input_text
+    device_class: null
+    priority: 10
+    channel:
+      category: GENERIC
+    device_category: GENERIC
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: GENERIC
+
+  # ============================================================================
+  # INPUT DATETIME ENTITIES
+  # ============================================================================
+  - name: input_datetime_default
+    description: "Virtual date/time input"
+    domain: input_datetime
+    device_class: null
+    priority: 10
+    channel:
+      category: GENERIC
+    device_category: GENERIC
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: GENERIC
+
+  # ============================================================================
+  # INPUT BUTTON ENTITIES
+  # ============================================================================
+  - name: input_button_default
+    description: "Virtual button"
+    domain: input_button
+    device_class: null
+    priority: 10
+    channel:
+      category: SWITCHER
+    device_category: SWITCHER
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: ON
+
+  # ============================================================================
+  # TIMER ENTITIES
+  # ============================================================================
+  - name: timer_default
+    description: "Virtual timer"
+    domain: timer
+    device_class: null
+    priority: 10
+    channel:
+      category: GENERIC
+    device_category: GENERIC
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: STATUS
+
+  # ============================================================================
+  # NUMBER ENTITIES
+  # ============================================================================
+  - name: number_default
+    description: "Number control entity"
+    domain: number
+    device_class: null
+    priority: 10
+    channel:
+      category: GENERIC
+    device_category: GENERIC
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: GENERIC
+
+  # ============================================================================
+  # SELECT ENTITIES
+  # ============================================================================
+  - name: select_default
+    description: "Select control entity"
+    domain: select
+    device_class: null
+    priority: 10
+    channel:
+      category: GENERIC
+    device_category: GENERIC
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: MODE
+
+  # ============================================================================
+  # TEXT ENTITIES
+  # ============================================================================
+  - name: text_default
+    description: "Text control entity"
+    domain: text
+    device_class: null
+    priority: 10
+    channel:
+      category: GENERIC
+    device_category: GENERIC
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: GENERIC
+
+  # ============================================================================
+  # BUTTON ENTITIES
+  # ============================================================================
+  - name: button_default
+    description: "Button entity"
+    domain: button
+    device_class: null
+    priority: 5
+    channel:
+      category: GENERIC
+    device_category: GENERIC
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: ON
+
+  # ============================================================================
+  # REMOTE ENTITIES
+  # ============================================================================
+  - name: remote_default
+    description: "Remote entity"
+    domain: remote
+    device_class: null
+    priority: 5
+    channel:
+      category: GENERIC
+    device_category: GENERIC
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: ON

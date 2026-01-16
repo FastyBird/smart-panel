@@ -56,6 +56,7 @@ import { SensorEntityMapperService } from './mappers/sensor.entity.mapper.servic
 import { SwitchEntityMapperService } from './mappers/switch.entity.mapper.service';
 import { UniversalEntityMapperService } from './mappers/universal.entity.mapper.service';
 import { HomeAssistantConfigModel } from './models/config.model';
+import { MappingLoaderService, TransformerRegistry } from './mappings';
 import { HomeAssistantDevicePlatform } from './platforms/home-assistant.device.platform';
 import { DeviceAdoptionService } from './services/device-adoption.service';
 import { HaMdnsDiscovererService } from './services/ha-mdns-discoverer.service';
@@ -87,6 +88,10 @@ import { DevicesServiceSubscriber } from './subscribers/devices-service.subscrib
 		ExtensionsModule,
 	],
 	providers: [
+		// Mapping configuration services
+		TransformerRegistry,
+		MappingLoaderService,
+		// Core services
 		HomeAssistantHttpService,
 		HomeAssistantWsService,
 		HomeAssistantDevicePlatform,
