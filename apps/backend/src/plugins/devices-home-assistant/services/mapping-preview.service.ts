@@ -181,8 +181,7 @@ export class MappingPreviewService {
 				// Check if this channel category is allowed for the device
 				if (!allowedChannelCategories.has(channelCategory)) {
 					preview.status = 'incompatible';
-					preview.incompatibleReason =
-						`Channel "${channelCategory}" is not supported by device category "${suggestedDeviceCategory}"`;
+					preview.incompatibleReason = `Channel "${channelCategory}" is not supported by device category "${suggestedDeviceCategory}"`;
 
 					// Add warning for incompatible entity
 					warnings.push({

@@ -38,7 +38,7 @@ describe('StateChangedEventService', () => {
 			providers: [
 				StateChangedEventService,
 				{ provide: DevicesService, useValue: { findAll: jest.fn() } },
-				{ provide: ChannelsService, useValue: { findOne: jest.fn() } },
+				{ provide: ChannelsService, useValue: { findOne: jest.fn(), findAll: jest.fn().mockResolvedValue([]) } },
 				{ provide: ChannelsPropertiesService, useValue: { findAll: jest.fn(), update: jest.fn() } },
 				{ provide: MapperService, useValue: { mapFromHA: jest.fn() } },
 				{ provide: HomeAssistantHttpService, useValue: { getDiscoveredDevices: jest.fn() } },
