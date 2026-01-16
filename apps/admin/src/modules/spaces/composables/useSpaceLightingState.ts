@@ -10,46 +10,89 @@ import type { components } from '../../../openapi';
 type LightingStateData = components['schemas']['SpacesModuleDataLightingState'];
 type RoleAggregatedState = components['schemas']['SpacesModuleDataRoleAggregatedState'];
 
+/**
+ * Lighting state for a space, including mode detection and per-role breakdown.
+ */
 export interface ILightingState {
+	/** Detected lighting mode based on current device states (work, relax, night, etc.) */
 	detectedMode: string | null;
+	/** Confidence level of the mode detection */
 	modeConfidence: 'exact' | 'approximate' | 'none';
+	/** Percentage match between current state and detected mode (0-100) */
 	modeMatchPercentage: number | null;
+	/** Last lighting mode that was explicitly applied */
 	lastAppliedMode: string | null;
+	/** When the last mode was applied */
 	lastAppliedAt: Date | null;
+	/** Total number of lights in the space */
 	totalLights: number;
+	/** Number of lights currently on */
 	lightsOn: number;
+	/** Average brightness across all on lights (0-100) */
 	averageBrightness: number | null;
+	/** Aggregated state per lighting role (main, task, ambient, etc.) */
 	roles: Record<string, IRoleState>;
+	/** State of lights not assigned to a specific role */
 	other: IOtherLightsState;
 }
 
+/**
+ * Aggregated state for lights with a specific role.
+ */
 export interface IRoleState {
+	/** The lighting role identifier */
 	role: string;
+	/** Whether any light in this role is on */
 	isOn: boolean;
+	/** Whether lights in this role have mixed on/off states */
 	isOnMixed: boolean;
+	/** Average brightness of lights in this role (0-100) */
 	brightness: number | null;
+	/** Color temperature in Kelvin */
 	colorTemperature: number | null;
+	/** RGB color as hex string */
 	color: string | null;
+	/** Number of devices with this role */
 	devicesCount: number;
+	/** Number of devices currently on */
 	devicesOn: number;
 }
 
+/**
+ * State of lights not assigned to a specific role.
+ */
 export interface IOtherLightsState {
+	/** Whether any uncategorized light is on */
 	isOn: boolean;
+	/** Whether uncategorized lights have mixed on/off states */
 	isOnMixed: boolean;
+	/** Average brightness (0-100) */
 	brightness: number | null;
+	/** Number of uncategorized devices */
 	devicesCount: number;
+	/** Number of uncategorized devices currently on */
 	devicesOn: number;
 }
 
+/**
+ * Return type for the useSpaceLightingState composable.
+ */
 export interface IUseSpaceLightingState {
+	/** Current lighting state, or null if not yet fetched */
 	lightingState: ComputedRef<ILightingState | null>;
+	/** Whether a fetch request is in progress */
 	isLoading: ComputedRef<boolean>;
+	/** Error message from the last failed request */
 	error: Ref<string | null>;
+	/** Fetch lighting state from the API */
 	fetchLightingState: () => Promise<ILightingState | null>;
+	/** Whether the space has any lights */
 	hasLights: ComputedRef<boolean>;
+	/** Whether any lights are currently on */
 	anyOn: ComputedRef<boolean>;
+	/** Whether all lights are currently on */
 	allOn: ComputedRef<boolean>;
+	/** Whether all lights are currently off */
 	allOff: ComputedRef<boolean>;
 }
 
@@ -94,6 +137,27 @@ const transformLightingState = (data: LightingStateData): ILightingState => {
 	};
 };
 
+/**
+ * Composable for fetching and managing lighting state for a space.
+ *
+ * Provides reactive access to lighting state including mode detection,
+ * device counts, and per-role breakdowns. State is automatically cleared
+ * when the space ID changes and stale requests are properly handled.
+ *
+ * @param spaceId - Reactive reference to the space ID
+ * @returns Lighting state, loading/error states, and convenience computed properties
+ *
+ * @example
+ * ```ts
+ * const spaceId = ref('space-123');
+ * const { lightingState, isLoading, fetchLightingState, allOff } = useSpaceLightingState(spaceId);
+ *
+ * await fetchLightingState();
+ * if (allOff.value) {
+ *   console.log('All lights are off');
+ * }
+ * ```
+ */
 export const useSpaceLightingState = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceLightingState => {
 	const backend = useBackend();
 
