@@ -17,7 +17,6 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_humidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_purifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/fan.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/deck/views/climate_role_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
@@ -464,13 +463,13 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     if (target.hasHumidity) {
       double? humidityValue;
       if (device is ThermostatDeviceView) {
-        humidityValue = device.humidityChannel?.humidity;
+        humidityValue = device.humidityChannel?.humidity.toDouble();
       } else if (device is HeaterDeviceView) {
-        humidityValue = device.humidityChannel?.humidity;
+        humidityValue = device.humidityChannel?.humidity.toDouble();
       } else if (device is AirConditionerDeviceView) {
-        humidityValue = device.humidityChannel?.humidity;
+        humidityValue = device.humidityChannel?.humidity.toDouble();
       } else if (device is SensorDeviceView) {
-        humidityValue = device.humidityChannel?.humidity;
+        humidityValue = device.humidityChannel?.humidity.toDouble();
       }
 
       if (humidityValue != null) {
