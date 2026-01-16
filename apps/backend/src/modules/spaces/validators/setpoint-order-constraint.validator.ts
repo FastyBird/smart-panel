@@ -30,7 +30,12 @@ export class SetpointOrderConstraintValidator implements ValidatorConstraintInte
 		const coolingSetpoint = object.coolingSetpoint;
 
 		// If either is not provided, no cross-field validation needed
-		if (heatingSetpoint === undefined || coolingSetpoint === undefined) {
+		if (
+			heatingSetpoint === undefined ||
+			heatingSetpoint === null ||
+			coolingSetpoint === undefined ||
+			coolingSetpoint === null
+		) {
 			return true;
 		}
 

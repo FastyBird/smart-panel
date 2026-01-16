@@ -911,8 +911,8 @@ export class SpaceLightingStateService {
 		if (rule.brightness !== null) {
 			// Rule requires specific brightness
 			if (roleState.brightness === null) {
-				// Brightness unknown - can't verify match, report as non-match
-				return { matches: false, exact: false };
+				// Brightness unknown - treat as approximate match to avoid false negatives
+				return { matches: true, exact: false };
 			}
 
 			if (roleState.isBrightnessMixed) {

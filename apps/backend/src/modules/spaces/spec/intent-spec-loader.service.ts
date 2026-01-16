@@ -254,7 +254,7 @@ export class IntentSpecLoaderService implements OnModuleInit {
 
 		// Resolve builtin modes
 		for (const [modeId, modeDef] of Object.entries(builtinConfig.modes)) {
-			this.lightingModes.set(modeId, this.resolveModeOrchestration(modeDef));
+			this.lightingModes.set(modeId, this.resolveModeOrchestration(modeDef, modeId));
 		}
 
 		// Load and merge user modes
@@ -264,7 +264,7 @@ export class IntentSpecLoaderService implements OnModuleInit {
 			if (userConfig) {
 				for (const [modeId, modeDef] of Object.entries(userConfig.modes)) {
 					// User modes override builtin modes with same ID
-					this.lightingModes.set(modeId, this.resolveModeOrchestration(modeDef));
+					this.lightingModes.set(modeId, this.resolveModeOrchestration(modeDef, modeId));
 				}
 			}
 		}
@@ -429,7 +429,7 @@ export class IntentSpecLoaderService implements OnModuleInit {
 	/**
 	 * Resolve YAML mode orchestration to ResolvedModeOrchestration
 	 */
-	private resolveModeOrchestration(modeDef: YamlModeOrchestration): ResolvedModeOrchestration {
+	private resolveModeOrchestration(modeDef: YamlModeOrchestration, modeId?: string): ResolvedModeOrchestration {
 		const roles: Record<string, ResolvedRoleBrightnessRule> = {};
 
 		for (const [role, rule] of Object.entries(modeDef.roles)) {
@@ -440,7 +440,7 @@ export class IntentSpecLoaderService implements OnModuleInit {
 			label: modeDef.label,
 			description: modeDef.description,
 			icon: modeDef.icon,
-			mvpBrightness: modeDef.mvp_brightness ?? 100, // Default to 100 if not specified
+			mvpBrightness: modeDef.mvp_brightness ?? this.getDefaultMvpBrightness(modeId),
 			roles,
 		};
 
@@ -450,6 +450,19 @@ export class IntentSpecLoaderService implements OnModuleInit {
 		}
 
 		return resolved;
+	}
+
+	private getDefaultMvpBrightness(modeId?: string): number {
+		switch (modeId) {
+			case 'work':
+				return 100;
+			case 'relax':
+				return 50;
+			case 'night':
+				return 20;
+			default:
+				return 100;
+		}
 	}
 
 	/**
