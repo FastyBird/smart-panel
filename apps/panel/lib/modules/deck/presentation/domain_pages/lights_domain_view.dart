@@ -502,7 +502,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     int lightsOn,
     int totalLights,
   ) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
 
     // Get mode-aware colors

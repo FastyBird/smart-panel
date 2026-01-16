@@ -1363,9 +1363,9 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     try {
       // Convert hue to hex color for backend intent
       final color = HSVColor.fromAHSV(1.0, hue, 1.0, 1.0).toColor();
-      final r = color.red.toRadixString(16).padLeft(2, '0');
-      final g = color.green.toRadixString(16).padLeft(2, '0');
-      final b = color.blue.toRadixString(16).padLeft(2, '0');
+      final r = color.r.toInt().toRadixString(16).padLeft(2, '0');
+      final g = color.g.toInt().toRadixString(16).padLeft(2, '0');
+      final b = color.b.toInt().toRadixString(16).padLeft(2, '0');
       final hexColor = '#$r$g$b'.toUpperCase();
 
       // Use backend intent if available
