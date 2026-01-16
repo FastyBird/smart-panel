@@ -196,11 +196,19 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
         capability = RoomCapability.none;
       }
 
+      // Clamp target temp to valid setpoint range to avoid UI inconsistencies
+      final rawTargetTemp =
+          climateState.targetTemperature ?? _state.targetTemp;
+      final clampedTargetTemp = rawTargetTemp.clamp(
+        climateState.minSetpoint,
+        climateState.maxSetpoint,
+      );
+
       setState(() {
         _state = _state.copyWith(
           mode: mode,
           capability: capability,
-          targetTemp: climateState.targetTemperature ?? _state.targetTemp,
+          targetTemp: clampedTargetTemp,
           currentTemp: climateState.currentTemperature ?? _state.currentTemp,
           minSetpoint: climateState.minSetpoint,
           maxSetpoint: climateState.maxSetpoint,
