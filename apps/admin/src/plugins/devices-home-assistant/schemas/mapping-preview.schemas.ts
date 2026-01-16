@@ -36,7 +36,10 @@ export const PropertyMappingPreviewSchema = z.object({
 	dataType: z.nativeEnum(DevicesModuleChannelPropertyDataType),
 	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
 	unit: z.string().nullable().optional(),
-	format: z.array(z.union([z.string(), z.number()])).nullable().optional(),
+	format: z
+		.array(z.union([z.string(), z.number()]))
+		.nullable()
+		.optional(),
 	required: z.boolean(),
 	currentValue: z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
 	haEntityId: z.string().nullable().optional(),
@@ -123,7 +126,10 @@ export const AdoptPropertyDefinitionSchema = z.object({
 	dataType: z.nativeEnum(DevicesModuleChannelPropertyDataType),
 	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
 	unit: z.string().nullable().optional(),
-	format: z.array(z.union([z.string(), z.number()])).nullable().optional(),
+	format: z
+		.array(z.union([z.string(), z.number()]))
+		.nullable()
+		.optional(),
 	haEntityId: z.string().optional(),
 });
 
@@ -159,7 +165,10 @@ const HelperPropertyMappingSchema = z.object({
 	dataType: z.string(),
 	permissions: z.array(z.string()),
 	unit: z.string().nullable().optional(),
-	format: z.array(z.union([z.string(), z.number()])).nullable().optional(),
+	format: z
+		.array(z.union([z.string(), z.number()]))
+		.nullable()
+		.optional(),
 	required: z.boolean(),
 	currentValue: z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
 });

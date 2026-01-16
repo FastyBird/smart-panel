@@ -6,7 +6,7 @@
  */
 import Ajv from 'ajv';
 import { existsSync, readFileSync } from 'fs';
-import { readdir, readFile } from 'fs/promises';
+import { readFile, readdir } from 'fs/promises';
 import { join } from 'path';
 import { parse as parseYaml } from 'yaml';
 

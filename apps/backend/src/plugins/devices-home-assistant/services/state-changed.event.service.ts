@@ -303,10 +303,7 @@ export class StateChangedEventService implements WsEventService {
 		let channels = this.channelsByDeviceId.get(deviceId);
 
 		if (!channels) {
-			channels = await this.channelsService.findAll<HomeAssistantChannelEntity>(
-				deviceId,
-				DEVICES_HOME_ASSISTANT_TYPE,
-			);
+			channels = await this.channelsService.findAll<HomeAssistantChannelEntity>(deviceId, DEVICES_HOME_ASSISTANT_TYPE);
 			this.channelsByDeviceId.set(deviceId, channels);
 		}
 

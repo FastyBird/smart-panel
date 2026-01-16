@@ -3,12 +3,12 @@ import type { ComputedRef, Reactive, Ref } from 'vue';
 import type { FormInstance } from 'element-plus';
 
 import type { FormResultType, IDevice } from '../../../modules/devices';
+import type { IDeviceAddForm } from '../../../modules/devices/schemas/devices.types';
 import type { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import type { IAdoptDeviceRequest, IMappingEntityOverride, IMappingPreviewRequest, IMappingPreviewResponse } from '../schemas/mapping-preview.types';
 import type { IHomeAssistantDiscoveredDevice } from '../store/home-assistant-discovered-devices.store.types';
 import type { IHomeAssistantDiscoveredHelper } from '../store/home-assistant-discovered-helpers.store.types';
 import type { IHomeAssistantState } from '../store/home-assistant-states.store.types';
-import type { IDeviceAddForm } from '../../../modules/devices/schemas/devices.types';
 
 export interface IDiscoveredDevicesFilter {
 	search: string | undefined;

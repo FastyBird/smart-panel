@@ -5,26 +5,25 @@ import type { FormInstance } from 'element-plus';
 import { isEqual } from 'lodash';
 
 import { deepClone, getSchemaDefaults, useFlashMessage, useLogger } from '../../../common';
-import { DevicesModuleChannelCategory, DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { FormResult, type FormResultType, type IDevice } from '../../../modules/devices';
 import { DevicesApiException } from '../../../modules/devices/devices.exceptions';
+import { DevicesModuleChannelCategory, DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantApiException, DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 import { HomeAssistantDeviceAddFormSchema } from '../schemas/devices.schemas';
 import type { IHomeAssistantDeviceAddForm } from '../schemas/devices.types';
-import type { IMappingPreviewResponse, IAdoptDeviceRequest, IMappingPreviewRequest } from '../schemas/mapping-preview.types';
-import { useDiscoveredItemsOptions } from './useDiscoveredItemsOptions';
-import { useMappingPreview, type ItemType } from './useMappingPreview';
-import { useDeviceAdoption } from './useDeviceAdoption';
+import type { IAdoptDeviceRequest, IMappingPreviewRequest, IMappingPreviewResponse } from '../schemas/mapping-preview.types';
 
 import type { IUseDeviceAddForm } from './types';
+import { useDeviceAdoption } from './useDeviceAdoption';
+import { useDiscoveredItemsOptions } from './useDiscoveredItemsOptions';
+import { type ItemType, useMappingPreview } from './useMappingPreview';
 
 interface IUseDeviceAddFormProps {
 	id: IDevice['id'];
 }
 
 export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddForm<IHomeAssistantDeviceAddForm> => {
-
 	const { t } = useI18n();
 
 	const flashMessage = useFlashMessage();
@@ -155,9 +154,13 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 
 			try {
 				// Fetch mapping preview with selected category (use stored item type)
-				await fetchPreview(model.haDeviceId, {
-					deviceCategory: model.category,
-				}, itemType.value);
+				await fetchPreview(
+					model.haDeviceId,
+					{
+						deviceCategory: model.category,
+					},
+					itemType.value
+				);
 
 				// Auto-populate device name from preview if not set
 				if (preview.value && !model.name) {
@@ -206,41 +209,40 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 				// This prevents sending invalid entityOverrides like { entityId } without a category
 				if (preview.value) {
 					const invalidEntities: string[] = [];
-					
+
 					for (const entity of preview.value.entities) {
 						const override = entityOverrides.value?.find((o) => o.entityId === entity.entityId);
-						
+
 						// Skip validation for explicitly skipped entities
 						if (override?.skip === true) {
 							continue;
 						}
-						
+
 						// Check if entity has a valid channelCategory
 						// Entity has a category if:
 						// 1. Override has channelCategory, OR
 						// 2. No override but entity has valid suggested category (not generic)
 						const hasOverrideCategory = override?.channelCategory !== undefined;
 						const suggestedCategory = entity.suggestedChannel?.category;
-						const hasValidSuggestedCategory = suggestedCategory !== undefined && 
-							suggestedCategory !== DevicesModuleChannelCategory.generic;
-						
+						const hasValidSuggestedCategory = suggestedCategory !== undefined && suggestedCategory !== DevicesModuleChannelCategory.generic;
+
 						// Entity is enabled but missing a category
 						// This happens when override exists without skip and without channelCategory
 						// AND entity doesn't have a valid suggested category to fall back to
 						// This creates invalid overrides like { entityId } which can cause adoption to fail
-						const isEnabledWithoutCategory = (override && !override.skip && !hasOverrideCategory && !hasValidSuggestedCategory);
-						
+						const isEnabledWithoutCategory = override && !override.skip && !hasOverrideCategory && !hasValidSuggestedCategory;
+
 						if (isEnabledWithoutCategory) {
 							invalidEntities.push(entity.entityId);
 						}
 					}
-					
+
 					if (invalidEntities.length > 0) {
 						// Trigger validation errors on the form fields
 						await form.validate().catch(() => {
 							// Validation will fail, which is expected
 						});
-						
+
 						// Show error message
 						const entityList = invalidEntities.slice(0, 3).join(', ');
 						const moreCount = invalidEntities.length > 3 ? ` (+${invalidEntities.length - 3} more)` : '';
@@ -298,9 +300,7 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 			// Enforce readyToAdopt check - this is critical to prevent adoption of incomplete mappings
 			// Use explicit strict equality check to ensure we only proceed when readyToAdopt is explicitly true
 			if (preview.value.readyToAdopt !== true) {
-				throw new DevicesHomeAssistantValidationException(
-					t('devicesHomeAssistantPlugin.messages.mapping.notReadyToAdopt')
-				);
+				throw new DevicesHomeAssistantValidationException(t('devicesHomeAssistantPlugin.messages.mapping.notReadyToAdopt'));
 			}
 
 			const form = formEl || stepFiveFormEl.value;
@@ -332,9 +332,7 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 				// Defensive check: Re-verify readyToAdopt before building adoption request
 				// This prevents race conditions or stale preview data from allowing adoption
 				if (!preview.value || preview.value.readyToAdopt !== true) {
-					throw new DevicesHomeAssistantValidationException(
-						t('devicesHomeAssistantPlugin.messages.mapping.notReadyToAdopt')
-					);
+					throw new DevicesHomeAssistantValidationException(t('devicesHomeAssistantPlugin.messages.mapping.notReadyToAdopt'));
 				}
 
 				// Build adoption request from preview and model
@@ -378,17 +376,17 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 							entityId: entity.entityId,
 							category: channelCategory,
 							name: channelName,
-						properties: entity.suggestedProperties.map((prop) => ({
-							category: prop.category,
-							haAttribute: prop.haAttribute,
-							dataType: prop.dataType,
-							permissions: prop.permissions,
-							unit: prop.unit ?? null,
-							format: prop.format ?? null,
-							// Include entity ID for consolidated channels (each property can map to a different entity)
-							// Use prop.haEntityId if available (from mapping preview), otherwise fallback to entity.entityId
-							haEntityId: prop.haEntityId ?? entity.entityId,
-						})),
+							properties: entity.suggestedProperties.map((prop) => ({
+								category: prop.category,
+								haAttribute: prop.haAttribute,
+								dataType: prop.dataType,
+								permissions: prop.permissions,
+								unit: prop.unit ?? null,
+								format: prop.format ?? null,
+								// Include entity ID for consolidated channels (each property can map to a different entity)
+								// Use prop.haEntityId if available (from mapping preview), otherwise fallback to entity.entityId
+								haEntityId: prop.haEntityId ?? entity.entityId,
+							})),
 						};
 					});
 

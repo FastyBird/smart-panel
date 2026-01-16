@@ -1,6 +1,10 @@
+// Import mocked modules after mocking
+import { existsSync, readFileSync } from 'fs';
+import { readFile, readdir } from 'fs/promises';
+
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
+import { ChannelCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { HomeAssistantDomain } from '../devices-home-assistant.constants';
 
 import { MappingLoaderService } from './mapping-loader.service';
@@ -18,10 +22,6 @@ jest.mock('fs/promises', () => ({
 	readdir: jest.fn(),
 	readFile: jest.fn(),
 }));
-
-// Import mocked modules after mocking
-import { existsSync, readFileSync } from 'fs';
-import { readdir, readFile } from 'fs/promises';
 
 const mockExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
 const mockReadFileSync = readFileSync as jest.MockedFunction<typeof readFileSync>;
@@ -257,6 +257,7 @@ transformers:
 				priority: 0,
 			});
 
+			// eslint-disable-next-line @typescript-eslint/unbound-method
 			expect(transformerRegistry.registerAll).toHaveBeenCalledWith({
 				custom_transformer: {
 					type: 'scale',
@@ -437,7 +438,9 @@ mappings:
 
 			await service.loadAllMappings();
 
+			// eslint-disable-next-line @typescript-eslint/unbound-method
 			expect(transformerRegistry.clear).toHaveBeenCalled();
+			// eslint-disable-next-line @typescript-eslint/unbound-method
 			expect(transformerRegistry.registerAll).toHaveBeenCalled();
 			expect(service.getMappings()).toHaveLength(1);
 		});

@@ -1,10 +1,7 @@
 import { type ZodType, z } from 'zod';
 
 import { ConfigPluginResSchema, ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../modules/config/store/config-plugins.store.schemas';
-import type {
-	DevicesHomeAssistantPluginUpdateConfigSchema,
-	DevicesHomeAssistantPluginConfigSchema,
-} from '../../../openapi.constants';
+import type { DevicesHomeAssistantPluginConfigSchema, DevicesHomeAssistantPluginUpdateConfigSchema } from '../../../openapi.constants';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME } from '../devices-home-assistant.constants';
 
 type ApiUpdateConfig = DevicesHomeAssistantPluginUpdateConfigSchema;

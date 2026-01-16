@@ -340,7 +340,10 @@ describe('TransformerRegistry', () => {
 
 		it('should clear inline cache when clear() is called', () => {
 			// Add some inline transformers
-			registry.getOrCreate(undefined, { input_range: [0, 100] as [number, number], output_range: [0, 255] as [number, number] });
+			registry.getOrCreate(undefined, {
+				input_range: [0, 100] as [number, number],
+				output_range: [0, 255] as [number, number],
+			});
 
 			let stats = registry.getInlineCacheStats();
 			expect(stats.size).toBe(1);

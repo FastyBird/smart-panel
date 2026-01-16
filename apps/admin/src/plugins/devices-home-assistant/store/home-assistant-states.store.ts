@@ -2,12 +2,9 @@ import { ref } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
-import { getErrorReason, useBackend, useLogger } from '../../../common';
 import { PLUGINS_PREFIX } from '../../../app.constants';
-import type {
-	DevicesHomeAssistantPluginGetStateOperation,
-	DevicesHomeAssistantPluginGetStatesOperation,
-} from '../../../openapi.constants';
+import { getErrorReason, useBackend, useLogger } from '../../../common';
+import type { DevicesHomeAssistantPluginGetStateOperation, DevicesHomeAssistantPluginGetStatesOperation } from '../../../openapi.constants';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantApiException, DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 
@@ -156,7 +153,11 @@ export const useHomeAssistantStates = defineStore<'devices_home_assistant_plugin
 				semaphore.value.fetching.items = true;
 
 				try {
-					const { data: responseData, error, response } = await backend.client.GET(`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/states`);
+					const {
+						data: responseData,
+						error,
+						response,
+					} = await backend.client.GET(`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/states`);
 
 					if (typeof responseData !== 'undefined') {
 						data.value = Object.fromEntries(

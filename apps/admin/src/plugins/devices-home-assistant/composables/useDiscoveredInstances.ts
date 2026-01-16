@@ -1,7 +1,7 @@
 import { type Ref, ref } from 'vue';
 
-import { injectStoresManager } from '../../../common';
 import { PLUGINS_PREFIX } from '../../../app.constants';
+import { injectStoresManager } from '../../../common';
 import { sessionStoreKey } from '../../../modules/auth/store/keys';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from '../devices-home-assistant.constants';
 

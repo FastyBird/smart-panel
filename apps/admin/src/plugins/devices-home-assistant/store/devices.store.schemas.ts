@@ -3,8 +3,8 @@ import { type ZodType, z } from 'zod';
 import { DeviceCreateReqSchema, DeviceResSchema, DeviceSchema, DeviceUpdateReqSchema } from '../../../modules/devices';
 import type {
 	DevicesHomeAssistantPluginCreateDeviceSchema,
-	DevicesHomeAssistantPluginUpdateDeviceSchema,
 	DevicesHomeAssistantPluginDeviceSchema,
+	DevicesHomeAssistantPluginUpdateDeviceSchema,
 } from '../../../openapi.constants';
 import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 

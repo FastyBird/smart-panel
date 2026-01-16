@@ -1,13 +1,15 @@
 /*
-eslint-disable @typescript-eslint/unbound-method
-*/
-/*
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { ChannelCategory, DataTypeType, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	DataTypeType,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DEVICES_HOME_ASSISTANT_TYPE, HomeAssistantDomain } from '../devices-home-assistant.constants';
@@ -113,7 +115,7 @@ describe('MapperService', () => {
 
 			// Configure universalEntityMapperService to return the brightness value
 			universalEntityMapperService.mapFromHA.mockResolvedValue(
-				new Map([['prop-brightness', 255]]) // Return the raw HA value
+				new Map([['prop-brightness', 255]]), // Return the raw HA value
 			);
 
 			const states = [
@@ -434,7 +436,10 @@ describe('MapperService', () => {
 	});
 
 	describe('mapToHA - Transformer Application', () => {
-		it('should apply percent_to_brightness transformer when writing brightness', async () => {
+		it('should apply brightness_to_percent transformer write() when writing brightness', async () => {
+			// The same transformer is used for both read and write:
+			// - read() converts HA brightness (0-255) to percentage (0-100)
+			// - write() converts percentage (0-100) back to HA brightness (0-255)
 			const brightnessProperty: HomeAssistantChannelPropertyEntity = {
 				id: 'prop-brightness',
 				type: DEVICES_HOME_ASSISTANT_TYPE,
@@ -443,7 +448,7 @@ describe('MapperService', () => {
 				permissions: [PermissionType.READ_WRITE],
 				haEntityId: 'light.test',
 				haAttribute: 'brightness',
-				haTransformer: 'percent_to_brightness', // Reverse transformer for writing
+				haTransformer: 'brightness_to_percent', // Same transformer, write() inverts read()
 				channel: mockChannel,
 			} as HomeAssistantChannelPropertyEntity;
 
@@ -465,11 +470,12 @@ describe('MapperService', () => {
 			const values = new Map<string, string | number | boolean>();
 			values.set('prop-brightness', 100); // Smart Panel sends 100%
 
-			const result = await service.mapToHA(mockDevice, values);
+			await service.mapToHA(mockDevice, values);
 
 			// The mapper should receive transformed value
 			expect(mockLightMapper.mapToHA).toHaveBeenCalled();
-			const callArgs = mockLightMapper.mapToHA.mock.calls[0][1] as Map<string, string | number | boolean>;
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+			const callArgs = (mockLightMapper.mapToHA as any).mock.calls[0][1] as Map<string, string | number | boolean>;
 			expect(callArgs.get('prop-brightness')).toBe(255); // 100% transformed to 255
 		});
 
@@ -506,7 +512,8 @@ describe('MapperService', () => {
 			await service.mapToHA(mockDevice, values);
 
 			// The mapper should receive 'on' string
-			const callArgs = mockLightMapper.mapToHA.mock.calls[0][1] as Map<string, string | number | boolean>;
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+			const callArgs = (mockLightMapper.mapToHA as any).mock.calls[0][1] as Map<string, string | number | boolean>;
 			expect(callArgs.get('prop-on')).toBe('on'); // true transformed to 'on'
 		});
 
@@ -543,7 +550,8 @@ describe('MapperService', () => {
 			await service.mapToHA(mockDevice, values);
 
 			// Value should remain as-is
-			const callArgs = mockLightMapper.mapToHA.mock.calls[0][1] as Map<string, string | number | boolean>;
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+			const callArgs = (mockLightMapper.mapToHA as any).mock.calls[0][1] as Map<string, string | number | boolean>;
 			expect(callArgs.get('prop-brightness')).toBe(100);
 		});
 	});
@@ -580,10 +588,12 @@ describe('MapperService', () => {
 			const readResult = await service.mapFromHA(mockDevice, states);
 			expect(readResult[0][0].value).toBe(100); // Read: 255 -> 100
 
-			// Write: Send 100 back, should become 255 with percent_to_brightness
+			// Write: Send 100 back, should become 255 with the same transformer
+			// The transformer's write() method applies the inverse operation
 			const writeProperty = {
 				...readProperty,
-				haTransformer: 'percent_to_brightness', // Use reverse transformer for writing
+				// Same transformer - its write() method inverts the read() operation
+				haTransformer: 'brightness_to_percent',
 			} as HomeAssistantChannelPropertyEntity;
 
 			channelsPropertiesService.findAll.mockResolvedValue([writeProperty]);
@@ -605,7 +615,8 @@ describe('MapperService', () => {
 
 			await service.mapToHA(mockDevice, values);
 
-			const callArgs = mockLightMapper.mapToHA.mock.calls[0][1] as Map<string, string | number | boolean>;
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+			const callArgs = (mockLightMapper.mapToHA as any).mock.calls[0][1] as Map<string, string | number | boolean>;
 			expect(callArgs.get('prop-brightness')).toBe(255); // Write: 100 -> 255
 		});
 
@@ -638,10 +649,12 @@ describe('MapperService', () => {
 			const readResult = await service.mapFromHA(mockDevice, states);
 			expect(readResult[0][0].value).toBe(4000); // 1000000/250 = 4000K
 
-			// Write: 4000K -> 250 mireds (same formula, inverse operation)
+			// Write: 4000K -> 250 mireds (same transformer, write() applies same formula)
+			// Note: mireds_to_kelvin and kelvin_to_mireds use the same formula (1000000/value)
+			// so either works, but we use the same transformer for consistency
 			const writeProperty = {
 				...colorTempProperty,
-				haTransformer: 'kelvin_to_mireds',
+				haTransformer: 'mireds_to_kelvin',
 			} as HomeAssistantChannelPropertyEntity;
 
 			channelsPropertiesService.findAll.mockResolvedValue([writeProperty]);
@@ -663,7 +676,8 @@ describe('MapperService', () => {
 
 			await service.mapToHA(mockDevice, values);
 
-			const callArgs = mockLightMapper.mapToHA.mock.calls[0][1] as Map<string, string | number | boolean>;
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+			const callArgs = (mockLightMapper.mapToHA as any).mock.calls[0][1] as Map<string, string | number | boolean>;
 			expect(callArgs.get('prop-color-temp')).toBe(250); // 1000000/4000 = 250 mireds
 		});
 	});

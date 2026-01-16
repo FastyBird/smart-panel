@@ -7,9 +7,9 @@ import {
 	ChannelPropertyUpdateReqSchema,
 } from '../../../modules/devices';
 import type {
+	DevicesHomeAssistantPluginChannelPropertySchema,
 	DevicesHomeAssistantPluginCreateChannelPropertySchema,
 	DevicesHomeAssistantPluginUpdateChannelPropertySchema,
-	DevicesHomeAssistantPluginChannelPropertySchema,
 } from '../../../openapi.constants';
 import { DEVICES_HOME_ASSISTANT_TYPE, DEVICE_NO_ENTITY, ENTITY_NO_ATTRIBUTE } from '../devices-home-assistant.constants';
 
@@ -50,6 +50,7 @@ export const HomeAssistantChannelPropertyCreateReqSchema: ZodType<ApiCreateChann
 			.nonempty()
 			.nullable()
 			.transform((val) => (val === ENTITY_NO_ATTRIBUTE ? null : val)),
+		ha_transformer: z.string().trim().nonempty().nullable(),
 	})
 );
 
@@ -68,6 +69,7 @@ export const HomeAssistantChannelPropertyUpdateReqSchema: ZodType<ApiUpdateChann
 			.nonempty()
 			.nullable()
 			.transform((val) => (val === ENTITY_NO_ATTRIBUTE ? null : val)),
+		ha_transformer: z.string().trim().nonempty().nullable(),
 	})
 );
 
