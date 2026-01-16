@@ -159,7 +159,14 @@ class RetryInterceptor extends Interceptor {
       }
       return handler.next(e);
     } catch (e) {
-      return handler.next(err);
+      // Wrap non-DioException in a DioException to preserve the actual error
+      final wrappedError = DioException(
+        requestOptions: requestOptions,
+        error: e,
+        type: DioExceptionType.unknown,
+        message: 'Non-Dio exception during retry: $e',
+      );
+      return handler.next(wrappedError);
     }
   }
 
