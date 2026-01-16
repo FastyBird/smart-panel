@@ -159,7 +159,8 @@ export class MappingLoaderService implements OnModuleInit {
 					if (result.success && result.resolvedProperties) {
 						for (const [category, props] of result.resolvedProperties.entries()) {
 							const existing = this.virtualProperties.get(category) ?? [];
-							this.virtualProperties.set(category, [...existing, ...props]);
+							// Prepend user properties so they override built-in ones (find() returns first match)
+							this.virtualProperties.set(category, [...props, ...existing]);
 						}
 					}
 				} else {
