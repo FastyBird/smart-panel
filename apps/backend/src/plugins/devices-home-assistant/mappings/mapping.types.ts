@@ -130,9 +130,9 @@ export enum EntityRole {
 }
 
 export interface DomainRolesConfig {
-	primary: string[];
-	standalone: string[];
-	secondary: string[];
+	primary?: string[];
+	standalone?: string[];
+	secondary?: string[];
 }
 
 // ============================================

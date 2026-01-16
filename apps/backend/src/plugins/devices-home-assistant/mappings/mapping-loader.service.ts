@@ -372,19 +372,19 @@ export class MappingLoaderService implements OnModuleInit {
 	 * Build domain roles map from configuration
 	 */
 	private buildDomainRolesMap(config: DomainRolesConfig): void {
-		for (const domain of config.primary) {
+		for (const domain of config.primary ?? []) {
 			const resolved = this.resolveDomain(domain);
 			if (resolved) {
 				this.domainRoles.set(resolved, EntityRole.PRIMARY);
 			}
 		}
-		for (const domain of config.standalone) {
+		for (const domain of config.standalone ?? []) {
 			const resolved = this.resolveDomain(domain);
 			if (resolved) {
 				this.domainRoles.set(resolved, EntityRole.STANDALONE);
 			}
 		}
-		for (const domain of config.secondary) {
+		for (const domain of config.secondary ?? []) {
 			const resolved = this.resolveDomain(domain);
 			if (resolved) {
 				this.domainRoles.set(resolved, EntityRole.SECONDARY);
