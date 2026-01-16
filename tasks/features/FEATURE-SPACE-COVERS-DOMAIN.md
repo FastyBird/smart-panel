@@ -172,3 +172,50 @@ export enum CoversMode {
 - Keep changes scoped to this task and its `Scope`.
 - For each acceptance criterion, either implement it or explain why it's skipped.
 - Respect global AI rules from `/.ai-rules/GUIDELINES.md`.
+
+## 9. Implementation Notes
+
+### Backend Implementation (Completed)
+
+The backend implementation follows the established patterns from lighting and climate domains.
+
+**Files created:**
+- `apps/backend/src/modules/spaces/entities/space-covers-role.entity.ts` - Role assignment entity
+- `apps/backend/src/modules/spaces/services/space-covers-role.service.ts` - Role CRUD service
+- `apps/backend/src/modules/spaces/services/covers-intent.service.ts` - Intent execution service
+- `apps/backend/src/modules/spaces/dto/covers-intent.dto.ts` - Intent request DTO
+- `apps/backend/src/modules/spaces/dto/covers-role.dto.ts` - Role assignment DTOs
+- `apps/backend/src/migrations/1737072000000-SpacesCoversRoles.ts` - Database migration
+
+**Files modified:**
+- `apps/backend/src/modules/spaces/spaces.constants.ts` - Added CoversRole, CoversIntentType, CoversMode, PositionDelta enums and orchestration rules
+- `apps/backend/src/modules/spaces/services/space-intent.service.ts` - Added covers methods to facade
+- `apps/backend/src/modules/spaces/controllers/spaces.controller.ts` - Added covers API endpoints
+- `apps/backend/src/modules/spaces/models/spaces-response.model.ts` - Added covers response models
+- `apps/backend/src/modules/spaces/spaces.openapi.ts` - Registered new DTOs and models
+- `apps/backend/src/modules/spaces/spaces.module.ts` - Registered services and entity
+
+**API Endpoints added:**
+- `GET /api/v1/spaces/:id/covers` - Get covers state
+- `POST /api/v1/spaces/:id/intents/covers` - Execute covers intent
+- `GET /api/v1/spaces/:id/covers/targets` - List covers targets
+- `POST /api/v1/spaces/:id/covers/roles` - Set covers role
+- `POST /api/v1/spaces/:id/covers/roles/bulk` - Bulk set covers roles
+- `POST /api/v1/spaces/:id/covers/roles/defaults` - Apply default roles
+- `DELETE /api/v1/spaces/:id/covers/roles/:deviceId/:channelId` - Delete role
+
+### Remaining Work
+
+**Admin app:**
+- Add covers role assignment UI component (follow lighting roles pattern in `apps/admin/src/modules/spaces/components/space-roles-tab.vue`)
+- Show covers devices in space configuration
+
+**Panel app:**
+- Add covers section to SpacePage (follow lighting section pattern)
+- Show position slider and mode buttons
+
+**Unit tests:**
+- Test space with no covers (no-op)
+- Test space with position-capable covers
+- Test space with command-only covers
+- Test role-specific intents
