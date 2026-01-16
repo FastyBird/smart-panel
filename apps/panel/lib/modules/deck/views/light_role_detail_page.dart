@@ -16,6 +16,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dar
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/intents/service.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -910,6 +911,26 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     }
   }
 
+  /// Map LightTargetRole to LightingStateRole for backend intents
+  LightingStateRole? _mapTargetRoleToStateRole(LightTargetRole role) {
+    switch (role) {
+      case LightTargetRole.main:
+        return LightingStateRole.main;
+      case LightTargetRole.task:
+        return LightingStateRole.task;
+      case LightTargetRole.ambient:
+        return LightingStateRole.ambient;
+      case LightTargetRole.accent:
+        return LightingStateRole.accent;
+      case LightTargetRole.night:
+        return LightingStateRole.night;
+      case LightTargetRole.other:
+        return LightingStateRole.other;
+      case LightTargetRole.hidden:
+        return null; // Hidden shouldn't be controlled
+    }
+  }
+
   String _getLightStateSubtitle(RoleMixedState mixedState) {
     final total = mixedState.onCount + mixedState.offCount;
 
@@ -942,9 +963,11 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
 
   Future<void> _toggleAllLights(List<LightTargetView> targets) async {
     final devicesService = _devicesService;
+    final spacesService = _spacesService;
     if (devicesService == null) return;
 
     final localizations = AppLocalizations.of(context);
+    final stateRole = _mapTargetRoleToStateRole(widget.role);
 
     try {
       bool anyOn = false;
@@ -961,26 +984,6 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
 
       final newState = !anyOn;
 
-      final List<PropertyCommandItem> properties = [];
-
-      for (final target in targets) {
-        final device = devicesService.getDevice(target.deviceId);
-        if (device is LightingDeviceView) {
-          final channel = findLightChannel(device, target.channelId);
-          if (channel == null) continue;
-
-          final onProp = channel.onProp;
-          properties.add(PropertyCommandItem(
-            deviceId: target.deviceId,
-            channelId: target.channelId,
-            propertyId: onProp.id,
-            value: newState,
-          ));
-        }
-      }
-
-      if (properties.isEmpty) return;
-
       _pendingOnStateClearTimer?.cancel();
       _pendingOnStateClearTimer = null;
       _onOffState.cancelTimer();
@@ -993,48 +996,84 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
         );
       });
 
-      final displayRepository = locator<DisplayRepository>();
-      final displayId = displayRepository.display?.id;
+      // Set optimistic UI state for all devices
+      for (final target in targets) {
+        final device = devicesService.getDevice(target.deviceId);
+        if (device is LightingDeviceView) {
+          final channel = findLightChannel(device, target.channelId);
+          if (channel == null) continue;
 
-      final commandContext = PropertyCommandContext(
-        origin: 'panel.system.room',
-        displayId: displayId,
-        spaceId: widget.roomId,
-        roleKey: widget.role.name,
-      );
-
-      // Set pending state for immediate optimistic UI
-      for (final property in properties) {
-        _deviceControlStateService?.setPending(
-          property.deviceId,
-          property.channelId,
-          property.propertyId,
-          property.value,
-        );
-        _intentOverlayService?.createLocalOverlay(
-          deviceId: property.deviceId,
-          channelId: property.channelId,
-          propertyId: property.propertyId,
-          value: property.value,
-          ttlMs: 5000,
-        );
+          final onProp = channel.onProp;
+          _deviceControlStateService?.setPending(
+            target.deviceId,
+            target.channelId,
+            onProp.id,
+            newState,
+          );
+          _intentOverlayService?.createLocalOverlay(
+            deviceId: target.deviceId,
+            channelId: target.channelId,
+            propertyId: onProp.id,
+            value: newState,
+            ttlMs: 5000,
+          );
+        }
       }
 
       // Force immediate UI update
       if (mounted) setState(() {});
 
-      final success = await devicesService.setMultiplePropertyValues(
-        properties: properties,
-        context: commandContext,
-      );
+      // Use backend intent if available
+      bool success = false;
+      if (spacesService != null && stateRole != null) {
+        final result = newState
+            ? await spacesService.turnRoleOn(widget.roomId, stateRole)
+            : await spacesService.turnRoleOff(widget.roomId, stateRole);
+        success = result != null;
+      } else {
+        // Fallback to direct device control
+        final List<PropertyCommandItem> properties = [];
+        for (final target in targets) {
+          final device = devicesService.getDevice(target.deviceId);
+          if (device is LightingDeviceView) {
+            final channel = findLightChannel(device, target.channelId);
+            if (channel == null) continue;
+            properties.add(PropertyCommandItem(
+              deviceId: target.deviceId,
+              channelId: target.channelId,
+              propertyId: channel.onProp.id,
+              value: newState,
+            ));
+          }
+        }
+        if (properties.isNotEmpty) {
+          final displayRepository = locator<DisplayRepository>();
+          final displayId = displayRepository.display?.id;
+          final commandContext = PropertyCommandContext(
+            origin: 'panel.system.room',
+            displayId: displayId,
+            spaceId: widget.roomId,
+            roleKey: widget.role.name,
+          );
+          success = await devicesService.setMultiplePropertyValues(
+            properties: properties,
+            context: commandContext,
+          );
+        }
+      }
 
       // Transition to settling state after command is sent
-      for (final property in properties) {
-        _deviceControlStateService?.setSettling(
-          property.deviceId,
-          property.channelId,
-          property.propertyId,
-        );
+      for (final target in targets) {
+        final device = devicesService.getDevice(target.deviceId);
+        if (device is LightingDeviceView) {
+          final channel = findLightChannel(device, target.channelId);
+          if (channel == null) continue;
+          _deviceControlStateService?.setSettling(
+            target.deviceId,
+            target.channelId,
+            channel.onProp.id,
+          );
+        }
       }
 
       if (!mounted) return;
@@ -1196,60 +1235,44 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     required num value,
   }) async {
     final devicesService = _devicesService;
+    final spacesService = _spacesService;
     if (devicesService == null) return;
 
     final localizations = AppLocalizations.of(context);
     final propertyName = propertyType.name;
+    final stateRole = _mapTargetRoleToStateRole(widget.role);
 
     try {
-      final List<PropertyCommandItem> properties = [];
-
-      for (final target in targets) {
-        final hasCapability = switch (propertyType) {
-          SimplePropertyType.brightness => target.hasBrightness,
-          SimplePropertyType.temperature => target.hasColorTemp,
-          SimplePropertyType.white => true,
-        };
-        if (!hasCapability) continue;
-
-        final device = devicesService.getDevice(target.deviceId);
-        if (device is LightingDeviceView) {
-          final channel = findLightChannel(device, target.channelId);
-          if (channel == null) continue;
-
-          final prop = switch (propertyType) {
-            SimplePropertyType.brightness => channel.brightnessProp,
-            SimplePropertyType.temperature => channel.temperatureProp,
-            SimplePropertyType.white => channel.colorWhiteProp,
-          };
-
-          if (prop != null) {
-            properties.add(PropertyCommandItem(
-              deviceId: target.deviceId,
-              channelId: target.channelId,
-              propertyId: prop.id,
-              value: value is double ? value.round() : value,
-            ));
-          }
+      // Use backend intent if available
+      bool success = false;
+      if (spacesService != null && stateRole != null) {
+        final intValue = value is double ? value.round() : value as int;
+        switch (propertyType) {
+          case SimplePropertyType.brightness:
+            final result = await spacesService.setRoleBrightness(
+              widget.roomId,
+              stateRole,
+              intValue,
+            );
+            success = result != null;
+            break;
+          case SimplePropertyType.temperature:
+            final result = await spacesService.setRoleColorTemp(
+              widget.roomId,
+              stateRole,
+              intValue,
+            );
+            success = result != null;
+            break;
+          case SimplePropertyType.white:
+            // White channel not yet implemented in backend intents, use fallback
+            success = await _setPropertyViaDevices(targets, propertyType, value);
+            break;
         }
+      } else {
+        // Fallback to direct device control
+        success = await _setPropertyViaDevices(targets, propertyType, value);
       }
-
-      if (properties.isEmpty) return;
-
-      final displayRepository = locator<DisplayRepository>();
-      final displayId = displayRepository.display?.id;
-
-      final commandContext = PropertyCommandContext(
-        origin: 'panel.system.room',
-        displayId: displayId,
-        spaceId: widget.roomId,
-        roleKey: widget.role.name,
-      );
-
-      final success = await devicesService.setMultiplePropertyValues(
-        properties: properties,
-        context: commandContext,
-      );
 
       if (!mounted) return;
 
@@ -1268,82 +1291,91 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     }
   }
 
+  /// Fallback method to set property directly on devices
+  Future<bool> _setPropertyViaDevices(
+    List<LightTargetView> targets,
+    SimplePropertyType propertyType,
+    num value,
+  ) async {
+    final devicesService = _devicesService;
+    if (devicesService == null) return false;
+
+    final List<PropertyCommandItem> properties = [];
+
+    for (final target in targets) {
+      final hasCapability = switch (propertyType) {
+        SimplePropertyType.brightness => target.hasBrightness,
+        SimplePropertyType.temperature => target.hasColorTemp,
+        SimplePropertyType.white => true,
+      };
+      if (!hasCapability) continue;
+
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is LightingDeviceView) {
+        final channel = findLightChannel(device, target.channelId);
+        if (channel == null) continue;
+
+        final prop = switch (propertyType) {
+          SimplePropertyType.brightness => channel.brightnessProp,
+          SimplePropertyType.temperature => channel.temperatureProp,
+          SimplePropertyType.white => channel.colorWhiteProp,
+        };
+
+        if (prop != null) {
+          properties.add(PropertyCommandItem(
+            deviceId: target.deviceId,
+            channelId: target.channelId,
+            propertyId: prop.id,
+            value: value is double ? value.round() : value,
+          ));
+        }
+      }
+    }
+
+    if (properties.isEmpty) return true; // No devices to update
+
+    final displayRepository = locator<DisplayRepository>();
+    final displayId = displayRepository.display?.id;
+
+    final commandContext = PropertyCommandContext(
+      origin: 'panel.system.room',
+      displayId: displayId,
+      spaceId: widget.roomId,
+      roleKey: widget.role.name,
+    );
+
+    return devicesService.setMultiplePropertyValues(
+      properties: properties,
+      context: commandContext,
+    );
+  }
+
   Future<void> _setHueForAll(List<LightTargetView> targets, double hue) async {
     final devicesService = _devicesService;
+    final spacesService = _spacesService;
     if (devicesService == null) return;
 
     final localizations = AppLocalizations.of(context);
+    final stateRole = _mapTargetRoleToStateRole(widget.role);
 
     try {
-      final List<PropertyCommandItem> properties = [];
+      // Convert hue to hex color for backend intent
+      final color = HSVColor.fromAHSV(1.0, hue, 1.0, 1.0).toColor();
+      final hexColor = '#${color.value.toRadixString(16).substring(2).toUpperCase()}';
 
-      for (final target in targets) {
-        final device = devicesService.getDevice(target.deviceId);
-        if (device is LightingDeviceView) {
-          final channel = findLightChannel(device, target.channelId);
-          if (channel == null || !channel.hasColor) continue;
-
-          // Prefer HSV hue if available
-          final hueProp = channel.hueProp;
-          if (hueProp != null) {
-            properties.add(PropertyCommandItem(
-              deviceId: target.deviceId,
-              channelId: target.channelId,
-              propertyId: hueProp.id,
-              value: hue.round(),
-            ));
-          } else if (channel.hasColorRed) {
-            // Convert hue to RGB
-            final color = HSVColor.fromAHSV(1.0, hue, 1.0, 1.0).toColor();
-
-            final redProp = channel.colorRedProp;
-            final greenProp = channel.colorGreenProp;
-            final blueProp = channel.colorBlueProp;
-
-            if (redProp != null) {
-              properties.add(PropertyCommandItem(
-                deviceId: target.deviceId,
-                channelId: target.channelId,
-                propertyId: redProp.id,
-                value: (color.r * 255).toInt(),
-              ));
-            }
-            if (greenProp != null) {
-              properties.add(PropertyCommandItem(
-                deviceId: target.deviceId,
-                channelId: target.channelId,
-                propertyId: greenProp.id,
-                value: (color.g * 255).toInt(),
-              ));
-            }
-            if (blueProp != null) {
-              properties.add(PropertyCommandItem(
-                deviceId: target.deviceId,
-                channelId: target.channelId,
-                propertyId: blueProp.id,
-                value: (color.b * 255).toInt(),
-              ));
-            }
-          }
-        }
+      // Use backend intent if available
+      bool success = false;
+      if (spacesService != null && stateRole != null) {
+        final result = await spacesService.setRoleColor(
+          widget.roomId,
+          stateRole,
+          hexColor,
+        );
+        success = result != null;
+      } else {
+        // Fallback to direct device control
+        success = await _setColorViaDevices(targets, hue);
       }
-
-      if (properties.isEmpty) return;
-
-      final displayRepository = locator<DisplayRepository>();
-      final displayId = displayRepository.display?.id;
-
-      final commandContext = PropertyCommandContext(
-        origin: 'panel.system.room',
-        displayId: displayId,
-        spaceId: widget.roomId,
-        roleKey: widget.role.name,
-      );
-
-      final success = await devicesService.setMultiplePropertyValues(
-        properties: properties,
-        context: commandContext,
-      );
 
       if (!mounted) return;
 
@@ -1360,6 +1392,82 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
         message: localizations?.action_failed ?? 'Failed to set color',
       );
     }
+  }
+
+  /// Fallback method to set color directly on devices
+  Future<bool> _setColorViaDevices(List<LightTargetView> targets, double hue) async {
+    final devicesService = _devicesService;
+    if (devicesService == null) return false;
+
+    final List<PropertyCommandItem> properties = [];
+
+    for (final target in targets) {
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is LightingDeviceView) {
+        final channel = findLightChannel(device, target.channelId);
+        if (channel == null || !channel.hasColor) continue;
+
+        // Prefer HSV hue if available
+        final hueProp = channel.hueProp;
+        if (hueProp != null) {
+          properties.add(PropertyCommandItem(
+            deviceId: target.deviceId,
+            channelId: target.channelId,
+            propertyId: hueProp.id,
+            value: hue.round(),
+          ));
+        } else if (channel.hasColorRed) {
+          // Convert hue to RGB
+          final color = HSVColor.fromAHSV(1.0, hue, 1.0, 1.0).toColor();
+
+          final redProp = channel.colorRedProp;
+          final greenProp = channel.colorGreenProp;
+          final blueProp = channel.colorBlueProp;
+
+          if (redProp != null) {
+            properties.add(PropertyCommandItem(
+              deviceId: target.deviceId,
+              channelId: target.channelId,
+              propertyId: redProp.id,
+              value: (color.r * 255).toInt(),
+            ));
+          }
+          if (greenProp != null) {
+            properties.add(PropertyCommandItem(
+              deviceId: target.deviceId,
+              channelId: target.channelId,
+              propertyId: greenProp.id,
+              value: (color.g * 255).toInt(),
+            ));
+          }
+          if (blueProp != null) {
+            properties.add(PropertyCommandItem(
+              deviceId: target.deviceId,
+              channelId: target.channelId,
+              propertyId: blueProp.id,
+              value: (color.b * 255).toInt(),
+            ));
+          }
+        }
+      }
+    }
+
+    if (properties.isEmpty) return true; // No devices to update
+
+    final displayRepository = locator<DisplayRepository>();
+    final displayId = displayRepository.display?.id;
+
+    final commandContext = PropertyCommandContext(
+      origin: 'panel.system.room',
+      displayId: displayId,
+      spaceId: widget.roomId,
+      roleKey: widget.role.name,
+    );
+
+    return devicesService.setMultiplePropertyValues(
+      properties: properties,
+      context: commandContext,
+    );
   }
 
   Future<void> _toggleChannel(LightingChannelData channelData) async {
