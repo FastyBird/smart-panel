@@ -162,7 +162,8 @@ class SpaceStateRepository extends ChangeNotifier {
   /// Cached undo states by space ID
   final Map<String, UndoStateModel> _undoStates = {};
 
-  bool _isLoading = false;
+  /// Counter for concurrent loading operations (0 = not loading)
+  int _loadingCount = 0;
 
   SpaceStateRepository({
     required SpacesModuleClient apiClient,
@@ -170,7 +171,8 @@ class SpaceStateRepository extends ChangeNotifier {
 
   SpacesModuleClient get apiClient => _apiClient;
 
-  bool get isLoading => _isLoading;
+  /// Returns true if any fetch operation is in progress
+  bool get isLoading => _loadingCount > 0;
 
   // ============================================
   // LIGHTING STATE
@@ -790,18 +792,23 @@ class SpaceStateRepository extends ChangeNotifier {
 
   /// Fetch all state for a space
   Future<void> fetchAllState(String spaceId) async {
-    _isLoading = true;
+    _loadingCount++;
     notifyListeners();
 
-    await Future.wait([
-      fetchLightingState(spaceId),
-      fetchClimateState(spaceId),
-      fetchSuggestion(spaceId),
-      fetchUndoState(spaceId),
-    ]);
-
-    _isLoading = false;
-    notifyListeners();
+    try {
+      await Future.wait([
+        fetchLightingState(spaceId),
+        fetchClimateState(spaceId),
+        fetchSuggestion(spaceId),
+        fetchUndoState(spaceId),
+      ]);
+    } finally {
+      // Guard against going negative if clearAll was called during fetch
+      if (_loadingCount > 0) {
+        _loadingCount--;
+      }
+      notifyListeners();
+    }
   }
 
   /// Clear all cached state
@@ -810,6 +817,7 @@ class SpaceStateRepository extends ChangeNotifier {
     _climateStates.clear();
     _suggestions.clear();
     _undoStates.clear();
+    _loadingCount = 0;
     notifyListeners();
   }
 
