@@ -7,8 +7,8 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | Status | Count |
 |--------|-------|
 | Done | 81 |
-| Planned | 23 |
-| **Total** | **104** |
+| Planned | 33 |
+| **Total** | **114** |
 
 ---
 
@@ -31,6 +31,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | ID | Title | Scope | Size |
 |----|-------|-------|------|
 | EPIC-APP-ONBOARDING | App Onboarding Wizard | backend, admin | large |
+| EPIC-EXPAND-SMART-PANEL-DOMAINS | Expand Smart Panel Domains and Unified Room Modes | backend, admin, panel | large |
 
 ---
 
@@ -120,6 +121,15 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-EXTENSION-LOGS-FILTERS | Level and time range filters for extension logs | admin | small | FEATURE-UNIFIED-EXTENSION-LOGS |
 | FEATURE-WEATHER-PANEL-ENHANCEMENTS | Weather dashboard tile and location switching | panel | medium | FEATURE-MULTI-LOCATION-WEATHER |
 | FEATURE-SPACEPAGE-CLIMATE-SECTION | Climate section for SpacePage | backend, panel | medium | FEATURE-DASHBOARD-SPACE-PAGE |
+| FEATURE-SPACE-COVERS-DOMAIN | Add covers domain intents for spaces | backend, admin, panel | medium | EPIC-EXPAND-SMART-PANEL-DOMAINS |
+| FEATURE-SPACE-MEDIA-DOMAIN | Add media domain intents for spaces | backend, admin, panel | medium | EPIC-EXPAND-SMART-PANEL-DOMAINS |
+| FEATURE-SPACE-SECURITY-DOMAIN | Add security domain intents for spaces | backend, admin, panel | medium | EPIC-EXPAND-SMART-PANEL-DOMAINS |
+| FEATURE-SPACE-ACTIVITY-MODES | Add activity-based room modes | backend, admin, panel | large | EPIC-EXPAND-SMART-PANEL-DOMAINS |
+| FEATURE-SPACE-MODE-ADMIN-UI | Admin UI for configuring space modes | admin | medium | EPIC-EXPAND-SMART-PANEL-DOMAINS |
+| FEATURE-SPACE-MODE-PANEL-UI | Panel UI for activating space modes | panel | medium | EPIC-EXPAND-SMART-PANEL-DOMAINS |
+| FEATURE-SPACE-TIME-SCHEDULING | Time-based mode scheduling | backend, admin | medium | EPIC-EXPAND-SMART-PANEL-DOMAINS |
+| FEATURE-SPACE-OCCUPANCY-MODES | Occupancy-based mode triggers | backend, admin, panel | medium | EPIC-EXPAND-SMART-PANEL-DOMAINS |
+| FEATURE-SPACE-SEASONAL-DEFAULTS | Seasonal baseline adjustments | backend, admin | small | EPIC-EXPAND-SMART-PANEL-DOMAINS |
 
 ---
 
@@ -247,6 +257,14 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-SPACEPAGE-CLIMATE-SECTION | feature | planned |
 | TECH-PROPERTY-TIMESERIES-E2E | technical | planned |
 | TECH-EXTENSIONS-CAN-REMOVE-OPENAPI | technical | planned |
+| EPIC-EXPAND-SMART-PANEL-DOMAINS | epic | planned |
+| FEATURE-SPACE-COVERS-DOMAIN | feature | planned |
+| FEATURE-SPACE-MEDIA-DOMAIN | feature | planned |
+| FEATURE-SPACE-SECURITY-DOMAIN | feature | planned |
+| FEATURE-SPACE-ACTIVITY-MODES | feature | planned |
+| FEATURE-SPACE-TIME-SCHEDULING | feature | planned |
+| FEATURE-SPACE-OCCUPANCY-MODES | feature | planned |
+| FEATURE-SPACE-SEASONAL-DEFAULTS | feature | planned |
 
 ### Admin
 
@@ -297,6 +315,15 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | EPIC-APP-ONBOARDING | epic | planned |
 | FEATURE-EXTENSION-LOGS-FILTERS | feature | planned |
 | TECH-ADMIN-MODULE-CONFIG-TESTS | technical | planned |
+| EPIC-EXPAND-SMART-PANEL-DOMAINS | epic | planned |
+| FEATURE-SPACE-COVERS-DOMAIN | feature | planned |
+| FEATURE-SPACE-MEDIA-DOMAIN | feature | planned |
+| FEATURE-SPACE-SECURITY-DOMAIN | feature | planned |
+| FEATURE-SPACE-ACTIVITY-MODES | feature | planned |
+| FEATURE-SPACE-MODE-ADMIN-UI | feature | planned |
+| FEATURE-SPACE-TIME-SCHEDULING | feature | planned |
+| FEATURE-SPACE-OCCUPANCY-MODES | feature | planned |
+| FEATURE-SPACE-SEASONAL-DEFAULTS | feature | planned |
 
 ### Panel
 
@@ -366,6 +393,13 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-PANEL-QUICK-SCENES-FEEDBACK | technical | planned |
 | FEATURE-WEATHER-PANEL-ENHANCEMENTS | feature | planned |
 | FEATURE-SPACEPAGE-CLIMATE-SECTION | feature | planned |
+| EPIC-EXPAND-SMART-PANEL-DOMAINS | epic | planned |
+| FEATURE-SPACE-COVERS-DOMAIN | feature | planned |
+| FEATURE-SPACE-MEDIA-DOMAIN | feature | planned |
+| FEATURE-SPACE-SECURITY-DOMAIN | feature | planned |
+| FEATURE-SPACE-ACTIVITY-MODES | feature | planned |
+| FEATURE-SPACE-MODE-PANEL-UI | feature | planned |
+| FEATURE-SPACE-OCCUPANCY-MODES | feature | planned |
 
 ---
 
@@ -464,6 +498,20 @@ FEATURE-PANEL-ROOM-SYSTEM-PAGES (planned)
 ├── FEATURE-PANEL-DOMAIN-CLIMATE-PAGE (planned)
 ├── FEATURE-PANEL-DOMAIN-SENSORS-PAGE (planned)
 └── FEATURE-PANEL-QUICK-SCENES-FEEDBACK (planned)
+
+EPIC-EXPAND-SMART-PANEL-DOMAINS (planned)
+├── Phase 1: Domain Completion
+│   ├── FEATURE-SPACE-COVERS-DOMAIN (planned)
+│   ├── FEATURE-SPACE-MEDIA-DOMAIN (planned)
+│   └── FEATURE-SPACE-SECURITY-DOMAIN (planned)
+├── Phase 2: Unified Room Modes
+│   ├── FEATURE-SPACE-ACTIVITY-MODES (planned)
+│   ├── FEATURE-SPACE-MODE-ADMIN-UI (planned)
+│   └── FEATURE-SPACE-MODE-PANEL-UI (planned)
+└── Phase 3: Automation Triggers
+    ├── FEATURE-SPACE-TIME-SCHEDULING (planned)
+    ├── FEATURE-SPACE-OCCUPANCY-MODES (planned)
+    └── FEATURE-SPACE-SEASONAL-DEFAULTS (planned)
 ```
 
 ---
@@ -554,7 +602,17 @@ tasks/
 │   ├── TECH-SPACES-ONBOARDING-WIZARD.md
 │   ├── FEATURE-EXTENSION-LOGS-FILTERS.md
 │   ├── FEATURE-WEATHER-PANEL-ENHANCEMENTS.md
-│   └── FEATURE-SPACEPAGE-CLIMATE-SECTION.md
+│   ├── FEATURE-SPACEPAGE-CLIMATE-SECTION.md
+│   ├── EPIC-EXPAND-SMART-PANEL-DOMAINS.md
+│   ├── FEATURE-SPACE-COVERS-DOMAIN.md
+│   ├── FEATURE-SPACE-MEDIA-DOMAIN.md
+│   ├── FEATURE-SPACE-SECURITY-DOMAIN.md
+│   ├── FEATURE-SPACE-ACTIVITY-MODES.md
+│   ├── FEATURE-SPACE-MODE-ADMIN-UI.md
+│   ├── FEATURE-SPACE-MODE-PANEL-UI.md
+│   ├── FEATURE-SPACE-TIME-SCHEDULING.md
+│   ├── FEATURE-SPACE-OCCUPANCY-MODES.md
+│   └── FEATURE-SPACE-SEASONAL-DEFAULTS.md
 └── technical/              # Technical refactors
     ├── TECHNICAL-DISPLAY-TOKEN-REVOCATION-MULTI-BACKEND.md
     ├── TECHNICAL-OPENAPI-SPECIFICATION.md
@@ -566,4 +624,4 @@ tasks/
 
 ---
 
-*Last updated: 2026-01-08*
+*Last updated: 2026-01-16*
