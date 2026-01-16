@@ -14,7 +14,7 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
+import { ApiExtraModels, ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { ChannelCategory, DataTypeType, DeviceCategory, PermissionType, PropertyCategory } from '../devices.constants';
 
@@ -133,6 +133,7 @@ export class DataTypeVariantModel {
 }
 
 @ApiSchema({ name: 'DevicesModuleDataChannelPropertySpec' })
+@ApiExtraModels(DataTypeVariantModel)
 export class ChannelPropertySpecModel {
 	@ApiProperty({
 		description: 'Property category',
