@@ -19,7 +19,7 @@
 			</div>
 		</template>
 
-		<div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+		<div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
 			<div>
 				<div class="text-2xl font-bold text-green-600">{{ mappedCount }}</div>
 				<div class="text-sm text-gray-500">{{ t('devicesHomeAssistantPlugin.fields.mapping.mapped') }}</div>
@@ -35,6 +35,10 @@
 			<div>
 				<div class="text-2xl font-bold text-gray-600">{{ skippedCount }}</div>
 				<div class="text-sm text-gray-500">{{ t('devicesHomeAssistantPlugin.fields.mapping.skipped') }}</div>
+			</div>
+			<div>
+				<div class="text-2xl font-bold text-orange-600">{{ incompatibleCount }}</div>
+				<div class="text-sm text-gray-500">{{ t('devicesHomeAssistantPlugin.fields.mapping.incompatible') }}</div>
 			</div>
 		</div>
 
@@ -103,6 +107,7 @@ const mappedCount = computed(() => props.preview.entities.filter((e) => e.status
 const partialCount = computed(() => props.preview.entities.filter((e) => e.status === 'partial').length);
 const unmappedCount = computed(() => props.preview.entities.filter((e) => e.status === 'unmapped').length);
 const skippedCount = computed(() => props.preview.entities.filter((e) => e.status === 'skipped').length);
+const incompatibleCount = computed(() => props.preview.entities.filter((e) => e.status === 'incompatible').length);
 
 const virtualPropertiesCount = computed(() => {
 	return props.preview.validation?.fillableWithVirtualCount ?? 0;
