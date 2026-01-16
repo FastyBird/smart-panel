@@ -141,11 +141,17 @@ export class MappingPreviewService {
 		const suggestedDeviceCategory =
 			options?.deviceCategory ?? this.inferDeviceCategory(mappedChannelCategories, entityDomains);
 
-		// Check for missing required channels
+		// Check for missing required channels and mark incompatible entities
 		const deviceSpec = devicesSchema[suggestedDeviceCategory as keyof typeof devicesSchema];
 		if (deviceSpec && 'channels' in deviceSpec) {
-			const requiredChannels = Object.entries(deviceSpec.channels)
-				.filter(([, spec]) => (spec as { required?: boolean }).required)
+			const deviceChannels = deviceSpec.channels as Record<string, { category: string; required?: boolean }>;
+			const allowedChannelCategories = new Set(Object.keys(deviceChannels) as ChannelCategory[]);
+
+			// Always allow device_information as it's auto-created
+			allowedChannelCategories.add(ChannelCategory.DEVICE_INFORMATION);
+
+			const requiredChannels = Object.entries(deviceChannels)
+				.filter(([, spec]) => spec.required)
 				.map(([key]) => key as ChannelCategory);
 
 			for (const requiredChannel of requiredChannels) {
@@ -159,6 +165,31 @@ export class MappingPreviewService {
 						type: 'missing_required_channel',
 						message: `Required channel "${requiredChannel}" is not mapped`,
 						suggestion: 'You may need to select an entity to map to this channel',
+					});
+				}
+			}
+
+			// Mark entities as incompatible if their channel is not allowed for this device category
+			for (const preview of entityPreviews) {
+				// Skip already skipped/unmapped entities
+				if (preview.status === 'skipped' || preview.status === 'unmapped' || !preview.suggestedChannel) {
+					continue;
+				}
+
+				const channelCategory = preview.suggestedChannel.category;
+
+				// Check if this channel category is allowed for the device
+				if (!allowedChannelCategories.has(channelCategory)) {
+					preview.status = 'incompatible';
+					preview.incompatibleReason =
+						`Channel "${channelCategory}" is not supported by device category "${suggestedDeviceCategory}"`;
+
+					// Add warning for incompatible entity
+					warnings.push({
+						type: 'incompatible_channel',
+						entityId: preview.entityId,
+						message: `Entity "${preview.entityId}" maps to channel "${channelCategory}" which is not allowed for ${suggestedDeviceCategory} devices`,
+						suggestion: 'This entity will be skipped during adoption. You can override the channel category if needed.',
 					});
 				}
 			}
@@ -185,17 +216,14 @@ export class MappingPreviewService {
 		const partialCount = entityPreviews.filter((e) => e.status === 'partial').length;
 		const unmappedCount = entityPreviews.filter((e) => e.status === 'unmapped').length;
 		const skippedCount = entityPreviews.filter((e) => e.status === 'skipped').length;
+		const incompatibleCount = entityPreviews.filter((e) => e.status === 'incompatible').length;
 
 		this.logger.log(
 			`[MAPPING PREVIEW] Summary for device "${deviceRegistry.name}" (${haDeviceId}): ` +
 				`total_entities=${entityPreviews.length}, mapped=${mappedCount}, partial=${partialCount}, ` +
-				`unmapped=${unmappedCount}, skipped=${skippedCount}, suggested_category=${suggestedDeviceCategory}, ` +
-				`ready_to_adopt=${readyToAdopt}`,
+				`unmapped=${unmappedCount}, skipped=${skippedCount}, incompatible=${incompatibleCount}, ` +
+				`suggested_category=${suggestedDeviceCategory}, ready_to_adopt=${readyToAdopt}`,
 		);
-
-		if (unmappedCount > 0) {
-			// Intentionally empty - reserved for future logging
-		}
 
 		// Filter out only generic channels from the preview
 		// - generic channels are fallbacks that shouldn't be adopted

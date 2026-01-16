@@ -224,11 +224,11 @@ export class EntityMappingPreviewModel {
 
 	@ApiProperty({
 		description: 'Mapping status',
-		enum: ['mapped', 'partial', 'unmapped', 'skipped'],
+		enum: ['mapped', 'partial', 'unmapped', 'skipped', 'incompatible'],
 	})
 	@Expose()
 	@IsString()
-	status: 'mapped' | 'partial' | 'unmapped' | 'skipped';
+	status: 'mapped' | 'partial' | 'unmapped' | 'skipped' | 'incompatible';
 
 	@ApiPropertyOptional({
 		description: 'Suggested channel mapping',
@@ -274,6 +274,17 @@ export class EntityMappingPreviewModel {
 	@IsArray()
 	@IsEnum(PropertyCategory, { each: true })
 	missingRequiredProperties: PropertyCategory[];
+
+	@ApiPropertyOptional({
+		description: 'Reason why this entity is incompatible with the selected device category',
+		type: 'string',
+		nullable: true,
+		name: 'incompatible_reason',
+	})
+	@Expose({ name: 'incompatible_reason' })
+	@IsOptional()
+	@IsString()
+	incompatibleReason?: string | null;
 }
 
 // ============================================================================
@@ -284,11 +295,22 @@ export class EntityMappingPreviewModel {
 export class MappingWarningModel {
 	@ApiProperty({
 		description: 'Warning type',
-		enum: ['missing_required_channel', 'missing_required_property', 'unsupported_entity', 'unknown_device_class'],
+		enum: [
+			'missing_required_channel',
+			'missing_required_property',
+			'unsupported_entity',
+			'unknown_device_class',
+			'incompatible_channel',
+		],
 	})
 	@Expose()
 	@IsString()
-	type: 'missing_required_channel' | 'missing_required_property' | 'unsupported_entity' | 'unknown_device_class';
+	type:
+		| 'missing_required_channel'
+		| 'missing_required_property'
+		| 'unsupported_entity'
+		| 'unknown_device_class'
+		| 'incompatible_channel';
 
 	@ApiPropertyOptional({
 		description: 'Related entity ID',
