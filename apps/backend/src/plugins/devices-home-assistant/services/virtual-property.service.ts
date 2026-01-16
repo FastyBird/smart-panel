@@ -237,7 +237,7 @@ export class VirtualPropertyService {
 		// Find matching threshold (sorted by min/max boundaries)
 		for (const threshold of rule.thresholds) {
 			const minOk = threshold.min === undefined || sourceValue >= threshold.min;
-			const maxOk = threshold.max === undefined || sourceValue < threshold.max;
+			const maxOk = threshold.max === undefined || sourceValue <= threshold.max;
 
 			if (minOk && maxOk) {
 				return threshold.value;
