@@ -365,32 +365,38 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     final auxiliaryDevices = <AuxiliaryDevice>[];
     final climateDevices = <ClimateDevice>[];
 
-    // Track processed device IDs to avoid duplicates
-    final processedDeviceIds = <String>{};
+    // Track processed device IDs per category to avoid duplicates within each list
+    // but allow the same device to appear in multiple categories (e.g., as sensor AND actuator)
+    final processedSensorDeviceIds = <String>{};
+    final processedAuxiliaryDeviceIds = <String>{};
+    final processedClimateDeviceIds = <String>{};
 
     for (final target in climateTargets) {
       final device = devicesService?.getDevice(target.deviceId);
       if (device == null) continue;
 
-      // Skip already processed devices
-      if (processedDeviceIds.contains(target.deviceId)) continue;
-
       final role = target.role;
 
       if (role == ClimateTargetRole.sensor) {
+        // Skip if already processed as sensor
+        if (processedSensorDeviceIds.contains(target.deviceId)) continue;
         // Build sensors from sensor role targets
         _buildSensorsFromDevice(device, target, sensors);
-        processedDeviceIds.add(target.deviceId);
+        processedSensorDeviceIds.add(target.deviceId);
       } else if (role == ClimateTargetRole.auxiliary) {
+        // Skip if already processed as auxiliary
+        if (processedAuxiliaryDeviceIds.contains(target.deviceId)) continue;
         // Build auxiliary devices
         _buildAuxiliaryFromDevice(device, auxiliaryDevices);
-        processedDeviceIds.add(target.deviceId);
+        processedAuxiliaryDeviceIds.add(target.deviceId);
       } else if (role == ClimateTargetRole.heatingOnly ||
           role == ClimateTargetRole.coolingOnly ||
           role == ClimateTargetRole.auto) {
+        // Skip if already processed as climate device
+        if (processedClimateDeviceIds.contains(target.deviceId)) continue;
         // Build climate devices (actuators)
         _buildClimateDeviceFromTarget(device, target, climateDevices, mode);
-        processedDeviceIds.add(target.deviceId);
+        processedClimateDeviceIds.add(target.deviceId);
       }
     }
 
