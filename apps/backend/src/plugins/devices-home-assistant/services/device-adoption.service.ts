@@ -625,6 +625,24 @@ export class DeviceAdoptionService {
 		);
 		const otherChannels = request.channels.filter((ch) => ch.category !== ChannelCategory.DEVICE_INFORMATION);
 
+		// Check for duplicate entity IDs mapped to different channel categories
+		// This catches cases where the same entity would create multiple conflicting channels
+		const entityChannelMap = new Map<string, ChannelCategory[]>();
+		for (const channel of otherChannels) {
+			const existing = entityChannelMap.get(channel.entityId) ?? [];
+			existing.push(channel.category);
+			entityChannelMap.set(channel.entityId, existing);
+		}
+
+		for (const [entityId, categories] of entityChannelMap.entries()) {
+			if (categories.length > 1) {
+				validationErrors.push(
+					`Entity ${entityId} is mapped to multiple channel categories: ${categories.join(', ')}. ` +
+						`Each entity should only be mapped to one channel category.`,
+				);
+			}
+		}
+
 		// Validate device_information channel (will be auto-created)
 		const deviceInfoRawSchema = channelsSchema[ChannelCategory.DEVICE_INFORMATION] as object | undefined;
 		if (!deviceInfoRawSchema || typeof deviceInfoRawSchema !== 'object') {
