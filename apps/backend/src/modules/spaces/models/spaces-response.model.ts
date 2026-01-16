@@ -5,11 +5,14 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nes
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 import { ChannelCategory, DeviceCategory } from '../../devices/devices.constants';
 import { SpaceClimateRoleEntity } from '../entities/space-climate-role.entity';
+import { SpaceCoversRoleEntity } from '../entities/space-covers-role.entity';
 import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
 import { SpaceEntity } from '../entities/space.entity';
 import {
 	ClimateMode,
 	ClimateRole,
+	CoversMode,
+	CoversRole,
 	IntentCategory,
 	LightingMode,
 	LightingRole,
@@ -1007,6 +1010,387 @@ export class BulkClimateRolesResponseModel extends BaseSuccessResponseModel<Bulk
 	@Expose()
 	@Type(() => BulkClimateRolesResultDataModel)
 	declare data: BulkClimateRolesResultDataModel;
+}
+
+// ================================
+// Covers State & Intent Response Models
+// ================================
+
+/**
+ * Covers state data model (aggregated covers state for a space)
+ */
+@ApiSchema({ name: 'SpacesModuleDataCoversState' })
+export class CoversStateDataModel {
+	@ApiProperty({
+		name: 'has_covers',
+		description: 'Whether the space has any controllable covers',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'has_covers' })
+	hasCovers: boolean;
+
+	@ApiPropertyOptional({
+		name: 'average_position',
+		description: 'Average position of all covers (0-100, null if no covers)',
+		type: 'integer',
+		nullable: true,
+		example: 75,
+	})
+	@Expose({ name: 'average_position' })
+	averagePosition: number | null;
+
+	@ApiProperty({
+		name: 'any_open',
+		description: 'Whether any covers are open (position > 0)',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'any_open' })
+	anyOpen: boolean;
+
+	@ApiProperty({
+		name: 'all_closed',
+		description: 'Whether all covers are closed (position = 0)',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'all_closed' })
+	allClosed: boolean;
+
+	@ApiProperty({
+		name: 'devices_count',
+		description: 'Total number of cover devices in the space',
+		type: 'integer',
+		example: 2,
+	})
+	@Expose({ name: 'devices_count' })
+	devicesCount: number;
+
+	@ApiProperty({
+		name: 'covers_by_role',
+		description: 'Count of covers grouped by role',
+		type: 'object',
+		additionalProperties: { type: 'integer' },
+		example: { primary: 1, blackout: 1 },
+	})
+	@Expose({ name: 'covers_by_role' })
+	coversByRole: Record<string, number>;
+}
+
+/**
+ * Response wrapper for covers state
+ */
+@ApiSchema({ name: 'SpacesModuleResCoversState' })
+export class CoversStateResponseModel extends BaseSuccessResponseModel<CoversStateDataModel> {
+	@ApiProperty({
+		description: 'The covers state data',
+		type: () => CoversStateDataModel,
+	})
+	@Expose()
+	@Type(() => CoversStateDataModel)
+	declare data: CoversStateDataModel;
+}
+
+/**
+ * Covers intent execution result data model
+ */
+@ApiSchema({ name: 'SpacesModuleDataCoversIntentResult' })
+export class CoversIntentResultDataModel {
+	@ApiProperty({
+		description: 'Whether the intent was executed successfully',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	success: boolean;
+
+	@ApiProperty({
+		name: 'affected_devices',
+		description: 'Number of devices that were successfully affected',
+		type: 'integer',
+		example: 2,
+	})
+	@Expose({ name: 'affected_devices' })
+	affectedDevices: number;
+
+	@ApiProperty({
+		name: 'failed_devices',
+		description: 'Number of devices that failed to respond',
+		type: 'integer',
+		example: 0,
+	})
+	@Expose({ name: 'failed_devices' })
+	failedDevices: number;
+
+	@ApiPropertyOptional({
+		name: 'new_position',
+		description: 'The new average position after the intent (null if not applicable)',
+		type: 'integer',
+		nullable: true,
+		example: 50,
+	})
+	@Expose({ name: 'new_position' })
+	newPosition: number | null;
+}
+
+/**
+ * Response wrapper for covers intent execution result
+ */
+@ApiSchema({ name: 'SpacesModuleResCoversIntent' })
+export class CoversIntentResponseModel extends BaseSuccessResponseModel<CoversIntentResultDataModel> {
+	@ApiProperty({
+		description: 'The result of the covers intent execution',
+		type: () => CoversIntentResultDataModel,
+	})
+	@Expose()
+	@Type(() => CoversIntentResultDataModel)
+	declare data: CoversIntentResultDataModel;
+}
+
+// ================================
+// Covers Role Response Models
+// ================================
+
+/**
+ * Covers target data model (a cover device/channel in a space)
+ */
+@ApiSchema({ name: 'SpacesModuleDataCoversTarget' })
+export class CoversTargetDataModel {
+	@ApiProperty({
+		name: 'device_id',
+		description: 'ID of the window covering device',
+		type: 'string',
+		format: 'uuid',
+		example: 'a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7',
+	})
+	@Expose({ name: 'device_id' })
+	deviceId: string;
+
+	@ApiProperty({
+		name: 'device_name',
+		description: 'Name of the device',
+		type: 'string',
+		example: 'Living Room Blinds',
+	})
+	@Expose({ name: 'device_name' })
+	deviceName: string;
+
+	@ApiProperty({
+		name: 'channel_id',
+		description: 'ID of the window covering channel',
+		type: 'string',
+		format: 'uuid',
+		example: 'c3d29eb4-632f-5e8c-c4af-ded8b9e6c0f8',
+	})
+	@Expose({ name: 'channel_id' })
+	channelId: string;
+
+	@ApiProperty({
+		name: 'channel_name',
+		description: 'Name of the channel',
+		type: 'string',
+		example: 'Window Covering',
+	})
+	@Expose({ name: 'channel_name' })
+	channelName: string;
+
+	@ApiPropertyOptional({
+		description: 'The assigned covers role (null if not assigned)',
+		enum: CoversRole,
+		nullable: true,
+		example: CoversRole.PRIMARY,
+	})
+	@Expose()
+	role: CoversRole | null;
+
+	@ApiProperty({
+		description: 'Priority for role ordering (lower = higher priority)',
+		type: 'integer',
+		example: 0,
+	})
+	@Expose()
+	priority: number;
+
+	@ApiProperty({
+		name: 'has_position',
+		description: 'Whether the cover supports position control',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'has_position' })
+	hasPosition: boolean;
+
+	@ApiProperty({
+		name: 'has_command',
+		description: 'Whether the cover supports open/close/stop commands',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'has_command' })
+	hasCommand: boolean;
+
+	@ApiProperty({
+		name: 'has_tilt',
+		description: 'Whether the cover supports tilt control',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'has_tilt' })
+	hasTilt: boolean;
+
+	@ApiPropertyOptional({
+		name: 'cover_type',
+		description: 'Type of cover (curtain, blind, roller, etc.)',
+		type: 'string',
+		nullable: true,
+		example: 'blind',
+	})
+	@Expose({ name: 'cover_type' })
+	coverType: string | null;
+}
+
+/**
+ * Response wrapper for covers targets in a space
+ */
+@ApiSchema({ name: 'SpacesModuleResCoversTargets' })
+export class CoversTargetsResponseModel extends BaseSuccessResponseModel<CoversTargetDataModel[]> {
+	@ApiProperty({
+		description: 'Array of covers targets in the space with their role assignments',
+		type: () => [CoversTargetDataModel],
+	})
+	@Expose()
+	@Type(() => CoversTargetDataModel)
+	declare data: CoversTargetDataModel[];
+}
+
+/**
+ * Response wrapper for a single covers role entity
+ */
+@ApiSchema({ name: 'SpacesModuleResCoversRole' })
+export class CoversRoleResponseModel extends BaseSuccessResponseModel<SpaceCoversRoleEntity> {
+	@ApiProperty({
+		description: 'The covers role assignment',
+		type: () => SpaceCoversRoleEntity,
+	})
+	@Expose()
+	@Type(() => SpaceCoversRoleEntity)
+	declare data: SpaceCoversRoleEntity;
+}
+
+/**
+ * Bulk covers role update result item
+ */
+@ApiSchema({ name: 'SpacesModuleDataBulkCoversRoleResultItem' })
+export class BulkCoversRoleResultItemModel {
+	@ApiProperty({
+		name: 'device_id',
+		description: 'ID of the window covering device',
+		type: 'string',
+		format: 'uuid',
+		example: 'a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7',
+	})
+	@Expose({ name: 'device_id' })
+	deviceId: string;
+
+	@ApiProperty({
+		name: 'channel_id',
+		description: 'ID of the window covering channel',
+		type: 'string',
+		format: 'uuid',
+		example: 'c3d29eb4-632f-5e8c-c4af-ded8b9e6c0f8',
+	})
+	@Expose({ name: 'channel_id' })
+	channelId: string;
+
+	@ApiProperty({
+		description: 'Whether the role was set successfully',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	success: boolean;
+
+	@ApiPropertyOptional({
+		description: 'The role that was set (null if failed)',
+		enum: CoversRole,
+		nullable: true,
+		example: CoversRole.PRIMARY,
+	})
+	@Expose()
+	role: CoversRole | null;
+
+	@ApiPropertyOptional({
+		description: 'Error message if the role assignment failed',
+		type: 'string',
+		nullable: true,
+		example: null,
+	})
+	@Expose()
+	error: string | null;
+}
+
+/**
+ * Bulk covers role update result data
+ */
+@ApiSchema({ name: 'SpacesModuleDataBulkCoversRolesResult' })
+export class BulkCoversRolesResultDataModel {
+	@ApiProperty({
+		description: 'Whether all role assignments succeeded',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	success: boolean;
+
+	@ApiProperty({
+		name: 'total_count',
+		description: 'Total number of role assignments attempted',
+		type: 'integer',
+		example: 2,
+	})
+	@Expose({ name: 'total_count' })
+	totalCount: number;
+
+	@ApiProperty({
+		name: 'success_count',
+		description: 'Number of successful role assignments',
+		type: 'integer',
+		example: 2,
+	})
+	@Expose({ name: 'success_count' })
+	successCount: number;
+
+	@ApiProperty({
+		name: 'failure_count',
+		description: 'Number of failed role assignments',
+		type: 'integer',
+		example: 0,
+	})
+	@Expose({ name: 'failure_count' })
+	failureCount: number;
+
+	@ApiProperty({
+		description: 'Detailed results for each role assignment',
+		type: () => [BulkCoversRoleResultItemModel],
+	})
+	@Expose()
+	@Type(() => BulkCoversRoleResultItemModel)
+	results: BulkCoversRoleResultItemModel[];
+}
+
+/**
+ * Response wrapper for bulk covers role update result
+ */
+@ApiSchema({ name: 'SpacesModuleResBulkCoversRoles' })
+export class BulkCoversRolesResponseModel extends BaseSuccessResponseModel<BulkCoversRolesResultDataModel> {
+	@ApiProperty({
+		description: 'The result of the bulk covers role update',
+		type: () => BulkCoversRolesResultDataModel,
+	})
+	@Expose()
+	@Type(() => BulkCoversRolesResultDataModel)
+	declare data: BulkCoversRolesResultDataModel;
 }
 
 // ================================

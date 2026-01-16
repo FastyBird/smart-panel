@@ -15,6 +15,8 @@ import { UserRole } from '../../users/users.constants';
 import { ReqBulkAssignDto } from '../dto/bulk-assign.dto';
 import { ReqClimateIntentDto } from '../dto/climate-intent.dto';
 import { ReqBulkSetClimateRolesDto, ReqSetClimateRoleDto } from '../dto/climate-role.dto';
+import { ReqCoversIntentDto } from '../dto/covers-intent.dto';
+import { ReqBulkSetCoversRolesDto, ReqSetCoversRoleDto } from '../dto/covers-role.dto';
 import { ReqCreateSpaceDto } from '../dto/create-space.dto';
 import { ReqLightingIntentDto } from '../dto/lighting-intent.dto';
 import { ReqBulkSetLightingRolesDto, ReqSetLightingRoleDto } from '../dto/lighting-role.dto';
@@ -26,6 +28,9 @@ import {
 	BulkClimateRoleResultItemModel,
 	BulkClimateRolesResponseModel,
 	BulkClimateRolesResultDataModel,
+	BulkCoversRoleResultItemModel,
+	BulkCoversRolesResponseModel,
+	BulkCoversRolesResultDataModel,
 	BulkLightingRoleResultItemModel,
 	BulkLightingRolesResponseModel,
 	BulkLightingRolesResultDataModel,
@@ -40,6 +45,13 @@ import {
 	ClimateTargetsResponseModel,
 	ContextSnapshotDataModel,
 	ContextSnapshotResponseModel,
+	CoversIntentResponseModel,
+	CoversIntentResultDataModel,
+	CoversRoleResponseModel,
+	CoversStateDataModel,
+	CoversStateResponseModel,
+	CoversTargetDataModel,
+	CoversTargetsResponseModel,
 	IntentCatalogDataModel,
 	IntentCatalogResponseModel,
 	IntentCategoryDataModel,
@@ -77,6 +89,7 @@ import {
 } from '../models/spaces-response.model';
 import { SpaceClimateRoleService } from '../services/space-climate-role.service';
 import { SpaceContextSnapshotService } from '../services/space-context-snapshot.service';
+import { SpaceCoversRoleService } from '../services/space-covers-role.service';
 import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
 import { SpaceLightingStateService } from '../services/space-lighting-state.service';
@@ -114,6 +127,7 @@ export class SpacesController {
 		private readonly spaceLightingRoleService: SpaceLightingRoleService,
 		private readonly spaceLightingStateService: SpaceLightingStateService,
 		private readonly spaceClimateRoleService: SpaceClimateRoleService,
+		private readonly spaceCoversRoleService: SpaceCoversRoleService,
 		private readonly spaceSuggestionService: SpaceSuggestionService,
 		private readonly spaceContextSnapshotService: SpaceContextSnapshotService,
 		private readonly spaceUndoHistoryService: SpaceUndoHistoryService,
@@ -1068,6 +1082,254 @@ export class SpacesController {
 		await this.spaceClimateRoleService.deleteRole(id, deviceId, channelId);
 
 		this.logger.debug(`Successfully deleted climate role for device=${deviceId} channel=${channelId ?? 'null'}`);
+	}
+
+	// ================================
+	// Covers State & Intent Endpoints
+	// ================================
+
+	@Get(':id/covers')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-covers',
+		summary: 'Get covers state for space',
+		description:
+			'Retrieves the current covers state for a space, including average position, ' +
+			'open/closed status, and device counts by role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(CoversStateResponseModel, 'Returns the covers state')
+	@ApiNotFoundResponse('Space not found')
+	async getCoversState(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<CoversStateResponseModel> {
+		this.logger.debug(`Fetching covers state for space with id=${id}`);
+
+		const state = await this.spaceIntentService.getCoversState(id);
+
+		const stateData = new CoversStateDataModel();
+		stateData.hasCovers = state.hasCovers;
+		stateData.averagePosition = state.averagePosition;
+		stateData.anyOpen = state.anyOpen;
+		stateData.allClosed = state.allClosed;
+		stateData.devicesCount = state.devicesCount;
+		stateData.coversByRole = state.coversByRole;
+
+		const response = new CoversStateResponseModel();
+		response.data = stateData;
+
+		return response;
+	}
+
+	@Post(':id/intents/covers')
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-covers-intent',
+		summary: 'Execute covers intent for space',
+		description:
+			'Executes a covers intent command for all window coverings in the space. ' +
+			'Supports open, close, set_position, position_delta, role_position, and set_mode operations. ' +
+			'Commands are applied based on device capabilities and role assignments.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(CoversIntentResponseModel, 'Returns the intent execution result')
+	@ApiNotFoundResponse('Space not found')
+	@ApiUnprocessableEntityResponse('Invalid intent data')
+	async executeCoversIntent(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqCoversIntentDto,
+	): Promise<CoversIntentResponseModel> {
+		this.logger.debug(`Executing covers intent for space with id=${id}`);
+
+		const result = await this.spaceIntentService.executeCoversIntent(id, body.data);
+
+		const resultData = new CoversIntentResultDataModel();
+		resultData.success = result.success;
+		resultData.affectedDevices = result.affectedDevices;
+		resultData.failedDevices = result.failedDevices;
+		resultData.newPosition = result.newPosition;
+
+		const response = new CoversIntentResponseModel();
+		response.data = resultData;
+
+		return response;
+	}
+
+	// ================================
+	// Covers Role Endpoints
+	// ================================
+
+	@Get(':id/covers/targets')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-covers-targets',
+		summary: 'List covers targets in space',
+		description:
+			'Retrieves all controllable window covering targets (device/channel pairs) in a space ' +
+			'along with their current role assignments and capabilities.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(CoversTargetsResponseModel, 'Returns the list of covers targets with role assignments')
+	@ApiNotFoundResponse('Space not found')
+	async getCoversTargets(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<CoversTargetsResponseModel> {
+		this.logger.debug(`Fetching covers targets for space with id=${id}`);
+
+		const targets = await this.spaceCoversRoleService.getCoversTargetsInSpace(id);
+
+		const response = new CoversTargetsResponseModel();
+		response.data = targets.map((t) => {
+			const model = new CoversTargetDataModel();
+			model.deviceId = t.deviceId;
+			model.deviceName = t.deviceName;
+			model.channelId = t.channelId;
+			model.channelName = t.channelName;
+			model.role = t.role;
+			model.priority = t.priority;
+			model.hasPosition = t.hasPosition;
+			model.hasCommand = t.hasCommand;
+			model.hasTilt = t.hasTilt;
+			model.coverType = t.coverType;
+			return model;
+		});
+
+		return response;
+	}
+
+	@Post(':id/covers/roles')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-covers-role',
+		summary: 'Set covers role for a covers target',
+		description:
+			'Sets or updates the covers role for a specific device/channel in a space. ' + 'Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(CoversRoleResponseModel, 'Returns the created/updated covers role assignment')
+	@ApiNotFoundResponse('Space not found')
+	@ApiBadRequestResponse('Invalid role data')
+	@ApiUnprocessableEntityResponse('Role assignment validation failed')
+	async setCoversRole(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqSetCoversRoleDto,
+	): Promise<CoversRoleResponseModel> {
+		this.logger.debug(`Setting covers role for space with id=${id}`);
+
+		const role = await this.spaceCoversRoleService.setRole(id, body.data);
+
+		const response = new CoversRoleResponseModel();
+		response.data = role;
+
+		return response;
+	}
+
+	@Post(':id/covers/roles/bulk')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-covers-roles-bulk',
+		summary: 'Bulk set covers roles for covers targets',
+		description:
+			'Sets or updates covers roles for multiple device/channels in a space in a single operation. ' +
+			'Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(BulkCoversRolesResponseModel, 'Returns the bulk update result')
+	@ApiNotFoundResponse('Space not found')
+	@ApiBadRequestResponse('Invalid role data')
+	@ApiUnprocessableEntityResponse('Role assignment validation failed')
+	async bulkSetCoversRoles(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqBulkSetCoversRolesDto,
+	): Promise<BulkCoversRolesResponseModel> {
+		this.logger.debug(`Bulk setting covers roles for space with id=${id}`);
+
+		const result = await this.spaceCoversRoleService.bulkSetRoles(id, body.data.roles);
+
+		const resultData = new BulkCoversRolesResultDataModel();
+		resultData.success = result.success;
+		resultData.totalCount = result.totalCount;
+		resultData.successCount = result.successCount;
+		resultData.failureCount = result.failureCount;
+		resultData.results = result.results.map((item) => {
+			const resultItem = new BulkCoversRoleResultItemModel();
+			resultItem.deviceId = item.deviceId;
+			resultItem.channelId = item.channelId;
+			resultItem.success = item.success;
+			resultItem.role = item.role;
+			resultItem.error = item.error;
+			return resultItem;
+		});
+
+		const response = new BulkCoversRolesResponseModel();
+		response.data = resultData;
+
+		return response;
+	}
+
+	@Post(':id/covers/roles/defaults')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-covers-roles-defaults',
+		summary: 'Apply default covers roles',
+		description:
+			'Infers and applies default covers roles for all window coverings in the space. ' +
+			'First cover becomes PRIMARY, remaining covers are assigned based on type. Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(BulkCoversRolesResponseModel, 'Returns the bulk update result')
+	@ApiNotFoundResponse('Space not found')
+	async applyDefaultCoversRoles(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<BulkCoversRolesResponseModel> {
+		this.logger.debug(`Applying default covers roles for space with id=${id}`);
+
+		const defaultRoles = await this.spaceCoversRoleService.inferDefaultCoversRoles(id);
+		const result = await this.spaceCoversRoleService.bulkSetRoles(id, defaultRoles);
+
+		const resultData = new BulkCoversRolesResultDataModel();
+		resultData.success = result.success;
+		resultData.totalCount = result.totalCount;
+		resultData.successCount = result.successCount;
+		resultData.failureCount = result.failureCount;
+		resultData.results = result.results.map((item) => {
+			const resultItem = new BulkCoversRoleResultItemModel();
+			resultItem.deviceId = item.deviceId;
+			resultItem.channelId = item.channelId;
+			resultItem.success = item.success;
+			resultItem.role = item.role;
+			resultItem.error = item.error;
+			return resultItem;
+		});
+
+		const response = new BulkCoversRolesResponseModel();
+		response.data = resultData;
+
+		return response;
+	}
+
+	@Delete(':id/covers/roles/:deviceId/:channelId')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'delete-spaces-module-space-covers-role',
+		summary: 'Delete covers role assignment',
+		description:
+			'Removes the covers role assignment for a specific device/channel in a space. ' +
+			'Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
+	@ApiNoContentResponse({ description: 'Covers role deleted successfully' })
+	@ApiNotFoundResponse('Space not found')
+	@HttpCode(204)
+	async deleteCoversRole(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
+		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
+	): Promise<void> {
+		this.logger.debug(`Deleting covers role for space=${id} device=${deviceId} channel=${channelId}`);
+
+		await this.spaceCoversRoleService.deleteRole(id, deviceId, channelId);
+
+		this.logger.debug(`Successfully deleted covers role for device=${deviceId} channel=${channelId}`);
 	}
 
 	// ================================
