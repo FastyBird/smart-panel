@@ -87,22 +87,23 @@ export class ClimateIntentDto {
 		description:
 			'Heating setpoint (lower bound) for AUTO mode. ' +
 			'When heating is needed, devices will heat to this temperature. ' +
-			'Must be less than coolingSetpoint.',
+			'Must be less than cooling_setpoint.',
 		type: 'number',
 		example: 20.0,
+		name: 'heating_setpoint',
 	})
-	@Expose()
+	@Expose({ name: 'heating_setpoint' })
 	@IsOptional()
-	@IsNumber({}, { message: '[{"field":"heatingSetpoint","reason":"Heating setpoint must be a number."}]' })
+	@IsNumber({}, { message: '[{"field":"heating_setpoint","reason":"Heating setpoint must be a number."}]' })
 	@Min(ABSOLUTE_MIN_SETPOINT, {
-		message: `[{"field":"heatingSetpoint","reason":"Heating setpoint must be at least ${ABSOLUTE_MIN_SETPOINT} degrees."}]`,
+		message: `[{"field":"heating_setpoint","reason":"Heating setpoint must be at least ${ABSOLUTE_MIN_SETPOINT} degrees."}]`,
 	})
 	@Max(ABSOLUTE_MAX_SETPOINT, {
-		message: `[{"field":"heatingSetpoint","reason":"Heating setpoint must be at most ${ABSOLUTE_MAX_SETPOINT} degrees."}]`,
+		message: `[{"field":"heating_setpoint","reason":"Heating setpoint must be at most ${ABSOLUTE_MAX_SETPOINT} degrees."}]`,
 	})
 	@IsValidSetpointOrder({
 		message:
-			'[{"field":"heatingSetpoint","reason":"Heating setpoint must be less than cooling setpoint when both are provided."}]',
+			'[{"field":"heating_setpoint","reason":"Heating setpoint must be less than cooling setpoint when both are provided."}]',
 	})
 	heatingSetpoint?: number;
 
@@ -110,18 +111,19 @@ export class ClimateIntentDto {
 		description:
 			'Cooling setpoint (upper bound) for AUTO mode. ' +
 			'When cooling is needed, devices will cool to this temperature. ' +
-			'Must be greater than heatingSetpoint.',
+			'Must be greater than heating_setpoint.',
 		type: 'number',
 		example: 24.0,
+		name: 'cooling_setpoint',
 	})
-	@Expose()
+	@Expose({ name: 'cooling_setpoint' })
 	@IsOptional()
-	@IsNumber({}, { message: '[{"field":"coolingSetpoint","reason":"Cooling setpoint must be a number."}]' })
+	@IsNumber({}, { message: '[{"field":"cooling_setpoint","reason":"Cooling setpoint must be a number."}]' })
 	@Min(ABSOLUTE_MIN_SETPOINT, {
-		message: `[{"field":"coolingSetpoint","reason":"Cooling setpoint must be at least ${ABSOLUTE_MIN_SETPOINT} degrees."}]`,
+		message: `[{"field":"cooling_setpoint","reason":"Cooling setpoint must be at least ${ABSOLUTE_MIN_SETPOINT} degrees."}]`,
 	})
 	@Max(ABSOLUTE_MAX_SETPOINT, {
-		message: `[{"field":"coolingSetpoint","reason":"Cooling setpoint must be at most ${ABSOLUTE_MAX_SETPOINT} degrees."}]`,
+		message: `[{"field":"cooling_setpoint","reason":"Cooling setpoint must be at most ${ABSOLUTE_MAX_SETPOINT} degrees."}]`,
 	})
 	coolingSetpoint?: number;
 

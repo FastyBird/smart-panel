@@ -1,0 +1,156 @@
+import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
+
+/// Types of lighting intents that can be executed on a space.
+///
+/// Each type corresponds to a specific lighting action:
+/// - [off]/[on]: Turn all lights off/on
+/// - [setMode]: Apply a predefined lighting mode (work, relax, night)
+/// - [brightnessDelta]: Adjust brightness by a relative amount
+/// - [roleOn]/[roleOff]: Control lights by their role (main, task, ambient, etc.)
+/// - [roleBrightness]/[roleColor]/[roleColorTemp]/[roleWhite]: Set specific values for a role
+/// - [roleSet]: Set multiple properties for a role at once
+enum LightingIntentType {
+  off,
+  on,
+  setMode,
+  brightnessDelta,
+  roleOn,
+  roleOff,
+  roleBrightness,
+  roleColor,
+  roleColorTemp,
+  roleWhite,
+  roleSet,
+}
+
+/// Size of brightness adjustment for delta-based changes.
+///
+/// - [small]: Minor adjustment (e.g., 10%)
+/// - [medium]: Moderate adjustment (e.g., 25%)
+/// - [large]: Significant adjustment (e.g., 50%)
+enum BrightnessDelta {
+  small,
+  medium,
+  large,
+}
+
+/// Types of climate intents that can be executed on a space.
+///
+/// Each type corresponds to a specific climate action:
+/// - [setpointDelta]: Adjust temperature setpoint by a relative amount
+/// - [setpointSet]: Set temperature setpoint to an absolute value
+/// - [setMode]: Change HVAC mode (heat, cool, auto, off)
+/// - [climateSet]: Set multiple climate properties at once
+enum ClimateIntentType {
+  setpointDelta,
+  setpointSet,
+  setMode,
+  climateSet,
+}
+
+/// Size of setpoint adjustment for delta-based temperature changes.
+///
+/// - [small]: Minor adjustment (e.g., 0.5°C)
+/// - [medium]: Moderate adjustment (e.g., 1°C)
+/// - [large]: Significant adjustment (e.g., 2°C)
+enum SetpointDelta {
+  small,
+  medium,
+  large,
+}
+
+/// Convert LightingIntentType to API string
+String lightingIntentTypeToString(LightingIntentType type) {
+  switch (type) {
+    case LightingIntentType.off:
+      return 'off';
+    case LightingIntentType.on:
+      return 'on';
+    case LightingIntentType.setMode:
+      return 'set_mode';
+    case LightingIntentType.brightnessDelta:
+      return 'brightness_delta';
+    case LightingIntentType.roleOn:
+      return 'role_on';
+    case LightingIntentType.roleOff:
+      return 'role_off';
+    case LightingIntentType.roleBrightness:
+      return 'role_brightness';
+    case LightingIntentType.roleColor:
+      return 'role_color';
+    case LightingIntentType.roleColorTemp:
+      return 'role_color_temp';
+    case LightingIntentType.roleWhite:
+      return 'role_white';
+    case LightingIntentType.roleSet:
+      return 'role_set';
+  }
+}
+
+/// Convert BrightnessDelta to API string
+String brightnessDeltaToString(BrightnessDelta delta) {
+  switch (delta) {
+    case BrightnessDelta.small:
+      return 'small';
+    case BrightnessDelta.medium:
+      return 'medium';
+    case BrightnessDelta.large:
+      return 'large';
+  }
+}
+
+/// Convert ClimateIntentType to API string
+String climateIntentTypeToString(ClimateIntentType type) {
+  switch (type) {
+    case ClimateIntentType.setpointDelta:
+      return 'setpoint_delta';
+    case ClimateIntentType.setpointSet:
+      return 'setpoint_set';
+    case ClimateIntentType.setMode:
+      return 'set_mode';
+    case ClimateIntentType.climateSet:
+      return 'climate_set';
+  }
+}
+
+/// Convert SetpointDelta to API string
+String setpointDeltaToString(SetpointDelta delta) {
+  switch (delta) {
+    case SetpointDelta.small:
+      return 'small';
+    case SetpointDelta.medium:
+      return 'medium';
+    case SetpointDelta.large:
+      return 'large';
+  }
+}
+
+/// Convert LightingMode to API string
+String lightingModeToString(LightingMode mode) {
+  switch (mode) {
+    case LightingMode.work:
+      return 'work';
+    case LightingMode.relax:
+      return 'relax';
+    case LightingMode.night:
+      return 'night';
+  }
+}
+
+/// Convert LightingStateRole to API string
+String lightingRoleToString(LightingStateRole role) {
+  switch (role) {
+    case LightingStateRole.main:
+      return 'main';
+    case LightingStateRole.task:
+      return 'task';
+    case LightingStateRole.ambient:
+      return 'ambient';
+    case LightingStateRole.accent:
+      return 'accent';
+    case LightingStateRole.night:
+      return 'night';
+    case LightingStateRole.other:
+      return 'other';
+  }
+}

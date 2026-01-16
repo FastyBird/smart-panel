@@ -282,4 +282,12 @@ class ClimateTargetsRepository extends ChangeNotifier {
       return false;
     }
   }
+
+  /// Clear all cached climate targets
+  void clearAll() {
+    if (_climateTargets.isNotEmpty) {
+      _climateTargets.clear();
+      notifyListeners();
+    }
+  }
 }

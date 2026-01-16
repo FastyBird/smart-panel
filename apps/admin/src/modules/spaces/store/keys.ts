@@ -11,6 +11,8 @@ export const spacesStoreKey: StoreInjectionKey<string, ISpacesStoreState, object
 export interface ISpacesRefreshSignals {
 	climate: Ref<number>;
 	lighting: Ref<number>;
+	climateState: Ref<number>;
+	lightingState: Ref<number>;
 }
 
 export const spacesRefreshSignalsKey: InjectionKey<ISpacesRefreshSignals> = Symbol('FB-Module-Spaces-RefreshSignals');

@@ -5,6 +5,7 @@ import 'package:fastybird_smart_panel/modules/devices/constants.dart';
 import 'package:fastybird_smart_panel/modules/spaces/constants.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/climate_targets.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/light_targets.dart';
+import 'package:fastybird_smart_panel/modules/spaces/repositories/space_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/spaces.dart';
 import 'package:fastybird_smart_panel/modules/spaces/service.dart';
 import 'package:flutter/foundation.dart';
@@ -15,6 +16,7 @@ class SpacesModuleService {
   late SpacesRepository _spacesRepository;
   late LightTargetsRepository _lightTargetsRepository;
   late ClimateTargetsRepository _climateTargetsRepository;
+  late SpaceStateRepository _spaceStateRepository;
   late SpacesService _spacesService;
 
   bool _isLoading = true;
@@ -35,15 +37,21 @@ class SpacesModuleService {
       apiClient: apiClient.spacesModule,
     );
 
+    _spaceStateRepository = SpaceStateRepository(
+      apiClient: apiClient.spacesModule,
+    );
+
     _spacesService = SpacesService(
       spacesRepository: _spacesRepository,
       lightTargetsRepository: _lightTargetsRepository,
       climateTargetsRepository: _climateTargetsRepository,
+      spaceStateRepository: _spaceStateRepository,
     );
 
     locator.registerSingleton(_spacesRepository);
     locator.registerSingleton(_lightTargetsRepository);
     locator.registerSingleton(_climateTargetsRepository);
+    locator.registerSingleton(_spaceStateRepository);
     locator.registerSingleton(_spacesService);
   }
 
@@ -91,6 +99,15 @@ class SpacesModuleService {
       DevicesModuleConstants.deviceUpdatedEvent,
       _deviceSocketEventHandler,
     );
+
+    // Dispose service first to remove its repository listeners
+    _spacesService.dispose();
+
+    // Clear all repository data to prevent memory leaks
+    _spacesRepository.clearAll();
+    _lightTargetsRepository.clearAll();
+    _climateTargetsRepository.clearAll();
+    _spaceStateRepository.clearAll();
   }
 
   /// ////////////////
@@ -109,6 +126,7 @@ class SpacesModuleService {
       _spacesRepository.delete(payload['id']);
       _lightTargetsRepository.deleteForSpace(payload['id']);
       _climateTargetsRepository.deleteForSpace(payload['id']);
+      _spaceStateRepository.clearForSpace(payload['id']);
 
       /// Light Target CREATE/UPDATE
     } else if (event == SpacesModuleConstants.lightTargetCreatedEvent ||
@@ -129,6 +147,22 @@ class SpacesModuleService {
     } else if (event == SpacesModuleConstants.climateTargetDeletedEvent &&
         payload.containsKey('id')) {
       _climateTargetsRepository.delete(payload['id']);
+
+      /// Lighting State CHANGED
+    } else if (event == SpacesModuleConstants.lightingStateChangedEvent) {
+      final spaceId = payload['space_id'] as String?;
+      final stateData = payload['state'] as Map<String, dynamic>?;
+      if (spaceId != null && stateData != null) {
+        _spaceStateRepository.updateLightingState(spaceId, stateData);
+      }
+
+      /// Climate State CHANGED
+    } else if (event == SpacesModuleConstants.climateStateChangedEvent) {
+      final spaceId = payload['space_id'] as String?;
+      final stateData = payload['state'] as Map<String, dynamic>?;
+      if (spaceId != null && stateData != null) {
+        _spaceStateRepository.updateClimateState(spaceId, stateData);
+      }
     }
   }
 

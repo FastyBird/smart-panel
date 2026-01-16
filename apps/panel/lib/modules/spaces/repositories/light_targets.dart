@@ -262,4 +262,12 @@ class LightTargetsRepository extends ChangeNotifier {
     _isLoading = false;
     notifyListeners();
   }
+
+  /// Clear all cached light targets
+  void clearAll() {
+    if (_lightTargets.isNotEmpty) {
+      _lightTargets.clear();
+      notifyListeners();
+    }
+  }
 }
