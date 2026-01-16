@@ -51,9 +51,11 @@ export const useSpaceUndo = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceU
 	// Reactive timestamp for countdown timer - updates every second
 	const now = ref(Date.now());
 	let timerInterval: ReturnType<typeof setInterval> | null = null;
+	let isUnmounted = false;
 
 	const startTimer = () => {
-		if (timerInterval) return;
+		// Prevent starting timer after component unmount (async operations may complete after unmount)
+		if (timerInterval || isUnmounted) return;
 		timerInterval = setInterval(() => {
 			now.value = Date.now();
 		}, 1000);
@@ -193,8 +195,9 @@ export const useSpaceUndo = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceU
 		stopTimer();
 	});
 
-	// Clean up timer on unmount
+	// Clean up timer on unmount and prevent new timers from being created
 	onUnmounted(() => {
+		isUnmounted = true;
 		stopTimer();
 	});
 
