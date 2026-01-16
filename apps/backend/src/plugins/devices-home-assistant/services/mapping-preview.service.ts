@@ -26,6 +26,7 @@ import {
 import { DevicesHomeAssistantNotFoundException } from '../devices-home-assistant.exceptions';
 import { MappingPreviewRequestDto } from '../dto/mapping-preview.dto';
 import { EntityRole, MappingLoaderService, ResolvedHaMapping, ResolvedPropertyBinding } from '../mappings';
+import { TransformerRegistry } from '../mappings/transformers/transformer.registry';
 import { HomeAssistantDeviceRegistryResultModel, HomeAssistantStateModel } from '../models/home-assistant.model';
 import {
 	EntityMappingPreviewModel,
@@ -63,6 +64,7 @@ export class MappingPreviewService {
 		private readonly virtualPropertyService: VirtualPropertyService,
 		private readonly deviceValidationService: DeviceValidationService,
 		private readonly mappingLoaderService: MappingLoaderService,
+		private readonly transformerRegistry: TransformerRegistry,
 	) {}
 
 	/**
@@ -331,6 +333,16 @@ export class MappingPreviewService {
 
 			const haAttribute = this.lightCapabilityAnalyzer.getHaAttributeForProperty(propCategory, capabilities);
 
+			// Determine transformer for this property
+			let transformerName: string | null = null;
+			if (propCategory === PropertyCategory.BRIGHTNESS) {
+				transformerName = 'brightness_to_percent';
+			} else if (propCategory === PropertyCategory.COLOR_TEMPERATURE) {
+				transformerName = 'mireds_to_kelvin';
+			} else if (propCategory === PropertyCategory.ON) {
+				transformerName = 'state_on_off';
+			}
+
 			// Get current value if available
 			let currentValue: unknown = null;
 			if (haAttribute === 'fb.main_state') {
@@ -357,9 +369,12 @@ export class MappingPreviewService {
 				currentValue = state.attributes?.[haAttribute];
 			}
 
-			// Apply brightness transform
-			if (propCategory === PropertyCategory.BRIGHTNESS && typeof currentValue === 'number') {
-				currentValue = Math.round((currentValue / 255) * 100);
+			// Apply transform for preview display using transformer registry
+			if (transformerName && currentValue !== undefined && currentValue !== null) {
+				const transformer = this.transformerRegistry.getOrCreate(transformerName);
+				if (transformer.canRead()) {
+					currentValue = transformer.read(currentValue);
+				}
 			}
 
 			suggestedProperties.push({
@@ -373,6 +388,7 @@ export class MappingPreviewService {
 				required: propertyMetadata.required,
 				currentValue: this.normalizeValue(currentValue),
 				haEntityId: entityId,
+				haTransformer: transformerName,
 			});
 
 			mappedPropertyCategories.add(propCategory);
@@ -550,6 +566,7 @@ export class MappingPreviewService {
 			required: metadata.required,
 			currentValue: this.normalizeValue(currentValue),
 			haEntityId: entityId ?? null,
+			haTransformer: binding.transformerName ?? null,
 		};
 	}
 
@@ -656,33 +673,12 @@ export class MappingPreviewService {
 	}
 
 	/**
-	 * Apply value transformation
+	 * Apply value transformation using TransformerRegistry
 	 */
-	private applyTransform(value: unknown, transform: string): unknown {
-		switch (transform) {
-			case 'brightness_to_percent':
-				if (typeof value === 'number') {
-					return Math.round((value / 255) * 100);
-				}
-				break;
-			case 'percent_to_brightness':
-				if (typeof value === 'number') {
-					return Math.round((value / 100) * 255);
-				}
-				break;
-			case 'invert_boolean':
-				if (typeof value === 'boolean') {
-					return !value;
-				}
-				if (value === 'on') return false;
-				if (value === 'off') return true;
-				break;
-			case 'kelvin_to_mireds':
-			case 'mireds_to_kelvin':
-				if (typeof value === 'number' && value > 0) {
-					return Math.round(1000000 / value);
-				}
-				break;
+	private applyTransform(value: unknown, transformerName: string): unknown {
+		const transformer = this.transformerRegistry.getOrCreate(transformerName);
+		if (transformer.canRead()) {
+			return transformer.read(value);
 		}
 		return value;
 	}

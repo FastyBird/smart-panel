@@ -20,6 +20,7 @@ import {
 	HomeAssistantDeviceEntity,
 } from '../entities/devices-home-assistant.entity';
 import { MapperService } from '../mappers/mapper.service';
+import { TransformerRegistry } from '../mappings/transformers/transformer.registry';
 import { HomeAssistantDiscoveredDeviceModel } from '../models/home-assistant.model';
 
 import { HomeAssistantHttpService } from './home-assistant.http.service';
@@ -43,6 +44,17 @@ describe('StateChangedEventService', () => {
 				{ provide: MapperService, useValue: { mapFromHA: jest.fn() } },
 				{ provide: HomeAssistantHttpService, useValue: { getDiscoveredDevices: jest.fn() } },
 				{ provide: VirtualPropertyService, useValue: { resolveVirtualPropertyValue: jest.fn() } },
+				{
+					provide: TransformerRegistry,
+					useValue: {
+						getOrCreate: jest.fn().mockReturnValue({
+							canRead: () => true,
+							canWrite: () => true,
+							read: (value: unknown) => value,
+							write: (value: unknown) => value,
+						}),
+					},
+				},
 			],
 		}).compile();
 

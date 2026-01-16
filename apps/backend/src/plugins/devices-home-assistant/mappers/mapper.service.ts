@@ -16,6 +16,7 @@ import {
 	HomeAssistantChannelPropertyEntity,
 	HomeAssistantDeviceEntity,
 } from '../entities/devices-home-assistant.entity';
+import { TransformerRegistry } from '../mappings/transformers/transformer.registry';
 import { VirtualPropertyService } from '../services/virtual-property.service';
 
 import { IEntityMapper } from './entity.mapper';
@@ -53,6 +54,7 @@ export class MapperService {
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly universalEntityMapperService: UniversalEntityMapperService,
 		private readonly virtualPropertyService: VirtualPropertyService,
+		private readonly transformerRegistry: TransformerRegistry,
 	) {}
 
 	registerMapper(mapper: IEntityMapper): void {
@@ -117,12 +119,34 @@ export class MapperService {
 				}
 			}
 
-			// Convert Map to array with property entities
+			// Convert Map to array with property entities and apply transformers
 			const result: MappedFromHaEntry[] = [];
 			for (const [propertyId, value] of resultMap.entries()) {
 				const property = properties.find((p) => p.id === propertyId);
 				if (property) {
-					result.push({ property, value });
+					// Apply transformer if specified on the property
+					let transformedValue: string | number | boolean | null = value;
+					if (property.haTransformer && value !== null) {
+						const transformer = this.transformerRegistry.getOrCreate(property.haTransformer);
+						if (transformer.canRead()) {
+							const rawTransformed = transformer.read(value);
+							// Ensure transformed value is the expected type
+							if (
+								typeof rawTransformed === 'string' ||
+								typeof rawTransformed === 'number' ||
+								typeof rawTransformed === 'boolean' ||
+								rawTransformed === null
+							) {
+								transformedValue = rawTransformed as string | number | boolean | null;
+							} else {
+								this.logger.warn(
+									`[MAP FROM HA] Transformer ${property.haTransformer} returned unexpected type ` +
+										`for property ${property.id}: ${typeof rawTransformed}`,
+								);
+							}
+						}
+					}
+					result.push({ property, value: transformedValue });
 				}
 			}
 
@@ -160,6 +184,34 @@ export class MapperService {
 			}
 		}
 
+		// Apply transformers to values before passing to domain mappers
+		// This converts Smart Panel values to HA values
+		const transformedValues = new Map<string, string | number | boolean>();
+		for (const [propertyId, value] of values.entries()) {
+			const property = allWritableProperties.find((p) => p.id === propertyId);
+			if (property?.haTransformer) {
+				const transformer = this.transformerRegistry.getOrCreate(property.haTransformer);
+				if (transformer.canWrite()) {
+					const transformed = transformer.write(value);
+					const isValidType =
+						typeof transformed === 'string' || typeof transformed === 'number' || typeof transformed === 'boolean';
+					if (isValidType) {
+						transformedValues.set(propertyId, transformed);
+					} else {
+						this.logger.warn(
+							`[MAP TO HA] Transformer ${property.haTransformer} returned unexpected type ` +
+								`for property ${property.id}: ${typeof transformed}`,
+						);
+						transformedValues.set(propertyId, value);
+					}
+				} else {
+					transformedValues.set(propertyId, value);
+				}
+			} else {
+				transformedValues.set(propertyId, value);
+			}
+		}
+
 		const updates: MappedToHa[] = [];
 
 		// Handle regular properties through standard mappers
@@ -176,7 +228,7 @@ export class MapperService {
 				continue;
 			}
 
-			const mapped = await mapper.mapToHA(properties, values);
+			const mapped = await mapper.mapToHA(properties, transformedValues);
 
 			if (mapped === null) {
 				continue;
@@ -187,8 +239,8 @@ export class MapperService {
 			updates.push(result);
 		}
 
-		// Handle virtual command properties
-		const virtualUpdates = this.handleVirtualCommandProperties(virtualCommandProps, values, channels);
+		// Handle virtual command properties (also use transformed values)
+		const virtualUpdates = this.handleVirtualCommandProperties(virtualCommandProps, transformedValues, channels);
 		updates.push(...virtualUpdates);
 
 		return updates;

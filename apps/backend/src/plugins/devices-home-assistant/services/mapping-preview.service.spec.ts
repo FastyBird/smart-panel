@@ -10,6 +10,7 @@ import { HomeAssistantDomain } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantNotFoundException } from '../devices-home-assistant.exceptions';
 import { MappingPreviewRequestDto } from '../dto/mapping-preview.dto';
 import { EntityRole, MappingLoaderService } from '../mappings';
+import { TransformerRegistry } from '../mappings/transformers/transformer.registry';
 
 import { HomeAssistantHttpService } from './home-assistant.http.service';
 import { HomeAssistantWsService } from './home-assistant.ws.service';
@@ -119,6 +120,15 @@ describe('MappingPreviewService', () => {
 			getMappings: jest.fn().mockReturnValue([mockMapping]),
 		};
 
+		const transformerRegistryMock: Partial<jest.Mocked<TransformerRegistry>> = {
+			getOrCreate: jest.fn().mockReturnValue({
+				canRead: () => true,
+				canWrite: () => true,
+				read: (value: unknown) => value,
+				write: (value: unknown) => value,
+			}),
+		};
+
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				MappingPreviewService,
@@ -128,6 +138,7 @@ describe('MappingPreviewService', () => {
 				{ provide: VirtualPropertyService, useValue: virtualPropertyServiceMock },
 				{ provide: DeviceValidationService, useValue: deviceValidationServiceMock },
 				{ provide: MappingLoaderService, useValue: mappingLoaderServiceMock },
+				{ provide: TransformerRegistry, useValue: transformerRegistryMock },
 			],
 		}).compile();
 

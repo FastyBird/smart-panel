@@ -118,6 +118,17 @@ export class PropertyMappingPreviewModel {
 	haEntityId?: string | null;
 
 	@ApiPropertyOptional({
+		description: 'Transformer name for value conversion between HA and Smart Panel formats',
+		type: 'string',
+		nullable: true,
+		name: 'ha_transformer',
+	})
+	@Expose({ name: 'ha_transformer' })
+	@IsOptional()
+	@IsString()
+	haTransformer?: string | null;
+
+	@ApiPropertyOptional({
 		description: 'Whether this is a virtual property (not directly mapped from HA)',
 		type: 'boolean',
 		name: 'is_virtual',

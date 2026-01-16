@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { DataTypeType } from '../../../modules/devices/devices.constants';
 import {
 	DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
 	ENTITY_MAIN_STATE_ATTRIBUTE,
@@ -39,17 +38,9 @@ export class UniversalEntityMapperService extends EntityMapper {
 					property &&
 					(typeof value === 'number' || typeof value === 'string' || typeof value === 'boolean' || value === null)
 				) {
-					let mappedValue: string | number | boolean | null = value as string | number | boolean | null;
-
-					if (property.dataType === DataTypeType.BOOL) {
-						if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-							mappedValue = ['on', 'true', '1'].includes(String(value).toLowerCase());
-						} else {
-							mappedValue = false;
-						}
-					}
-
-					mapped.set(property.id, mappedValue);
+					// Return raw value - transformation is applied by MapperService using TransformerRegistry
+					// This includes boolean conversions which are now handled by transformers like 'state_on_off'
+					mapped.set(property.id, value as string | number | boolean | null);
 				}
 			}
 
@@ -62,13 +53,9 @@ export class UniversalEntityMapperService extends EntityMapper {
 					typeof state.state === 'boolean' ||
 					state.state === null)
 			) {
-				let mappedValue: string | number | boolean | null = state.state;
-
-				if (mainProperty.dataType === DataTypeType.BOOL) {
-					mappedValue = ['on', 'true', '1'].includes(String(state.state).toLowerCase());
-				}
-
-				mapped.set(mainProperty.id, mappedValue as string | number | boolean | null);
+				// Return raw value - transformation is applied by MapperService using TransformerRegistry
+				// Boolean conversions are now handled by transformers like 'state_on_off'
+				mapped.set(mainProperty.id, state.state as string | number | boolean | null);
 			}
 		}
 

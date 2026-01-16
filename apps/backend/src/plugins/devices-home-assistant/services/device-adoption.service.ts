@@ -310,8 +310,9 @@ export class DeviceAdoptionService {
 					invalid: spec.invalid,
 					step: spec.step,
 					value: stringValue,
-					ha_entity_id: null,
-					ha_attribute: null,
+					ha_entity_id: null as string | null,
+					ha_attribute: null as string | null,
+					ha_transformer: null as string | null,
 				};
 			})
 			.filter((prop) => prop !== null);
@@ -363,6 +364,7 @@ export class DeviceAdoptionService {
 					value: existingProp?.value ?? null, // Keep existing value from HA registry
 					ha_entity_id: mappingChannel.entityId,
 					ha_attribute: propDef.haAttribute,
+					ha_transformer: propDef.haTransformer ?? null,
 				});
 
 				if (spec) {
@@ -459,6 +461,7 @@ export class DeviceAdoptionService {
 					value: null,
 					ha_entity_id: mappingChannel.entityId,
 					ha_attribute: propDef.haAttribute,
+					ha_transformer: propDef.haTransformer ?? null,
 				});
 
 				const propertyValidationErrors = await validate(createPropertyDto, { skipMissingProperties: true });
@@ -580,6 +583,7 @@ export class DeviceAdoptionService {
 			// Use property's entity ID if provided (for consolidated channels), otherwise use channel entity ID
 			ha_entity_id: propDef.haEntityId ?? channelDef.entityId,
 			ha_attribute: propDef.haAttribute,
+			ha_transformer: propDef.haTransformer ?? null,
 		}));
 
 		const createChannelDto = toInstance(CreateHomeAssistantChannelDto, {
@@ -846,6 +850,7 @@ export class DeviceAdoptionService {
 				value: null,
 				ha_entity_id: propDef.haEntityId ?? channelDef.entityId,
 				ha_attribute: propDef.haAttribute,
+				ha_transformer: propDef.haTransformer ?? null,
 			}));
 
 			// Use a temporary device ID for validation (won't be used to create)

@@ -5,7 +5,8 @@
  * for Home Assistant entity mappings.
  */
 import Ajv from 'ajv';
-import { existsSync, readFileSync, readdirSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
+import { readdir, readFile } from 'fs/promises';
 import { join } from 'path';
 import { parse as parseYaml } from 'yaml';
 
@@ -114,15 +115,15 @@ export class MappingLoaderService implements OnModuleInit {
 		this.validateVirtualPropsSchema = this.ajv.compile(virtualPropsSchema);
 	}
 
-	onModuleInit(): void {
+	async onModuleInit(): Promise<void> {
 		// Load all mapping files (also registers built-in transformers)
-		this.loadAllMappings();
+		await this.loadAllMappings();
 	}
 
 	/**
 	 * Load all mapping files from built-in and user directories
 	 */
-	loadAllMappings(): void {
+	async loadAllMappings(): Promise<void> {
 		// Clear all cached data
 		this.resolvedMappings = [];
 		this.virtualProperties.clear();
@@ -137,10 +138,10 @@ export class MappingLoaderService implements OnModuleInit {
 		this.transformerRegistry.registerAll(BUILTIN_TRANSFORMERS);
 
 		// Load built-in mappings (lowest priority)
-		const builtinFiles = this.discoverMappingFiles(this.builtinMappingsPath, 'builtin', 0);
+		const builtinFiles = await this.discoverMappingFiles(this.builtinMappingsPath, 'builtin', 0);
 		for (const fileInfo of builtinFiles) {
 			if (fileInfo.path.endsWith('virtual-properties.yaml')) {
-				const result = this.loadVirtualPropertiesFile(fileInfo);
+				const result = await this.loadVirtualPropertiesFile(fileInfo);
 				this.logLoadResult(result, fileInfo.path);
 				if (result.success && result.resolvedProperties) {
 					for (const [category, props] of result.resolvedProperties.entries()) {
@@ -148,7 +149,7 @@ export class MappingLoaderService implements OnModuleInit {
 					}
 				}
 			} else {
-				const result = this.loadMappingFile(fileInfo);
+				const result = await this.loadMappingFile(fileInfo);
 				this.loadedSources.push(result);
 				this.logLoadResult(result, fileInfo.path);
 				if (result.success && result.resolvedMappings) {
@@ -159,10 +160,10 @@ export class MappingLoaderService implements OnModuleInit {
 
 		// Load user mappings (highest priority)
 		if (existsSync(this.userMappingsPath)) {
-			const userFiles = this.discoverMappingFiles(this.userMappingsPath, 'user', 1000, true);
+			const userFiles = await this.discoverMappingFiles(this.userMappingsPath, 'user', 1000, true);
 			for (const fileInfo of userFiles) {
 				if (fileInfo.path.endsWith('virtual-properties.yaml')) {
-					const result = this.loadVirtualPropertiesFile(fileInfo);
+					const result = await this.loadVirtualPropertiesFile(fileInfo);
 					this.logLoadResult(result, fileInfo.path);
 					if (result.success && result.resolvedProperties) {
 						for (const [category, props] of result.resolvedProperties.entries()) {
@@ -172,7 +173,7 @@ export class MappingLoaderService implements OnModuleInit {
 						}
 					}
 				} else {
-					const result = this.loadMappingFile(fileInfo);
+					const result = await this.loadMappingFile(fileInfo);
 					this.loadedSources.push(result);
 					this.logLoadResult(result, fileInfo.path);
 					if (result.success && result.resolvedMappings) {
@@ -207,14 +208,14 @@ export class MappingLoaderService implements OnModuleInit {
 	}
 
 	/**
-	 * Discover YAML mapping files in a directory
+	 * Discover YAML mapping files in a directory (async)
 	 */
-	private discoverMappingFiles(
+	private async discoverMappingFiles(
 		dirPath: string,
 		source: MappingSource,
 		basePriority: number,
 		recursive: boolean = false,
-	): MappingFileInfo[] {
+	): Promise<MappingFileInfo[]> {
 		const files: MappingFileInfo[] = [];
 
 		if (!existsSync(dirPath)) {
@@ -222,7 +223,7 @@ export class MappingLoaderService implements OnModuleInit {
 		}
 
 		try {
-			const entries = readdirSync(dirPath, { withFileTypes: true });
+			const entries = await readdir(dirPath, { withFileTypes: true });
 
 			for (const entry of entries) {
 				const fullPath = join(dirPath, entry.name);
@@ -234,7 +235,8 @@ export class MappingLoaderService implements OnModuleInit {
 						priority: basePriority,
 					});
 				} else if (entry.isDirectory() && recursive) {
-					files.push(...this.discoverMappingFiles(fullPath, source, basePriority, true));
+					const subFiles = await this.discoverMappingFiles(fullPath, source, basePriority, true);
+					files.push(...subFiles);
 				}
 			}
 		} catch (error) {
@@ -247,13 +249,13 @@ export class MappingLoaderService implements OnModuleInit {
 	}
 
 	/**
-	 * Load and validate a mapping file
+	 * Load and validate a mapping file (async)
 	 */
-	loadMappingFile(fileInfo: MappingFileInfo): MappingLoadResult {
+	async loadMappingFile(fileInfo: MappingFileInfo): Promise<MappingLoadResult> {
 		const { path: filePath } = fileInfo;
 
 		try {
-			const content = readFileSync(filePath, 'utf-8');
+			const content = await readFile(filePath, 'utf-8');
 			const config = parseYaml(content) as HaMappingConfig;
 
 			// Validate against schema
@@ -311,13 +313,13 @@ export class MappingLoaderService implements OnModuleInit {
 	}
 
 	/**
-	 * Load and validate a virtual properties file
+	 * Load and validate a virtual properties file (async)
 	 */
-	loadVirtualPropertiesFile(fileInfo: MappingFileInfo): VirtualPropertiesLoadResult {
+	async loadVirtualPropertiesFile(fileInfo: MappingFileInfo): Promise<VirtualPropertiesLoadResult> {
 		const { path: filePath } = fileInfo;
 
 		try {
-			const content = readFileSync(filePath, 'utf-8');
+			const content = await readFile(filePath, 'utf-8');
 			const config = parseYaml(content) as VirtualPropertiesConfig;
 
 			// Validate against schema
@@ -673,9 +675,9 @@ export class MappingLoaderService implements OnModuleInit {
 	/**
 	 * Reload all mappings
 	 */
-	reload(): void {
+	async reload(): Promise<void> {
 		this.logger.log('Reloading mapping configurations...');
-		this.loadAllMappings();
+		await this.loadAllMappings();
 	}
 
 	/**

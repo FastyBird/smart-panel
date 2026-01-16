@@ -42,4 +42,17 @@ export class CreateHomeAssistantChannelPropertyDto extends CreateChannelProperty
 		name: 'ha_attribute',
 	})
 	ha_attribute: string | null;
+
+	@Expose()
+	@IsOptional()
+	@IsNotEmpty({ message: '[{"field":"ha_transformer","reason":"Transformer name must be a non-empty string."}]' })
+	@IsString({ message: '[{"field":"ha_transformer","reason":"Transformer name must be a string."}]' })
+	@ValidateIf((_, value) => value !== null)
+	@ApiProperty({
+		description: 'Transformer name for value conversion',
+		example: 'brightness_to_percent',
+		nullable: true,
+		name: 'ha_transformer',
+	})
+	ha_transformer: string | null;
 }

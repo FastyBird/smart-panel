@@ -44,6 +44,12 @@ export class StateChangedEventService implements WsEventService {
 
 	private debounceTimers = new Map<string, NodeJS.Timeout>();
 
+	// Cache for channels by device ID
+	private channelsByDeviceId: Map<string, HomeAssistantChannelEntity[]> = new Map();
+
+	// Cache for properties by channel ID
+	private propertiesByChannelId: Map<string, HomeAssistantChannelPropertyEntity[]> = new Map();
+
 	constructor(
 		private readonly devicesService: DevicesService,
 		private readonly channelsService: ChannelsService,
@@ -70,6 +76,8 @@ export class StateChangedEventService implements WsEventService {
 	@OnEvent(DevicesModuleEventType.CHANNEL_PROPERTY_DELETED)
 	handleDevicesUpdatedEvent() {
 		this.entityIdToHaDevice = null;
+		this.channelsByDeviceId.clear();
+		this.propertiesByChannelId.clear();
 	}
 
 	get event(): string {
@@ -151,21 +159,15 @@ export class StateChangedEventService implements WsEventService {
 		entityId: string,
 		state: HomeAssistantStateDto,
 	): Promise<void> {
-		// Load channels for the device
-		const channels = await this.channelsService.findAll<HomeAssistantChannelEntity>(
-			deviceId,
-			DEVICES_HOME_ASSISTANT_TYPE,
-		);
+		// Get channels from cache or load and cache them
+		const channels = await this.getChannelsForDevice(deviceId);
 
 		if (channels.length === 0) {
 			return;
 		}
 
-		// Load properties for these channels
-		const allProperties = await this.channelsPropertiesService.findAll<HomeAssistantChannelPropertyEntity>(
-			channels.map((c) => c.id),
-			DEVICES_HOME_ASSISTANT_TYPE,
-		);
+		// Get properties from cache or load and cache them
+		const allProperties = await this.getPropertiesForChannels(channels);
 
 		// Find properties linked to this entity
 		const entityProperties = allProperties.filter((p) => p.haEntityId === entityId);
@@ -292,5 +294,62 @@ export class StateChangedEventService implements WsEventService {
 		} finally {
 			this.isMappingLoading = false;
 		}
+	}
+
+	/**
+	 * Get channels for a device, using cache if available
+	 */
+	private async getChannelsForDevice(deviceId: string): Promise<HomeAssistantChannelEntity[]> {
+		let channels = this.channelsByDeviceId.get(deviceId);
+
+		if (!channels) {
+			channels = await this.channelsService.findAll<HomeAssistantChannelEntity>(
+				deviceId,
+				DEVICES_HOME_ASSISTANT_TYPE,
+			);
+			this.channelsByDeviceId.set(deviceId, channels);
+		}
+
+		return channels;
+	}
+
+	/**
+	 * Get properties for channels, using cache if available
+	 */
+	private async getPropertiesForChannels(
+		channels: HomeAssistantChannelEntity[],
+	): Promise<HomeAssistantChannelPropertyEntity[]> {
+		const allProperties: HomeAssistantChannelPropertyEntity[] = [];
+		const uncachedChannelIds: string[] = [];
+
+		// Collect cached properties and identify uncached channels
+		for (const channel of channels) {
+			const cached = this.propertiesByChannelId.get(channel.id);
+			if (cached) {
+				allProperties.push(...cached);
+			} else {
+				uncachedChannelIds.push(channel.id);
+			}
+		}
+
+		// Load uncached properties in batch
+		if (uncachedChannelIds.length > 0) {
+			const newProperties = await this.channelsPropertiesService.findAll<HomeAssistantChannelPropertyEntity>(
+				uncachedChannelIds,
+				DEVICES_HOME_ASSISTANT_TYPE,
+			);
+
+			// Group by channel and cache
+			for (const channelId of uncachedChannelIds) {
+				const channelProps = newProperties.filter((p) => {
+					const propChannelId = typeof p.channel === 'string' ? p.channel : p.channel?.id;
+					return propChannelId === channelId;
+				});
+				this.propertiesByChannelId.set(channelId, channelProps);
+				allProperties.push(...channelProps);
+			}
+		}
+
+		return allProperties;
 	}
 }
