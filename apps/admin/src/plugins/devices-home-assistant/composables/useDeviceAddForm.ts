@@ -386,6 +386,8 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 								// Include entity ID for consolidated channels (each property can map to a different entity)
 								// Use prop.haEntityId if available (from mapping preview), otherwise fallback to entity.entityId
 								haEntityId: prop.haEntityId ?? entity.entityId,
+								// Include transformer from YAML mapping if specified
+								ha_transformer: prop.ha_transformer ?? null,
 							})),
 						};
 					});

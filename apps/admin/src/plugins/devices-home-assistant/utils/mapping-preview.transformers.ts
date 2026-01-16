@@ -213,6 +213,8 @@ export const transformHelperMappingPreviewResponse = (response: object): IMappin
 			currentValue: prop.currentValue ?? null,
 			// All properties map back to the original entity
 			haEntityId: camelResponse.helper.entityId,
+			// Include transformer from YAML mapping if specified
+			ha_transformer: prop.ha_transformer ?? null,
 		})),
 		unmappedAttributes: [],
 		missingRequiredProperties: [],

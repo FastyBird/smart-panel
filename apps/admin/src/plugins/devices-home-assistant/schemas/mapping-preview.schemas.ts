@@ -43,6 +43,7 @@ export const PropertyMappingPreviewSchema = z.object({
 	required: z.boolean(),
 	currentValue: z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
 	haEntityId: z.string().nullable().optional(),
+	ha_transformer: z.string().nullable().optional(),
 	isVirtual: z.boolean().optional(),
 	virtualType: VirtualPropertyTypeSchema.nullable().optional(),
 });
@@ -131,6 +132,7 @@ export const AdoptPropertyDefinitionSchema = z.object({
 		.nullable()
 		.optional(),
 	haEntityId: z.string().optional(),
+	ha_transformer: z.string().nullable().optional(),
 });
 
 export const AdoptChannelDefinitionSchema = z.object({
@@ -171,6 +173,7 @@ const HelperPropertyMappingSchema = z.object({
 		.optional(),
 	required: z.boolean(),
 	currentValue: z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
+	ha_transformer: z.string().nullable().optional(),
 });
 
 const HelperChannelMappingSchema = z.object({
