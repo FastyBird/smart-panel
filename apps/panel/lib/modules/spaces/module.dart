@@ -100,6 +100,9 @@ class SpacesModuleService {
       _deviceSocketEventHandler,
     );
 
+    // Dispose service first to remove its repository listeners
+    _spacesService.dispose();
+
     // Clear all repository data to prevent memory leaks
     _spacesRepository.clearAll();
     _lightTargetsRepository.clearAll();
