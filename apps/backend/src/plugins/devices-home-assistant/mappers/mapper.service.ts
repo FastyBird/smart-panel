@@ -120,12 +120,20 @@ export class MapperService {
 			}
 
 			// Convert Map to array with property entities and apply transformers
+			// Transformers are applied when:
+			// 1. Property has a transformer configured (haTransformer is set)
+			// 2. Value is not null
+			//
+			// Domain mappers are aware of transformers and pass through raw values when
+			// a property has a transformer configured. This allows the transformer to
+			// handle the conversion consistently for both read and write paths.
 			const result: MappedFromHaEntry[] = [];
 			for (const [propertyId, value] of resultMap.entries()) {
 				const property = properties.find((p) => p.id === propertyId);
 				if (property) {
-					// Apply transformer if specified on the property
 					let transformedValue: string | number | boolean | null = value;
+
+					// Apply transformer if property has one configured
 					if (property.haTransformer && value !== null) {
 						const transformer = this.transformerRegistry.getOrCreate(property.haTransformer);
 						if (transformer.canRead()) {

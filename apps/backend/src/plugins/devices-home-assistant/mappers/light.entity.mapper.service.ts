@@ -59,9 +59,15 @@ export class LightEntityMapperService extends EntityMapper {
 			);
 
 			if (brightnessProp) {
-				const mappedValue = Math.round((brightness / 255) * 100);
+				// If property has a transformer, pass through raw HA value (0-255)
+				// The transformer will handle the conversion to percentage
+				// Otherwise, convert from HA brightness (0-255) to percentage (0-100)
+				const mappedValue = brightnessProp.haTransformer ? brightness : Math.round((brightness / 255) * 100);
 				mapped.set(brightnessProp.id, mappedValue);
-				this.logger.debug(`[LIGHT ENTITY MAPPER] Mapped brightness: ${brightness} (0-255) -> ${mappedValue}% (0-100)`);
+				this.logger.debug(
+					`[LIGHT ENTITY MAPPER] Mapped brightness: ${brightness} (0-255) -> ${mappedValue}` +
+						`${brightnessProp.haTransformer ? ' (raw, transformer will convert)' : '% (0-100)'}`,
+				);
 			} else {
 				// Check what haAttribute the brightness property actually has
 				const anyBrightnessProp = properties.find((p) => p.category === PropertyCategory.BRIGHTNESS);
@@ -429,7 +435,11 @@ export class LightEntityMapperService extends EntityMapper {
 		);
 
 		if (brightnessProp && values.has(brightnessProp.id) && typeof values.get(brightnessProp.id) === 'number') {
-			attributes.set(LightEntityAttribute.BRIGHTNESS, Math.round((Number(values.get(brightnessProp.id)) / 100) * 255));
+			const rawValue = Number(values.get(brightnessProp.id));
+			// If property has a transformer, the value is already in HA format (0-255)
+			// Otherwise, convert from percentage (0-100) to HA brightness (0-255)
+			const haValue = brightnessProp.haTransformer ? rawValue : Math.round((rawValue / 100) * 255);
+			attributes.set(LightEntityAttribute.BRIGHTNESS, haValue);
 		}
 
 		const brightnessPctProp = await this.getValidProperty(
