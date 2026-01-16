@@ -518,13 +518,16 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       subtitle = '$modeName \u2022 $lightsOn on';
     }
 
+    // Use actual light state for icon, not pending mode
+    final hasLightsOn = lightsOn > 0;
+
     return PageHeader(
       title: localizations.domain_lights,
       subtitle: subtitle,
       subtitleColor: mode != LightingModeUI.off ? modeColor : null,
       backgroundColor: AppColors.blank,
       leading: HeaderDeviceIcon(
-        icon: mode != LightingModeUI.off ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline,
+        icon: hasLightsOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline,
         backgroundColor: modeBgColor,
         iconColor: modeColor,
       ),
@@ -1072,11 +1075,24 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         final result = await _spacesService?.turnLightsOff(_roomId);
         success = result != null;
       } else {
-        // Set the mode
+        // Set the mode - if lights are off, turn them on first
         final backendMode = mode.toBackendMode();
         if (backendMode != null) {
-          final result = await _spacesService?.setLightingMode(_roomId, backendMode);
-          success = result != null;
+          final state = _lightingState;
+          final lightsAreOff = state == null || !state.anyOn;
+
+          if (lightsAreOff) {
+            // Turn lights on first, then set the mode
+            final onResult = await _spacesService?.turnLightsOn(_roomId);
+            if (onResult != null) {
+              final modeResult = await _spacesService?.setLightingMode(_roomId, backendMode);
+              success = modeResult != null;
+            }
+          } else {
+            // Lights already on, just set the mode
+            final result = await _spacesService?.setLightingMode(_roomId, backendMode);
+            success = result != null;
+          }
         }
       }
 
