@@ -75,7 +75,7 @@ export const useSpaceUndo = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceU
 
 	const remainingSeconds = computed(() => {
 		const state = undoStateData.value;
-		if (!state?.expiresInSeconds || !state?.capturedAt) return null;
+		if (!state || state.expiresInSeconds == null || state.capturedAt == null) return null;
 
 		const elapsed = Math.floor((now.value - state.capturedAt.getTime()) / 1000);
 		const remaining = state.expiresInSeconds - elapsed;
