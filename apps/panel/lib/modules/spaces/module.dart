@@ -151,15 +151,17 @@ class SpacesModuleService {
       /// Lighting State CHANGED
     } else if (event == SpacesModuleConstants.lightingStateChangedEvent) {
       final spaceId = payload['space_id'] as String?;
-      if (spaceId != null) {
-        _spaceStateRepository.updateLightingState(spaceId, payload);
+      final stateData = payload['state'] as Map<String, dynamic>?;
+      if (spaceId != null && stateData != null) {
+        _spaceStateRepository.updateLightingState(spaceId, stateData);
       }
 
       /// Climate State CHANGED
     } else if (event == SpacesModuleConstants.climateStateChangedEvent) {
       final spaceId = payload['space_id'] as String?;
-      if (spaceId != null) {
-        _spaceStateRepository.updateClimateState(spaceId, payload);
+      final stateData = payload['state'] as Map<String, dynamic>?;
+      if (spaceId != null && stateData != null) {
+        _spaceStateRepository.updateClimateState(spaceId, stateData);
       }
     }
   }

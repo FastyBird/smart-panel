@@ -73,15 +73,17 @@ class SpacesModuleEventHandler {
     // Lighting State CHANGED
     else if (event == SpacesModuleConstants.lightingStateChangedEvent) {
       final spaceId = payload['space_id'] as String?;
-      if (spaceId != null) {
-        spaceStateRepository.updateLightingState(spaceId, payload);
+      final stateData = payload['state'] as Map<String, dynamic>?;
+      if (spaceId != null && stateData != null) {
+        spaceStateRepository.updateLightingState(spaceId, stateData);
       }
     }
     // Climate State CHANGED
     else if (event == SpacesModuleConstants.climateStateChangedEvent) {
       final spaceId = payload['space_id'] as String?;
-      if (spaceId != null) {
-        spaceStateRepository.updateClimateState(spaceId, payload);
+      final stateData = payload['state'] as Map<String, dynamic>?;
+      if (spaceId != null && stateData != null) {
+        spaceStateRepository.updateClimateState(spaceId, stateData);
       }
     }
   }
@@ -219,23 +221,25 @@ void main() {
       test('LightingState.Changed event updates cached state', () {
         final payload = {
           'space_id': 'space-123',
-          'detected_mode': 'work',
-          'mode_confidence': 'exact',
-          'mode_match_percentage': 95.0,
-          'total_lights': 5,
-          'lights_on': 3,
-          'average_brightness': 75.0,
-          'roles': <String, dynamic>{},
-          'other': {
-            'is_on': true,
-            'is_on_mixed': false,
-            'brightness': 80,
-            'devices_count': 2,
-            'devices_on': 2,
-            'is_brightness_mixed': false,
-            'is_color_temperature_mixed': false,
-            'is_color_mixed': false,
-            'is_white_mixed': false,
+          'state': {
+            'detected_mode': 'work',
+            'mode_confidence': 'exact',
+            'mode_match_percentage': 95.0,
+            'total_lights': 5,
+            'lights_on': 3,
+            'average_brightness': 75.0,
+            'roles': <String, dynamic>{},
+            'other': {
+              'is_on': true,
+              'is_on_mixed': false,
+              'brightness': 80,
+              'devices_count': 2,
+              'devices_on': 2,
+              'is_brightness_mixed': false,
+              'is_color_temperature_mixed': false,
+              'is_color_mixed': false,
+              'is_white_mixed': false,
+            },
           },
         };
 
@@ -256,20 +260,22 @@ void main() {
         for (final mode in ['work', 'relax', 'night']) {
           final payload = {
             'space_id': 'space-$mode',
-            'detected_mode': mode,
-            'mode_confidence': 'exact',
-            'total_lights': 3,
-            'lights_on': 2,
-            'roles': <String, dynamic>{},
-            'other': {
-              'is_on': true,
-              'is_on_mixed': false,
-              'devices_count': 1,
-              'devices_on': 1,
-              'is_brightness_mixed': false,
-              'is_color_temperature_mixed': false,
-              'is_color_mixed': false,
-              'is_white_mixed': false,
+            'state': {
+              'detected_mode': mode,
+              'mode_confidence': 'exact',
+              'total_lights': 3,
+              'lights_on': 2,
+              'roles': <String, dynamic>{},
+              'other': {
+                'is_on': true,
+                'is_on_mixed': false,
+                'devices_count': 1,
+                'devices_on': 1,
+                'is_brightness_mixed': false,
+                'is_color_temperature_mixed': false,
+                'is_color_mixed': false,
+                'is_white_mixed': false,
+              },
             },
           };
 
@@ -290,43 +296,45 @@ void main() {
       test('LightingState.Changed with role data updates role states', () {
         final payload = {
           'space_id': 'space-123',
-          'detected_mode': 'work',
-          'mode_confidence': 'approximate',
-          'total_lights': 6,
-          'lights_on': 4,
-          'roles': {
-            'main': {
-              'is_on': true,
+          'state': {
+            'detected_mode': 'work',
+            'mode_confidence': 'approximate',
+            'total_lights': 6,
+            'lights_on': 4,
+            'roles': {
+              'main': {
+                'is_on': true,
+                'is_on_mixed': false,
+                'brightness': 100,
+                'devices_count': 2,
+                'devices_on': 2,
+                'is_brightness_mixed': false,
+                'is_color_temperature_mixed': false,
+                'is_color_mixed': false,
+                'is_white_mixed': false,
+              },
+              'ambient': {
+                'is_on': true,
+                'is_on_mixed': false,
+                'brightness': 50,
+                'devices_count': 2,
+                'devices_on': 2,
+                'is_brightness_mixed': false,
+                'is_color_temperature_mixed': false,
+                'is_color_mixed': false,
+                'is_white_mixed': false,
+              },
+            },
+            'other': {
+              'is_on': false,
               'is_on_mixed': false,
-              'brightness': 100,
               'devices_count': 2,
-              'devices_on': 2,
+              'devices_on': 0,
               'is_brightness_mixed': false,
               'is_color_temperature_mixed': false,
               'is_color_mixed': false,
               'is_white_mixed': false,
             },
-            'ambient': {
-              'is_on': true,
-              'is_on_mixed': false,
-              'brightness': 50,
-              'devices_count': 2,
-              'devices_on': 2,
-              'is_brightness_mixed': false,
-              'is_color_temperature_mixed': false,
-              'is_color_mixed': false,
-              'is_white_mixed': false,
-            },
-          },
-          'other': {
-            'is_on': false,
-            'is_on_mixed': false,
-            'devices_count': 2,
-            'devices_on': 0,
-            'is_brightness_mixed': false,
-            'is_color_temperature_mixed': false,
-            'is_color_mixed': false,
-            'is_white_mixed': false,
           },
         };
 
@@ -350,21 +358,24 @@ void main() {
       });
 
       test('LightingState.Changed without space_id is ignored', () {
+        // Payload has state wrapper but no space_id - should be ignored
         final payload = {
-          'detected_mode': 'work',
-          'mode_confidence': 'exact',
-          'total_lights': 3,
-          'lights_on': 2,
-          'roles': <String, dynamic>{},
-          'other': {
-            'is_on': true,
-            'is_on_mixed': false,
-            'devices_count': 1,
-            'devices_on': 1,
-            'is_brightness_mixed': false,
-            'is_color_temperature_mixed': false,
-            'is_color_mixed': false,
-            'is_white_mixed': false,
+          'state': {
+            'detected_mode': 'work',
+            'mode_confidence': 'exact',
+            'total_lights': 3,
+            'lights_on': 2,
+            'roles': <String, dynamic>{},
+            'other': {
+              'is_on': true,
+              'is_on_mixed': false,
+              'devices_count': 1,
+              'devices_on': 1,
+              'is_brightness_mixed': false,
+              'is_color_temperature_mixed': false,
+              'is_color_mixed': false,
+              'is_white_mixed': false,
+            },
           },
         };
 
@@ -382,20 +393,22 @@ void main() {
       test('ClimateState.Changed event updates cached state', () {
         final payload = {
           'space_id': 'space-123',
-          'has_climate': true,
-          'mode': 'heat',
-          'current_temperature': 21.5,
-          'current_humidity': 45.0,
-          'target_temperature': 22.0,
-          'heating_setpoint': 20.0,
-          'cooling_setpoint': 24.0,
-          'min_setpoint': 15.0,
-          'max_setpoint': 30.0,
-          'can_set_setpoint': true,
-          'supports_heating': true,
-          'supports_cooling': true,
-          'is_mixed': false,
-          'devices_count': 2,
+          'state': {
+            'has_climate': true,
+            'mode': 'heat',
+            'current_temperature': 21.5,
+            'current_humidity': 45.0,
+            'target_temperature': 22.0,
+            'heating_setpoint': 20.0,
+            'cooling_setpoint': 24.0,
+            'min_setpoint': 15.0,
+            'max_setpoint': 30.0,
+            'can_set_setpoint': true,
+            'supports_heating': true,
+            'supports_cooling': true,
+            'is_mixed': false,
+            'devices_count': 2,
+          },
         };
 
         eventHandler.handleEvent(
@@ -417,17 +430,19 @@ void main() {
         for (final mode in ['heat', 'cool', 'auto', 'off']) {
           final payload = {
             'space_id': 'space-$mode',
-            'has_climate': true,
-            'mode': mode,
-            'current_temperature': 21.5,
-            'target_temperature': 22.0,
-            'min_setpoint': 15.0,
-            'max_setpoint': 30.0,
-            'can_set_setpoint': true,
-            'supports_heating': true,
-            'supports_cooling': true,
-            'is_mixed': false,
-            'devices_count': 1,
+            'state': {
+              'has_climate': true,
+              'mode': mode,
+              'current_temperature': 21.5,
+              'target_temperature': 22.0,
+              'min_setpoint': 15.0,
+              'max_setpoint': 30.0,
+              'can_set_setpoint': true,
+              'supports_heating': true,
+              'supports_cooling': true,
+              'is_mixed': false,
+              'devices_count': 1,
+            },
           };
 
           eventHandler.handleEvent(
@@ -445,17 +460,20 @@ void main() {
       });
 
       test('ClimateState.Changed without space_id is ignored', () {
+        // Payload has state wrapper but no space_id - should be ignored
         final payload = {
-          'has_climate': true,
-          'mode': 'heat',
-          'current_temperature': 21.5,
-          'min_setpoint': 15.0,
-          'max_setpoint': 30.0,
-          'can_set_setpoint': true,
-          'supports_heating': true,
-          'supports_cooling': true,
-          'is_mixed': false,
-          'devices_count': 1,
+          'state': {
+            'has_climate': true,
+            'mode': 'heat',
+            'current_temperature': 21.5,
+            'min_setpoint': 15.0,
+            'max_setpoint': 30.0,
+            'can_set_setpoint': true,
+            'supports_heating': true,
+            'supports_cooling': true,
+            'is_mixed': false,
+            'devices_count': 1,
+          },
         };
 
         eventHandler.handleEvent(
@@ -596,20 +614,22 @@ void main() {
 
         final payload = {
           'space_id': 'space-123',
-          'detected_mode': 'work',
-          'mode_confidence': 'exact',
-          'total_lights': 3,
-          'lights_on': 2,
-          'roles': <String, dynamic>{},
-          'other': {
-            'is_on': true,
-            'is_on_mixed': false,
-            'devices_count': 1,
-            'devices_on': 1,
-            'is_brightness_mixed': false,
-            'is_color_temperature_mixed': false,
-            'is_color_mixed': false,
-            'is_white_mixed': false,
+          'state': {
+            'detected_mode': 'work',
+            'mode_confidence': 'exact',
+            'total_lights': 3,
+            'lights_on': 2,
+            'roles': <String, dynamic>{},
+            'other': {
+              'is_on': true,
+              'is_on_mixed': false,
+              'devices_count': 1,
+              'devices_on': 1,
+              'is_brightness_mixed': false,
+              'is_color_temperature_mixed': false,
+              'is_color_mixed': false,
+              'is_white_mixed': false,
+            },
           },
         };
 
@@ -628,20 +648,22 @@ void main() {
         for (var i = 0; i < 3; i++) {
           final payload = {
             'space_id': 'space-$i',
-            'detected_mode': 'work',
-            'mode_confidence': 'exact',
-            'total_lights': 3,
-            'lights_on': 2,
-            'roles': <String, dynamic>{},
-            'other': {
-              'is_on': true,
-              'is_on_mixed': false,
-              'devices_count': 1,
-              'devices_on': 1,
-              'is_brightness_mixed': false,
-              'is_color_temperature_mixed': false,
-              'is_color_mixed': false,
-              'is_white_mixed': false,
+            'state': {
+              'detected_mode': 'work',
+              'mode_confidence': 'exact',
+              'total_lights': 3,
+              'lights_on': 2,
+              'roles': <String, dynamic>{},
+              'other': {
+                'is_on': true,
+                'is_on_mixed': false,
+                'devices_count': 1,
+                'devices_on': 1,
+                'is_brightness_mixed': false,
+                'is_color_temperature_mixed': false,
+                'is_color_mixed': false,
+                'is_white_mixed': false,
+              },
             },
           };
 

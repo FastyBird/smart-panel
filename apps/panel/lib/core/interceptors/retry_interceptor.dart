@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:dio/dio.dart';
+import 'package:fastybird_smart_panel/core/services/metrics_service.dart';
 import 'package:flutter/foundation.dart';
 
 /// Configuration for retry behavior
@@ -79,9 +80,15 @@ class RetryInterceptor extends Interceptor {
       return handler.next(err);
     }
 
-    // Get current retry count from request extras
+    // Get current retry count and start time from request extras
     final requestOptions = err.requestOptions;
     final retryCount = requestOptions.extra['retryCount'] as int? ?? 0;
+    final startTime = requestOptions.extra['retryStartTime'] as DateTime? ?? DateTime.now();
+
+    // Store start time on first retry attempt
+    if (retryCount == 0) {
+      requestOptions.extra['retryStartTime'] = startTime;
+    }
 
     // Check if we've exceeded max retries
     if (retryCount >= _config.maxRetries) {
@@ -90,6 +97,16 @@ class RetryInterceptor extends Interceptor {
           '[RETRY INTERCEPTOR] Max retries ($retryCount) exceeded for ${requestOptions.path}',
         );
       }
+
+      // Track retry failure (all retries exhausted)
+      final totalDuration = DateTime.now().difference(startTime);
+      MetricsService.instance.trackRetryFailure(
+        requestOptions.path,
+        retryCount,
+        totalDuration,
+        _getErrorDescription(err),
+      );
+
       return handler.next(err);
     }
 
@@ -104,6 +121,15 @@ class RetryInterceptor extends Interceptor {
       );
     }
 
+    // Track this retry attempt
+    MetricsService.instance.trackRetry(
+      requestOptions.path,
+      retryCount + 1,
+      _getErrorDescription(err),
+      statusCode: err.response?.statusCode,
+      delay: Duration(milliseconds: delay),
+    );
+
     // Notify retry callback if provided
     onRetry?.call(requestOptions, retryCount + 1, err);
 
@@ -116,6 +142,15 @@ class RetryInterceptor extends Interceptor {
     try {
       // Retry the request
       final response = await _dio.fetch(requestOptions);
+
+      // Track successful retry recovery
+      final totalDuration = DateTime.now().difference(startTime);
+      MetricsService.instance.trackRetrySuccess(
+        requestOptions.path,
+        retryCount + 1,
+        totalDuration,
+      );
+
       return handler.resolve(response);
     } on DioException catch (e) {
       // Check if we should retry again

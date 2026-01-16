@@ -27,6 +27,7 @@ export 'package:fastybird_smart_panel/modules/spaces/repositories/spaces.dart';
 export 'package:fastybird_smart_panel/modules/spaces/repositories/light_targets.dart';
 export 'package:fastybird_smart_panel/modules/spaces/repositories/climate_targets.dart';
 export 'package:fastybird_smart_panel/modules/spaces/repositories/space_state.dart';
+export 'package:fastybird_smart_panel/modules/spaces/repositories/intent_types.dart';
 
 // Services
 export 'package:fastybird_smart_panel/modules/spaces/service.dart';

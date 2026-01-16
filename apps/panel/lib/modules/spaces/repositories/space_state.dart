@@ -1,172 +1,19 @@
 import 'package:dio/dio.dart';
-import 'package:fastybird_smart_panel/api/models/spaces_module_lighting_intent.dart';
-import 'package:fastybird_smart_panel/api/models/spaces_module_req_lighting_intent.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_climate_intent.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_lighting_intent.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_climate_intent.dart';
-import 'package:fastybird_smart_panel/api/models/spaces_module_suggestion_feedback.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_req_lighting_intent.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_suggestion_feedback.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_suggestion_feedback.dart';
 import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
+import 'package:fastybird_smart_panel/core/services/metrics_service.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/intent_result/intent_result.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/suggestion/suggestion.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/undo/undo_state.dart';
+import 'package:fastybird_smart_panel/modules/spaces/repositories/intent_types.dart';
 import 'package:flutter/foundation.dart';
-
-/// Types of lighting intents that can be executed on a space.
-///
-/// Each type corresponds to a specific lighting action:
-/// - [off]/[on]: Turn all lights off/on
-/// - [setMode]: Apply a predefined lighting mode (work, relax, night)
-/// - [brightnessDelta]: Adjust brightness by a relative amount
-/// - [roleOn]/[roleOff]: Control lights by their role (main, task, ambient, etc.)
-/// - [roleBrightness]/[roleColor]/[roleColorTemp]/[roleWhite]: Set specific values for a role
-/// - [roleSet]: Set multiple properties for a role at once
-enum LightingIntentType {
-  off,
-  on,
-  setMode,
-  brightnessDelta,
-  roleOn,
-  roleOff,
-  roleBrightness,
-  roleColor,
-  roleColorTemp,
-  roleWhite,
-  roleSet,
-}
-
-/// Size of brightness adjustment for delta-based changes.
-///
-/// - [small]: Minor adjustment (e.g., 10%)
-/// - [medium]: Moderate adjustment (e.g., 25%)
-/// - [large]: Significant adjustment (e.g., 50%)
-enum BrightnessDelta {
-  small,
-  medium,
-  large,
-}
-
-/// Types of climate intents that can be executed on a space.
-///
-/// Each type corresponds to a specific climate action:
-/// - [setpointDelta]: Adjust temperature setpoint by a relative amount
-/// - [setpointSet]: Set temperature setpoint to an absolute value
-/// - [setMode]: Change HVAC mode (heat, cool, auto, off)
-/// - [climateSet]: Set multiple climate properties at once
-enum ClimateIntentType {
-  setpointDelta,
-  setpointSet,
-  setMode,
-  climateSet,
-}
-
-/// Size of setpoint adjustment for delta-based temperature changes.
-///
-/// - [small]: Minor adjustment (e.g., 0.5°C)
-/// - [medium]: Moderate adjustment (e.g., 1°C)
-/// - [large]: Significant adjustment (e.g., 2°C)
-enum SetpointDelta {
-  small,
-  medium,
-  large,
-}
-
-/// Convert LightingIntentType to API string
-String _lightingIntentTypeToString(LightingIntentType type) {
-  switch (type) {
-    case LightingIntentType.off:
-      return 'off';
-    case LightingIntentType.on:
-      return 'on';
-    case LightingIntentType.setMode:
-      return 'set_mode';
-    case LightingIntentType.brightnessDelta:
-      return 'brightness_delta';
-    case LightingIntentType.roleOn:
-      return 'role_on';
-    case LightingIntentType.roleOff:
-      return 'role_off';
-    case LightingIntentType.roleBrightness:
-      return 'role_brightness';
-    case LightingIntentType.roleColor:
-      return 'role_color';
-    case LightingIntentType.roleColorTemp:
-      return 'role_color_temp';
-    case LightingIntentType.roleWhite:
-      return 'role_white';
-    case LightingIntentType.roleSet:
-      return 'role_set';
-  }
-}
-
-/// Convert BrightnessDelta to API string
-String _brightnessDeltaToString(BrightnessDelta delta) {
-  switch (delta) {
-    case BrightnessDelta.small:
-      return 'small';
-    case BrightnessDelta.medium:
-      return 'medium';
-    case BrightnessDelta.large:
-      return 'large';
-  }
-}
-
-/// Convert ClimateIntentType to API string
-String _climateIntentTypeToString(ClimateIntentType type) {
-  switch (type) {
-    case ClimateIntentType.setpointDelta:
-      return 'setpoint_delta';
-    case ClimateIntentType.setpointSet:
-      return 'setpoint_set';
-    case ClimateIntentType.setMode:
-      return 'set_mode';
-    case ClimateIntentType.climateSet:
-      return 'climate_set';
-  }
-}
-
-/// Convert SetpointDelta to API string
-String _setpointDeltaToString(SetpointDelta delta) {
-  switch (delta) {
-    case SetpointDelta.small:
-      return 'small';
-    case SetpointDelta.medium:
-      return 'medium';
-    case SetpointDelta.large:
-      return 'large';
-  }
-}
-
-/// Convert LightingMode to API string
-String _lightingModeToString(LightingMode mode) {
-  switch (mode) {
-    case LightingMode.work:
-      return 'work';
-    case LightingMode.relax:
-      return 'relax';
-    case LightingMode.night:
-      return 'night';
-  }
-}
-
-/// Convert LightingStateRole to API string
-String _lightingRoleToString(LightingStateRole role) {
-  switch (role) {
-    case LightingStateRole.main:
-      return 'main';
-    case LightingStateRole.task:
-      return 'task';
-    case LightingStateRole.ambient:
-      return 'ambient';
-    case LightingStateRole.accent:
-      return 'accent';
-    case LightingStateRole.night:
-      return 'night';
-    case LightingStateRole.other:
-      return 'other';
-  }
-}
 
 /// Repository for managing space state including lighting, climate, suggestions, and undo.
 ///
@@ -363,22 +210,25 @@ class SpaceStateRepository extends ChangeNotifier {
     int? colorTemperature,
     int? white,
   }) async {
+    final stopwatch = Stopwatch()..start();
+    final intentName = 'lighting_${lightingIntentTypeToString(type)}';
+
     try {
       final Map<String, dynamic> body = {
-        'type': _lightingIntentTypeToString(type),
+        'type': lightingIntentTypeToString(type),
       };
 
       if (mode != null) {
-        body['mode'] = _lightingModeToString(mode);
+        body['mode'] = lightingModeToString(mode);
       }
       if (delta != null) {
-        body['delta'] = _brightnessDeltaToString(delta);
+        body['delta'] = brightnessDeltaToString(delta);
       }
       if (increase != null) {
         body['increase'] = increase;
       }
       if (role != null) {
-        body['role'] = _lightingRoleToString(role);
+        body['role'] = lightingRoleToString(role);
       }
       if (on != null) {
         body['on'] = on;
@@ -408,6 +258,17 @@ class SpaceStateRepository extends ChangeNotifier {
         final data = response.response.data['data'] as Map<String, dynamic>;
         final result = LightingIntentResult.fromJson(data);
 
+        // Track successful intent execution
+        stopwatch.stop();
+        MetricsService.instance.trackIntent(
+          intentName,
+          result.failedDevices > 0 ? MetricStatus.partial : MetricStatus.success,
+          stopwatch.elapsed,
+          spaceId: spaceId,
+          affectedDevices: result.affectedDevices,
+          failedDevices: result.failedDevices,
+        );
+
         // Refresh undo state after successful intent execution
         // (a new undo window may now be available)
         // Note: Lighting state refresh is handled by WebSocket events
@@ -416,12 +277,26 @@ class SpaceStateRepository extends ChangeNotifier {
         return result;
       }
     } on DioException catch (e) {
+      stopwatch.stop();
+      MetricsService.instance.trackIntent(
+        intentName,
+        MetricStatus.failure,
+        stopwatch.elapsed,
+        spaceId: spaceId,
+      );
       if (kDebugMode) {
         debugPrint(
           '[SPACES MODULE][STATE] API error executing lighting intent for $spaceId: ${e.response?.statusCode}',
         );
       }
     } catch (e) {
+      stopwatch.stop();
+      MetricsService.instance.trackIntent(
+        intentName,
+        MetricStatus.failure,
+        stopwatch.elapsed,
+        spaceId: spaceId,
+      );
       if (kDebugMode) {
         debugPrint(
           '[SPACES MODULE][STATE] Error executing lighting intent for $spaceId: $e',
@@ -554,13 +429,16 @@ class SpaceStateRepository extends ChangeNotifier {
     double? coolingSetpoint,
     ClimateMode? mode,
   }) async {
+    final stopwatch = Stopwatch()..start();
+    final intentName = 'climate_${climateIntentTypeToString(type)}';
+
     try {
       final Map<String, dynamic> body = {
-        'type': _climateIntentTypeToString(type),
+        'type': climateIntentTypeToString(type),
       };
 
       if (delta != null) {
-        body['delta'] = _setpointDeltaToString(delta);
+        body['delta'] = setpointDeltaToString(delta);
       }
       if (increase != null) {
         body['increase'] = increase;
@@ -590,6 +468,17 @@ class SpaceStateRepository extends ChangeNotifier {
         final data = response.response.data['data'] as Map<String, dynamic>;
         final result = ClimateIntentResult.fromJson(data);
 
+        // Track successful intent execution
+        stopwatch.stop();
+        MetricsService.instance.trackIntent(
+          intentName,
+          result.failedDevices > 0 ? MetricStatus.partial : MetricStatus.success,
+          stopwatch.elapsed,
+          spaceId: spaceId,
+          affectedDevices: result.affectedDevices,
+          failedDevices: result.failedDevices,
+        );
+
         // Refresh undo state after successful intent execution
         // (a new undo window may now be available)
         // Note: Climate state refresh is handled by WebSocket events
@@ -598,12 +487,26 @@ class SpaceStateRepository extends ChangeNotifier {
         return result;
       }
     } on DioException catch (e) {
+      stopwatch.stop();
+      MetricsService.instance.trackIntent(
+        intentName,
+        MetricStatus.failure,
+        stopwatch.elapsed,
+        spaceId: spaceId,
+      );
       if (kDebugMode) {
         debugPrint(
           '[SPACES MODULE][STATE] API error executing climate intent for $spaceId: ${e.response?.statusCode}',
         );
       }
     } catch (e) {
+      stopwatch.stop();
+      MetricsService.instance.trackIntent(
+        intentName,
+        MetricStatus.failure,
+        stopwatch.elapsed,
+        spaceId: spaceId,
+      );
       if (kDebugMode) {
         debugPrint(
           '[SPACES MODULE][STATE] Error executing climate intent for $spaceId: $e',
