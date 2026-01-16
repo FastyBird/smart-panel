@@ -159,88 +159,96 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
 
   void _onDataChanged() {
     if (!mounted) return;
-    // Update state from climate state when data changes
-    final climateState = _spacesService?.getClimateState(widget.roomId);
-    if (climateState == null) return;
+    // Use addPostFrameCallback to avoid "setState during build" errors
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // Update state from climate state when data changes
+      final climateState = _spacesService?.getClimateState(widget.roomId);
+      if (climateState == null) return;
 
-    // Determine mode from climate state
-    ClimateMode mode = _state.mode;
-    switch (climateState.mode) {
-      case spaces_climate.ClimateMode.heat:
-        mode = ClimateMode.heat;
-        break;
-      case spaces_climate.ClimateMode.cool:
-        mode = ClimateMode.cool;
-        break;
-      case spaces_climate.ClimateMode.auto:
-        mode = ClimateMode.auto;
-        break;
-      case spaces_climate.ClimateMode.off:
-      case null:
-        mode = ClimateMode.off;
-        break;
-    }
+      // Determine mode from climate state
+      ClimateMode mode = _state.mode;
+      switch (climateState.mode) {
+        case spaces_climate.ClimateMode.heat:
+          mode = ClimateMode.heat;
+          break;
+        case spaces_climate.ClimateMode.cool:
+          mode = ClimateMode.cool;
+          break;
+        case spaces_climate.ClimateMode.auto:
+          mode = ClimateMode.auto;
+          break;
+        case spaces_climate.ClimateMode.off:
+        case null:
+          mode = ClimateMode.off;
+          break;
+      }
 
-    // Determine capability from climate state
-    RoomCapability capability;
-    if (climateState.supportsHeating && climateState.supportsCooling) {
-      capability = RoomCapability.heaterAndCooler;
-    } else if (climateState.supportsHeating) {
-      capability = RoomCapability.heaterOnly;
-    } else if (climateState.supportsCooling) {
-      capability = RoomCapability.coolerOnly;
-    } else {
-      capability = RoomCapability.none;
-    }
+      // Determine capability from climate state
+      RoomCapability capability;
+      if (climateState.supportsHeating && climateState.supportsCooling) {
+        capability = RoomCapability.heaterAndCooler;
+      } else if (climateState.supportsHeating) {
+        capability = RoomCapability.heaterOnly;
+      } else if (climateState.supportsCooling) {
+        capability = RoomCapability.coolerOnly;
+      } else {
+        capability = RoomCapability.none;
+      }
 
-    setState(() {
-      _state = _state.copyWith(
-        mode: mode,
-        capability: capability,
-        targetTemp: climateState.targetTemperature ?? _state.targetTemp,
-        currentTemp: climateState.currentTemperature ?? _state.currentTemp,
-        minSetpoint: climateState.minSetpoint,
-        maxSetpoint: climateState.maxSetpoint,
-      );
+      setState(() {
+        _state = _state.copyWith(
+          mode: mode,
+          capability: capability,
+          targetTemp: climateState.targetTemperature ?? _state.targetTemp,
+          currentTemp: climateState.currentTemperature ?? _state.currentTemp,
+          minSetpoint: climateState.minSetpoint,
+          maxSetpoint: climateState.maxSetpoint,
+        );
+      });
     });
   }
 
   void _onDevicesDataChanged() {
     if (!mounted) return;
-    // Update climate device states when device data changes
-    final devicesService = _devicesService;
-    if (devicesService == null) return;
+    // Use addPostFrameCallback to avoid "setState during build" errors
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // Update climate device states when device data changes
+      final devicesService = _devicesService;
+      if (devicesService == null) return;
 
-    final updatedDevices = _state.climateDevices.map((climateDevice) {
-      final device = devicesService.getDevice(climateDevice.id);
-      if (device == null) return climateDevice;
+      final updatedDevices = _state.climateDevices.map((climateDevice) {
+        final device = devicesService.getDevice(climateDevice.id);
+        if (device == null) return climateDevice;
 
-      bool isActive = climateDevice.isActive;
-      String? status = climateDevice.status;
+        bool isActive = climateDevice.isActive;
+        String? status = climateDevice.status;
 
-      if (device is ThermostatDeviceView) {
-        isActive = device.isOn;
-        status = device.thermostatMode.name;
-      } else if (device is HeaterDeviceView) {
-        isActive = device.isOn;
-        status = isActive ? 'Heating' : 'Standby';
-      } else if (device is AirConditionerDeviceView) {
-        isActive = device.isOn;
-        status = isActive ? 'Cooling' : 'Standby';
-      }
+        if (device is ThermostatDeviceView) {
+          isActive = device.isOn;
+          status = device.thermostatMode.name;
+        } else if (device is HeaterDeviceView) {
+          isActive = device.isOn;
+          status = isActive ? 'Heating' : 'Standby';
+        } else if (device is AirConditionerDeviceView) {
+          isActive = device.isOn;
+          status = isActive ? 'Cooling' : 'Standby';
+        }
 
-      return ClimateDevice(
-        id: climateDevice.id,
-        name: climateDevice.name,
-        type: climateDevice.type,
-        isActive: isActive,
-        status: status,
-        isPrimary: climateDevice.isPrimary,
-      );
-    }).toList();
+        return ClimateDevice(
+          id: climateDevice.id,
+          name: climateDevice.name,
+          type: climateDevice.type,
+          isActive: isActive,
+          status: status,
+          isPrimary: climateDevice.isPrimary,
+        );
+      }).toList();
 
-    setState(() {
-      _state = _state.copyWith(climateDevices: updatedDevices);
+      setState(() {
+        _state = _state.copyWith(climateDevices: updatedDevices);
+      });
     });
   }
 
