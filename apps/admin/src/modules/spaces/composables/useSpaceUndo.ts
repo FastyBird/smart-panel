@@ -72,7 +72,6 @@ export const useSpaceUndo = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceU
 	};
 
 	const undoState = computed(() => undoStateData.value);
-	const canUndo = computed(() => undoStateData.value?.canUndo ?? false);
 	const isLightingUndo = computed(() => undoStateData.value?.intentCategory === 'lighting');
 	const isClimateUndo = computed(() => undoStateData.value?.intentCategory === 'climate');
 
@@ -84,6 +83,14 @@ export const useSpaceUndo = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceU
 		const remaining = state.expiresInSeconds - elapsed;
 
 		return remaining > 0 ? remaining : 0;
+	});
+
+	// Check if undo is still valid (not expired) - matches Dart isValid getter
+	const canUndo = computed(() => {
+		const state = undoStateData.value;
+		if (!state?.canUndo) return false;
+		const remaining = remainingSeconds.value;
+		return remaining === null || remaining > 0;
 	});
 
 	// Stop timer when countdown reaches zero (side effects belong in watch, not computed)
