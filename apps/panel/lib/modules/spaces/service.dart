@@ -460,6 +460,12 @@ class SpacesService extends ChangeNotifier {
     _lightTargetsRepository.removeListener(_updateData);
     _climateTargetsRepository.removeListener(_updateData);
     _spaceStateRepository.removeListener(_onStateChanged);
+
+    // Clear internal maps to prevent memory leaks
+    _spaces.clear();
+    _lightTargets.clear();
+    _climateTargets.clear();
+
     super.dispose();
   }
 }
