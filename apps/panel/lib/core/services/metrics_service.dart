@@ -117,6 +117,12 @@ class MetricsService {
     return _instance!;
   }
 
+  /// Reset the singleton instance (for testing only)
+  @visibleForTesting
+  static void resetForTesting({int maxEvents = 1000, bool enabled = true}) {
+    _instance = MetricsService._(maxEvents: maxEvents, enabled: enabled);
+  }
+
   /// Enable or disable metrics collection
   void setEnabled(bool enabled) {
     _enabled = enabled;

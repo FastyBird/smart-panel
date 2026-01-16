@@ -79,6 +79,12 @@ class AppLogger {
     return _instance!;
   }
 
+  /// Reset the singleton instance (for testing only)
+  @visibleForTesting
+  static void resetForTesting({LoggerConfig? config}) {
+    _instance = AppLogger._(config: config);
+  }
+
   /// Update logger configuration
   void configure(LoggerConfig config) {
     _config = config;
