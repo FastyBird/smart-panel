@@ -1,4 +1,4 @@
-import { ref, computed, type ComputedRef, type Ref, watch } from 'vue';
+import { ref, computed, type ComputedRef, type Ref, watch, onUnmounted } from 'vue';
 
 import { useBackend } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
@@ -48,6 +48,24 @@ export const useSpaceUndo = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceU
 	const isExecuting = ref(false);
 	const error = ref<string | null>(null);
 
+	// Reactive timestamp for countdown timer - updates every second
+	const now = ref(Date.now());
+	let timerInterval: ReturnType<typeof setInterval> | null = null;
+
+	const startTimer = () => {
+		if (timerInterval) return;
+		timerInterval = setInterval(() => {
+			now.value = Date.now();
+		}, 1000);
+	};
+
+	const stopTimer = () => {
+		if (timerInterval) {
+			clearInterval(timerInterval);
+			timerInterval = null;
+		}
+	};
+
 	const undoState = computed(() => undoStateData.value);
 	const canUndo = computed(() => undoStateData.value?.canUndo ?? false);
 	const isLightingUndo = computed(() => undoStateData.value?.intentCategory === 'lighting');
@@ -57,9 +75,16 @@ export const useSpaceUndo = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceU
 		const state = undoStateData.value;
 		if (!state?.expiresInSeconds || !state?.capturedAt) return null;
 
-		const elapsed = Math.floor((Date.now() - state.capturedAt.getTime()) / 1000);
+		const elapsed = Math.floor((now.value - state.capturedAt.getTime()) / 1000);
 		const remaining = state.expiresInSeconds - elapsed;
-		return remaining > 0 ? remaining : 0;
+
+		// Stop timer when countdown reaches zero
+		if (remaining <= 0) {
+			stopTimer();
+			return 0;
+		}
+
+		return remaining;
 	});
 
 	const fetchUndoState = async (): Promise<IUndoState | null> => {
@@ -93,6 +118,14 @@ export const useSpaceUndo = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceU
 				capturedAt: data.data.captured_at ? new Date(data.data.captured_at) : null,
 				expiresInSeconds: data.data.expires_in_seconds ?? null,
 			};
+
+			// Start countdown timer if undo is available
+			if (undoStateData.value.canUndo && undoStateData.value.expiresInSeconds) {
+				now.value = Date.now();
+				startTimer();
+			} else {
+				stopTimer();
+			}
 
 			return undoStateData.value;
 		} catch (e) {
@@ -129,6 +162,7 @@ export const useSpaceUndo = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceU
 
 			// Clear undo state after execution
 			undoStateData.value = null;
+			stopTimer();
 
 			return {
 				success: data.data.success ?? false,
@@ -146,6 +180,7 @@ export const useSpaceUndo = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceU
 
 	const invalidateUndoState = () => {
 		undoStateData.value = null;
+		stopTimer();
 	};
 
 	// Clear undo state when space ID changes
@@ -154,6 +189,12 @@ export const useSpaceUndo = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceU
 		error.value = null;
 		isLoading.value = false;
 		isExecuting.value = false;
+		stopTimer();
+	});
+
+	// Clean up timer on unmount
+	onUnmounted(() => {
+		stopTimer();
 	});
 
 	return {
