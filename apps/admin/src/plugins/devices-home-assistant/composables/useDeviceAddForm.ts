@@ -344,8 +344,8 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 				// Filter out: skipped entities, channels with no properties, channels with generic category
 				const channels = preview.value.entities
 					.filter((entity) => {
-						// Skip if explicitly skipped
-						if (entity.status === 'skipped') {
+						// Skip if explicitly skipped or incompatible with device category
+						if (entity.status === 'skipped' || entity.status === 'incompatible') {
 							return false;
 						}
 						// Check if there's an override that skips this entity

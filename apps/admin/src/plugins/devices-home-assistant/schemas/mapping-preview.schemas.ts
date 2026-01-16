@@ -56,15 +56,23 @@ export const EntityMappingPreviewSchema = z.object({
 	deviceClass: z.string().nullable(),
 	currentState: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 	attributes: z.record(z.unknown()),
-	status: z.enum(['mapped', 'partial', 'unmapped', 'skipped']),
+	status: z.enum(['mapped', 'partial', 'unmapped', 'skipped', 'incompatible']),
 	suggestedChannel: SuggestedChannelSchema.nullable(),
 	suggestedProperties: z.array(PropertyMappingPreviewSchema),
 	unmappedAttributes: z.array(z.string()),
 	missingRequiredProperties: z.array(z.nativeEnum(DevicesModuleChannelPropertyCategory)),
+	incompatibleReason: z.string().nullable().optional(),
 });
 
 export const MappingWarningSchema = z.object({
-	type: z.enum(['missing_required_channel', 'missing_required_property', 'unsupported_entity', 'unknown_device_class', 'no_mapping_rule']),
+	type: z.enum([
+		'missing_required_channel',
+		'missing_required_property',
+		'unsupported_entity',
+		'unknown_device_class',
+		'no_mapping_rule',
+		'incompatible_channel',
+	]),
 	entityId: z.string().optional(),
 	message: z.string(),
 	suggestion: z.string().optional(),

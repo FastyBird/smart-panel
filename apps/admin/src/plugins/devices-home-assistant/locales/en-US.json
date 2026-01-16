@@ -109,6 +109,7 @@
       "partial": "Partial",
       "unmapped": "Unmapped",
       "skipped": "Skipped",
+      "incompatible": "Incompatible",
       "excluded": "Excluded",
       "suggestedCategory": "Suggested category",
       "suggestedChannel": {
@@ -120,6 +121,7 @@
       "properties": "Properties",
       "unmappedAttributes": "Unmapped attributes",
       "missingRequiredProperties": "Missing required properties",
+      "incompatibleChannel": "Channel not supported for this device category",
       "virtualTypes": {
         "static": "Static",
         "derived": "Auto",
