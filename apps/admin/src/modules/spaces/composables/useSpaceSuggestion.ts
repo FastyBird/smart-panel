@@ -106,7 +106,8 @@ export const useSpaceSuggestion = (spaceId: Ref<ISpace['id'] | undefined>): IUse
 	};
 
 	const submitFeedback = async (feedback: SuggestionFeedback): Promise<ISuggestionFeedbackResult | null> => {
-		if (!spaceId.value || !suggestionData.value) return null;
+		const currentSpaceId = spaceId.value;
+		if (!currentSpaceId || !suggestionData.value) return null;
 
 		isSubmitting.value = true;
 		error.value = null;
@@ -115,7 +116,7 @@ export const useSpaceSuggestion = (spaceId: Ref<ISpace['id'] | undefined>): IUse
 			const { data, error: apiError } = await backend.client.POST(
 				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/suggestion/feedback`,
 				{
-					params: { path: { id: spaceId.value } },
+					params: { path: { id: currentSpaceId } },
 					body: {
 						data: {
 							suggestion_type:
@@ -130,6 +131,11 @@ export const useSpaceSuggestion = (spaceId: Ref<ISpace['id'] | undefined>): IUse
 				throw new Error('Failed to submit suggestion feedback');
 			}
 
+			// Only update state if spaceId hasn't changed during the request
+			if (spaceId.value !== currentSpaceId) {
+				return null;
+			}
+
 			// Clear the suggestion after feedback
 			suggestionData.value = null;
 
@@ -138,10 +144,16 @@ export const useSpaceSuggestion = (spaceId: Ref<ISpace['id'] | undefined>): IUse
 				intentExecuted: data.data.intent_executed ?? false,
 			};
 		} catch (e) {
-			error.value = e instanceof Error ? e.message : 'Unknown error';
+			// Only update error if spaceId hasn't changed during the request
+			if (spaceId.value === currentSpaceId) {
+				error.value = e instanceof Error ? e.message : 'Unknown error';
+			}
 			return null;
 		} finally {
-			isSubmitting.value = false;
+			// Only update loading if spaceId hasn't changed during the request
+			if (spaceId.value === currentSpaceId) {
+				isSubmitting.value = false;
+			}
 		}
 	};
 
