@@ -6,7 +6,11 @@ packages:
 
 scripts:
   analyze:
-    exec: dart analyze .
+    run: |
+      # Ensure generated API/spec files exist before analysis
+      melos run rebuild-api
+      melos run rebuild-spec
+      melos exec -- "dart analyze ."
 
   generate-run-config:
     run: bash ./bin/generate_app_run_config.sh
