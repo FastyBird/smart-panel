@@ -78,13 +78,14 @@ export const useSpaceUndo = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceU
 		const elapsed = Math.floor((now.value - state.capturedAt.getTime()) / 1000);
 		const remaining = state.expiresInSeconds - elapsed;
 
-		// Stop timer when countdown reaches zero
-		if (remaining <= 0) {
-			stopTimer();
-			return 0;
-		}
+		return remaining > 0 ? remaining : 0;
+	});
 
-		return remaining;
+	// Stop timer when countdown reaches zero (side effects belong in watch, not computed)
+	watch(remainingSeconds, (value) => {
+		if (value === 0) {
+			stopTimer();
+		}
 	});
 
 	const fetchUndoState = async (): Promise<IUndoState | null> => {
