@@ -354,11 +354,13 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
 
     // Get temperature values from climate state
-    final targetTemp = climateState?.targetTemperature ?? 22.0;
-    final currentTemp = climateState?.currentTemperature ?? 21.0;
-    final currentHumidity = climateState?.currentHumidity;
     final minSetpoint = climateState?.minSetpoint ?? 16.0;
     final maxSetpoint = climateState?.maxSetpoint ?? 30.0;
+    final rawTargetTemp = climateState?.targetTemperature ?? 22.0;
+    // Clamp target temp to valid setpoint range to avoid UI inconsistencies
+    final targetTemp = rawTargetTemp.clamp(minSetpoint, maxSetpoint);
+    final currentTemp = climateState?.currentTemperature ?? 21.0;
+    final currentHumidity = climateState?.currentHumidity;
 
     // Build sensors list from sensor targets and device data
     final sensors = <ClimateSensor>[];
