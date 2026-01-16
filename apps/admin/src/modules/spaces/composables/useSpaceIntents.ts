@@ -16,18 +16,7 @@ import {
 } from '../../../openapi';
 
 type LightingIntentBody = components['schemas']['SpacesModuleLightingIntent'];
-
-// Note: The backend expects snake_case for heating_setpoint/cooling_setpoint in requests,
-// but the OpenAPI spec incorrectly shows camelCase. This type reflects the actual API format.
-type ClimateIntentRequestBody = {
-	type: SpacesModuleClimateIntentType;
-	delta?: SpacesModuleLightingIntentDelta;
-	increase?: boolean;
-	value?: number;
-	heating_setpoint?: number;
-	cooling_setpoint?: number;
-	mode?: SpacesModuleClimateIntentMode;
-};
+type ClimateIntentBody = components['schemas']['SpacesModuleClimateIntent'];
 
 // ============================================
 // LIGHTING INTENT TYPES
@@ -237,7 +226,7 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 				heating_setpoint: request.heatingSetpoint,
 				cooling_setpoint: request.coolingSetpoint,
 				mode: request.mode as SpacesModuleClimateIntentMode | undefined,
-			} satisfies ClimateIntentRequestBody;
+			} satisfies ClimateIntentBody;
 
 			const { data, error: apiError } = await backend.client.POST(
 				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/intents/climate`,
