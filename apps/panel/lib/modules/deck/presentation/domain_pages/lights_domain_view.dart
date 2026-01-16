@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_category.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
@@ -156,6 +158,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   // Current lighting mode for optimistic UI
   LightingModeUI? _pendingMode;
+  Timer? _pendingModeClearTimer;
 
   String get _roomId => widget.viewItem.roomId;
 
@@ -235,6 +238,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   @override
   void dispose() {
+    _pendingModeClearTimer?.cancel();
     _spacesService?.removeListener(_onDataChanged);
     _devicesService?.removeListener(_onDataChanged);
     _scenesService?.removeListener(_onDataChanged);
@@ -1052,6 +1056,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     if (_isExecutingIntent) return;
     final localizations = AppLocalizations.of(context);
 
+    // Cancel any pending clear timer from previous operation
+    _pendingModeClearTimer?.cancel();
+    _pendingModeClearTimer = null;
+
     setState(() {
       _isExecutingIntent = true;
       _pendingMode = mode;
@@ -1102,7 +1110,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           _isExecutingIntent = false;
         });
         // Clear pending mode after a delay to allow backend state to propagate
-        Future.delayed(const Duration(milliseconds: 2000), () {
+        // Using Timer instead of Future.delayed so it can be cancelled if user
+        // selects another mode before this timer fires
+        _pendingModeClearTimer = Timer(const Duration(milliseconds: 2000), () {
           if (mounted) {
             setState(() {
               _pendingMode = null;
