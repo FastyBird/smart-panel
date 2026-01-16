@@ -25,8 +25,8 @@ export interface UndoEntry {
 	snapshot: SpaceContextSnapshot;
 	/** Description of the action that was performed */
 	actionDescription: string;
-	/** Type of intent that was executed (lighting, climate) */
-	intentCategory: 'lighting' | 'climate';
+	/** Type of intent that was executed (lighting, climate, covers) */
+	intentCategory: 'lighting' | 'climate' | 'covers';
 }
 
 /**
@@ -120,7 +120,7 @@ export class SpaceUndoHistoryService implements OnModuleDestroy {
 	pushSnapshot(
 		snapshot: SpaceContextSnapshot,
 		actionDescription: string,
-		intentCategory: 'lighting' | 'climate',
+		intentCategory: 'lighting' | 'climate' | 'covers',
 	): UndoEntry {
 		const entry: UndoEntry = {
 			id: this.generateId(),
