@@ -8,6 +8,7 @@ import 'package:fastybird_smart_panel/api/models/displays_module_req_register_di
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/models/discovered_backend.dart';
 import 'package:fastybird_smart_panel/core/interceptors/json_serializer_interceptor.dart';
+import 'package:fastybird_smart_panel/core/interceptors/retry_interceptor.dart';
 import 'package:fastybird_smart_panel/core/interceptors/token_refresh_interceptor.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
@@ -217,6 +218,9 @@ class StartupManagerService {
 
     // Add interceptor to serialize Freezed objects to JSON
     _apiIoService.interceptors.add(JsonSerializerInterceptor());
+
+    // Add retry interceptor for network/server errors
+    _apiIoService.interceptors.add(RetryInterceptor(_apiIoService));
 
     _apiClient = ApiClient(_apiIoService);
 
