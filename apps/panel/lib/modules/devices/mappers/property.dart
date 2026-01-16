@@ -249,6 +249,12 @@ ChannelPropertyView buildChannelPropertyView(ChannelPropertyModel property) {
       return _createPropertyView(property, TemperatureChannelPropertyView.new);
     case DevicesModulePropertyCategory.tilt:
       return _createPropertyView(property, TiltChannelPropertyView.new);
+    case DevicesModulePropertyCategory.siren:
+      return _createPropertyView(property, GenericChannelPropertyView.new);
+    case DevicesModulePropertyCategory.state:
+      return _createPropertyView(property, GenericChannelPropertyView.new);
+    case DevicesModulePropertyCategory.triggered:
+      return _createPropertyView(property, GenericChannelPropertyView.new);
     case DevicesModulePropertyCategory.track:
       return _createPropertyView(property, TrackChannelPropertyView.new);
     case DevicesModulePropertyCategory.type:
@@ -315,14 +321,17 @@ Map<DevicesModulePropertyCategory, IconData Function()>
   DevicesModulePropertyCategory.remaining: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.remoteKey: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.saturation: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.siren: () => MdiIcons.alarmLight,
   DevicesModulePropertyCategory.serialNumber: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.source: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.state: () => MdiIcons.shieldCheck,
   DevicesModulePropertyCategory.speed: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.status: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.swing: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.tampered: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.temperature: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.tilt: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.triggered: () => MdiIcons.alarmLightOutline,
   DevicesModulePropertyCategory.track: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.type: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.voltage: () => MdiIcons.databaseCog,
