@@ -9,37 +9,95 @@ import type { ISpace } from '../store';
 // UNDO TYPES
 // ============================================
 
+/** Category of intent that can be undone */
 export type IntentCategory = 'lighting' | 'climate';
 
+/**
+ * Current undo state for a space.
+ */
 export interface IUndoState {
+	/** Whether an undo operation is available */
 	canUndo: boolean;
+	/** Human-readable description of the action that can be undone */
 	actionDescription: string | null;
+	/** Category of the intent (lighting or climate) */
 	intentCategory: IntentCategory | null;
+	/** When the state was captured */
 	capturedAt: Date | null;
+	/** Time window in seconds during which undo is available */
 	expiresInSeconds: number | null;
 }
 
+/**
+ * Result of an undo operation.
+ */
 export interface IUndoResult {
+	/** Whether the undo executed successfully */
 	success: boolean;
+	/** Number of devices restored to previous state */
 	restoredDevices: number;
+	/** Number of devices that failed to restore */
 	failedDevices: number;
+	/** Human-readable result message */
 	message: string;
 }
 
+/**
+ * Return type for the useSpaceUndo composable.
+ */
 export interface IUseSpaceUndo {
+	/** Current undo state, or null if not yet fetched */
 	undoState: ComputedRef<IUndoState | null>;
+	/** Whether a fetch request is in progress */
 	isLoading: ComputedRef<boolean>;
+	/** Whether an undo execution is in progress */
 	isExecuting: ComputedRef<boolean>;
+	/** Error message from the last failed request */
 	error: Ref<string | null>;
+	/** Whether undo is available and not expired */
 	canUndo: ComputedRef<boolean>;
+	/** Whether the undoable action is a lighting intent */
 	isLightingUndo: ComputedRef<boolean>;
+	/** Whether the undoable action is a climate intent */
 	isClimateUndo: ComputedRef<boolean>;
+	/** Seconds remaining until undo expires, or null if not available */
 	remainingSeconds: ComputedRef<number | null>;
+	/** Fetch undo state from the API */
 	fetchUndoState: () => Promise<IUndoState | null>;
+	/** Execute the undo operation */
 	executeUndo: () => Promise<IUndoResult | null>;
+	/** Clear cached undo state (call after executing a new intent) */
 	invalidateUndoState: () => void;
 }
 
+/**
+ * Composable for managing undo state for space intents.
+ *
+ * Provides access to the current undo state, including a countdown timer
+ * showing remaining time until the undo window expires. The timer updates
+ * every second while an undo is available.
+ *
+ * After executing an intent via `useSpaceIntents`, call `fetchUndoState()`
+ * to refresh the undo state and show the undo option to users.
+ *
+ * @param spaceId - Reactive reference to the space ID
+ * @returns Undo state, countdown timer, and undo execution methods
+ *
+ * @example
+ * ```ts
+ * const spaceId = ref('space-123');
+ * const { canUndo, remainingSeconds, executeUndo, fetchUndoState } = useSpaceUndo(spaceId);
+ *
+ * // After executing an intent, refresh undo state
+ * await fetchUndoState();
+ *
+ * // Show undo button with countdown
+ * if (canUndo.value) {
+ *   console.log(`Undo available for ${remainingSeconds.value}s`);
+ *   await executeUndo();
+ * }
+ * ```
+ */
 export const useSpaceUndo = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceUndo => {
 	const backend = useBackend();
 

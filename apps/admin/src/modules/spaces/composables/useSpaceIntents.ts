@@ -28,22 +28,41 @@ export type BrightnessDelta = `${SpacesModuleLightingIntentDelta}`;
 // Note: LightingRole is also exported from spaces.constants.ts - use type alias here to avoid conflict
 type LightingRole = `${SpacesModuleDataRoleAggregatedStateRole}`;
 
+/**
+ * Request parameters for a lighting intent.
+ */
 export interface ILightingIntentRequest {
+	/** Type of lighting intent to execute */
 	type: LightingIntentType;
+	/** Target lighting mode (for set_mode intent) */
 	mode?: LightingMode;
+	/** Brightness adjustment size (for brightness_delta intent) */
 	delta?: BrightnessDelta;
+	/** Direction of adjustment (true = increase, false = decrease) */
 	increase?: boolean;
+	/** Target lighting role (for role_* intents) */
 	role?: LightingRole;
+	/** On/off state */
 	on?: boolean;
+	/** Target brightness (0-100) */
 	brightness?: number;
+	/** Target color as hex string */
 	color?: string;
+	/** Target color temperature in Kelvin */
 	colorTemperature?: number;
+	/** White channel value (0-255) */
 	white?: number;
 }
 
+/**
+ * Result of a lighting intent execution.
+ */
 export interface ILightingIntentResult {
+	/** Whether the intent executed successfully */
 	success: boolean;
+	/** Number of devices affected by the intent */
 	affectedDevices: number;
+	/** Number of devices that failed to respond */
 	failedDevices: number;
 }
 
@@ -56,23 +75,43 @@ export type ClimateIntentType = `${SpacesModuleClimateIntentType}`;
 export type SetpointDelta = `${SpacesModuleLightingIntentDelta}`;
 export type ClimateMode = `${SpacesModuleClimateIntentMode}`;
 
+/**
+ * Request parameters for a climate intent.
+ */
 export interface IClimateIntentRequest {
+	/** Type of climate intent to execute */
 	type: ClimateIntentType;
+	/** Setpoint adjustment size (for setpoint_delta intent) */
 	delta?: SetpointDelta;
+	/** Direction of adjustment (true = increase, false = decrease) */
 	increase?: boolean;
+	/** Target setpoint value in Celsius */
 	value?: number;
+	/** Heating setpoint for auto mode (lower bound) */
 	heatingSetpoint?: number;
+	/** Cooling setpoint for auto mode (upper bound) */
 	coolingSetpoint?: number;
+	/** Target climate mode */
 	mode?: ClimateMode;
 }
 
+/**
+ * Result of a climate intent execution.
+ */
 export interface IClimateIntentResult {
+	/** Whether the intent executed successfully */
 	success: boolean;
+	/** Number of devices affected by the intent */
 	affectedDevices: number;
+	/** Number of devices that failed to respond */
 	failedDevices: number;
+	/** New climate mode after intent execution */
 	mode?: string;
+	/** New setpoint value after intent execution */
 	newSetpoint?: number;
+	/** New heating setpoint for auto mode */
 	heatingSetpoint?: number;
+	/** New cooling setpoint for auto mode */
 	coolingSetpoint?: number;
 }
 
@@ -112,6 +151,32 @@ export interface IUseSpaceIntents {
 	setClimateMode: (mode: ClimateMode) => Promise<IClimateIntentResult | null>;
 }
 
+/**
+ * Composable for executing lighting and climate intents on a space.
+ *
+ * Provides methods to control lights and climate devices through high-level
+ * intents. Supports concurrent execution tracking and proper cleanup when
+ * the space changes.
+ *
+ * After executing an intent, a new undo window becomes available. Callers
+ * should refresh undo state via `useSpaceUndo().fetchUndoState()` to surface
+ * the undo option to users.
+ *
+ * @param spaceId - Reactive reference to the space ID
+ * @returns Intent execution methods, loading state, and last result
+ *
+ * @example
+ * ```ts
+ * const spaceId = ref('space-123');
+ * const { turnLightsOff, adjustSetpoint, isExecuting } = useSpaceIntents(spaceId);
+ *
+ * // Turn off all lights
+ * await turnLightsOff();
+ *
+ * // Increase temperature by a medium step
+ * await adjustSetpoint('medium', true);
+ * ```
+ */
 export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceIntents => {
 	const backend = useBackend();
 

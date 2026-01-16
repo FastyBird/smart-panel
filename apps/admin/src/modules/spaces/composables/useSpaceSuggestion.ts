@@ -16,33 +16,83 @@ import type { LightingMode } from './useSpaceIntents';
 // SUGGESTION TYPES
 // ============================================
 
+/** Type of suggestion provided by the backend */
 export type SuggestionType = `${SpacesModuleSuggestionFeedbackSuggestion_type}`;
+/** User feedback on a suggestion */
 export type SuggestionFeedback = `${SpacesModuleSuggestionFeedbackFeedback}`;
 
+/**
+ * A smart suggestion for the space based on context (time, occupancy, etc.).
+ */
 export interface ISuggestion {
+	/** Type of suggestion (e.g., lighting_mode) */
 	type: SuggestionType;
+	/** Human-readable suggestion title */
 	title: string;
+	/** Explanation of why this suggestion is made */
 	reason: string | null;
+	/** Suggested lighting mode, if applicable */
 	lightingMode: LightingMode | null;
 }
 
+/**
+ * Result of submitting feedback on a suggestion.
+ */
 export interface ISuggestionFeedbackResult {
+	/** Whether the feedback was submitted successfully */
 	success: boolean;
+	/** Whether the suggested intent was executed (when applied) */
 	intentExecuted: boolean;
 }
 
+/**
+ * Return type for the useSpaceSuggestion composable.
+ */
 export interface IUseSpaceSuggestion {
+	/** Current suggestion, or null if none available */
 	suggestion: ComputedRef<ISuggestion | null>;
+	/** Whether a fetch request is in progress */
 	isLoading: ComputedRef<boolean>;
+	/** Whether a feedback submission is in progress */
 	isSubmitting: ComputedRef<boolean>;
+	/** Error message from the last failed request */
 	error: Ref<string | null>;
+	/** Whether a suggestion is available */
 	hasSuggestion: ComputedRef<boolean>;
+	/** Fetch suggestion from the API */
 	fetchSuggestion: () => Promise<ISuggestion | null>;
+	/** Apply the suggestion (executes the suggested intent) */
 	applySuggestion: () => Promise<ISuggestionFeedbackResult | null>;
+	/** Dismiss the suggestion without applying */
 	dismissSuggestion: () => Promise<ISuggestionFeedbackResult | null>;
+	/** Clear the cached suggestion */
 	clearSuggestion: () => void;
 }
 
+/**
+ * Composable for fetching and managing smart suggestions for a space.
+ *
+ * The backend analyzes context (time of day, occupancy, etc.) to provide
+ * intelligent suggestions like switching lighting modes. Users can apply
+ * or dismiss suggestions, and their feedback helps improve future suggestions.
+ *
+ * @param spaceId - Reactive reference to the space ID
+ * @returns Suggestion data, loading states, and feedback methods
+ *
+ * @example
+ * ```ts
+ * const spaceId = ref('space-123');
+ * const { suggestion, hasSuggestion, applySuggestion, dismissSuggestion } = useSpaceSuggestion(spaceId);
+ *
+ * await fetchSuggestion();
+ *
+ * if (hasSuggestion.value) {
+ *   console.log(`Suggestion: ${suggestion.value?.title}`);
+ *   // User accepts suggestion
+ *   await applySuggestion();
+ * }
+ * ```
+ */
 export const useSpaceSuggestion = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceSuggestion => {
 	const backend = useBackend();
 
