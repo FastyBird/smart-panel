@@ -109,7 +109,10 @@ export const useSpaceLightingState = (spaceId: Ref<ISpace['id'] | undefined>): I
 		const state = lightingStateData.value;
 		return state !== null && state.totalLights > 0 && state.lightsOn === state.totalLights;
 	});
-	const allOff = computed(() => (lightingStateData.value?.lightsOn ?? 0) === 0);
+	const allOff = computed(() => {
+		const state = lightingStateData.value;
+		return state !== null && state.totalLights > 0 && state.lightsOn === 0;
+	});
 
 	const fetchLightingState = async (): Promise<ILightingState | null> => {
 		const currentSpaceId = spaceId.value;
