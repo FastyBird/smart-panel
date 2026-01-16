@@ -64,13 +64,7 @@ const Map<DevicesModuleChannelCategory, ChannelPropertiesSpecification> channelP
   ),
   DevicesModuleChannelCategory.alarm: ChannelPropertiesSpecification(
     required: [DevicesModulePropertyCategory.state],
-    optional: [
-      DevicesModulePropertyCategory.triggered,
-      DevicesModulePropertyCategory.siren,
-      DevicesModulePropertyCategory.active,
-      DevicesModulePropertyCategory.fault,
-      DevicesModulePropertyCategory.tampered,
-    ],
+    optional: [DevicesModulePropertyCategory.triggered, DevicesModulePropertyCategory.siren, DevicesModulePropertyCategory.active, DevicesModulePropertyCategory.fault, DevicesModulePropertyCategory.tampered],
   ),
   DevicesModuleChannelCategory.battery: ChannelPropertiesSpecification(
     required: [DevicesModulePropertyCategory.percentage, DevicesModulePropertyCategory.status],
@@ -246,7 +240,7 @@ const Map<DevicesModuleChannelCategory, ChannelPropertiesSpecification> channelP
   ),
   DevicesModuleChannelCategory.thermostat: ChannelPropertiesSpecification(
     required: [DevicesModulePropertyCategory.active, DevicesModulePropertyCategory.mode],
-    optional: [DevicesModulePropertyCategory.locked, DevicesModulePropertyCategory.units],
+    optional: [DevicesModulePropertyCategory.locked],
   ),
   DevicesModuleChannelCategory.valve: ChannelPropertiesSpecification(
     required: [DevicesModulePropertyCategory.valueOn, DevicesModulePropertyCategory.type],
