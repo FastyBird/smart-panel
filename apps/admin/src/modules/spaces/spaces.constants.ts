@@ -15,6 +15,8 @@ export enum EventType {
 	LIGHT_TARGET_CREATED = 'SpacesModule.LightTarget.Created',
 	LIGHT_TARGET_UPDATED = 'SpacesModule.LightTarget.Updated',
 	LIGHT_TARGET_DELETED = 'SpacesModule.LightTarget.Deleted',
+	LIGHTING_STATE_CHANGED = 'SpacesModule.LightingState.Changed',
+	CLIMATE_STATE_CHANGED = 'SpacesModule.ClimateState.Changed',
 }
 
 export const RouteNames = {

@@ -35,10 +35,12 @@ export default {
 		app.provide(spacesStoreKey, spacesStore);
 		storesManager.addStore(spacesStoreKey, spacesStore);
 
-		// Create refresh signals for climate and lighting targets
+		// Create refresh signals for climate and lighting targets and state
 		const refreshSignals = {
 			climate: ref(0),
 			lighting: ref(0),
+			climateState: ref(0),
+			lightingState: ref(0),
 		};
 
 		app.provide(spacesRefreshSignalsKey, refreshSignals);
@@ -97,6 +99,14 @@ export default {
 				case EventType.LIGHT_TARGET_UPDATED:
 				case EventType.LIGHT_TARGET_DELETED:
 					refreshSignals.lighting.value++;
+					break;
+
+				case EventType.LIGHTING_STATE_CHANGED:
+					refreshSignals.lightingState.value++;
+					break;
+
+				case EventType.CLIMATE_STATE_CHANGED:
+					refreshSignals.climateState.value++;
 					break;
 
 				default:

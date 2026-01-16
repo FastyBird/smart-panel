@@ -3,8 +3,14 @@ import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_type.d
 import 'package:fastybird_smart_panel/modules/spaces/mappers/climate_target.dart';
 import 'package:fastybird_smart_panel/modules/spaces/mappers/light_target.dart';
 import 'package:fastybird_smart_panel/modules/spaces/mappers/space.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/intent_result/intent_result.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/suggestion/suggestion.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/undo/undo_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/climate_targets.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/light_targets.dart';
+import 'package:fastybird_smart_panel/modules/spaces/repositories/space_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/spaces.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/climate_targets/view.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/light_targets/view.dart';
@@ -15,6 +21,7 @@ class SpacesService extends ChangeNotifier {
   final SpacesRepository _spacesRepository;
   final LightTargetsRepository _lightTargetsRepository;
   final ClimateTargetsRepository _climateTargetsRepository;
+  final SpaceStateRepository _spaceStateRepository;
 
   Map<String, SpaceView> _spaces = {};
   Map<String, LightTargetView> _lightTargets = {};
@@ -24,9 +31,11 @@ class SpacesService extends ChangeNotifier {
     required SpacesRepository spacesRepository,
     required LightTargetsRepository lightTargetsRepository,
     required ClimateTargetsRepository climateTargetsRepository,
+    required SpaceStateRepository spaceStateRepository,
   })  : _spacesRepository = spacesRepository,
         _lightTargetsRepository = lightTargetsRepository,
-        _climateTargetsRepository = climateTargetsRepository;
+        _climateTargetsRepository = climateTargetsRepository,
+        _spaceStateRepository = spaceStateRepository;
 
   Future<void> initialize() async {
     await _spacesRepository.fetchAll();
@@ -34,8 +43,14 @@ class SpacesService extends ChangeNotifier {
     _spacesRepository.addListener(_updateData);
     _lightTargetsRepository.addListener(_updateData);
     _climateTargetsRepository.addListener(_updateData);
+    _spaceStateRepository.addListener(_onStateChanged);
 
     _updateData();
+  }
+
+  void _onStateChanged() {
+    // Forward state repository notifications to our listeners
+    notifyListeners();
   }
 
   /// All spaces as a map by ID
@@ -162,6 +177,201 @@ class SpacesService extends ChangeNotifier {
     );
   }
 
+  // ============================================
+  // LIGHTING STATE
+  // ============================================
+
+  /// Get cached lighting state for a space
+  LightingStateModel? getLightingState(String spaceId) {
+    return _spaceStateRepository.getLightingState(spaceId);
+  }
+
+  /// Fetch lighting state from API
+  Future<LightingStateModel?> fetchLightingState(String spaceId) {
+    return _spaceStateRepository.fetchLightingState(spaceId);
+  }
+
+  // ============================================
+  // CLIMATE STATE
+  // ============================================
+
+  /// Get cached climate state for a space
+  ClimateStateModel? getClimateState(String spaceId) {
+    return _spaceStateRepository.getClimateState(spaceId);
+  }
+
+  /// Fetch climate state from API
+  Future<ClimateStateModel?> fetchClimateState(String spaceId) {
+    return _spaceStateRepository.fetchClimateState(spaceId);
+  }
+
+  // ============================================
+  // LIGHTING INTENTS
+  // ============================================
+
+  /// Turn all lights off in a space
+  Future<LightingIntentResult?> turnLightsOff(String spaceId) {
+    return _spaceStateRepository.turnLightsOff(spaceId);
+  }
+
+  /// Turn all lights on in a space
+  Future<LightingIntentResult?> turnLightsOn(String spaceId) {
+    return _spaceStateRepository.turnLightsOn(spaceId);
+  }
+
+  /// Set lighting mode for a space
+  Future<LightingIntentResult?> setLightingMode(
+    String spaceId,
+    LightingMode mode,
+  ) {
+    return _spaceStateRepository.setLightingMode(spaceId, mode);
+  }
+
+  /// Adjust brightness by delta
+  Future<LightingIntentResult?> adjustBrightness(
+    String spaceId, {
+    required BrightnessDelta delta,
+    required bool increase,
+  }) {
+    return _spaceStateRepository.adjustBrightness(
+      spaceId,
+      delta: delta,
+      increase: increase,
+    );
+  }
+
+  /// Turn on lights with specific role
+  Future<LightingIntentResult?> turnRoleOn(
+    String spaceId,
+    LightingStateRole role,
+  ) {
+    return _spaceStateRepository.turnRoleOn(spaceId, role);
+  }
+
+  /// Turn off lights with specific role
+  Future<LightingIntentResult?> turnRoleOff(
+    String spaceId,
+    LightingStateRole role,
+  ) {
+    return _spaceStateRepository.turnRoleOff(spaceId, role);
+  }
+
+  /// Set brightness for a specific role
+  Future<LightingIntentResult?> setRoleBrightness(
+    String spaceId,
+    LightingStateRole role,
+    int brightness,
+  ) {
+    return _spaceStateRepository.setRoleBrightness(spaceId, role, brightness);
+  }
+
+  /// Set color for a specific role
+  Future<LightingIntentResult?> setRoleColor(
+    String spaceId,
+    LightingStateRole role,
+    String color,
+  ) {
+    return _spaceStateRepository.setRoleColor(spaceId, role, color);
+  }
+
+  /// Set color temperature for a specific role
+  Future<LightingIntentResult?> setRoleColorTemp(
+    String spaceId,
+    LightingStateRole role,
+    int colorTemperature,
+  ) {
+    return _spaceStateRepository.setRoleColorTemp(
+      spaceId,
+      role,
+      colorTemperature,
+    );
+  }
+
+  // ============================================
+  // CLIMATE INTENTS (via SpaceStateRepository)
+  // ============================================
+
+  /// Adjust setpoint by delta
+  Future<ClimateIntentResult?> adjustSetpoint(
+    String spaceId, {
+    required SetpointDelta delta,
+    required bool increase,
+  }) {
+    return _spaceStateRepository.adjustSetpoint(
+      spaceId,
+      delta: delta,
+      increase: increase,
+    );
+  }
+
+  /// Set exact setpoint value
+  Future<ClimateIntentResult?> setSetpoint(String spaceId, double value) {
+    return _spaceStateRepository.setSetpoint(spaceId, value);
+  }
+
+  /// Set climate mode
+  Future<ClimateIntentResult?> setClimateMode(
+    String spaceId,
+    ClimateMode mode,
+  ) {
+    return _spaceStateRepository.setClimateMode(spaceId, mode);
+  }
+
+  // ============================================
+  // SUGGESTIONS
+  // ============================================
+
+  /// Get cached suggestion for a space
+  SuggestionModel? getSuggestion(String spaceId) {
+    return _spaceStateRepository.getSuggestion(spaceId);
+  }
+
+  /// Fetch suggestion from API
+  Future<SuggestionModel?> fetchSuggestion(String spaceId) {
+    return _spaceStateRepository.fetchSuggestion(spaceId);
+  }
+
+  /// Submit suggestion feedback (applied or dismissed)
+  Future<SuggestionFeedbackResult?> submitSuggestionFeedback(
+    String spaceId,
+    SuggestionType suggestionType,
+    SuggestionFeedback feedback,
+  ) {
+    return _spaceStateRepository.submitSuggestionFeedback(
+      spaceId,
+      suggestionType,
+      feedback,
+    );
+  }
+
+  // ============================================
+  // UNDO
+  // ============================================
+
+  /// Get cached undo state for a space
+  UndoStateModel? getUndoState(String spaceId) {
+    return _spaceStateRepository.getUndoState(spaceId);
+  }
+
+  /// Fetch undo state from API
+  Future<UndoStateModel?> fetchUndoState(String spaceId) {
+    return _spaceStateRepository.fetchUndoState(spaceId);
+  }
+
+  /// Execute undo for a space
+  Future<UndoResultModel?> executeUndo(String spaceId) {
+    return _spaceStateRepository.executeUndo(spaceId);
+  }
+
+  // ============================================
+  // BATCH OPERATIONS
+  // ============================================
+
+  /// Fetch all state for a space (lighting, climate, suggestion, undo)
+  Future<void> fetchAllStateForSpace(String spaceId) {
+    return _spaceStateRepository.fetchAllState(spaceId);
+  }
+
   void _updateData() {
     final spaceModels = _spacesRepository.spaces;
 
@@ -249,6 +459,7 @@ class SpacesService extends ChangeNotifier {
     _spacesRepository.removeListener(_updateData);
     _lightTargetsRepository.removeListener(_updateData);
     _climateTargetsRepository.removeListener(_updateData);
+    _spaceStateRepository.removeListener(_onStateChanged);
     super.dispose();
   }
 }

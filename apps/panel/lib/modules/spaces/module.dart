@@ -5,6 +5,7 @@ import 'package:fastybird_smart_panel/modules/devices/constants.dart';
 import 'package:fastybird_smart_panel/modules/spaces/constants.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/climate_targets.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/light_targets.dart';
+import 'package:fastybird_smart_panel/modules/spaces/repositories/space_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/spaces.dart';
 import 'package:fastybird_smart_panel/modules/spaces/service.dart';
 import 'package:flutter/foundation.dart';
@@ -15,6 +16,7 @@ class SpacesModuleService {
   late SpacesRepository _spacesRepository;
   late LightTargetsRepository _lightTargetsRepository;
   late ClimateTargetsRepository _climateTargetsRepository;
+  late SpaceStateRepository _spaceStateRepository;
   late SpacesService _spacesService;
 
   bool _isLoading = true;
@@ -35,15 +37,21 @@ class SpacesModuleService {
       apiClient: apiClient.spacesModule,
     );
 
+    _spaceStateRepository = SpaceStateRepository(
+      apiClient: apiClient.spacesModule,
+    );
+
     _spacesService = SpacesService(
       spacesRepository: _spacesRepository,
       lightTargetsRepository: _lightTargetsRepository,
       climateTargetsRepository: _climateTargetsRepository,
+      spaceStateRepository: _spaceStateRepository,
     );
 
     locator.registerSingleton(_spacesRepository);
     locator.registerSingleton(_lightTargetsRepository);
     locator.registerSingleton(_climateTargetsRepository);
+    locator.registerSingleton(_spaceStateRepository);
     locator.registerSingleton(_spacesService);
   }
 
@@ -129,6 +137,22 @@ class SpacesModuleService {
     } else if (event == SpacesModuleConstants.climateTargetDeletedEvent &&
         payload.containsKey('id')) {
       _climateTargetsRepository.delete(payload['id']);
+
+      /// Lighting State CHANGED
+    } else if (event == SpacesModuleConstants.lightingStateChangedEvent &&
+        payload.containsKey('space_id')) {
+      _spaceStateRepository.updateLightingState(
+        payload['space_id'] as String,
+        payload,
+      );
+
+      /// Climate State CHANGED
+    } else if (event == SpacesModuleConstants.climateStateChangedEvent &&
+        payload.containsKey('space_id')) {
+      _spaceStateRepository.updateClimateState(
+        payload['space_id'] as String,
+        payload,
+      );
     }
   }
 
