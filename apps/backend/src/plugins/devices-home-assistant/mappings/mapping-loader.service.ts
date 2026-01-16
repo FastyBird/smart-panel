@@ -590,12 +590,12 @@ export class MappingLoaderService implements OnModuleInit {
 				continue;
 			}
 
-			// Check entity_id pattern match
-			if (mapping.entityIdContains && entityId) {
-				if (entityId.toLowerCase().includes(mapping.entityIdContains.toLowerCase())) {
-					return mapping;
+			// Check entity_id pattern match - if mapping requires specific entityId, skip if not provided or doesn't match
+			if (mapping.entityIdContains) {
+				if (!entityId || !entityId.toLowerCase().includes(mapping.entityIdContains.toLowerCase())) {
+					continue;
 				}
-				continue;
+				return mapping;
 			}
 
 			// Check device class match
