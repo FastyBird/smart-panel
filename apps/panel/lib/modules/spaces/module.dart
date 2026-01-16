@@ -117,6 +117,7 @@ class SpacesModuleService {
       _spacesRepository.delete(payload['id']);
       _lightTargetsRepository.deleteForSpace(payload['id']);
       _climateTargetsRepository.deleteForSpace(payload['id']);
+      _spaceStateRepository.clearForSpace(payload['id']);
 
       /// Light Target CREATE/UPDATE
     } else if (event == SpacesModuleConstants.lightTargetCreatedEvent ||
