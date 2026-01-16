@@ -84,6 +84,13 @@ class RetryInterceptor extends Interceptor {
     final requestOptions = err.requestOptions;
     final retryCount = requestOptions.extra['retryCount'] as int? ?? 0;
     final startTime = requestOptions.extra['retryStartTime'] as DateTime? ?? DateTime.now();
+    final retryExhausted = requestOptions.extra['retryExhausted'] as bool? ?? false;
+
+    // If retries were already exhausted by an inner interceptor invocation,
+    // just pass through without tracking metrics again to avoid duplicates
+    if (retryExhausted) {
+      return handler.next(err);
+    }
 
     // Store start time on first retry attempt
     if (retryCount == 0) {
@@ -97,6 +104,9 @@ class RetryInterceptor extends Interceptor {
           '[RETRY INTERCEPTOR] Max retries ($retryCount) exceeded for ${requestOptions.path}',
         );
       }
+
+      // Mark as exhausted to prevent duplicate metric tracking from outer interceptors
+      requestOptions.extra['retryExhausted'] = true;
 
       // Track retry failure (all retries exhausted)
       final totalDuration = DateTime.now().difference(startTime);
