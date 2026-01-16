@@ -1,4 +1,10 @@
 import 'package:dio/dio.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_lighting_intent.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_req_lighting_intent.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_climate_intent.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_req_climate_intent.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_suggestion_feedback.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_req_suggestion_feedback.dart';
 import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/intent_result/intent_result.dart';
@@ -339,7 +345,9 @@ class SpaceStateRepository extends ChangeNotifier {
 
       final response = await _apiClient.createSpacesModuleSpaceLightingIntent(
         id: spaceId,
-        body: {'data': body},
+        body: SpacesModuleReqLightingIntent(
+          data: SpacesModuleLightingIntent.fromJson(body),
+        ),
       );
 
       if (response.response.statusCode == 200 ||
@@ -512,7 +520,9 @@ class SpaceStateRepository extends ChangeNotifier {
 
       final response = await _apiClient.createSpacesModuleSpaceClimateIntent(
         id: spaceId,
-        body: {'data': body},
+        body: SpacesModuleReqClimateIntent(
+          data: SpacesModuleClimateIntent.fromJson(body),
+        ),
       );
 
       if (response.response.statusCode == 200 ||
@@ -636,12 +646,12 @@ class SpaceStateRepository extends ChangeNotifier {
     try {
       final response = await _apiClient.createSpacesModuleSpaceSuggestionFeedback(
         id: spaceId,
-        body: {
-          'data': {
-            'suggestion_type': suggestionTypeToString(suggestionType),
-            'feedback': suggestionFeedbackToString(feedback),
-          },
-        },
+        body: SpacesModuleReqSuggestionFeedback(
+          data: SpacesModuleSuggestionFeedback(
+            suggestionType: suggestionTypeToString(suggestionType),
+            feedback: suggestionFeedbackToString(feedback),
+          ),
+        ),
       );
 
       if (response.response.statusCode == 200 ||
@@ -688,7 +698,7 @@ class SpaceStateRepository extends ChangeNotifier {
   /// Fetch undo state from API
   Future<UndoStateModel?> fetchUndoState(String spaceId) async {
     try {
-      final response = await _apiClient.getSpacesModuleSpaceUndo(
+      final response = await _apiClient.getSpacesModuleSpaceUndoState(
         id: spaceId,
       );
 
