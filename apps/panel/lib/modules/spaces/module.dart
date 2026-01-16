@@ -139,20 +139,18 @@ class SpacesModuleService {
       _climateTargetsRepository.delete(payload['id']);
 
       /// Lighting State CHANGED
-    } else if (event == SpacesModuleConstants.lightingStateChangedEvent &&
-        payload.containsKey('space_id')) {
-      _spaceStateRepository.updateLightingState(
-        payload['space_id'] as String,
-        payload,
-      );
+    } else if (event == SpacesModuleConstants.lightingStateChangedEvent) {
+      final spaceId = payload['space_id'] as String?;
+      if (spaceId != null) {
+        _spaceStateRepository.updateLightingState(spaceId, payload);
+      }
 
       /// Climate State CHANGED
-    } else if (event == SpacesModuleConstants.climateStateChangedEvent &&
-        payload.containsKey('space_id')) {
-      _spaceStateRepository.updateClimateState(
-        payload['space_id'] as String,
-        payload,
-      );
+    } else if (event == SpacesModuleConstants.climateStateChangedEvent) {
+      final spaceId = payload['space_id'] as String?;
+      if (spaceId != null) {
+        _spaceStateRepository.updateClimateState(spaceId, payload);
+      }
     }
   }
 
