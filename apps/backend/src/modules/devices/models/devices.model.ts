@@ -5,6 +5,7 @@ import {
 	IsBoolean,
 	IsDate,
 	IsDateString,
+	IsDefined,
 	IsEnum,
 	IsNumber,
 	IsOptional,
@@ -172,6 +173,7 @@ export class ChannelPropertySpecModel {
 	})
 	@Expose()
 	@ValidateIf((o: ChannelPropertySpecModel) => !o.data_types || o.data_types.length === 0)
+	@IsDefined({ message: 'Either data_type or data_types must be provided' })
 	@IsEnum(DataTypeType)
 	data_type?: DataTypeType;
 
@@ -183,6 +185,7 @@ export class ChannelPropertySpecModel {
 	})
 	@Expose({ name: 'data_types' })
 	@ValidateIf((o: ChannelPropertySpecModel) => !o.data_type)
+	@IsDefined({ message: 'Either data_type or data_types must be provided' })
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => DataTypeVariantModel)
