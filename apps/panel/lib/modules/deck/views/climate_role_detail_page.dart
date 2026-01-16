@@ -12,6 +12,10 @@ import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/climate_domain_view.dart'
     show ClimateMode, RoomCapability, ClimateDevice;
+import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/air_conditioner.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/heater.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart'
     as spaces_climate;
 import 'package:fastybird_smart_panel/modules/spaces/service.dart';
@@ -116,6 +120,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
       locator<VisualDensityService>();
 
   SpacesService? _spacesService;
+  DevicesService? _devicesService;
   late ClimateDetailState _state;
 
   @override
@@ -131,12 +136,22 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
       }
     }
 
+    try {
+      _devicesService = locator<DevicesService>();
+      _devicesService?.addListener(_onDevicesDataChanged);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[ClimateRoleDetailPage] Failed to get DevicesService: $e');
+      }
+    }
+
     _initializeState();
   }
 
   @override
   void dispose() {
     _spacesService?.removeListener(_onDataChanged);
+    _devicesService?.removeListener(_onDevicesDataChanged);
     super.dispose();
   }
 
@@ -181,6 +196,45 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
         minSetpoint: climateState.minSetpoint ?? _state.minSetpoint,
         maxSetpoint: climateState.maxSetpoint ?? _state.maxSetpoint,
       );
+    });
+  }
+
+  void _onDevicesDataChanged() {
+    if (!mounted) return;
+    // Update climate device states when device data changes
+    final devicesService = _devicesService;
+    if (devicesService == null) return;
+
+    final updatedDevices = _state.climateDevices.map((climateDevice) {
+      final device = devicesService.getDevice(climateDevice.id);
+      if (device == null) return climateDevice;
+
+      bool isActive = climateDevice.isActive;
+      String? status = climateDevice.status;
+
+      if (device is ThermostatDeviceView) {
+        isActive = device.isOn;
+        status = device.thermostatMode.name;
+      } else if (device is HeaterDeviceView) {
+        isActive = device.isOn;
+        status = isActive ? 'Heating' : 'Standby';
+      } else if (device is AirConditionerDeviceView) {
+        isActive = device.isOn;
+        status = isActive ? 'Cooling' : 'Standby';
+      }
+
+      return ClimateDevice(
+        id: climateDevice.id,
+        name: climateDevice.name,
+        type: climateDevice.type,
+        isActive: isActive,
+        status: status,
+        isPrimary: climateDevice.isPrimary,
+      );
+    }).toList();
+
+    setState(() {
+      _state = _state.copyWith(climateDevices: updatedDevices);
     });
   }
 
