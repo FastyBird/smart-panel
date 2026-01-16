@@ -32,7 +32,12 @@ type MappedToHa = {
 	properties: HomeAssistantChannelPropertyEntity[];
 };
 
-type MappedFromHa = Map<HomeAssistantChannelPropertyEntity['id'], string | number | boolean | null>;
+export type MappedFromHaEntry = {
+	property: HomeAssistantChannelPropertyEntity;
+	value: string | number | boolean | null;
+};
+
+export type MappedFromHa = MappedFromHaEntry[];
 
 @Injectable()
 export class MapperService {
@@ -104,21 +109,28 @@ export class MapperService {
 
 			const secondary = await this.universalEntityMapperService.mapFromHA(properties, state);
 
-			const result = new Map<string, string | number | boolean | null>(primary);
+			const resultMap = new Map<string, string | number | boolean | null>(primary);
 
 			for (const [key, value] of secondary.entries()) {
-				if (!result.has(key)) {
-					result.set(key, value);
+				if (!resultMap.has(key)) {
+					resultMap.set(key, value);
+				}
+			}
+
+			// Convert Map to array with property entities
+			const result: MappedFromHaEntry[] = [];
+			for (const [propertyId, value] of resultMap.entries()) {
+				const property = properties.find((p) => p.id === propertyId);
+				if (property) {
+					result.push({ property, value });
 				}
 			}
 
 			// Log what was mapped
-			if (result.size > 0) {
+			if (result.length > 0) {
 				this.logger.debug(
-					`[MAP FROM HA] Mapped ${result.size} values for entity ${state.entity_id}: ` +
-						`${Array.from(result.entries())
-							.map(([id, val]) => `${id}=${String(val)}`)
-							.join(', ')}`,
+					`[MAP FROM HA] Mapped ${result.length} values for entity ${state.entity_id}: ` +
+						`${result.map(({ property, value }) => `${property.id}=${String(value)}`).join(', ')}`,
 				);
 				updates.push(result);
 			} else {

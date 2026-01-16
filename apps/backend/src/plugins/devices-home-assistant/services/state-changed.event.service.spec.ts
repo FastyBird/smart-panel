@@ -92,7 +92,7 @@ describe('StateChangedEventService', () => {
 		httpService.getDiscoveredDevices.mockResolvedValue([haDevice]);
 		devicesService.findAll.mockResolvedValue([device]);
 		channelsPropertiesService.findAll.mockResolvedValue([property]);
-		mapperService.mapFromHA.mockResolvedValue([new Map([[property.id, 25]])]);
+		mapperService.mapFromHA.mockResolvedValue([[{ property, value: 25 }]]);
 
 		const event = {
 			data: {

@@ -359,14 +359,8 @@ export class HomeAssistantHttpService {
 
 				const resultMaps = await this.homeAssistantMapperService.mapFromHA(device, haDeviceStates);
 
-				for (const map of resultMaps) {
-					for (const [propertyId, value] of map) {
-						const property = properties.find((property) => property.id === propertyId);
-
-						if (!property) {
-							continue;
-						}
-
+				for (const entries of resultMaps) {
+					for (const { property, value } of entries) {
 						await this.channelsPropertiesService.update(
 							property.id,
 							toInstance(UpdateHomeAssistantChannelPropertyDto, {
@@ -491,14 +485,8 @@ export class HomeAssistantHttpService {
 			// Map HA states to property values
 			const resultMaps = await this.homeAssistantMapperService.mapFromHA(device, deviceStates);
 
-			for (const map of resultMaps) {
-				for (const [propertyId, value] of map) {
-					const property = deviceProperties.find((p) => p.id === propertyId);
-
-					if (!property) {
-						continue;
-					}
-
+			for (const entries of resultMaps) {
+				for (const { property, value } of entries) {
 					await this.channelsPropertiesService.update(
 						property.id,
 						toInstance(UpdateHomeAssistantChannelPropertyDto, {

@@ -42,8 +42,6 @@ export class StateChangedEventService implements WsEventService {
 
 	private devices: HomeAssistantDeviceEntity[] = [];
 
-	private properties: HomeAssistantChannelPropertyEntity[] = [];
-
 	private debounceTimers = new Map<string, NodeJS.Timeout>();
 
 	constructor(
@@ -119,20 +117,10 @@ export class StateChangedEventService implements WsEventService {
 
 					this.logger.debug(`[STATE CHANGED] Received ${resultMaps.length} result maps from mapper`);
 
-					for (const map of resultMaps) {
-						this.logger.debug(`[STATE CHANGED] Processing map with ${map.size} entries`);
+					for (const entries of resultMaps) {
+						this.logger.debug(`[STATE CHANGED] Processing map with ${entries.length} entries`);
 
-						for (const [propertyId, value] of map) {
-							const property = this.properties.find((property) => property.id === propertyId);
-
-							if (!property) {
-								this.logger.warn(
-									`[STATE CHANGED] Property ${propertyId} not found in cache, ` +
-										`cache has ${this.properties.length} properties`,
-								);
-								continue;
-							}
-
+						for (const { property, value } of entries) {
 							this.logger.debug(
 								`[STATE CHANGED] Updating property ${property.category} (${property.id}) ` +
 									`with value=${String(value)}`,
@@ -163,8 +151,24 @@ export class StateChangedEventService implements WsEventService {
 		entityId: string,
 		state: HomeAssistantStateDto,
 	): Promise<void> {
+		// Load channels for the device
+		const channels = await this.channelsService.findAll<HomeAssistantChannelEntity>(
+			deviceId,
+			DEVICES_HOME_ASSISTANT_TYPE,
+		);
+
+		if (channels.length === 0) {
+			return;
+		}
+
+		// Load properties for these channels
+		const allProperties = await this.channelsPropertiesService.findAll<HomeAssistantChannelPropertyEntity>(
+			channels.map((c) => c.id),
+			DEVICES_HOME_ASSISTANT_TYPE,
+		);
+
 		// Find properties linked to this entity
-		const entityProperties = this.properties.filter((p) => p.haEntityId === entityId);
+		const entityProperties = allProperties.filter((p) => p.haEntityId === entityId);
 
 		if (entityProperties.length === 0) {
 			return;
@@ -179,13 +183,9 @@ export class StateChangedEventService implements WsEventService {
 			}
 		}
 
-		// Load channels to get their categories
+		// Process each channel
 		for (const channelId of channelIds) {
-			const channel = await this.channelsService.findOne<HomeAssistantChannelEntity>(
-				channelId,
-				undefined,
-				DEVICES_HOME_ASSISTANT_TYPE,
-			);
+			const channel = channels.find((c) => c.id === channelId);
 
 			if (!channel) {
 				continue;
@@ -198,7 +198,7 @@ export class StateChangedEventService implements WsEventService {
 			}
 
 			// Find virtual properties for this channel
-			const channelProperties = this.properties.filter((p) => {
+			const channelProperties = allProperties.filter((p) => {
 				const propChannelId = typeof p.channel === 'string' ? p.channel : p.channel?.id;
 				return propChannelId === channelId;
 			});
@@ -263,16 +263,12 @@ export class StateChangedEventService implements WsEventService {
 		this.isMappingLoading = true;
 
 		try {
-			const [haDevices, panelDevices, properties] = await Promise.all([
+			const [haDevices, panelDevices] = await Promise.all([
 				this.homeAssistantHttpService.getDiscoveredDevices(),
 				this.devicesService.findAll<HomeAssistantDeviceEntity>(DEVICES_HOME_ASSISTANT_TYPE),
-				this.channelsPropertiesService.findAll<HomeAssistantChannelPropertyEntity>(
-					undefined,
-					DEVICES_HOME_ASSISTANT_TYPE,
-				),
 			]);
 
-			if (!haDevices?.length || !panelDevices?.length || !properties?.length) {
+			if (!haDevices?.length || !panelDevices?.length) {
 				return false;
 			}
 
@@ -283,7 +279,6 @@ export class StateChangedEventService implements WsEventService {
 			);
 
 			this.devices = panelDevices;
-			this.properties = properties;
 
 			return true;
 		} catch (error) {
