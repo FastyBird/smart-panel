@@ -95,27 +95,41 @@ class RoleLastIntent {
 /// Aggregated state for a single lighting role
 class RoleAggregatedState {
   final LightingStateRole role;
-  final int count;
-  final int onCount;
-  final double? averageBrightness;
-  final String? dominantColor;
-  final int? dominantColorTemp;
+  final bool isOn;
+  final bool isOnMixed;
+  final int? brightness;
+  final int? colorTemperature;
+  final String? color;
+  final int? white;
+  final bool isBrightnessMixed;
+  final bool isColorTemperatureMixed;
+  final bool isColorMixed;
+  final bool isWhiteMixed;
+  final int devicesCount;
+  final int devicesOn;
   final RoleLastIntent? lastIntent;
 
   RoleAggregatedState({
     required this.role,
-    required this.count,
-    required this.onCount,
-    this.averageBrightness,
-    this.dominantColor,
-    this.dominantColorTemp,
+    required this.isOn,
+    required this.isOnMixed,
+    this.brightness,
+    this.colorTemperature,
+    this.color,
+    this.white,
+    required this.isBrightnessMixed,
+    required this.isColorTemperatureMixed,
+    required this.isColorMixed,
+    required this.isWhiteMixed,
+    required this.devicesCount,
+    required this.devicesOn,
     this.lastIntent,
   });
 
-  bool get hasLights => count > 0;
-  bool get anyOn => onCount > 0;
-  bool get allOn => count > 0 && onCount == count;
-  bool get allOff => onCount == 0;
+  bool get hasLights => devicesCount > 0;
+  bool get anyOn => devicesOn > 0;
+  bool get allOn => devicesCount > 0 && devicesOn == devicesCount;
+  bool get allOff => devicesOn == 0;
 
   factory RoleAggregatedState.fromJson(
     Map<String, dynamic> json,
@@ -123,11 +137,18 @@ class RoleAggregatedState {
   ) {
     return RoleAggregatedState(
       role: role,
-      count: json['count'] as int? ?? 0,
-      onCount: json['on_count'] as int? ?? 0,
-      averageBrightness: (json['average_brightness'] as num?)?.toDouble(),
-      dominantColor: json['dominant_color'] as String?,
-      dominantColorTemp: json['dominant_color_temp'] as int?,
+      isOn: json['is_on'] as bool? ?? false,
+      isOnMixed: json['is_on_mixed'] as bool? ?? false,
+      brightness: json['brightness'] as int?,
+      colorTemperature: json['color_temperature'] as int?,
+      color: json['color'] as String?,
+      white: json['white'] as int?,
+      isBrightnessMixed: json['is_brightness_mixed'] as bool? ?? false,
+      isColorTemperatureMixed: json['is_color_temperature_mixed'] as bool? ?? false,
+      isColorMixed: json['is_color_mixed'] as bool? ?? false,
+      isWhiteMixed: json['is_white_mixed'] as bool? ?? false,
+      devicesCount: json['devices_count'] as int? ?? 0,
+      devicesOn: json['devices_on'] as int? ?? 0,
       lastIntent: json['last_intent'] != null
           ? RoleLastIntent.fromJson(json['last_intent'] as Map<String, dynamic>)
           : null,
@@ -137,24 +158,51 @@ class RoleAggregatedState {
 
 /// State for lights without role assignment
 class OtherLightsState {
-  final int count;
-  final int onCount;
-  final double? averageBrightness;
+  final bool isOn;
+  final bool isOnMixed;
+  final int? brightness;
+  final int? colorTemperature;
+  final String? color;
+  final int? white;
+  final bool isBrightnessMixed;
+  final bool isColorTemperatureMixed;
+  final bool isColorMixed;
+  final bool isWhiteMixed;
+  final int devicesCount;
+  final int devicesOn;
 
   OtherLightsState({
-    required this.count,
-    required this.onCount,
-    this.averageBrightness,
+    required this.isOn,
+    required this.isOnMixed,
+    this.brightness,
+    this.colorTemperature,
+    this.color,
+    this.white,
+    required this.isBrightnessMixed,
+    required this.isColorTemperatureMixed,
+    required this.isColorMixed,
+    required this.isWhiteMixed,
+    required this.devicesCount,
+    required this.devicesOn,
   });
 
-  bool get hasLights => count > 0;
-  bool get anyOn => onCount > 0;
+  bool get hasLights => devicesCount > 0;
+  bool get anyOn => devicesOn > 0;
 
   factory OtherLightsState.fromJson(Map<String, dynamic> json) {
     return OtherLightsState(
-      count: json['count'] as int? ?? 0,
-      onCount: json['on_count'] as int? ?? 0,
-      averageBrightness: (json['average_brightness'] as num?)?.toDouble(),
+      isOn: json['is_on'] as bool? ?? false,
+      isOnMixed: json['is_on_mixed'] as bool? ?? false,
+      brightness: json['brightness'] as int?,
+      colorTemperature: json['color_temperature'] as int?,
+      color: json['color'] as String?,
+      white: json['white'] as int?,
+      isBrightnessMixed: json['is_brightness_mixed'] as bool? ?? false,
+      isColorTemperatureMixed: json['is_color_temperature_mixed'] as bool? ?? false,
+      isColorMixed: json['is_color_mixed'] as bool? ?? false,
+      isWhiteMixed: json['is_white_mixed'] as bool? ?? false,
+      devicesCount: json['devices_count'] as int? ?? 0,
+      devicesOn: json['devices_on'] as int? ?? 0,
     );
   }
 }
@@ -240,7 +288,16 @@ class LightingStateModel {
       totalLights: 0,
       lightsOn: 0,
       roles: {},
-      other: OtherLightsState(count: 0, onCount: 0),
+      other: OtherLightsState(
+        isOn: false,
+        isOnMixed: false,
+        isBrightnessMixed: false,
+        isColorTemperatureMixed: false,
+        isColorMixed: false,
+        isWhiteMixed: false,
+        devicesCount: 0,
+        devicesOn: 0,
+      ),
     );
   }
 }
