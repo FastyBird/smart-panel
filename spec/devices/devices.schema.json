@@ -126,6 +126,7 @@
                     "fan",
                     "filter",
                     "flow",
+                    "gas",
                     "heater",
                     "humidifier",
                     "humidity",
