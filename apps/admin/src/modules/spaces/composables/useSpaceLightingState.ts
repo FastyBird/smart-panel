@@ -112,7 +112,8 @@ export const useSpaceLightingState = (spaceId: Ref<ISpace['id'] | undefined>): I
 	const allOff = computed(() => (lightingStateData.value?.lightsOn ?? 0) === 0);
 
 	const fetchLightingState = async (): Promise<ILightingState | null> => {
-		if (!spaceId.value) return null;
+		const currentSpaceId = spaceId.value;
+		if (!currentSpaceId) return null;
 
 		isLoading.value = true;
 		error.value = null;
@@ -121,7 +122,7 @@ export const useSpaceLightingState = (spaceId: Ref<ISpace['id'] | undefined>): I
 			const { data, error: apiError } = await backend.client.GET(
 				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/lighting/state`,
 				{
-					params: { path: { id: spaceId.value } },
+					params: { path: { id: currentSpaceId } },
 				}
 			);
 
@@ -129,13 +130,24 @@ export const useSpaceLightingState = (spaceId: Ref<ISpace['id'] | undefined>): I
 				throw new Error('Failed to fetch lighting state');
 			}
 
+			// Only update state if spaceId hasn't changed during the fetch
+			if (spaceId.value !== currentSpaceId) {
+				return null;
+			}
+
 			lightingStateData.value = transformLightingState(data.data);
 			return lightingStateData.value;
 		} catch (e) {
-			error.value = e instanceof Error ? e.message : 'Unknown error';
+			// Only update error if spaceId hasn't changed during the fetch
+			if (spaceId.value === currentSpaceId) {
+				error.value = e instanceof Error ? e.message : 'Unknown error';
+			}
 			return null;
 		} finally {
-			isLoading.value = false;
+			// Only update loading if spaceId hasn't changed during the fetch
+			if (spaceId.value === currentSpaceId) {
+				isLoading.value = false;
+			}
 		}
 	};
 

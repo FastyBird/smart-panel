@@ -55,7 +55,8 @@ export const useSpaceSuggestion = (spaceId: Ref<ISpace['id'] | undefined>): IUse
 	const hasSuggestion = computed(() => suggestionData.value !== null);
 
 	const fetchSuggestion = async (): Promise<ISuggestion | null> => {
-		if (!spaceId.value) return null;
+		const currentSpaceId = spaceId.value;
+		if (!currentSpaceId) return null;
 
 		isLoading.value = true;
 		error.value = null;
@@ -64,12 +65,17 @@ export const useSpaceSuggestion = (spaceId: Ref<ISpace['id'] | undefined>): IUse
 			const { data, error: apiError } = await backend.client.GET(
 				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/suggestion`,
 				{
-					params: { path: { id: spaceId.value } },
+					params: { path: { id: currentSpaceId } },
 				}
 			);
 
 			if (apiError) {
 				throw new Error('Failed to fetch suggestion');
+			}
+
+			// Only update state if spaceId hasn't changed during the fetch
+			if (spaceId.value !== currentSpaceId) {
+				return null;
 			}
 
 			if (!data || data.data === null) {
@@ -86,10 +92,16 @@ export const useSpaceSuggestion = (spaceId: Ref<ISpace['id'] | undefined>): IUse
 
 			return suggestionData.value;
 		} catch (e) {
-			error.value = e instanceof Error ? e.message : 'Unknown error';
+			// Only update error if spaceId hasn't changed during the fetch
+			if (spaceId.value === currentSpaceId) {
+				error.value = e instanceof Error ? e.message : 'Unknown error';
+			}
 			return null;
 		} finally {
-			isLoading.value = false;
+			// Only update loading if spaceId hasn't changed during the fetch
+			if (spaceId.value === currentSpaceId) {
+				isLoading.value = false;
+			}
 		}
 	};
 
