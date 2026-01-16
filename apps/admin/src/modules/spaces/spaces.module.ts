@@ -70,7 +70,23 @@ export default {
 				return;
 			}
 
-			if (data.payload === null || typeof data.payload !== 'object' || !('id' in data.payload) || typeof data.payload.id !== 'string') {
+			if (data.payload === null || typeof data.payload !== 'object') {
+				return;
+			}
+
+			// Handle state change events first (they use space_id instead of id)
+			if (data.event === EventType.LIGHTING_STATE_CHANGED && 'space_id' in data.payload) {
+				refreshSignals.lightingState.value++;
+				return;
+			}
+
+			if (data.event === EventType.CLIMATE_STATE_CHANGED && 'space_id' in data.payload) {
+				refreshSignals.climateState.value++;
+				return;
+			}
+
+			// Other events require id field
+			if (!('id' in data.payload) || typeof data.payload.id !== 'string') {
 				return;
 			}
 
@@ -99,14 +115,6 @@ export default {
 				case EventType.LIGHT_TARGET_UPDATED:
 				case EventType.LIGHT_TARGET_DELETED:
 					refreshSignals.lighting.value++;
-					break;
-
-				case EventType.LIGHTING_STATE_CHANGED:
-					refreshSignals.lightingState.value++;
-					break;
-
-				case EventType.CLIMATE_STATE_CHANGED:
-					refreshSignals.climateState.value++;
 					break;
 
 				default:
