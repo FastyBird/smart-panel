@@ -1,3 +1,5 @@
+import 'package:fastybird_smart_panel/api/models/spaces_module_suggestion_feedback_feedback.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_suggestion_feedback_suggestion_type.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
 
 /// Suggestion type enum
@@ -40,6 +42,20 @@ String suggestionTypeToString(SuggestionType type) {
   }
 }
 
+/// Convert SuggestionType to API enum
+SpacesModuleSuggestionFeedbackSuggestionType suggestionTypeToApiEnum(
+  SuggestionType type,
+) {
+  switch (type) {
+    case SuggestionType.lightingRelax:
+      return SpacesModuleSuggestionFeedbackSuggestionType.lightingRelax;
+    case SuggestionType.lightingNight:
+      return SpacesModuleSuggestionFeedbackSuggestionType.lightingNight;
+    case SuggestionType.lightingOff:
+      return SpacesModuleSuggestionFeedbackSuggestionType.lightingOff;
+  }
+}
+
 /// Convert SuggestionFeedback to API string
 String suggestionFeedbackToString(SuggestionFeedback feedback) {
   switch (feedback) {
@@ -47,6 +63,18 @@ String suggestionFeedbackToString(SuggestionFeedback feedback) {
       return 'applied';
     case SuggestionFeedback.dismissed:
       return 'dismissed';
+  }
+}
+
+/// Convert SuggestionFeedback to API enum
+SpacesModuleSuggestionFeedbackFeedback suggestionFeedbackToApiEnum(
+  SuggestionFeedback feedback,
+) {
+  switch (feedback) {
+    case SuggestionFeedback.applied:
+      return SpacesModuleSuggestionFeedbackFeedback.applied;
+    case SuggestionFeedback.dismissed:
+      return SpacesModuleSuggestionFeedbackFeedback.dismissed;
   }
 }
 

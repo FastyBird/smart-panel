@@ -648,8 +648,8 @@ class SpaceStateRepository extends ChangeNotifier {
         id: spaceId,
         body: SpacesModuleReqSuggestionFeedback(
           data: SpacesModuleSuggestionFeedback(
-            suggestionType: suggestionTypeToString(suggestionType),
-            feedback: suggestionFeedbackToString(feedback),
+            suggestionType: suggestionTypeToApiEnum(suggestionType),
+            feedback: suggestionFeedbackToApiEnum(feedback),
           ),
         ),
       );
