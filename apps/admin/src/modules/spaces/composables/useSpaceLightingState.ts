@@ -155,6 +155,7 @@ export const useSpaceLightingState = (spaceId: Ref<ISpace['id'] | undefined>): I
 	watch(spaceId, () => {
 		lightingStateData.value = null;
 		error.value = null;
+		isLoading.value = false;
 	});
 
 	return {

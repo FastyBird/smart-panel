@@ -125,6 +125,7 @@ export const useSpaceClimateState = (spaceId: Ref<ISpace['id'] | undefined>): IU
 	watch(spaceId, () => {
 		climateStateData.value = null;
 		error.value = null;
+		isLoading.value = false;
 	});
 
 	return {

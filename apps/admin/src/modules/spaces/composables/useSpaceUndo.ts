@@ -152,6 +152,8 @@ export const useSpaceUndo = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceU
 	watch(spaceId, () => {
 		undoStateData.value = null;
 		error.value = null;
+		isLoading.value = false;
+		isExecuting.value = false;
 	});
 
 	return {

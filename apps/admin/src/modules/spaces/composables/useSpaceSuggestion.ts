@@ -156,6 +156,8 @@ export const useSpaceSuggestion = (spaceId: Ref<ISpace['id'] | undefined>): IUse
 	watch(spaceId, () => {
 		suggestionData.value = null;
 		error.value = null;
+		isLoading.value = false;
+		isSubmitting.value = false;
 	});
 
 	return {
