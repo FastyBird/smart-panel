@@ -1288,95 +1288,6 @@ export const CLIMATE_INTENT_CATALOG: IntentTypeMeta[] = [
 	},
 ];
 
-/**
- * Complete intent category catalog
- */
-export const INTENT_CATEGORY_CATALOG: IntentCategoryMeta[] = [
-	{
-		category: IntentCategory.LIGHTING,
-		label: 'Lighting',
-		description: 'Control lights in the space with modes and brightness adjustments',
-		icon: 'mdi:lightbulb-group',
-		intents: LIGHTING_INTENT_CATALOG,
-	},
-	{
-		category: IntentCategory.CLIMATE,
-		label: 'Climate',
-		description: 'Control temperature and climate settings in the space',
-		icon: 'mdi:thermostat',
-		intents: CLIMATE_INTENT_CATALOG,
-	},
-	{
-		category: IntentCategory.COVERS,
-		label: 'Covers',
-		description: 'Control window coverings (blinds, curtains, shutters) with modes and position adjustments',
-		icon: 'mdi:blinds',
-		intents: COVERS_INTENT_CATALOG,
-	},
-];
-
-/**
- * Quick action metadata catalog
- */
-export const QUICK_ACTION_CATALOG: QuickActionMeta[] = [
-	{
-		type: QuickActionType.LIGHTING_OFF,
-		label: 'Lights Off',
-		description: 'Turn off all lights',
-		icon: 'mdi:lightbulb-off',
-		category: IntentCategory.LIGHTING,
-	},
-	{
-		type: QuickActionType.LIGHTING_WORK,
-		label: 'Work Mode',
-		description: 'Bright lighting for focus',
-		icon: 'mdi:briefcase',
-		category: IntentCategory.LIGHTING,
-	},
-	{
-		type: QuickActionType.LIGHTING_RELAX,
-		label: 'Relax Mode',
-		description: 'Soft ambient lighting',
-		icon: 'mdi:sofa',
-		category: IntentCategory.LIGHTING,
-	},
-	{
-		type: QuickActionType.LIGHTING_NIGHT,
-		label: 'Night Mode',
-		description: 'Minimal lighting',
-		icon: 'mdi:weather-night',
-		category: IntentCategory.LIGHTING,
-	},
-	{
-		type: QuickActionType.BRIGHTNESS_UP,
-		label: 'Brighter',
-		description: 'Increase brightness',
-		icon: 'mdi:brightness-5',
-		category: IntentCategory.LIGHTING,
-	},
-	{
-		type: QuickActionType.BRIGHTNESS_DOWN,
-		label: 'Dimmer',
-		description: 'Decrease brightness',
-		icon: 'mdi:brightness-4',
-		category: IntentCategory.LIGHTING,
-	},
-	{
-		type: QuickActionType.CLIMATE_UP,
-		label: 'Warmer',
-		description: 'Increase temperature',
-		icon: 'mdi:thermometer-plus',
-		category: IntentCategory.CLIMATE,
-	},
-	{
-		type: QuickActionType.CLIMATE_DOWN,
-		label: 'Cooler',
-		description: 'Decrease temperature',
-		icon: 'mdi:thermometer-minus',
-		category: IntentCategory.CLIMATE,
-	},
-];
-
 // ========================
 // Covers Domain Constants
 // ========================
@@ -1655,5 +1566,94 @@ export const COVERS_INTENT_CATALOG: IntentTypeMeta[] = [
 				enumValues: Object.values(COVERS_MODE_META),
 			},
 		],
+	},
+];
+
+/**
+ * Complete intent category catalog
+ */
+export const INTENT_CATEGORY_CATALOG: IntentCategoryMeta[] = [
+	{
+		category: IntentCategory.LIGHTING,
+		label: 'Lighting',
+		description: 'Control lights in the space with modes and brightness adjustments',
+		icon: 'mdi:lightbulb-group',
+		intents: LIGHTING_INTENT_CATALOG,
+	},
+	{
+		category: IntentCategory.CLIMATE,
+		label: 'Climate',
+		description: 'Control temperature and climate settings in the space',
+		icon: 'mdi:thermostat',
+		intents: CLIMATE_INTENT_CATALOG,
+	},
+	{
+		category: IntentCategory.COVERS,
+		label: 'Covers',
+		description: 'Control window coverings (blinds, curtains, shutters) with modes and position adjustments',
+		icon: 'mdi:blinds',
+		intents: COVERS_INTENT_CATALOG,
+	},
+];
+
+/**
+ * Quick action metadata catalog
+ */
+export const QUICK_ACTION_CATALOG: QuickActionMeta[] = [
+	{
+		type: QuickActionType.LIGHTING_OFF,
+		label: 'Lights Off',
+		description: 'Turn off all lights',
+		icon: 'mdi:lightbulb-off',
+		category: IntentCategory.LIGHTING,
+	},
+	{
+		type: QuickActionType.LIGHTING_WORK,
+		label: 'Work Mode',
+		description: 'Bright lighting for focus',
+		icon: 'mdi:briefcase',
+		category: IntentCategory.LIGHTING,
+	},
+	{
+		type: QuickActionType.LIGHTING_RELAX,
+		label: 'Relax Mode',
+		description: 'Soft ambient lighting',
+		icon: 'mdi:sofa',
+		category: IntentCategory.LIGHTING,
+	},
+	{
+		type: QuickActionType.LIGHTING_NIGHT,
+		label: 'Night Mode',
+		description: 'Minimal lighting',
+		icon: 'mdi:weather-night',
+		category: IntentCategory.LIGHTING,
+	},
+	{
+		type: QuickActionType.BRIGHTNESS_UP,
+		label: 'Brighter',
+		description: 'Increase brightness',
+		icon: 'mdi:brightness-5',
+		category: IntentCategory.LIGHTING,
+	},
+	{
+		type: QuickActionType.BRIGHTNESS_DOWN,
+		label: 'Dimmer',
+		description: 'Decrease brightness',
+		icon: 'mdi:brightness-4',
+		category: IntentCategory.LIGHTING,
+	},
+	{
+		type: QuickActionType.CLIMATE_UP,
+		label: 'Warmer',
+		description: 'Increase temperature',
+		icon: 'mdi:thermometer-plus',
+		category: IntentCategory.CLIMATE,
+	},
+	{
+		type: QuickActionType.CLIMATE_DOWN,
+		label: 'Cooler',
+		description: 'Decrease temperature',
+		icon: 'mdi:thermometer-minus',
+		category: IntentCategory.CLIMATE,
 	},
 ];
