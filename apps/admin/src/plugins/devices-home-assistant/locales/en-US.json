@@ -173,7 +173,8 @@
       "entityMappings": "Entity mappings",
       "warnings": "Mapping warnings ({count})",
       "errors": "Errors",
-      "summary": "Mapping summary"
+      "summary": "Mapping summary",
+      "debugData": "Debug Data"
     }
   },
   "messages": {
@@ -199,7 +200,10 @@
       "noPreview": "No mapping preview available",
       "selectDeviceFirst": "Please select a device in step 1 to generate a mapping preview",
       "invalidSuggestedCategory": "The suggested category is not supported. Please select a valid category.",
-      "missingChannelCategory": "The following entities are enabled but missing a channel category: {entities}. Please select a channel category for each enabled entity before proceeding."
+      "missingChannelCategory": "The following entities are enabled but missing a channel category: {entities}. Please select a channel category for each enabled entity before proceeding.",
+      "debugDescription": "Copy this data and share it with developers to help diagnose mapping issues or request custom mappings.",
+      "debugCopied": "Debug data copied to clipboard",
+      "debugCopyFailed": "Failed to copy debug data to clipboard"
     },
     "categorySelection": {
       "description": "Based on the device's entities, a category has been suggested. Please review and select the correct category for this device. The mapping preview will be updated based on your selection."
@@ -214,7 +218,10 @@
     "skip": "Skip",
     "use": "Use",
     "applyChanges": "Apply changes",
-    "refreshDiscovery": "Refresh discovery"
+    "refreshDiscovery": "Refresh discovery",
+    "debug": "Debug",
+    "copyToClipboard": "Copy to clipboard",
+    "close": "Close"
   },
   "labels": {
     "suggested": "Suggested"
