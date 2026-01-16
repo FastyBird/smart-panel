@@ -1,15 +1,19 @@
 import { Injectable } from '@nestjs/common';
 
 import { ClimateIntentDto } from '../dto/climate-intent.dto';
+import { CoversIntentDto } from '../dto/covers-intent.dto';
 import { LightingIntentDto } from '../dto/lighting-intent.dto';
 
 import { ClimateIntentResult, ClimateIntentService, ClimateState } from './climate-intent.service';
+import { CoversIntentResult, CoversIntentService, CoversState } from './covers-intent.service';
 import { LightingIntentService } from './lighting-intent.service';
 import { IntentExecutionResult } from './space-intent-base.service';
 
 // Re-export types for backward compatibility
 export { ClimateState, ClimateIntentResult } from './climate-intent.service';
+export { CoversState, CoversIntentResult } from './covers-intent.service';
 export { LightDevice, LightModeSelection, selectLightsForMode } from './lighting-intent.service';
+export { CoverDevice, CoverModeSelection, selectCoversForMode } from './covers-intent.service';
 export { IntentExecutionResult } from './space-intent-base.service';
 
 /**
@@ -22,6 +26,7 @@ export class SpaceIntentService {
 	constructor(
 		private readonly lightingIntentService: LightingIntentService,
 		private readonly climateIntentService: ClimateIntentService,
+		private readonly coversIntentService: CoversIntentService,
 	) {}
 
 	// =====================
@@ -62,5 +67,25 @@ export class SpaceIntentService {
 	 */
 	async getPrimaryThermostatId(spaceId: string): Promise<string | null> {
 		return this.climateIntentService.getPrimaryThermostatId(spaceId);
+	}
+
+	// =====================
+	// Covers Methods
+	// =====================
+
+	/**
+	 * Get the current covers state for a space.
+	 * Delegates to CoversIntentService.
+	 */
+	async getCoversState(spaceId: string): Promise<CoversState> {
+		return this.coversIntentService.getCoversState(spaceId);
+	}
+
+	/**
+	 * Execute a covers intent for the space.
+	 * Delegates to CoversIntentService.
+	 */
+	async executeCoversIntent(spaceId: string, intent: CoversIntentDto): Promise<CoversIntentResult> {
+		return this.coversIntentService.executeCoversIntent(spaceId, intent);
 	}
 }

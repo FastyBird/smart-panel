@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: medium
 Parent: EPIC-EXPAND-SMART-PANEL-DOMAINS
-Status: planned
+Status: in-progress (backend done, admin/panel pending)
 
 ## 1. Business goal
 
@@ -70,12 +70,12 @@ Panel:
 
 ## 4. Acceptance criteria
 
-- [ ] `CoversRole` enum exists: PRIMARY, BLACKOUT, SHEER, OUTDOOR, HIDDEN
-- [ ] `CoversIntentType` enum exists: open, close, set_position, position_delta, role_position, set_mode
-- [ ] `CoversMode` enum exists: OPEN, CLOSED, PRIVACY, DAYLIGHT
-- [ ] Backend can execute covers intents for a space
-- [ ] Role-based selection works (e.g., "close BLACKOUT covers only")
-- [ ] Position commands are clamped to 0-100 range
+- [x] `CoversRole` enum exists: PRIMARY, BLACKOUT, SHEER, OUTDOOR, HIDDEN
+- [x] `CoversIntentType` enum exists: open, close, set_position, position_delta, role_position, set_mode
+- [x] `CoversMode` enum exists: OPEN, CLOSED, PRIVACY, DAYLIGHT
+- [x] Backend can execute covers intents for a space
+- [x] Role-based selection works (e.g., "close BLACKOUT covers only")
+- [x] Position commands are clamped to 0-100 range
 - [ ] Admin can assign covers roles to devices in a space
 - [ ] Panel shows covers section with position slider and mode buttons
 - [ ] Unit tests cover:

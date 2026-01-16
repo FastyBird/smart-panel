@@ -9,6 +9,13 @@ import {
 	ReqSetClimateRoleDto,
 	SetClimateRoleDto,
 } from './dto/climate-role.dto';
+import { CoversIntentDto, ReqCoversIntentDto } from './dto/covers-intent.dto';
+import {
+	BulkSetCoversRolesDto,
+	ReqBulkSetCoversRolesDto,
+	ReqSetCoversRoleDto,
+	SetCoversRoleDto,
+} from './dto/covers-role.dto';
 import { CreateSpaceDto, ReqCreateSpaceDto } from './dto/create-space.dto';
 import { LightingIntentDto, ReqLightingIntentDto } from './dto/lighting-intent.dto';
 import {
@@ -20,6 +27,7 @@ import {
 import { ReqSuggestionFeedbackDto, SuggestionFeedbackDto } from './dto/suggestion.dto';
 import { ReqUpdateSpaceDto, UpdateSpaceDto } from './dto/update-space.dto';
 import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
+import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
 import { SpaceEntity } from './entities/space.entity';
 import {
@@ -93,6 +101,12 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	ReqSetClimateRoleDto,
 	BulkSetClimateRolesDto,
 	ReqBulkSetClimateRolesDto,
+	CoversIntentDto,
+	ReqCoversIntentDto,
+	SetCoversRoleDto,
+	ReqSetCoversRoleDto,
+	BulkSetCoversRolesDto,
+	ReqBulkSetCoversRolesDto,
 	SuggestionFeedbackDto,
 	ReqSuggestionFeedbackDto,
 	// Response models
@@ -151,4 +165,5 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	SpaceEntity,
 	SpaceLightingRoleEntity,
 	SpaceClimateRoleEntity,
+	SpaceCoversRoleEntity,
 ];

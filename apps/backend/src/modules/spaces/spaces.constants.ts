@@ -20,6 +20,11 @@ export enum EventType {
 	// Aggregated state change events - emitted when intents are executed
 	LIGHTING_STATE_CHANGED = 'SpacesModule.Space.LightingStateChanged',
 	CLIMATE_STATE_CHANGED = 'SpacesModule.Space.ClimateStateChanged',
+	COVERS_STATE_CHANGED = 'SpacesModule.Space.CoversStateChanged',
+	// Covers role events
+	COVERS_TARGET_CREATED = 'SpacesModule.CoversTarget.Created',
+	COVERS_TARGET_UPDATED = 'SpacesModule.CoversTarget.Updated',
+	COVERS_TARGET_DELETED = 'SpacesModule.CoversTarget.Deleted',
 }
 
 export enum SpaceType {
@@ -685,6 +690,7 @@ export const LIGHTING_MODE_ORCHESTRATION: Record<LightingMode, ModeOrchestration
 export enum IntentCategory {
 	LIGHTING = 'lighting',
 	CLIMATE = 'climate',
+	COVERS = 'covers',
 }
 
 /**
@@ -1300,6 +1306,13 @@ export const INTENT_CATEGORY_CATALOG: IntentCategoryMeta[] = [
 		icon: 'mdi:thermostat',
 		intents: CLIMATE_INTENT_CATALOG,
 	},
+	{
+		category: IntentCategory.COVERS,
+		label: 'Covers',
+		description: 'Control window coverings (blinds, curtains, shutters) with modes and position adjustments',
+		icon: 'mdi:blinds',
+		intents: COVERS_INTENT_CATALOG,
+	},
 ];
 
 /**
@@ -1361,5 +1374,286 @@ export const QUICK_ACTION_CATALOG: QuickActionMeta[] = [
 		description: 'Decrease temperature',
 		icon: 'mdi:thermometer-minus',
 		category: IntentCategory.CLIMATE,
+	},
+];
+
+// ========================
+// Covers Domain Constants
+// ========================
+
+/**
+ * Covers Roles - classify window covering devices within a space for intent-based control
+ */
+export enum CoversRole {
+	PRIMARY = 'primary', // Main window covering in the space
+	BLACKOUT = 'blackout', // Light-blocking covers (for sleep/movie)
+	SHEER = 'sheer', // Semi-transparent covers for privacy while allowing light
+	OUTDOOR = 'outdoor', // External shutters/awnings
+	HIDDEN = 'hidden', // Excluded from space-level control
+}
+
+/**
+ * Covers Intent Types - space-level intents for window covering control
+ */
+export enum CoversIntentType {
+	OPEN = 'open', // Open all covers (position=100)
+	CLOSE = 'close', // Close all covers (position=0)
+	SET_POSITION = 'set_position', // Set all covers to a specific position
+	POSITION_DELTA = 'position_delta', // Adjust position by a delta
+	ROLE_POSITION = 'role_position', // Set position for a specific role
+	SET_MODE = 'set_mode', // Set a covers mode (open/closed/privacy/daylight)
+}
+
+/**
+ * Covers Modes - preset position configurations for different scenarios
+ */
+export enum CoversMode {
+	OPEN = 'open', // All at 100%
+	CLOSED = 'closed', // All at 0%
+	PRIVACY = 'privacy', // Sheer down (50%), others open
+	DAYLIGHT = 'daylight', // Optimize for natural light
+}
+
+/**
+ * Position delta sizes for covers adjustment
+ */
+export enum PositionDelta {
+	SMALL = 'small',
+	MEDIUM = 'medium',
+	LARGE = 'large',
+}
+
+/**
+ * Position delta steps (percentage points)
+ */
+export const POSITION_DELTA_STEPS: Record<PositionDelta, number> = {
+	[PositionDelta.SMALL]: 10,
+	[PositionDelta.MEDIUM]: 25,
+	[PositionDelta.LARGE]: 50,
+};
+
+/**
+ * Mode definitions for covers - maps each mode to role-specific positions
+ * Position values: 0 = closed, 100 = open
+ */
+export interface CoversRolePositionRule {
+	/** Position percentage (0-100) */
+	position: number;
+}
+
+/**
+ * Mode orchestration rules for covers
+ */
+export type CoversModeOrchestrationRules = Partial<Record<CoversRole, CoversRolePositionRule>>;
+
+/**
+ * Mode orchestration configuration for covers
+ */
+export const COVERS_MODE_ORCHESTRATION: Record<CoversMode, CoversModeOrchestrationRules> = {
+	[CoversMode.OPEN]: {
+		[CoversRole.PRIMARY]: { position: 100 },
+		[CoversRole.BLACKOUT]: { position: 100 },
+		[CoversRole.SHEER]: { position: 100 },
+		[CoversRole.OUTDOOR]: { position: 100 },
+	},
+	[CoversMode.CLOSED]: {
+		[CoversRole.PRIMARY]: { position: 0 },
+		[CoversRole.BLACKOUT]: { position: 0 },
+		[CoversRole.SHEER]: { position: 0 },
+		[CoversRole.OUTDOOR]: { position: 0 },
+	},
+	[CoversMode.PRIVACY]: {
+		[CoversRole.PRIMARY]: { position: 100 },
+		[CoversRole.BLACKOUT]: { position: 100 },
+		[CoversRole.SHEER]: { position: 50 },
+		[CoversRole.OUTDOOR]: { position: 100 },
+	},
+	[CoversMode.DAYLIGHT]: {
+		[CoversRole.PRIMARY]: { position: 75 },
+		[CoversRole.BLACKOUT]: { position: 100 },
+		[CoversRole.SHEER]: { position: 75 },
+		[CoversRole.OUTDOOR]: { position: 50 },
+	},
+};
+
+/**
+ * Metadata for covers role values
+ */
+export const COVERS_ROLE_META: Record<CoversRole, IntentEnumValueMeta> = {
+	[CoversRole.PRIMARY]: {
+		value: CoversRole.PRIMARY,
+		label: 'Primary',
+		description: 'Main window covering in the space',
+		icon: 'mdi:blinds',
+	},
+	[CoversRole.BLACKOUT]: {
+		value: CoversRole.BLACKOUT,
+		label: 'Blackout',
+		description: 'Light-blocking covers for sleep or movie',
+		icon: 'mdi:blinds-horizontal-closed',
+	},
+	[CoversRole.SHEER]: {
+		value: CoversRole.SHEER,
+		label: 'Sheer',
+		description: 'Semi-transparent covers for privacy',
+		icon: 'mdi:blinds-vertical',
+	},
+	[CoversRole.OUTDOOR]: {
+		value: CoversRole.OUTDOOR,
+		label: 'Outdoor',
+		description: 'External shutters or awnings',
+		icon: 'mdi:window-shutter',
+	},
+	[CoversRole.HIDDEN]: {
+		value: CoversRole.HIDDEN,
+		label: 'Hidden',
+		description: 'Excluded from space-level control',
+		icon: 'mdi:eye-off',
+	},
+};
+
+/**
+ * Metadata for covers mode values
+ */
+export const COVERS_MODE_META: Record<CoversMode, IntentEnumValueMeta> = {
+	[CoversMode.OPEN]: {
+		value: CoversMode.OPEN,
+		label: 'Open',
+		description: 'All covers fully open',
+		icon: 'mdi:blinds-open',
+	},
+	[CoversMode.CLOSED]: {
+		value: CoversMode.CLOSED,
+		label: 'Closed',
+		description: 'All covers fully closed',
+		icon: 'mdi:blinds',
+	},
+	[CoversMode.PRIVACY]: {
+		value: CoversMode.PRIVACY,
+		label: 'Privacy',
+		description: 'Sheer covers down for privacy while allowing light',
+		icon: 'mdi:blinds-vertical-closed',
+	},
+	[CoversMode.DAYLIGHT]: {
+		value: CoversMode.DAYLIGHT,
+		label: 'Daylight',
+		description: 'Optimized for natural light',
+		icon: 'mdi:white-balance-sunny',
+	},
+};
+
+/**
+ * Metadata for position delta values
+ */
+export const POSITION_DELTA_META: Record<PositionDelta, IntentEnumValueMeta> = {
+	[PositionDelta.SMALL]: {
+		value: PositionDelta.SMALL,
+		label: 'Small',
+		description: `Adjust position by ${POSITION_DELTA_STEPS[PositionDelta.SMALL]}%`,
+	},
+	[PositionDelta.MEDIUM]: {
+		value: PositionDelta.MEDIUM,
+		label: 'Medium',
+		description: `Adjust position by ${POSITION_DELTA_STEPS[PositionDelta.MEDIUM]}%`,
+	},
+	[PositionDelta.LARGE]: {
+		value: PositionDelta.LARGE,
+		label: 'Large',
+		description: `Adjust position by ${POSITION_DELTA_STEPS[PositionDelta.LARGE]}%`,
+	},
+};
+
+/**
+ * Complete covers intent catalog
+ */
+export const COVERS_INTENT_CATALOG: IntentTypeMeta[] = [
+	{
+		type: CoversIntentType.OPEN,
+		label: 'Open All',
+		description: 'Open all covers in the space',
+		icon: 'mdi:blinds-open',
+		params: [],
+	},
+	{
+		type: CoversIntentType.CLOSE,
+		label: 'Close All',
+		description: 'Close all covers in the space',
+		icon: 'mdi:blinds',
+		params: [],
+	},
+	{
+		type: CoversIntentType.SET_POSITION,
+		label: 'Set Position',
+		description: 'Set all covers to a specific position (0-100)',
+		icon: 'mdi:blinds-horizontal',
+		params: [
+			{
+				name: 'position',
+				type: 'number',
+				required: true,
+				description: 'Position percentage (0=closed, 100=open)',
+				minValue: 0,
+				maxValue: 100,
+			},
+		],
+	},
+	{
+		type: CoversIntentType.POSITION_DELTA,
+		label: 'Adjust Position',
+		description: 'Increase or decrease cover positions',
+		icon: 'mdi:arrow-up-down',
+		params: [
+			{
+				name: 'delta',
+				type: 'enum',
+				required: true,
+				description: 'The step size for position adjustment',
+				enumValues: Object.values(POSITION_DELTA_META),
+			},
+			{
+				name: 'increase',
+				type: 'boolean',
+				required: true,
+				description: 'True to open more (increase position), false to close more (decrease position)',
+			},
+		],
+	},
+	{
+		type: CoversIntentType.ROLE_POSITION,
+		label: 'Set Role Position',
+		description: 'Set position for covers with a specific role',
+		icon: 'mdi:blinds-horizontal',
+		params: [
+			{
+				name: 'role',
+				type: 'enum',
+				required: true,
+				description: 'The covers role to control',
+				enumValues: Object.values(COVERS_ROLE_META).filter((r) => r.value !== (CoversRole.HIDDEN as string)),
+			},
+			{
+				name: 'position',
+				type: 'number',
+				required: true,
+				description: 'Position percentage (0=closed, 100=open)',
+				minValue: 0,
+				maxValue: 100,
+			},
+		],
+	},
+	{
+		type: CoversIntentType.SET_MODE,
+		label: 'Set Mode',
+		description: 'Set a covers mode (open/closed/privacy/daylight) with role-based positions',
+		icon: 'mdi:window-shutter-settings',
+		params: [
+			{
+				name: 'mode',
+				type: 'enum',
+				required: true,
+				description: 'The covers mode to apply',
+				enumValues: Object.values(COVERS_MODE_META),
+			},
+		],
 	},
 ];

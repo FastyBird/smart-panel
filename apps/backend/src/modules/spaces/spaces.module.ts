@@ -15,13 +15,16 @@ import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models
 import { SpacesController } from './controllers/spaces.controller';
 import { UpdateSpacesConfigDto } from './dto/update-config.dto';
 import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
+import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
 import { SpaceEntity } from './entities/space.entity';
 import { SpaceActivityListener } from './listeners/space-activity.listener';
 import { SpacesConfigModel } from './models/config.model';
 import { ClimateIntentService } from './services/climate-intent.service';
+import { CoversIntentService } from './services/covers-intent.service';
 import { LightingIntentService } from './services/lighting-intent.service';
 import { SpaceClimateRoleService } from './services/space-climate-role.service';
+import { SpaceCoversRoleService } from './services/space-covers-role.service';
 import { SpaceContextSnapshotService } from './services/space-context-snapshot.service';
 import { SpaceIntentBaseService } from './services/space-intent-base.service';
 import { SpaceIntentService } from './services/space-intent.service';
@@ -45,6 +48,7 @@ import { IntentSpecLoaderService } from './spec';
 			SpaceEntity,
 			SpaceLightingRoleEntity,
 			SpaceClimateRoleEntity,
+			SpaceCoversRoleEntity,
 			DeviceEntity,
 			ChannelEntity,
 			DisplayEntity,
@@ -60,10 +64,12 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceIntentBaseService,
 		LightingIntentService,
 		ClimateIntentService,
+		CoversIntentService,
 		SpaceIntentService,
 		SpaceLightingRoleService,
 		SpaceLightingStateService,
 		SpaceClimateRoleService,
+		SpaceCoversRoleService,
 		SpaceSuggestionService,
 		SpaceContextSnapshotService,
 		SpaceUndoHistoryService,
@@ -75,6 +81,7 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceIntentService,
 		SpaceLightingRoleService,
 		SpaceClimateRoleService,
+		SpaceCoversRoleService,
 		SpaceSuggestionService,
 		SpaceContextSnapshotService,
 		SpaceUndoHistoryService,
