@@ -717,7 +717,14 @@ class SpaceStateRepository extends ChangeNotifier {
       );
 
       if (response.response.statusCode == 200) {
-        final data = response.response.data['data'] as Map<String, dynamic>;
+        final rawData = response.response.data['data'];
+        // Handle null response (no undo state available)
+        if (rawData == null) {
+          _undoStates.remove(spaceId);
+          notifyListeners();
+          return null;
+        }
+        final data = rawData as Map<String, dynamic>;
         final state = UndoStateModel.fromJson(data);
         _undoStates[spaceId] = state;
         notifyListeners();
@@ -748,7 +755,12 @@ class SpaceStateRepository extends ChangeNotifier {
 
       if (response.response.statusCode == 200 ||
           response.response.statusCode == 201) {
-        final data = response.response.data['data'] as Map<String, dynamic>;
+        final rawData = response.response.data['data'];
+        // Handle null response (undo not executed)
+        if (rawData == null) {
+          return null;
+        }
+        final data = rawData as Map<String, dynamic>;
 
         // Clear undo state after execution
         _undoStates.remove(spaceId);

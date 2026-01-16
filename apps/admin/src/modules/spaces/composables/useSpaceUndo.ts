@@ -119,12 +119,19 @@ export const useSpaceUndo = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceU
 				}
 			);
 
-			if (apiError || !data) {
+			if (apiError) {
 				throw new Error('Failed to fetch undo state');
 			}
 
 			// Only update state if this request is still current (same space and generation)
 			if (spaceId.value !== currentSpaceId || spaceGeneration !== requestGeneration) {
+				return null;
+			}
+
+			// Handle null response (no undo state available)
+			if (!data || data.data === null) {
+				undoStateData.value = null;
+				stopTimer();
 				return null;
 			}
 
