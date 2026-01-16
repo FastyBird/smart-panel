@@ -2113,14 +2113,14 @@ export class UndoStateDataModel {
 
 	@ApiPropertyOptional({
 		name: 'intent_category',
-		description: 'Category of the intent that can be undone (lighting or climate)',
+		description: 'Category of the intent that can be undone (lighting, climate, or covers)',
 		type: 'string',
-		enum: ['lighting', 'climate'],
+		enum: ['lighting', 'climate', 'covers'],
 		nullable: true,
 		example: 'lighting',
 	})
 	@Expose({ name: 'intent_category' })
-	intentCategory: 'lighting' | 'climate' | null;
+	intentCategory: 'lighting' | 'climate' | 'covers' | null;
 
 	@ApiPropertyOptional({
 		name: 'captured_at',
