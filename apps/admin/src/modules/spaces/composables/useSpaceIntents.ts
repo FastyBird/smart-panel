@@ -63,6 +63,7 @@ export interface ILightingIntentResult {
 // ============================================
 
 export type ClimateIntentType = `${SpacesModuleClimateIntentType}`;
+// Note: The API uses the same delta values (small/medium/large) for both brightness and setpoint adjustments
 export type SetpointDelta = `${SpacesModuleLightingIntentDelta}`;
 export type ClimateMode = `${SpacesModuleClimateIntentMode}`;
 
@@ -90,6 +91,16 @@ export interface IClimateIntentResult {
 // COMPOSABLE INTERFACE
 // ============================================
 
+/**
+ * Composable for executing lighting and climate intents on a space.
+ *
+ * Note: After executing an intent, a new undo window becomes available on the backend.
+ * Callers should refresh undo state via `useSpaceUndo().fetchUndoState()` after successful
+ * intent execution to surface the undo option to users.
+ *
+ * Lighting and climate state updates are typically received via WebSocket events,
+ * but callers may also manually refresh state if needed.
+ */
 export interface IUseSpaceIntents {
 	isExecuting: ComputedRef<boolean>;
 	error: Ref<string | null>;

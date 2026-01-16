@@ -353,7 +353,14 @@ class SpaceStateRepository extends ChangeNotifier {
       if (response.response.statusCode == 200 ||
           response.response.statusCode == 201) {
         final data = response.response.data['data'] as Map<String, dynamic>;
-        return LightingIntentResult.fromJson(data);
+        final result = LightingIntentResult.fromJson(data);
+
+        // Refresh undo state after successful intent execution
+        // (a new undo window may now be available)
+        // Note: Lighting state refresh is handled by WebSocket events
+        fetchUndoState(spaceId);
+
+        return result;
       }
     } on DioException catch (e) {
       if (kDebugMode) {
@@ -528,7 +535,14 @@ class SpaceStateRepository extends ChangeNotifier {
       if (response.response.statusCode == 200 ||
           response.response.statusCode == 201) {
         final data = response.response.data['data'] as Map<String, dynamic>;
-        return ClimateIntentResult.fromJson(data);
+        final result = ClimateIntentResult.fromJson(data);
+
+        // Refresh undo state after successful intent execution
+        // (a new undo window may now be available)
+        // Note: Climate state refresh is handled by WebSocket events
+        fetchUndoState(spaceId);
+
+        return result;
       }
     } on DioException catch (e) {
       if (kDebugMode) {
