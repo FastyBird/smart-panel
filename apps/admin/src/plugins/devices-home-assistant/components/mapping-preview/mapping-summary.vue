@@ -1,8 +1,21 @@
 <template>
 	<el-card shadow="never" header-class="py-2! px-4!" body-class="px-0!">
 		<template #header>
-			<div class="font-semibold">
-				{{ t('devicesHomeAssistantPlugin.headings.mapping.summary') }}
+			<div class="flex items-center justify-between">
+				<div class="font-semibold">
+					{{ t('devicesHomeAssistantPlugin.headings.mapping.summary') }}
+				</div>
+				<el-button
+					type="info"
+					size="small"
+					plain
+					@click="emit('open-debug')"
+				>
+					<template #icon>
+						<icon icon="mdi:bug-outline" />
+					</template>
+					{{ t('devicesHomeAssistantPlugin.buttons.debug') }}
+				</el-button>
 			</div>
 		</template>
 
@@ -69,7 +82,8 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElCard, ElDivider, ElTag } from 'element-plus';
+import { ElButton, ElCard, ElDivider, ElTag } from 'element-plus';
+import { Icon } from '@iconify/vue';
 
 import type { IMappingPreviewResponse } from '../../schemas/mapping-preview.types';
 
@@ -78,6 +92,10 @@ interface IMappingSummaryProps {
 }
 
 const props = defineProps<IMappingSummaryProps>();
+
+const emit = defineEmits<{
+	(e: 'open-debug'): void;
+}>();
 
 const { t } = useI18n();
 

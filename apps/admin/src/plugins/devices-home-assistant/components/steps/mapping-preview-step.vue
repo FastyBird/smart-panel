@@ -17,7 +17,7 @@
 
 	<div v-else-if="preview" class="space-y-4">
 		<!-- Summary -->
-		<mapping-summary :preview="preview" />
+		<mapping-summary :preview="preview" @open-debug="showDebugModal = true" />
 
 		<!-- Warnings -->
 		<mapping-warnings
@@ -46,21 +46,6 @@
 			:closable="false"
 			show-icon
 		/>
-
-		<!-- Debug Button -->
-		<div class="flex justify-end pt-2">
-			<el-button
-				type="info"
-				size="small"
-				plain
-				@click="showDebugModal = true"
-			>
-				<template #icon>
-					<icon icon="mdi:bug-outline" />
-				</template>
-				{{ t('devicesHomeAssistantPlugin.buttons.debug') }}
-			</el-button>
-		</div>
 
 		<!-- Debug Modal -->
 		<el-dialog
