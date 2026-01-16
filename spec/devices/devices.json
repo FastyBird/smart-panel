@@ -405,6 +405,30 @@
       "en": ""
     },
     "channels": {
+      "alarm": {
+        "category": "alarm",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Provides arm/disarm control, siren activation, and alarm status."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "battery": {
+        "category": "battery",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports the status of a device's battery, including level, charging state, and operational health."
+        }
+      }
     }
   },
   "camera": {
@@ -1147,6 +1171,14 @@
         "multiple": false,
         "description": {
           "en": "Detects the presence of carbon monoxide (CO) to ensure safety in enclosed spaces."
+        }
+      },
+      "gas": {
+        "category": "gas",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Detects combustible or toxic gas presence and related alarm states."
         }
       },
       "contact": {
