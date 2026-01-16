@@ -69,6 +69,10 @@ class DerivationRegistry {
 	get size(): number {
 		return this.derivations.size;
 	}
+
+	clear(): void {
+		this.derivations.clear();
+	}
 }
 
 /**
@@ -111,11 +115,7 @@ export class MappingLoaderService implements OnModuleInit {
 	}
 
 	onModuleInit(): void {
-		// Register built-in transformers
-		this.transformerRegistry.registerAll(BUILTIN_TRANSFORMERS);
-		this.logger.log(`Registered ${this.transformerRegistry.size} built-in transformers`);
-
-		// Load all mapping files
+		// Load all mapping files (also registers built-in transformers)
 		this.loadAllMappings();
 	}
 
@@ -123,10 +123,18 @@ export class MappingLoaderService implements OnModuleInit {
 	 * Load all mapping files from built-in and user directories
 	 */
 	loadAllMappings(): void {
+		// Clear all cached data
 		this.resolvedMappings = [];
 		this.virtualProperties.clear();
 		this.domainRoles.clear();
 		this.loadedSources = [];
+
+		// Clear registries to remove stale configuration from previous loads
+		this.transformerRegistry.clear();
+		this.derivationRegistry.clear();
+
+		// Re-register built-in transformers after clearing
+		this.transformerRegistry.registerAll(BUILTIN_TRANSFORMERS);
 
 		// Load built-in mappings (lowest priority)
 		const builtinFiles = this.discoverMappingFiles(this.builtinMappingsPath, 'builtin', 0);
