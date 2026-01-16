@@ -205,7 +205,6 @@ export enum PropertyCategory {
 	TRIGGERED = 'triggered',
 	TRACK = 'track',
 	TYPE = 'type',
-	UNITS = 'units',
 	VOLTAGE = 'voltage',
 	VOLUME = 'volume',
 	WARM_MIST = 'warm_mist',
