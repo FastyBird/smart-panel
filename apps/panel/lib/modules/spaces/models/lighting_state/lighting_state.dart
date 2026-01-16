@@ -154,7 +154,7 @@ class RoleAggregatedState {
   bool get hasLights => devicesCount > 0;
   bool get anyOn => devicesOn > 0;
   bool get allOn => devicesCount > 0 && devicesOn == devicesCount;
-  bool get allOff => devicesOn == 0;
+  bool get allOff => devicesCount > 0 && devicesOn == 0;
 
   factory RoleAggregatedState.fromJson(
     Map<String, dynamic> json,
@@ -269,7 +269,7 @@ class LightingStateModel {
   bool get hasLights => totalLights > 0;
   bool get anyOn => lightsOn > 0;
   bool get allOn => totalLights > 0 && lightsOn == totalLights;
-  bool get allOff => lightsOn == 0;
+  bool get allOff => totalLights > 0 && lightsOn == 0;
 
   /// Get the state for a specific role
   RoleAggregatedState? getRoleState(LightingStateRole role) => roles[role];

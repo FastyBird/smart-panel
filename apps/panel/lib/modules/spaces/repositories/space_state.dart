@@ -809,15 +809,17 @@ class SpaceStateRepository extends ChangeNotifier {
       if (response.response.statusCode == 200 ||
           response.response.statusCode == 201) {
         final rawData = response.response.data['data'];
-        // Handle null response (undo not executed)
+
+        // Always clear undo state after attempting execution
+        // (whether successful or expired/invalid)
+        _undoStates.remove(spaceId);
+        notifyListeners();
+
+        // Handle null response (undo expired or could not be executed)
         if (rawData == null) {
           return null;
         }
         final data = rawData as Map<String, dynamic>;
-
-        // Clear undo state after execution
-        _undoStates.remove(spaceId);
-        notifyListeners();
 
         return UndoResultModel.fromJson(data);
       }
