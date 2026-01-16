@@ -754,6 +754,7 @@ mappings:
     property_bindings:
       - ha_attribute: fb.main_state
         property_category: ON
+        transformer: state_on_off
       - ha_attribute: percentage
         property_category: SPEED
       - ha_attribute: oscillating
@@ -790,6 +791,7 @@ mappings:
     property_bindings:
       - ha_attribute: fb.main_state
         property_category: ON
+        transformer: state_on_off
       - ha_attribute: current_position
         property_category: POSITION
 
@@ -839,6 +841,7 @@ mappings:
     property_bindings:
       - ha_attribute: fb.main_state
         property_category: ON
+        transformer: state_on_off
       - ha_attribute: volume_level
         property_category: VOLUME
 
@@ -856,6 +859,7 @@ mappings:
     property_bindings:
       - ha_attribute: fb.main_state
         property_category: ACTIVE
+        transformer: state_on_off
       - ha_attribute: volume_level
         property_category: VOLUME
 
@@ -892,6 +896,7 @@ mappings:
     property_bindings:
       - ha_attribute: fb.main_state
         property_category: ON
+        transformer: state_on_off
       - ha_attribute: humidity
         property_category: HUMIDITY
 
@@ -909,6 +914,7 @@ mappings:
     property_bindings:
       - ha_attribute: fb.main_state
         property_category: ON
+        transformer: state_on_off
       - ha_attribute: humidity
         property_category: HUMIDITY
 
@@ -943,6 +949,7 @@ mappings:
     property_bindings:
       - ha_attribute: fb.main_state
         property_category: ON
+        transformer: state_on_off
 
   # ============================================================================
   # WATER HEATER ENTITIES
@@ -979,6 +986,7 @@ mappings:
     property_bindings:
       - ha_attribute: fb.main_state
         property_category: ON
+        transformer: state_on_off
 
   # ============================================================================
   # INPUT NUMBER ENTITIES
@@ -1054,6 +1062,7 @@ mappings:
     property_bindings:
       - ha_attribute: fb.main_state
         property_category: ON
+        transformer: state_on_off
 
   # ============================================================================
   # TIMER ENTITIES
@@ -1129,6 +1138,7 @@ mappings:
     property_bindings:
       - ha_attribute: fb.main_state
         property_category: ON
+        transformer: state_on_off
 
   # ============================================================================
   # REMOTE ENTITIES
@@ -1144,3 +1154,4 @@ mappings:
     property_bindings:
       - ha_attribute: fb.main_state
         property_category: ON
+        transformer: state_on_off
