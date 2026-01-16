@@ -56,10 +56,24 @@ export class DevicesServiceSubscriber {
 				? this.CONNECTION_TYPE_MAP[connectionTypeRaw]
 				: null;
 
+		// Determine serial number with fallbacks:
+		// 1. Use HA serial number if available
+		// 2. Use MAC address from connections if available
+		// 3. Use HA device ID as last fallback
+		let serialNumber = haDevice.serialNumber;
+		if (!serialNumber) {
+			const macConnection = haDevice.connections.find(([type]) => type === 'mac');
+			if (macConnection) {
+				serialNumber = macConnection[1].toUpperCase().replace(/:/g, '');
+			} else {
+				serialNumber = haDevice.id;
+			}
+		}
+
 		const haDeviceInformationProperties = {
 			[PropertyCategory.MANUFACTURER]: haDevice.manufacturer,
 			[PropertyCategory.MODEL]: haDevice.model,
-			[PropertyCategory.SERIAL_NUMBER]: haDevice.serialNumber || 'N/A',
+			[PropertyCategory.SERIAL_NUMBER]: serialNumber,
 			[PropertyCategory.FIRMWARE_REVISION]: haDevice.swVersion,
 			[PropertyCategory.HARDWARE_REVISION]: haDevice.hwVersion,
 			[PropertyCategory.CONNECTION_TYPE]: connectionType,
