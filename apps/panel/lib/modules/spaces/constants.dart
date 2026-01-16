@@ -22,7 +22,7 @@ class SpacesModuleConstants {
 
   // Aggregated state change events
   static const String lightingStateChangedEvent =
-      'SpacesModule.LightingState.Changed';
+      'SpacesModule.Space.LightingStateChanged';
   static const String climateStateChangedEvent =
-      'SpacesModule.ClimateState.Changed';
+      'SpacesModule.Space.ClimateStateChanged';
 }
