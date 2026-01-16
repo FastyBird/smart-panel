@@ -14,6 +14,11 @@ I want to use simple intents like "open all covers" or "privacy mode" instead of
 
 ## 2. Context
 
+### Related Tasks (NOT Overlapping - Different Scopes)
+- **`FEATURE-WINDOW-COVERING-DEVICE-PAGE`** (done) - **Device-level** UI page for controlling a single window covering device. This task is about **space-level intents** that control ALL covers in a room/zone simultaneously.
+- **`FEATURE-SPACE-CLIMATE-MVP`** (done) - Pattern reference for domain intent implementation.
+- **`FEATURE-SPACE-INTENTS-LIGHTING-MVP`** (done) - Pattern reference for domain intent implementation.
+
 ### Existing Code References
 - **Lighting domain**: `apps/backend/src/modules/spaces/services/lighting-intent.service.ts`
 - **Climate domain**: `apps/backend/src/modules/spaces/services/climate-intent.service.ts`

@@ -14,13 +14,17 @@ I want to activate activity-based modes (Work, Relax, Sleep, etc.) that automati
 
 ## 2. Context
 
+### Related Tasks (NOT Overlapping - Different Scopes)
+- **`FEATURE-HOUSE-MODES-MVP-V2`** (done) - **House-wide** modes (Home/Away/Night) that affect the ENTIRE house from entry panels. This task is about **space-level** activity modes (Work/Relax/Sleep) that affect a SINGLE room.
+- **`EPIC-SCENES-MVP`** (done) - Room-scoped scenes with arbitrary device commands. Activity modes are higher-level abstractions with sensible defaults.
+
 ### Existing Code References
 - **House modes**: `apps/backend/src/modules/system/` (HOME, AWAY, NIGHT)
 - **Lighting modes**: WORK, RELAX, NIGHT (lighting domain only)
 - **Scenes**: `apps/backend/src/modules/scenes/` (arbitrary device commands)
 - **Space intents**: `apps/backend/src/modules/spaces/services/`
 
-### Concept Differentiation
+### Concept Differentiation (Key Distinction)
 | Concept | Scope | Orchestration | Customization |
 |---------|-------|---------------|---------------|
 | **House Modes** | House-wide | All spaces | Fixed actions |
