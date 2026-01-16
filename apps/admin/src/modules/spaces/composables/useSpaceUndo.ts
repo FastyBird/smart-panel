@@ -28,8 +28,8 @@ export interface IUndoResult {
 
 export interface IUseSpaceUndo {
 	undoState: ComputedRef<IUndoState | null>;
-	isLoading: Ref<boolean>;
-	isExecuting: Ref<boolean>;
+	isLoading: ComputedRef<boolean>;
+	isExecuting: ComputedRef<boolean>;
 	error: Ref<string | null>;
 	canUndo: ComputedRef<boolean>;
 	isLightingUndo: ComputedRef<boolean>;
@@ -44,8 +44,11 @@ export const useSpaceUndo = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceU
 	const backend = useBackend();
 
 	const undoStateData = ref<IUndoState | null>(null);
-	const isLoading = ref(false);
-	const isExecuting = ref(false);
+	// Use counters to handle concurrent/stale requests correctly
+	const loadingCount = ref(0);
+	const executingCount = ref(0);
+	const isLoading = computed(() => loadingCount.value > 0);
+	const isExecuting = computed(() => executingCount.value > 0);
 	const error = ref<string | null>(null);
 
 	// Reactive timestamp for countdown timer - updates every second
@@ -94,7 +97,7 @@ export const useSpaceUndo = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceU
 		const currentSpaceId = spaceId.value;
 		if (!currentSpaceId) return null;
 
-		isLoading.value = true;
+		loadingCount.value++;
 		error.value = null;
 
 		try {
@@ -139,8 +142,9 @@ export const useSpaceUndo = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceU
 			return null;
 		} finally {
 			// Only update loading if spaceId hasn't changed during the fetch
-			if (spaceId.value === currentSpaceId) {
-				isLoading.value = false;
+			// Guard against going negative if watch handler reset the counter while request was in flight
+			if (spaceId.value === currentSpaceId && loadingCount.value > 0) {
+				loadingCount.value--;
 			}
 		}
 	};
@@ -149,7 +153,7 @@ export const useSpaceUndo = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceU
 		const currentSpaceId = spaceId.value;
 		if (!currentSpaceId) return null;
 
-		isExecuting.value = true;
+		executingCount.value++;
 		error.value = null;
 
 		try {
@@ -187,8 +191,9 @@ export const useSpaceUndo = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceU
 			return null;
 		} finally {
 			// Only update loading if spaceId hasn't changed during the request
-			if (spaceId.value === currentSpaceId) {
-				isExecuting.value = false;
+			// Guard against going negative if watch handler reset the counter while request was in flight
+			if (spaceId.value === currentSpaceId && executingCount.value > 0) {
+				executingCount.value--;
 			}
 		}
 	};
@@ -202,8 +207,8 @@ export const useSpaceUndo = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceU
 	watch(spaceId, () => {
 		undoStateData.value = null;
 		error.value = null;
-		isLoading.value = false;
-		isExecuting.value = false;
+		loadingCount.value = 0;
+		executingCount.value = 0;
 		stopTimer();
 	});
 

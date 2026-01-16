@@ -44,7 +44,7 @@ export interface IOtherLightsState {
 
 export interface IUseSpaceLightingState {
 	lightingState: ComputedRef<ILightingState | null>;
-	isLoading: Ref<boolean>;
+	isLoading: ComputedRef<boolean>;
 	error: Ref<string | null>;
 	fetchLightingState: () => Promise<ILightingState | null>;
 	hasLights: ComputedRef<boolean>;
@@ -98,7 +98,9 @@ export const useSpaceLightingState = (spaceId: Ref<ISpace['id'] | undefined>): I
 	const backend = useBackend();
 
 	const lightingStateData = ref<ILightingState | null>(null);
-	const isLoading = ref(false);
+	// Use counter to handle concurrent/stale requests correctly
+	const loadingCount = ref(0);
+	const isLoading = computed(() => loadingCount.value > 0);
 	const error = ref<string | null>(null);
 
 	const lightingState = computed(() => lightingStateData.value);
@@ -118,7 +120,7 @@ export const useSpaceLightingState = (spaceId: Ref<ISpace['id'] | undefined>): I
 		const currentSpaceId = spaceId.value;
 		if (!currentSpaceId) return null;
 
-		isLoading.value = true;
+		loadingCount.value++;
 		error.value = null;
 
 		try {
@@ -148,8 +150,9 @@ export const useSpaceLightingState = (spaceId: Ref<ISpace['id'] | undefined>): I
 			return null;
 		} finally {
 			// Only update loading if spaceId hasn't changed during the fetch
-			if (spaceId.value === currentSpaceId) {
-				isLoading.value = false;
+			// Guard against going negative if watch handler reset the counter while request was in flight
+			if (spaceId.value === currentSpaceId && loadingCount.value > 0) {
+				loadingCount.value--;
 			}
 		}
 	};
@@ -158,7 +161,7 @@ export const useSpaceLightingState = (spaceId: Ref<ISpace['id'] | undefined>): I
 	watch(spaceId, () => {
 		lightingStateData.value = null;
 		error.value = null;
-		isLoading.value = false;
+		loadingCount.value = 0;
 	});
 
 	return {
