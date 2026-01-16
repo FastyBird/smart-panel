@@ -205,6 +205,104 @@
   "alarm": {
     "category": "alarm",
     "properties": {
+      "state": {
+        "category": "state",
+        "required": true,
+        "description": {
+          "en": "Current arming state of the alarm system"
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "disarmed",
+          "armed_home",
+          "armed_away",
+          "armed_night"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "triggered": {
+        "category": "triggered",
+        "required": false,
+        "description": {
+          "en": "Indicates whether the alarm is currently triggered"
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "siren": {
+        "category": "siren",
+        "required": false,
+        "description": {
+          "en": "Controls the audible siren output"
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "active": {
+        "category": "active",
+        "required": false,
+        "description": {
+          "en": "Reports whether the alarm subsystem is operational"
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": "Fault code or diagnostic indicator"
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "tampered": {
+        "category": "tampered",
+        "required": false,
+        "description": {
+          "en": "Indicates if the device has been tampered with"
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      }
     }
   },
   "battery": {

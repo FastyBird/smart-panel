@@ -67,7 +67,7 @@ describe('useDeviceSpecification', () => {
 		expect(canAddAnotherChannel.value).toBe(true); // electrical_power etc. still available
 	});
 
-	it('should return false if all allowed categories are used and no multiples', () => {
+	it('should return false if all required/optional categories are used and no multiples', () => {
 		mockDevicesStore.findById.mockReturnValue({
 			id: deviceId,
 			category: DevicesModuleDeviceCategory.alarm,
@@ -76,6 +76,7 @@ describe('useDeviceSpecification', () => {
 		mockChannelsStore.findForDevice.mockReturnValue([
 			{ id: '1', category: DevicesModuleChannelCategory.device_information },
 			{ id: '2', category: DevicesModuleChannelCategory.alarm },
+			{ id: '3', category: DevicesModuleChannelCategory.battery },
 		]);
 
 		const { canAddAnotherChannel } = useDeviceSpecification({ id: deviceId });

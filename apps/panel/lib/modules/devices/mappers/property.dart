@@ -63,7 +63,6 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/temperatu
 import 'package:fastybird_smart_panel/modules/devices/views/properties/tilt.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/track.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/type.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/units.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/voltage.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/volume.dart';
@@ -250,12 +249,16 @@ ChannelPropertyView buildChannelPropertyView(ChannelPropertyModel property) {
       return _createPropertyView(property, TemperatureChannelPropertyView.new);
     case DevicesModulePropertyCategory.tilt:
       return _createPropertyView(property, TiltChannelPropertyView.new);
+    case DevicesModulePropertyCategory.siren:
+      return _createPropertyView(property, GenericChannelPropertyView.new);
+    case DevicesModulePropertyCategory.state:
+      return _createPropertyView(property, GenericChannelPropertyView.new);
+    case DevicesModulePropertyCategory.triggered:
+      return _createPropertyView(property, GenericChannelPropertyView.new);
     case DevicesModulePropertyCategory.track:
       return _createPropertyView(property, TrackChannelPropertyView.new);
     case DevicesModulePropertyCategory.type:
       return _createPropertyView(property, TypeChannelPropertyView.new);
-    case DevicesModulePropertyCategory.units:
-      return _createPropertyView(property, UnitsChannelPropertyView.new);
     case DevicesModulePropertyCategory.voltage:
       return _createPropertyView(property, VoltageChannelPropertyView.new);
     case DevicesModulePropertyCategory.volume:
@@ -267,7 +270,8 @@ ChannelPropertyView buildChannelPropertyView(ChannelPropertyModel property) {
   }
 }
 
-Map<DevicesModulePropertyCategory, IconData Function()> channelPropertyIconMappers = {
+Map<DevicesModulePropertyCategory, IconData Function()>
+    channelPropertyIconMappers = {
   DevicesModulePropertyCategory.generic: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.active: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.angle: () => MdiIcons.databaseCog,
@@ -317,17 +321,19 @@ Map<DevicesModulePropertyCategory, IconData Function()> channelPropertyIconMappe
   DevicesModulePropertyCategory.remaining: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.remoteKey: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.saturation: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.siren: () => MdiIcons.alarmLight,
   DevicesModulePropertyCategory.serialNumber: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.source: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.state: () => MdiIcons.shieldCheck,
   DevicesModulePropertyCategory.speed: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.status: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.swing: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.tampered: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.temperature: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.tilt: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.triggered: () => MdiIcons.alarmLightOutline,
   DevicesModulePropertyCategory.track: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.type: () => MdiIcons.databaseCog,
-  DevicesModulePropertyCategory.units: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.voltage: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.volume: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.zoom: () => MdiIcons.databaseCog,
