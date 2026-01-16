@@ -1,4 +1,4 @@
-import { ref, watch, type Ref } from 'vue';
+import { ref, computed, watch, type Ref, type ComputedRef } from 'vue';
 
 import { useBackend } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
@@ -91,7 +91,7 @@ export interface IClimateIntentResult {
 // ============================================
 
 export interface IUseSpaceIntents {
-	isExecuting: Ref<boolean>;
+	isExecuting: ComputedRef<boolean>;
 	error: Ref<string | null>;
 	lastResult: Ref<ILightingIntentResult | IClimateIntentResult | null>;
 	// Lighting intents
@@ -115,7 +115,9 @@ export interface IUseSpaceIntents {
 export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceIntents => {
 	const backend = useBackend();
 
-	const isExecuting = ref(false);
+	// Use counter instead of boolean to handle concurrent executions correctly
+	const executingCount = ref(0);
+	const isExecuting = computed(() => executingCount.value > 0);
 	const error = ref<string | null>(null);
 	const lastResult = ref<ILightingIntentResult | IClimateIntentResult | null>(null);
 
@@ -127,7 +129,7 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 		const currentSpaceId = spaceId.value;
 		if (!currentSpaceId) return null;
 
-		isExecuting.value = true;
+		executingCount.value++;
 		error.value = null;
 
 		try {
@@ -178,7 +180,7 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 		} finally {
 			// Only update loading if spaceId hasn't changed during the request
 			if (spaceId.value === currentSpaceId) {
-				isExecuting.value = false;
+				executingCount.value--;
 			}
 		}
 	};
@@ -205,7 +207,7 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 		const currentSpaceId = spaceId.value;
 		if (!currentSpaceId) return null;
 
-		isExecuting.value = true;
+		executingCount.value++;
 		error.value = null;
 
 		try {
@@ -257,7 +259,7 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 		} finally {
 			// Only update loading if spaceId hasn't changed during the request
 			if (spaceId.value === currentSpaceId) {
-				isExecuting.value = false;
+				executingCount.value--;
 			}
 		}
 	};
@@ -271,7 +273,7 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 	watch(spaceId, () => {
 		error.value = null;
 		lastResult.value = null;
-		isExecuting.value = false;
+		executingCount.value = 0;
 	});
 
 	return {
