@@ -698,7 +698,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             child: Opacity(
               opacity: _isExecutingIntent ? 0.6 : 1.0,
               child: ModeSelector<LightingModeUI>(
-                modes: _getLightingModeOptions(),
+                modes: _getLightingModeOptions(localizations),
                 selectedValue: mode,
                 onChanged: _setLightingMode,
                 orientation: ModeSelectorOrientation.horizontal,
@@ -871,7 +871,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       child: Opacity(
         opacity: _isExecutingIntent ? 0.6 : 1.0,
         child: ModeSelector<LightingModeUI>(
-          modes: _getLightingModeOptions(),
+          modes: _getLightingModeOptions(localizations),
           selectedValue: mode,
           onChanged: _setLightingMode,
           orientation: ModeSelectorOrientation.horizontal,
@@ -1198,30 +1198,30 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   /// Get mode options for the mode selector
-  List<ModeOption<LightingModeUI>> _getLightingModeOptions() {
+  List<ModeOption<LightingModeUI>> _getLightingModeOptions(AppLocalizations localizations) {
     return [
       ModeOption(
         value: LightingModeUI.work,
         icon: MdiIcons.lightbulbOn,
-        label: 'Work',
+        label: localizations.space_lighting_mode_work,
         color: ModeSelectorColor.primary,
       ),
       ModeOption(
         value: LightingModeUI.relax,
         icon: MdiIcons.sofaSingleOutline,
-        label: 'Relax',
+        label: localizations.space_lighting_mode_relax,
         color: ModeSelectorColor.warning,
       ),
       ModeOption(
         value: LightingModeUI.night,
         icon: MdiIcons.weatherNight,
-        label: 'Night',
+        label: localizations.space_lighting_mode_night,
         color: ModeSelectorColor.info,
       ),
       ModeOption(
         value: LightingModeUI.off,
         icon: Icons.power_settings_new,
-        label: 'Off',
+        label: localizations.space_lighting_mode_off,
         color: ModeSelectorColor.neutral,
       ),
     ];
