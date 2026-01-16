@@ -44,7 +44,7 @@ import 'package:provider/provider.dart';
 
 enum ClimateMode { off, heat, cool, auto }
 
-enum RoomCapability { heaterOnly, coolerOnly, heaterAndCooler }
+enum RoomCapability { none, heaterOnly, coolerOnly, heaterAndCooler }
 
 class ClimateDevice {
   final String id;
@@ -340,7 +340,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
 
     // Determine capability from climate state
-    RoomCapability capability = RoomCapability.heaterAndCooler;
+    RoomCapability capability = RoomCapability.none;
     if (climateState != null) {
       if (climateState.supportsHeating && climateState.supportsCooling) {
         capability = RoomCapability.heaterAndCooler;
@@ -348,6 +348,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         capability = RoomCapability.heaterOnly;
       } else if (climateState.supportsCooling) {
         capability = RoomCapability.coolerOnly;
+      } else {
+        capability = RoomCapability.none;
       }
     }
 
