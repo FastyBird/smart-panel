@@ -142,15 +142,46 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
 
   void _onDataChanged() {
     if (!mounted) return;
-    // Update current temperature from climate state when data changes
+    // Update state from climate state when data changes
     final climateState = _spacesService?.getClimateState(widget.roomId);
-    if (climateState != null && climateState.currentTemperature != null) {
-      setState(() {
-        _state = _state.copyWith(
-          currentTemp: climateState.currentTemperature,
-        );
-      });
+    if (climateState == null) return;
+
+    // Determine mode from climate state
+    ClimateMode mode = _state.mode;
+    switch (climateState.mode) {
+      case spaces_climate.ClimateMode.heat:
+        mode = ClimateMode.heat;
+        break;
+      case spaces_climate.ClimateMode.cool:
+        mode = ClimateMode.cool;
+        break;
+      case spaces_climate.ClimateMode.auto:
+      case spaces_climate.ClimateMode.off:
+      case null:
+        mode = ClimateMode.off;
+        break;
     }
+
+    // Determine capability from climate state
+    RoomCapability capability = _state.capability;
+    if (climateState.supportsHeating && climateState.supportsCooling) {
+      capability = RoomCapability.heaterAndCooler;
+    } else if (climateState.supportsHeating) {
+      capability = RoomCapability.heaterOnly;
+    } else if (climateState.supportsCooling) {
+      capability = RoomCapability.coolerOnly;
+    }
+
+    setState(() {
+      _state = _state.copyWith(
+        mode: mode,
+        capability: capability,
+        targetTemp: climateState.targetTemperature ?? _state.targetTemp,
+        currentTemp: climateState.currentTemperature ?? _state.currentTemp,
+        minSetpoint: climateState.minSetpoint ?? _state.minSetpoint,
+        maxSetpoint: climateState.maxSetpoint ?? _state.maxSetpoint,
+      );
+    });
   }
 
   void _initializeState() {
