@@ -78,6 +78,8 @@ class ClimateDetailState {
         return 'Heating';
       case ClimateMode.cool:
         return 'Cooling';
+      case ClimateMode.auto:
+        return 'Auto';
     }
   }
 }
@@ -171,6 +173,8 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
         mode = ClimateMode.cool;
         break;
       case spaces_climate.ClimateMode.auto:
+        mode = ClimateMode.auto;
+        break;
       case spaces_climate.ClimateMode.off:
       case null:
         mode = ClimateMode.off;
@@ -267,6 +271,9 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
       case ClimateMode.cool:
         apiMode = spaces_climate.ClimateMode.cool;
         break;
+      case ClimateMode.auto:
+        apiMode = spaces_climate.ClimateMode.auto;
+        break;
       case ClimateMode.off:
         apiMode = spaces_climate.ClimateMode.off;
         break;
@@ -298,6 +305,8 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
         return isDark ? AppColorsDark.warning : AppColorsLight.warning;
       case ClimateMode.cool:
         return isDark ? AppColorsDark.info : AppColorsLight.info;
+      case ClimateMode.auto:
+        return isDark ? AppColorsDark.success : AppColorsLight.success;
     }
   }
 
@@ -312,6 +321,10 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
             : AppColorsLight.warningLight5;
       case ClimateMode.cool:
         return isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight5;
+      case ClimateMode.auto:
+        return isDark
+            ? AppColorsDark.successLight5
+            : AppColorsLight.successLight5;
     }
   }
 
@@ -323,6 +336,8 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
         return DialAccentColor.warning;
       case ClimateMode.cool:
         return DialAccentColor.info;
+      case ClimateMode.auto:
+        return DialAccentColor.success;
     }
   }
 
@@ -331,7 +346,11 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
     if (_state.mode == ClimateMode.heat) {
       return _state.currentTemp < _state.targetTemp;
     }
-    return _state.currentTemp > _state.targetTemp;
+    if (_state.mode == ClimateMode.cool) {
+      return _state.currentTemp > _state.targetTemp;
+    }
+    // Auto mode: active when temperature differs from target
+    return (_state.currentTemp - _state.targetTemp).abs() > 0.5;
   }
 
   @override
@@ -790,6 +809,15 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
   List<ModeOption<ClimateMode>> _getClimateModeOptions() {
     final modes = <ModeOption<ClimateMode>>[];
 
+    // Auto mode available only when both heating and cooling are supported
+    if (_state.capability == RoomCapability.heaterAndCooler) {
+      modes.add(ModeOption(
+        value: ClimateMode.auto,
+        icon: MdiIcons.thermometerAuto,
+        label: 'Auto',
+        color: ModeSelectorColor.success,
+      ));
+    }
     if (_state.capability == RoomCapability.heaterOnly ||
         _state.capability == RoomCapability.heaterAndCooler) {
       modes.add(ModeOption(
