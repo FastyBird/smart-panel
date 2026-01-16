@@ -63,7 +63,6 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/temperatu
 import 'package:fastybird_smart_panel/modules/devices/views/properties/tilt.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/track.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/type.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/units.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/voltage.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/volume.dart';
@@ -254,8 +253,6 @@ ChannelPropertyView buildChannelPropertyView(ChannelPropertyModel property) {
       return _createPropertyView(property, TrackChannelPropertyView.new);
     case DevicesModulePropertyCategory.type:
       return _createPropertyView(property, TypeChannelPropertyView.new);
-    case DevicesModulePropertyCategory.units:
-      return _createPropertyView(property, UnitsChannelPropertyView.new);
     case DevicesModulePropertyCategory.voltage:
       return _createPropertyView(property, VoltageChannelPropertyView.new);
     case DevicesModulePropertyCategory.volume:
@@ -267,7 +264,8 @@ ChannelPropertyView buildChannelPropertyView(ChannelPropertyModel property) {
   }
 }
 
-Map<DevicesModulePropertyCategory, IconData Function()> channelPropertyIconMappers = {
+Map<DevicesModulePropertyCategory, IconData Function()>
+    channelPropertyIconMappers = {
   DevicesModulePropertyCategory.generic: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.active: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.angle: () => MdiIcons.databaseCog,
@@ -327,7 +325,6 @@ Map<DevicesModulePropertyCategory, IconData Function()> channelPropertyIconMappe
   DevicesModulePropertyCategory.tilt: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.track: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.type: () => MdiIcons.databaseCog,
-  DevicesModulePropertyCategory.units: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.voltage: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.volume: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.zoom: () => MdiIcons.databaseCog,
