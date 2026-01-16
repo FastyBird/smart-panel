@@ -41,7 +41,7 @@ import {
 } from '../models/home-assistant.model';
 
 import { VirtualPropertyService } from './virtual-property.service';
-import { VirtualPropertyContext, VirtualPropertyType, getVirtualPropertiesForChannel } from './virtual-property.types';
+import { VirtualPropertyContext } from './virtual-property.types';
 
 // Exclude devices dominated by virtual_device_domains (climate/humidifier/water_heater + their sensors)
 // These appear in helpers instead. A device is "virtual" if it has a virtual domain entity and only sensors/binary_sensors otherwise.
@@ -638,7 +638,7 @@ export class HomeAssistantHttpService {
 		// Process each channel's virtual properties
 		for (const [channelId, props] of channelProperties) {
 			const channel = channelEntities.get(channelId);
-			const virtualDefs = getVirtualPropertiesForChannel(channel.category);
+			const virtualDefs = this.virtualPropertyService.getVirtualPropertiesForChannel(channel.category);
 
 			// Skip channels without virtual property definitions
 			if (virtualDefs.length === 0) {
@@ -683,14 +683,14 @@ export class HomeAssistantHttpService {
 
 			// Update each virtual property
 			for (const virtualProp of virtualProps) {
-				const virtualDef = virtualDefs.find((vd) => vd.property_category === virtualProp.category);
+				const virtualDef = virtualDefs.find((vd) => vd.propertyCategory === virtualProp.category);
 
 				if (!virtualDef) {
 					continue;
 				}
 
 				// Skip command properties - they don't have readable values
-				if (virtualDef.virtual_type === VirtualPropertyType.COMMAND) {
+				if (virtualDef.virtualType === 'command') {
 					continue;
 				}
 

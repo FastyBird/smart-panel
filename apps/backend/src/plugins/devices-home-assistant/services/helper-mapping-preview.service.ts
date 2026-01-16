@@ -16,6 +16,7 @@ import {
 } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantNotFoundException } from '../devices-home-assistant.exceptions';
 import { HelperMappingPreviewRequestDto } from '../dto/helper-mapping-preview.dto';
+import { MappingLoaderService, ResolvedHaMapping } from '../mappings';
 import {
 	HelperChannelMappingPreviewModel,
 	HelperInfoModel,
@@ -26,7 +27,6 @@ import {
 } from '../models/helper-mapping-preview.model';
 import { HomeAssistantDiscoveredHelperModel } from '../models/home-assistant.model';
 
-import { findMatchingRule } from './ha-entity-mapping.rules';
 import { HomeAssistantHttpService } from './home-assistant.http.service';
 
 /**
@@ -39,7 +39,10 @@ export class HelperMappingPreviewService {
 		'HelperMappingPreviewService',
 	);
 
-	constructor(private readonly homeAssistantHttpService: HomeAssistantHttpService) {}
+	constructor(
+		private readonly homeAssistantHttpService: HomeAssistantHttpService,
+		private readonly mappingLoaderService: MappingLoaderService,
+	) {}
 
 	/**
 	 * Generate a mapping preview for a Home Assistant helper
@@ -59,12 +62,12 @@ export class HelperMappingPreviewService {
 		const domain = helper.domain as HomeAssistantDomain;
 		const deviceClass = (helper.state?.attributes?.device_class as string) ?? null;
 
-		// Find matching rule
-		const rule = findMatchingRule(domain, deviceClass, entityId);
+		// Find matching mapping from YAML configuration
+		const mapping = this.mappingLoaderService.findMatchingMapping(domain, deviceClass, entityId);
 
 		// Determine channel category
-		const channelCategory = options?.channelCategory ?? rule?.channel_category ?? ChannelCategory.GENERIC;
-		const deviceCategory = options?.deviceCategory ?? rule?.device_category_hint ?? DeviceCategory.GENERIC;
+		const channelCategory = options?.channelCategory ?? mapping?.channel.category ?? ChannelCategory.GENERIC;
+		const deviceCategory = options?.deviceCategory ?? mapping?.deviceCategory ?? DeviceCategory.GENERIC;
 
 		// Generate channels based on domain
 		const suggestedChannels: HelperChannelMappingPreviewModel[] = [];
@@ -72,9 +75,9 @@ export class HelperMappingPreviewService {
 		if (domain === HomeAssistantDomain.CLIMATE) {
 			// Climate entities need multiple channels
 			suggestedChannels.push(...this.generateClimateChannels(helper, entityId));
-		} else if (rule) {
+		} else if (mapping) {
 			// Standard single-channel handling
-			const suggestedProperties = this.generatePropertiesFromRule(helper, rule, channelCategory, entityId);
+			const suggestedProperties = this.generatePropertiesFromMapping(helper, mapping, channelCategory, entityId);
 			suggestedChannels.push({
 				category: channelCategory,
 				name: helper.name,
@@ -120,7 +123,7 @@ export class HelperMappingPreviewService {
 		const suggestedDevice: SuggestedHelperDeviceModel = {
 			category: deviceCategory,
 			name: helper.name,
-			confidence: rule ? 'medium' : 'low',
+			confidence: mapping ? 'medium' : 'low',
 		};
 
 		// Determine if ready to adopt
@@ -272,37 +275,35 @@ export class HelperMappingPreviewService {
 	}
 
 	/**
-	 * Generate properties from mapping rule
+	 * Generate properties from resolved mapping
 	 */
-	private generatePropertiesFromRule(
+	private generatePropertiesFromMapping(
 		helper: HomeAssistantDiscoveredHelperModel,
-		rule: ReturnType<typeof findMatchingRule>,
+		mapping: ResolvedHaMapping,
 		channelCategory: ChannelCategory,
 		_entityId: string,
 	): HelperPropertyMappingPreviewModel[] {
-		if (!rule) return [];
-
 		const suggestedProperties: HelperPropertyMappingPreviewModel[] = [];
 
-		for (const binding of rule.property_bindings) {
-			const propertyMetadata = getPropertyMetadata(channelCategory, binding.property_category);
+		for (const binding of mapping.propertyBindings) {
+			const propertyMetadata = getPropertyMetadata(channelCategory, binding.propertyCategory);
 
 			let currentValue: string | number | boolean | null = null;
-			if (binding.ha_attribute === ENTITY_MAIN_STATE_ATTRIBUTE) {
+			if (binding.haAttribute === ENTITY_MAIN_STATE_ATTRIBUTE) {
 				currentValue = helper.state?.state ?? null;
 			} else if (helper.state?.attributes) {
-				currentValue = (helper.state.attributes[binding.ha_attribute] as string | number | boolean) ?? null;
+				currentValue = (helper.state.attributes[binding.haAttribute] as string | number | boolean) ?? null;
 			}
 
 			suggestedProperties.push({
-				category: binding.property_category,
-				name: this.propertyNameFromCategory(binding.property_category),
-				haAttribute: binding.ha_attribute,
+				category: binding.propertyCategory,
+				name: this.propertyNameFromCategory(binding.propertyCategory),
+				haAttribute: binding.haAttribute,
 				dataType: propertyMetadata?.data_type ?? DataTypeType.STRING,
 				permissions: propertyMetadata?.permissions ?? [PermissionType.READ_ONLY],
 				unit: propertyMetadata?.unit ?? null,
 				format:
-					this.getFormatFromState(helper.state?.attributes, binding.property_category, helper.domain) ??
+					this.getFormatFromState(helper.state?.attributes, binding.propertyCategory, helper.domain) ??
 					propertyMetadata?.format ??
 					null,
 				required: propertyMetadata?.required ?? false,

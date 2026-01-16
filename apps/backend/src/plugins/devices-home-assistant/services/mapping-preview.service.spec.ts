@@ -1,13 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { ChannelCategory, DeviceCategory } from '../../../modules/devices/devices.constants';
+import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import {
 	DeviceValidationService,
 	ValidationIssueSeverity,
 	ValidationIssueType,
 } from '../../../modules/devices/services/device-validation.service';
+import { HomeAssistantDomain } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantNotFoundException } from '../devices-home-assistant.exceptions';
 import { MappingPreviewRequestDto } from '../dto/mapping-preview.dto';
+import { EntityRole, MappingLoaderService } from '../mappings';
 
 import { HomeAssistantHttpService } from './home-assistant.http.service';
 import { HomeAssistantWsService } from './home-assistant.ws.service';
@@ -97,6 +99,26 @@ describe('MappingPreviewService', () => {
 			validateDeviceStructure: jest.fn().mockReturnValue({ isValid: true, issues: [] }),
 		};
 
+		const mockMapping = {
+			name: 'light_default',
+			domain: HomeAssistantDomain.LIGHT,
+			deviceClass: null,
+			priority: 50,
+			channel: { category: ChannelCategory.LIGHT },
+			deviceCategory: DeviceCategory.LIGHTING,
+			propertyBindings: [
+				{ haAttribute: 'fb.main_state', propertyCategory: PropertyCategory.ON },
+				{ haAttribute: 'brightness', propertyCategory: PropertyCategory.BRIGHTNESS },
+			],
+		};
+
+		const mappingLoaderServiceMock: Partial<jest.Mocked<MappingLoaderService>> = {
+			findMatchingMapping: jest.fn().mockReturnValue(mockMapping),
+			getDomainRole: jest.fn().mockReturnValue(EntityRole.PRIMARY),
+			getVirtualProperties: jest.fn().mockReturnValue([]),
+			getMappings: jest.fn().mockReturnValue([mockMapping]),
+		};
+
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				MappingPreviewService,
@@ -105,6 +127,7 @@ describe('MappingPreviewService', () => {
 				{ provide: HomeAssistantWsService, useValue: homeAssistantWsServiceMock },
 				{ provide: VirtualPropertyService, useValue: virtualPropertyServiceMock },
 				{ provide: DeviceValidationService, useValue: deviceValidationServiceMock },
+				{ provide: MappingLoaderService, useValue: mappingLoaderServiceMock },
 			],
 		}).compile();
 

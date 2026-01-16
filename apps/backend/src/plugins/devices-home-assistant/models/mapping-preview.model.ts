@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsEnum, IsObject, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsEnum, IsIn, IsObject, IsOptional, IsString, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -11,7 +11,12 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
-import { VirtualPropertyType } from '../services/virtual-property.types';
+import { VirtualPropertyType } from '../mappings';
+
+/**
+ * Valid values for virtual property types
+ */
+const VIRTUAL_PROPERTY_TYPES = ['static', 'derived', 'command'] as const;
 
 // ============================================================================
 // Property Mapping Preview
@@ -124,13 +129,13 @@ export class PropertyMappingPreviewModel {
 
 	@ApiPropertyOptional({
 		description: 'Type of virtual property (static, derived, or command)',
-		enum: VirtualPropertyType,
+		enum: VIRTUAL_PROPERTY_TYPES,
 		nullable: true,
 		name: 'virtual_type',
 	})
 	@Expose({ name: 'virtual_type' })
 	@IsOptional()
-	@IsEnum(VirtualPropertyType)
+	@IsIn(VIRTUAL_PROPERTY_TYPES)
 	virtualType?: VirtualPropertyType | null;
 }
 

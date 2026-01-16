@@ -27,7 +27,7 @@ import { MapperService } from '../mappers/mapper.service';
 import { HomeAssistantHttpService } from './home-assistant.http.service';
 import { WsEventService } from './home-assistant.ws.service';
 import { VirtualPropertyService } from './virtual-property.service';
-import { VirtualPropertyContext, VirtualPropertyType, getVirtualPropertiesForChannel } from './virtual-property.types';
+import { VirtualPropertyContext } from './virtual-property.types';
 
 @Injectable()
 export class StateChangedEventService implements WsEventService {
@@ -191,7 +191,7 @@ export class StateChangedEventService implements WsEventService {
 				continue;
 			}
 
-			const virtualDefs = getVirtualPropertiesForChannel(channel.category);
+			const virtualDefs = this.virtualPropertyService.getVirtualPropertiesForChannel(channel.category);
 
 			if (virtualDefs.length === 0) {
 				continue;
@@ -226,9 +226,9 @@ export class StateChangedEventService implements WsEventService {
 
 			// Update each virtual property
 			for (const virtualProp of virtualProps) {
-				const virtualDef = virtualDefs.find((vd) => vd.property_category === virtualProp.category);
+				const virtualDef = virtualDefs.find((vd) => vd.propertyCategory === virtualProp.category);
 
-				if (!virtualDef || virtualDef.virtual_type === VirtualPropertyType.COMMAND) {
+				if (!virtualDef || virtualDef.virtualType === 'command') {
 					continue;
 				}
 
