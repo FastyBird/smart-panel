@@ -1,0 +1,99 @@
+# Lighting mode orchestration rules
+# Defines how each lighting mode affects lights by their role
+#
+# Design decisions:
+# - WORK mode: main/task at 100%, ambient/accent OFF (not low - cleaner behavior)
+# - RELAX mode: main/ambient at 50%, task OFF (not low - cleaner behavior)
+# - NIGHT mode: night lights at 20%, fallback to main at 20% if no night lights; others OFF
+# - OTHER role is treated as ambient for relax mode, off for work mode
+# - Brightness delta applies to all currently ON lights (active set approach)
+# - HIDDEN lights are always excluded from intent processing
+
+modes:
+  work:
+    label: "Work"
+    description: "Bright lighting for focus and productivity"
+    icon: "mdi:briefcase"
+    mvp_brightness: 100  # Brightness when no roles are configured
+    roles:
+      main:
+        on: true
+        brightness: 100
+      task:
+        on: true
+        brightness: 100
+      ambient:
+        on: false
+      accent:
+        on: false
+      night:
+        on: false
+      other:
+        on: false
+
+  relax:
+    label: "Relax"
+    description: "Soft ambient lighting for relaxation"
+    icon: "mdi:sofa"
+    mvp_brightness: 50  # Brightness when no roles are configured
+    roles:
+      main:
+        on: true
+        brightness: 50
+      task:
+        on: false
+      ambient:
+        on: true
+        brightness: 50
+      accent:
+        on: true
+        brightness: 30
+      night:
+        on: false
+      other:
+        on: true
+        brightness: 50
+
+  night:
+    label: "Night"
+    description: "Minimal lighting for nighttime"
+    icon: "mdi:weather-night"
+    mvp_brightness: 20  # Brightness when no roles are configured
+    roles:
+      main:
+        on: false
+      task:
+        on: false
+      ambient:
+        on: false
+      accent:
+        on: false
+      night:
+        on: true
+        brightness: 20
+      other:
+        on: false
+    # If no night lights exist, fallback to main at low brightness
+    fallback:
+      roles: ["main"]
+      brightness: 20
+
+# Custom modes can be added here or in user overrides
+# Example user-defined mode (users can add in var/spaces/lighting-modes.yaml):
+#
+#   party:
+#     label: "Party"
+#     description: "Colorful party lighting"
+#     icon: "mdi:party-popper"
+#     roles:
+#       main:
+#         on: true
+#         brightness: 20
+#       ambient:
+#         on: true
+#         brightness: 100
+#         color: "#ff00ff"
+#       accent:
+#         on: true
+#         brightness: 100
+#         color: "#00ffff"

@@ -1,0 +1,119 @@
+# Shared enum definitions for spaces module intents
+# These provide metadata (labels, icons, descriptions) for enum values
+# The actual enum values are defined in TypeScript for type safety
+
+lighting_roles:
+  main:
+    label: "Main"
+    description: "Primary/ceiling lights"
+    icon: "mdi:ceiling-light"
+  task:
+    label: "Task"
+    description: "Task/work lights (e.g., desk lamps)"
+    icon: "mdi:desk-lamp"
+  ambient:
+    label: "Ambient"
+    description: "Ambient/mood lights (e.g., accent strips)"
+    icon: "mdi:led-strip-variant"
+  accent:
+    label: "Accent"
+    description: "Accent/decorative lights (e.g., wall sconces)"
+    icon: "mdi:wall-sconce"
+  night:
+    label: "Night"
+    description: "Night/minimal lights"
+    icon: "mdi:lightbulb-night"
+  other:
+    label: "Other"
+    description: "Unclassified lights"
+    icon: "mdi:lightbulb"
+  hidden:
+    label: "Hidden"
+    description: "Hidden lights (excluded from UI)"
+    icon: "mdi:eye-off"
+
+lighting_modes:
+  work:
+    label: "Work"
+    description: "Bright lighting for focus and productivity"
+    icon: "mdi:briefcase"
+  relax:
+    label: "Relax"
+    description: "Soft ambient lighting for relaxation"
+    icon: "mdi:sofa"
+  night:
+    label: "Night"
+    description: "Minimal lighting for nighttime"
+    icon: "mdi:weather-night"
+
+brightness_deltas:
+  small:
+    label: "Small"
+    description: "Adjust brightness by 10%"
+    step: 10
+  medium:
+    label: "Medium"
+    description: "Adjust brightness by 25%"
+    step: 25
+  large:
+    label: "Large"
+    description: "Adjust brightness by 50%"
+    step: 50
+
+climate_roles:
+  heating_only:
+    label: "Heating Only"
+    description: "Device is used only for heating"
+    icon: "mdi:fire"
+  cooling_only:
+    label: "Cooling Only"
+    description: "Device is used only for cooling"
+    icon: "mdi:snowflake"
+  auto:
+    label: "Auto"
+    description: "Device is used for both heating and cooling"
+    icon: "mdi:thermostat-auto"
+  auxiliary:
+    label: "Auxiliary"
+    description: "Auxiliary climate device (e.g., floor heating, towel warmer)"
+    icon: "mdi:radiator"
+  sensor:
+    label: "Sensor"
+    description: "Sensor is included in climate domain readings"
+    icon: "mdi:thermometer"
+  hidden:
+    label: "Hidden"
+    description: "Device/sensor is excluded from climate domain"
+    icon: "mdi:eye-off"
+
+climate_modes:
+  heat:
+    label: "Heat"
+    description: "Heating mode - single setpoint for all heaters"
+    icon: "mdi:fire"
+  cool:
+    label: "Cool"
+    description: "Cooling mode - single setpoint for all coolers"
+    icon: "mdi:snowflake"
+  auto:
+    label: "Auto"
+    description: "Automatic mode - dual setpoints for heating (lower) and cooling (upper)"
+    icon: "mdi:thermostat-auto"
+  off:
+    label: "Off"
+    description: "Turn off all climate devices"
+    icon: "mdi:power-off"
+
+setpoint_deltas:
+  small:
+    label: "Small"
+    description: "Adjust temperature by 0.5 degrees"
+    step: 0.5
+  medium:
+    label: "Medium"
+    description: "Adjust temperature by 1.0 degree"
+    step: 1.0
+  large:
+    label: "Large"
+    description: "Adjust temperature by 2.0 degrees"
+    step: 2.0

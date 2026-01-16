@@ -9,6 +9,7 @@ import {
 	IntentType,
 } from '../intents.constants';
 
+import { IntentTimeseriesService } from './intent-timeseries.service';
 import { IntentsService } from './intents.service';
 
 describe('IntentsService', () => {
@@ -23,6 +24,12 @@ describe('IntentsService', () => {
 					provide: EventEmitter2,
 					useValue: {
 						emit: jest.fn(),
+					},
+				},
+				{
+					provide: IntentTimeseriesService,
+					useValue: {
+						storeIntentCompletion: jest.fn().mockResolvedValue(undefined),
 					},
 				},
 			],

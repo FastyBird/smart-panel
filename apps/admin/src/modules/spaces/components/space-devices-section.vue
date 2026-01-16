@@ -25,7 +25,7 @@
 			<el-table-column :label="t('spacesModule.table.columns.category')" width="150">
 				<template #default="{ row }">
 					<el-tag size="small" type="info">
-						{{ row.category }}
+						{{ t(`devicesModule.categories.devices.${row.category}`) }}
 					</el-tag>
 				</template>
 			</el-table-column>

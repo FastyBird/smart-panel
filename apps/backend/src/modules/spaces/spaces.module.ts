@@ -8,6 +8,7 @@ import { ChannelEntity, DeviceEntity } from '../devices/entities/devices.entity'
 import { DisplayEntity } from '../displays/entities/displays.entity';
 import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
+import { IntentsModule } from '../intents/intents.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 
@@ -18,15 +19,20 @@ import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
 import { SpaceEntity } from './entities/space.entity';
 import { SpaceActivityListener } from './listeners/space-activity.listener';
 import { SpacesConfigModel } from './models/config.model';
+import { ClimateIntentService } from './services/climate-intent.service';
+import { LightingIntentService } from './services/lighting-intent.service';
 import { SpaceClimateRoleService } from './services/space-climate-role.service';
 import { SpaceContextSnapshotService } from './services/space-context-snapshot.service';
+import { SpaceIntentBaseService } from './services/space-intent-base.service';
 import { SpaceIntentService } from './services/space-intent.service';
 import { SpaceLightingRoleService } from './services/space-lighting-role.service';
+import { SpaceLightingStateService } from './services/space-lighting-state.service';
 import { SpaceSuggestionService } from './services/space-suggestion.service';
 import { SpaceUndoHistoryService } from './services/space-undo-history.service';
 import { SpacesService } from './services/spaces.service';
 import { SPACES_MODULE_API_TAG_DESCRIPTION, SPACES_MODULE_API_TAG_NAME, SPACES_MODULE_NAME } from './spaces.constants';
 import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
+import { IntentSpecLoaderService } from './spec';
 
 @ApiTag({
 	tagName: SPACES_MODULE_NAME,
@@ -44,19 +50,25 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 			DisplayEntity,
 		]),
 		forwardRef(() => DevicesModule),
+		forwardRef(() => IntentsModule),
 		forwardRef(() => ExtensionsModule),
 		forwardRef(() => ConfigModule),
 	],
 	controllers: [SpacesController],
 	providers: [
 		SpacesService,
+		SpaceIntentBaseService,
+		LightingIntentService,
+		ClimateIntentService,
 		SpaceIntentService,
 		SpaceLightingRoleService,
+		SpaceLightingStateService,
 		SpaceClimateRoleService,
 		SpaceSuggestionService,
 		SpaceContextSnapshotService,
 		SpaceUndoHistoryService,
 		SpaceActivityListener,
+		IntentSpecLoaderService,
 	],
 	exports: [
 		SpacesService,
@@ -66,6 +78,7 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 		SpaceSuggestionService,
 		SpaceContextSnapshotService,
 		SpaceUndoHistoryService,
+		IntentSpecLoaderService,
 	],
 })
 export class SpacesModule implements OnModuleInit {

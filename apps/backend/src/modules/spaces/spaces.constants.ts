@@ -1,3 +1,5 @@
+import { ChannelCategory, DeviceCategory } from '../devices/devices.constants';
+
 export const SPACES_MODULE_NAME = 'spaces-module';
 export const SPACES_MODULE_PREFIX = 'spaces';
 export const SPACES_MODULE_API_TAG_NAME = 'Spaces module';
@@ -15,6 +17,9 @@ export enum EventType {
 	CLIMATE_TARGET_CREATED = 'SpacesModule.ClimateTarget.Created',
 	CLIMATE_TARGET_UPDATED = 'SpacesModule.ClimateTarget.Updated',
 	CLIMATE_TARGET_DELETED = 'SpacesModule.ClimateTarget.Deleted',
+	// Aggregated state change events - emitted when intents are executed
+	LIGHTING_STATE_CHANGED = 'SpacesModule.Space.LightingStateChanged',
+	CLIMATE_STATE_CHANGED = 'SpacesModule.Space.ClimateStateChanged',
 }
 
 export enum SpaceType {
@@ -360,10 +365,20 @@ export const SPACE_CATEGORY_TEMPLATES: Record<string, Omit<SpaceCategoryTemplate
 
 // Lighting Intent Types
 export enum LightingIntentType {
+	// Space-level intents
 	OFF = 'off',
 	ON = 'on',
 	SET_MODE = 'set_mode',
 	BRIGHTNESS_DELTA = 'brightness_delta',
+	// Role-specific intents
+	ROLE_ON = 'role_on',
+	ROLE_OFF = 'role_off',
+	ROLE_BRIGHTNESS = 'role_brightness',
+	ROLE_COLOR = 'role_color',
+	ROLE_COLOR_TEMP = 'role_color_temp',
+	ROLE_WHITE = 'role_white',
+	// Combined role intent - set multiple properties at once
+	ROLE_SET = 'role_set',
 }
 
 export enum LightingMode {
@@ -396,7 +411,42 @@ export const BRIGHTNESS_DELTA_STEPS: Record<BrightnessDelta, number> = {
 export enum ClimateIntentType {
 	SETPOINT_DELTA = 'setpoint_delta',
 	SETPOINT_SET = 'setpoint_set',
+	SET_MODE = 'set_mode',
+	// Combined intent - set multiple properties at once
+	CLIMATE_SET = 'climate_set',
 }
+
+// Climate Modes - operating mode for climate domain
+export enum ClimateMode {
+	HEAT = 'heat', // Heating only - single setpoint
+	COOL = 'cool', // Cooling only - single setpoint
+	AUTO = 'auto', // Automatic - dual setpoints (heating lower, cooling upper)
+	OFF = 'off', // All climate devices off
+}
+
+/**
+ * Temperature averaging strategy for climate state calculation.
+ * Determines which devices contribute to the averaged temperature reading.
+ */
+export enum TemperatureAveragingStrategy {
+	/** Include all devices with temperature sensors, including SENSOR role devices */
+	ALL_SOURCES = 'all_sources',
+	/** Only include primary climate devices (thermostat, heater, AC) */
+	PRIMARY_ONLY = 'primary_only',
+}
+
+/** Current temperature averaging strategy (MVP default) */
+export const TEMPERATURE_AVERAGING_STRATEGY: TemperatureAveragingStrategy = TemperatureAveragingStrategy.PRIMARY_ONLY;
+
+/**
+ * Primary climate device categories.
+ * These are the main heating/cooling control devices in the climate domain.
+ */
+export const CLIMATE_PRIMARY_DEVICE_CATEGORIES = [
+	DeviceCategory.THERMOSTAT,
+	DeviceCategory.HEATING_UNIT,
+	DeviceCategory.AIR_CONDITIONER,
+] as const;
 
 // Climate setpoint step sizes (in degrees)
 export enum SetpointDelta {
@@ -432,30 +482,45 @@ export enum LightingRole {
 	HIDDEN = 'hidden', // Hidden lights (excluded from UI, not controlled by intents)
 }
 
-// Climate Roles - classify climate devices within a space for intent-based control
+// Climate Roles - classify climate devices within a space for climate domain control
 export enum ClimateRole {
-	// Control roles (actuators)
-	PRIMARY = 'primary', // Primary temperature regulation (e.g., main thermostat, central HVAC) - only one per space
-	AUXILIARY = 'auxiliary', // Auxiliary heating/cooling (e.g., portable heater, window AC)
-	VENTILATION = 'ventilation', // Ventilation/air circulation (e.g., fans, air exchange)
-	HUMIDITY_CONTROL = 'humidity_control', // Humidity control (e.g., humidifier, dehumidifier)
-	// Read roles (sensors)
-	TEMPERATURE_SENSOR = 'temperature_sensor', // Temperature sensing (e.g., temperature sensor channel)
-	HUMIDITY_SENSOR = 'humidity_sensor', // Humidity sensing (e.g., humidity sensor channel)
-	// Other
-	OTHER = 'other', // Unclassified climate devices
-	HIDDEN = 'hidden', // Hidden devices (excluded from UI, not controlled by intents)
+	// Control roles (actuators) - specify operating mode for climate devices
+	HEATING_ONLY = 'heating_only', // Device should only be used for heating
+	COOLING_ONLY = 'cooling_only', // Device should only be used for cooling
+	AUTO = 'auto', // Device can be used for both heating and cooling (automatic)
+	AUXILIARY = 'auxiliary', // Auxiliary climate device (e.g., floor heating, towel warmer)
+	// Read roles (sensors) - enable/disable sensors in climate domain
+	SENSOR = 'sensor', // Sensor is included in climate domain readings
+	// Exclusion
+	HIDDEN = 'hidden', // Hidden devices/sensors (excluded from climate domain UI and control)
 }
 
 // Helper arrays for role categorization
 export const CLIMATE_CONTROL_ROLES = [
-	ClimateRole.PRIMARY,
+	ClimateRole.HEATING_ONLY,
+	ClimateRole.COOLING_ONLY,
+	ClimateRole.AUTO,
 	ClimateRole.AUXILIARY,
-	ClimateRole.VENTILATION,
-	ClimateRole.HUMIDITY_CONTROL,
 ] as const;
 
-export const CLIMATE_SENSOR_ROLES = [ClimateRole.TEMPERATURE_SENSOR, ClimateRole.HUMIDITY_SENSOR] as const;
+export const CLIMATE_SENSOR_ROLES = [ClimateRole.SENSOR] as const;
+
+// Roles that can apply to both actuators (device-level) and sensors (channel-level)
+export const CLIMATE_UNIVERSAL_ROLES = [ClimateRole.HIDDEN] as const;
+
+/**
+ * Channel categories that are relevant for the climate domain sensors.
+ * These sensor types will be displayed in the climate domain view page.
+ */
+export const CLIMATE_SENSOR_CHANNEL_CATEGORIES = [
+	ChannelCategory.TEMPERATURE, // Temperature sensing
+	ChannelCategory.HUMIDITY, // Humidity sensing
+	ChannelCategory.AIR_QUALITY, // Air Quality Index (AQI)
+	ChannelCategory.AIR_PARTICULATE, // PM2.5, PM10 particulate matter
+	ChannelCategory.CARBON_DIOXIDE, // CO2 levels
+	ChannelCategory.VOLATILE_ORGANIC_COMPOUNDS, // VOC levels
+	ChannelCategory.PRESSURE, // Atmospheric pressure
+] as const;
 
 /**
  * Role-based lighting orchestration rules
@@ -635,7 +700,7 @@ export interface IntentEnumValueMeta {
 /**
  * Parameter type for intent catalog
  */
-export type IntentParamType = 'enum' | 'boolean' | 'number';
+export type IntentParamType = 'enum' | 'boolean' | 'number' | 'string';
 
 /**
  * Metadata for an intent parameter
@@ -802,6 +867,78 @@ export const LIGHTING_ROLE_META: Record<LightingRole, IntentEnumValueMeta> = {
 };
 
 /**
+ * Metadata for climate role values
+ */
+export const CLIMATE_ROLE_META: Record<ClimateRole, IntentEnumValueMeta> = {
+	[ClimateRole.HEATING_ONLY]: {
+		value: ClimateRole.HEATING_ONLY,
+		label: 'Heating Only',
+		description: 'Device is used only for heating',
+		icon: 'mdi:fire',
+	},
+	[ClimateRole.COOLING_ONLY]: {
+		value: ClimateRole.COOLING_ONLY,
+		label: 'Cooling Only',
+		description: 'Device is used only for cooling',
+		icon: 'mdi:snowflake',
+	},
+	[ClimateRole.AUTO]: {
+		value: ClimateRole.AUTO,
+		label: 'Auto',
+		description: 'Device is used for both heating and cooling',
+		icon: 'mdi:thermostat-auto',
+	},
+	[ClimateRole.AUXILIARY]: {
+		value: ClimateRole.AUXILIARY,
+		label: 'Auxiliary',
+		description: 'Auxiliary climate device (e.g., floor heating, towel warmer)',
+		icon: 'mdi:radiator',
+	},
+	[ClimateRole.SENSOR]: {
+		value: ClimateRole.SENSOR,
+		label: 'Sensor',
+		description: 'Sensor is included in climate domain readings',
+		icon: 'mdi:thermometer',
+	},
+	[ClimateRole.HIDDEN]: {
+		value: ClimateRole.HIDDEN,
+		label: 'Hidden',
+		description: 'Device/sensor is excluded from climate domain',
+		icon: 'mdi:eye-off',
+	},
+};
+
+/**
+ * Metadata for climate mode values
+ */
+export const CLIMATE_MODE_META: Record<ClimateMode, IntentEnumValueMeta> = {
+	[ClimateMode.HEAT]: {
+		value: ClimateMode.HEAT,
+		label: 'Heat',
+		description: 'Heating mode - single setpoint for all heaters',
+		icon: 'mdi:fire',
+	},
+	[ClimateMode.COOL]: {
+		value: ClimateMode.COOL,
+		label: 'Cool',
+		description: 'Cooling mode - single setpoint for all coolers',
+		icon: 'mdi:snowflake',
+	},
+	[ClimateMode.AUTO]: {
+		value: ClimateMode.AUTO,
+		label: 'Auto',
+		description: 'Automatic mode - dual setpoints for heating (lower) and cooling (upper)',
+		icon: 'mdi:thermostat-auto',
+	},
+	[ClimateMode.OFF]: {
+		value: ClimateMode.OFF,
+		label: 'Off',
+		description: 'Turn off all climate devices',
+		icon: 'mdi:power-off',
+	},
+};
+
+/**
  * Complete lighting intent catalog
  */
 export const LIGHTING_INTENT_CATALOG: IntentTypeMeta[] = [
@@ -855,6 +992,179 @@ export const LIGHTING_INTENT_CATALOG: IntentTypeMeta[] = [
 			},
 		],
 	},
+	// Role-specific intents
+	{
+		type: LightingIntentType.ROLE_ON,
+		label: 'Turn Role On',
+		description: 'Turn on all lights with a specific role',
+		icon: 'mdi:lightbulb-on',
+		params: [
+			{
+				name: 'role',
+				type: 'enum',
+				required: true,
+				description: 'The lighting role to control',
+				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== (LightingRole.HIDDEN as string)),
+			},
+		],
+	},
+	{
+		type: LightingIntentType.ROLE_OFF,
+		label: 'Turn Role Off',
+		description: 'Turn off all lights with a specific role',
+		icon: 'mdi:lightbulb-off',
+		params: [
+			{
+				name: 'role',
+				type: 'enum',
+				required: true,
+				description: 'The lighting role to control',
+				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== (LightingRole.HIDDEN as string)),
+			},
+		],
+	},
+	{
+		type: LightingIntentType.ROLE_BRIGHTNESS,
+		label: 'Set Role Brightness',
+		description: 'Set brightness for all lights with a specific role',
+		icon: 'mdi:brightness-6',
+		params: [
+			{
+				name: 'role',
+				type: 'enum',
+				required: true,
+				description: 'The lighting role to control',
+				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== (LightingRole.HIDDEN as string)),
+			},
+			{
+				name: 'brightness',
+				type: 'number',
+				required: true,
+				description: 'Brightness level (0-100)',
+				minValue: 0,
+				maxValue: 100,
+			},
+		],
+	},
+	{
+		type: LightingIntentType.ROLE_COLOR,
+		label: 'Set Role Color',
+		description: 'Set color for all lights with a specific role that support color',
+		icon: 'mdi:palette',
+		params: [
+			{
+				name: 'role',
+				type: 'enum',
+				required: true,
+				description: 'The lighting role to control',
+				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== (LightingRole.HIDDEN as string)),
+			},
+			{
+				name: 'color',
+				type: 'string',
+				required: true,
+				description: 'Color as hex string (e.g., #ff6b35)',
+			},
+		],
+	},
+	{
+		type: LightingIntentType.ROLE_COLOR_TEMP,
+		label: 'Set Role Color Temperature',
+		description: 'Set color temperature for all lights with a specific role that support it',
+		icon: 'mdi:thermometer-lines',
+		params: [
+			{
+				name: 'role',
+				type: 'enum',
+				required: true,
+				description: 'The lighting role to control',
+				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== (LightingRole.HIDDEN as string)),
+			},
+			{
+				name: 'color_temperature',
+				type: 'number',
+				required: true,
+				description: 'Color temperature in Kelvin (e.g., 2700-6500)',
+				minValue: 1000,
+				maxValue: 10000,
+			},
+		],
+	},
+	{
+		type: LightingIntentType.ROLE_WHITE,
+		label: 'Set Role White Level',
+		description: 'Set white channel level for all lights with a specific role that support RGBW',
+		icon: 'mdi:lightbulb',
+		params: [
+			{
+				name: 'role',
+				type: 'enum',
+				required: true,
+				description: 'The lighting role to control',
+				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== (LightingRole.HIDDEN as string)),
+			},
+			{
+				name: 'white',
+				type: 'number',
+				required: true,
+				description: 'White level (0-100)',
+				minValue: 0,
+				maxValue: 100,
+			},
+		],
+	},
+	{
+		type: LightingIntentType.ROLE_SET,
+		label: 'Set Role Properties',
+		description:
+			'Set multiple properties at once for all lights with a specific role (on/off, brightness, color, temperature, white)',
+		icon: 'mdi:tune-variant',
+		params: [
+			{
+				name: 'role',
+				type: 'enum',
+				required: true,
+				description: 'The lighting role to control',
+				enumValues: Object.values(LIGHTING_ROLE_META).filter((r) => r.value !== (LightingRole.HIDDEN as string)),
+			},
+			{
+				name: 'on',
+				type: 'boolean',
+				required: false,
+				description: 'Turn lights on (true) or off (false)',
+			},
+			{
+				name: 'brightness',
+				type: 'number',
+				required: false,
+				description: 'Brightness level (0-100)',
+				minValue: 0,
+				maxValue: 100,
+			},
+			{
+				name: 'color',
+				type: 'string',
+				required: false,
+				description: 'Color as hex string (e.g., #ff6b35)',
+			},
+			{
+				name: 'color_temperature',
+				type: 'number',
+				required: false,
+				description: 'Color temperature in Kelvin (e.g., 2700-6500)',
+				minValue: 1000,
+				maxValue: 10000,
+			},
+			{
+				name: 'white',
+				type: 'number',
+				required: false,
+				description: 'White level (0-100)',
+				minValue: 0,
+				maxValue: 100,
+			},
+		],
+	},
 ];
 
 /**
@@ -864,7 +1174,7 @@ export const CLIMATE_INTENT_CATALOG: IntentTypeMeta[] = [
 	{
 		type: ClimateIntentType.SETPOINT_DELTA,
 		label: 'Adjust Temperature',
-		description: 'Increase or decrease the target temperature',
+		description: 'Increase or decrease the target temperature based on current mode',
 		icon: 'mdi:thermometer',
 		params: [
 			{
@@ -885,14 +1195,86 @@ export const CLIMATE_INTENT_CATALOG: IntentTypeMeta[] = [
 	{
 		type: ClimateIntentType.SETPOINT_SET,
 		label: 'Set Temperature',
-		description: 'Set the target temperature to a specific value',
+		description:
+			'Set the target temperature. In HEAT/COOL mode sets single setpoint, in AUTO mode sets both heating and cooling setpoints.',
 		icon: 'mdi:thermometer-check',
 		params: [
 			{
 				name: 'value',
 				type: 'number',
 				required: true,
-				description: 'The target temperature in degrees Celsius',
+				description: 'The target temperature in degrees Celsius (single setpoint for HEAT/COOL modes)',
+				minValue: ABSOLUTE_MIN_SETPOINT,
+				maxValue: ABSOLUTE_MAX_SETPOINT,
+			},
+			{
+				name: 'heatingSetpoint',
+				type: 'number',
+				required: false,
+				description: 'The heating setpoint (lower bound) for AUTO mode',
+				minValue: ABSOLUTE_MIN_SETPOINT,
+				maxValue: ABSOLUTE_MAX_SETPOINT,
+			},
+			{
+				name: 'coolingSetpoint',
+				type: 'number',
+				required: false,
+				description: 'The cooling setpoint (upper bound) for AUTO mode',
+				minValue: ABSOLUTE_MIN_SETPOINT,
+				maxValue: ABSOLUTE_MAX_SETPOINT,
+			},
+		],
+	},
+	{
+		type: ClimateIntentType.SET_MODE,
+		label: 'Set Climate Mode',
+		description: 'Change the climate operating mode (heat/cool/auto/off)',
+		icon: 'mdi:thermostat',
+		params: [
+			{
+				name: 'mode',
+				type: 'enum',
+				required: true,
+				description: 'The climate mode to set',
+				enumValues: Object.values(CLIMATE_MODE_META),
+			},
+		],
+	},
+	{
+		type: ClimateIntentType.CLIMATE_SET,
+		label: 'Set Climate Properties',
+		description:
+			'Set multiple climate properties at once (mode, setpoints). Allows atomic updates of mode and temperature in a single call.',
+		icon: 'mdi:tune-variant',
+		params: [
+			{
+				name: 'mode',
+				type: 'enum',
+				required: false,
+				description: 'The climate mode to set (optional)',
+				enumValues: Object.values(CLIMATE_MODE_META),
+			},
+			{
+				name: 'value',
+				type: 'number',
+				required: false,
+				description: 'The target temperature in degrees Celsius (single setpoint)',
+				minValue: ABSOLUTE_MIN_SETPOINT,
+				maxValue: ABSOLUTE_MAX_SETPOINT,
+			},
+			{
+				name: 'heatingSetpoint',
+				type: 'number',
+				required: false,
+				description: 'The heating setpoint (lower bound) for AUTO mode',
+				minValue: ABSOLUTE_MIN_SETPOINT,
+				maxValue: ABSOLUTE_MAX_SETPOINT,
+			},
+			{
+				name: 'coolingSetpoint',
+				type: 'number',
+				required: false,
+				description: 'The cooling setpoint (upper bound) for AUTO mode',
 				minValue: ABSOLUTE_MIN_SETPOINT,
 				maxValue: ABSOLUTE_MAX_SETPOINT,
 			},

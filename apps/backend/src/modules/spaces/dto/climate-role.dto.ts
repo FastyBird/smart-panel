@@ -39,14 +39,15 @@ export class SetClimateRoleDto {
 	})
 	channelId?: string | null;
 
-	@ApiProperty({
-		description: 'The climate role for this device/channel',
+	@ApiPropertyOptional({
+		description: 'The climate role for this device/channel. Omit or set to null to remove the role assignment.',
 		enum: ClimateRole,
-		example: ClimateRole.PRIMARY,
+		example: ClimateRole.AUTO,
 	})
 	@Expose()
+	@IsOptional()
 	@IsEnum(ClimateRole, { message: '[{"field":"role","reason":"Role must be a valid climate role."}]' })
-	role: ClimateRole;
+	role?: ClimateRole | null;
 
 	@ApiPropertyOptional({
 		description: 'Priority for selecting defaults within the same role (lower = higher priority)',

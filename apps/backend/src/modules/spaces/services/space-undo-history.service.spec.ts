@@ -15,6 +15,7 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../device
 import { IDevicePlatform } from '../../devices/platforms/device.platform';
 import { DevicesService } from '../../devices/services/devices.service';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
+import { ClimateMode } from '../spaces.constants';
 
 import { LightStateSnapshot, SpaceContextSnapshot } from './space-context-snapshot.service';
 import { SpaceUndoHistoryService } from './space-undo-history.service';
@@ -39,12 +40,22 @@ describe('SpaceUndoHistoryService', () => {
 		},
 		climate: {
 			hasClimate: false,
+			mode: ClimateMode.OFF,
 			currentTemperature: null,
+			currentHumidity: null,
 			targetTemperature: null,
+			heatingSetpoint: null,
+			coolingSetpoint: null,
 			minSetpoint: 5,
 			maxSetpoint: 35,
 			canSetSetpoint: false,
+			supportsHeating: false,
+			supportsCooling: false,
+			isMixed: false,
+			devicesCount: 0,
 			primaryThermostatId: null,
+			lastAppliedMode: null,
+			lastAppliedAt: null,
 		},
 	});
 
@@ -130,12 +141,22 @@ describe('SpaceUndoHistoryService', () => {
 		},
 		climate: {
 			hasClimate: thermostatId !== null,
+			mode: thermostatId !== null ? ClimateMode.HEAT : ClimateMode.OFF,
 			currentTemperature: 22,
+			currentHumidity: null,
 			targetTemperature,
+			heatingSetpoint: targetTemperature,
+			coolingSetpoint: null,
 			minSetpoint: 5,
 			maxSetpoint: 35,
 			canSetSetpoint: thermostatId !== null,
+			supportsHeating: thermostatId !== null,
+			supportsCooling: false,
+			isMixed: false,
+			devicesCount: thermostatId !== null ? 1 : 0,
 			primaryThermostatId: thermostatId,
+			lastAppliedMode: null,
+			lastAppliedAt: null,
 		},
 	});
 

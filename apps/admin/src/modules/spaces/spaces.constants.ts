@@ -9,6 +9,12 @@ export enum EventType {
 	SPACE_CREATED = 'SpacesModule.Space.Created',
 	SPACE_UPDATED = 'SpacesModule.Space.Updated',
 	SPACE_DELETED = 'SpacesModule.Space.Deleted',
+	CLIMATE_TARGET_CREATED = 'SpacesModule.ClimateTarget.Created',
+	CLIMATE_TARGET_UPDATED = 'SpacesModule.ClimateTarget.Updated',
+	CLIMATE_TARGET_DELETED = 'SpacesModule.ClimateTarget.Deleted',
+	LIGHT_TARGET_CREATED = 'SpacesModule.LightTarget.Created',
+	LIGHT_TARGET_UPDATED = 'SpacesModule.LightTarget.Updated',
+	LIGHT_TARGET_DELETED = 'SpacesModule.LightTarget.Deleted',
 }
 
 export const RouteNames = {
@@ -423,20 +429,33 @@ export function getTemplatesForType(
 export { SpacesModuleLightingRole as LightingRole, SpacesModuleClimateRole as ClimateRole } from '../../openapi.constants';
 
 // Import for local use in helper arrays
-import { SpacesModuleClimateRole } from '../../openapi.constants';
+import { SpacesModuleClimateRole, DevicesModuleDeviceCategory } from '../../openapi.constants';
 
 // Helper arrays for role categorization
 export const CLIMATE_CONTROL_ROLES = [
-	SpacesModuleClimateRole.primary,
+	SpacesModuleClimateRole.heating_only,
+	SpacesModuleClimateRole.cooling_only,
+	SpacesModuleClimateRole.auto,
 	SpacesModuleClimateRole.auxiliary,
-	SpacesModuleClimateRole.ventilation,
-	SpacesModuleClimateRole.humidity_control,
 ] as const;
 
-export const CLIMATE_SENSOR_ROLES = [
-	SpacesModuleClimateRole.temperature_sensor,
-	SpacesModuleClimateRole.humidity_sensor,
+export const CLIMATE_SENSOR_ROLES = [SpacesModuleClimateRole.sensor] as const;
+
+// Climate device category classifications
+export const CLIMATE_PRIMARY_CATEGORIES = [
+	DevicesModuleDeviceCategory.thermostat,
+	DevicesModuleDeviceCategory.heating_unit,
+	DevicesModuleDeviceCategory.air_conditioner,
 ] as const;
+
+export const CLIMATE_AUXILIARY_CATEGORIES = [
+	DevicesModuleDeviceCategory.air_dehumidifier,
+	DevicesModuleDeviceCategory.air_humidifier,
+	DevicesModuleDeviceCategory.air_purifier,
+	DevicesModuleDeviceCategory.fan,
+] as const;
+
+export { DevicesModuleDeviceCategory as DeviceCategory } from '../../openapi.constants';
 
 export enum FormResult {
 	NONE = 'none',

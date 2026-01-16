@@ -75,13 +75,13 @@ export class SpaceClimateRoleEntity extends BaseEntity {
 	@ApiProperty({
 		description: 'The climate role for this device/channel in the space',
 		enum: ClimateRole,
-		example: ClimateRole.PRIMARY,
+		example: ClimateRole.AUTO,
 	})
 	@Expose()
 	@IsEnum(ClimateRole)
 	@Column({
 		type: 'varchar',
-		default: ClimateRole.OTHER,
+		default: ClimateRole.AUTO,
 	})
 	role: ClimateRole;
 

@@ -17,10 +17,12 @@ import { SpaceClimateRoleService } from '../services/space-climate-role.service'
 import { SpaceContextSnapshotService } from '../services/space-context-snapshot.service';
 import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
+import { SpaceLightingStateService } from '../services/space-lighting-state.service';
 import { SpaceSuggestionService } from '../services/space-suggestion.service';
 import { SpaceUndoHistoryService } from '../services/space-undo-history.service';
 import { SpacesService } from '../services/spaces.service';
 import {
+	ClimateMode,
 	IntentCategory,
 	LightingIntentType,
 	LightingMode,
@@ -30,6 +32,7 @@ import {
 	SuggestionType,
 } from '../spaces.constants';
 import { SpacesNotFoundException, SpacesValidationException } from '../spaces.exceptions';
+import { IntentSpecLoaderService } from '../spec';
 
 import { SpacesController } from './spaces.controller';
 
@@ -100,17 +103,30 @@ describe('SpacesController', () => {
 						}),
 						getClimateState: jest.fn().mockResolvedValue({
 							hasClimate: false,
+							mode: ClimateMode.OFF,
 							currentTemperature: null,
+							currentHumidity: null,
 							targetTemperature: null,
-							minSetpoint: null,
-							maxSetpoint: null,
+							heatingSetpoint: null,
+							coolingSetpoint: null,
+							minSetpoint: 15,
+							maxSetpoint: 30,
 							canSetSetpoint: false,
+							supportsHeating: false,
+							supportsCooling: false,
+							isMixed: false,
+							devicesCount: 0,
+							lastAppliedMode: null,
+							lastAppliedAt: null,
 						}),
 						executeClimateIntent: jest.fn().mockResolvedValue({
 							success: true,
 							affectedDevices: 1,
 							failedDevices: 0,
+							mode: ClimateMode.HEAT,
 							newSetpoint: 22.0,
+							heatingSetpoint: null,
+							coolingSetpoint: null,
 						}),
 					},
 				},
@@ -131,6 +147,29 @@ describe('SpacesController', () => {
 						getLightTargetsInSpace: jest.fn().mockResolvedValue([]),
 						inferDefaultLightingRoles: jest.fn().mockResolvedValue([]),
 						getRoleMap: jest.fn().mockResolvedValue(new Map()),
+					},
+				},
+				{
+					provide: SpaceLightingStateService,
+					useValue: {
+						getLightingState: jest.fn().mockResolvedValue({
+							detectedMode: null,
+							modeConfidence: 'none',
+							modeMatchPercentage: null,
+							lastAppliedMode: null,
+							lastAppliedAt: null,
+							totalLights: 0,
+							lightsOn: 0,
+							averageBrightness: null,
+							roles: {},
+							other: {
+								isOn: false,
+								brightness: null,
+								isMixed: false,
+								devicesCount: 0,
+								devicesOn: 0,
+							},
+						}),
 					},
 				},
 				{
@@ -185,6 +224,168 @@ describe('SpacesController', () => {
 							message: '',
 						}),
 						getEntryTtlMs: jest.fn().mockReturnValue(5 * 60 * 1000),
+					},
+				},
+				{
+					provide: IntentSpecLoaderService,
+					useValue: {
+						getIntentCatalog: jest.fn().mockReturnValue([
+							{
+								category: 'lighting',
+								label: 'Lighting',
+								description: 'Control lights',
+								icon: 'mdi:lightbulb-group',
+								intents: [
+									{
+										type: 'off',
+										label: 'Turn Off',
+										description: 'Turn off all lights',
+										icon: 'mdi:lightbulb-off',
+										params: [],
+									},
+									{
+										type: 'on',
+										label: 'Turn On',
+										description: 'Turn on all lights',
+										icon: 'mdi:lightbulb-on',
+										params: [],
+									},
+									{
+										type: 'set_mode',
+										label: 'Set Mode',
+										description: 'Set lighting mode',
+										icon: 'mdi:lightbulb-group',
+										params: [
+											{
+												name: 'mode',
+												type: 'enum',
+												required: true,
+												description: 'The lighting mode',
+												enumValues: [
+													{ value: 'work', label: 'Work' },
+													{ value: 'relax', label: 'Relax' },
+													{ value: 'night', label: 'Night' },
+												],
+											},
+										],
+									},
+									{
+										type: 'brightness_delta',
+										label: 'Adjust Brightness',
+										description: 'Adjust brightness',
+										icon: 'mdi:brightness-6',
+										params: [
+											{
+												name: 'delta',
+												type: 'enum',
+												required: true,
+												description: 'The step size',
+												enumValues: [
+													{ value: 'small', label: 'Small' },
+													{ value: 'medium', label: 'Medium' },
+													{ value: 'large', label: 'Large' },
+												],
+											},
+											{ name: 'increase', type: 'boolean', required: true, description: 'Increase direction' },
+										],
+									},
+									{
+										type: 'role_on',
+										label: 'Turn Role On',
+										description: 'Turn on lights with role',
+										icon: 'mdi:lightbulb-on',
+										params: [
+											{
+												name: 'role',
+												type: 'enum',
+												required: true,
+												description: 'The lighting role',
+												enumValues: [
+													{ value: 'main', label: 'Main', description: 'Primary lights', icon: 'mdi:ceiling-light' },
+													{ value: 'task', label: 'Task', description: 'Task lights', icon: 'mdi:desk-lamp' },
+													{
+														value: 'ambient',
+														label: 'Ambient',
+														description: 'Ambient lights',
+														icon: 'mdi:led-strip-variant',
+													},
+													{ value: 'accent', label: 'Accent', description: 'Accent lights', icon: 'mdi:wall-sconce' },
+													{ value: 'night', label: 'Night', description: 'Night lights', icon: 'mdi:lightbulb-night' },
+													{ value: 'other', label: 'Other', description: 'Unclassified lights', icon: 'mdi:lightbulb' },
+												],
+											},
+										],
+									},
+								],
+							},
+							{
+								category: 'climate',
+								label: 'Climate',
+								description: 'Control climate',
+								icon: 'mdi:thermostat',
+								intents: [
+									{
+										type: 'setpoint_delta',
+										label: 'Adjust Temperature',
+										description: 'Adjust temperature',
+										icon: 'mdi:thermometer',
+										params: [
+											{
+												name: 'delta',
+												type: 'enum',
+												required: true,
+												description: 'The step size',
+												enumValues: [
+													{ value: 'small', label: 'Small' },
+													{ value: 'medium', label: 'Medium' },
+													{ value: 'large', label: 'Large' },
+												],
+											},
+											{ name: 'increase', type: 'boolean', required: true, description: 'Increase direction' },
+										],
+									},
+									{
+										type: 'setpoint_set',
+										label: 'Set Temperature',
+										description: 'Set temperature',
+										icon: 'mdi:thermometer-check',
+										params: [
+											{
+												name: 'value',
+												type: 'number',
+												required: true,
+												description: 'Target temperature',
+												minValue: -10,
+												maxValue: 50,
+											},
+										],
+									},
+									{
+										type: 'set_mode',
+										label: 'Set Climate Mode',
+										description: 'Set climate mode',
+										icon: 'mdi:thermostat',
+										params: [
+											{
+												name: 'mode',
+												type: 'enum',
+												required: true,
+												description: 'The climate mode',
+												enumValues: [
+													{ value: 'heat', label: 'Heat' },
+													{ value: 'cool', label: 'Cool' },
+													{ value: 'auto', label: 'Auto' },
+													{ value: 'off', label: 'Off' },
+												],
+											},
+										],
+									},
+								],
+							},
+						]),
+						getLightingModeOrchestration: jest.fn().mockReturnValue(null),
+						getBrightnessDeltaStep: jest.fn().mockReturnValue(25),
+						getSetpointDeltaStep: jest.fn().mockReturnValue(1.0),
 					},
 				},
 			],
@@ -585,11 +786,14 @@ describe('SpacesController', () => {
 				throw new Error('Setpoint set intent not found');
 			}
 
-			expect(setpointSetIntent.params.length).toBe(1);
-			expect(setpointSetIntent.params[0].name).toBe('value');
-			expect(setpointSetIntent.params[0].type).toBe('number');
-			expect(setpointSetIntent.params[0].minValue).toBeDefined();
-			expect(setpointSetIntent.params[0].maxValue).toBeDefined();
+			expect(setpointSetIntent.params.length).toBeGreaterThanOrEqual(1);
+
+			// Check 'value' param exists with min/max
+			const valueParam = setpointSetIntent.params.find((p) => p.name === 'value');
+			expect(valueParam).toBeDefined();
+			expect(valueParam?.type).toBe('number');
+			expect(valueParam?.minValue).toBeDefined();
+			expect(valueParam?.maxValue).toBeDefined();
 		});
 
 		it('should include all quick action types', () => {
@@ -649,11 +853,21 @@ describe('SpacesController', () => {
 		it('should return climate state for a space', async () => {
 			const climateState = {
 				hasClimate: true,
+				mode: ClimateMode.HEAT,
 				currentTemperature: 22.5,
+				currentHumidity: 45,
 				targetTemperature: 21.0,
+				heatingSetpoint: 21.0,
+				coolingSetpoint: null,
 				minSetpoint: 16,
 				maxSetpoint: 30,
 				canSetSetpoint: true,
+				supportsHeating: true,
+				supportsCooling: false,
+				isMixed: false,
+				devicesCount: 1,
+				lastAppliedMode: null,
+				lastAppliedAt: null,
 			};
 			jest.spyOn(spaceIntentService, 'getClimateState').mockResolvedValue(climateState);
 
@@ -668,11 +882,21 @@ describe('SpacesController', () => {
 		it('should return hasClimate false when no climate devices', async () => {
 			jest.spyOn(spaceIntentService, 'getClimateState').mockResolvedValue({
 				hasClimate: false,
+				mode: ClimateMode.OFF,
 				currentTemperature: null,
+				currentHumidity: null,
 				targetTemperature: null,
-				minSetpoint: null,
-				maxSetpoint: null,
+				heatingSetpoint: null,
+				coolingSetpoint: null,
+				minSetpoint: 15,
+				maxSetpoint: 30,
 				canSetSetpoint: false,
+				supportsHeating: false,
+				supportsCooling: false,
+				isMixed: false,
+				devicesCount: 0,
+				lastAppliedMode: null,
+				lastAppliedAt: null,
 			});
 
 			const result = await controller.getClimateState(mockSpace.id);
@@ -687,7 +911,10 @@ describe('SpacesController', () => {
 				success: true,
 				affectedDevices: 1,
 				failedDevices: 0,
+				mode: ClimateMode.HEAT,
 				newSetpoint: 22.0,
+				heatingSetpoint: 22.0,
+				coolingSetpoint: null,
 			});
 
 			const intentDto = {
@@ -985,11 +1212,21 @@ describe('SpacesController', () => {
 				},
 				climate: {
 					hasClimate: false,
+					mode: ClimateMode.OFF,
 					currentTemperature: null,
+					currentHumidity: null,
 					targetTemperature: null,
-					minSetpoint: null,
-					maxSetpoint: null,
+					heatingSetpoint: null,
+					coolingSetpoint: null,
+					minSetpoint: 15,
+					maxSetpoint: 30,
 					canSetSetpoint: false,
+					supportsHeating: false,
+					supportsCooling: false,
+					isMixed: false,
+					devicesCount: 0,
+					lastAppliedMode: null,
+					lastAppliedAt: null,
 					primaryThermostatId: null,
 				},
 			};

@@ -3933,8 +3933,7 @@
           "off",
           "heat",
           "cool",
-          "auto",
-          "manual"
+          "auto"
         ],
         "invalid": null,
         "step": null
@@ -3951,24 +3950,6 @@
         "data_type": "bool",
         "unit": null,
         "format": null,
-        "invalid": null,
-        "step": null
-      },
-      "units": {
-        "category": "units",
-        "required": false,
-        "description": {
-          "en": ""
-        },
-        "permissions": [
-          "ro"
-        ],
-        "data_type": "enum",
-        "unit": null,
-        "format": [
-          "celsius",
-          "fahrenheit"
-        ],
         "invalid": null,
         "step": null
       }

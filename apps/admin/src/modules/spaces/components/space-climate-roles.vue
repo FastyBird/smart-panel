@@ -13,11 +13,11 @@
 			{{ t('spacesModule.fields.spaces.climateRoles.description') }}
 		</el-alert>
 
-		<div v-if="loading" class="flex justify-center py-4">
+		<div v-if="loading && climateTargets.length === 0" class="flex justify-center py-4">
 			<icon icon="mdi:loading" class="animate-spin text-2xl" />
 		</div>
 
-		<template v-else-if="climateTargets.length > 0">
+		<template v-else-if="climateTargets.length > 0 || loading">
 			<el-table :data="climateTargets" border max-height="400px">
 				<el-table-column prop="deviceName" :label="t('spacesModule.onboarding.deviceName')" min-width="180">
 					<template #default="{ row }">
@@ -64,7 +64,7 @@
 				<el-button size="small" :loading="applyingDefaults" @click="onApplyDefaults">
 					{{ t('spacesModule.fields.spaces.climateRoles.applyDefaults') }}
 				</el-button>
-				<div class="text-xs text-gray-400">
+				<div class="text-xs text-gray-400 ml-4">
 					{{ t('spacesModule.fields.spaces.climateRoles.applyDefaultsHint') }}
 				</div>
 			</div>
@@ -98,6 +98,7 @@ import { useI18n } from 'vue-i18n';
 
 import { IconWithChild, useBackend, useFlashMessage } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
+import { useSpacesRefreshSignals } from '../composables';
 import { ClimateRole, SPACES_MODULE_PREFIX } from '../spaces.constants';
 import type { ISpace } from '../store';
 
@@ -126,6 +127,7 @@ const props = withDefaults(defineProps<IProps>(), {
 const { t } = useI18n();
 const backend = useBackend();
 const flashMessage = useFlashMessage();
+const { climateSignal } = useSpacesRefreshSignals();
 
 const loading = ref(false);
 const applyingDefaults = ref(false);
@@ -133,18 +135,16 @@ const climateTargets = ref<IClimateTarget[]>([]);
 
 // Control roles for actuator devices
 const controlRoleOptions = computed(() => [
-	{ value: ClimateRole.primary, label: t(`spacesModule.climateRoles.${ClimateRole.primary}`) },
+	{ value: ClimateRole.heating_only, label: t(`spacesModule.climateRoles.${ClimateRole.heating_only}`) },
+	{ value: ClimateRole.cooling_only, label: t(`spacesModule.climateRoles.${ClimateRole.cooling_only}`) },
+	{ value: ClimateRole.auto, label: t(`spacesModule.climateRoles.${ClimateRole.auto}`) },
 	{ value: ClimateRole.auxiliary, label: t(`spacesModule.climateRoles.${ClimateRole.auxiliary}`) },
-	{ value: ClimateRole.ventilation, label: t(`spacesModule.climateRoles.${ClimateRole.ventilation}`) },
-	{ value: ClimateRole.humidity_control, label: t(`spacesModule.climateRoles.${ClimateRole.humidity_control}`) },
-	{ value: ClimateRole.other, label: t(`spacesModule.climateRoles.${ClimateRole.other}`) },
 	{ value: ClimateRole.hidden, label: t(`spacesModule.climateRoles.${ClimateRole.hidden}`) },
 ]);
 
 // Sensor roles for sensor device channels
 const sensorRoleOptions = computed(() => [
-	{ value: ClimateRole.temperature_sensor, label: t(`spacesModule.climateRoles.${ClimateRole.temperature_sensor}`) },
-	{ value: ClimateRole.humidity_sensor, label: t(`spacesModule.climateRoles.${ClimateRole.humidity_sensor}`) },
+	{ value: ClimateRole.sensor, label: t(`spacesModule.climateRoles.${ClimateRole.sensor}`) },
 	{ value: ClimateRole.hidden, label: t(`spacesModule.climateRoles.${ClimateRole.hidden}`) },
 ]);
 
@@ -180,7 +180,6 @@ const getDeviceIcon = (category: string): string => {
 
 const loadClimateTargets = async (): Promise<void> => {
 	loading.value = true;
-	climateTargets.value = [];
 
 	try {
 		const { data: responseData, error } = await backend.client.GET(
@@ -295,6 +294,16 @@ watch(
 	() => props.space?.id,
 	(newId) => {
 		if (newId) {
+			loadClimateTargets();
+		}
+	}
+);
+
+// Watch for climate refresh signal from websocket events
+watch(
+	() => climateSignal?.value,
+	() => {
+		if (props.space?.id) {
 			loadClimateTargets();
 		}
 	}

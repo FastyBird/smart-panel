@@ -1,5 +1,5 @@
 <template>
-	<template v-if="roleSummaries.length > 0">
+	<template v-if="hasTargets">
 		<dt
 			class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
 			style="background: var(--el-fill-color-light)"
@@ -7,55 +7,61 @@
 			{{ t('spacesModule.detail.climateRoles.title') }}
 		</dt>
 		<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center justify-between min-w-[8rem]">
-			<div class="flex items-center gap-2 flex-wrap">
-			<el-popover
-				v-for="summary in roleSummaries"
-				:key="summary.role"
-				placement="bottom"
-				:width="400"
-				trigger="click"
-			>
-				<template #reference>
-					<el-tag
-						:type="getRoleTagType(summary.role)"
-						size="small"
-						class="cursor-pointer"
-					>
-						<div class="flex items-center gap-1">
-							<icon :icon="getRoleIcon(summary.role)" />
-							{{ t(`spacesModule.climateRoles.${summary.role}`) }}
-							<el-badge
-								:value="summary.devices.length"
-								:type="getRoleTagType(summary.role)"
-								class="ml-1"
-							/>
-						</div>
-					</el-tag>
-				</template>
-				<div class="space-y-2">
-					<el-alert
-						type="info"
-						:closable="false"
-						show-icon
-						class="mb-2!"
-					>
-						{{ t(`spacesModule.climateRoles.descriptions.${summary.role}`) }}
-					</el-alert>
-					<div class="text-sm font-medium mb-1">
-						{{ t('spacesModule.detail.climateRoles.devicesAssigned') }}:
-					</div>
-					<ul class="list-none p-0 m-0 space-y-1">
-						<li
-							v-for="device in summary.devices"
-							:key="device.deviceId"
-							class="flex items-center gap-2 text-sm py-1"
+			<!-- Show role tags when roles are assigned -->
+			<div v-if="roleSummaries.length > 0" class="flex items-center gap-2 flex-wrap">
+				<el-popover
+					v-for="summary in roleSummaries"
+					:key="summary.role"
+					placement="bottom"
+					:width="400"
+					trigger="click"
+				>
+					<template #reference>
+						<el-tag
+							:type="getRoleTagType(summary.role)"
+							size="small"
+							class="cursor-pointer"
 						>
-							<icon :icon="getDeviceIcon(device.deviceCategory)" class="text-gray-400" />
-							<span>{{ device.deviceName }}</span>
-						</li>
-					</ul>
-				</div>
-			</el-popover>
+							<div class="flex items-center gap-1">
+								<icon :icon="getRoleIcon(summary.role)" />
+								{{ t(`spacesModule.climateRoles.${summary.role}`) }}
+								<el-badge
+									:value="summary.devices.length"
+									:type="getRoleTagType(summary.role)"
+									class="ml-1"
+								/>
+							</div>
+						</el-tag>
+					</template>
+					<div class="space-y-2">
+						<el-alert
+							type="info"
+							:closable="false"
+							show-icon
+							class="mb-2!"
+						>
+							{{ t(`spacesModule.climateRoles.descriptions.${summary.role}`) }}
+						</el-alert>
+						<div class="text-sm font-medium mb-1">
+							{{ t('spacesModule.detail.climateRoles.devicesAssigned') }}:
+						</div>
+						<ul class="list-none p-0 m-0 space-y-1">
+							<li
+								v-for="device in summary.devices"
+								:key="device.deviceId"
+								class="flex items-center gap-2 text-sm py-1"
+							>
+								<icon :icon="getDeviceIcon(device.deviceCategory)" class="text-gray-400" />
+								<span>{{ device.deviceName }}</span>
+							</li>
+						</ul>
+					</div>
+				</el-popover>
+			</div>
+			<!-- Show hint when no roles assigned yet -->
+			<div v-else class="flex items-center gap-2 text-gray-400 text-sm">
+				<icon icon="mdi:thermostat" />
+				{{ t('spacesModule.detail.climateRoles.noRolesAssigned') }}
 			</div>
 			<el-button
 				text
@@ -81,6 +87,7 @@ import { useI18n } from 'vue-i18n';
 
 import { useBackend } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
+import { useSpacesRefreshSignals } from '../composables';
 import { ClimateRole, SPACES_MODULE_PREFIX } from '../spaces.constants';
 
 import type { IClimateRoleSummary, ISpaceClimateRolesSummaryProps } from './space-climate-roles-summary.types';
@@ -97,25 +104,25 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const backend = useBackend();
+const { climateSignal } = useSpacesRefreshSignals();
 
 const loading = ref(false);
 const roleSummaries = ref<IClimateRoleSummary[]>([]);
+const hasTargets = ref(false);
 
 const getRoleTagType = (role: string): 'primary' | 'success' | 'warning' | 'info' | 'danger' => {
 	switch (role) {
-		case ClimateRole.primary:
+		case ClimateRole.heating_only:
+			return 'danger';
+		case ClimateRole.cooling_only:
 			return 'primary';
+		case ClimateRole.auto:
+			return 'success';
 		case ClimateRole.auxiliary:
 			return 'warning';
-		case ClimateRole.ventilation:
-			return 'success';
-		case ClimateRole.humidity_control:
+		case ClimateRole.sensor:
 			return 'info';
-		case ClimateRole.temperature_sensor:
-			return 'warning';
-		case ClimateRole.humidity_sensor:
-			return 'info';
-		case ClimateRole.other:
+		case ClimateRole.hidden:
 		default:
 			return 'info';
 	}
@@ -123,21 +130,19 @@ const getRoleTagType = (role: string): 'primary' | 'success' | 'warning' | 'info
 
 const getRoleIcon = (role: string): string => {
 	switch (role) {
-		case ClimateRole.primary:
-			return 'mdi:thermostat';
+		case ClimateRole.heating_only:
+			return 'mdi:fire';
+		case ClimateRole.cooling_only:
+			return 'mdi:snowflake';
+		case ClimateRole.auto:
+			return 'mdi:thermostat-auto';
 		case ClimateRole.auxiliary:
 			return 'mdi:radiator';
-		case ClimateRole.ventilation:
-			return 'mdi:fan';
-		case ClimateRole.humidity_control:
-			return 'mdi:water-percent';
-		case ClimateRole.temperature_sensor:
+		case ClimateRole.sensor:
 			return 'mdi:thermometer';
-		case ClimateRole.humidity_sensor:
-			return 'mdi:water-percent';
-		case ClimateRole.other:
+		case ClimateRole.hidden:
 		default:
-			return 'mdi:thermostat-box';
+			return 'mdi:eye-off';
 	}
 };
 
@@ -170,7 +175,6 @@ const loadClimateRoles = async (): Promise<void> => {
 	if (!props.space?.id) return;
 
 	loading.value = true;
-	roleSummaries.value = [];
 
 	try {
 		const { data: responseData, error } = await backend.client.GET(
@@ -179,13 +183,17 @@ const loadClimateRoles = async (): Promise<void> => {
 		);
 
 		if (error || !responseData) {
+			hasTargets.value = false;
 			return;
 		}
+
+		const targets = responseData.data ?? [];
+		hasTargets.value = targets.length > 0;
 
 		// Group targets by role (excluding HIDDEN roles)
 		const roleMap = new Map<string, IClimateRoleSummary>();
 
-		for (const target of responseData.data ?? []) {
+		for (const target of targets) {
 			if (!target.role || (target.role as string) === ClimateRole.hidden) continue;
 
 			const role = target.role as string;
@@ -205,13 +213,12 @@ const loadClimateRoles = async (): Promise<void> => {
 
 		// Convert map to array and sort by role order
 		const roleOrder = [
-			ClimateRole.primary,
+			ClimateRole.heating_only,
+			ClimateRole.cooling_only,
+			ClimateRole.auto,
 			ClimateRole.auxiliary,
-			ClimateRole.ventilation,
-			ClimateRole.humidity_control,
-			ClimateRole.temperature_sensor,
-			ClimateRole.humidity_sensor,
-			ClimateRole.other,
+			ClimateRole.sensor,
+			ClimateRole.hidden,
 		];
 
 		roleSummaries.value = Array.from(roleMap.values()).sort((a, b) => {
@@ -228,6 +235,16 @@ watch(
 	() => props.space?.id,
 	(newId) => {
 		if (newId) {
+			loadClimateRoles();
+		}
+	}
+);
+
+// Watch for climate refresh signal from websocket events
+watch(
+	() => climateSignal?.value,
+	() => {
+		if (props.space?.id) {
 			loadClimateRoles();
 		}
 	}

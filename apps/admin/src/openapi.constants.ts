@@ -373,6 +373,6 @@ export { ExtensionsModuleDataServiceStatusState as ExtensionsModuleServiceState 
 
 // Spaces Module Role Enums
 // ========================
-export { SpacesModuleSetLightingRoleRole as SpacesModuleLightingRole } from './openapi';
+export { SpacesModuleDataRoleAggregatedStateRole as SpacesModuleLightingRole } from './openapi';
 
 export { SpacesModuleSetClimateRoleRole as SpacesModuleClimateRole } from './openapi';

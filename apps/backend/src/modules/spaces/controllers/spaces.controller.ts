@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
-import { ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { DevicesResponseModel } from '../../devices/models/devices-response.model';
@@ -54,10 +54,16 @@ import {
 	LightingIntentResultDataModel,
 	LightingRoleMetaDataModel,
 	LightingRoleResponseModel,
+	LightingStateDataModel,
+	LightingStateResponseModel,
 	LightingSummaryDataModel,
+	OtherLightsStateDataModel,
 	ProposedSpaceDataModel,
 	ProposedSpacesResponseModel,
 	QuickActionDataModel,
+	RoleAggregatedStateDataModel,
+	RoleLastIntentDataModel,
+	RolesStateMapDataModel,
 	SpaceResponseModel,
 	SpacesResponseModel,
 	SuggestionDataModel,
@@ -73,12 +79,12 @@ import { SpaceClimateRoleService } from '../services/space-climate-role.service'
 import { SpaceContextSnapshotService } from '../services/space-context-snapshot.service';
 import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
+import { SpaceLightingStateService } from '../services/space-lighting-state.service';
 import { SpaceSuggestionService } from '../services/space-suggestion.service';
 import { SpaceUndoHistoryService } from '../services/space-undo-history.service';
 import { SpacesService } from '../services/spaces.service';
 import {
-	INTENT_CATEGORY_CATALOG,
-	LIGHTING_ROLE_META,
+	IntentCategory,
 	LightingRole,
 	QUICK_ACTION_CATALOG,
 	SPACES_MODULE_API_TAG_NAME,
@@ -87,8 +93,17 @@ import {
 	SpaceCategory,
 } from '../spaces.constants';
 import { SpacesNotFoundException } from '../spaces.exceptions';
+import { IntentSpecLoaderService } from '../spec';
 
 @ApiTags(SPACES_MODULE_API_TAG_NAME)
+@ApiExtraModels(
+	LightingStateResponseModel,
+	LightingStateDataModel,
+	RolesStateMapDataModel,
+	RoleAggregatedStateDataModel,
+	RoleLastIntentDataModel,
+	OtherLightsStateDataModel,
+)
 @Controller('spaces')
 export class SpacesController {
 	private readonly logger = createExtensionLogger(SPACES_MODULE_NAME, 'SpacesController');
@@ -97,10 +112,12 @@ export class SpacesController {
 		private readonly spacesService: SpacesService,
 		private readonly spaceIntentService: SpaceIntentService,
 		private readonly spaceLightingRoleService: SpaceLightingRoleService,
+		private readonly spaceLightingStateService: SpaceLightingStateService,
 		private readonly spaceClimateRoleService: SpaceClimateRoleService,
 		private readonly spaceSuggestionService: SpaceSuggestionService,
 		private readonly spaceContextSnapshotService: SpaceContextSnapshotService,
 		private readonly spaceUndoHistoryService: SpaceUndoHistoryService,
+		private readonly intentSpecLoaderService: IntentSpecLoaderService,
 	) {}
 
 	@Get()
@@ -190,10 +207,13 @@ export class SpacesController {
 	getIntentCatalog(): IntentCatalogResponseModel {
 		this.logger.debug('Fetching intent catalog');
 
+		// Get intent categories from YAML spec loader
+		const intentCatalog = this.intentSpecLoaderService.getIntentCatalog();
+
 		// Transform intent categories
-		const categories = INTENT_CATEGORY_CATALOG.map((cat) => {
+		const categories = intentCatalog.map((cat) => {
 			const categoryData = new IntentCategoryDataModel();
-			categoryData.category = cat.category;
+			categoryData.category = cat.category as IntentCategory;
 			categoryData.label = cat.label;
 			categoryData.description = cat.description;
 			categoryData.icon = cat.icon;
@@ -228,7 +248,7 @@ export class SpacesController {
 			return categoryData;
 		});
 
-		// Transform quick actions
+		// Transform quick actions (still from constants for now)
 		const quickActions = QUICK_ACTION_CATALOG.map((qa) => {
 			const actionData = new QuickActionDataModel();
 			actionData.type = qa.type;
@@ -239,8 +259,15 @@ export class SpacesController {
 			return actionData;
 		});
 
-		// Transform lighting roles
-		const lightingRoles = Object.values(LIGHTING_ROLE_META).map((role) => {
+		// Get lighting roles from YAML spec loader (via enums)
+		const lightingRolesFromSpec = this.intentSpecLoaderService
+			.getIntentCatalog()
+			.find((c) => c.category === 'lighting');
+		const roleParam = lightingRolesFromSpec?.intents
+			.find((i) => i.type === 'role_on')
+			?.params.find((p) => p.name === 'role');
+
+		const lightingRoles = (roleParam?.enumValues ?? []).map((role) => {
 			const roleData = new LightingRoleMetaDataModel();
 			roleData.value = role.value as LightingRole;
 			roleData.label = role.label;
@@ -483,7 +510,6 @@ export class SpacesController {
 	}
 
 	@Post(':id/intents/lighting')
-	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
 		operationId: 'create-spaces-module-space-lighting-intent',
 		summary: 'Execute lighting intent for space',
@@ -535,11 +561,19 @@ export class SpacesController {
 
 		const stateData = new ClimateStateDataModel();
 		stateData.hasClimate = state.hasClimate;
+		stateData.mode = state.mode;
 		stateData.currentTemperature = state.currentTemperature;
+		stateData.currentHumidity = state.currentHumidity;
 		stateData.targetTemperature = state.targetTemperature;
+		stateData.heatingSetpoint = state.heatingSetpoint;
+		stateData.coolingSetpoint = state.coolingSetpoint;
 		stateData.minSetpoint = state.minSetpoint;
 		stateData.maxSetpoint = state.maxSetpoint;
 		stateData.canSetSetpoint = state.canSetSetpoint;
+		stateData.supportsHeating = state.supportsHeating;
+		stateData.supportsCooling = state.supportsCooling;
+		stateData.isMixed = state.isMixed;
+		stateData.devicesCount = state.devicesCount;
 
 		const response = new ClimateStateResponseModel();
 		response.data = stateData;
@@ -548,14 +582,14 @@ export class SpacesController {
 	}
 
 	@Post(':id/intents/climate')
-	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
 		operationId: 'create-spaces-module-space-climate-intent',
 		summary: 'Execute climate intent for space',
 		description:
-			'Executes a climate intent command for the primary thermostat in the space. ' +
-			'Supports setpoint delta (+/- adjustments) and direct setpoint set operations. ' +
-			'The target setpoint is clamped to safe min/max limits.',
+			'Executes a climate intent command for all primary climate devices (thermostats, heating units, air conditioners) in the space. ' +
+			'Supports setpoint delta (+/- adjustments), direct setpoint set, and mode changes (HEAT/COOL/AUTO/OFF). ' +
+			'Devices are filtered by their role (HEATING_ONLY, COOLING_ONLY, AUTO) and capability (presence of HEATER/COOLER channels). ' +
+			'The target setpoint is clamped to the intersection of all device limits (most restrictive range).',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
 	@ApiSuccessResponse(ClimateIntentResponseModel, 'Returns the intent execution result')
@@ -573,7 +607,10 @@ export class SpacesController {
 		resultData.success = result.success;
 		resultData.affectedDevices = result.affectedDevices;
 		resultData.failedDevices = result.failedDevices;
+		resultData.mode = result.mode;
 		resultData.newSetpoint = result.newSetpoint;
+		resultData.heatingSetpoint = result.heatingSetpoint;
+		resultData.coolingSetpoint = result.coolingSetpoint;
 
 		const response = new ClimateIntentResponseModel();
 		response.data = resultData;
@@ -582,8 +619,88 @@ export class SpacesController {
 	}
 
 	// ================================
-	// Lighting Role Endpoints
+	// Lighting State & Role Endpoints
 	// ================================
+
+	@Get(':id/lighting/state')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-lighting-state',
+		summary: 'Get aggregated lighting state for space',
+		description:
+			'Retrieves the aggregated lighting state for a space, including per-role state (on/off, brightness, mixed status), ' +
+			'mode detection (which lighting mode current state matches), and summary statistics. ' +
+			'This endpoint provides pre-calculated values for UI display without panel-side calculation.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(LightingStateResponseModel, 'Returns the aggregated lighting state')
+	@ApiNotFoundResponse('Space not found')
+	async getLightingState(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<LightingStateResponseModel> {
+		this.logger.debug(`Fetching lighting state for space with id=${id}`);
+
+		const state = await this.spaceLightingStateService.getLightingState(id);
+
+		if (!state) {
+			throw new SpacesNotFoundException('Space not found');
+		}
+
+		const stateData = new LightingStateDataModel();
+		stateData.detectedMode = state.detectedMode;
+		stateData.modeConfidence = state.modeConfidence;
+		stateData.modeMatchPercentage = state.modeMatchPercentage;
+		stateData.lastAppliedMode = state.lastAppliedMode;
+		stateData.lastAppliedAt = state.lastAppliedAt;
+		stateData.totalLights = state.totalLights;
+		stateData.lightsOn = state.lightsOn;
+		stateData.averageBrightness = state.averageBrightness;
+
+		// Map roles
+		const rolesMap = new RolesStateMapDataModel();
+
+		for (const [roleKey, roleState] of Object.entries(state.roles)) {
+			const roleData = new RoleAggregatedStateDataModel();
+			roleData.role = roleState.role;
+			roleData.isOn = roleState.isOn;
+			roleData.isOnMixed = roleState.isOnMixed;
+			roleData.brightness = roleState.brightness;
+			roleData.colorTemperature = roleState.colorTemperature;
+			roleData.color = roleState.color;
+			roleData.white = roleState.white;
+			roleData.isBrightnessMixed = roleState.isBrightnessMixed;
+			roleData.isColorTemperatureMixed = roleState.isColorTemperatureMixed;
+			roleData.isColorMixed = roleState.isColorMixed;
+			roleData.isWhiteMixed = roleState.isWhiteMixed;
+			roleData.lastIntent = roleState.lastIntent;
+			roleData.devicesCount = roleState.devicesCount;
+			roleData.devicesOn = roleState.devicesOn;
+
+			(rolesMap as Record<string, RoleAggregatedStateDataModel>)[roleKey] = roleData;
+		}
+
+		stateData.roles = rolesMap;
+
+		// Map other lights
+		const otherData = new OtherLightsStateDataModel();
+		otherData.isOn = state.other.isOn;
+		otherData.isOnMixed = state.other.isOnMixed;
+		otherData.brightness = state.other.brightness;
+		otherData.colorTemperature = state.other.colorTemperature;
+		otherData.color = state.other.color;
+		otherData.white = state.other.white;
+		otherData.isBrightnessMixed = state.other.isBrightnessMixed;
+		otherData.isColorTemperatureMixed = state.other.isColorTemperatureMixed;
+		otherData.isColorMixed = state.other.isColorMixed;
+		otherData.isWhiteMixed = state.other.isWhiteMixed;
+		otherData.devicesCount = state.other.devicesCount;
+		otherData.devicesOn = state.other.devicesOn;
+		stateData.other = otherData;
+
+		const response = new LightingStateResponseModel();
+		response.data = stateData;
+
+		return response;
+	}
 
 	@Get(':id/lighting/targets')
 	@ApiOperation({
@@ -591,7 +708,7 @@ export class SpacesController {
 		summary: 'List light targets in space',
 		description:
 			'Retrieves all controllable light targets (device/channel pairs) in a space ' +
-			'along with their current role assignments and capabilities. Requires owner or admin role.',
+			'along with their current role assignments and capabilities.',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
 	@ApiSuccessResponse(LightTargetsResponseModel, 'Returns the list of light targets with role assignments')
@@ -789,6 +906,7 @@ export class SpacesController {
 			model.deviceCategory = t.deviceCategory;
 			model.channelId = t.channelId;
 			model.channelName = t.channelName;
+			model.channelCategory = t.channelCategory;
 			model.role = t.role;
 			model.priority = t.priority;
 			model.hasTemperature = t.hasTemperature;
@@ -804,11 +922,17 @@ export class SpacesController {
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
 		operationId: 'create-spaces-module-space-climate-role',
-		summary: 'Set climate role for a climate device',
-		description: 'Sets or updates the climate role for a specific device in a space. Requires owner or admin role.',
+		summary: 'Set or remove climate role for a climate device',
+		description:
+			'Sets, updates, or removes the climate role for a specific device in a space. ' +
+			'Omit the role field or set it to null to remove an existing role assignment. ' +
+			'Requires owner or admin role.',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
-	@ApiSuccessResponse(ClimateRoleResponseModel, 'Returns the created/updated climate role assignment')
+	@ApiSuccessResponse(
+		ClimateRoleResponseModel,
+		'Returns the created/updated climate role assignment, or null if removed',
+	)
 	@ApiNotFoundResponse('Space not found')
 	@ApiBadRequestResponse('Invalid role data')
 	@ApiUnprocessableEntityResponse('Role assignment validation failed')
@@ -984,7 +1108,6 @@ export class SpacesController {
 	}
 
 	@Post(':id/suggestion/feedback')
-	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
 		operationId: 'create-spaces-module-space-suggestion-feedback',
 		summary: 'Submit suggestion feedback',
@@ -1070,11 +1193,19 @@ export class SpacesController {
 		// Transform climate state to response model
 		const climateState = new ClimateStateDataModel();
 		climateState.hasClimate = snapshot.climate.hasClimate;
+		climateState.mode = snapshot.climate.mode;
 		climateState.currentTemperature = snapshot.climate.currentTemperature;
+		climateState.currentHumidity = snapshot.climate.currentHumidity;
 		climateState.targetTemperature = snapshot.climate.targetTemperature;
+		climateState.heatingSetpoint = snapshot.climate.heatingSetpoint;
+		climateState.coolingSetpoint = snapshot.climate.coolingSetpoint;
 		climateState.minSetpoint = snapshot.climate.minSetpoint;
 		climateState.maxSetpoint = snapshot.climate.maxSetpoint;
 		climateState.canSetSetpoint = snapshot.climate.canSetSetpoint;
+		climateState.supportsHeating = snapshot.climate.supportsHeating;
+		climateState.supportsCooling = snapshot.climate.supportsCooling;
+		climateState.isMixed = snapshot.climate.isMixed;
+		climateState.devicesCount = snapshot.climate.devicesCount;
 
 		const snapshotData = new ContextSnapshotDataModel();
 		snapshotData.spaceId = snapshot.spaceId;
