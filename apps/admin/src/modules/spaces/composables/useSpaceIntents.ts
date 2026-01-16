@@ -1,4 +1,4 @@
-import { ref, type Ref } from 'vue';
+import { ref, watch, type Ref } from 'vue';
 
 import { useBackend } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
@@ -243,6 +243,13 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 		executeClimateIntent({ type: 'setpoint_delta', delta, increase });
 	const setSetpoint = (value: number) => executeClimateIntent({ type: 'setpoint_set', value });
 	const setClimateMode = (mode: ClimateMode) => executeClimateIntent({ type: 'set_mode', mode });
+
+	// Clear state when space changes to prevent stale data from appearing in new space
+	watch(spaceId, () => {
+		error.value = null;
+		lastResult.value = null;
+		isExecuting.value = false;
+	});
 
 	return {
 		isExecuting,
