@@ -1058,6 +1058,9 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
             properties: properties,
             context: commandContext,
           );
+        } else {
+          // No devices needed state change - this is not an error
+          success = true;
         }
       }
 
