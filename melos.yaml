@@ -25,7 +25,8 @@ scripts:
       cd ./apps/panel/ && \
       rm -rf lib/api && \
       dart run swagger_parser && \
-      dart run build_runner build
+      dart run build_runner build && \
+      dart run tools/patch_property_category.dart
     description: Cleans the API directory, regenerates interfaces, and runs build_runner.
 
   rebuild-spec:
