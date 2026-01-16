@@ -1,3 +1,6 @@
+# Ignore the generated OpenAPI spec (produced by backend)
+openapi.json
+
 # Ignore any temporary or generated client files
 generated/
 *.tmp
