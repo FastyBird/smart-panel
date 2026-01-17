@@ -139,7 +139,17 @@ export class SpacesSeederService implements Seeder {
 
 		const dtoInstance = toInstance(CreateSpaceDto, space);
 
-		await this.spacesService.create(dtoInstance);
+		const createdSpace = await this.spacesService.create(dtoInstance);
+
+		// Check if service returned an existing space due to name-based deduplication
+		if (space.id && createdSpace.id !== space.id) {
+			this.logger.error(
+				`[SEED] Space name "${space.name}" already exists with different id=${createdSpace.id}, expected id=${space.id}. ` +
+					`Update seed data to use consistent IDs.`,
+			);
+
+			return false;
+		}
 
 		this.logger.debug(`[SEED] Created space: ${space.name}`);
 
