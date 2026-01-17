@@ -7,6 +7,9 @@ import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/active.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/angle.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/aqi.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/change_needed.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/child_lock.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/brightness.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/color_blue.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/color_green.dart';
@@ -16,6 +19,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/color_whi
 import 'package:fastybird_smart_panel/modules/devices/views/properties/connection_type.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/consumption.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/current.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/defrost_active.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/density.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/detected.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/direction.dart';
@@ -33,12 +37,15 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/in_use.da
 import 'package:fastybird_smart_panel/modules/devices/views/properties/infrared.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/input_source.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/level.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/life_remaining.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/link_quality.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/locked.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/manufacturer.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/measured.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/mist_level.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/mode.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/model.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/natural_breeze.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/obstruction.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/on.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/over_current.dart';
@@ -52,20 +59,29 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/power.dar
 import 'package:fastybird_smart_panel/modules/devices/views/properties/rate.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/remaining.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/remote_key.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/reset.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/saturation.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/serial_number.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/siren.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/source.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/speed.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/state.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/status.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/swing.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/tampered.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/temperature.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/tilt.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/timer.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/track.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/triggered.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/type.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/voltage.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/volume.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/warm_mist.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/water_tank_empty.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/water_tank_full.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/water_tank_level.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/zoom.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -139,8 +155,14 @@ ChannelPropertyView buildChannelPropertyView(ChannelPropertyModel property) {
       return _createPropertyView(property, ActiveChannelPropertyView.new);
     case DevicesModulePropertyCategory.angle:
       return _createPropertyView(property, AngleChannelPropertyView.new);
+    case DevicesModulePropertyCategory.aqi:
+      return _createPropertyView(property, AqiChannelPropertyView.new);
     case DevicesModulePropertyCategory.brightness:
       return _createPropertyView(property, BrightnessChannelPropertyView.new);
+    case DevicesModulePropertyCategory.changeNeeded:
+      return _createPropertyView(property, ChangeNeededChannelPropertyView.new);
+    case DevicesModulePropertyCategory.childLock:
+      return _createPropertyView(property, ChildLockChannelPropertyView.new);
     case DevicesModulePropertyCategory.colorBlue:
       return _createPropertyView(property, ColorBlueChannelPropertyView.new);
     case DevicesModulePropertyCategory.colorGreen:
@@ -159,6 +181,8 @@ ChannelPropertyView buildChannelPropertyView(ChannelPropertyModel property) {
       return _createPropertyView(property, ConsumptionChannelPropertyView.new);
     case DevicesModulePropertyCategory.current:
       return _createPropertyView(property, CurrentChannelPropertyView.new);
+    case DevicesModulePropertyCategory.defrostActive:
+      return _createPropertyView(property, DefrostActiveChannelPropertyView.new);
     case DevicesModulePropertyCategory.density:
       return _createPropertyView(property, DensityChannelPropertyView.new);
     case DevicesModulePropertyCategory.detected:
@@ -193,6 +217,8 @@ ChannelPropertyView buildChannelPropertyView(ChannelPropertyModel property) {
       return _createPropertyView(property, InputSourceChannelPropertyView.new);
     case DevicesModulePropertyCategory.level:
       return _createPropertyView(property, LevelChannelPropertyView.new);
+    case DevicesModulePropertyCategory.lifeRemaining:
+      return _createPropertyView(property, LifeRemainingChannelPropertyView.new);
     case DevicesModulePropertyCategory.linkQuality:
       return _createPropertyView(property, LinkQualityChannelPropertyView.new);
     case DevicesModulePropertyCategory.locked:
@@ -201,10 +227,14 @@ ChannelPropertyView buildChannelPropertyView(ChannelPropertyModel property) {
       return _createPropertyView(property, ManufacturerChannelPropertyView.new);
     case DevicesModulePropertyCategory.measured:
       return _createPropertyView(property, MeasuredChannelPropertyView.new);
+    case DevicesModulePropertyCategory.mistLevel:
+      return _createPropertyView(property, MistLevelChannelPropertyView.new);
     case DevicesModulePropertyCategory.mode:
       return _createPropertyView(property, ModeChannelPropertyView.new);
     case DevicesModulePropertyCategory.model:
       return _createPropertyView(property, ModelChannelPropertyView.new);
+    case DevicesModulePropertyCategory.naturalBreeze:
+      return _createPropertyView(property, NaturalBreezeChannelPropertyView.new);
     case DevicesModulePropertyCategory.obstruction:
       return _createPropertyView(property, ObstructionChannelPropertyView.new);
     case DevicesModulePropertyCategory.valueOn:
@@ -231,6 +261,8 @@ ChannelPropertyView buildChannelPropertyView(ChannelPropertyModel property) {
       return _createPropertyView(property, RemainingChannelPropertyView.new);
     case DevicesModulePropertyCategory.remoteKey:
       return _createPropertyView(property, RemoteKeyChannelPropertyView.new);
+    case DevicesModulePropertyCategory.reset:
+      return _createPropertyView(property, ResetChannelPropertyView.new);
     case DevicesModulePropertyCategory.saturation:
       return _createPropertyView(property, SaturationChannelPropertyView.new);
     case DevicesModulePropertyCategory.serialNumber:
@@ -249,12 +281,14 @@ ChannelPropertyView buildChannelPropertyView(ChannelPropertyModel property) {
       return _createPropertyView(property, TemperatureChannelPropertyView.new);
     case DevicesModulePropertyCategory.tilt:
       return _createPropertyView(property, TiltChannelPropertyView.new);
+    case DevicesModulePropertyCategory.timer:
+      return _createPropertyView(property, TimerChannelPropertyView.new);
     case DevicesModulePropertyCategory.siren:
-      return _createPropertyView(property, GenericChannelPropertyView.new);
+      return _createPropertyView(property, SirenChannelPropertyView.new);
     case DevicesModulePropertyCategory.state:
-      return _createPropertyView(property, GenericChannelPropertyView.new);
+      return _createPropertyView(property, StateChannelPropertyView.new);
     case DevicesModulePropertyCategory.triggered:
-      return _createPropertyView(property, GenericChannelPropertyView.new);
+      return _createPropertyView(property, TriggeredChannelPropertyView.new);
     case DevicesModulePropertyCategory.track:
       return _createPropertyView(property, TrackChannelPropertyView.new);
     case DevicesModulePropertyCategory.type:
@@ -263,6 +297,14 @@ ChannelPropertyView buildChannelPropertyView(ChannelPropertyModel property) {
       return _createPropertyView(property, VoltageChannelPropertyView.new);
     case DevicesModulePropertyCategory.volume:
       return _createPropertyView(property, VolumeChannelPropertyView.new);
+    case DevicesModulePropertyCategory.warmMist:
+      return _createPropertyView(property, WarmMistChannelPropertyView.new);
+    case DevicesModulePropertyCategory.waterTankEmpty:
+      return _createPropertyView(property, WaterTankEmptyChannelPropertyView.new);
+    case DevicesModulePropertyCategory.waterTankFull:
+      return _createPropertyView(property, WaterTankFullChannelPropertyView.new);
+    case DevicesModulePropertyCategory.waterTankLevel:
+      return _createPropertyView(property, WaterTankLevelChannelPropertyView.new);
     case DevicesModulePropertyCategory.zoom:
       return _createPropertyView(property, ZoomChannelPropertyView.new);
     default:
@@ -275,7 +317,10 @@ Map<DevicesModulePropertyCategory, IconData Function()>
   DevicesModulePropertyCategory.generic: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.active: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.angle: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.aqi: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.brightness: () => MdiIcons.weatherSunny,
+  DevicesModulePropertyCategory.changeNeeded: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.childLock: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.colorBlue: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.colorGreen: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.colorRed: () => MdiIcons.databaseCog,
@@ -285,6 +330,7 @@ Map<DevicesModulePropertyCategory, IconData Function()>
   DevicesModulePropertyCategory.connectionType: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.consumption: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.current: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.defrostActive: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.density: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.detected: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.direction: () => MdiIcons.databaseCog,
@@ -301,12 +347,15 @@ Map<DevicesModulePropertyCategory, IconData Function()>
   DevicesModulePropertyCategory.infrared: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.inputSource: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.level: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.lifeRemaining: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.linkQuality: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.locked: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.manufacturer: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.measured: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.mistLevel: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.model: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.mode: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.naturalBreeze: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.obstruction: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.valueOn: () => MdiIcons.power,
   DevicesModulePropertyCategory.overCurrent: () => MdiIcons.databaseCog,
@@ -320,6 +369,7 @@ Map<DevicesModulePropertyCategory, IconData Function()>
   DevicesModulePropertyCategory.rate: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.remaining: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.remoteKey: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.reset: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.saturation: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.siren: () => MdiIcons.alarmLight,
   DevicesModulePropertyCategory.serialNumber: () => MdiIcons.databaseCog,
@@ -331,11 +381,16 @@ Map<DevicesModulePropertyCategory, IconData Function()>
   DevicesModulePropertyCategory.tampered: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.temperature: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.tilt: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.timer: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.triggered: () => MdiIcons.alarmLightOutline,
   DevicesModulePropertyCategory.track: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.type: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.voltage: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.volume: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.warmMist: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.waterTankEmpty: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.waterTankFull: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.waterTankLevel: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.zoom: () => MdiIcons.databaseCog,
 };
 
