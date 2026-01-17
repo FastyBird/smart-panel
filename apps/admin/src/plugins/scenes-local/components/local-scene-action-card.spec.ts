@@ -47,6 +47,18 @@ vi.mock('vue-i18n', () => ({
 	}),
 }));
 
+/**
+ * Helper to create a valid action object with required fields.
+ * The component expects `enabled` and `configuration` to be present.
+ */
+const createAction = (overrides: Record<string, unknown> = {}) => ({
+	id: 'action-1',
+	type: 'local',
+	enabled: true,
+	configuration: {},
+	...overrides,
+});
+
 // =============================================================================
 // Tests for LocalSceneActionCard Missing Resource Detection
 // =============================================================================
@@ -73,14 +85,12 @@ describe('LocalSceneActionCard.vue', () => {
 			it('should not show warning indicator when device exists', () => {
 				const wrapper = mount(LocalSceneActionCard, {
 					props: {
-						action: {
-							id: 'action-1',
-							type: 'local',
+						action: createAction({
 							deviceId: 'device-1',
 							channelId: 'channel-1',
 							propertyId: 'property-1',
 							value: true,
-						},
+						}),
 					},
 				});
 
@@ -93,14 +103,12 @@ describe('LocalSceneActionCard.vue', () => {
 			it('should display device name correctly', () => {
 				const wrapper = mount(LocalSceneActionCard, {
 					props: {
-						action: {
-							id: 'action-1',
-							type: 'local',
+						action: createAction({
 							deviceId: 'device-1',
 							channelId: 'channel-1',
 							propertyId: 'property-1',
 							value: true,
-						},
+						}),
 					},
 				});
 
@@ -118,14 +126,12 @@ describe('LocalSceneActionCard.vue', () => {
 			it('should show warning indicator when device is deleted', () => {
 				const wrapper = mount(LocalSceneActionCard, {
 					props: {
-						action: {
-							id: 'action-1',
-							type: 'local',
+						action: createAction({
 							deviceId: 'deleted-device-id',
 							channelId: 'channel-1',
 							propertyId: 'property-1',
 							value: true,
-						},
+						}),
 					},
 				});
 
@@ -138,14 +144,12 @@ describe('LocalSceneActionCard.vue', () => {
 			it('should display "Unknown device" text', () => {
 				const wrapper = mount(LocalSceneActionCard, {
 					props: {
-						action: {
-							id: 'action-1',
-							type: 'local',
+						action: createAction({
 							deviceId: 'deleted-device-id',
 							channelId: 'channel-1',
 							propertyId: 'property-1',
 							value: true,
-						},
+						}),
 					},
 				});
 
@@ -163,14 +167,12 @@ describe('LocalSceneActionCard.vue', () => {
 			it('should show warning indicator when channel is deleted', () => {
 				const wrapper = mount(LocalSceneActionCard, {
 					props: {
-						action: {
-							id: 'action-1',
-							type: 'local',
+						action: createAction({
 							deviceId: 'device-1',
 							channelId: 'deleted-channel-id',
 							propertyId: 'property-1',
 							value: true,
-						},
+						}),
 					},
 				});
 
@@ -189,14 +191,12 @@ describe('LocalSceneActionCard.vue', () => {
 			it('should show warning indicator when property is deleted', () => {
 				const wrapper = mount(LocalSceneActionCard, {
 					props: {
-						action: {
-							id: 'action-1',
-							type: 'local',
+						action: createAction({
 							deviceId: 'device-1',
 							channelId: 'channel-1',
 							propertyId: 'deleted-property-id',
 							value: true,
-						},
+						}),
 					},
 				});
 
@@ -207,14 +207,12 @@ describe('LocalSceneActionCard.vue', () => {
 			it('should display "Unknown property" text', () => {
 				const wrapper = mount(LocalSceneActionCard, {
 					props: {
-						action: {
-							id: 'action-1',
-							type: 'local',
+						action: createAction({
 							deviceId: 'device-1',
 							channelId: 'channel-1',
 							propertyId: 'deleted-property-id',
 							value: true,
-						},
+						}),
 					},
 				});
 
@@ -226,14 +224,12 @@ describe('LocalSceneActionCard.vue', () => {
 			it('should not show warning when deviceId is empty string', () => {
 				const wrapper = mount(LocalSceneActionCard, {
 					props: {
-						action: {
-							id: 'action-1',
-							type: 'local',
+						action: createAction({
 							deviceId: '',
 							channelId: '',
 							propertyId: '',
 							value: true,
-						},
+						}),
 					},
 				});
 
@@ -254,14 +250,12 @@ describe('LocalSceneActionCard.vue', () => {
 		it('should display "ON" for boolean true value', () => {
 			const wrapper = mount(LocalSceneActionCard, {
 				props: {
-					action: {
-						id: 'action-1',
-						type: 'local',
+					action: createAction({
 						deviceId: 'device-1',
 						channelId: 'channel-1',
 						propertyId: 'property-1',
 						value: true,
-					},
+					}),
 				},
 			});
 
@@ -271,14 +265,12 @@ describe('LocalSceneActionCard.vue', () => {
 		it('should display "OFF" for boolean false value', () => {
 			const wrapper = mount(LocalSceneActionCard, {
 				props: {
-					action: {
-						id: 'action-1',
-						type: 'local',
+					action: createAction({
 						deviceId: 'device-1',
 						channelId: 'channel-1',
 						propertyId: 'property-1',
 						value: false,
-					},
+					}),
 				},
 			});
 
@@ -288,14 +280,12 @@ describe('LocalSceneActionCard.vue', () => {
 		it('should display numeric value as string', () => {
 			const wrapper = mount(LocalSceneActionCard, {
 				props: {
-					action: {
-						id: 'action-1',
-						type: 'local',
+					action: createAction({
 						deviceId: 'device-1',
 						channelId: 'channel-1',
 						propertyId: 'property-1',
 						value: 75,
-					},
+					}),
 				},
 			});
 
@@ -305,14 +295,12 @@ describe('LocalSceneActionCard.vue', () => {
 		it('should display string value as-is', () => {
 			const wrapper = mount(LocalSceneActionCard, {
 				props: {
-					action: {
-						id: 'action-1',
-						type: 'local',
+					action: createAction({
 						deviceId: 'device-1',
 						channelId: 'channel-1',
 						propertyId: 'property-1',
 						value: 'custom_mode',
-					},
+					}),
 				},
 			});
 
@@ -330,14 +318,12 @@ describe('LocalSceneActionCard.vue', () => {
 		it('should support camelCase IDs at root level', () => {
 			const wrapper = mount(LocalSceneActionCard, {
 				props: {
-					action: {
-						id: 'action-1',
-						type: 'local',
+					action: createAction({
 						deviceId: 'device-1',
 						channelId: 'channel-1',
 						propertyId: 'property-1',
 						value: true,
-					},
+					}),
 				},
 			});
 
@@ -348,16 +334,14 @@ describe('LocalSceneActionCard.vue', () => {
 		it('should support snake_case IDs in configuration for backwards compatibility', () => {
 			const wrapper = mount(LocalSceneActionCard, {
 				props: {
-					action: {
-						id: 'action-1',
-						type: 'local',
+					action: createAction({
 						configuration: {
 							device_id: 'device-1',
 							channel_id: 'channel-1',
 							property_id: 'property-1',
 							value: true,
 						},
-					},
+					}),
 				},
 			});
 
@@ -373,9 +357,7 @@ describe('LocalSceneActionCard.vue', () => {
 
 			const wrapper = mount(LocalSceneActionCard, {
 				props: {
-					action: {
-						id: 'action-1',
-						type: 'local',
+					action: createAction({
 						deviceId: 'device-1', // Root level takes precedence
 						configuration: {
 							device_id: 'config-device',
@@ -383,7 +365,7 @@ describe('LocalSceneActionCard.vue', () => {
 							property_id: 'property-1',
 							value: true,
 						},
-					},
+					}),
 				},
 			});
 
@@ -397,12 +379,10 @@ describe('LocalSceneActionCard.vue', () => {
 
 			mount(LocalSceneActionCard, {
 				props: {
-					action: {
-						id: 'action-1',
-						type: 'local',
+					action: createAction({
 						deviceId: 'device-1',
 						value: true,
-					},
+					}),
 				},
 			});
 
@@ -417,12 +397,10 @@ describe('LocalSceneActionCard.vue', () => {
 
 			mount(LocalSceneActionCard, {
 				props: {
-					action: {
-						id: 'action-1',
-						type: 'local',
+					action: createAction({
 						deviceId: 'device-1',
 						value: true,
-					},
+					}),
 				},
 			});
 
@@ -437,13 +415,11 @@ describe('LocalSceneActionCard.vue', () => {
 
 			mount(LocalSceneActionCard, {
 				props: {
-					action: {
-						id: 'action-1',
-						type: 'local',
+					action: createAction({
 						deviceId: 'deleted-device',
 						channelId: 'channel-1',
 						value: true,
-					},
+					}),
 				},
 			});
 
