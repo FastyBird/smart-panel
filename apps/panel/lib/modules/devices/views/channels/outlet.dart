@@ -20,8 +20,8 @@ class OutletChannelView extends ChannelView with ChannelOnMixin {
   });
 
   @override
-  OnChannelPropertyView? get onProp =>
-      properties.whereType<OnChannelPropertyView>().firstOrNull;
+  OnChannelPropertyView get onProp =>
+      properties.whereType<OnChannelPropertyView>().first;
 
   InUseChannelPropertyView? get inUseProp =>
       properties.whereType<InUseChannelPropertyView>().firstOrNull;
