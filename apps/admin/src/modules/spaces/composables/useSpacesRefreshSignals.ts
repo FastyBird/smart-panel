@@ -6,8 +6,10 @@ import { spacesRefreshSignalsKey } from '../store/keys';
 interface IUseSpacesRefreshSignals {
 	climateSignal: Ref<number> | undefined;
 	lightingSignal: Ref<number> | undefined;
+	coversSignal: Ref<number> | undefined;
 	climateStateSignal: Ref<number> | undefined;
 	lightingStateSignal: Ref<number> | undefined;
+	coversStateSignal: Ref<number> | undefined;
 }
 
 export const useSpacesRefreshSignals = (): IUseSpacesRefreshSignals => {
@@ -16,7 +18,9 @@ export const useSpacesRefreshSignals = (): IUseSpacesRefreshSignals => {
 	return {
 		climateSignal: refreshSignals?.climate,
 		lightingSignal: refreshSignals?.lighting,
+		coversSignal: refreshSignals?.covers,
 		climateStateSignal: refreshSignals?.climateState,
 		lightingStateSignal: refreshSignals?.lightingState,
+		coversStateSignal: refreshSignals?.coversState,
 	};
 };

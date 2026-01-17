@@ -35,6 +35,7 @@
 				"hint": "Optional settings to improve smart behavior and intent-based control.",
 				"lightingRoles": "Lighting roles",
 				"climateRoles": "Climate roles",
+				"coversRoles": "Covers roles",
 				"smartSuggestions": "Smart suggestions"
 			}
 		}
@@ -204,6 +205,17 @@
 				"applyDefaults": "Apply defaults",
 				"applyDefaultsHint": "Auto-assigns roles based on device type"
 			},
+			"coversRoles": {
+				"title": "Covers roles",
+				"description": "Assign roles to window coverings to help the panel understand how each cover is used (primary, blackout, sheer)",
+				"noCovers": "No window coverings found in this space",
+				"role": {
+					"title": "Role",
+					"placeholder": "Select a role"
+				},
+				"applyDefaults": "Apply defaults",
+				"applyDefaultsHint": "Sets first cover as Primary, others based on type"
+			},
 			"suggestions": {
 				"title": "Smart suggestions"
 			},
@@ -249,6 +261,21 @@
 			"hidden": "Hidden devices are excluded from the climate domain UI and control."
 		}
 	},
+	"coversRoles": {
+		"primary": "Primary",
+		"blackout": "Blackout",
+		"sheer": "Sheer",
+		"outdoor": "Outdoor",
+		"hidden": "Hidden",
+		"unassigned": "Unassigned",
+		"descriptions": {
+			"primary": "Main window covering for the space, typically used for general privacy and light control.",
+			"blackout": "Light-blocking covers designed for complete darkness, ideal for bedrooms or media rooms.",
+			"sheer": "Semi-transparent covers that provide privacy while allowing natural light to filter through.",
+			"outdoor": "External shutters, awnings, or pergola covers for outdoor protection.",
+			"hidden": "Hidden covers are excluded from the panel UI and intent-based control."
+		}
+	},
 	"filters": {
 		"type": {
 			"title": "Type",
@@ -268,6 +295,9 @@
 		},
 		"climateRoles": {
 			"title": "Edit Climate Roles"
+		},
+		"coversRoles": {
+			"title": "Edit Covers Roles"
 		}
 	},
 	"buttons": {
@@ -339,6 +369,11 @@
 		"climateRoles": {
 			"title": "Climate roles",
 			"devicesAssigned": "Devices assigned",
+			"noRolesAssigned": "No roles assigned yet"
+		},
+		"coversRoles": {
+			"title": "Covers roles",
+			"coversAssigned": "Covers assigned",
 			"noRolesAssigned": "No roles assigned yet"
 		},
 		"info": {

@@ -203,6 +203,11 @@
 						<space-climate-roles :space="props.space" />
 					</template>
 
+					<!-- Covers Roles -->
+					<template v-if="hasCoversDevices">
+						<space-covers-roles :space="props.space" />
+					</template>
+
 					<!-- Smart Suggestions -->
 					<el-divider content-position="left" class="mt-6!">
 						{{ t('spacesModule.edit.sections.smartOverrides.smartSuggestions') }}
@@ -287,6 +292,7 @@ import {
 } from '../spaces.constants';
 
 import SpaceClimateRoles from './space-climate-roles.vue';
+import SpaceCoversRoles from './space-covers-roles.vue';
 import SpaceEditSummarySection from './space-edit-summary-section.vue';
 import SpaceLightingRoles from './space-lighting-roles.vue';
 import { type ISpaceEditFormProps, spaceEditFormEmits } from './space-edit-form.types';
@@ -439,6 +445,11 @@ const climateDeviceCategories = [
 // Check if there are climate devices in this space (for role assignment)
 const hasClimateDevices = computed(() =>
 	spaceDevices.value.some((d) => climateDeviceCategories.includes(d.category as DevicesModuleDeviceCategory))
+);
+
+// Check if there are covers devices in this space
+const hasCoversDevices = computed(() =>
+	spaceDevices.value.some((d) => d.category === DevicesModuleDeviceCategory.covers)
 );
 
 watch(
