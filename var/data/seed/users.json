@@ -9,7 +9,7 @@
     "role": "owner"
   },
   {
-    "id": "e6f9a0b1-2345-5678-901b-cdef12345678",
+    "id": "e6f9a0b1-2345-4678-901b-cdef12345678",
     "username": "admin",
     "password": "admin123",
     "email": "admin@demo.local",
@@ -18,7 +18,7 @@
     "role": "admin"
   },
   {
-    "id": "f7a0b1c2-3456-6789-012c-def123456789",
+    "id": "f7a0b1c2-3456-4789-812c-def123456789",
     "username": "user",
     "password": "user123",
     "email": "user@demo.local",
