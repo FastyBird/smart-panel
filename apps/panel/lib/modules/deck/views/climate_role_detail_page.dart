@@ -213,8 +213,8 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
           capability: capability,
           targetTemp: clampedTargetTemp,
           currentTemp: climateState.currentTemperature ?? _state.currentTemp,
-          minSetpoint: climateState.minSetpoint,
-          maxSetpoint: climateState.maxSetpoint,
+          minSetpoint: safeMinSetpoint,
+          maxSetpoint: safeMaxSetpoint,
         );
       });
     });
