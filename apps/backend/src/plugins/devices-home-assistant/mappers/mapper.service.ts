@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { PermissionType } from '../../../modules/devices/devices.constants';
+import { DataTypeType, PermissionType } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import {
@@ -153,6 +153,13 @@ export class MapperService {
 								);
 							}
 						}
+					} else if (!property.haTransformer && property.dataType === DataTypeType.BOOL && value !== null) {
+						// Fallback: Convert boolean values for properties with BOOL dataType when no transformer is configured.
+						// This maintains backward compatibility for existing devices in the database.
+						const boolValue = this.convertToBoolean(value);
+						if (boolValue !== null) {
+							transformedValue = boolValue;
+						}
 					}
 					result.push({ property, value: transformedValue });
 				}
@@ -215,6 +222,10 @@ export class MapperService {
 				} else {
 					transformedValues.set(propertyId, value);
 				}
+			} else if (property && property.dataType === DataTypeType.BOOL) {
+				// Fallback: Convert boolean values for properties with BOOL dataType when no transformer is configured.
+				// This maintains backward compatibility for existing devices in the database.
+				transformedValues.set(propertyId, this.convertFromBoolean(value));
 			} else {
 				transformedValues.set(propertyId, value);
 			}
@@ -397,5 +408,69 @@ export class MapperService {
 	 */
 	private isVirtualProperty(property: HomeAssistantChannelPropertyEntity): boolean {
 		return property.haAttribute?.startsWith(VIRTUAL_ATTRIBUTE_PREFIX) ?? false;
+	}
+
+	/**
+	 * Fallback boolean conversion for properties with dataType BOOL when no transformer is configured.
+	 * This maintains backward compatibility for existing devices in the database that were created
+	 * before the transformer system was introduced.
+	 *
+	 * Converts common Home Assistant boolean string representations to actual booleans:
+	 * - 'on', 'true', '1', 'yes' -> true
+	 * - 'off', 'false', '0', 'no' -> false
+	 */
+	private convertToBoolean(value: string | number | boolean | null): boolean | null {
+		if (value === null) {
+			return null;
+		}
+
+		if (typeof value === 'boolean') {
+			return value;
+		}
+
+		if (typeof value === 'number') {
+			return value !== 0;
+		}
+
+		const normalized = String(value).toLowerCase().trim();
+
+		if (['on', 'true', '1', 'yes'].includes(normalized)) {
+			return true;
+		}
+
+		if (['off', 'false', '0', 'no'].includes(normalized)) {
+			return false;
+		}
+
+		// If the string doesn't match known patterns, log a warning and return null
+		this.logger.warn(`[FALLBACK BOOL] Could not convert value "${value}" to boolean, unknown format`);
+
+		return null;
+	}
+
+	/**
+	 * Fallback boolean conversion for mapToHA - converts boolean to Home Assistant 'on'/'off' string.
+	 * This maintains backward compatibility for existing devices without haTransformer configured.
+	 */
+	private convertFromBoolean(value: string | number | boolean): string {
+		if (typeof value === 'boolean') {
+			return value ? 'on' : 'off';
+		}
+
+		if (typeof value === 'number') {
+			return value !== 0 ? 'on' : 'off';
+		}
+
+		// If already a string, check if it needs conversion
+		const normalized = String(value).toLowerCase().trim();
+		if (['true', '1', 'yes'].includes(normalized)) {
+			return 'on';
+		}
+		if (['false', '0', 'no'].includes(normalized)) {
+			return 'off';
+		}
+
+		// Return as-is if not a recognized boolean format
+		return String(value);
 	}
 }

@@ -149,6 +149,7 @@ mappings:
     property_bindings:
       - ha_attribute: fb.main_state
         property_category: ON
+        transformer: state_on_off
 
   - name: switch_default
     description: "Generic switch"
@@ -161,6 +162,7 @@ mappings:
     property_bindings:
       - ha_attribute: fb.main_state
         property_category: ON
+        transformer: state_on_off
 
   # ============================================================================
   # SENSOR ENTITIES - Temperature

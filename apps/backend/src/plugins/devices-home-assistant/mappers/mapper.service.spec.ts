@@ -556,6 +556,268 @@ describe('MapperService', () => {
 		});
 	});
 
+	describe('Fallback Boolean Conversion (backward compatibility)', () => {
+		// These tests verify that existing devices without haTransformer configured
+		// still get proper boolean conversion based on dataType: BOOL
+
+		it('should convert "on" to true for BOOL property without transformer (mapFromHA)', async () => {
+			const onProperty: HomeAssistantChannelPropertyEntity = {
+				id: 'prop-on',
+				type: DEVICES_HOME_ASSISTANT_TYPE,
+				category: PropertyCategory.ON,
+				dataType: DataTypeType.BOOL, // Property has BOOL dataType
+				permissions: [PermissionType.READ_ONLY],
+				haEntityId: 'light.test',
+				haAttribute: 'fb.main_state',
+				haTransformer: null, // No transformer configured (existing device)
+				channel: mockChannel,
+			} as HomeAssistantChannelPropertyEntity;
+
+			channelsService.findAll.mockResolvedValue([mockChannel]);
+			channelsPropertiesService.findAll.mockResolvedValue([onProperty]);
+			universalEntityMapperService.mapFromHA.mockResolvedValue(new Map([['prop-on', 'on']]));
+
+			const states = [
+				{
+					entity_id: 'light.test',
+					state: 'on',
+					attributes: {},
+				},
+			] as unknown as HomeAssistantStateDto[];
+
+			const result = await service.mapFromHA(mockDevice, states);
+
+			expect(result[0][0].value).toBe(true); // Fallback converts 'on' to true
+		});
+
+		it('should convert "off" to false for BOOL property without transformer (mapFromHA)', async () => {
+			const onProperty: HomeAssistantChannelPropertyEntity = {
+				id: 'prop-on',
+				type: DEVICES_HOME_ASSISTANT_TYPE,
+				category: PropertyCategory.ON,
+				dataType: DataTypeType.BOOL,
+				permissions: [PermissionType.READ_ONLY],
+				haEntityId: 'light.test',
+				haAttribute: 'fb.main_state',
+				haTransformer: null,
+				channel: mockChannel,
+			} as HomeAssistantChannelPropertyEntity;
+
+			channelsService.findAll.mockResolvedValue([mockChannel]);
+			channelsPropertiesService.findAll.mockResolvedValue([onProperty]);
+			universalEntityMapperService.mapFromHA.mockResolvedValue(new Map([['prop-on', 'off']]));
+
+			const states = [
+				{
+					entity_id: 'light.test',
+					state: 'off',
+					attributes: {},
+				},
+			] as unknown as HomeAssistantStateDto[];
+
+			const result = await service.mapFromHA(mockDevice, states);
+
+			expect(result[0][0].value).toBe(false); // Fallback converts 'off' to false
+		});
+
+		it('should convert "true"/"false" strings for BOOL property without transformer', async () => {
+			const boolProperty: HomeAssistantChannelPropertyEntity = {
+				id: 'prop-bool',
+				type: DEVICES_HOME_ASSISTANT_TYPE,
+				category: PropertyCategory.ACTIVE,
+				dataType: DataTypeType.BOOL,
+				permissions: [PermissionType.READ_ONLY],
+				haEntityId: 'sensor.test',
+				haAttribute: 'is_active',
+				haTransformer: null,
+				channel: mockChannel,
+			} as HomeAssistantChannelPropertyEntity;
+
+			channelsService.findAll.mockResolvedValue([mockChannel]);
+			channelsPropertiesService.findAll.mockResolvedValue([boolProperty]);
+			universalEntityMapperService.mapFromHA.mockResolvedValue(new Map([['prop-bool', 'true']]));
+
+			const states = [
+				{
+					entity_id: 'sensor.test',
+					state: 'on',
+					attributes: { is_active: 'true' },
+				},
+			] as unknown as HomeAssistantStateDto[];
+
+			const result = await service.mapFromHA(mockDevice, states);
+
+			expect(result[0][0].value).toBe(true);
+		});
+
+		it('should NOT apply fallback conversion for non-BOOL properties without transformer', async () => {
+			// For non-BOOL properties, values should pass through unchanged
+			const brightnessProperty: HomeAssistantChannelPropertyEntity = {
+				id: 'prop-brightness',
+				type: DEVICES_HOME_ASSISTANT_TYPE,
+				category: PropertyCategory.BRIGHTNESS,
+				dataType: DataTypeType.UCHAR, // Not BOOL
+				permissions: [PermissionType.READ_ONLY],
+				haEntityId: 'light.test',
+				haAttribute: 'brightness',
+				haTransformer: null,
+				channel: mockChannel,
+			} as HomeAssistantChannelPropertyEntity;
+
+			channelsService.findAll.mockResolvedValue([mockChannel]);
+			channelsPropertiesService.findAll.mockResolvedValue([brightnessProperty]);
+			universalEntityMapperService.mapFromHA.mockResolvedValue(new Map([['prop-brightness', 255]]));
+
+			const states = [
+				{
+					entity_id: 'light.test',
+					state: 'on',
+					attributes: { brightness: 255 },
+				},
+			] as unknown as HomeAssistantStateDto[];
+
+			const result = await service.mapFromHA(mockDevice, states);
+
+			expect(result[0][0].value).toBe(255); // Unchanged, no conversion applied
+		});
+
+		it('should convert boolean true to "on" for BOOL property without transformer (mapToHA)', async () => {
+			const onProperty: HomeAssistantChannelPropertyEntity = {
+				id: 'prop-on',
+				type: DEVICES_HOME_ASSISTANT_TYPE,
+				category: PropertyCategory.ON,
+				dataType: DataTypeType.BOOL,
+				permissions: [PermissionType.READ_WRITE],
+				haEntityId: 'light.test',
+				haAttribute: 'fb.main_state',
+				haTransformer: null, // No transformer configured (existing device)
+				channel: mockChannel,
+			} as HomeAssistantChannelPropertyEntity;
+
+			channelsService.findAll.mockResolvedValue([mockChannel]);
+			channelsPropertiesService.findAll.mockResolvedValue([onProperty]);
+
+			const mockLightMapper = {
+				domain: HomeAssistantDomain.LIGHT,
+				mapFromHA: jest.fn(),
+				mapToHA: jest.fn().mockResolvedValue({
+					state: 'on',
+					service: 'turn_on',
+					attributes: new Map(),
+				}),
+			};
+			service.registerMapper(mockLightMapper);
+
+			const values = new Map<string, string | number | boolean>();
+			values.set('prop-on', true); // Smart Panel sends boolean true
+
+			await service.mapToHA(mockDevice, values);
+
+			// The mapper should receive 'on' string (fallback conversion)
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+			const callArgs = (mockLightMapper.mapToHA as any).mock.calls[0][1] as Map<string, string | number | boolean>;
+			expect(callArgs.get('prop-on')).toBe('on');
+		});
+
+		it('should convert boolean false to "off" for BOOL property without transformer (mapToHA)', async () => {
+			const onProperty: HomeAssistantChannelPropertyEntity = {
+				id: 'prop-on',
+				type: DEVICES_HOME_ASSISTANT_TYPE,
+				category: PropertyCategory.ON,
+				dataType: DataTypeType.BOOL,
+				permissions: [PermissionType.READ_WRITE],
+				haEntityId: 'light.test',
+				haAttribute: 'fb.main_state',
+				haTransformer: null,
+				channel: mockChannel,
+			} as HomeAssistantChannelPropertyEntity;
+
+			channelsService.findAll.mockResolvedValue([mockChannel]);
+			channelsPropertiesService.findAll.mockResolvedValue([onProperty]);
+
+			const mockLightMapper = {
+				domain: HomeAssistantDomain.LIGHT,
+				mapFromHA: jest.fn(),
+				mapToHA: jest.fn().mockResolvedValue({
+					state: 'off',
+					service: 'turn_off',
+					attributes: new Map(),
+				}),
+			};
+			service.registerMapper(mockLightMapper);
+
+			const values = new Map<string, string | number | boolean>();
+			values.set('prop-on', false);
+
+			await service.mapToHA(mockDevice, values);
+
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+			const callArgs = (mockLightMapper.mapToHA as any).mock.calls[0][1] as Map<string, string | number | boolean>;
+			expect(callArgs.get('prop-on')).toBe('off');
+		});
+
+		it('should handle already boolean values in mapFromHA (pass through)', async () => {
+			const onProperty: HomeAssistantChannelPropertyEntity = {
+				id: 'prop-on',
+				type: DEVICES_HOME_ASSISTANT_TYPE,
+				category: PropertyCategory.ON,
+				dataType: DataTypeType.BOOL,
+				permissions: [PermissionType.READ_ONLY],
+				haEntityId: 'light.test',
+				haAttribute: 'fb.main_state',
+				haTransformer: null,
+				channel: mockChannel,
+			} as HomeAssistantChannelPropertyEntity;
+
+			channelsService.findAll.mockResolvedValue([mockChannel]);
+			channelsPropertiesService.findAll.mockResolvedValue([onProperty]);
+			// Some sources might already return boolean
+			universalEntityMapperService.mapFromHA.mockResolvedValue(new Map([['prop-on', true]]));
+
+			const states = [
+				{
+					entity_id: 'light.test',
+					state: 'on',
+					attributes: {},
+				},
+			] as unknown as HomeAssistantStateDto[];
+
+			const result = await service.mapFromHA(mockDevice, states);
+
+			expect(result[0][0].value).toBe(true); // Boolean passes through
+		});
+
+		it('should handle numeric 1/0 for BOOL property without transformer', async () => {
+			const boolProperty: HomeAssistantChannelPropertyEntity = {
+				id: 'prop-bool',
+				type: DEVICES_HOME_ASSISTANT_TYPE,
+				category: PropertyCategory.ACTIVE,
+				dataType: DataTypeType.BOOL,
+				permissions: [PermissionType.READ_ONLY],
+				haEntityId: 'sensor.test',
+				haAttribute: 'is_active',
+				haTransformer: null,
+				channel: mockChannel,
+			} as HomeAssistantChannelPropertyEntity;
+
+			channelsService.findAll.mockResolvedValue([mockChannel]);
+			channelsPropertiesService.findAll.mockResolvedValue([boolProperty]);
+			universalEntityMapperService.mapFromHA.mockResolvedValue(new Map([['prop-bool', 1]]));
+
+			const states = [
+				{
+					entity_id: 'sensor.test',
+					state: 'on',
+					attributes: { is_active: 1 },
+				},
+			] as unknown as HomeAssistantStateDto[];
+
+			const result = await service.mapFromHA(mockDevice, states);
+
+			expect(result[0][0].value).toBe(true); // 1 converted to true
+		});
+	});
+
 	describe('Bidirectional Transformer Verification', () => {
 		it('should correctly round-trip brightness values', async () => {
 			// Simulate reading from HA and writing back
