@@ -6,7 +6,7 @@ void main() async {
       .resolve('../../../spec/devices/channels.json')
       .toFilePath());
   final outputPath =
-      Platform.script.resolve('../lib/spec/payloads.g.dart').toFilePath();
+      Platform.script.resolve('../lib/spec/channels_properties_payloads_spec.g.dart').toFilePath();
   final outputFile = File(outputPath);
 
   if (!await inputFile.exists()) {
