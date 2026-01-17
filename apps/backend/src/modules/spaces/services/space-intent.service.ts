@@ -76,8 +76,9 @@ export class SpaceIntentService {
 	/**
 	 * Get the current covers state for a space.
 	 * Delegates to CoversIntentService.
+	 * Returns null if space doesn't exist.
 	 */
-	async getCoversState(spaceId: string): Promise<CoversState> {
+	async getCoversState(spaceId: string): Promise<CoversState | null> {
 		return this.coversIntentService.getCoversState(spaceId);
 	}
 

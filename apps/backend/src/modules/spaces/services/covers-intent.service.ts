@@ -139,8 +139,9 @@ export class CoversIntentService extends SpaceIntentBaseService {
 
 	/**
 	 * Get the current covers state for a space.
+	 * Returns null if space doesn't exist (controller should throw 404).
 	 */
-	async getCoversState(spaceId: string): Promise<CoversState> {
+	async getCoversState(spaceId: string): Promise<CoversState | null> {
 		const defaultState: CoversState = {
 			hasCovers: false,
 			averagePosition: null,
@@ -150,13 +151,13 @@ export class CoversIntentService extends SpaceIntentBaseService {
 			coversByRole: {},
 		};
 
-		// Verify space exists
+		// Verify space exists - return null for controller to throw 404
 		const space = await this.spacesService.findOne(spaceId);
 
 		if (!space) {
 			this.logger.warn(`Space not found id=${spaceId}`);
 
-			return defaultState;
+			return null;
 		}
 
 		// Get all covers in the space

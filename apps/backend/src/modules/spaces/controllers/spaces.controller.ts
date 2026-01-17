@@ -1106,6 +1106,10 @@ export class SpacesController {
 
 		const state = await this.spaceIntentService.getCoversState(id);
 
+		if (!state) {
+			throw new SpacesNotFoundException('Space not found');
+		}
+
 		const stateData = new CoversStateDataModel();
 		stateData.hasCovers = state.hasCovers;
 		stateData.averagePosition = state.averagePosition;
