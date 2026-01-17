@@ -10,6 +10,7 @@ import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/deck/constants.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
@@ -17,6 +18,7 @@ import 'package:fastybird_smart_panel/modules/deck/views/light_role_detail_page.
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/light.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
 import 'package:fastybird_smart_panel/modules/scenes/service.dart';
 import 'package:fastybird_smart_panel/modules/scenes/views/scenes/view.dart';
@@ -369,17 +371,46 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   // DATA BUILDING
   // --------------------------------------------------------------------------
 
+  /// Builds a list of [LightingRoleData] from the given targets.
+  ///
+  /// Performance optimization: For large target lists (> [LightingConstants.largeTargetListThreshold]),
+  /// pre-builds device and channel lookup maps to avoid repeated service calls and list searches.
   List<LightingRoleData> _buildRoleDataList(
     List<LightTargetView> targets,
     DevicesService devicesService,
     AppLocalizations localizations,
   ) {
+    // Group targets by role
     final Map<LightTargetRole, List<LightTargetView>> grouped = {};
-
     for (final target in targets) {
       final role = target.role ?? LightTargetRole.other;
       if (role == LightTargetRole.hidden) continue;
       grouped.putIfAbsent(role, () => []).add(target);
+    }
+
+    // Performance optimization: Pre-build device lookup map for large target lists.
+    // This avoids repeated hash lookups in DevicesService.getDevice() for each target.
+    final bool useLookupMaps = targets.length > LightingConstants.largeTargetListThreshold;
+    Map<String, LightingDeviceView>? deviceLookup;
+    Map<String, Map<String, LightChannelView>>? channelLookup;
+
+    if (useLookupMaps) {
+      deviceLookup = {};
+      channelLookup = {};
+
+      // Collect unique device IDs
+      final uniqueDeviceIds = targets.map((t) => t.deviceId).toSet();
+
+      for (final deviceId in uniqueDeviceIds) {
+        final device = devicesService.getDevice(deviceId);
+        if (device is LightingDeviceView) {
+          deviceLookup[deviceId] = device;
+          // Pre-build channel lookup map for this device
+          channelLookup[deviceId] = {
+            for (final channel in device.lightChannels) channel.id: channel,
+          };
+        }
+      }
     }
 
     final List<LightingRoleData> roles = [];
@@ -393,18 +424,38 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       int brightnessCount = 0;
 
       for (final target in roleTargets) {
-        final device = devicesService.getDevice(target.deviceId);
-        if (device is LightingDeviceView) {
-          final channel = device.lightChannels.firstWhere(
-            (c) => c.id == target.channelId,
-            orElse: () => device.lightChannels.first,
-          );
-          if (channel.on) {
-            onCount++;
-            if (channel.hasBrightness) {
-              brightnessSum += channel.brightness;
-              brightnessCount++;
-            }
+        // Use pre-built lookup maps for large lists, otherwise fetch directly
+        final LightingDeviceView? device;
+        final LightChannelView? channel;
+
+        if (useLookupMaps) {
+          device = deviceLookup![target.deviceId];
+          if (device != null) {
+            channel = channelLookup![target.deviceId]?[target.channelId] ??
+                device.lightChannels.firstOrNull;
+          } else {
+            channel = null;
+          }
+        } else {
+          final rawDevice = devicesService.getDevice(target.deviceId);
+          if (rawDevice is LightingDeviceView) {
+            device = rawDevice;
+            final channels = rawDevice.lightChannels;
+            channel = channels.firstWhere(
+              (c) => c.id == target.channelId,
+              orElse: () => channels.first,
+            );
+          } else {
+            device = null;
+            channel = null;
+          }
+        }
+
+        if (device != null && channel != null && channel.on) {
+          onCount++;
+          if (channel.hasBrightness) {
+            brightnessSum += channel.brightness;
+            brightnessCount++;
           }
         }
       }
@@ -640,8 +691,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Mode Selector (only show if there are lights to control)
-                if (hasLights) ...[
+                // Mode Selector (only show if backend intents enabled and there are lights)
+                if (LightingConstants.useBackendIntents && hasLights) ...[
                   _buildModeSelector(context, localizations),
                   AppSpacings.spacingLgVertical,
                 ],
@@ -821,9 +872,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           ),
         ),
 
-        // Middle column: Vertical Mode Selector
+        // Middle column: Vertical Mode Selector (only if backend intents enabled)
         // Show labels only on large screens when no scenes
-        if (hasLights)
+        if (LightingConstants.useBackendIntents && hasLights)
           Container(
             // More horizontal padding when labels are shown
             padding: EdgeInsets.symmetric(
@@ -1145,9 +1196,21 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     }
   }
 
-  /// Toggle role via backend intent
+  /// Toggle role via backend intent.
+  ///
+  /// Falls back to [_toggleRole] (direct device control) when:
+  /// - [LightingConstants.useBackendIntents] is `false`
+  /// - The role cannot be mapped to a [LightingStateRole]
+  /// - [SpacesService] is not available
   Future<void> _toggleRoleViaIntent(LightingRoleData roleData) async {
     if (_isExecutingIntent) return;
+
+    // Check feature flag - fallback to direct device control if disabled
+    if (!LightingConstants.useBackendIntents) {
+      await _toggleRole(roleData);
+      return;
+    }
+
     final localizations = AppLocalizations.of(context);
 
     // Map LightTargetRole to LightingStateRole for backend
