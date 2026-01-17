@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
