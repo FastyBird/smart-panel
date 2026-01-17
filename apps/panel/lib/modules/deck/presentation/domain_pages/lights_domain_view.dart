@@ -1164,7 +1164,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         success = result != null;
       }
 
-      if (!success && mounted) {
+      if (success) {
+        // Fetch updated lighting state to ensure header mode display reflects actual state
+        await _spacesService?.fetchLightingState(_roomId);
+      } else if (mounted) {
         AlertBar.showError(
           context,
           message: localizations?.action_failed ?? 'Failed to toggle lights',
