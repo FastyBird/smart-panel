@@ -19,6 +19,17 @@ import { IsValidSpaceCategory } from '../validators/space-category-constraint.va
 
 @ApiSchema({ name: 'SpacesModuleCreateSpace' })
 export class CreateSpaceDto {
+	@ApiPropertyOptional({
+		description: 'Optional space ID (UUID v4)',
+		type: 'string',
+		format: 'uuid',
+		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
+	})
+	@Expose()
+	@IsOptional()
+	@IsUUID('4', { message: '[{"field":"id","reason":"ID must be a valid UUID (version 4)."}]' })
+	id?: string;
+
 	@ApiProperty({
 		description: 'Space name',
 		type: 'string',
