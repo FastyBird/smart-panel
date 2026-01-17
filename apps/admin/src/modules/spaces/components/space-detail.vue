@@ -71,6 +71,12 @@
 				:space="space"
 				@edit="showClimateRolesDialog = true"
 			/>
+			<!-- Covers roles summary -->
+			<space-covers-roles-summary
+				ref="coversRolesSummaryRef"
+				:space="space"
+				@edit="showCoversRolesDialog = true"
+			/>
 			<!-- Inline Floor selector (Room only) -->
 			<dt
 				v-if="space.type === SpaceType.ROOM"
@@ -148,6 +154,13 @@
 		:space="space"
 		@roles-changed="onClimateRolesChanged"
 	/>
+
+	<!-- Covers roles dialog -->
+	<space-covers-roles-dialog
+		v-model:visible="showCoversRolesDialog"
+		:space="space"
+		@roles-changed="onCoversRolesChanged"
+	/>
 </template>
 
 <script setup lang="ts">
@@ -164,6 +177,8 @@ import { type ISpace } from '../store';
 import { useSpace, useSpaces } from '../composables';
 import SpaceClimateRolesDialog from './space-climate-roles-dialog.vue';
 import SpaceClimateRolesSummary from './space-climate-roles-summary.vue';
+import SpaceCoversRolesDialog from './space-covers-roles-dialog.vue';
+import SpaceCoversRolesSummary from './space-covers-roles-summary.vue';
 import SpaceLightingRolesDialog from './space-lighting-roles-dialog.vue';
 import SpaceLightingRolesSummary from './space-lighting-roles-summary.vue';
 
@@ -184,8 +199,10 @@ const { editSpace } = useSpace(computed(() => props.space?.id));
 // Role dialog state
 const showLightingRolesDialog = ref(false);
 const showClimateRolesDialog = ref(false);
+const showCoversRolesDialog = ref(false);
 const lightingRolesSummaryRef = ref<InstanceType<typeof SpaceLightingRolesSummary> | null>(null);
 const climateRolesSummaryRef = ref<InstanceType<typeof SpaceClimateRolesSummary> | null>(null);
+const coversRolesSummaryRef = ref<InstanceType<typeof SpaceCoversRolesSummary> | null>(null);
 
 // Ensure all spaces are loaded when component mounts (needed for floor selector)
 onMounted(async () => {
@@ -313,6 +330,10 @@ const onLightingRolesChanged = (): void => {
 
 const onClimateRolesChanged = (): void => {
 	climateRolesSummaryRef.value?.reload();
+};
+
+const onCoversRolesChanged = (): void => {
+	coversRolesSummaryRef.value?.reload();
 };
 </script>
 
