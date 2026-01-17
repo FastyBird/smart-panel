@@ -471,49 +471,58 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     ClimateTargetView target,
     List<ClimateSensor> sensors,
   ) {
-    // Check if device has temperature
-    if (target.hasTemperature) {
-      double? tempValue;
-      if (device is ThermostatDeviceView) {
-        tempValue = device.temperatureChannel.temperature;
-      } else if (device is HeaterDeviceView) {
-        tempValue = device.temperatureChannel.temperature;
-      } else if (device is AirConditionerDeviceView) {
-        tempValue = device.temperatureChannel.temperature;
-      } else if (device is SensorDeviceView) {
-        tempValue = device.temperatureChannel?.temperature;
+    // Wrap in try-catch to handle devices with missing required channels
+    try {
+      // Check if device has temperature
+      if (target.hasTemperature) {
+        double? tempValue;
+        if (device is ThermostatDeviceView) {
+          tempValue = device.temperatureChannel.temperature;
+        } else if (device is HeaterDeviceView) {
+          tempValue = device.temperatureChannel.temperature;
+        } else if (device is AirConditionerDeviceView) {
+          tempValue = device.temperatureChannel.temperature;
+        } else if (device is SensorDeviceView) {
+          tempValue = device.temperatureChannel?.temperature;
+        }
+
+        if (tempValue != null) {
+          sensors.add(ClimateSensor(
+            id: '${target.deviceId}_temp',
+            label: target.displayName,
+            value: '${tempValue.toStringAsFixed(1)}°C',
+            type: 'temp',
+          ));
+        }
       }
 
-      if (tempValue != null) {
-        sensors.add(ClimateSensor(
-          id: '${target.deviceId}_temp',
-          label: target.displayName,
-          value: '${tempValue.toStringAsFixed(1)}°C',
-          type: 'temp',
-        ));
-      }
-    }
+      // Check if device has humidity
+      if (target.hasHumidity) {
+        double? humidityValue;
+        if (device is ThermostatDeviceView) {
+          humidityValue = device.humidityChannel?.humidity.toDouble();
+        } else if (device is HeaterDeviceView) {
+          humidityValue = device.humidityChannel?.humidity.toDouble();
+        } else if (device is AirConditionerDeviceView) {
+          humidityValue = device.humidityChannel?.humidity.toDouble();
+        } else if (device is SensorDeviceView) {
+          humidityValue = device.humidityChannel?.humidity.toDouble();
+        }
 
-    // Check if device has humidity
-    if (target.hasHumidity) {
-      double? humidityValue;
-      if (device is ThermostatDeviceView) {
-        humidityValue = device.humidityChannel?.humidity.toDouble();
-      } else if (device is HeaterDeviceView) {
-        humidityValue = device.humidityChannel?.humidity.toDouble();
-      } else if (device is AirConditionerDeviceView) {
-        humidityValue = device.humidityChannel?.humidity.toDouble();
-      } else if (device is SensorDeviceView) {
-        humidityValue = device.humidityChannel?.humidity.toDouble();
+        if (humidityValue != null) {
+          sensors.add(ClimateSensor(
+            id: '${target.deviceId}_humidity',
+            label: target.displayName,
+            value: '${humidityValue.toStringAsFixed(0)}%',
+            type: 'humidity',
+          ));
+        }
       }
-
-      if (humidityValue != null) {
-        sensors.add(ClimateSensor(
-          id: '${target.deviceId}_humidity',
-          label: target.displayName,
-          value: '${humidityValue.toStringAsFixed(0)}%',
-          type: 'humidity',
-        ));
+    } catch (e) {
+      // Device may be missing required channels - skip it
+      if (kDebugMode) {
+        debugPrint(
+            '[ClimateDomainViewPage] Failed to build sensor from device ${device.id}: $e');
       }
     }
   }
@@ -522,38 +531,48 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     DeviceView device,
     List<AuxiliaryDevice> auxiliaryDevices,
   ) {
-    if (device is FanDeviceView) {
-      auxiliaryDevices.add(AuxiliaryDevice(
-        id: device.id,
-        name: device.name,
-        type: AuxiliaryType.fan,
-        isActive: device.isOn,
-        status: device.isOn ? 'On' : 'Off',
-      ));
-    } else if (device is AirPurifierDeviceView) {
-      auxiliaryDevices.add(AuxiliaryDevice(
-        id: device.id,
-        name: device.name,
-        type: AuxiliaryType.purifier,
-        isActive: device.isOn,
-        status: device.isOn ? 'On' : 'Off',
-      ));
-    } else if (device is AirHumidifierDeviceView) {
-      auxiliaryDevices.add(AuxiliaryDevice(
-        id: device.id,
-        name: device.name,
-        type: AuxiliaryType.humidifier,
-        isActive: device.isOn,
-        status: device.isOn ? 'On' : 'Off',
-      ));
-    } else if (device is AirDehumidifierDeviceView) {
-      auxiliaryDevices.add(AuxiliaryDevice(
-        id: device.id,
-        name: device.name,
-        type: AuxiliaryType.dehumidifier,
-        isActive: device.isOn,
-        status: device.isOn ? 'On' : 'Off',
-      ));
+    // Wrap in try-catch to handle devices with missing required channels
+    // Some devices may not have all expected channels configured
+    try {
+      if (device is FanDeviceView) {
+        auxiliaryDevices.add(AuxiliaryDevice(
+          id: device.id,
+          name: device.name,
+          type: AuxiliaryType.fan,
+          isActive: device.isOn,
+          status: device.isOn ? 'On' : 'Off',
+        ));
+      } else if (device is AirPurifierDeviceView) {
+        auxiliaryDevices.add(AuxiliaryDevice(
+          id: device.id,
+          name: device.name,
+          type: AuxiliaryType.purifier,
+          isActive: device.isOn,
+          status: device.isOn ? 'On' : 'Off',
+        ));
+      } else if (device is AirHumidifierDeviceView) {
+        auxiliaryDevices.add(AuxiliaryDevice(
+          id: device.id,
+          name: device.name,
+          type: AuxiliaryType.humidifier,
+          isActive: device.isOn,
+          status: device.isOn ? 'On' : 'Off',
+        ));
+      } else if (device is AirDehumidifierDeviceView) {
+        auxiliaryDevices.add(AuxiliaryDevice(
+          id: device.id,
+          name: device.name,
+          type: AuxiliaryType.dehumidifier,
+          isActive: device.isOn,
+          status: device.isOn ? 'On' : 'Off',
+        ));
+      }
+    } catch (e) {
+      // Device may be missing required channels - skip it
+      if (kDebugMode) {
+        debugPrint(
+            '[ClimateDomainViewPage] Failed to build auxiliary device ${device.id}: $e');
+      }
     }
   }
 
@@ -563,32 +582,41 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     List<ClimateDevice> climateDevices,
     ClimateMode currentMode,
   ) {
-    String deviceType = 'thermostat';
-    bool isActive = false;
-    String? status;
+    // Wrap in try-catch to handle devices with missing required channels
+    try {
+      String deviceType = 'thermostat';
+      bool isActive = false;
+      String? status;
 
-    if (device is ThermostatDeviceView) {
-      deviceType = 'thermostat';
-      isActive = device.isOn;
-      status = device.thermostatMode.name;
-    } else if (device is HeaterDeviceView) {
-      deviceType = 'heating_unit';
-      isActive = device.isOn;
-      status = isActive ? 'Heating' : 'Standby';
-    } else if (device is AirConditionerDeviceView) {
-      deviceType = 'ac';
-      isActive = device.isOn;
-      status = isActive ? 'Cooling' : 'Standby';
+      if (device is ThermostatDeviceView) {
+        deviceType = 'thermostat';
+        isActive = device.isOn;
+        status = device.thermostatMode.name;
+      } else if (device is HeaterDeviceView) {
+        deviceType = 'heating_unit';
+        isActive = device.isOn;
+        status = isActive ? 'Heating' : 'Standby';
+      } else if (device is AirConditionerDeviceView) {
+        deviceType = 'ac';
+        isActive = device.isOn;
+        status = isActive ? 'Cooling' : 'Standby';
+      }
+
+      climateDevices.add(ClimateDevice(
+        id: target.deviceId,
+        name: target.displayName,
+        type: deviceType,
+        isActive: isActive,
+        status: status,
+        isPrimary: target.priority == 0,
+      ));
+    } catch (e) {
+      // Device may be missing required channels - skip it
+      if (kDebugMode) {
+        debugPrint(
+            '[ClimateDomainViewPage] Failed to build climate device ${device.id}: $e');
+      }
     }
-
-    climateDevices.add(ClimateDevice(
-      id: target.deviceId,
-      name: target.displayName,
-      type: deviceType,
-      isActive: isActive,
-      status: status,
-      isPrimary: target.priority == 0,
-    ));
   }
 
   @override
