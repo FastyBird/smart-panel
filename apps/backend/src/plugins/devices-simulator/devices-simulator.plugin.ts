@@ -24,6 +24,7 @@ import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { GenerateDeviceCommand } from './commands/generate-device.command';
 import { PopulateValuesCommand } from './commands/populate-values.command';
+import { SetConnectionStateCommand } from './commands/set-connection-state.command';
 import { SimulatorController } from './controllers/simulator.controller';
 import {
 	DEVICES_SIMULATOR_PLUGIN_API_TAG_DESCRIPTION,
@@ -61,7 +62,13 @@ import { DeviceGeneratorService } from './services/device-generator.service';
 		ExtensionsModule,
 		SwaggerModule,
 	],
-	providers: [SimulatorDevicePlatform, DeviceGeneratorService, GenerateDeviceCommand, PopulateValuesCommand],
+	providers: [
+		SimulatorDevicePlatform,
+		DeviceGeneratorService,
+		GenerateDeviceCommand,
+		PopulateValuesCommand,
+		SetConnectionStateCommand,
+	],
 	controllers: [SimulatorController],
 	exports: [DeviceGeneratorService],
 })
@@ -252,6 +259,14 @@ pnpm run cli simulator:populate --list           # List all simulator devices
 pnpm run cli simulator:populate --all            # Populate all devices with random values
 pnpm run cli simulator:populate --device <id>    # Populate specific device
 pnpm run cli simulator:populate                  # Interactive mode
+\`\`\`
+
+### Set Device Connection State
+\`\`\`bash
+pnpm run cli simulator:connection --list                        # List devices with connection state
+pnpm run cli simulator:connection --all --state connected       # Set all devices to connected
+pnpm run cli simulator:connection --device <id> --state lost    # Set specific device to lost
+pnpm run cli simulator:connection                               # Interactive mode
 \`\`\`
 
 ## Device Categories
