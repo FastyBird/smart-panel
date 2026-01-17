@@ -451,7 +451,8 @@ export class SpaceCoversRoleService {
 		const hasCommand = properties.some((p) => p.category === PropertyCategory.COMMAND);
 		const hasTilt = properties.some((p) => p.category === PropertyCategory.TILT);
 		const typeProperty = properties.find((p) => p.category === PropertyCategory.TYPE);
-		const coverType = typeProperty?.value as string | null;
+		const typeValue = typeProperty?.value;
+		const coverType = typeof typeValue === 'string' ? typeValue : null;
 
 		return {
 			id: `${deviceId}:${channelId}`,
