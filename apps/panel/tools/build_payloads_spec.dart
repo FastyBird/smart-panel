@@ -111,18 +111,27 @@ String _generateEnumName(
   return '$channelPart${propertyPart}Value';
 }
 
-/// Adds an enum to the collection, handling duplicates
+/// Adds an enum to the collection, handling duplicates by generating unique names
 void _addEnum(
     Map<String, List<String>> enums, String enumName, List<String> values) {
   if (enums.containsKey(enumName)) {
     // Check if values are identical
     final existing = enums[enumName]!;
-    if (!_listEquals(existing, values)) {
-      // If values differ, we need a unique name - this shouldn't happen often
-      // ignore: avoid_print
-      print(
-          '⚠️  Warning: Duplicate enum name "$enumName" with different values');
+    if (_listEquals(existing, values)) {
+      // Same values, skip duplicate
+      return;
     }
+    // Values differ - generate a unique name with numeric suffix
+    var uniqueName = enumName;
+    var counter = 2;
+    while (enums.containsKey(uniqueName)) {
+      uniqueName = '${enumName}$counter';
+      counter++;
+    }
+    // ignore: avoid_print
+    print(
+        '⚠️  Warning: Duplicate enum name "$enumName" with different values, using "$uniqueName"');
+    enums[uniqueName] = values;
     return;
   }
   enums[enumName] = values;
@@ -145,18 +154,48 @@ String _snakeToPascalCase(String input) {
   }).join();
 }
 
+/// Dart reserved keywords that cannot be used as identifiers
+const _dartReservedKeywords = {
+  'abstract', 'as', 'assert', 'async', 'await', 'break', 'case', 'catch',
+  'class', 'const', 'continue', 'covariant', 'default', 'deferred', 'do',
+  'dynamic', 'else', 'enum', 'export', 'extends', 'extension', 'external',
+  'factory', 'false', 'final', 'finally', 'for', 'Function', 'get', 'hide',
+  'if', 'implements', 'import', 'in', 'interface', 'is', 'late', 'library',
+  'mixin', 'new', 'null', 'on', 'operator', 'part', 'required', 'rethrow',
+  'return', 'set', 'show', 'static', 'super', 'switch', 'sync', 'this',
+  'throw', 'true', 'try', 'typedef', 'var', 'void', 'while', 'with', 'yield',
+};
+
 /// Converts a string value to a valid Dart enum identifier
 String _valueToIdentifier(String value) {
-  // Handle special cases - values starting with numbers
-  if (value.isNotEmpty && RegExp(r'^[0-9]').hasMatch(value)) {
-    // Prefix with 'value' for numeric-starting values
-    // e.g., "1_hour" -> "value1Hour", "30m" -> "value30m"
-    final camelCased = _snakeToCamelCase(value);
-    return 'value$camelCased';
+  // First, sanitize the value by replacing invalid characters
+  // Replace hyphens, dots, spaces, and other non-alphanumeric chars with underscores
+  var sanitized = value.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+
+  // Remove consecutive underscores and trim leading/trailing underscores
+  sanitized = sanitized
+      .replaceAll(RegExp(r'_+'), '_')
+      .replaceAll(RegExp(r'^_+|_+$'), '');
+
+  // If empty after sanitization, use a default
+  if (sanitized.isEmpty) {
+    sanitized = 'value';
   }
 
-  // Convert snake_case to camelCase
-  return _snakeToCamelCase(value);
+  // Convert to camelCase
+  var identifier = _snakeToCamelCase(sanitized);
+
+  // Handle values starting with numbers - prefix with 'value'
+  if (identifier.isNotEmpty && RegExp(r'^[0-9]').hasMatch(identifier)) {
+    identifier = 'value${identifier[0].toUpperCase()}${identifier.substring(1)}';
+  }
+
+  // Handle Dart reserved keywords by adding a suffix
+  if (_dartReservedKeywords.contains(identifier)) {
+    identifier = '${identifier}Value';
+  }
+
+  return identifier;
 }
 
 /// Converts snake_case to camelCase
@@ -173,15 +212,46 @@ String _snakeToCamelCase(String input) {
   return firstPart + restParts.join();
 }
 
+/// Escapes special characters in a string for use in a Dart single-quoted string literal
+String _escapeStringLiteral(String value) {
+  return value
+      .replaceAll(r'\', r'\\')  // Escape backslashes first
+      .replaceAll("'", r"\'")    // Escape single quotes
+      .replaceAll(r'$', r'\$');  // Escape dollar signs
+}
+
 /// Writes an enum definition to the buffer
 void _writeEnum(StringBuffer buffer, String enumName, List<String> values) {
   buffer.writeln('enum $enumName {');
 
+  // Track used identifiers to detect collisions
+  final usedIdentifiers = <String, String>{}; // identifier -> original value
+
   for (int i = 0; i < values.length; i++) {
     final value = values[i];
-    final identifier = _valueToIdentifier(value);
+    var identifier = _valueToIdentifier(value);
+
+    // Check for identifier collision within this enum
+    if (usedIdentifiers.containsKey(identifier)) {
+      final originalValue = usedIdentifiers[identifier]!;
+      // ignore: avoid_print
+      print(
+          '⚠️  Warning: In enum "$enumName", values "$originalValue" and "$value" '
+          'both normalize to identifier "$identifier"');
+      // Generate a unique identifier by appending a counter
+      var counter = 2;
+      var uniqueIdentifier = '${identifier}$counter';
+      while (usedIdentifiers.containsKey(uniqueIdentifier)) {
+        counter++;
+        uniqueIdentifier = '${identifier}$counter';
+      }
+      identifier = uniqueIdentifier;
+    }
+    usedIdentifiers[identifier] = value;
+
+    final escapedValue = _escapeStringLiteral(value);
     final suffix = i < values.length - 1 ? ',' : ';';
-    buffer.writeln("  $identifier('$value')$suffix");
+    buffer.writeln("  $identifier('$escapedValue')$suffix");
   }
 
   buffer.writeln();
