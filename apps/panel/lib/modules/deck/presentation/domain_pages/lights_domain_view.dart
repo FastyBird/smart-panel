@@ -273,7 +273,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   void _onDataChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    // Use addPostFrameCallback to avoid "setState during build" errors
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   double _scale(double size) =>
