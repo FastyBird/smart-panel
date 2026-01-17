@@ -572,6 +572,18 @@ class StartupManagerService {
         locator.unregister<ClimateTargetsRepository>();
       } catch (_) {}
     }
+    if (locator.isRegistered<CoversTargetsRepository>()) {
+      try {
+        locator<CoversTargetsRepository>().dispose();
+        locator.unregister<CoversTargetsRepository>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<SpaceStateRepository>()) {
+      try {
+        locator<SpaceStateRepository>().dispose();
+        locator.unregister<SpaceStateRepository>();
+      } catch (_) {}
+    }
     if (locator.isRegistered<SpacesService>()) {
       try {
         locator.unregister<SpacesService>();

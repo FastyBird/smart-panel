@@ -309,7 +309,8 @@ class ModeSelector<T> extends StatelessWidget {
       );
     }
 
-    final buttonSize = isVerticalLayout ? _scale(36) : null;
+    // For vertical layout: fixed size when icon-only, flexible when showing labels
+    final buttonSize = isVerticalLayout && !showLabel ? _scale(36) : null;
     // When scrollable in horizontal mode:
     // - With labels: use intrinsic width (null) so content determines size
     // - Icon only: use fixed minimum size
@@ -323,18 +324,28 @@ class ModeSelector<T> extends StatelessWidget {
         ? AppColors.blank
         : AppColors.white.withValues(alpha: 0);
 
+    // Padding based on layout mode
+    EdgeInsetsGeometry? buttonPadding;
+    if (isVerticalLayout) {
+      // Vertical layout: more padding when showing labels
+      buttonPadding = showLabel
+          ? EdgeInsets.symmetric(vertical: AppSpacings.pMd, horizontal: AppSpacings.pLg)
+          : null; // Icon-only uses fixed buttonSize
+    } else {
+      // Horizontal layout
+      buttonPadding = EdgeInsets.symmetric(
+        vertical: AppSpacings.pMd,
+        horizontal: isScrollable ? AppSpacings.pMd : AppSpacings.pSm,
+      );
+    }
+
     return GestureDetector(
       onTap: () => onChanged(mode.value),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         width: buttonSize ?? scrollableWidth,
         height: buttonSize,
-        padding: isVerticalLayout
-            ? null
-            : EdgeInsets.symmetric(
-                vertical: AppSpacings.pMd,
-                horizontal: isScrollable ? AppSpacings.pMd : AppSpacings.pSm,
-              ),
+        padding: buttonPadding,
         decoration: BoxDecoration(
           color: isSelected ? colors.background : transparentColor,
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
