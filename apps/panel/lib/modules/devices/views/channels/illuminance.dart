@@ -39,6 +39,8 @@ class IlluminanceChannelView extends ChannelView
   FaultChannelPropertyView? get faultProp =>
       properties.whereType<FaultChannelPropertyView>().firstOrNull;
 
+  bool get hasLevel => true;
+
   IlluminanceLevelValue? get level {
     final ValueType? value = levelProp.value;
 

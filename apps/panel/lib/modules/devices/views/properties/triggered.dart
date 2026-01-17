@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 
 class TriggeredChannelPropertyView extends ChannelPropertyView {
@@ -16,4 +17,6 @@ class TriggeredChannelPropertyView extends ChannelPropertyView {
     super.defaultValue,
     super.value,
   });
+
+  bool? get isTriggered => value is BooleanValueType ? (value as BooleanValueType).value : null;
 }

@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 
 class DefrostActiveChannelPropertyView extends ChannelPropertyView {
@@ -16,4 +17,6 @@ class DefrostActiveChannelPropertyView extends ChannelPropertyView {
     super.defaultValue,
     super.value,
   });
+
+  bool? get isDefrostActive => value is BooleanValueType ? (value as BooleanValueType).value : null;
 }

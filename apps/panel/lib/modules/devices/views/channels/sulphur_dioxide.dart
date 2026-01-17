@@ -54,6 +54,8 @@ class SulphurDioxideChannelView extends ChannelView
   TamperedChannelPropertyView? get tamperedProp =>
       properties.whereType<TamperedChannelPropertyView>().firstOrNull;
 
+  bool get hasLevel => true;
+
   SulphurDioxideLevelValue? get level {
     final ValueType? value = levelProp.value;
 

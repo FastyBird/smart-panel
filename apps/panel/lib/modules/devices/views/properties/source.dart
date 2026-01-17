@@ -1,5 +1,8 @@
+import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 
+/// Property view for source values.
+/// Supports both string and enum data types.
 class SourceChannelPropertyView extends ChannelPropertyView {
   SourceChannelPropertyView({
     required super.id,
@@ -16,4 +19,7 @@ class SourceChannelPropertyView extends ChannelPropertyView {
     super.defaultValue,
     super.value,
   });
+
+  /// Returns the source value as string.
+  String? get source => value is StringValueType ? (value as StringValueType).value : null;
 }

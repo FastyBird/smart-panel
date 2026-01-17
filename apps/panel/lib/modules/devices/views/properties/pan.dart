@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 
 class PanChannelPropertyView extends ChannelPropertyView {
@@ -16,4 +17,6 @@ class PanChannelPropertyView extends ChannelPropertyView {
     super.defaultValue,
     super.value,
   });
+
+  num? get pan => value is NumberValueType ? (value as NumberValueType).value : null;
 }

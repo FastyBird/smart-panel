@@ -1,5 +1,8 @@
+import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 
+/// Property view for duration values.
+/// Supports ushort and uint data types.
 class DurationChannelPropertyView extends ChannelPropertyView {
   DurationChannelPropertyView({
     required super.id,
@@ -16,4 +19,7 @@ class DurationChannelPropertyView extends ChannelPropertyView {
     super.defaultValue,
     super.value,
   });
+
+  /// Returns the duration value in the specified unit.
+  int? get duration => value is NumberValueType ? (value as NumberValueType).value.toInt() : null;
 }

@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 
 class ColorBlueChannelPropertyView extends ChannelPropertyView {
@@ -16,4 +17,6 @@ class ColorBlueChannelPropertyView extends ChannelPropertyView {
     super.defaultValue,
     super.value,
   });
+
+  int? get blue => value is NumberValueType ? (value as NumberValueType).value.toInt() : null;
 }

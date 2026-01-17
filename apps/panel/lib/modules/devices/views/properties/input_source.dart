@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 
 class InputSourceChannelPropertyView extends ChannelPropertyView {
@@ -16,4 +17,6 @@ class InputSourceChannelPropertyView extends ChannelPropertyView {
     super.defaultValue,
     super.value,
   });
+
+  String? get inputSource => value is StringValueType ? (value as StringValueType).value : null;
 }

@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 
 class HardwareRevisionChannelPropertyView extends ChannelPropertyView {
@@ -16,4 +17,6 @@ class HardwareRevisionChannelPropertyView extends ChannelPropertyView {
     super.defaultValue,
     super.value,
   });
+
+  String? get hardwareRevision => value is StringValueType ? (value as StringValueType).value : null;
 }

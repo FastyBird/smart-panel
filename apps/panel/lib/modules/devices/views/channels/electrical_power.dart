@@ -56,6 +56,8 @@ class ElectricalPowerChannelView extends ChannelView
   FaultChannelPropertyView? get faultProp =>
       properties.whereType<FaultChannelPropertyView>().firstOrNull;
 
+  bool get hasPower => true;
+
   bool get hasVoltage => voltageProp != null;
 
   bool get hasCurrent => currentProp != null;

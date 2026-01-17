@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 
 class AqiChannelPropertyView extends ChannelPropertyView {
@@ -16,4 +17,6 @@ class AqiChannelPropertyView extends ChannelPropertyView {
     super.defaultValue,
     super.value,
   });
+
+  int? get aqi => value is NumberValueType ? (value as NumberValueType).value.toInt() : null;
 }

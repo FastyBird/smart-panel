@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 
 class SirenChannelPropertyView extends ChannelPropertyView {
@@ -16,4 +17,6 @@ class SirenChannelPropertyView extends ChannelPropertyView {
     super.defaultValue,
     super.value,
   });
+
+  bool? get isSirenOn => value is BooleanValueType ? (value as BooleanValueType).value : null;
 }
