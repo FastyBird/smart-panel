@@ -118,7 +118,7 @@ extension LightingModeUIExtension on LightingModeUI {
       case LightingMode.relax:
         return LightingModeUI.relax;
       case LightingMode.night:
-        return LightingMode.night;
+        return LightingModeUI.night;
     }
   }
 }
