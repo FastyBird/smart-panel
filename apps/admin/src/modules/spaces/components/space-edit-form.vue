@@ -449,7 +449,7 @@ const hasClimateDevices = computed(() =>
 
 // Check if there are covers devices in this space
 const hasCoversDevices = computed(() =>
-	spaceDevices.value.some((d) => d.category === DevicesModuleDeviceCategory.covers)
+	spaceDevices.value.some((d) => d.category === DevicesModuleDeviceCategory.window_covering)
 );
 
 watch(
