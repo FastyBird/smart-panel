@@ -19,10 +19,36 @@ import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-/// Detail page for controlling all lights in a specific role
+/// Detail page for controlling all lights in a specific role.
 ///
-/// Uses the new LightingControlPanel widget for the UI while maintaining
+/// Uses the [LightingControlPanel] widget for the UI while maintaining
 /// the state machine logic for optimistic UI updates.
+///
+/// ## Backend Intent vs Direct Device Control
+///
+/// This page implements a two-tier control strategy for reliability:
+///
+/// 1. **Primary: Backend Intents** - When [SpacesService] is available and the role
+///    maps to a valid [LightingStateRole], commands are sent via backend intents
+///    (e.g., [SpacesService.setRoleBrightness], [SpacesService.setRoleColor]).
+///    This allows the backend to orchestrate complex multi-device operations.
+///
+/// 2. **Fallback: Direct Device Control** - When backend intents are unavailable
+///    (service not registered, role unmapped, or specific capability not supported),
+///    commands are sent directly to individual devices via [DevicesService.setMultiplePropertyValues].
+///    This ensures functionality even without backend support.
+///
+/// The fallback is implemented in methods like [_setPropertyViaDevices] and
+/// [_setColorViaDevices], which iterate over all targets and build property
+/// command lists for batch execution.
+///
+/// ## State Machine
+///
+/// Uses [RoleControlState] to track pending/settling/mixed states for each
+/// control type (brightness, hue, temperature, white). This provides:
+/// - Optimistic UI updates during command execution
+/// - Convergence detection when devices sync to target values
+/// - Mixed state indication when devices fail to converge
 class LightRoleDetailPage extends StatefulWidget {
   final LightTargetRole role;
   final String roomId;
@@ -1293,7 +1319,18 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     }
   }
 
-  /// Fallback method to set property directly on devices
+  /// Fallback method to set a simple property (brightness/temperature/white)
+  /// directly on individual devices.
+  ///
+  /// Used when backend intents are unavailable:
+  /// - [SpacesService] not registered
+  /// - Role doesn't map to a [LightingStateRole]
+  /// - Specific property type not supported by backend (e.g., white channel)
+  ///
+  /// Iterates over all [targets], checks device capabilities, and builds a
+  /// batch command list for [DevicesService.setMultiplePropertyValues].
+  ///
+  /// Returns `true` if command was sent successfully (or no devices needed update).
   Future<bool> _setPropertyViaDevices(
     List<LightTargetView> targets,
     SimplePropertyType propertyType,
@@ -1399,7 +1436,15 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     }
   }
 
-  /// Fallback method to set color directly on devices
+  /// Fallback method to set color directly on individual devices.
+  ///
+  /// Used when backend intents are unavailable (see class documentation).
+  ///
+  /// Handles two color representations:
+  /// - **HSV**: If device supports hue property, sets it directly
+  /// - **RGB**: Otherwise, converts hue to RGB and sets red/green/blue properties
+  ///
+  /// Returns `true` if command was sent successfully (or no devices needed update).
   Future<bool> _setColorViaDevices(List<LightTargetView> targets, double hue) async {
     final devicesService = _devicesService;
     if (devicesService == null) return false;

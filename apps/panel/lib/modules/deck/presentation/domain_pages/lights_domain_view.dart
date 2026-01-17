@@ -64,13 +64,32 @@ class LightingRoleData {
   }
 }
 
+/// Light device power state for UI display.
 enum LightState { off, on, offline }
 
-/// UI mode for lighting control - includes 'off' state
+/// UI mode for lighting control.
+///
+/// This enum represents the lighting modes available in the UI, including an 'off'
+/// state that doesn't exist in the backend [LightingMode] enum. The backend only
+/// has work/relax/night modes - turning lights off is a separate intent.
+///
+/// The distinction exists because:
+/// - Backend [LightingMode]: Represents active lighting presets (work, relax, night)
+/// - UI [LightingModeUI]: Includes 'off' as a selectable option for user convenience
+///
+/// Use [LightingModeUIExtension] to convert between UI and backend representations.
 enum LightingModeUI { off, work, relax, night }
 
-/// Extension to convert between UI mode and backend mode
+/// Extension to convert between UI mode and backend mode.
+///
+/// Provides bidirectional conversion:
+/// - [toBackendMode]: Converts UI mode to backend mode (returns null for 'off')
+/// - [fromBackendMode]: Converts backend mode + light state to UI mode
 extension LightingModeUIExtension on LightingModeUI {
+  /// Converts UI mode to backend [LightingMode].
+  ///
+  /// Returns `null` for [LightingModeUI.off] since the backend doesn't have
+  /// an 'off' mode - turning lights off is handled via a separate intent.
   LightingMode? toBackendMode() {
     switch (this) {
       case LightingModeUI.off:
@@ -84,16 +103,22 @@ extension LightingModeUIExtension on LightingModeUI {
     }
   }
 
+  /// Converts backend [LightingMode] to UI mode.
+  ///
+  /// Takes into account whether any lights are on:
+  /// - If no lights are on, returns [LightingModeUI.off]
+  /// - If lights are on but mode is null, defaults to [LightingModeUI.work]
+  /// - Otherwise, maps the backend mode to corresponding UI mode
   static LightingModeUI fromBackendMode(LightingMode? mode, bool anyLightsOn) {
     if (!anyLightsOn) return LightingModeUI.off;
-    if (mode == null) return LightingModeUI.work; // Default when on but no mode detected
+    if (mode == null) return LightingModeUI.work;
     switch (mode) {
       case LightingMode.work:
         return LightingModeUI.work;
       case LightingMode.relax:
         return LightingModeUI.relax;
       case LightingMode.night:
-        return LightingModeUI.night;
+        return LightingMode.night;
     }
   }
 }
@@ -666,7 +691,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
   }
 
-  /// Build the mode selector widget
+  /// Build the mode selector widget for portrait/horizontal layout.
+  ///
+  /// Uses the shared [ModeSelector] core widget wrapped with lighting-specific
+  /// styling. The mode change logic (debouncing, backend intents) remains in
+  /// this view because it's tightly coupled to the page's state lifecycle
+  /// (`_pendingMode`, `_isExecutingIntent`). The shared widget handles the
+  /// generic mode selection UI, while this view handles the domain logic.
   Widget _buildModeSelector(BuildContext context, AppLocalizations localizations) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final mode = _currentMode;

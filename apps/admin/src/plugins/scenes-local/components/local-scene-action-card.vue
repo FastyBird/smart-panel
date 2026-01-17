@@ -147,10 +147,29 @@ const { properties, fetchProperties } = useChannelsProperties({
 	channelId: computed(() => channelId.value ?? undefined),
 });
 
+// Resource lookups - Vue computed properties provide automatic memoization.
+// These only re-evaluate when their dependencies (devices/channels/properties arrays
+// or the corresponding IDs) change. The O(n) find is acceptable for typical
+// device/channel counts; use Map indexing if performance becomes an issue.
 const device = computed(() => devices.value.find((d) => d.id === deviceId.value));
 const channel = computed(() => channels.value.find((c) => c.id === channelId.value));
 const property = computed(() => properties.value.find((p) => p.id === propertyId.value));
 
+/**
+ * Missing Resource Detection
+ *
+ * Scene actions can reference devices/channels/properties that have been deleted.
+ * These computed properties detect orphaned references and enable:
+ * - Visual warning indicators (red icon, text styling)
+ * - Tooltip explaining the missing resource
+ * - Graceful degradation (shows "Unknown device/channel/property" labels)
+ *
+ * A resource is considered "missing" when:
+ * - The action has an ID for that resource (deviceId/channelId/propertyId is truthy)
+ * - BUT the resource cannot be found in the loaded data
+ *
+ * This handles cases where users delete devices but scenes referencing them remain.
+ */
 const isDeviceMissing = computed<boolean>(() => !device.value && !!deviceId.value);
 const isChannelMissing = computed<boolean>(() => !channel.value && !!channelId.value);
 const isPropertyMissing = computed<boolean>(() => !property.value && !!propertyId.value);
