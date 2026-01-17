@@ -1102,8 +1102,17 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       }
 
       if (success) {
-        // Fetch updated lighting state to ensure UI reflects actual state
-        await _spacesService?.fetchLightingState(_roomId);
+        // Fetch updated lighting state to ensure UI reflects actual state.
+        // Wrapped in try-catch because state refresh failure shouldn't show
+        // an error to users - the mode change already succeeded.
+        try {
+          await _spacesService?.fetchLightingState(_roomId);
+        } catch (e) {
+          if (kDebugMode) {
+            debugPrint('[LightsDomainView] Failed to refresh lighting state: $e');
+          }
+          // Silently ignore - state will eventually sync via polling/websocket
+        }
         // Clear pending mode now that we have the actual state
         if (mounted) {
           setState(() {
@@ -1117,6 +1126,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         });
       }
     } catch (e) {
+      // Only show error if the mode change intent itself failed
       if (kDebugMode) {
         debugPrint('[LightsDomainView] Failed to set lighting mode: $e');
       }
@@ -1165,8 +1175,17 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       }
 
       if (success) {
-        // Fetch updated lighting state to ensure header mode display reflects actual state
-        await _spacesService?.fetchLightingState(_roomId);
+        // Fetch updated lighting state to ensure header mode display reflects actual state.
+        // Wrapped in try-catch because state refresh failure shouldn't show
+        // an error to users - the toggle action already succeeded.
+        try {
+          await _spacesService?.fetchLightingState(_roomId);
+        } catch (e) {
+          if (kDebugMode) {
+            debugPrint('[LightsDomainView] Failed to refresh lighting state: $e');
+          }
+          // Silently ignore - state will eventually sync via polling/websocket
+        }
       } else if (mounted) {
         AlertBar.showError(
           context,
@@ -1174,6 +1193,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         );
       }
     } catch (e) {
+      // Only show error if the toggle intent itself failed
       if (kDebugMode) {
         debugPrint('[LightsDomainView] Failed to toggle role: $e');
       }
