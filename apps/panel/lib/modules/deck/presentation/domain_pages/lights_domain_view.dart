@@ -672,15 +672,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final mode = _currentMode;
     final modeColor = _getModeColor(context, mode);
 
-    // Build mode info subtitle
-    String? modeInfo;
-    final state = _lightingState;
-    if (state != null && state.modeConfidence != ModeConfidence.none) {
-      if (state.averageBrightness != null) {
-        modeInfo = '${state.averageBrightness!.round()}% avg brightness';
-      }
-    }
-
     return Container(
       padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
@@ -693,32 +684,18 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           width: 1,
         ),
       ),
-      child: Column(
-        children: [
-          IgnorePointer(
-            ignoring: _isExecutingIntent,
-            child: Opacity(
-              opacity: _isExecutingIntent ? 0.6 : 1.0,
-              child: ModeSelector<LightingModeUI>(
-                modes: _getLightingModeOptions(localizations),
-                selectedValue: mode,
-                onChanged: _setLightingMode,
-                orientation: ModeSelectorOrientation.horizontal,
-                iconPlacement: ModeSelectorIconPlacement.top,
-              ),
-            ),
+      child: IgnorePointer(
+        ignoring: _isExecutingIntent,
+        child: Opacity(
+          opacity: _isExecutingIntent ? 0.6 : 1.0,
+          child: ModeSelector<LightingModeUI>(
+            modes: _getLightingModeOptions(localizations),
+            selectedValue: mode,
+            onChanged: _setLightingMode,
+            orientation: ModeSelectorOrientation.horizontal,
+            iconPlacement: ModeSelectorIconPlacement.top,
           ),
-          if (modeInfo != null) ...[
-            AppSpacings.spacingSmVertical,
-            Text(
-              modeInfo,
-              style: TextStyle(
-                color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-                fontSize: AppFontSize.extraSmall,
-              ),
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }
