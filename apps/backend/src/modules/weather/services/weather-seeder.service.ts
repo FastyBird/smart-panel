@@ -5,7 +5,6 @@ import { Injectable } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { SeedTools, Seeder } from '../../seed/services/seed.service';
-import { CreateLocationDto } from '../dto/create-location.dto';
 import { WEATHER_MODULE_NAME } from '../weather.constants';
 
 import { LocationsTypeMapperService } from './locations-type-mapper.service';
