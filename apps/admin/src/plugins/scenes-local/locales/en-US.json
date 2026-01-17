@@ -8,7 +8,10 @@
 		"channel": "Channel",
 		"property": "Property",
 		"value": "Value",
-		"unknownProperty": "Unknown property"
+		"unknownDevice": "Unknown device",
+		"unknownChannel": "Unknown channel",
+		"unknownProperty": "Unknown property",
+		"missingResource": "This action references a deleted device, channel, or property"
 	},
 	"fields": {
 		"device": {

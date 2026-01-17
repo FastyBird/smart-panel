@@ -1,6 +1,22 @@
 <template>
-	<div class="local-action-content">
+	<div
+		class="local-action-content"
+		:class="{ 'has-missing-resource': isMissingResource }"
+	>
 		<div class="flex items-center gap-1 min-w-0">
+			<el-tooltip
+				v-if="isMissingResource"
+				:content="t('scenesLocalPlugin.actionCard.missingResource')"
+				placement="top"
+			>
+				<el-icon
+					class="warning-icon flex-shrink-0"
+					:size="14"
+				>
+					<icon icon="mdi:alert-circle" />
+				</el-icon>
+			</el-tooltip>
+
 			<el-popover
 				placement="top"
 				:width="300"
@@ -18,15 +34,30 @@
 				<div class="action-detail-popover">
 					<div class="detail-row">
 						<span class="detail-label">{{ t('scenesLocalPlugin.actionCard.device') }}:</span>
-						<span class="detail-value">{{ deviceName }}</span>
+						<span
+							class="detail-value"
+							:class="{ 'text-danger': isDeviceMissing }"
+						>
+							{{ deviceName }}
+						</span>
 					</div>
 					<div class="detail-row">
 						<span class="detail-label">{{ t('scenesLocalPlugin.actionCard.channel') }}:</span>
-						<span class="detail-value">{{ channelName }}</span>
+						<span
+							class="detail-value"
+							:class="{ 'text-danger': isChannelMissing }"
+						>
+							{{ channelName }}
+						</span>
 					</div>
 					<div class="detail-row">
 						<span class="detail-label">{{ t('scenesLocalPlugin.actionCard.property') }}:</span>
-						<span class="detail-value">{{ propertyName }}</span>
+						<span
+							class="detail-value"
+							:class="{ 'text-danger': isPropertyMissing }"
+						>
+							{{ propertyName }}
+						</span>
 					</div>
 					<div class="detail-row">
 						<span class="detail-label">{{ t('scenesLocalPlugin.actionCard.value') }}:</span>
@@ -42,6 +73,7 @@
 
 			<el-text
 				class="font-medium flex-shrink-1 min-w-0"
+				:class="{ 'text-danger': isDeviceMissing }"
 				truncated
 			>
 				{{ deviceName }}
@@ -49,7 +81,8 @@
 			<template v-if="showChannel">
 				<span class="text-gray-400 flex-shrink-0">›</span>
 				<el-text
-					class="text-gray-600 flex-shrink-1 min-w-0"
+					class="flex-shrink-1 min-w-0"
+					:class="isChannelMissing ? 'text-danger' : 'text-gray-600'"
 					truncated
 				>
 					{{ channelName }}
@@ -57,7 +90,8 @@
 			</template>
 			<span class="text-gray-400 flex-shrink-0">›</span>
 			<el-text
-				class="text-gray-600 flex-shrink-1 min-w-0"
+				class="flex-shrink-1 min-w-0"
+				:class="isPropertyMissing ? 'text-danger' : 'text-gray-600'"
 				truncated
 			>
 				{{ propertyName }}
@@ -78,7 +112,7 @@
 import { computed, onBeforeMount } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElIcon, ElPopover, ElTag, ElText } from 'element-plus';
+import { ElIcon, ElPopover, ElTag, ElText, ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -113,20 +147,26 @@ const { properties, fetchProperties } = useChannelsProperties({
 	channelId: computed(() => channelId.value ?? undefined),
 });
 
+const device = computed(() => devices.value.find((d) => d.id === deviceId.value));
+const channel = computed(() => channels.value.find((c) => c.id === channelId.value));
+const property = computed(() => properties.value.find((p) => p.id === propertyId.value));
+
+const isDeviceMissing = computed<boolean>(() => !device.value && !!deviceId.value);
+const isChannelMissing = computed<boolean>(() => !channel.value && !!channelId.value);
+const isPropertyMissing = computed<boolean>(() => !property.value && !!propertyId.value);
+const isMissingResource = computed<boolean>(() => isDeviceMissing.value || isChannelMissing.value || isPropertyMissing.value);
+
 const deviceName = computed<string>(() => {
-	const device = devices.value.find((d) => d.id === deviceId.value);
-	return device?.name ?? 'Unknown device';
+	return device.value?.name ?? t('scenesLocalPlugin.actionCard.unknownDevice');
 });
 
 const channelName = computed<string>(() => {
-	const channel = channels.value.find((c) => c.id === channelId.value);
-	return channel?.name ?? 'Unknown channel';
+	return channel.value?.name ?? t('scenesLocalPlugin.actionCard.unknownChannel');
 });
 
 const propertyName = computed<string>(() => {
-	const property = properties.value.find((p) => p.id === propertyId.value);
-	if (!property) return t('scenesLocalPlugin.actionCard.unknownProperty');
-	return property.name ?? t(`devicesModule.categories.channelsProperties.${property.category}`);
+	if (!property.value) return t('scenesLocalPlugin.actionCard.unknownProperty');
+	return property.value.name ?? t(`devicesModule.categories.channelsProperties.${property.value.category}`);
 });
 
 // Hide channel if it has the same name as the device (common pattern)
@@ -155,12 +195,28 @@ onBeforeMount(async (): Promise<void> => {
 		await fetchDevices();
 	}
 
+	// Check if device exists before fetching channels
+	const device = devices.value.find((d) => d.id === deviceId.value);
+	if (!device) {
+		// Device was deleted, skip fetching channels/properties
+		return;
+	}
+
 	if (deviceId.value) {
-		await fetchChannels();
+		try {
+			await fetchChannels();
+		} catch {
+			// Device or channels may have been deleted, ignore error
+			return;
+		}
 	}
 
 	if (channelId.value) {
-		await fetchProperties();
+		try {
+			await fetchProperties();
+		} catch {
+			// Channel or properties may have been deleted, ignore error
+		}
 	}
 });
 </script>
@@ -169,6 +225,10 @@ onBeforeMount(async (): Promise<void> => {
 .local-action-content {
 	font-size: 13px;
 	overflow: hidden;
+}
+
+.local-action-content.has-missing-resource {
+	opacity: 0.8;
 }
 
 .info-icon {
@@ -180,6 +240,15 @@ onBeforeMount(async (): Promise<void> => {
 
 .info-icon:hover {
 	color: var(--el-color-primary);
+}
+
+.warning-icon {
+	color: var(--el-color-danger);
+	margin-right: 4px;
+}
+
+.text-danger {
+	color: var(--el-color-danger) !important;
 }
 
 .action-detail-popover {

@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_category.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
@@ -158,7 +156,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   // Current lighting mode for optimistic UI
   LightingModeUI? _pendingMode;
-  Timer? _pendingModeClearTimer;
 
   String get _roomId => widget.viewItem.roomId;
 
@@ -238,7 +235,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   @override
   void dispose() {
-    _pendingModeClearTimer?.cancel();
     _spacesService?.removeListener(_onDataChanged);
     _devicesService?.removeListener(_onDataChanged);
     _scenesService?.removeListener(_onDataChanged);
@@ -686,15 +682,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       ),
       child: IgnorePointer(
         ignoring: _isExecutingIntent,
-        child: Opacity(
-          opacity: _isExecutingIntent ? 0.6 : 1.0,
-          child: ModeSelector<LightingModeUI>(
-            modes: _getLightingModeOptions(localizations),
-            selectedValue: mode,
-            onChanged: _setLightingMode,
-            orientation: ModeSelectorOrientation.horizontal,
-            iconPlacement: ModeSelectorIconPlacement.top,
-          ),
+        child: ModeSelector<LightingModeUI>(
+          modes: _getLightingModeOptions(localizations),
+          selectedValue: mode,
+          onChanged: _setLightingMode,
+          orientation: ModeSelectorOrientation.horizontal,
+          iconPlacement: ModeSelectorIconPlacement.top,
         ),
       ),
     );
@@ -719,7 +712,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final hasLights = hasRoles || hasOtherLights;
 
     // Use ScreenService breakpoints for responsive layout
-    // ScreenService auto-updates on rotation via WidgetsBindingObserver
     // Landscape breakpoints: small ≤800, medium ≤1150, large >1150
     final isLargeScreen = _screenService.isLargeScreen;
     final tilesPerRow = isLargeScreen ? 4 : 3;
@@ -729,20 +721,14 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Main Area (left, wider) - expands to full width when no scenes
+        // Left column: Roles + Other Lights
         Expanded(
-          flex: hasScenes ? 2 : 1,
+          flex: 2,
           child: Padding(
             padding: EdgeInsets.all(AppSpacings.pLg),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Mode selector at top (compact horizontal version for landscape)
-                if (hasLights) ...[
-                  _buildLandscapeModeSelector(context, localizations),
-                  AppSpacings.spacingLgVertical,
-                ],
-
                 // Roles + Other Lights layout
                 if (hasRoles && hasOtherLights) ...[
                   // Roles grid - 1 row
@@ -800,20 +786,30 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           ),
         ),
 
-        // Side Area (right, narrower) - scenes with different background
+        // Middle column: Vertical Mode Selector
+        // Show labels only on large screens when no scenes
+        if (hasLights)
+          Container(
+            // More horizontal padding when labels are shown
+            padding: EdgeInsets.symmetric(
+              vertical: AppSpacings.pLg,
+              horizontal: !hasScenes && isLargeScreen ? AppSpacings.pLg : AppSpacings.pMd,
+            ),
+            child: Center(
+              child: _buildLandscapeModeSelector(
+                context,
+                localizations,
+                showLabels: !hasScenes && isLargeScreen,
+              ),
+            ),
+          ),
+
+        // Right column: Scenes (or empty space if no scenes)
         if (hasScenes)
           Expanded(
             flex: 1,
             child: Container(
-              decoration: BoxDecoration(
-                color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-                border: Border(
-                  left: BorderSide(
-                    color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
-                    width: 1,
-                  ),
-                ),
-              ),
+              color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
               child: Padding(
                 padding: EdgeInsets.all(AppSpacings.pLg),
                 child: Column(
@@ -841,21 +837,24 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
   }
 
-  /// Build compact mode selector for landscape layout
-  Widget _buildLandscapeModeSelector(BuildContext context, AppLocalizations localizations) {
+  /// Build vertical mode selector for landscape layout
+  Widget _buildLandscapeModeSelector(
+    BuildContext context,
+    AppLocalizations localizations, {
+    bool showLabels = false,
+  }) {
     final mode = _currentMode;
 
     return IgnorePointer(
       ignoring: _isExecutingIntent,
-      child: Opacity(
-        opacity: _isExecutingIntent ? 0.6 : 1.0,
-        child: ModeSelector<LightingModeUI>(
-          modes: _getLightingModeOptions(localizations),
-          selectedValue: mode,
-          onChanged: _setLightingMode,
-          orientation: ModeSelectorOrientation.horizontal,
-          iconPlacement: ModeSelectorIconPlacement.left,
-        ),
+      child: ModeSelector<LightingModeUI>(
+        modes: _getLightingModeOptions(localizations),
+        selectedValue: mode,
+        onChanged: _setLightingMode,
+        orientation: ModeSelectorOrientation.vertical,
+        iconPlacement: ModeSelectorIconPlacement.top,
+        showLabels: showLabels,
+        scrollable: showLabels, // Enable scroll when labels shown (takes more space)
       ),
     );
   }
@@ -1035,10 +1034,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     if (_isExecutingIntent) return;
     final localizations = AppLocalizations.of(context);
 
-    // Cancel any pending clear timer from previous operation
-    _pendingModeClearTimer?.cancel();
-    _pendingModeClearTimer = null;
-
     setState(() {
       _isExecutingIntent = true;
       _pendingMode = mode;
@@ -1052,37 +1047,28 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         final result = await _spacesService?.turnLightsOff(_roomId);
         success = result != null;
       } else {
-        // Set the mode - if lights are off, turn them on first
+        // Set the mode - backend handles turning on appropriate lights
         final backendMode = mode.toBackendMode();
         if (backendMode != null) {
-          final state = _lightingState;
-          final lightsAreOff = state == null || !state.anyOn;
-
-          if (lightsAreOff) {
-            // Turn lights on first, then set the mode
-            final onResult = await _spacesService?.turnLightsOn(_roomId);
-            if (onResult != null) {
-              final modeResult = await _spacesService?.setLightingMode(_roomId, backendMode);
-              success = modeResult != null;
-            }
-          } else {
-            // Lights already on, just set the mode
-            final result = await _spacesService?.setLightingMode(_roomId, backendMode);
-            success = result != null;
-          }
+          final result = await _spacesService?.setLightingMode(_roomId, backendMode);
+          success = result != null;
         }
       }
 
       if (success) {
         // Fetch updated lighting state to ensure UI reflects actual state
-        // (don't rely solely on WebSocket events which may be delayed)
         await _spacesService?.fetchLightingState(_roomId);
+        // Clear pending mode now that we have the actual state
+        if (mounted) {
+          setState(() {
+            _pendingMode = null;
+          });
+        }
       } else if (mounted) {
         AlertBar.showError(
           context,
           message: localizations?.action_failed ?? 'Failed to set lighting mode',
         );
-        // Revert optimistic update on failure
         setState(() {
           _pendingMode = null;
         });
@@ -1104,16 +1090,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       if (mounted) {
         setState(() {
           _isExecutingIntent = false;
-        });
-        // Clear pending mode after a delay to allow backend state to propagate
-        // Using Timer instead of Future.delayed so it can be cancelled if user
-        // selects another mode before this timer fires
-        _pendingModeClearTimer = Timer(const Duration(milliseconds: 2000), () {
-          if (mounted) {
-            setState(() {
-              _pendingMode = null;
-            });
-          }
         });
       }
     }
