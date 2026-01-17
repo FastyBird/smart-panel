@@ -8,11 +8,11 @@ import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { CoversIntentDto } from '../dto/covers-intent.dto';
 import {
+	COVERS_MODE_ORCHESTRATION,
 	CoversIntentType,
 	CoversMode,
 	CoversRole,
 	CoversRolePositionRule,
-	COVERS_MODE_ORCHESTRATION,
 	EventType,
 	POSITION_DELTA_STEPS,
 	PositionDelta,
@@ -244,15 +244,15 @@ export class CoversIntentService extends SpaceIntentBaseService {
 				break;
 
 			case CoversIntentType.POSITION_DELTA:
-				result = await this.executePositionDeltaIntent(covers, intent.delta!, intent.increase!);
+				result = await this.executePositionDeltaIntent(covers, intent.delta, intent.increase);
 				break;
 
 			case CoversIntentType.ROLE_POSITION:
-				result = await this.executeRolePositionIntent(covers, intent.role!, intent.position ?? 0);
+				result = await this.executeRolePositionIntent(covers, intent.role, intent.position ?? 0);
 				break;
 
 			case CoversIntentType.SET_MODE:
-				result = await this.executeModeIntent(covers, intent.mode!);
+				result = await this.executeModeIntent(covers, intent.mode);
 				break;
 
 			default:
@@ -351,7 +351,9 @@ export class CoversIntentService extends SpaceIntentBaseService {
 
 		const overallSuccess = failedDevices === 0 || affectedDevices > 0;
 
-		this.logger.debug(`Position intent completed position=${position} affected=${affectedDevices} failed=${failedDevices}`);
+		this.logger.debug(
+			`Position intent completed position=${position} affected=${affectedDevices} failed=${failedDevices}`,
+		);
 
 		return { success: overallSuccess, affectedDevices, failedDevices, newPosition: position };
 	}
@@ -361,10 +363,11 @@ export class CoversIntentService extends SpaceIntentBaseService {
 	 */
 	private async executePositionDeltaIntent(
 		covers: CoverDevice[],
-		delta: PositionDelta,
-		increase: boolean,
+		delta: PositionDelta | undefined,
+		increase: boolean | undefined,
 	): Promise<CoversIntentResult> {
-		const deltaValue = POSITION_DELTA_STEPS[delta] ?? 25;
+		const deltaValue = POSITION_DELTA_STEPS[delta ?? PositionDelta.MEDIUM] ?? 25;
+		const shouldIncrease = increase ?? true;
 		let affectedDevices = 0;
 		let failedDevices = 0;
 		let totalNewPosition = 0;
@@ -375,7 +378,7 @@ export class CoversIntentService extends SpaceIntentBaseService {
 			const currentPosition = this.getPropertyNumericValue(cover.positionProperty) ?? 50;
 
 			// Calculate new position
-			let newPosition = increase ? currentPosition + deltaValue : currentPosition - deltaValue;
+			let newPosition = shouldIncrease ? currentPosition + deltaValue : currentPosition - deltaValue;
 			newPosition = this.clampValue(newPosition, 0, 100);
 
 			const success = await this.setCoverPosition(cover, newPosition);
@@ -393,7 +396,7 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		const averagePosition = positionCount > 0 ? Math.round(totalNewPosition / positionCount) : null;
 
 		this.logger.debug(
-			`Position delta intent completed delta=${delta} increase=${increase} affected=${affectedDevices} failed=${failedDevices}`,
+			`Position delta intent completed delta=${String(delta)} increase=${String(shouldIncrease)} affected=${affectedDevices} failed=${failedDevices}`,
 		);
 
 		return { success: overallSuccess, affectedDevices, failedDevices, newPosition: averagePosition };
@@ -404,14 +407,16 @@ export class CoversIntentService extends SpaceIntentBaseService {
 	 */
 	private async executeRolePositionIntent(
 		allCovers: CoverDevice[],
-		role: CoversRole,
+		role: CoversRole | undefined,
 		position: number,
 	): Promise<CoversIntentResult> {
+		const targetRole = role ?? CoversRole.PRIMARY;
+
 		// Filter covers to only those with the specified role
-		const roleCovers = allCovers.filter((cover) => cover.role === role);
+		const roleCovers = allCovers.filter((cover) => cover.role === targetRole);
 
 		if (roleCovers.length === 0) {
-			this.logger.debug(`No covers found with role=${role}`);
+			this.logger.debug(`No covers found with role=${String(targetRole)}`);
 			return { success: true, affectedDevices: 0, failedDevices: 0, newPosition: position };
 		}
 
@@ -440,16 +445,19 @@ export class CoversIntentService extends SpaceIntentBaseService {
 	/**
 	 * Execute a mode-based covers intent using role-based orchestration.
 	 */
-	private async executeModeIntent(covers: CoverDevice[], mode: CoversMode): Promise<CoversIntentResult> {
+	private async executeModeIntent(
+		covers: CoverDevice[],
+		mode: CoversMode | undefined,
+	): Promise<CoversIntentResult> {
+		const targetMode = mode ?? CoversMode.OPEN;
+
 		// Use the pure function to determine what to do with each cover
-		const selections = selectCoversForMode(covers, mode);
+		const selections = selectCoversForMode(covers, targetMode);
 
 		// Log telemetry for role-based selection
 		const hasRoles = covers.some((c) => c.role !== null);
 
-		this.logger.log(
-			`Mode intent mode=${mode} totalCovers=${covers.length} hasRoles=${hasRoles}`,
-		);
+		this.logger.log(`Mode intent mode=${targetMode} totalCovers=${covers.length} hasRoles=${hasRoles}`);
 
 		let affectedDevices = 0;
 		let failedDevices = 0;

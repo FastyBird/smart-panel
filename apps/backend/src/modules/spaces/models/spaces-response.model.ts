@@ -11,7 +11,6 @@ import { SpaceEntity } from '../entities/space.entity';
 import {
 	ClimateMode,
 	ClimateRole,
-	CoversMode,
 	CoversRole,
 	IntentCategory,
 	LightingMode,
