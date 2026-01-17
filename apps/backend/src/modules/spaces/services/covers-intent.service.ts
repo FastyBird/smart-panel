@@ -595,7 +595,7 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		try {
 			const state = await this.getCoversState(spaceId);
 
-			if (state.hasCovers) {
+			if (state) {
 				this.eventEmitter.emit(EventType.COVERS_STATE_CHANGED, {
 					space_id: spaceId,
 					state,
