@@ -441,10 +441,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           if (rawDevice is LightingDeviceView) {
             device = rawDevice;
             final channels = rawDevice.lightChannels;
-            channel = channels.firstWhere(
-              (c) => c.id == target.channelId,
-              orElse: () => channels.first,
-            );
+            // Use firstOrNull for consistency with optimized path - handles empty channel lists gracefully
+            channel = channels.where((c) => c.id == target.channelId).firstOrNull ??
+                channels.firstOrNull;
           } else {
             device = null;
             channel = null;
@@ -1212,11 +1211,15 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     }
 
     final localizations = AppLocalizations.of(context);
+    final spacesService = _spacesService;
 
     // Map LightTargetRole to LightingStateRole for backend
     final stateRole = _mapTargetRoleToStateRole(roleData.role);
-    if (stateRole == null) {
-      // Fallback to direct device control for unmapped roles
+
+    // Fallback to direct device control when:
+    // - SpacesService is not available
+    // - Role cannot be mapped to a LightingStateRole
+    if (spacesService == null || stateRole == null) {
       await _toggleRole(roleData);
       return;
     }
@@ -1230,10 +1233,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       bool success = false;
 
       if (anyOn) {
-        final result = await _spacesService?.turnRoleOff(_roomId, stateRole);
+        final result = await spacesService.turnRoleOff(_roomId, stateRole);
         success = result != null;
       } else {
-        final result = await _spacesService?.turnRoleOn(_roomId, stateRole);
+        final result = await spacesService.turnRoleOn(_roomId, stateRole);
         success = result != null;
       }
 
@@ -1242,7 +1245,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         // Wrapped in try-catch because state refresh failure shouldn't show
         // an error to users - the toggle action already succeeded.
         try {
-          await _spacesService?.fetchLightingState(_roomId);
+          await spacesService.fetchLightingState(_roomId);
         } catch (e) {
           if (kDebugMode) {
             debugPrint('[LightsDomainView] Failed to refresh lighting state: $e');
