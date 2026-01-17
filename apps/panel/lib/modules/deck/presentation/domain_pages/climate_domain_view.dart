@@ -353,6 +353,20 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       }
     }
 
+    // Validate mode is consistent with capability - fall back to off if not supported
+    if (mode == ClimateMode.heat &&
+        capability != RoomCapability.heaterOnly &&
+        capability != RoomCapability.heaterAndCooler) {
+      mode = ClimateMode.off;
+    } else if (mode == ClimateMode.cool &&
+        capability != RoomCapability.coolerOnly &&
+        capability != RoomCapability.heaterAndCooler) {
+      mode = ClimateMode.off;
+    } else if (mode == ClimateMode.auto &&
+        capability != RoomCapability.heaterAndCooler) {
+      mode = ClimateMode.off;
+    }
+
     // Get temperature values from climate state
     final rawMinSetpoint = climateState?.minSetpoint ?? 16.0;
     final rawMaxSetpoint = climateState?.maxSetpoint ?? 30.0;
