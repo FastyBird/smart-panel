@@ -3,9 +3,9 @@ import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/mixins.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/active.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/aqi.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/fault.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/level.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/measured.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 
 class AirQualityChannelView extends ChannelView
@@ -23,9 +23,9 @@ class AirQualityChannelView extends ChannelView
     super.validationIssues,
   });
 
-  /// AQI (Air Quality Index) value property - uses measured property view for numeric AQI
-  MeasuredChannelPropertyView? get aqiProp =>
-      properties.whereType<MeasuredChannelPropertyView>().firstOrNull;
+  /// AQI (Air Quality Index) value property
+  AqiChannelPropertyView? get aqiProp =>
+      properties.whereType<AqiChannelPropertyView>().firstOrNull;
 
   /// Level property for air quality level classification
   LevelChannelPropertyView? get levelProp =>
@@ -42,7 +42,7 @@ class AirQualityChannelView extends ChannelView
   bool get hasAqi => aqiProp != null;
 
   int get aqi {
-    final MeasuredChannelPropertyView? prop = aqiProp;
+    final AqiChannelPropertyView? prop = aqiProp;
 
     final ValueType? value = prop?.value;
 

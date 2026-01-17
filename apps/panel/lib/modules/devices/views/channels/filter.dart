@@ -4,7 +4,7 @@ import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/mixins.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/fault.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/percentage.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/life_remaining.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/status.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 
@@ -22,9 +22,9 @@ class FilterChannelView extends ChannelView with ChannelFaultMixin {
     super.validationIssues,
   });
 
-  /// Life remaining property - uses percentage property view
-  PercentageChannelPropertyView get lifeRemainingProp =>
-      properties.whereType<PercentageChannelPropertyView>().first;
+  /// Life remaining property
+  LifeRemainingChannelPropertyView get lifeRemainingProp =>
+      properties.whereType<LifeRemainingChannelPropertyView>().first;
 
   StatusChannelPropertyView get statusProp =>
       properties.whereType<StatusChannelPropertyView>().first;
