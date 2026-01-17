@@ -23,6 +23,7 @@ import {
 import { ResolvedModeOrchestration } from '../spec';
 
 import { ClimateIntentResult, ClimateIntentService, ClimateState } from './climate-intent.service';
+import { CoversIntentService } from './covers-intent.service';
 import { LightingIntentService } from './lighting-intent.service';
 import { IntentExecutionResult } from './space-intent-base.service';
 import { SpaceIntentService, selectLightsForMode } from './space-intent.service';
@@ -79,6 +80,7 @@ describe('SpaceIntentService', () => {
 	let service: SpaceIntentService;
 	let mockLightingIntentService: jest.Mocked<LightingIntentService>;
 	let mockClimateIntentService: jest.Mocked<ClimateIntentService>;
+	let mockCoversIntentService: jest.Mocked<CoversIntentService>;
 
 	const mockSpaceId = 'space-123';
 
@@ -93,7 +95,12 @@ describe('SpaceIntentService', () => {
 			getPrimaryThermostatId: jest.fn(),
 		} as unknown as jest.Mocked<ClimateIntentService>;
 
-		service = new SpaceIntentService(mockLightingIntentService, mockClimateIntentService);
+		mockCoversIntentService = {
+			getCoversState: jest.fn(),
+			executeCoversIntent: jest.fn(),
+		} as unknown as jest.Mocked<CoversIntentService>;
+
+		service = new SpaceIntentService(mockLightingIntentService, mockClimateIntentService, mockCoversIntentService);
 	});
 
 	afterEach(() => {

@@ -18,6 +18,7 @@ import {
 	PositionDelta,
 	SPACES_MODULE_NAME,
 } from '../spaces.constants';
+import { SpacesNotFoundException } from '../spaces.exceptions';
 
 import { SpaceContextSnapshotService } from './space-context-snapshot.service';
 import { SpaceCoversRoleService } from './space-covers-role.service';
@@ -150,12 +151,12 @@ export class CoversIntentService extends SpaceIntentBaseService {
 			coversByRole: {},
 		};
 
-		// Verify space exists
+		// Verify space exists - throw 404 if not found
 		const space = await this.spacesService.findOne(spaceId);
 
 		if (!space) {
 			this.logger.warn(`Space not found id=${spaceId}`);
-			return defaultState;
+			throw new SpacesNotFoundException('Requested space does not exist');
 		}
 
 		// Get all covers in the space

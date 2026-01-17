@@ -17,7 +17,7 @@ import { DevicesService } from '../../devices/services/devices.service';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { ClimateMode } from '../spaces.constants';
 
-import { LightStateSnapshot, SpaceContextSnapshot } from './space-context-snapshot.service';
+import { CoverStateSnapshot, LightStateSnapshot, SpaceContextSnapshot } from './space-context-snapshot.service';
 import { SpaceUndoHistoryService } from './space-undo-history.service';
 import { SpacesService } from './spaces.service';
 
@@ -26,7 +26,11 @@ describe('SpaceUndoHistoryService', () => {
 	let devicesService: jest.Mocked<DevicesService>;
 	let platformRegistryService: jest.Mocked<PlatformRegistryService>;
 
-	const createSnapshot = (spaceId: string, lights: LightStateSnapshot[] = []): SpaceContextSnapshot => ({
+	const createSnapshot = (
+		spaceId: string,
+		lights: LightStateSnapshot[] = [],
+		covers: CoverStateSnapshot[] = [],
+	): SpaceContextSnapshot => ({
 		spaceId,
 		spaceName: 'Test Space',
 		capturedAt: new Date(),
@@ -56,6 +60,13 @@ describe('SpaceUndoHistoryService', () => {
 			primaryThermostatId: null,
 			lastAppliedMode: null,
 			lastAppliedAt: null,
+		},
+		covers: {
+			summary: {
+				totalCovers: covers.length,
+				averagePosition: null,
+			},
+			covers,
 		},
 	});
 
@@ -157,6 +168,13 @@ describe('SpaceUndoHistoryService', () => {
 			primaryThermostatId: thermostatId,
 			lastAppliedMode: null,
 			lastAppliedAt: null,
+		},
+		covers: {
+			summary: {
+				totalCovers: 0,
+				averagePosition: null,
+			},
+			covers: [],
 		},
 	});
 

@@ -15,6 +15,7 @@ import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { SpaceEntity } from '../entities/space.entity';
 import { SpaceClimateRoleService } from '../services/space-climate-role.service';
 import { SpaceContextSnapshotService } from '../services/space-context-snapshot.service';
+import { SpaceCoversRoleService } from '../services/space-covers-role.service';
 import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
 import { SpaceLightingStateService } from '../services/space-lighting-state.service';
@@ -188,6 +189,25 @@ describe('SpacesController', () => {
 						deleteRole: jest.fn().mockResolvedValue(undefined),
 						getClimateTargetsInSpace: jest.fn().mockResolvedValue([]),
 						inferDefaultClimateRoles: jest.fn().mockResolvedValue([]),
+						getRoleMap: jest.fn().mockResolvedValue(new Map()),
+					},
+				},
+				{
+					provide: SpaceCoversRoleService,
+					useValue: {
+						findBySpace: jest.fn().mockResolvedValue([]),
+						findOne: jest.fn().mockResolvedValue(null),
+						setRole: jest.fn().mockResolvedValue({}),
+						bulkSetRoles: jest.fn().mockResolvedValue({
+							success: true,
+							totalCount: 0,
+							successCount: 0,
+							failureCount: 0,
+							results: [],
+						}),
+						deleteRole: jest.fn().mockResolvedValue(undefined),
+						getCoversTargetsInSpace: jest.fn().mockResolvedValue([]),
+						inferDefaultCoversRoles: jest.fn().mockResolvedValue([]),
 						getRoleMap: jest.fn().mockResolvedValue(new Map()),
 					},
 				},
@@ -1228,6 +1248,10 @@ describe('SpacesController', () => {
 					lastAppliedMode: null,
 					lastAppliedAt: null,
 					primaryThermostatId: null,
+				},
+				covers: {
+					summary: { totalCovers: 0, averagePosition: null },
+					covers: [],
 				},
 			};
 			jest.spyOn(spaceContextSnapshotService, 'captureSnapshot').mockResolvedValue(snapshot);
