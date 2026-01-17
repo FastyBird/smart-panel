@@ -3,7 +3,14 @@ import { Injectable } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
-import { CoversRole, LightingRole, SPACES_MODULE_NAME } from '../spaces.constants';
+import {
+	ClimateMode,
+	CoversRole,
+	DEFAULT_MAX_SETPOINT,
+	DEFAULT_MIN_SETPOINT,
+	LightingRole,
+	SPACES_MODULE_NAME,
+} from '../spaces.constants';
 
 import { SpaceCoversRoleService } from './space-covers-role.service';
 import { ClimateState, SpaceIntentService } from './space-intent.service';
@@ -123,8 +130,28 @@ export class SpaceContextSnapshotService {
 		// Get primary thermostat ID from intent service (uses same logic as executeClimateIntent)
 		const primaryThermostatId = await this.spaceIntentService.getPrimaryThermostatId(spaceId);
 
+		// Default climate state when null (space exists but no climate devices)
+		const defaultClimateState: ClimateState = {
+			hasClimate: false,
+			mode: ClimateMode.OFF,
+			currentTemperature: null,
+			currentHumidity: null,
+			targetTemperature: null,
+			heatingSetpoint: null,
+			coolingSetpoint: null,
+			minSetpoint: DEFAULT_MIN_SETPOINT,
+			maxSetpoint: DEFAULT_MAX_SETPOINT,
+			canSetSetpoint: false,
+			supportsHeating: false,
+			supportsCooling: false,
+			isMixed: false,
+			devicesCount: 0,
+			lastAppliedMode: null,
+			lastAppliedAt: null,
+		};
+
 		const climate: ClimateStateSnapshot = {
-			...climateState,
+			...(climateState ?? defaultClimateState),
 			primaryThermostatId,
 		};
 

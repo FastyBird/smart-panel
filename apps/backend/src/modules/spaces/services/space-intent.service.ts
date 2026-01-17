@@ -36,8 +36,9 @@ export class SpaceIntentService {
 	/**
 	 * Execute a lighting intent for all lights in a space.
 	 * Delegates to LightingIntentService.
+	 * Returns null if space doesn't exist.
 	 */
-	async executeLightingIntent(spaceId: string, intent: LightingIntentDto): Promise<IntentExecutionResult> {
+	async executeLightingIntent(spaceId: string, intent: LightingIntentDto): Promise<IntentExecutionResult | null> {
 		return this.lightingIntentService.executeLightingIntent(spaceId, intent);
 	}
 
@@ -48,16 +49,18 @@ export class SpaceIntentService {
 	/**
 	 * Get the current climate state for a space.
 	 * Delegates to ClimateIntentService.
+	 * Returns null if space doesn't exist.
 	 */
-	async getClimateState(spaceId: string): Promise<ClimateState> {
+	async getClimateState(spaceId: string): Promise<ClimateState | null> {
 		return this.climateIntentService.getClimateState(spaceId);
 	}
 
 	/**
 	 * Execute a climate intent for the space.
 	 * Delegates to ClimateIntentService.
+	 * Returns null if space doesn't exist.
 	 */
-	async executeClimateIntent(spaceId: string, intent: ClimateIntentDto): Promise<ClimateIntentResult> {
+	async executeClimateIntent(spaceId: string, intent: ClimateIntentDto): Promise<ClimateIntentResult | null> {
 		return this.climateIntentService.executeClimateIntent(spaceId, intent);
 	}
 
@@ -85,8 +88,9 @@ export class SpaceIntentService {
 	/**
 	 * Execute a covers intent for the space.
 	 * Delegates to CoversIntentService.
+	 * Returns null if space doesn't exist.
 	 */
-	async executeCoversIntent(spaceId: string, intent: CoversIntentDto): Promise<CoversIntentResult> {
+	async executeCoversIntent(spaceId: string, intent: CoversIntentDto): Promise<CoversIntentResult | null> {
 		return this.coversIntentService.executeCoversIntent(spaceId, intent);
 	}
 }

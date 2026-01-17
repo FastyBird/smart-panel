@@ -577,6 +577,10 @@ export class SpacesController {
 
 		const state = await this.spaceIntentService.getClimateState(id);
 
+		if (!state) {
+			throw new SpacesNotFoundException('Space not found');
+		}
+
 		const stateData = new ClimateStateDataModel();
 		stateData.hasClimate = state.hasClimate;
 		stateData.mode = state.mode;
