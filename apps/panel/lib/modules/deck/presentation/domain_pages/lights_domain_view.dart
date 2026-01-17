@@ -157,6 +157,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   // Current lighting mode for optimistic UI
   LightingModeUI? _pendingMode;
 
+  // Debounce protection for rapid mode selection
+  DateTime? _lastModeChangeTime;
+  static const _modeChangeDebounce = Duration(milliseconds: 300);
+
   String get _roomId => widget.viewItem.roomId;
 
   /// Get lighting state from backend (cached)
@@ -1031,8 +1035,19 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   /// Set lighting mode via backend intent
   Future<void> _setLightingMode(LightingModeUI mode) async {
+    // Guard against concurrent execution
     if (_isExecutingIntent) return;
-    final localizations = AppLocalizations.of(context);
+
+    // Debounce rapid taps
+    final now = DateTime.now();
+    if (_lastModeChangeTime != null &&
+        now.difference(_lastModeChangeTime!) < _modeChangeDebounce) {
+      return;
+    }
+    _lastModeChangeTime = now;
+
+    // Get localizations early (should always be available in widget context)
+    final localizations = AppLocalizations.of(context)!;
 
     setState(() {
       _isExecutingIntent = true;
@@ -1065,10 +1080,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           });
         }
       } else if (mounted) {
-        AlertBar.showError(
-          context,
-          message: localizations?.action_failed ?? 'Failed to set lighting mode',
-        );
+        AlertBar.showError(context, message: localizations.action_failed);
         setState(() {
           _pendingMode = null;
         });
@@ -1078,10 +1090,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         debugPrint('[LightsDomainView] Failed to set lighting mode: $e');
       }
       if (mounted) {
-        AlertBar.showError(
-          context,
-          message: localizations?.action_failed ?? 'Failed to set lighting mode',
-        );
+        AlertBar.showError(context, message: localizations.action_failed);
         setState(() {
           _pendingMode = null;
         });
