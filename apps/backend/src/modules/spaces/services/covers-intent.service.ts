@@ -2,8 +2,6 @@ import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
-import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { CoversIntentDto } from '../dto/covers-intent.dto';
@@ -20,22 +18,13 @@ import {
 } from '../spaces.constants';
 
 import { SpaceContextSnapshotService } from './space-context-snapshot.service';
-import { SpaceCoversRoleService } from './space-covers-role.service';
+import { CoverDevice, CoversState, SpaceCoversStateService } from './space-covers-state.service';
 import { IntentExecutionResult, SpaceIntentBaseService } from './space-intent-base.service';
 import { SpaceUndoHistoryService } from './space-undo-history.service';
 import { SpacesService } from './spaces.service';
 
-/**
- * Represents a window covering device with its channel, properties, and role.
- */
-export interface CoverDevice {
-	device: DeviceEntity;
-	coverChannel: ChannelEntity;
-	positionProperty: ChannelPropertyEntity | null;
-	commandProperty: ChannelPropertyEntity | null;
-	tiltProperty: ChannelPropertyEntity | null;
-	role: CoversRole | null;
-}
+// Re-export types for backwards compatibility
+export { CoverDevice, CoversState } from './space-covers-state.service';
 
 /**
  * Result of role-based cover selection for a mode.
@@ -43,18 +32,6 @@ export interface CoverDevice {
 export interface CoverModeSelection {
 	cover: CoverDevice;
 	rule: CoversRolePositionRule;
-}
-
-/**
- * State information for covers in a space.
- */
-export interface CoversState {
-	hasCovers: boolean;
-	averagePosition: number | null;
-	anyOpen: boolean;
-	allClosed: boolean;
-	devicesCount: number;
-	coversByRole: Record<string, number>;
 }
 
 /**
@@ -127,7 +104,8 @@ export class CoversIntentService extends SpaceIntentBaseService {
 	constructor(
 		private readonly spacesService: SpacesService,
 		private readonly platformRegistryService: PlatformRegistryService,
-		private readonly coversRoleService: SpaceCoversRoleService,
+		@Inject(forwardRef(() => SpaceCoversStateService))
+		private readonly coversStateService: SpaceCoversStateService,
 		private readonly eventEmitter: EventEmitter2,
 		@Inject(forwardRef(() => SpaceContextSnapshotService))
 		private readonly contextSnapshotService: SpaceContextSnapshotService,
@@ -139,70 +117,10 @@ export class CoversIntentService extends SpaceIntentBaseService {
 
 	/**
 	 * Get the current covers state for a space.
-	 * Returns null if space doesn't exist (controller should throw 404).
+	 * Delegates to SpaceCoversStateService.
 	 */
 	async getCoversState(spaceId: string): Promise<CoversState | null> {
-		const defaultState: CoversState = {
-			hasCovers: false,
-			averagePosition: null,
-			anyOpen: false,
-			allClosed: true,
-			devicesCount: 0,
-			coversByRole: {},
-		};
-
-		// Verify space exists - return null for controller to throw 404
-		const space = await this.spacesService.findOne(spaceId);
-
-		if (!space) {
-			this.logger.warn(`Space not found id=${spaceId}`);
-
-			return null;
-		}
-
-		// Get all covers in the space
-		const covers = await this.getCoversInSpace(spaceId);
-
-		if (covers.length === 0) {
-			this.logger.debug(`No covers found in space id=${spaceId}`);
-			return defaultState;
-		}
-
-		// Aggregate position values
-		const positions: number[] = [];
-		let anyOpen = false;
-		let allClosed = true;
-		const coversByRole: Record<string, number> = {};
-
-		for (const cover of covers) {
-			const position = this.getPropertyNumericValue(cover.positionProperty);
-
-			if (position !== null) {
-				positions.push(position);
-
-				if (position > 0) {
-					anyOpen = true;
-				}
-				if (position > 0) {
-					allClosed = false;
-				}
-			}
-
-			// Count by role
-			const roleKey = cover.role ?? 'unassigned';
-			coversByRole[roleKey] = (coversByRole[roleKey] ?? 0) + 1;
-		}
-
-		const averagePosition = positions.length > 0 ? positions.reduce((a, b) => a + b, 0) / positions.length : null;
-
-		return {
-			hasCovers: true,
-			averagePosition: averagePosition !== null ? Math.round(averagePosition) : null,
-			anyOpen,
-			allClosed,
-			devicesCount: covers.length,
-			coversByRole,
-		};
+		return this.coversStateService.getCoversState(spaceId);
 	}
 
 	/**
@@ -218,7 +136,7 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		}
 
 		// Get all covers in the space
-		const covers = await this.getCoversInSpace(spaceId);
+		const covers = await this.coversStateService.getCoversInSpace(spaceId);
 
 		if (covers.length === 0) {
 			this.logger.debug(`No covers found in space id=${spaceId}`);
@@ -273,66 +191,6 @@ export class CoversIntentService extends SpaceIntentBaseService {
 	// =====================
 	// Private Methods
 	// =====================
-
-	/**
-	 * Find all window covering devices in a space with their channels, properties, and roles.
-	 * Excludes covers with HIDDEN role as they should not be controlled by intents.
-	 */
-	private async getCoversInSpace(spaceId: string): Promise<CoverDevice[]> {
-		const devices = await this.spacesService.findDevicesBySpace(spaceId);
-		const covers: CoverDevice[] = [];
-
-		// Get role map for this space
-		const roleMap = await this.coversRoleService.getRoleMap(spaceId);
-
-		for (const device of devices) {
-			// Check if device is a window covering device
-			if (device.category !== DeviceCategory.WINDOW_COVERING) {
-				continue;
-			}
-
-			// Find ALL window covering channels
-			const coverChannels = device.channels?.filter((ch) => ch.category === ChannelCategory.WINDOW_COVERING) ?? [];
-
-			for (const coverChannel of coverChannels) {
-				// Find position property (primary control)
-				const positionProperty = coverChannel.properties?.find((p) => p.category === PropertyCategory.POSITION) ?? null;
-
-				// Find command property (open/close/stop)
-				const commandProperty = coverChannel.properties?.find((p) => p.category === PropertyCategory.COMMAND) ?? null;
-
-				// Find tilt property (optional)
-				const tiltProperty = coverChannel.properties?.find((p) => p.category === PropertyCategory.TILT) ?? null;
-
-				// Must have position or command to be controllable
-				if (!positionProperty && !commandProperty) {
-					continue;
-				}
-
-				// Get role assignment for this cover (keyed by deviceId:channelId)
-				const roleKey = `${device.id}:${coverChannel.id}`;
-				const roleEntity = roleMap.get(roleKey);
-				const role = roleEntity?.role ?? null;
-
-				// Skip HIDDEN covers - they should not be controlled by intents
-				if (role === CoversRole.HIDDEN) {
-					this.logger.debug(`Skipping HIDDEN cover deviceId=${device.id} channelId=${coverChannel.id}`);
-					continue;
-				}
-
-				covers.push({
-					device,
-					coverChannel,
-					positionProperty,
-					commandProperty,
-					tiltProperty,
-					role,
-				});
-			}
-		}
-
-		return covers;
-	}
 
 	/**
 	 * Execute a position intent for all covers.
@@ -593,7 +451,7 @@ export class CoversIntentService extends SpaceIntentBaseService {
 	 */
 	private async emitCoversStateChange(spaceId: string): Promise<void> {
 		try {
-			const state = await this.getCoversState(spaceId);
+			const state = await this.coversStateService.getCoversState(spaceId);
 
 			if (state) {
 				this.eventEmitter.emit(EventType.COVERS_STATE_CHANGED, {

@@ -24,8 +24,10 @@ import { ClimateIntentService } from './services/climate-intent.service';
 import { CoversIntentService } from './services/covers-intent.service';
 import { LightingIntentService } from './services/lighting-intent.service';
 import { SpaceClimateRoleService } from './services/space-climate-role.service';
+import { SpaceClimateStateService } from './services/space-climate-state.service';
 import { SpaceContextSnapshotService } from './services/space-context-snapshot.service';
 import { SpaceCoversRoleService } from './services/space-covers-role.service';
+import { SpaceCoversStateService } from './services/space-covers-state.service';
 import { SpaceIntentBaseService } from './services/space-intent-base.service';
 import { SpaceIntentService } from './services/space-intent.service';
 import { SpaceLightingRoleService } from './services/space-lighting-role.service';
@@ -69,7 +71,9 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceLightingRoleService,
 		SpaceLightingStateService,
 		SpaceClimateRoleService,
+		SpaceClimateStateService,
 		SpaceCoversRoleService,
+		SpaceCoversStateService,
 		SpaceSuggestionService,
 		SpaceContextSnapshotService,
 		SpaceUndoHistoryService,
