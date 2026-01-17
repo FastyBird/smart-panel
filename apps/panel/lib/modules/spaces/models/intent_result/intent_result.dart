@@ -54,6 +54,30 @@ class ClimateIntentResult {
   }
 }
 
+/// Result of a covers intent execution
+class CoversIntentResult {
+  final bool success;
+  final int affectedDevices;
+  final int failedDevices;
+  final int? newPosition;
+
+  CoversIntentResult({
+    required this.success,
+    required this.affectedDevices,
+    required this.failedDevices,
+    this.newPosition,
+  });
+
+  factory CoversIntentResult.fromJson(Map<String, dynamic> json) {
+    return CoversIntentResult(
+      success: json['success'] as bool? ?? false,
+      affectedDevices: json['affected_devices'] as int? ?? 0,
+      failedDevices: json['failed_devices'] as int? ?? 0,
+      newPosition: json['new_position'] as int?,
+    );
+  }
+}
+
 /// Result of a suggestion feedback
 class SuggestionFeedbackResult {
   final bool success;

@@ -376,3 +376,5 @@ export { ExtensionsModuleDataServiceStatusState as ExtensionsModuleServiceState 
 export { SpacesModuleDataRoleAggregatedStateRole as SpacesModuleLightingRole } from './openapi';
 
 export { SpacesModuleSetClimateRoleRole as SpacesModuleClimateRole } from './openapi';
+
+export { SpacesModuleCoversIntentRole as SpacesModuleCoversRole } from './openapi';

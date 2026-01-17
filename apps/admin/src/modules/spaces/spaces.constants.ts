@@ -15,8 +15,12 @@ export enum EventType {
 	LIGHT_TARGET_CREATED = 'SpacesModule.LightTarget.Created',
 	LIGHT_TARGET_UPDATED = 'SpacesModule.LightTarget.Updated',
 	LIGHT_TARGET_DELETED = 'SpacesModule.LightTarget.Deleted',
+	COVERS_TARGET_CREATED = 'SpacesModule.CoversTarget.Created',
+	COVERS_TARGET_UPDATED = 'SpacesModule.CoversTarget.Updated',
+	COVERS_TARGET_DELETED = 'SpacesModule.CoversTarget.Deleted',
 	LIGHTING_STATE_CHANGED = 'SpacesModule.Space.LightingStateChanged',
 	CLIMATE_STATE_CHANGED = 'SpacesModule.Space.ClimateStateChanged',
+	COVERS_STATE_CHANGED = 'SpacesModule.Space.CoversStateChanged',
 }
 
 export const RouteNames = {
@@ -428,7 +432,11 @@ export function getTemplatesForType(
 }
 
 // Re-export role enums from OpenAPI-generated types (single source of truth)
-export { SpacesModuleLightingRole as LightingRole, SpacesModuleClimateRole as ClimateRole } from '../../openapi.constants';
+export {
+	SpacesModuleLightingRole as LightingRole,
+	SpacesModuleClimateRole as ClimateRole,
+	SpacesModuleCoversRole as CoversRole,
+} from '../../openapi.constants';
 
 // Import for local use in helper arrays
 import { SpacesModuleClimateRole, DevicesModuleDeviceCategory } from '../../openapi.constants';

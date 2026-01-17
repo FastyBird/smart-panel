@@ -4,6 +4,7 @@ import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/devices/constants.dart';
 import 'package:fastybird_smart_panel/modules/spaces/constants.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/climate_targets.dart';
+import 'package:fastybird_smart_panel/modules/spaces/repositories/covers_targets.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/light_targets.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/space_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/spaces.dart';
@@ -16,6 +17,7 @@ class SpacesModuleService {
   late SpacesRepository _spacesRepository;
   late LightTargetsRepository _lightTargetsRepository;
   late ClimateTargetsRepository _climateTargetsRepository;
+  late CoversTargetsRepository _coversTargetsRepository;
   late SpaceStateRepository _spaceStateRepository;
   late SpacesService _spacesService;
 
@@ -37,6 +39,10 @@ class SpacesModuleService {
       apiClient: apiClient.spacesModule,
     );
 
+    _coversTargetsRepository = CoversTargetsRepository(
+      apiClient: apiClient.spacesModule,
+    );
+
     _spaceStateRepository = SpaceStateRepository(
       apiClient: apiClient.spacesModule,
     );
@@ -45,12 +51,14 @@ class SpacesModuleService {
       spacesRepository: _spacesRepository,
       lightTargetsRepository: _lightTargetsRepository,
       climateTargetsRepository: _climateTargetsRepository,
+      coversTargetsRepository: _coversTargetsRepository,
       spaceStateRepository: _spaceStateRepository,
     );
 
     locator.registerSingleton(_spacesRepository);
     locator.registerSingleton(_lightTargetsRepository);
     locator.registerSingleton(_climateTargetsRepository);
+    locator.registerSingleton(_coversTargetsRepository);
     locator.registerSingleton(_spaceStateRepository);
     locator.registerSingleton(_spacesService);
   }
@@ -107,6 +115,7 @@ class SpacesModuleService {
     _spacesRepository.clearAll();
     _lightTargetsRepository.clearAll();
     _climateTargetsRepository.clearAll();
+    _coversTargetsRepository.clearAll();
     _spaceStateRepository.clearAll();
   }
 
@@ -126,6 +135,7 @@ class SpacesModuleService {
       _spacesRepository.delete(payload['id']);
       _lightTargetsRepository.deleteForSpace(payload['id']);
       _climateTargetsRepository.deleteForSpace(payload['id']);
+      _coversTargetsRepository.deleteForSpace(payload['id']);
       _spaceStateRepository.clearForSpace(payload['id']);
 
       /// Light Target CREATE/UPDATE
@@ -148,6 +158,16 @@ class SpacesModuleService {
         payload.containsKey('id')) {
       _climateTargetsRepository.delete(payload['id']);
 
+      /// Covers Target CREATE/UPDATE
+    } else if (event == SpacesModuleConstants.coversTargetCreatedEvent ||
+        event == SpacesModuleConstants.coversTargetUpdatedEvent) {
+      _coversTargetsRepository.insertOne(payload);
+
+      /// Covers Target DELETE
+    } else if (event == SpacesModuleConstants.coversTargetDeletedEvent &&
+        payload.containsKey('id')) {
+      _coversTargetsRepository.delete(payload['id']);
+
       /// Lighting State CHANGED
     } else if (event == SpacesModuleConstants.lightingStateChangedEvent) {
       final spaceId = payload['space_id'] as String?;
@@ -163,26 +183,36 @@ class SpacesModuleService {
       if (spaceId != null && stateData != null) {
         _spaceStateRepository.updateClimateState(spaceId, stateData);
       }
+
+      /// Covers State CHANGED
+    } else if (event == SpacesModuleConstants.coversStateChangedEvent) {
+      final spaceId = payload['space_id'] as String?;
+      final stateData = payload['state'] as Map<String, dynamic>?;
+      if (spaceId != null && stateData != null) {
+        _spaceStateRepository.updateCoversState(spaceId, stateData);
+      }
     }
   }
 
-  /// Handle devices module events to sync names to light targets
+  /// Handle devices module events to sync names to targets
   void _deviceSocketEventHandler(String event, Map<String, dynamic> payload) {
     if (!payload.containsKey('id')) return;
 
     final id = payload['id'] as String;
 
     if (event == DevicesModuleConstants.channelUpdatedEvent) {
-      // Sync channel name to light targets
+      // Sync channel name to targets
       final name = payload['name'] as String?;
       if (name != null) {
         _lightTargetsRepository.updateChannelName(id, name);
+        _coversTargetsRepository.updateChannelName(id, name);
       }
     } else if (event == DevicesModuleConstants.deviceUpdatedEvent) {
-      // Sync device name to light targets
+      // Sync device name to targets
       final name = payload['name'] as String?;
       if (name != null) {
         _lightTargetsRepository.updateDeviceName(id, name);
+        _coversTargetsRepository.updateDeviceName(id, name);
       }
     }
   }

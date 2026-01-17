@@ -251,32 +251,38 @@ export class SpaceSuggestionService {
 
 	/**
 	 * Execute the lighting intent for a suggestion type.
+	 *
+	 * @param spaceId - The UUID of the space to execute the intent in
+	 * @param suggestionType - The type of suggestion to execute
+	 * @returns true if the intent was executed successfully, false if space doesn't exist or execution failed
 	 */
 	private async executeIntent(spaceId: string, suggestionType: SuggestionType): Promise<boolean> {
 		try {
+			let result;
+
 			switch (suggestionType) {
 				case SuggestionType.LIGHTING_RELAX:
-					await this.spaceIntentService.executeLightingIntent(spaceId, {
+					result = await this.spaceIntentService.executeLightingIntent(spaceId, {
 						type: LightingIntentType.SET_MODE,
 						mode: LightingMode.RELAX,
 					});
 
-					return true;
+					return result !== null;
 
 				case SuggestionType.LIGHTING_NIGHT:
-					await this.spaceIntentService.executeLightingIntent(spaceId, {
+					result = await this.spaceIntentService.executeLightingIntent(spaceId, {
 						type: LightingIntentType.SET_MODE,
 						mode: LightingMode.NIGHT,
 					});
 
-					return true;
+					return result !== null;
 
 				case SuggestionType.LIGHTING_OFF:
-					await this.spaceIntentService.executeLightingIntent(spaceId, {
+					result = await this.spaceIntentService.executeLightingIntent(spaceId, {
 						type: LightingIntentType.OFF,
 					});
 
-					return true;
+					return result !== null;
 
 				default:
 					this.logger.warn(`Unknown suggestion type: ${suggestionType as string}`);

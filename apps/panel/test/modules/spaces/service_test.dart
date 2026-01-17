@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/light
 import 'package:fastybird_smart_panel/modules/spaces/models/suggestion/suggestion.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/undo/undo_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/climate_targets.dart';
+import 'package:fastybird_smart_panel/modules/spaces/repositories/covers_targets.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/intent_types.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/light_targets.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/space_state.dart';
@@ -18,12 +19,15 @@ class MockLightTargetsRepository extends Mock implements LightTargetsRepository 
 
 class MockClimateTargetsRepository extends Mock implements ClimateTargetsRepository {}
 
+class MockCoversTargetsRepository extends Mock implements CoversTargetsRepository {}
+
 class MockSpaceStateRepository extends Mock implements SpaceStateRepository {}
 
 void main() {
   late MockSpacesRepository mockSpacesRepository;
   late MockLightTargetsRepository mockLightTargetsRepository;
   late MockClimateTargetsRepository mockClimateTargetsRepository;
+  late MockCoversTargetsRepository mockCoversTargetsRepository;
   late MockSpaceStateRepository mockSpaceStateRepository;
   late SpacesService service;
 
@@ -31,12 +35,14 @@ void main() {
     mockSpacesRepository = MockSpacesRepository();
     mockLightTargetsRepository = MockLightTargetsRepository();
     mockClimateTargetsRepository = MockClimateTargetsRepository();
+    mockCoversTargetsRepository = MockCoversTargetsRepository();
     mockSpaceStateRepository = MockSpaceStateRepository();
 
     service = SpacesService(
       spacesRepository: mockSpacesRepository,
       lightTargetsRepository: mockLightTargetsRepository,
       climateTargetsRepository: mockClimateTargetsRepository,
+      coversTargetsRepository: mockCoversTargetsRepository,
       spaceStateRepository: mockSpaceStateRepository,
     );
   });

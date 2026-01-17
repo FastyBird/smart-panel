@@ -1,19 +1,23 @@
 import 'package:fastybird_smart_panel/api/models/spaces_module_climate_intent_delta.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_type.dart';
 import 'package:fastybird_smart_panel/modules/spaces/mappers/climate_target.dart';
+import 'package:fastybird_smart_panel/modules/spaces/mappers/covers_target.dart';
 import 'package:fastybird_smart_panel/modules/spaces/mappers/light_target.dart';
 import 'package:fastybird_smart_panel/modules/spaces/mappers/space.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/covers_state/covers_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/intent_result/intent_result.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/suggestion/suggestion.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/undo/undo_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/climate_targets.dart';
+import 'package:fastybird_smart_panel/modules/spaces/repositories/covers_targets.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/intent_types.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/light_targets.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/space_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/spaces.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/climate_targets/view.dart';
+import 'package:fastybird_smart_panel/modules/spaces/views/covers_targets/view.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/light_targets/view.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/spaces/view.dart';
 import 'package:flutter/foundation.dart';
@@ -54,21 +58,25 @@ class SpacesService extends ChangeNotifier {
   final SpacesRepository _spacesRepository;
   final LightTargetsRepository _lightTargetsRepository;
   final ClimateTargetsRepository _climateTargetsRepository;
+  final CoversTargetsRepository _coversTargetsRepository;
   final SpaceStateRepository _spaceStateRepository;
 
   Map<String, SpaceView> _spaces = {};
   Map<String, LightTargetView> _lightTargets = {};
   Map<String, ClimateTargetView> _climateTargets = {};
+  Map<String, CoversTargetView> _coversTargets = {};
 
   /// Creates a new [SpacesService] with the required repositories.
   SpacesService({
     required SpacesRepository spacesRepository,
     required LightTargetsRepository lightTargetsRepository,
     required ClimateTargetsRepository climateTargetsRepository,
+    required CoversTargetsRepository coversTargetsRepository,
     required SpaceStateRepository spaceStateRepository,
   })  : _spacesRepository = spacesRepository,
         _lightTargetsRepository = lightTargetsRepository,
         _climateTargetsRepository = climateTargetsRepository,
+        _coversTargetsRepository = coversTargetsRepository,
         _spaceStateRepository = spaceStateRepository;
 
   /// Initializes the service by fetching space data and setting up listeners.
@@ -80,6 +88,7 @@ class SpacesService extends ChangeNotifier {
     _spacesRepository.addListener(_updateData);
     _lightTargetsRepository.addListener(_updateData);
     _climateTargetsRepository.addListener(_updateData);
+    _coversTargetsRepository.addListener(_updateData);
     _spaceStateRepository.addListener(_onStateChanged);
 
     _updateData();
@@ -113,6 +122,9 @@ class SpacesService extends ChangeNotifier {
 
   /// All climate targets as a map by ID
   Map<String, ClimateTargetView> get climateTargets => _climateTargets;
+
+  /// All covers targets as a map by ID
+  Map<String, CoversTargetView> get coversTargets => _coversTargets;
 
   /// Get a specific space by ID
   SpaceView? getSpace(String id) {
@@ -190,6 +202,30 @@ class SpacesService extends ChangeNotifier {
     await _climateTargetsRepository.fetchForSpaces(roomIds);
   }
 
+  /// Get covers targets for a specific space
+  List<CoversTargetView> getCoversTargetsForSpace(String spaceId) {
+    return _coversTargets.values
+        .where((t) => t.spaceId == spaceId)
+        .toList()
+      ..sort((a, b) => a.priority.compareTo(b.priority));
+  }
+
+  /// Get a specific covers target by ID
+  CoversTargetView? getCoversTarget(String id) {
+    return _coversTargets[id];
+  }
+
+  /// Fetch covers targets for a specific space
+  Future<void> fetchCoversTargetsForSpace(String spaceId) async {
+    await _coversTargetsRepository.fetchForSpace(spaceId);
+  }
+
+  /// Fetch covers targets for all rooms
+  Future<void> fetchAllCoversTargets() async {
+    final roomIds = rooms.map((r) => r.id).toList();
+    await _coversTargetsRepository.fetchForSpaces(roomIds);
+  }
+
   /// Execute a climate setpoint delta intent (adjust temperature by step)
   Future<bool> executeClimateSetpointDelta({
     required String spaceId,
@@ -240,6 +276,20 @@ class SpacesService extends ChangeNotifier {
   /// Fetch climate state from API
   Future<ClimateStateModel?> fetchClimateState(String spaceId) {
     return _spaceStateRepository.fetchClimateState(spaceId);
+  }
+
+  // ============================================
+  // COVERS STATE
+  // ============================================
+
+  /// Get cached covers state for a space
+  CoversStateModel? getCoversState(String spaceId) {
+    return _spaceStateRepository.getCoversState(spaceId);
+  }
+
+  /// Fetch covers state from API
+  Future<CoversStateModel?> fetchCoversState(String spaceId) {
+    return _spaceStateRepository.fetchCoversState(spaceId);
   }
 
   // ============================================
@@ -355,6 +405,47 @@ class SpacesService extends ChangeNotifier {
   }
 
   // ============================================
+  // COVERS INTENTS
+  // ============================================
+
+  /// Open all covers in a space
+  Future<CoversIntentResult?> openCovers(String spaceId) {
+    return _spaceStateRepository.openCovers(spaceId);
+  }
+
+  /// Close all covers in a space
+  Future<CoversIntentResult?> closeCovers(String spaceId) {
+    return _spaceStateRepository.closeCovers(spaceId);
+  }
+
+  /// Set covers position
+  Future<CoversIntentResult?> setCoversPosition(String spaceId, int position) {
+    return _spaceStateRepository.setCoversPosition(spaceId, position);
+  }
+
+  /// Adjust covers position by delta
+  Future<CoversIntentResult?> adjustCoversPosition(
+    String spaceId, {
+    required PositionDelta delta,
+    required bool increase,
+  }) {
+    return _spaceStateRepository.adjustCoversPosition(
+      spaceId,
+      delta: delta,
+      increase: increase,
+    );
+  }
+
+  /// Set position for covers with a specific role
+  Future<CoversIntentResult?> setRolePosition(
+    String spaceId,
+    CoversStateRole role,
+    int position,
+  ) {
+    return _spaceStateRepository.setRolePosition(spaceId, role, position);
+  }
+
+  // ============================================
   // SUGGESTIONS
   // ============================================
 
@@ -466,6 +557,32 @@ class SpacesService extends ChangeNotifier {
       triggerNotifyListeners = true;
     }
 
+    // Build covers target views
+    Map<String, CoversTargetView> newCoversTargetViews = {};
+
+    for (var space in spaceModels) {
+      final coversTargetModels =
+          _coversTargetsRepository.getCoversTargetsForSpace(space.id);
+
+      for (var coversTarget in coversTargetModels) {
+        try {
+          newCoversTargetViews[coversTarget.id] =
+              buildCoversTargetView(coversTarget);
+        } catch (e) {
+          if (kDebugMode) {
+            debugPrint(
+              '[SPACES MODULE][SERVICE] Failed to create covers target view: ${e.toString()}',
+            );
+          }
+        }
+      }
+    }
+
+    if (!mapEquals(_coversTargets, newCoversTargetViews)) {
+      _coversTargets = newCoversTargetViews;
+      triggerNotifyListeners = true;
+    }
+
     // Build space views
     Map<String, SpaceView> newSpaceViews = {};
 
@@ -496,12 +613,14 @@ class SpacesService extends ChangeNotifier {
     _spacesRepository.removeListener(_updateData);
     _lightTargetsRepository.removeListener(_updateData);
     _climateTargetsRepository.removeListener(_updateData);
+    _coversTargetsRepository.removeListener(_updateData);
     _spaceStateRepository.removeListener(_onStateChanged);
 
     // Clear internal maps to prevent memory leaks
     _spaces.clear();
     _lightTargets.clear();
     _climateTargets.clear();
+    _coversTargets.clear();
 
     super.dispose();
   }

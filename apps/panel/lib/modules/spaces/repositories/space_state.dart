@@ -1,13 +1,16 @@
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_climate_intent.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_covers_intent.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_lighting_intent.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_climate_intent.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_req_covers_intent.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_lighting_intent.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_suggestion_feedback.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_suggestion_feedback.dart';
 import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
 import 'package:fastybird_smart_panel/core/services/metrics_service.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/covers_state/covers_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/intent_result/intent_result.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/suggestion/suggestion.dart';
@@ -53,6 +56,9 @@ class SpaceStateRepository extends ChangeNotifier {
 
   /// Cached climate states by space ID
   final Map<String, ClimateStateModel> _climateStates = {};
+
+  /// Cached covers states by space ID
+  final Map<String, CoversStateModel> _coversStates = {};
 
   /// Cached suggestions by space ID (null means no suggestion available)
   final Map<String, SuggestionModel?> _suggestions = {};
@@ -186,6 +192,66 @@ class SpaceStateRepository extends ChangeNotifier {
       if (kDebugMode) {
         debugPrint(
           '[SPACES MODULE][STATE] Error fetching climate state for $spaceId: $e',
+        );
+      }
+    }
+    return null;
+  }
+
+  // ============================================
+  // COVERS STATE
+  // ============================================
+
+  /// Get cached covers state for a space
+  CoversStateModel? getCoversState(String spaceId) {
+    return _coversStates[spaceId];
+  }
+
+  /// Update covers state from WebSocket event
+  void updateCoversState(String spaceId, Map<String, dynamic> json) {
+    try {
+      final state = CoversStateModel.fromJson(json, spaceId: spaceId);
+      _coversStates[spaceId] = state;
+
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][STATE] Updated covers state for space: $spaceId',
+        );
+      }
+      notifyListeners();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][STATE] Failed to parse covers state: $e',
+        );
+      }
+    }
+  }
+
+  /// Fetch covers state from API
+  Future<CoversStateModel?> fetchCoversState(String spaceId) async {
+    try {
+      final response = await _apiClient.getSpacesModuleSpaceCovers(
+        id: spaceId,
+      );
+
+      if (response.response.statusCode == 200) {
+        final data = response.response.data['data'] as Map<String, dynamic>;
+        final state = CoversStateModel.fromJson(data, spaceId: spaceId);
+        _coversStates[spaceId] = state;
+        notifyListeners();
+        return state;
+      }
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][STATE] API error fetching covers state for $spaceId: ${e.response?.statusCode}',
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][STATE] Error fetching covers state for $spaceId: $e',
         );
       }
     }
@@ -555,6 +621,160 @@ class SpaceStateRepository extends ChangeNotifier {
   }
 
   // ============================================
+  // COVERS INTENTS
+  // ============================================
+
+  /// Execute a covers intent
+  Future<CoversIntentResult?> executeCoversIntent({
+    required String spaceId,
+    required CoversIntentType type,
+    PositionDelta? delta,
+    bool? increase,
+    int? position,
+    CoversStateRole? role,
+    String? mode,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+    final intentName = 'covers_${coversIntentTypeToString(type)}';
+
+    try {
+      final Map<String, dynamic> body = {
+        'type': coversIntentTypeToString(type),
+      };
+
+      if (delta != null) {
+        body['delta'] = positionDeltaToString(delta);
+      }
+      if (increase != null) {
+        body['increase'] = increase;
+      }
+      if (position != null) {
+        body['position'] = position;
+      }
+      if (role != null) {
+        body['role'] = coversRoleToString(role);
+      }
+      if (mode != null) {
+        body['mode'] = mode;
+      }
+
+      final response = await _apiClient.createSpacesModuleSpaceCoversIntent(
+        id: spaceId,
+        body: SpacesModuleReqCoversIntent(
+          data: SpacesModuleCoversIntent.fromJson(body),
+        ),
+      );
+
+      if (response.response.statusCode == 200 ||
+          response.response.statusCode == 201) {
+        final data = response.response.data['data'] as Map<String, dynamic>;
+        final result = CoversIntentResult.fromJson(data);
+
+        // Track successful intent execution
+        stopwatch.stop();
+        MetricsService.instance.trackIntent(
+          intentName,
+          result.failedDevices > 0 ? MetricStatus.partial : MetricStatus.success,
+          stopwatch.elapsed,
+          spaceId: spaceId,
+          affectedDevices: result.affectedDevices,
+          failedDevices: result.failedDevices,
+        );
+
+        // Refresh undo state after successful intent execution
+        // (a new undo window may now be available)
+        // Note: Covers state refresh is handled by WebSocket events
+        fetchUndoState(spaceId);
+
+        return result;
+      }
+    } on DioException catch (e) {
+      stopwatch.stop();
+      MetricsService.instance.trackIntent(
+        intentName,
+        MetricStatus.failure,
+        stopwatch.elapsed,
+        spaceId: spaceId,
+      );
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][STATE] API error executing covers intent for $spaceId: ${e.response?.statusCode}',
+        );
+      }
+    } catch (e) {
+      stopwatch.stop();
+      MetricsService.instance.trackIntent(
+        intentName,
+        MetricStatus.failure,
+        stopwatch.elapsed,
+        spaceId: spaceId,
+      );
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][STATE] Error executing covers intent for $spaceId: $e',
+        );
+      }
+    }
+    return null;
+  }
+
+  /// Open all covers in a space
+  Future<CoversIntentResult?> openCovers(String spaceId) {
+    return executeCoversIntent(
+      spaceId: spaceId,
+      type: CoversIntentType.open,
+    );
+  }
+
+  /// Close all covers in a space
+  Future<CoversIntentResult?> closeCovers(String spaceId) {
+    return executeCoversIntent(
+      spaceId: spaceId,
+      type: CoversIntentType.close,
+    );
+  }
+
+  /// Set covers position
+  Future<CoversIntentResult?> setCoversPosition(
+    String spaceId,
+    int position,
+  ) {
+    return executeCoversIntent(
+      spaceId: spaceId,
+      type: CoversIntentType.setPosition,
+      position: position,
+    );
+  }
+
+  /// Adjust position by delta
+  Future<CoversIntentResult?> adjustCoversPosition(
+    String spaceId, {
+    required PositionDelta delta,
+    required bool increase,
+  }) {
+    return executeCoversIntent(
+      spaceId: spaceId,
+      type: CoversIntentType.positionDelta,
+      delta: delta,
+      increase: increase,
+    );
+  }
+
+  /// Set position for covers with a specific role
+  Future<CoversIntentResult?> setRolePosition(
+    String spaceId,
+    CoversStateRole role,
+    int position,
+  ) {
+    return executeCoversIntent(
+      spaceId: spaceId,
+      type: CoversIntentType.rolePosition,
+      role: role,
+      position: position,
+    );
+  }
+
+  // ============================================
   // SUGGESTIONS
   // ============================================
 
@@ -755,6 +975,7 @@ class SpaceStateRepository extends ChangeNotifier {
       await Future.wait([
         fetchLightingState(spaceId),
         fetchClimateState(spaceId),
+        fetchCoversState(spaceId),
         fetchSuggestion(spaceId),
         fetchUndoState(spaceId),
       ]);
@@ -771,6 +992,7 @@ class SpaceStateRepository extends ChangeNotifier {
   void clearAll() {
     _lightingStates.clear();
     _climateStates.clear();
+    _coversStates.clear();
     _suggestions.clear();
     _undoStates.clear();
     _loadingCount = 0;
@@ -781,6 +1003,7 @@ class SpaceStateRepository extends ChangeNotifier {
   void clearForSpace(String spaceId) {
     _lightingStates.remove(spaceId);
     _climateStates.remove(spaceId);
+    _coversStates.remove(spaceId);
     _suggestions.remove(spaceId);
     _undoStates.remove(spaceId);
     notifyListeners();

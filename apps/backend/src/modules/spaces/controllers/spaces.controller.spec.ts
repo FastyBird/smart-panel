@@ -15,6 +15,7 @@ import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { SpaceEntity } from '../entities/space.entity';
 import { SpaceClimateRoleService } from '../services/space-climate-role.service';
 import { SpaceContextSnapshotService } from '../services/space-context-snapshot.service';
+import { SpaceCoversRoleService } from '../services/space-covers-role.service';
 import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
 import { SpaceLightingStateService } from '../services/space-lighting-state.service';
@@ -188,6 +189,25 @@ describe('SpacesController', () => {
 						deleteRole: jest.fn().mockResolvedValue(undefined),
 						getClimateTargetsInSpace: jest.fn().mockResolvedValue([]),
 						inferDefaultClimateRoles: jest.fn().mockResolvedValue([]),
+						getRoleMap: jest.fn().mockResolvedValue(new Map()),
+					},
+				},
+				{
+					provide: SpaceCoversRoleService,
+					useValue: {
+						findBySpace: jest.fn().mockResolvedValue([]),
+						findOne: jest.fn().mockResolvedValue(null),
+						setRole: jest.fn().mockResolvedValue({}),
+						bulkSetRoles: jest.fn().mockResolvedValue({
+							success: true,
+							totalCount: 0,
+							successCount: 0,
+							failureCount: 0,
+							results: [],
+						}),
+						deleteRole: jest.fn().mockResolvedValue(undefined),
+						getCoversTargetsInSpace: jest.fn().mockResolvedValue([]),
+						inferDefaultCoversRoles: jest.fn().mockResolvedValue([]),
 						getRoleMap: jest.fn().mockResolvedValue(new Map()),
 					},
 				},
@@ -611,10 +631,24 @@ describe('SpacesController', () => {
 			expect(spaceIntentService.executeLightingIntent).toHaveBeenCalledWith(mockSpace.id, intentDto.data);
 		});
 
-		it('should throw NotFoundException when space not found', async () => {
+		it('should throw NotFoundException when space not found (service rejects)', async () => {
 			jest
 				.spyOn(spaceIntentService, 'executeLightingIntent')
 				.mockRejectedValue(new SpacesNotFoundException('Not found'));
+
+			const intentDto = {
+				data: {
+					type: LightingIntentType.OFF,
+				},
+			};
+
+			await expect(controller.executeLightingIntent('non-existent-id', intentDto as any)).rejects.toThrow(
+				SpacesNotFoundException,
+			);
+		});
+
+		it('should throw NotFoundException when space not found (null return)', async () => {
+			jest.spyOn(spaceIntentService, 'executeLightingIntent').mockResolvedValue(null);
 
 			const intentDto = {
 				data: {
@@ -903,6 +937,12 @@ describe('SpacesController', () => {
 
 			expect(result.data.hasClimate).toBe(false);
 		});
+
+		it('should throw NotFoundException when space not found (null return)', async () => {
+			jest.spyOn(spaceIntentService, 'getClimateState').mockResolvedValue(null);
+
+			await expect(controller.getClimateState('non-existent-id')).rejects.toThrow(SpacesNotFoundException);
+		});
 	});
 
 	describe('executeClimateIntent', () => {
@@ -929,6 +969,21 @@ describe('SpacesController', () => {
 			expect(result.data.success).toBe(true);
 			expect(result.data.newSetpoint).toBe(22.0);
 			expect(spaceIntentService.executeClimateIntent).toHaveBeenCalledWith(mockSpace.id, intentDto.data);
+		});
+
+		it('should throw NotFoundException when space not found (null return)', async () => {
+			jest.spyOn(spaceIntentService, 'executeClimateIntent').mockResolvedValue(null);
+
+			const intentDto = {
+				data: {
+					type: 'setpoint_set',
+					value: 22.0,
+				},
+			};
+
+			await expect(controller.executeClimateIntent('non-existent-id', intentDto as any)).rejects.toThrow(
+				SpacesNotFoundException,
+			);
 		});
 	});
 
@@ -1228,6 +1283,10 @@ describe('SpacesController', () => {
 					lastAppliedMode: null,
 					lastAppliedAt: null,
 					primaryThermostatId: null,
+				},
+				covers: {
+					summary: { totalCovers: 0, averagePosition: null },
+					covers: [],
 				},
 			};
 			jest.spyOn(spaceContextSnapshotService, 'captureSnapshot').mockResolvedValue(snapshot);
