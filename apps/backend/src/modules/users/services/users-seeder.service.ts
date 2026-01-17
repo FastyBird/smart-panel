@@ -77,7 +77,7 @@ export class UsersSeederService implements Seeder {
 			} catch (error) {
 				const err = error as Error;
 
-				this.logger.error(`[SEED] Failed to create user: ${JSON.stringify(user)}`, {
+				this.logger.error(`[SEED] Failed to create user: username=${user.username} id=${user.id ?? 'auto'}`, {
 					message: err.message,
 					stack: err.stack,
 				});
