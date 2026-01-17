@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
-import { CoversRole, SPACES_MODULE_NAME } from '../spaces.constants';
+import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
+import { CoversMode, CoversRole, SPACES_MODULE_NAME } from '../spaces.constants';
 
 import { SpaceCoversRoleService } from './space-covers-role.service';
 import { SpaceIntentBaseService } from './space-intent-base.service';
@@ -31,6 +32,8 @@ export interface CoversState {
 	allClosed: boolean;
 	devicesCount: number;
 	coversByRole: Record<string, number>;
+	lastAppliedMode: CoversMode | null;
+	lastAppliedAt: Date | null;
 }
 
 /**
@@ -44,6 +47,8 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 	constructor(
 		private readonly spacesService: SpacesService,
 		private readonly coversRoleService: SpaceCoversRoleService,
+		@Inject(forwardRef(() => IntentTimeseriesService))
+		private readonly intentTimeseriesService: IntentTimeseriesService,
 	) {
 		super();
 	}
@@ -60,6 +65,8 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 			allClosed: true,
 			devicesCount: 0,
 			coversByRole: {},
+			lastAppliedMode: null,
+			lastAppliedAt: null,
 		};
 
 		// Verify space exists - return null for controller to throw 404
@@ -106,6 +113,14 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 
 		const averagePosition = positions.length > 0 ? positions.reduce((a, b) => a + b, 0) / positions.length : null;
 
+		// Get last applied mode from InfluxDB
+		const lastApplied = await this.intentTimeseriesService.getLastCoversMode(spaceId);
+		const lastAppliedMode = lastApplied?.mode
+			? Object.values(CoversMode).includes(lastApplied.mode as CoversMode)
+				? (lastApplied.mode as CoversMode)
+				: null
+			: null;
+
 		return {
 			hasCovers: true,
 			averagePosition: averagePosition !== null ? Math.round(averagePosition) : null,
@@ -113,6 +128,8 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 			allClosed,
 			devicesCount: covers.length,
 			coversByRole,
+			lastAppliedMode,
+			lastAppliedAt: lastApplied?.appliedAt ?? null,
 		};
 	}
 

@@ -474,7 +474,7 @@ describe('MapperService', () => {
 
 			// The mapper should receive transformed value
 			expect(mockLightMapper.mapToHA).toHaveBeenCalled();
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			const callArgs = (mockLightMapper.mapToHA as any).mock.calls[0][1] as Map<string, string | number | boolean>;
 			expect(callArgs.get('prop-brightness')).toBe(255); // 100% transformed to 255
 		});
@@ -512,7 +512,7 @@ describe('MapperService', () => {
 			await service.mapToHA(mockDevice, values);
 
 			// The mapper should receive 'on' string
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			const callArgs = (mockLightMapper.mapToHA as any).mock.calls[0][1] as Map<string, string | number | boolean>;
 			expect(callArgs.get('prop-on')).toBe('on'); // true transformed to 'on'
 		});
@@ -550,7 +550,7 @@ describe('MapperService', () => {
 			await service.mapToHA(mockDevice, values);
 
 			// Value should remain as-is
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			const callArgs = (mockLightMapper.mapToHA as any).mock.calls[0][1] as Map<string, string | number | boolean>;
 			expect(callArgs.get('prop-brightness')).toBe(100);
 		});
@@ -714,7 +714,7 @@ describe('MapperService', () => {
 			await service.mapToHA(mockDevice, values);
 
 			// The mapper should receive 'on' string (fallback conversion)
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			const callArgs = (mockLightMapper.mapToHA as any).mock.calls[0][1] as Map<string, string | number | boolean>;
 			expect(callArgs.get('prop-on')).toBe('on');
 		});
@@ -751,7 +751,7 @@ describe('MapperService', () => {
 
 			await service.mapToHA(mockDevice, values);
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			const callArgs = (mockLightMapper.mapToHA as any).mock.calls[0][1] as Map<string, string | number | boolean>;
 			expect(callArgs.get('prop-on')).toBe('off');
 		});
@@ -877,7 +877,7 @@ describe('MapperService', () => {
 
 			await service.mapToHA(mockDevice, values);
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			const callArgs = (mockLightMapper.mapToHA as any).mock.calls[0][1] as Map<string, string | number | boolean>;
 			expect(callArgs.get('prop-brightness')).toBe(255); // Write: 100 -> 255
 		});
@@ -938,7 +938,7 @@ describe('MapperService', () => {
 
 			await service.mapToHA(mockDevice, values);
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			const callArgs = (mockLightMapper.mapToHA as any).mock.calls[0][1] as Map<string, string | number | boolean>;
 			expect(callArgs.get('prop-color-temp')).toBe(250); // 1000000/4000 = 250 mireds
 		});

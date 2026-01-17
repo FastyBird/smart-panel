@@ -4,6 +4,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
+import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
 import { CoversIntentDto } from '../dto/covers-intent.dto';
 import {
 	COVERS_MODE_ORCHESTRATION,
@@ -111,6 +112,8 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		private readonly contextSnapshotService: SpaceContextSnapshotService,
 		@Inject(forwardRef(() => SpaceUndoHistoryService))
 		private readonly undoHistoryService: SpaceUndoHistoryService,
+		@Inject(forwardRef(() => IntentTimeseriesService))
+		private readonly intentTimeseriesService: IntentTimeseriesService,
 	) {
 		super();
 	}
@@ -172,7 +175,7 @@ export class CoversIntentService extends SpaceIntentBaseService {
 				break;
 
 			case CoversIntentType.SET_MODE:
-				result = await this.executeModeIntent(covers, intent.mode);
+				result = await this.executeModeIntent(spaceId, covers, intent.mode);
 				break;
 
 			default:
@@ -305,7 +308,11 @@ export class CoversIntentService extends SpaceIntentBaseService {
 	/**
 	 * Execute a mode-based covers intent using role-based orchestration.
 	 */
-	private async executeModeIntent(covers: CoverDevice[], mode: CoversMode | undefined): Promise<CoversIntentResult> {
+	private async executeModeIntent(
+		spaceId: string,
+		covers: CoverDevice[],
+		mode: CoversMode | undefined,
+	): Promise<CoversIntentResult> {
 		const targetMode = mode ?? CoversMode.OPEN;
 
 		// Use the pure function to determine what to do with each cover
@@ -338,6 +345,17 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		const averagePosition = positionCount > 0 ? Math.round(totalPosition / positionCount) : null;
 
 		this.logger.debug(`Mode intent completed mode=${mode} affected=${affectedDevices} failed=${failedDevices}`);
+
+		// Store mode change to InfluxDB for historical tracking (fire and forget)
+		if (overallSuccess) {
+			void this.intentTimeseriesService.storeCoversPositionChange(
+				spaceId,
+				targetMode,
+				selections.length,
+				affectedDevices,
+				failedDevices,
+			);
+		}
 
 		return { success: overallSuccess, affectedDevices, failedDevices, newPosition: averagePosition };
 	}

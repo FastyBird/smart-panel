@@ -152,6 +152,13 @@ export class IntentTimeseriesService {
 	}
 
 	/**
+	 * Query the last applied covers mode for a space.
+	 */
+	async getLastCoversMode(spaceId: string): Promise<LastAppliedMode | null> {
+		return this.getLastAppliedModeByType(spaceId, 'covers.setMode');
+	}
+
+	/**
 	 * Query last applied mode from InfluxDB for a specific intent type string.
 	 */
 	private async getLastAppliedModeByType(spaceId: string, intentType: string): Promise<LastAppliedMode | null> {
@@ -390,6 +397,57 @@ export class IntentTimeseriesService {
 	}
 
 	/**
+	 * Store a covers mode change directly (without full intent record).
+	 * Called by CoversIntentService after successfully applying a mode.
+	 */
+	async storeCoversPositionChange(
+		spaceId: string,
+		mode: string,
+		targetsCount: number,
+		successCount: number,
+		failedCount: number,
+	): Promise<void> {
+		if (!this.influxDbService.isConnected()) {
+			this.logger.warn(`InfluxDB not connected - covers mode not persisted spaceId=${spaceId}`);
+			return;
+		}
+
+		// Only store if at least some targets succeeded
+		if (successCount === 0) {
+			this.logger.debug(`Skipping covers mode storage - no successful targets spaceId=${spaceId}`);
+			return;
+		}
+
+		const status = failedCount === 0 ? IntentStatus.COMPLETED_SUCCESS : IntentStatus.COMPLETED_PARTIAL;
+
+		try {
+			await this.influxDbService.writePoints([
+				{
+					measurement: 'space_intent',
+					tags: {
+						spaceId,
+						intentType: 'covers.setMode',
+						status,
+					},
+					fields: {
+						intentId: '', // No intent ID for direct storage
+						mode,
+						targetsCount,
+						successCount,
+						failedCount,
+					},
+					timestamp: new Date(),
+				},
+			]);
+
+			this.logger.debug(`Covers mode stored spaceId=${spaceId} mode=${mode} success=${successCount}/${targetsCount}`);
+		} catch (error) {
+			const err = error as Error;
+			this.logger.error(`Failed to store covers mode to InfluxDB spaceId=${spaceId} error=${err.message}`, err.stack);
+		}
+	}
+
+	/**
 	 * Delete all intent history for a space.
 	 */
 	async deleteSpaceHistory(spaceId: string): Promise<void> {
@@ -456,6 +514,10 @@ export class IntentTimeseriesService {
 
 			if (typeof obj.climateMode === 'string') {
 				return obj.climateMode;
+			}
+
+			if (typeof obj.coversMode === 'string') {
+				return obj.coversMode;
 			}
 		}
 

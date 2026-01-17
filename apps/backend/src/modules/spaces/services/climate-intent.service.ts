@@ -6,7 +6,14 @@ import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
 import { ClimateIntentDto } from '../dto/climate-intent.dto';
-import { ClimateIntentType, ClimateMode, ClimateRole, EventType, SETPOINT_DELTA_STEPS, SPACES_MODULE_NAME } from '../spaces.constants';
+import {
+	ClimateIntentType,
+	ClimateMode,
+	ClimateRole,
+	EventType,
+	SETPOINT_DELTA_STEPS,
+	SPACES_MODULE_NAME,
+} from '../spaces.constants';
 import { IntentSpecLoaderService } from '../spec';
 
 import { ClimateState, PrimaryClimateDevice, SpaceClimateStateService } from './space-climate-state.service';
