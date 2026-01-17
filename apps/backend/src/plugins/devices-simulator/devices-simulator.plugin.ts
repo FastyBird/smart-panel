@@ -62,7 +62,13 @@ import { DeviceGeneratorService } from './services/device-generator.service';
 		ExtensionsModule,
 		SwaggerModule,
 	],
-	providers: [SimulatorDevicePlatform, DeviceGeneratorService, GenerateDeviceCommand, PopulateValuesCommand, SetConnectionStateCommand],
+	providers: [
+		SimulatorDevicePlatform,
+		DeviceGeneratorService,
+		GenerateDeviceCommand,
+		PopulateValuesCommand,
+		SetConnectionStateCommand,
+	],
 	controllers: [SimulatorController],
 	exports: [DeviceGeneratorService],
 })
