@@ -102,13 +102,5 @@
     "channel_id": "96b0c798-d489-4166-b578-11b746e5af96",
     "role": "accent",
     "priority": 5
-  },
-  {
-    "_debug": "Terrace - Terrace Light 1",
-    "space_id": "a1b2c3d4-1111-4000-8000-000000000004",
-    "device_id": "bb9514b9-b846-420b-9357-fd621d681162",
-    "channel_id": "f8645d85-f13d-4633-98e1-05ce7a7ccc38",
-    "role": "main",
-    "priority": 0
   }
 ]
