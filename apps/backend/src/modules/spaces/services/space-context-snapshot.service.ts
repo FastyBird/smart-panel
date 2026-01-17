@@ -3,9 +3,10 @@ import { Injectable } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
-import { LightingRole, SPACES_MODULE_NAME } from '../spaces.constants';
+import { CoversRole, LightingRole, SPACES_MODULE_NAME } from '../spaces.constants';
 
 import { ClimateState, SpaceIntentService } from './space-intent.service';
+import { SpaceCoversRoleService } from './space-covers-role.service';
 import { SpaceLightingRoleService } from './space-lighting-role.service';
 import { SpacesService } from './spaces.service';
 
@@ -49,6 +50,34 @@ export interface ClimateStateSnapshot extends ClimateState {
 }
 
 /**
+ * State of a single cover device at a point in time
+ */
+export interface CoverStateSnapshot {
+	deviceId: string;
+	deviceName: string;
+	channelId: string;
+	channelName: string;
+	role: CoversRole | null;
+	position: number | null;
+}
+
+/**
+ * Summary of covers state in the space
+ */
+export interface CoversSummary {
+	totalCovers: number;
+	averagePosition: number | null;
+}
+
+/**
+ * Complete covers context snapshot
+ */
+export interface CoversContextSnapshot {
+	summary: CoversSummary;
+	covers: CoverStateSnapshot[];
+}
+
+/**
  * Complete space context snapshot
  */
 export interface SpaceContextSnapshot {
@@ -57,6 +86,7 @@ export interface SpaceContextSnapshot {
 	capturedAt: Date;
 	lighting: LightingContextSnapshot;
 	climate: ClimateStateSnapshot;
+	covers: CoversContextSnapshot;
 }
 
 @Injectable()
@@ -67,11 +97,12 @@ export class SpaceContextSnapshotService {
 		private readonly spacesService: SpacesService,
 		private readonly spaceIntentService: SpaceIntentService,
 		private readonly lightingRoleService: SpaceLightingRoleService,
+		private readonly coversRoleService: SpaceCoversRoleService,
 	) {}
 
 	/**
 	 * Capture a complete context snapshot for a space.
-	 * Includes lighting state and climate state.
+	 * Includes lighting state, climate state, and covers state.
 	 */
 	async captureSnapshot(spaceId: string): Promise<SpaceContextSnapshot | null> {
 		// Verify space exists
@@ -97,12 +128,16 @@ export class SpaceContextSnapshotService {
 			primaryThermostatId,
 		};
 
+		// Capture covers state
+		const covers = await this.captureCoversSnapshot(spaceId);
+
 		const snapshot: SpaceContextSnapshot = {
 			spaceId: space.id,
 			spaceName: space.name,
 			capturedAt: new Date(),
 			lighting,
 			climate,
+			covers,
 		};
 
 		return snapshot;
@@ -154,6 +189,83 @@ export class SpaceContextSnapshotService {
 				averageBrightness,
 			},
 			lights,
+		};
+	}
+
+	/**
+	 * Capture the covers context snapshot for a space
+	 */
+	private async captureCoversSnapshot(spaceId: string): Promise<CoversContextSnapshot> {
+		const devices = await this.spacesService.findDevicesBySpace(spaceId);
+		const roleMap = await this.coversRoleService.getRoleMap(spaceId);
+
+		const covers: CoverStateSnapshot[] = [];
+		let totalPosition = 0;
+		let positionCount = 0;
+
+		for (const device of devices) {
+			// Check if device is a window covering device
+			if (device.category !== DeviceCategory.WINDOW_COVERING) {
+				continue;
+			}
+
+			// Find all window covering channels
+			const coverChannels =
+				device.channels?.filter((ch) => ch.category === ChannelCategory.WINDOW_COVERING) ?? [];
+
+			for (const coverChannel of coverChannels) {
+				// Get the cover state
+				const coverState = this.extractCoverState(device, coverChannel, roleMap);
+
+				if (coverState) {
+					covers.push(coverState);
+
+					// Track position for averaging
+					if (coverState.position !== null) {
+						totalPosition += coverState.position;
+						positionCount++;
+					}
+				}
+			}
+		}
+
+		const averagePosition = positionCount > 0 ? Math.round(totalPosition / positionCount) : null;
+
+		return {
+			summary: {
+				totalCovers: covers.length,
+				averagePosition,
+			},
+			covers,
+		};
+	}
+
+	/**
+	 * Extract the current state of a cover device
+	 */
+	private extractCoverState(
+		device: DeviceEntity,
+		channel: ChannelEntity,
+		roleMap: Map<string, { role: CoversRole; priority: number }>,
+	): CoverStateSnapshot | null {
+		// Find the position property
+		const positionProperty = channel.properties?.find((p) => p.category === PropertyCategory.POSITION);
+
+		// Get position value
+		const position = this.getPropertyNumericValue(positionProperty);
+
+		// Get role assignment
+		const roleKey = `${device.id}:${channel.id}`;
+		const roleEntity = roleMap.get(roleKey);
+		const role = roleEntity?.role ?? null;
+
+		return {
+			deviceId: device.id,
+			deviceName: device.name ?? device.id,
+			channelId: channel.id,
+			channelName: channel.name ?? channel.id,
+			role,
+			position,
 		};
 	}
 

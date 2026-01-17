@@ -8,7 +8,12 @@ import { DevicesService } from '../../devices/services/devices.service';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { SPACES_MODULE_NAME } from '../spaces.constants';
 
-import { ClimateStateSnapshot, LightStateSnapshot, SpaceContextSnapshot } from './space-context-snapshot.service';
+import {
+	ClimateStateSnapshot,
+	CoverStateSnapshot,
+	LightStateSnapshot,
+	SpaceContextSnapshot,
+} from './space-context-snapshot.service';
 import { SpacesService } from './spaces.service';
 
 /**
@@ -232,7 +237,7 @@ export class SpaceUndoHistoryService implements OnModuleDestroy {
 
 	/**
 	 * Restore device states from a snapshot.
-	 * Restores both lighting and climate state.
+	 * Restores lighting, climate, and covers state.
 	 */
 	private async restoreSnapshot(snapshot: SpaceContextSnapshot): Promise<UndoResult> {
 		let restoredDevices = 0;
@@ -258,6 +263,17 @@ export class SpaceUndoHistoryService implements OnModuleDestroy {
 			failedDevices++;
 		}
 		// If neither restored nor failed, climate was not applicable (no thermostat/no setpoint change)
+
+		// Restore covers state
+		for (const coverState of snapshot.covers.covers) {
+			const success = await this.restoreCoverState(coverState);
+
+			if (success) {
+				restoredDevices++;
+			} else {
+				failedDevices++;
+			}
+		}
 
 		return {
 			success: failedDevices === 0 || restoredDevices > 0,
@@ -383,6 +399,66 @@ export class SpaceUndoHistoryService implements OnModuleDestroy {
 			this.logger.error(`Error restoring climate state thermostatId=${climate.primaryThermostatId}: ${error}`);
 
 			return { restored: false, failed: true };
+		}
+	}
+
+	/**
+	 * Restore a single cover's state from a snapshot.
+	 */
+	private async restoreCoverState(coverState: CoverStateSnapshot): Promise<boolean> {
+		// Skip if no position to restore
+		if (coverState.position === null) {
+			return true;
+		}
+
+		try {
+			// Get the device with full relations
+			const device = await this.devicesService.getOneOrThrow(coverState.deviceId);
+			const channel = device.channels?.find((ch) => ch.id === coverState.channelId);
+
+			if (!channel) {
+				this.logger.warn(`Channel not found deviceId=${coverState.deviceId} channelId=${coverState.channelId}`);
+
+				return false;
+			}
+
+			const platform = this.platformRegistryService.get(device);
+
+			if (!platform) {
+				this.logger.warn(`No platform for device id=${device.id}`);
+
+				return false;
+			}
+
+			// Find the position property
+			const positionProperty = this.findProperty(channel, PropertyCategory.POSITION);
+
+			if (!positionProperty) {
+				this.logger.warn(`No position property found for cover deviceId=${device.id} channelId=${channel.id}`);
+
+				return false;
+			}
+
+			const command: IDevicePropertyData = {
+				device,
+				channel,
+				property: positionProperty,
+				value: coverState.position,
+			};
+
+			const success = await platform.processBatch([command]);
+
+			if (!success) {
+				this.logger.error(`Failed to restore cover state deviceId=${device.id}`);
+
+				return false;
+			}
+
+			return true;
+		} catch (error) {
+			this.logger.error(`Error restoring cover state deviceId=${coverState.deviceId}: ${error}`);
+
+			return false;
 		}
 	}
 
