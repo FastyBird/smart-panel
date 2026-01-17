@@ -31,8 +31,8 @@ class GasChannelView extends ChannelView
   });
 
   @override
-  DetectedChannelPropertyView? get detectedProp =>
-      properties.whereType<DetectedChannelPropertyView>().firstOrNull;
+  DetectedChannelPropertyView get detectedProp =>
+      properties.whereType<DetectedChannelPropertyView>().first;
 
   StatusChannelPropertyView get statusProp =>
       properties.whereType<StatusChannelPropertyView>().first;

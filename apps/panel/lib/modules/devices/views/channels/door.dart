@@ -27,8 +27,8 @@ class DoorChannelView extends ChannelView
   });
 
   @override
-  ObstructionChannelPropertyView? get obstructionProp =>
-      properties.whereType<ObstructionChannelPropertyView>().firstOrNull;
+  ObstructionChannelPropertyView get obstructionProp =>
+      properties.whereType<ObstructionChannelPropertyView>().first;
 
   StatusChannelPropertyView get statusProp =>
       properties.whereType<StatusChannelPropertyView>().first;

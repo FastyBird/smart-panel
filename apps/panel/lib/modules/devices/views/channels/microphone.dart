@@ -20,8 +20,8 @@ class MicrophoneChannelView extends ChannelView
   });
 
   @override
-  ActiveChannelPropertyView? get activeProp =>
-      properties.whereType<ActiveChannelPropertyView>().firstOrNull;
+  ActiveChannelPropertyView get activeProp =>
+      properties.whereType<ActiveChannelPropertyView>().first;
 
   @override
   VolumeChannelPropertyView? get volumeProp =>

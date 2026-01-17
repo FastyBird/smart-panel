@@ -26,8 +26,8 @@ class DehumidifierChannelView extends ChannelView
   });
 
   @override
-  OnChannelPropertyView? get onProp =>
-      properties.whereType<OnChannelPropertyView>().firstOrNull;
+  OnChannelPropertyView get onProp =>
+      properties.whereType<OnChannelPropertyView>().first;
 
   HumidityChannelPropertyView get humidityProp =>
       properties.whereType<HumidityChannelPropertyView>().first;

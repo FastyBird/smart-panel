@@ -26,8 +26,8 @@ class ContactChannelView extends ChannelView
   });
 
   @override
-  DetectedChannelPropertyView? get detectedProp =>
-      properties.whereType<DetectedChannelPropertyView>().firstOrNull;
+  DetectedChannelPropertyView get detectedProp =>
+      properties.whereType<DetectedChannelPropertyView>().first;
 
   @override
   ActiveChannelPropertyView? get activeProp =>

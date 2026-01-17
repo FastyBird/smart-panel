@@ -38,8 +38,8 @@ class PumpDeviceView extends DeviceView
       channels.whereType<DeviceInformationChannelView>().first;
 
   @override
-  FlowChannelView get flowChannel =>
-      channels.whereType<FlowChannelView>().first;
+  FlowChannelView? get flowChannel =>
+      channels.whereType<FlowChannelView>().firstOrNull;
 
   @override
   SwitcherChannelView get switcherChannel =>
