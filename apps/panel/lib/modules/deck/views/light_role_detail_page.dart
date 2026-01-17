@@ -991,7 +991,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     final spacesService = _spacesService;
     if (devicesService == null) return;
 
-    final localizations = AppLocalizations.of(context);
+    final localizations = AppLocalizations.of(context)!;
     final stateRole = _mapTargetRoleToStateRole(widget.role);
 
     try {
@@ -1109,14 +1109,14 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       if (!success) {
         AlertBar.showError(
           context,
-          message: localizations?.action_failed ?? 'Failed to toggle lights',
+          message: localizations.action_failed ?? 'Failed to toggle lights',
         );
       }
     } catch (e) {
       if (!mounted) return;
       AlertBar.showError(
         context,
-        message: localizations?.action_failed ?? 'Failed to toggle lights',
+        message: localizations.action_failed ?? 'Failed to toggle lights',
       );
     } finally {
       if (mounted) {
@@ -1172,7 +1172,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     final devicesService = _devicesService;
     if (devicesService == null) return;
 
-    final localizations = AppLocalizations.of(context);
+    final localizations = AppLocalizations.of(context)!;
 
     try {
       final List<PropertyCommandItem> properties = [];
@@ -1242,7 +1242,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       if (!success && mounted) {
         AlertBar.showError(
           context,
-          message: localizations?.action_failed ??
+          message: localizations.action_failed ??
               'Failed to turn ${on ? 'on' : 'off'} lights',
         );
       }
@@ -1250,7 +1250,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       if (mounted) {
         AlertBar.showError(
           context,
-          message: localizations?.action_failed ??
+          message: localizations.action_failed ??
               'Failed to turn ${on ? 'on' : 'off'} lights',
         );
       }
@@ -1266,7 +1266,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     final spacesService = _spacesService;
     if (devicesService == null) return;
 
-    final localizations = AppLocalizations.of(context);
+    final localizations = AppLocalizations.of(context)!;
     final propertyName = propertyType.name;
     final stateRole = _mapTargetRoleToStateRole(widget.role);
 
@@ -1307,14 +1307,14 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       if (!success) {
         AlertBar.showError(
           context,
-          message: localizations?.action_failed ?? 'Failed to set $propertyName',
+          message: localizations.action_failed ?? 'Failed to set $propertyName',
         );
       }
     } catch (e) {
       if (!mounted) return;
       AlertBar.showError(
         context,
-        message: localizations?.action_failed ?? 'Failed to set $propertyName',
+        message: localizations.action_failed ?? 'Failed to set $propertyName',
       );
     }
   }
@@ -1394,7 +1394,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     final spacesService = _spacesService;
     if (devicesService == null) return;
 
-    final localizations = AppLocalizations.of(context);
+    final localizations = AppLocalizations.of(context)!;
     final stateRole = _mapTargetRoleToStateRole(widget.role);
 
     try {
@@ -1424,14 +1424,14 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       if (!success) {
         AlertBar.showError(
           context,
-          message: localizations?.action_failed ?? 'Failed to set color',
+          message: localizations.action_failed ?? 'Failed to set color',
         );
       }
     } catch (e) {
       if (!mounted) return;
       AlertBar.showError(
         context,
-        message: localizations?.action_failed ?? 'Failed to set color',
+        message: localizations.action_failed ?? 'Failed to set color',
       );
     }
   }
