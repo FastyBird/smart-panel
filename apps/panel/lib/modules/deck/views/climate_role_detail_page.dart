@@ -196,6 +196,20 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
         capability = RoomCapability.none;
       }
 
+      // Validate mode is consistent with capability - fall back to off if not supported
+      if (mode == ClimateMode.heat &&
+          capability != RoomCapability.heaterOnly &&
+          capability != RoomCapability.heaterAndCooler) {
+        mode = ClimateMode.off;
+      } else if (mode == ClimateMode.cool &&
+          capability != RoomCapability.coolerOnly &&
+          capability != RoomCapability.heaterAndCooler) {
+        mode = ClimateMode.off;
+      } else if (mode == ClimateMode.auto &&
+          capability != RoomCapability.heaterAndCooler) {
+        mode = ClimateMode.off;
+      }
+
       // Clamp target temp to valid setpoint range to avoid UI inconsistencies
       final rawTargetTemp =
           climateState.targetTemperature ?? _state.targetTemp;
