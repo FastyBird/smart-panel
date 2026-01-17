@@ -9,6 +9,8 @@ import { DisplayEntity } from '../displays/entities/displays.entity';
 import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { IntentsModule } from '../intents/intents.module';
+import { SeedRegistryService } from '../seed/services/seed-registry.service';
+import { SeedModule } from '../seed/seeding.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 
@@ -29,6 +31,7 @@ import { SpaceLightingRoleService } from './services/space-lighting-role.service
 import { SpaceLightingStateService } from './services/space-lighting-state.service';
 import { SpaceSuggestionService } from './services/space-suggestion.service';
 import { SpaceUndoHistoryService } from './services/space-undo-history.service';
+import { SpacesSeederService } from './services/spaces-seeder.service';
 import { SpacesService } from './services/spaces.service';
 import { SPACES_MODULE_API_TAG_DESCRIPTION, SPACES_MODULE_API_TAG_NAME, SPACES_MODULE_NAME } from './spaces.constants';
 import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
@@ -53,6 +56,7 @@ import { IntentSpecLoaderService } from './spec';
 		forwardRef(() => IntentsModule),
 		forwardRef(() => ExtensionsModule),
 		forwardRef(() => ConfigModule),
+		SeedModule,
 	],
 	controllers: [SpacesController],
 	providers: [
@@ -69,6 +73,7 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceUndoHistoryService,
 		SpaceActivityListener,
 		IntentSpecLoaderService,
+		SpacesSeederService,
 	],
 	exports: [
 		SpacesService,
@@ -86,9 +91,20 @@ export class SpacesModule implements OnModuleInit {
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly extensionsService: ExtensionsService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
+		private readonly moduleSeeder: SpacesSeederService,
+		private readonly seedRegistry: SeedRegistryService,
 	) {}
 
 	onModuleInit() {
+		// Register seeder (priority 120 - after devices, before dashboard)
+		this.seedRegistry.register(
+			SPACES_MODULE_NAME,
+			async (): Promise<void> => {
+				await this.moduleSeeder.seed();
+			},
+			120,
+		);
+
 		this.modulesMapperService.registerMapping<SpacesConfigModel, UpdateSpacesConfigDto>({
 			type: SPACES_MODULE_NAME,
 			class: SpacesConfigModel,

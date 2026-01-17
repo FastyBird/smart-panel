@@ -7,6 +7,8 @@ import { DevicesModule } from '../devices/devices.module';
 import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { IntentsModule } from '../intents/intents.module';
+import { SeedRegistryService } from '../seed/services/seed-registry.service';
+import { SeedModule } from '../seed/seeding.module';
 import { SpacesModule } from '../spaces/spaces.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
@@ -26,6 +28,7 @@ import { ScenesModuleResetService } from './services/module-reset.service';
 import { SceneActionsTypeMapperService } from './services/scene-actions-type-mapper.service';
 import { SceneActionsService } from './services/scene-actions.service';
 import { SceneExecutorService } from './services/scene-executor.service';
+import { ScenesSeederService } from './services/scenes-seeder.service';
 import { ScenesService } from './services/scenes.service';
 import { SceneExistsConstraintValidator } from './validators/scene-exists-constraint.validator';
 
@@ -44,6 +47,7 @@ import { SceneExistsConstraintValidator } from './validators/scene-exists-constr
 		forwardRef(() => SpacesModule),
 		forwardRef(() => IntentsModule),
 		WebsocketModule,
+		SeedModule,
 	],
 	controllers: [ScenesController, SceneActionsController],
 	providers: [
@@ -60,6 +64,8 @@ import { SceneExistsConstraintValidator } from './validators/scene-exists-constr
 		WebsocketExchangeListener,
 		// Validators
 		SceneExistsConstraintValidator,
+		// Seeder
+		ScenesSeederService,
 	],
 	exports: [
 		ScenesService,
@@ -73,13 +79,24 @@ import { SceneExistsConstraintValidator } from './validators/scene-exists-constr
 export class ScenesModule implements OnModuleInit {
 	constructor(
 		private readonly moduleReset: ScenesModuleResetService,
+		private readonly moduleSeeder: ScenesSeederService,
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
+		private readonly seedRegistry: SeedRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit(): void {
+		// Register seeder (priority 150 - after spaces, before dashboard)
+		this.seedRegistry.register(
+			SCENES_MODULE_NAME,
+			async (): Promise<void> => {
+				await this.moduleSeeder.seed();
+			},
+			150,
+		);
+
 		// Register module configuration mapping
 		this.modulesMapperService.registerMapping<ScenesConfigModel, UpdateScenesConfigDto>({
 			type: SCENES_MODULE_NAME,

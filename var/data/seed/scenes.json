@@ -1,0 +1,314 @@
+[
+  {
+    "id": "b1c2d3e4-5678-4000-a000-000000000001",
+    "name": "Relax Mode",
+    "description": "Dim the living room lights for a relaxing atmosphere",
+    "category": "relax",
+    "primary_space_id": "a1b2c3d4-1111-4000-8000-000000000001",
+    "order": 0,
+    "enabled": true,
+    "triggerable": true,
+    "actions": [
+      {
+        "id": "c2d3e4f5-1111-4000-a000-000000000001",
+        "type": "scenes-local",
+        "device_id": "d69ba3eb-5c9e-4c08-b437-5be8c8f41bae",
+        "channel_id": "8b99607a-6e25-4661-871e-bd004a92d1e8",
+        "property_id": "416f2efa-ba58-456e-aea2-eb6b9d225b21",
+        "value": true,
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "id": "c2d3e4f5-1111-4000-a000-000000000002",
+        "type": "scenes-local",
+        "device_id": "02b4b0a1-a213-453b-8fc6-47fc7d6765d3",
+        "channel_id": "2538383c-8b27-4bba-bf4e-0fba34d7cd28",
+        "property_id": "bd1d7a34-bc00-49e7-8254-08fde4d26283",
+        "value": true,
+        "order": 1,
+        "enabled": true
+      },
+      {
+        "id": "c2d3e4f5-1111-4000-a000-000000000003",
+        "type": "scenes-local",
+        "device_id": "02b4b0a1-a213-453b-8fc6-47fc7d6765d3",
+        "channel_id": "2538383c-8b27-4bba-bf4e-0fba34d7cd28",
+        "property_id": "e4e85734-e634-45ca-b872-d5575b5d10ad",
+        "value": 50,
+        "order": 2,
+        "enabled": true
+      },
+      {
+        "id": "c2d3e4f5-1111-4000-a000-000000000004",
+        "type": "scenes-local",
+        "device_id": "40b363ca-e6a3-4568-b285-e74ed50c4caa",
+        "channel_id": "de7e3dcd-2cc3-4f0f-b93b-0720b7d25886",
+        "property_id": "bd86eb7e-23e6-4b38-9567-cbac68ef72ba",
+        "value": true,
+        "order": 3,
+        "enabled": true
+      },
+      {
+        "id": "c2d3e4f5-1111-4000-a000-000000000005",
+        "type": "scenes-local",
+        "device_id": "40b363ca-e6a3-4568-b285-e74ed50c4caa",
+        "channel_id": "de7e3dcd-2cc3-4f0f-b93b-0720b7d25886",
+        "property_id": "e0eb3332-39ad-420f-b032-d867db6fbe09",
+        "value": 50,
+        "order": 4,
+        "enabled": true
+      }
+    ]
+  },
+  {
+    "id": "b1c2d3e4-5678-4000-a000-000000000002",
+    "name": "Movie Night",
+    "description": "Perfect lighting for watching movies - TV backlight on, main lights off",
+    "category": "movie",
+    "primary_space_id": "a1b2c3d4-1111-4000-8000-000000000001",
+    "order": 1,
+    "enabled": true,
+    "triggerable": true,
+    "actions": [
+      {
+        "id": "c2d3e4f5-2222-4000-a000-000000000001",
+        "type": "scenes-local",
+        "device_id": "d69ba3eb-5c9e-4c08-b437-5be8c8f41bae",
+        "channel_id": "8b99607a-6e25-4661-871e-bd004a92d1e8",
+        "property_id": "416f2efa-ba58-456e-aea2-eb6b9d225b21",
+        "value": false,
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "id": "c2d3e4f5-2222-4000-a000-000000000002",
+        "type": "scenes-local",
+        "device_id": "02b4b0a1-a213-453b-8fc6-47fc7d6765d3",
+        "channel_id": "2538383c-8b27-4bba-bf4e-0fba34d7cd28",
+        "property_id": "bd1d7a34-bc00-49e7-8254-08fde4d26283",
+        "value": true,
+        "order": 1,
+        "enabled": true
+      },
+      {
+        "id": "c2d3e4f5-2222-4000-a000-000000000003",
+        "type": "scenes-local",
+        "device_id": "02b4b0a1-a213-453b-8fc6-47fc7d6765d3",
+        "channel_id": "2538383c-8b27-4bba-bf4e-0fba34d7cd28",
+        "property_id": "e4e85734-e634-45ca-b872-d5575b5d10ad",
+        "value": 30,
+        "order": 2,
+        "enabled": true
+      },
+      {
+        "id": "c2d3e4f5-2222-4000-a000-000000000004",
+        "type": "scenes-local",
+        "device_id": "b6931dce-de09-4387-a320-a72705ebf2ee",
+        "channel_id": null,
+        "property_id": "b6931dce-de09-4387-a320-a72705ebf2ee",
+        "value": true,
+        "order": 3,
+        "enabled": true
+      }
+    ]
+  },
+  {
+    "id": "b1c2d3e4-5678-4000-a000-000000000003",
+    "name": "Living Room Lights Off",
+    "description": "Turn off all lights in the living room",
+    "category": "lighting",
+    "primary_space_id": "a1b2c3d4-1111-4000-8000-000000000001",
+    "order": 2,
+    "enabled": true,
+    "triggerable": true,
+    "actions": [
+      {
+        "id": "c2d3e4f5-3333-4000-a000-000000000001",
+        "type": "scenes-local",
+        "device_id": "d69ba3eb-5c9e-4c08-b437-5be8c8f41bae",
+        "channel_id": "8b99607a-6e25-4661-871e-bd004a92d1e8",
+        "property_id": "416f2efa-ba58-456e-aea2-eb6b9d225b21",
+        "value": false,
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "id": "c2d3e4f5-3333-4000-a000-000000000002",
+        "type": "scenes-local",
+        "device_id": "02b4b0a1-a213-453b-8fc6-47fc7d6765d3",
+        "channel_id": "2538383c-8b27-4bba-bf4e-0fba34d7cd28",
+        "property_id": "bd1d7a34-bc00-49e7-8254-08fde4d26283",
+        "value": false,
+        "order": 1,
+        "enabled": true
+      },
+      {
+        "id": "c2d3e4f5-3333-4000-a000-000000000003",
+        "type": "scenes-local",
+        "device_id": "40b363ca-e6a3-4568-b285-e74ed50c4caa",
+        "channel_id": "de7e3dcd-2cc3-4f0f-b93b-0720b7d25886",
+        "property_id": "bd86eb7e-23e6-4b38-9567-cbac68ef72ba",
+        "value": false,
+        "order": 2,
+        "enabled": true
+      },
+      {
+        "id": "c2d3e4f5-3333-4000-a000-000000000004",
+        "type": "scenes-local",
+        "device_id": "20c27c06-053b-439a-8cb4-615ae05ce254",
+        "channel_id": "ac6d42a9-be6c-405a-89b0-f9d3d273395d",
+        "property_id": "350f2fa6-4078-4de7-944d-f27511afe661",
+        "value": false,
+        "order": 3,
+        "enabled": true
+      }
+    ]
+  },
+  {
+    "id": "b1c2d3e4-5678-4000-a000-000000000004",
+    "name": "Kitchen Cooking Mode",
+    "description": "Bright lights for cooking in the kitchen",
+    "category": "work",
+    "primary_space_id": "a1b2c3d4-1111-4000-8000-000000000002",
+    "order": 0,
+    "enabled": true,
+    "triggerable": true,
+    "actions": [
+      {
+        "id": "c2d3e4f5-4444-4000-a000-000000000001",
+        "type": "scenes-local",
+        "device_id": "ee22b7e2-2992-4d75-9ea4-5358fd7512f8",
+        "channel_id": "55accac5-513b-4d16-9e07-94534f363b2e",
+        "property_id": "57e62331-f7c7-4439-ac52-01ec947f49e0",
+        "value": true,
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "id": "c2d3e4f5-4444-4000-a000-000000000002",
+        "type": "scenes-local",
+        "device_id": "9b2710ae-008a-4366-891a-586a570a451d",
+        "channel_id": "3aa8a478-75d3-40f7-a3a1-0871fe928feb",
+        "property_id": "6f7c72a6-c88d-4f58-8998-f9808ae1067a",
+        "value": true,
+        "order": 1,
+        "enabled": true
+      },
+      {
+        "id": "c2d3e4f5-4444-4000-a000-000000000003",
+        "type": "scenes-local",
+        "device_id": "9b2710ae-008a-4366-891a-586a570a451d",
+        "channel_id": "3aa8a478-75d3-40f7-a3a1-0871fe928feb",
+        "property_id": "393a254e-5dc6-4fee-875c-ea5643856a3f",
+        "value": 100,
+        "order": 2,
+        "enabled": true
+      },
+      {
+        "id": "c2d3e4f5-4444-4000-a000-000000000004",
+        "type": "scenes-local",
+        "device_id": "ab9fc01f-92f1-476c-8246-bacd1a3e0da7",
+        "channel_id": "2d7d7327-e521-480f-b7be-e7308f9b1b6c",
+        "property_id": "ce5d005b-a097-4f5e-a865-7f823e88f20d",
+        "value": true,
+        "order": 3,
+        "enabled": true
+      },
+      {
+        "id": "c2d3e4f5-4444-4000-a000-000000000005",
+        "type": "scenes-local",
+        "device_id": "ab9fc01f-92f1-476c-8246-bacd1a3e0da7",
+        "channel_id": "2d7d7327-e521-480f-b7be-e7308f9b1b6c",
+        "property_id": "366ab668-3efa-41f8-a149-8b4974474936",
+        "value": 100,
+        "order": 4,
+        "enabled": true
+      }
+    ]
+  },
+  {
+    "id": "b1c2d3e4-5678-4000-a000-000000000005",
+    "name": "Night Mode",
+    "description": "Minimal lighting for nighttime navigation",
+    "category": "night",
+    "primary_space_id": "a1b2c3d4-1111-4000-8000-000000000001",
+    "order": 3,
+    "enabled": true,
+    "triggerable": true,
+    "actions": [
+      {
+        "id": "c2d3e4f5-5555-4000-a000-000000000001",
+        "type": "scenes-local",
+        "device_id": "d69ba3eb-5c9e-4c08-b437-5be8c8f41bae",
+        "channel_id": "8b99607a-6e25-4661-871e-bd004a92d1e8",
+        "property_id": "416f2efa-ba58-456e-aea2-eb6b9d225b21",
+        "value": false,
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "id": "c2d3e4f5-5555-4000-a000-000000000002",
+        "type": "scenes-local",
+        "device_id": "02b4b0a1-a213-453b-8fc6-47fc7d6765d3",
+        "channel_id": "2538383c-8b27-4bba-bf4e-0fba34d7cd28",
+        "property_id": "bd1d7a34-bc00-49e7-8254-08fde4d26283",
+        "value": true,
+        "order": 1,
+        "enabled": true
+      },
+      {
+        "id": "c2d3e4f5-5555-4000-a000-000000000003",
+        "type": "scenes-local",
+        "device_id": "02b4b0a1-a213-453b-8fc6-47fc7d6765d3",
+        "channel_id": "2538383c-8b27-4bba-bf4e-0fba34d7cd28",
+        "property_id": "e4e85734-e634-45ca-b872-d5575b5d10ad",
+        "value": 10,
+        "order": 2,
+        "enabled": true
+      }
+    ]
+  },
+  {
+    "id": "b1c2d3e4-5678-4000-a000-000000000006",
+    "name": "Good Morning",
+    "description": "Start your day with bright kitchen lights",
+    "category": "morning",
+    "primary_space_id": "a1b2c3d4-1111-4000-8000-000000000002",
+    "order": 1,
+    "enabled": true,
+    "triggerable": true,
+    "actions": [
+      {
+        "id": "c2d3e4f5-6666-4000-a000-000000000001",
+        "type": "scenes-local",
+        "device_id": "ee22b7e2-2992-4d75-9ea4-5358fd7512f8",
+        "channel_id": "55accac5-513b-4d16-9e07-94534f363b2e",
+        "property_id": "57e62331-f7c7-4439-ac52-01ec947f49e0",
+        "value": true,
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "id": "c2d3e4f5-6666-4000-a000-000000000002",
+        "type": "scenes-local",
+        "device_id": "9b2710ae-008a-4366-891a-586a570a451d",
+        "channel_id": "3aa8a478-75d3-40f7-a3a1-0871fe928feb",
+        "property_id": "6f7c72a6-c88d-4f58-8998-f9808ae1067a",
+        "value": true,
+        "order": 1,
+        "enabled": true
+      },
+      {
+        "id": "c2d3e4f5-6666-4000-a000-000000000003",
+        "type": "scenes-local",
+        "device_id": "9b2710ae-008a-4366-891a-586a570a451d",
+        "channel_id": "3aa8a478-75d3-40f7-a3a1-0871fe928feb",
+        "property_id": "393a254e-5dc6-4fee-875c-ea5643856a3f",
+        "value": 80,
+        "order": 2,
+        "enabled": true
+      }
+    ]
+  }
+]

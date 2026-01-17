@@ -1,0 +1,42 @@
+[
+  {
+    "id": "a1b2c3d4-1111-4000-8000-000000000001",
+    "name": "Living Room",
+    "description": "Main living area with entertainment center and seating",
+    "type": "room",
+    "category": "living_room",
+    "icon": "mdi:sofa",
+    "display_order": 0,
+    "suggestions_enabled": true
+  },
+  {
+    "id": "a1b2c3d4-1111-4000-8000-000000000002",
+    "name": "Kitchen",
+    "description": "Cooking and dining area",
+    "type": "room",
+    "category": "kitchen",
+    "icon": "mdi:stove",
+    "display_order": 1,
+    "suggestions_enabled": true
+  },
+  {
+    "id": "a1b2c3d4-1111-4000-8000-000000000003",
+    "name": "Ground Floor",
+    "description": "Ground floor zone containing living room and kitchen",
+    "type": "zone",
+    "category": "floor_ground",
+    "icon": "mdi:home-floor-0",
+    "display_order": 0,
+    "suggestions_enabled": false
+  },
+  {
+    "id": "a1b2c3d4-1111-4000-8000-000000000004",
+    "name": "Terrace",
+    "description": "Outdoor terrace area",
+    "type": "zone",
+    "category": "outdoor_terrace",
+    "icon": "mdi:grill",
+    "display_order": 1,
+    "suggestions_enabled": false
+  }
+]
