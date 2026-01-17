@@ -631,10 +631,24 @@ describe('SpacesController', () => {
 			expect(spaceIntentService.executeLightingIntent).toHaveBeenCalledWith(mockSpace.id, intentDto.data);
 		});
 
-		it('should throw NotFoundException when space not found', async () => {
+		it('should throw NotFoundException when space not found (service rejects)', async () => {
 			jest
 				.spyOn(spaceIntentService, 'executeLightingIntent')
 				.mockRejectedValue(new SpacesNotFoundException('Not found'));
+
+			const intentDto = {
+				data: {
+					type: LightingIntentType.OFF,
+				},
+			};
+
+			await expect(controller.executeLightingIntent('non-existent-id', intentDto as any)).rejects.toThrow(
+				SpacesNotFoundException,
+			);
+		});
+
+		it('should throw NotFoundException when space not found (null return)', async () => {
+			jest.spyOn(spaceIntentService, 'executeLightingIntent').mockResolvedValue(null);
 
 			const intentDto = {
 				data: {
@@ -923,6 +937,12 @@ describe('SpacesController', () => {
 
 			expect(result.data.hasClimate).toBe(false);
 		});
+
+		it('should throw NotFoundException when space not found (null return)', async () => {
+			jest.spyOn(spaceIntentService, 'getClimateState').mockResolvedValue(null);
+
+			await expect(controller.getClimateState('non-existent-id')).rejects.toThrow(SpacesNotFoundException);
+		});
 	});
 
 	describe('executeClimateIntent', () => {
@@ -949,6 +969,21 @@ describe('SpacesController', () => {
 			expect(result.data.success).toBe(true);
 			expect(result.data.newSetpoint).toBe(22.0);
 			expect(spaceIntentService.executeClimateIntent).toHaveBeenCalledWith(mockSpace.id, intentDto.data);
+		});
+
+		it('should throw NotFoundException when space not found (null return)', async () => {
+			jest.spyOn(spaceIntentService, 'executeClimateIntent').mockResolvedValue(null);
+
+			const intentDto = {
+				data: {
+					type: 'setpoint_set',
+					value: 22.0,
+				},
+			};
+
+			await expect(controller.executeClimateIntent('non-existent-id', intentDto as any)).rejects.toThrow(
+				SpacesNotFoundException,
+			);
 		});
 	});
 

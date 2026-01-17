@@ -333,6 +333,31 @@ describe('SpaceContextSnapshotService', () => {
 			expect(result.climate.canSetSetpoint).toBe(true);
 		});
 
+		it('should use default climate state when getClimateState returns null', async () => {
+			const spaceId = uuid();
+			const space = createSpace(spaceId, 'Room Without Climate');
+
+			spacesService.findOne.mockResolvedValue(space);
+			spacesService.findDevicesBySpace.mockResolvedValue([]);
+			lightingRoleService.getRoleMap.mockResolvedValue(new Map());
+			coversRoleService.getRoleMap.mockResolvedValue(new Map());
+			spaceIntentService.getClimateState.mockResolvedValue(null);
+			spaceIntentService.getPrimaryThermostatId.mockResolvedValue(null);
+
+			const result = await service.captureSnapshot(spaceId);
+
+			expect(result).not.toBeNull();
+			// Should use default climate state values
+			expect(result.climate.hasClimate).toBe(false);
+			expect(result.climate.mode).toBe(ClimateMode.OFF);
+			expect(result.climate.currentTemperature).toBeNull();
+			expect(result.climate.currentHumidity).toBeNull();
+			expect(result.climate.canSetSetpoint).toBe(false);
+			expect(result.climate.minSetpoint).toBe(5); // DEFAULT_MIN_SETPOINT
+			expect(result.climate.maxSetpoint).toBe(35); // DEFAULT_MAX_SETPOINT
+			expect(result.climate.primaryThermostatId).toBeNull();
+		});
+
 		it('should calculate average brightness correctly for multiple lights', async () => {
 			const spaceId = uuid();
 			const space = createSpace(spaceId, 'Kitchen');

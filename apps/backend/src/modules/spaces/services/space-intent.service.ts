@@ -36,7 +36,10 @@ export class SpaceIntentService {
 	/**
 	 * Execute a lighting intent for all lights in a space.
 	 * Delegates to LightingIntentService.
-	 * Returns null if space doesn't exist.
+	 *
+	 * @param spaceId - The UUID of the space to execute the intent in
+	 * @param intent - The lighting intent to execute (OFF, ON, SET_MODE, BRIGHTNESS_DELTA)
+	 * @returns The execution result with affected/failed device counts, or null if the space doesn't exist
 	 */
 	async executeLightingIntent(spaceId: string, intent: LightingIntentDto): Promise<IntentExecutionResult | null> {
 		return this.lightingIntentService.executeLightingIntent(spaceId, intent);
@@ -49,7 +52,10 @@ export class SpaceIntentService {
 	/**
 	 * Get the current climate state for a space.
 	 * Delegates to ClimateIntentService.
-	 * Returns null if space doesn't exist.
+	 *
+	 * @param spaceId - The UUID of the space to get climate state for
+	 * @returns The aggregated climate state including temperature, humidity, mode, and setpoints,
+	 *          or null if the space doesn't exist
 	 */
 	async getClimateState(spaceId: string): Promise<ClimateState | null> {
 		return this.climateIntentService.getClimateState(spaceId);
@@ -58,14 +64,21 @@ export class SpaceIntentService {
 	/**
 	 * Execute a climate intent for the space.
 	 * Delegates to ClimateIntentService.
-	 * Returns null if space doesn't exist.
+	 *
+	 * @param spaceId - The UUID of the space to execute the intent in
+	 * @param intent - The climate intent to execute (SETPOINT_DELTA, SETPOINT_SET, SET_MODE)
+	 * @returns The execution result with affected/failed device counts and new setpoint values,
+	 *          or null if the space doesn't exist
 	 */
 	async executeClimateIntent(spaceId: string, intent: ClimateIntentDto): Promise<ClimateIntentResult | null> {
 		return this.climateIntentService.executeClimateIntent(spaceId, intent);
 	}
 
 	/**
-	 * Get the primary thermostat device ID for a space (legacy method for undo service).
+	 * Get the primary thermostat device ID for a space.
+	 *
+	 * @param spaceId - The UUID of the space
+	 * @returns The primary thermostat device ID, or null if no thermostat exists
 	 * @deprecated Use ClimateIntentService.getPrimaryThermostatId instead
 	 */
 	async getPrimaryThermostatId(spaceId: string): Promise<string | null> {
@@ -79,7 +92,10 @@ export class SpaceIntentService {
 	/**
 	 * Get the current covers state for a space.
 	 * Delegates to CoversIntentService.
-	 * Returns null if space doesn't exist.
+	 *
+	 * @param spaceId - The UUID of the space to get covers state for
+	 * @returns The aggregated covers state including position, open/closed status, and device counts,
+	 *          or null if the space doesn't exist
 	 */
 	async getCoversState(spaceId: string): Promise<CoversState | null> {
 		return this.coversIntentService.getCoversState(spaceId);
@@ -88,7 +104,11 @@ export class SpaceIntentService {
 	/**
 	 * Execute a covers intent for the space.
 	 * Delegates to CoversIntentService.
-	 * Returns null if space doesn't exist.
+	 *
+	 * @param spaceId - The UUID of the space to execute the intent in
+	 * @param intent - The covers intent to execute (OPEN, CLOSE, SET_POSITION, POSITION_DELTA, SET_MODE)
+	 * @returns The execution result with affected/failed device counts and new position,
+	 *          or null if the space doesn't exist
 	 */
 	async executeCoversIntent(spaceId: string, intent: CoversIntentDto): Promise<CoversIntentResult | null> {
 		return this.coversIntentService.executeCoversIntent(spaceId, intent);
