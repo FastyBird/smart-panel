@@ -1,0 +1,26 @@
+[
+  {
+    "_debug": "Living Room - Thermostat (heating/cooling device)",
+    "space_id": "a1b2c3d4-1111-4000-8000-000000000001",
+    "device_id": "b211e597-d5fb-4573-8cc5-8027db15f61e",
+    "channel_id": null,
+    "role": "auto",
+    "priority": 0
+  },
+  {
+    "_debug": "Living Room - Thermostat Temperature Sensor (channel-level)",
+    "space_id": "a1b2c3d4-1111-4000-8000-000000000001",
+    "device_id": "b211e597-d5fb-4573-8cc5-8027db15f61e",
+    "channel_id": "858c6ee2-56fc-4bbe-96dc-e4899579589c",
+    "role": "sensor",
+    "priority": 1
+  },
+  {
+    "_debug": "Living Room - Thermostat Humidity Sensor (channel-level)",
+    "space_id": "a1b2c3d4-1111-4000-8000-000000000001",
+    "device_id": "b211e597-d5fb-4573-8cc5-8027db15f61e",
+    "channel_id": "d4933c20-e283-437b-9b71-31b3b4ea8c87",
+    "role": "sensor",
+    "priority": 2
+  }
+]

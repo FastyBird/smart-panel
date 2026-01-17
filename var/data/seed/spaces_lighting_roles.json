@@ -1,0 +1,106 @@
+[
+  {
+    "_debug": "Living Room - Main Light",
+    "space_id": "a1b2c3d4-1111-4000-8000-000000000001",
+    "device_id": "d69ba3eb-5c9e-4c08-b437-5be8c8f41bae",
+    "channel_id": "8b99607a-6e25-4661-871e-bd004a92d1e8",
+    "role": "main",
+    "priority": 0
+  },
+  {
+    "_debug": "Living Room - Entry Light",
+    "space_id": "a1b2c3d4-1111-4000-8000-000000000001",
+    "device_id": "20c27c06-053b-439a-8cb4-615ae05ce254",
+    "channel_id": "ac6d42a9-be6c-405a-89b0-f9d3d273395d",
+    "role": "ambient",
+    "priority": 1
+  },
+  {
+    "_debug": "Living Room - Dining Room Light",
+    "space_id": "a1b2c3d4-1111-4000-8000-000000000001",
+    "device_id": "3f3e73d9-4faa-4b38-9859-0a915ae9e85d",
+    "channel_id": "f8efca2a-cc6b-4c03-912b-ad5733df575d",
+    "role": "ambient",
+    "priority": 2
+  },
+  {
+    "_debug": "Living Room - TV LED Strip",
+    "space_id": "a1b2c3d4-1111-4000-8000-000000000001",
+    "device_id": "02b4b0a1-a213-453b-8fc6-47fc7d6765d3",
+    "channel_id": "2538383c-8b27-4bba-bf4e-0fba34d7cd28",
+    "role": "accent",
+    "priority": 3
+  },
+  {
+    "_debug": "Living Room - Couch LED Strip",
+    "space_id": "a1b2c3d4-1111-4000-8000-000000000001",
+    "device_id": "40b363ca-e6a3-4568-b285-e74ed50c4caa",
+    "channel_id": "de7e3dcd-2cc3-4f0f-b93b-0720b7d25886",
+    "role": "accent",
+    "priority": 4
+  },
+  {
+    "_debug": "Living Room - TV Spot Light",
+    "space_id": "a1b2c3d4-1111-4000-8000-000000000001",
+    "device_id": "be49951d-21da-49d2-904f-98756d9b9521",
+    "channel_id": "1b343aee-39a0-45cd-9080-9cd40b0f1b46",
+    "role": "task",
+    "priority": 5
+  },
+  {
+    "_debug": "Living Room - Couch Spot Light",
+    "space_id": "a1b2c3d4-1111-4000-8000-000000000001",
+    "device_id": "6e3b24f0-2408-45cc-97d1-a7a824499b89",
+    "channel_id": "a12367a9-9676-4f9a-8276-f54ce9811e83",
+    "role": "task",
+    "priority": 6
+  },
+  {
+    "_debug": "Kitchen - Main Light",
+    "space_id": "a1b2c3d4-1111-4000-8000-000000000002",
+    "device_id": "ee22b7e2-2992-4d75-9ea4-5358fd7512f8",
+    "channel_id": "55accac5-513b-4d16-9e07-94534f363b2e",
+    "role": "main",
+    "priority": 0
+  },
+  {
+    "_debug": "Kitchen - Spot Light",
+    "space_id": "a1b2c3d4-1111-4000-8000-000000000002",
+    "device_id": "9b2710ae-008a-4366-891a-586a570a451d",
+    "channel_id": "3aa8a478-75d3-40f7-a3a1-0871fe928feb",
+    "role": "ambient",
+    "priority": 1
+  },
+  {
+    "_debug": "Kitchen - Bar Light (Side)",
+    "space_id": "a1b2c3d4-1111-4000-8000-000000000002",
+    "device_id": "cd2e7c6c-a154-4024-a2d4-523ce91a1fc1",
+    "channel_id": "3c37ab7b-857b-4755-9456-933af336eacd",
+    "role": "accent",
+    "priority": 2
+  },
+  {
+    "_debug": "Kitchen - Bar Light (Center)",
+    "space_id": "a1b2c3d4-1111-4000-8000-000000000002",
+    "device_id": "cd2e7c6c-a154-4024-a2d4-523ce91a1fc1",
+    "channel_id": "7246c342-44ef-49b8-8629-70fa26f5ce7f",
+    "role": "accent",
+    "priority": 3
+  },
+  {
+    "_debug": "Kitchen - Under Cabinet Light",
+    "space_id": "a1b2c3d4-1111-4000-8000-000000000002",
+    "device_id": "ab9fc01f-92f1-476c-8246-bacd1a3e0da7",
+    "channel_id": "2d7d7327-e521-480f-b7be-e7308f9b1b6c",
+    "role": "task",
+    "priority": 4
+  },
+  {
+    "_debug": "Kitchen - High Cabinet Light",
+    "space_id": "a1b2c3d4-1111-4000-8000-000000000002",
+    "device_id": "f6dd4fb2-5c1b-4fc5-ba78-d9165d8fb8f3",
+    "channel_id": "96b0c798-d489-4166-b578-11b746e5af96",
+    "role": "accent",
+    "priority": 5
+  }
+]

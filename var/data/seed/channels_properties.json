@@ -1,7 +1,7 @@
 [
   {
     "_debug_name": "Living Room Thermostat - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "572c7c79-f73e-4c62-afee-f60b2e5e0b77",
     "category": "firmware_revision",
     "name": null,
@@ -19,7 +19,7 @@
   },
   {
     "_debug_name": "Living Room Thermostat - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "9431cc2d-d447-44c1-b2d0-4398624e4921",
     "category": "serial_number",
     "name": null,
@@ -37,7 +37,7 @@
   },
   {
     "_debug_name": "Living Room Thermostat - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "19818cbe-d09b-4c56-a973-39e1e9d451da",
     "category": "model",
     "name": null,
@@ -55,7 +55,7 @@
   },
   {
     "_debug_name": "Living Room Thermostat - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "d8b5d57a-4304-4079-aa62-7d570191ff96",
     "category": "manufacturer",
     "name": null,
@@ -73,7 +73,7 @@
   },
   {
     "_debug_name": "Living Room Thermostat - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "e64a8408-13bf-4709-8666-0d2c2e63fda9",
     "category": "status",
     "name": null,
@@ -97,7 +97,7 @@
   },
   {
     "_debug_name": "Living Room Thermostat - Thermostat",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "c0dc17e2-7042-407d-ac27-ed56d0821c47",
     "category": "active",
     "name": null,
@@ -115,7 +115,7 @@
   },
   {
     "_debug_name": "Living Room Thermostat - Thermostat",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "9c866bb7-f731-4109-a724-482c25e53679",
     "category": "mode",
     "name": null,
@@ -137,7 +137,7 @@
   },
   {
     "_debug_name": "Living Room Thermostat - Thermostat",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "df3399c7-8480-44f3-a30f-2da651656bb9",
     "category": "locked",
     "name": null,
@@ -155,7 +155,7 @@
   },
   {
     "_debug_name": "Living Room Thermostat - Thermostat",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "0445e0ac-87da-4191-be27-a7278cb8965e",
     "category": "units",
     "name": null,
@@ -176,7 +176,7 @@
   },
   {
     "_debug_name": "Living Room Thermostat - Temperature Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "3e93b224-2c35-4480-905b-eb5a590fb62e",
     "category": "temperature",
     "name": null,
@@ -194,7 +194,7 @@
   },
   {
     "_debug_name": "Living Room Thermostat - Temperature Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "5b2aff6b-8351-4b8f-9440-f443ee862ea0",
     "category": "active",
     "name": null,
@@ -212,7 +212,7 @@
   },
   {
     "_debug_name": "Living Room Thermostat - Temperature Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "39b12901-8919-490f-9f7b-82d86b25d99c",
     "category": "fault",
     "name": null,
@@ -230,7 +230,7 @@
   },
   {
     "_debug_name": "Living Room Thermostat - Humidity Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "c08e5eb8-6c47-4b24-839d-8997f7569ad9",
     "category": "humidity",
     "name": null,
@@ -248,7 +248,7 @@
   },
   {
     "_debug_name": "Living Room Thermostat - Humidity Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "fdf75682-8e58-49f5-bebb-e01f738421b7",
     "category": "active",
     "name": null,
@@ -266,7 +266,7 @@
   },
   {
     "_debug_name": "Living Room Thermostat - Humidity Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "780b149f-734a-4d66-b78b-2247e803ce2c",
     "category": "fault",
     "name": null,
@@ -284,7 +284,7 @@
   },
   {
     "_debug_name": "Living Room Thermostat - Heater",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "1ddd8538-34d5-4fe0-8a72-fef90e294389",
     "category": "temperature",
     "name": null,
@@ -305,7 +305,7 @@
   },
   {
     "_debug_name": "Living Room Thermostat - Heater",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "83a1711e-2c16-49aa-8148-56a30965354d",
     "category": "status",
     "name": null,
@@ -323,7 +323,7 @@
   },
   {
     "_debug_name": "Living Room Thermostat - Contact Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "b7b170c5-0979-4ef1-9211-12e55d1de630",
     "category": "detected",
     "name": null,
@@ -341,7 +341,7 @@
   },
   {
     "_debug_name": "Living Room Thermostat - Contact Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "fac6fcf3-daa0-42ca-b1b6-e072ed817a62",
     "category": "active",
     "name": null,
@@ -359,7 +359,7 @@
   },
   {
     "_debug_name": "Living Room Thermostat - Contact Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "c74442e7-302b-460b-9ef4-8f8365219354",
     "category": "fault",
     "name": null,
@@ -377,7 +377,7 @@
   },
   {
     "_debug_name": "Living Room TV LED Strip - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "733f9c82-3448-4746-a74f-d85a3847102f",
     "category": "firmware_revision",
     "name": null,
@@ -395,7 +395,7 @@
   },
   {
     "_debug_name": "Living Room TV LED Strip - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "e8011d66-d586-4b27-ad3f-4bc417a902b0",
     "category": "serial_number",
     "name": null,
@@ -413,7 +413,7 @@
   },
   {
     "_debug_name": "Living Room TV LED Strip - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "d685e4c9-8186-46c7-8684-7ffcd61cdec5",
     "category": "model",
     "name": null,
@@ -431,7 +431,7 @@
   },
   {
     "_debug_name": "Living Room TV LED Strip - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "833586fc-d449-4151-a98e-bcdaf369a21c",
     "category": "manufacturer",
     "name": null,
@@ -449,7 +449,7 @@
   },
   {
     "_debug_name": "Living Room TV LED Strip - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "37a8b2fd-67ba-4bbb-9d8d-ae50488b72e7",
     "category": "status",
     "name": null,
@@ -473,7 +473,7 @@
   },
   {
     "_debug_name": "Living Room TV LED Strip - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "bd1d7a34-bc00-49e7-8254-08fde4d26283",
     "category": "on",
     "name": null,
@@ -491,7 +491,7 @@
   },
   {
     "_debug_name": "Living Room TV LED Strip - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "e4e85734-e634-45ca-b872-d5575b5d10ad",
     "category": "brightness",
     "name": null,
@@ -512,7 +512,7 @@
   },
   {
     "_debug_name": "Living Room TV LED Strip - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "1eb02b66-0db2-44f3-a33d-b8922d88e1ad",
     "category": "color_red",
     "name": null,
@@ -533,7 +533,7 @@
   },
   {
     "_debug_name": "Living Room TV LED Strip - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "553c85e7-2de5-4ea1-851d-ccb273f392c8",
     "category": "color_green",
     "name": null,
@@ -554,7 +554,7 @@
   },
   {
     "_debug_name": "Living Room TV LED Strip - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "06efea34-73ca-40a8-856d-392755ba22a6",
     "category": "color_blue",
     "name": null,
@@ -575,7 +575,7 @@
   },
   {
     "_debug_name": "Living Room TV LED Strip - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "d099441b-8eb9-41e9-b5f9-58c7e197f5bf",
     "category": "color_white",
     "name": null,
@@ -596,7 +596,7 @@
   },
   {
     "_debug_name": "Living Room Couch LED Strip - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "464ab327-7460-4c08-a8d2-9de277a14244",
     "category": "firmware_revision",
     "name": null,
@@ -614,7 +614,7 @@
   },
   {
     "_debug_name": "Living Room Couch LED Strip - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "6249f063-b16d-4989-9e21-766810bbed05",
     "category": "serial_number",
     "name": null,
@@ -632,7 +632,7 @@
   },
   {
     "_debug_name": "Living Room Couch LED Strip - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "3732944a-2c82-46b9-afae-342fc36313cc",
     "category": "model",
     "name": null,
@@ -650,7 +650,7 @@
   },
   {
     "_debug_name": "Living Room Couch LED Strip - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "01817104-2ba8-47db-82a5-89e7f62d08d8",
     "category": "manufacturer",
     "name": null,
@@ -668,7 +668,7 @@
   },
   {
     "_debug_name": "Living Room Couch LED Strip - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "35b28356-92b7-4077-a8a0-4cd1c509fe4d",
     "category": "status",
     "name": null,
@@ -692,7 +692,7 @@
   },
   {
     "_debug_name": "Living Room Couch LED Strip - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "bd86eb7e-23e6-4b38-9567-cbac68ef72ba",
     "category": "on",
     "name": null,
@@ -710,7 +710,7 @@
   },
   {
     "_debug_name": "Living Room Couch LED Strip - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "e0eb3332-39ad-420f-b032-d867db6fbe09",
     "category": "brightness",
     "name": null,
@@ -731,7 +731,7 @@
   },
   {
     "_debug_name": "Living Room Couch LED Strip - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "ec06640c-5907-44d4-8fe1-410f0d5ce695",
     "category": "hue",
     "name": null,
@@ -752,7 +752,7 @@
   },
   {
     "_debug_name": "Living Room Couch LED Strip - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "915b6991-f503-4cbf-bd5c-1db5d429597b",
     "category": "saturation",
     "name": null,
@@ -773,7 +773,7 @@
   },
   {
     "_debug_name": "Living Room Couch LED Strip - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "ef708ba0-aca4-485e-bd70-69782d68f885",
     "category": "color_white",
     "name": null,
@@ -794,7 +794,7 @@
   },
   {
     "_debug_name": "Living Room Main Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "5dd7b31d-aac2-40a1-b121-5944eb853b31",
     "category": "firmware_revision",
     "name": null,
@@ -812,7 +812,7 @@
   },
   {
     "_debug_name": "Living Room Main Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "673040b0-fa6d-4b4b-90d2-d077d5247553",
     "category": "serial_number",
     "name": null,
@@ -830,7 +830,7 @@
   },
   {
     "_debug_name": "Living Room Main Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "36dc1e74-c047-4676-9734-e79e23ad24aa",
     "category": "model",
     "name": null,
@@ -848,7 +848,7 @@
   },
   {
     "_debug_name": "Living Room Main Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "52019782-8a12-4965-aee0-d2d98baf7b0a",
     "category": "manufacturer",
     "name": null,
@@ -866,7 +866,7 @@
   },
   {
     "_debug_name": "Living Room Main Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "d29dbe16-bc2a-40d8-bf1d-fd13bbd8da81",
     "category": "status",
     "name": null,
@@ -890,7 +890,7 @@
   },
   {
     "_debug_name": "Living Room Main Light - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "416f2efa-ba58-456e-aea2-eb6b9d225b21",
     "category": "on",
     "name": null,
@@ -908,7 +908,7 @@
   },
   {
     "_debug_name": "Living Room Entry Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "a63e636f-207f-4add-ac40-b0e470f28828",
     "category": "firmware_revision",
     "name": null,
@@ -926,7 +926,7 @@
   },
   {
     "_debug_name": "Living Room Entry Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "dd595e00-8dac-4986-a65f-4820b9ed4ab1",
     "category": "serial_number",
     "name": null,
@@ -944,7 +944,7 @@
   },
   {
     "_debug_name": "Living Room Entry Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "6ef1e3f0-4d64-4621-8fcb-a0b06ee8d004",
     "category": "model",
     "name": null,
@@ -962,7 +962,7 @@
   },
   {
     "_debug_name": "Living Room Entry Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "6ba3e0a0-92cb-407c-80dc-c2e94da5bdbe",
     "category": "manufacturer",
     "name": null,
@@ -980,7 +980,7 @@
   },
   {
     "_debug_name": "Living Room Entry Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "e5d7561d-9267-46ce-b535-ecad24b8440c",
     "category": "status",
     "name": null,
@@ -1004,7 +1004,7 @@
   },
   {
     "_debug_name": "Living Room Entry Light - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "350f2fa6-4078-4de7-944d-f27511afe661",
     "category": "on",
     "name": null,
@@ -1022,7 +1022,7 @@
   },
   {
     "_debug_name": "Living Room Entry Light - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "2f7b015a-6148-4240-b501-dc0f44a31c47",
     "category": "brightness",
     "name": null,
@@ -1043,7 +1043,7 @@
   },
   {
     "_debug_name": "Living Room Entry Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "c8bd6b2c-b86c-43c6-9d38-b2ecbf7f5a78",
     "category": "firmware_revision",
     "name": null,
@@ -1061,7 +1061,7 @@
   },
   {
     "_debug_name": "Living Room Entry Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "3e4ec0c8-a68e-4055-8905-281f979e7aea",
     "category": "serial_number",
     "name": null,
@@ -1079,7 +1079,7 @@
   },
   {
     "_debug_name": "Living Room Entry Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "dc19315c-f9a7-4c2f-9c71-f067e5928725",
     "category": "model",
     "name": null,
@@ -1097,7 +1097,7 @@
   },
   {
     "_debug_name": "Living Room Entry Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "f7a85008-0cff-48d2-b609-ecd24219cccc",
     "category": "manufacturer",
     "name": null,
@@ -1115,7 +1115,7 @@
   },
   {
     "_debug_name": "Living Room Entry Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "0afcf668-b9a5-4690-8e0c-495d61324e39",
     "category": "status",
     "name": null,
@@ -1139,7 +1139,7 @@
   },
   {
     "_debug_name": "Living Room Entry Light - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "973277b0-dbf4-486b-85dc-3a745d4427de",
     "category": "on",
     "name": null,
@@ -1157,7 +1157,7 @@
   },
   {
     "_debug_name": "Living Room Entry Light - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "1821a77e-5352-40e1-9a40-4e2929611447",
     "category": "brightness",
     "name": null,
@@ -1178,7 +1178,7 @@
   },
   {
     "_debug_name": "Living Room TV Spot Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "c55403f5-bc61-42f1-966b-79bc1d2024d3",
     "category": "firmware_revision",
     "name": null,
@@ -1196,7 +1196,7 @@
   },
   {
     "_debug_name": "Living Room TV Spot Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "2db90903-f07b-48f4-b221-cf44cc9a2752",
     "category": "serial_number",
     "name": null,
@@ -1214,7 +1214,7 @@
   },
   {
     "_debug_name": "Living Room TV Spot Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "f43171ba-8fa2-4550-8cf9-e88d4a553bf7",
     "category": "model",
     "name": null,
@@ -1232,7 +1232,7 @@
   },
   {
     "_debug_name": "Living Room TV Spot Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "7e9f149a-c593-4a94-acb7-649499284e05",
     "category": "manufacturer",
     "name": null,
@@ -1250,7 +1250,7 @@
   },
   {
     "_debug_name": "Living Room TV Spot Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "4e7fa81e-8d89-4117-af21-64f3543c6264",
     "category": "status",
     "name": null,
@@ -1274,7 +1274,7 @@
   },
   {
     "_debug_name": "Living Room TV Spot Light - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "fdb32135-e7ce-4755-8af8-9ce83b4647b4",
     "category": "on",
     "name": null,
@@ -1292,7 +1292,7 @@
   },
   {
     "_debug_name": "Living Room TV Spot Light - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "811920ce-1eeb-4b01-b92d-48ff764b08c8",
     "category": "brightness",
     "name": null,
@@ -1313,7 +1313,7 @@
   },
   {
     "_debug_name": "Living Room Couch Spot Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "cbd4a15d-0285-462d-adab-3dacc7997ca9",
     "category": "firmware_revision",
     "name": null,
@@ -1331,7 +1331,7 @@
   },
   {
     "_debug_name": "Living Room Couch Spot Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "6b4153ae-7a3b-43be-9fb9-09d3df556e3a",
     "category": "serial_number",
     "name": null,
@@ -1349,7 +1349,7 @@
   },
   {
     "_debug_name": "Living Room Couch Spot Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "50c96cce-15cd-404c-a131-63a1b6f69a15",
     "category": "model",
     "name": null,
@@ -1367,7 +1367,7 @@
   },
   {
     "_debug_name": "Living Room Couch Spot Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "0de26027-515f-419b-8adc-7a4dcbb584ec",
     "category": "manufacturer",
     "name": null,
@@ -1385,7 +1385,7 @@
   },
   {
     "_debug_name": "Living Room Couch Spot Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "6b74fa7f-e3ea-43ca-88c9-32260f7723e8",
     "category": "status",
     "name": null,
@@ -1409,7 +1409,7 @@
   },
   {
     "_debug_name": "Living Room Couch Spot Light - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "7baaf66b-7f0c-4c25-bc29-1fa88755583e",
     "category": "on",
     "name": null,
@@ -1427,7 +1427,7 @@
   },
   {
     "_debug_name": "Living Room Couch Spot Light - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "9179723e-feed-4e1d-b3ae-fbf1e8f3c7d3",
     "category": "brightness",
     "name": null,
@@ -1448,7 +1448,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "5e8bf3db-c061-401f-b219-6fc4edfc8866",
     "category": "firmware_revision",
     "name": null,
@@ -1466,7 +1466,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "4646805f-ac5d-4339-86ab-3d9d2cdbc5e9",
     "category": "serial_number",
     "name": null,
@@ -1484,7 +1484,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "724635d4-1ecb-42a9-92c5-c9beef16f840",
     "category": "model",
     "name": null,
@@ -1502,7 +1502,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "80c7a4a6-1193-4180-8f06-cc5dd76377bb",
     "category": "manufacturer",
     "name": null,
@@ -1520,7 +1520,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "3f3168ca-0a89-406d-9519-574ccff4cf83",
     "category": "status",
     "name": null,
@@ -1544,7 +1544,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Light - Light 01",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "2e2e8b78-ef8c-4c3a-9707-6390e1c84e2c",
     "category": "on",
     "name": null,
@@ -1562,7 +1562,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Light - Light 01",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "6742024d-63d6-4dc9-a567-c5784a8ea652",
     "category": "brightness",
     "name": null,
@@ -1583,7 +1583,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Light - Light 02",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "3d55b240-7ab4-47c2-ad4a-be2188dfdcc8",
     "category": "on",
     "name": null,
@@ -1601,7 +1601,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Light - Light 02",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "b2453ea7-ca16-4c77-9835-74d9fffa18e2",
     "category": "brightness",
     "name": null,
@@ -1622,7 +1622,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Door - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "a203eb77-b794-4647-a3d0-b00cdcd96e52",
     "category": "firmware_revision",
     "name": null,
@@ -1640,7 +1640,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Door - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "e7b1d138-e8a0-4713-be6a-a1463607a640",
     "category": "serial_number",
     "name": null,
@@ -1658,7 +1658,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Door - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "1c54cb1e-0d29-4b52-b497-fced4c814081",
     "category": "model",
     "name": null,
@@ -1676,7 +1676,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Door - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "0f571765-09f8-4e45-84ed-cbc0953842e9",
     "category": "manufacturer",
     "name": null,
@@ -1694,7 +1694,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Door - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "1d64316b-dea1-4cab-9e6b-798f746714f7",
     "category": "status",
     "name": null,
@@ -1718,7 +1718,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Door - Contact Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "e0b3cf91-f431-486b-9c5c-79180f2a6f99",
     "category": "detected",
     "name": null,
@@ -1736,7 +1736,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Door - Contact Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "f041695d-4474-448a-b409-58159c747365",
     "category": "active",
     "name": null,
@@ -1754,7 +1754,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Door - Contact Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "c4ebb24c-fdd2-421b-94f7-cfc483c14069",
     "category": "fault",
     "name": null,
@@ -1772,7 +1772,7 @@
   },
   {
     "_debug_name": "Living Room Television - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "a37d59b4-5ed2-41da-af4b-49f346b9d84c",
     "category": "firmware_revision",
     "name": null,
@@ -1790,7 +1790,7 @@
   },
   {
     "_debug_name": "Living Room Television - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "e53a5315-fe64-4adc-87a9-e9497fdda843",
     "category": "serial_number",
     "name": null,
@@ -1808,7 +1808,7 @@
   },
   {
     "_debug_name": "Living Room Television - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "9a8a1274-d28c-40a2-b2cf-577c9d0952b7",
     "category": "model",
     "name": null,
@@ -1826,7 +1826,7 @@
   },
   {
     "_debug_name": "Living Room Television - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "f7a24671-7043-4ca4-a2f3-8cdc4b720b28",
     "category": "manufacturer",
     "name": null,
@@ -1844,7 +1844,7 @@
   },
   {
     "_debug_name": "Living Room Television - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "f9c4961c-c08d-48c2-8b2f-25378a5fcc01",
     "category": "status",
     "name": null,
@@ -1868,7 +1868,7 @@
   },
   {
     "_debug_name": "Living Room Television - Television",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "b6931dce-de09-4387-a320-a72705ebf2ee",
     "category": "on",
     "name": null,
@@ -1886,7 +1886,7 @@
   },
   {
     "_debug_name": "Living Room Television - Television",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "257fe8e0-afce-4cfb-af08-23c26f123db8",
     "category": "brightness",
     "name": null,
@@ -1907,7 +1907,7 @@
   },
   {
     "_debug_name": "Living Room Television - Television",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "03a2a8f7-ac1a-4738-b5a4-dba2a3f999bd",
     "category": "input_source",
     "name": null,
@@ -1930,7 +1930,7 @@
   },
   {
     "_debug_name": "Living Room Television - Television",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "6eca172a-41f2-4614-923f-c5b358b5ece8",
     "category": "remote_key",
     "name": null,
@@ -1963,7 +1963,7 @@
   },
   {
     "_debug_name": "Living Room Television - Speaker",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "0afd0d54-2b09-4aa0-ad9d-abf37ddb24f1",
     "category": "active",
     "name": null,
@@ -1984,7 +1984,7 @@
   },
   {
     "_debug_name": "Living Room Television - Speaker",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "e43c406d-1ccc-40c2-b398-fabf64015efc",
     "category": "volume",
     "name": null,
@@ -2005,7 +2005,7 @@
   },
   {
     "_debug_name": "Living Room Robot Vacuum Cleaner - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "a606c926-d692-41ce-aa7a-c21326fe02dc",
     "category": "firmware_revision",
     "name": null,
@@ -2023,7 +2023,7 @@
   },
   {
     "_debug_name": "Living Room Robot Vacuum Cleaner - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "30fde49d-0bea-4f51-a169-3b7823e80795",
     "category": "serial_number",
     "name": null,
@@ -2041,7 +2041,7 @@
   },
   {
     "_debug_name": "Living Room Robot Vacuum Cleaner - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "bc72fff7-c2c1-45a2-9db2-8c7186bf8ef0",
     "category": "model",
     "name": null,
@@ -2059,7 +2059,7 @@
   },
   {
     "_debug_name": "Living Room Robot Vacuum Cleaner - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "2c9b2d77-e398-4e0b-aae6-4e1cc0e0c1fc",
     "category": "manufacturer",
     "name": null,
@@ -2077,7 +2077,7 @@
   },
   {
     "_debug_name": "Living Room Robot Vacuum Cleaner - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "48b25814-393a-49ef-921d-e57f1076112f",
     "category": "status",
     "name": null,
@@ -2101,7 +2101,7 @@
   },
   {
     "_debug_name": "Living Room Robot Vacuum Cleaner - Robot Vacuum",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "0b09bea1-42dc-423c-affb-1dbf8670ae37",
     "category": "on",
     "name": null,
@@ -2119,7 +2119,7 @@
   },
   {
     "_debug_name": "Living Room Robot Vacuum Cleaner - Robot Vacuum",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "0b73052b-1957-49c3-8b0c-0595ed0e3292",
     "category": "status",
     "name": null,
@@ -2144,7 +2144,7 @@
   },
   {
     "_debug_name": "Living Room Robot Vacuum Cleaner - Robot Vacuum",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "a97e9b7e-c355-4f89-a304-010b841bda5e",
     "category": "mode",
     "name": null,
@@ -2166,7 +2166,7 @@
   },
   {
     "_debug_name": "Living Room Robot Vacuum Cleaner - Robot Vacuum",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "86a9a3c9-d340-4a9d-b330-f10ea33447b7",
     "category": "fault",
     "name": null,
@@ -2184,7 +2184,7 @@
   },
   {
     "_debug_name": "Living Room Robot Vacuum Cleaner - Battery",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "40a61e33-ee76-4369-9b78-5ca8ac5e3e84",
     "category": "percentage",
     "name": null,
@@ -2205,7 +2205,7 @@
   },
   {
     "_debug_name": "Living Room Robot Vacuum Cleaner - Battery",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "0eed7e1b-9966-46ff-89b0-1fa964a12966",
     "category": "status",
     "name": null,
@@ -2227,7 +2227,7 @@
   },
   {
     "_debug_name": "Living Room Robot Vacuum Cleaner - Battery",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "2f5feb1b-874c-48f3-93bc-cd79f0a359bc",
     "category": "fault",
     "name": null,
@@ -2245,7 +2245,7 @@
   },
   {
     "_debug_name": "Living Room Temperature & Humidity - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "ed90bd75-cf1f-4d55-ba39-0589abaf22f3",
     "category": "firmware_revision",
     "name": null,
@@ -2263,7 +2263,7 @@
   },
   {
     "_debug_name": "Living Room Temperature & Humidity - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "70aafe5b-df0b-47bf-a81a-af2f0812d3ad",
     "category": "serial_number",
     "name": null,
@@ -2281,7 +2281,7 @@
   },
   {
     "_debug_name": "Living Room Temperature & Humidity - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "e6d5edf3-f1b8-4652-b05a-ebc3b2d039df",
     "category": "model",
     "name": null,
@@ -2299,7 +2299,7 @@
   },
   {
     "_debug_name": "Living Room Temperature & Humidity - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "6742a59a-f250-47b8-82b9-15b5f48e2129",
     "category": "manufacturer",
     "name": null,
@@ -2317,7 +2317,7 @@
   },
   {
     "_debug_name": "Living Room Temperature & Humidity - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "76de28d6-2aba-49e4-b694-d08650336215",
     "category": "status",
     "name": null,
@@ -2341,7 +2341,7 @@
   },
   {
     "_debug_name": "Living Room Temperature & Humidity - Temperature",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "733deeae-8ba3-4f93-aeac-845969043257",
     "category": "temperature",
     "name": null,
@@ -2362,7 +2362,7 @@
   },
   {
     "_debug_name": "Living Room Temperature & Humidity - Humidity",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "874dd76f-f0f4-4cc2-9a0e-b07e6e0bc256",
     "category": "humidity",
     "name": null,
@@ -2380,7 +2380,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Motion Detection - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "e7cb8d13-6beb-4614-8919-19ef96e1d217",
     "category": "firmware_revision",
     "name": null,
@@ -2398,7 +2398,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Motion Detection - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "39274b60-fb42-458f-87c3-cfb001a5c618",
     "category": "serial_number",
     "name": null,
@@ -2416,7 +2416,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Motion Detection - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "09514fd6-173d-4595-aca4-1365c0098972",
     "category": "model",
     "name": null,
@@ -2434,7 +2434,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Motion Detection - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "db447a7d-63e6-4bc2-a244-1aad7ed10a34",
     "category": "manufacturer",
     "name": null,
@@ -2452,7 +2452,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Motion Detection - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "950d867d-2cc1-491f-906a-24b670357155",
     "category": "status",
     "name": null,
@@ -2476,7 +2476,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Motion Detection - Motion",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "2f42206b-11c3-42bc-ac5a-99605208a944",
     "category": "detected",
     "name": null,
@@ -2494,7 +2494,7 @@
   },
   {
     "_debug_name": "Living Room Entrance Motion Detection - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "9efa8e66-328e-40e6-99c0-5d3ae740ace2",
     "category": "firmware_revision",
     "name": null,
@@ -2512,7 +2512,7 @@
   },
   {
     "_debug_name": "Living Room Entrance Motion Detection - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "078b33e1-793e-4dc4-b982-fd943bc7eefb",
     "category": "serial_number",
     "name": null,
@@ -2530,7 +2530,7 @@
   },
   {
     "_debug_name": "Living Room Entrance Motion Detection - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "8a345ca9-9a33-4935-b213-dc13f48a7ac5",
     "category": "model",
     "name": null,
@@ -2548,7 +2548,7 @@
   },
   {
     "_debug_name": "Living Room Entrance Motion Detection - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "bbf2105d-f324-4af3-b7c9-1b0506174842",
     "category": "manufacturer",
     "name": null,
@@ -2566,7 +2566,7 @@
   },
   {
     "_debug_name": "Living Room Entrance Motion Detection - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "4d10bc4f-2ab0-4592-ac0a-c5dbe796d270",
     "category": "status",
     "name": null,
@@ -2590,7 +2590,7 @@
   },
   {
     "_debug_name": "Living Room Entrance Motion Detection - Motion",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "ed05e722-d7bb-4d6f-b77e-83b58eda046e",
     "category": "detected",
     "name": null,
@@ -2608,7 +2608,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Blind - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "7d91053a-8d38-467d-8504-0c60b18ad181",
     "category": "firmware_revision",
     "name": null,
@@ -2626,7 +2626,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Blind - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "f5636e4e-2dfa-45fb-9b71-bcb604a9fcbd",
     "category": "serial_number",
     "name": null,
@@ -2644,7 +2644,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Blind - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "24027fb0-0b50-4250-84a2-69d28b7bd614",
     "category": "model",
     "name": null,
@@ -2662,7 +2662,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Blind - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "2bb1804f-e039-4b6a-94c3-73e56fa60b5e",
     "category": "manufacturer",
     "name": null,
@@ -2680,7 +2680,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Blind - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "e6553720-bf37-4ead-97a2-c1643609b60b",
     "category": "status",
     "name": null,
@@ -2704,7 +2704,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Blind - Window Covering",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "875e1b07-2bce-4c25-9d6c-b5ce6672d542",
     "category": "obstruction",
     "name": null,
@@ -2722,7 +2722,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Blind - Window Covering",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "288a18df-3d4c-4604-91e7-7810208a9df4",
     "category": "status",
     "name": null,
@@ -2746,7 +2746,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Blind - Window Covering",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "742c1c79-7592-4212-97c9-5f8d6171ef15",
     "category": "position",
     "name": null,
@@ -2768,7 +2768,7 @@
   },
   {
     "_debug_name": "Living Room Terrace Blind - Window Covering",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "e0e1fc43-0d09-4fb0-8c80-82c5d44bcac3",
     "category": "type",
     "name": null,
@@ -2791,7 +2791,7 @@
   },
   {
     "_debug_name": "Living Room Window Blind - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "71c46e29-cbf3-4951-b44d-9fb99aef09be",
     "category": "firmware_revision",
     "name": null,
@@ -2809,7 +2809,7 @@
   },
   {
     "_debug_name": "Living Room Window Blind - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "ac1ec2d0-8666-4d6f-afc5-50d6eee3b19c",
     "category": "serial_number",
     "name": null,
@@ -2827,7 +2827,7 @@
   },
   {
     "_debug_name": "Living Room Window Blind - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "e9e3d566-3abc-40da-985f-2c8b32fd2b25",
     "category": "model",
     "name": null,
@@ -2845,7 +2845,7 @@
   },
   {
     "_debug_name": "Living Room Window Blind - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "c33b6288-d271-4bbd-87b2-8586e72c965f",
     "category": "manufacturer",
     "name": null,
@@ -2863,7 +2863,7 @@
   },
   {
     "_debug_name": "Living Room Window Blind - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "a878cd54-9112-4c10-af60-476d38da7e4f",
     "category": "status",
     "name": null,
@@ -2887,7 +2887,7 @@
   },
   {
     "_debug_name": "Living Room Window Blind - Window Covering",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "2ff12711-0470-4074-ad99-d10614a66d13",
     "category": "obstruction",
     "name": null,
@@ -2905,7 +2905,7 @@
   },
   {
     "_debug_name": "Living Room Window Blind - Window Covering",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "e29964d2-58f5-444c-8677-d35c632743f0",
     "category": "status",
     "name": null,
@@ -2929,7 +2929,7 @@
   },
   {
     "_debug_name": "Living Room Window Blind - Window Covering",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "9dc31578-8f17-412b-b3d3-7aa29ed72924",
     "category": "position",
     "name": null,
@@ -2951,7 +2951,7 @@
   },
   {
     "_debug_name": "Living Room Window Blind - Window Covering",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "5719dbfe-b3d1-4d56-824e-5ce8139cf561",
     "category": "type",
     "name": null,
@@ -2974,7 +2974,7 @@
   },
   {
     "_debug_name": "Kitchen Thermostat - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "00cb6102-0356-4c99-a0f0-1c430dce93db",
     "category": "firmware_revision",
     "name": null,
@@ -2992,7 +2992,7 @@
   },
   {
     "_debug_name": "Kitchen Thermostat - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "679ef27e-9435-4e65-91ac-da3d3f2e5212",
     "category": "serial_number",
     "name": null,
@@ -3010,7 +3010,7 @@
   },
   {
     "_debug_name": "Kitchen Thermostat - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "bd2386a6-2775-40f1-aae7-6d2766b3fee2",
     "category": "model",
     "name": null,
@@ -3028,7 +3028,7 @@
   },
   {
     "_debug_name": "Kitchen Thermostat - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "834f9ff9-79fb-4a42-9595-47902ae1ebf2",
     "category": "manufacturer",
     "name": null,
@@ -3046,7 +3046,7 @@
   },
   {
     "_debug_name": "Kitchen Thermostat - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "be5cda8f-6cea-4ebe-8dab-f773bec6da16",
     "category": "status",
     "name": null,
@@ -3070,7 +3070,7 @@
   },
   {
     "_debug_name": "Kitchen Thermostat - Thermostat",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "aadb2249-febc-479a-a56b-4ccdc9e9b287",
     "category": "active",
     "name": null,
@@ -3088,7 +3088,7 @@
   },
   {
     "_debug_name": "Kitchen Thermostat - Thermostat",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "fe99fd97-2467-4cd7-8120-5d56926ce570",
     "category": "mode",
     "name": null,
@@ -3110,7 +3110,7 @@
   },
   {
     "_debug_name": "Kitchen Thermostat - Thermostat",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "a391316b-9500-4e5b-ac15-ba236d7c50ff",
     "category": "locked",
     "name": null,
@@ -3128,7 +3128,7 @@
   },
   {
     "_debug_name": "Kitchen Thermostat - Thermostat",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "d68bb44f-8fb7-4a0a-9f9a-3f21f52092e4",
     "category": "units",
     "name": null,
@@ -3149,7 +3149,7 @@
   },
   {
     "_debug_name": "Kitchen Thermostat - Temperature Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "549a2afd-30ac-4c42-a7ac-73719d9f69be",
     "category": "temperature",
     "name": null,
@@ -3167,7 +3167,7 @@
   },
   {
     "_debug_name": "Kitchen Thermostat - Temperature Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "46bea22b-37ce-4b8c-89c0-1d139084cdb5",
     "category": "active",
     "name": null,
@@ -3185,7 +3185,7 @@
   },
   {
     "_debug_name": "Kitchen Thermostat - Temperature Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "30e9b324-8bc2-47c1-8066-a42eb9b57b97",
     "category": "fault",
     "name": null,
@@ -3203,7 +3203,7 @@
   },
   {
     "_debug_name": "Kitchen Thermostat - Humidity Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "f4bdd8a3-ce47-44ae-953d-5b6bd2c76dbf",
     "category": "humidity",
     "name": null,
@@ -3221,7 +3221,7 @@
   },
   {
     "_debug_name": "Kitchen Thermostat - Humidity Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "043ded22-2074-45dc-afa7-5ede54e7ea88",
     "category": "active",
     "name": null,
@@ -3239,7 +3239,7 @@
   },
   {
     "_debug_name": "Kitchen Thermostat - Humidity Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "c6cc595d-eac4-4a32-a2e8-745d3c70b5ad",
     "category": "fault",
     "name": null,
@@ -3257,7 +3257,7 @@
   },
   {
     "_debug_name": "Kitchen Thermostat - Heater",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "94c89e5b-9cf8-4b5f-bc1c-3bd32df18ad1",
     "category": "temperature",
     "name": null,
@@ -3278,7 +3278,7 @@
   },
   {
     "_debug_name": "Kitchen Thermostat - Heater",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "bedd9363-8b84-4f83-b9fb-5a8087d9c2a1",
     "category": "status",
     "name": null,
@@ -3296,7 +3296,7 @@
   },
   {
     "_debug_name": "Kitchen Thermostat - Contact Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "9534e1b0-f3a5-4ad1-bc81-94f8745ddff2",
     "category": "detected",
     "name": null,
@@ -3314,7 +3314,7 @@
   },
   {
     "_debug_name": "Kitchen Thermostat - Contact Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "1620111b-9518-47a7-b59a-d998f0ab85d4",
     "category": "active",
     "name": null,
@@ -3332,7 +3332,7 @@
   },
   {
     "_debug_name": "Kitchen Thermostat - Contact Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "a9af86f2-6c52-4824-92cf-aeda26ecdc4b",
     "category": "fault",
     "name": null,
@@ -3350,7 +3350,7 @@
   },
   {
     "_debug_name": "Kitchen Main Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "29c53855-bf55-4788-bb26-189226f98321",
     "category": "firmware_revision",
     "name": null,
@@ -3368,7 +3368,7 @@
   },
   {
     "_debug_name": "Kitchen Main Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "d6042c8d-f16e-429a-ad56-fdf7ba646fcd",
     "category": "serial_number",
     "name": null,
@@ -3386,7 +3386,7 @@
   },
   {
     "_debug_name": "Kitchen Main Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "1077b839-78e8-4ace-b7dd-30ff497810ba",
     "category": "model",
     "name": null,
@@ -3404,7 +3404,7 @@
   },
   {
     "_debug_name": "Kitchen Main Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "9eeeb9be-6c71-4485-b460-18bbb6ada0e2",
     "category": "manufacturer",
     "name": null,
@@ -3422,7 +3422,7 @@
   },
   {
     "_debug_name": "Kitchen Main Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "8398f22a-6fb6-4e44-bcb2-94718f81a0a6",
     "category": "status",
     "name": null,
@@ -3446,7 +3446,7 @@
   },
   {
     "_debug_name": "Kitchen Main Light - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "57e62331-f7c7-4439-ac52-01ec947f49e0",
     "category": "on",
     "name": null,
@@ -3464,7 +3464,7 @@
   },
   {
     "_debug_name": "Kitchen Spot Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "f4f28e6e-0fa0-4502-9cf7-4b69029b1818",
     "category": "firmware_revision",
     "name": null,
@@ -3482,7 +3482,7 @@
   },
   {
     "_debug_name": "Kitchen Spot Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "00cb9fc5-20fb-414d-904e-30db26815fd5",
     "category": "serial_number",
     "name": null,
@@ -3500,7 +3500,7 @@
   },
   {
     "_debug_name": "Kitchen Spot Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "e771a60f-8e62-448d-a860-263c03f9ae9f",
     "category": "model",
     "name": null,
@@ -3518,7 +3518,7 @@
   },
   {
     "_debug_name": "Kitchen Spot Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "550d3650-37d5-435f-9f08-349fe88f513e",
     "category": "manufacturer",
     "name": null,
@@ -3536,7 +3536,7 @@
   },
   {
     "_debug_name": "Kitchen Spot Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "a566c093-dd65-47d7-9f0c-934f02a1ecea",
     "category": "status",
     "name": null,
@@ -3560,7 +3560,7 @@
   },
   {
     "_debug_name": "Kitchen Spot Light - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "6f7c72a6-c88d-4f58-8998-f9808ae1067a",
     "category": "on",
     "name": null,
@@ -3578,7 +3578,7 @@
   },
   {
     "_debug_name": "Kitchen Spot Light - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "393a254e-5dc6-4fee-875c-ea5643856a3f",
     "category": "brightness",
     "name": null,
@@ -3599,7 +3599,7 @@
   },
   {
     "_debug_name": "Kitchen Bar Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "5afffc3d-2f01-473b-9e17-62a0debdc238",
     "category": "firmware_revision",
     "name": null,
@@ -3617,7 +3617,7 @@
   },
   {
     "_debug_name": "Kitchen Bar Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "0a3bcfa5-f2eb-49cc-b0f7-e1237c19fb4a",
     "category": "serial_number",
     "name": null,
@@ -3635,7 +3635,7 @@
   },
   {
     "_debug_name": "Kitchen Bar Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "208843bb-4cfb-4a0f-bc85-4b0daeed3cf3",
     "category": "model",
     "name": null,
@@ -3653,7 +3653,7 @@
   },
   {
     "_debug_name": "Kitchen Bar Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "1c61b7fb-3d2e-4f94-a85d-e1eae95ca26c",
     "category": "manufacturer",
     "name": null,
@@ -3671,7 +3671,7 @@
   },
   {
     "_debug_name": "Kitchen Bar Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "a6eab4b2-bf43-4a18-b2e0-dd434c105db7",
     "category": "status",
     "name": null,
@@ -3695,7 +3695,7 @@
   },
   {
     "_debug_name": "Kitchen Bar Light - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "3d2d0632-6399-48d2-bc47-a9fff7a153ca",
     "category": "on",
     "name": null,
@@ -3713,7 +3713,7 @@
   },
   {
     "_debug_name": "Kitchen Bar Light - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "70a57384-139a-4067-8dfd-7ee51fda9fe4",
     "category": "brightness",
     "name": null,
@@ -3734,7 +3734,7 @@
   },
   {
     "_debug_name": "Kitchen Bar Light - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "a8196302-9fad-4d8e-8109-112ed57fb5f3",
     "category": "on",
     "name": null,
@@ -3752,7 +3752,7 @@
   },
   {
     "_debug_name": "Kitchen Bar Light - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "2f4f6e17-c5e0-49a4-913a-0d83f5882b8d",
     "category": "brightness",
     "name": null,
@@ -3773,7 +3773,7 @@
   },
   {
     "_debug_name": "Kitchen Under Cabinet Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "50ca93ca-afac-4cff-aa28-b0bc9e81b769",
     "category": "firmware_revision",
     "name": null,
@@ -3791,7 +3791,7 @@
   },
   {
     "_debug_name": "Kitchen Under Cabinet Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "48a2ea43-fcce-4bb1-ada0-53da3548793f",
     "category": "serial_number",
     "name": null,
@@ -3809,7 +3809,7 @@
   },
   {
     "_debug_name": "Kitchen Under Cabinet Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "f49ce2f5-be5e-4d81-a1dc-ba912a0ceaea",
     "category": "model",
     "name": null,
@@ -3827,7 +3827,7 @@
   },
   {
     "_debug_name": "Kitchen Under Cabinet Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "345ba8d8-78f1-4473-a12c-aaa4909a1033",
     "category": "manufacturer",
     "name": null,
@@ -3845,7 +3845,7 @@
   },
   {
     "_debug_name": "Kitchen Under Cabinet Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "19b03550-3031-4ac8-ac8f-a569c0580061",
     "category": "status",
     "name": null,
@@ -3869,7 +3869,7 @@
   },
   {
     "_debug_name": "Kitchen Under Cabinet Light - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "ce5d005b-a097-4f5e-a865-7f823e88f20d",
     "category": "on",
     "name": null,
@@ -3887,7 +3887,7 @@
   },
   {
     "_debug_name": "Kitchen Under Cabinet Light - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "366ab668-3efa-41f8-a149-8b4974474936",
     "category": "brightness",
     "name": null,
@@ -3908,7 +3908,7 @@
   },
   {
     "_debug_name": "Kitchen Under Cabinet Light - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "224bc410-bf12-4d0e-9e71-f568a8de3979",
     "category": "color_temperature",
     "name": null,
@@ -3929,7 +3929,7 @@
   },
   {
     "_debug_name": "Kitchen High Cabinet Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "22058508-86d1-48a2-9824-4d067f8846f2",
     "category": "firmware_revision",
     "name": null,
@@ -3947,7 +3947,7 @@
   },
   {
     "_debug_name": "Kitchen High Cabinet Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "f7b1d81f-98b5-4ca3-90c8-c4211d3b8902",
     "category": "serial_number",
     "name": null,
@@ -3965,7 +3965,7 @@
   },
   {
     "_debug_name": "Kitchen High Cabinet Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "eb19a427-4fa7-47a1-a1e8-62999a36c048",
     "category": "model",
     "name": null,
@@ -3983,7 +3983,7 @@
   },
   {
     "_debug_name": "Kitchen High Cabinet Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "17f8efb9-5e7d-4d54-83bd-e225610a8587",
     "category": "manufacturer",
     "name": null,
@@ -4001,7 +4001,7 @@
   },
   {
     "_debug_name": "Kitchen High Cabinet Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "9ffd7308-0261-4e96-8feb-2c6f4d80b06a",
     "category": "status",
     "name": null,
@@ -4025,7 +4025,7 @@
   },
   {
     "_debug_name": "Kitchen High Cabinet Light - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "5c699f04-4b73-4e92-bd62-43094f1c9f40",
     "category": "on",
     "name": null,
@@ -4043,7 +4043,7 @@
   },
   {
     "_debug_name": "Kitchen High Cabinet Light - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "0ac5dc08-8013-4656-bc89-136604be7741",
     "category": "brightness",
     "name": null,
@@ -4064,7 +4064,7 @@
   },
   {
     "_debug_name": "Kitchen High Cabinet Light - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "29219ca7-44cc-4a83-a941-0e01de62f8fd",
     "category": "color_temperature",
     "name": null,
@@ -4085,7 +4085,7 @@
   },
   {
     "_debug_name": "Kitchen Stove Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "610bc92f-f278-414c-9265-38ecfb6d16d3",
     "category": "firmware_revision",
     "name": null,
@@ -4103,7 +4103,7 @@
   },
   {
     "_debug_name": "Kitchen Stove Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "defdd737-deaf-4990-a79a-b4220390b4b5",
     "category": "serial_number",
     "name": null,
@@ -4121,7 +4121,7 @@
   },
   {
     "_debug_name": "Kitchen Stove Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "529c854e-c09a-4ce0-9957-fff657bedadc",
     "category": "model",
     "name": null,
@@ -4139,7 +4139,7 @@
   },
   {
     "_debug_name": "Kitchen Stove Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "83f53051-5789-4455-a7a7-1a5130a0b847",
     "category": "manufacturer",
     "name": null,
@@ -4157,7 +4157,7 @@
   },
   {
     "_debug_name": "Kitchen Stove Light - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "7ceeb93e-47bf-481e-8def-6787b4a09f19",
     "category": "status",
     "name": null,
@@ -4181,7 +4181,7 @@
   },
   {
     "_debug_name": "Kitchen Stove Light - Light",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "76ff25d0-e31c-4e74-8ac3-906d3ddc1133",
     "category": "on",
     "name": null,
@@ -4199,7 +4199,7 @@
   },
   {
     "_debug_name": "Kitchen Stove Fan - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "f110846d-dd23-4350-bb26-f8b794f0c088",
     "category": "firmware_revision",
     "name": null,
@@ -4217,7 +4217,7 @@
   },
   {
     "_debug_name": "Kitchen Stove Fan - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "481163e5-e665-4029-a93b-9a746461e450",
     "category": "serial_number",
     "name": null,
@@ -4235,7 +4235,7 @@
   },
   {
     "_debug_name": "Kitchen Stove Fan - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "6126bc98-c092-4ea0-bb05-01c954e03ad8",
     "category": "model",
     "name": null,
@@ -4253,7 +4253,7 @@
   },
   {
     "_debug_name": "Kitchen Stove Fan - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "69f2d56d-960b-4a59-9905-4ad5f30c1cfa",
     "category": "manufacturer",
     "name": null,
@@ -4271,7 +4271,7 @@
   },
   {
     "_debug_name": "Kitchen Stove Fan - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "b54809d2-2eda-41fe-98a7-82aa6cf0cbd8",
     "category": "status",
     "name": null,
@@ -4295,7 +4295,7 @@
   },
   {
     "_debug_name": "Kitchen Stove Fan - Fan",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "ced79883-5ea7-4f48-8e04-32b88d686589",
     "category": "on",
     "name": null,
@@ -4313,7 +4313,7 @@
   },
   {
     "_debug_name": "Kitchen Stove Fan - Fan",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "57ce0e78-0377-4a6d-aeba-87691901da0e",
     "category": "swing",
     "name": null,
@@ -4331,7 +4331,7 @@
   },
   {
     "_debug_name": "Kitchen Stove Fan - Fan",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "e372d515-885e-4bc1-befb-b1a128bcbb15",
     "category": "speed",
     "name": null,
@@ -4352,7 +4352,7 @@
   },
   {
     "_debug_name": "Kitchen Stove Fan - Fan",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "842a9190-e7fc-48b2-8ddf-fd69280bf242",
     "category": "direction",
     "name": null,
@@ -4373,7 +4373,7 @@
   },
   {
     "_debug_name": "Kitchen Window Blind - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "ec46be75-846d-44fa-a6de-358340480c68",
     "category": "firmware_revision",
     "name": null,
@@ -4391,7 +4391,7 @@
   },
   {
     "_debug_name": "Kitchen Window Blind - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "48b82203-5fc6-4b41-90d1-970222a38280",
     "category": "serial_number",
     "name": null,
@@ -4409,7 +4409,7 @@
   },
   {
     "_debug_name": "Kitchen Window Blind - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "2e2193b0-133b-4a20-9e53-8e5e7952a0d8",
     "category": "model",
     "name": null,
@@ -4427,7 +4427,7 @@
   },
   {
     "_debug_name": "Kitchen Window Blind - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "50fab0f6-9b94-4a57-9731-aff44129ca8b",
     "category": "manufacturer",
     "name": null,
@@ -4445,7 +4445,7 @@
   },
   {
     "_debug_name": "Kitchen Window Blind - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "46cb3db5-ce72-490a-9799-7ea0f39b22db",
     "category": "status",
     "name": null,
@@ -4469,7 +4469,7 @@
   },
   {
     "_debug_name": "Kitchen Window Blind - Window Covering",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "ef6e83af-a68c-408b-ae31-2b8cccbc0f95",
     "category": "obstruction",
     "name": null,
@@ -4487,7 +4487,7 @@
   },
   {
     "_debug_name": "Kitchen Window Blind - Window Covering",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "cc35e503-1dd6-4dc6-a42c-01757e45a04e",
     "category": "status",
     "name": null,
@@ -4511,7 +4511,7 @@
   },
   {
     "_debug_name": "Kitchen Window Blind - Window Covering",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "a1713e42-8c0d-4f99-bd2a-671fe58c1505",
     "category": "position",
     "name": null,
@@ -4533,7 +4533,7 @@
   },
   {
     "_debug_name": "Kitchen Window Blind - Window Covering",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "0aef3cf9-b74b-42ac-b8b7-54d04c465d7c",
     "category": "type",
     "name": null,
@@ -4556,7 +4556,7 @@
   },
   {
     "_debug_name": "Kitchen Wall Outlet 01 - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "5277e01f-dfec-4e9e-af85-0c2850d67821",
     "category": "firmware_revision",
     "name": null,
@@ -4574,7 +4574,7 @@
   },
   {
     "_debug_name": "Kitchen Wall Outlet 01 - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "49ac4f6e-ee9a-4c7c-9d3f-16f63285cab4",
     "category": "serial_number",
     "name": null,
@@ -4592,7 +4592,7 @@
   },
   {
     "_debug_name": "Kitchen Wall Outlet 01 - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "34e6a509-a531-4421-b786-15b50f971285",
     "category": "model",
     "name": null,
@@ -4610,7 +4610,7 @@
   },
   {
     "_debug_name": "Kitchen Wall Outlet 01 - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "f97b69a2-e269-40be-ba27-204038474898",
     "category": "manufacturer",
     "name": null,
@@ -4628,7 +4628,7 @@
   },
   {
     "_debug_name": "Kitchen Wall Outlet 01 - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "0c5e8ba2-a496-4099-b1ad-668a7dd54884",
     "category": "status",
     "name": null,
@@ -4652,7 +4652,7 @@
   },
   {
     "_debug_name": "Kitchen Wall Outlet 01 - Outlet 01",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "8e0dfc67-22e6-4b0d-ae22-eec92ef5eb45",
     "category": "on",
     "name": null,
@@ -4670,7 +4670,7 @@
   },
   {
     "_debug_name": "Kitchen Wall Outlet 01 - Outlet 01",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "cfde600f-2bbb-400a-a6e5-13b6fe9bebd2",
     "category": "in_use",
     "name": null,
@@ -4688,7 +4688,7 @@
   },
   {
     "_debug_name": "Kitchen Wall Outlet 01 - Outlet 02",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "c3eac073-de29-4953-b064-02cfb43090f2",
     "category": "on",
     "name": null,
@@ -4706,7 +4706,7 @@
   },
   {
     "_debug_name": "Kitchen Wall Outlet 01 - Outlet 02",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "86ab0d95-e100-453f-99ba-194db42a6466",
     "category": "in_use",
     "name": null,
@@ -4724,7 +4724,7 @@
   },
   {
     "_debug_name": "Kitchen Wall Outlet 01 - Outlet 03",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "7623f461-27e8-4ed6-b37d-fc6683725cee",
     "category": "on",
     "name": null,
@@ -4742,7 +4742,7 @@
   },
   {
     "_debug_name": "Kitchen Wall Outlet 01 - Outlet 03",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "8c97babc-c845-4eec-ab40-3f2a1ae3bbac",
     "category": "in_use",
     "name": null,
@@ -4760,7 +4760,7 @@
   },
   {
     "_debug_name": "Kitchen Wall Outlet 01 - Outlet 04",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "a914d74e-ff30-47c5-a922-d931d30eee90",
     "category": "on",
     "name": null,
@@ -4778,7 +4778,7 @@
   },
   {
     "_debug_name": "Kitchen Wall Outlet 01 - Outlet 04",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "7fece5e1-ee2e-4ba9-a8e3-053be3cd4313",
     "category": "in_use",
     "name": null,
@@ -4796,7 +4796,7 @@
   },
   {
     "_debug_name": "Kitchen Wall Outlet 01 - Outlet 05",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "86b220b2-70cb-4670-aa50-764effa98ac9",
     "category": "on",
     "name": null,
@@ -4814,7 +4814,7 @@
   },
   {
     "_debug_name": "Kitchen Wall Outlet 01 - Outlet 05",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "c7fb7be8-14df-4f2c-8c47-8f96383b6269",
     "category": "in_use",
     "name": null,
@@ -4832,7 +4832,7 @@
   },
   {
     "_debug_name": "Kitchen Wall Outlet 02 - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "79fc092a-f162-44a6-aa9e-df0f7884417b",
     "category": "firmware_revision",
     "name": null,
@@ -4850,7 +4850,7 @@
   },
   {
     "_debug_name": "Kitchen Wall Outlet 02 - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "de8141d4-ac84-4c54-bf9b-7abf80dbfb93",
     "category": "serial_number",
     "name": null,
@@ -4868,7 +4868,7 @@
   },
   {
     "_debug_name": "Kitchen Wall Outlet 02 - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "9d5cb639-cc57-4cc0-bcd7-291a6c33a24e",
     "category": "model",
     "name": null,
@@ -4886,7 +4886,7 @@
   },
   {
     "_debug_name": "Kitchen Wall Outlet 02 - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "4cb333b0-9961-4957-b1f9-92246cad3a27",
     "category": "manufacturer",
     "name": null,
@@ -4904,7 +4904,7 @@
   },
   {
     "_debug_name": "Kitchen Wall Outlet 02 - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "990fd14e-0984-42f2-8b0a-844ce9d59729",
     "category": "status",
     "name": null,
@@ -4928,7 +4928,7 @@
   },
   {
     "_debug_name": "Kitchen Wall Outlet 02 - Outlet 01",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "6abef88d-3543-467e-b0a5-f13bac499fbd",
     "category": "on",
     "name": null,
@@ -4946,7 +4946,7 @@
   },
   {
     "_debug_name": "Kitchen Wall Outlet 02 - Outlet 01",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "837a57bc-e664-4d75-b71e-495010724fcc",
     "category": "in_use",
     "name": null,
@@ -4964,7 +4964,7 @@
   },
   {
     "_debug_name": "Kitchen Wall Outlet 02 - Outlet 02",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "70aa0629-b72e-4172-b6c7-7e73cca5a934",
     "category": "on",
     "name": null,
@@ -4982,7 +4982,7 @@
   },
   {
     "_debug_name": "Kitchen Wall Outlet 02 - Outlet 02",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "70496003-3f65-417b-8bb5-bd51fbb06838",
     "category": "in_use",
     "name": null,
@@ -5000,7 +5000,7 @@
   },
   {
     "_debug_name": "Kitchen Wall Outlet 02 - Outlet 03",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "b37797a4-2f08-4064-b983-01107017e72e",
     "category": "on",
     "name": null,
@@ -5018,7 +5018,7 @@
   },
   {
     "_debug_name": "Kitchen Wall Outlet 02 - Outlet 03",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "249afa3f-425e-4f6d-99c0-bf51df3dbf2c",
     "category": "in_use",
     "name": null,
@@ -5036,7 +5036,7 @@
   },
   {
     "_debug_name": "Kitchen Temperature & Humidity - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "0063a2c4-09cf-4594-be1e-f4063fe959fd",
     "category": "firmware_revision",
     "name": null,
@@ -5054,7 +5054,7 @@
   },
   {
     "_debug_name": "Kitchen Temperature & Humidity - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "a53fdda2-035a-48fb-8248-6d0ac9e1c9e0",
     "category": "serial_number",
     "name": null,
@@ -5072,7 +5072,7 @@
   },
   {
     "_debug_name": "Kitchen Temperature & Humidity - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "1ced9471-4d64-41f8-a06c-8ff47dd4d0bc",
     "category": "model",
     "name": null,
@@ -5090,7 +5090,7 @@
   },
   {
     "_debug_name": "Kitchen Temperature & Humidity - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "c683c705-f7b1-4c55-ac57-406482b0e46f",
     "category": "manufacturer",
     "name": null,
@@ -5108,7 +5108,7 @@
   },
   {
     "_debug_name": "Kitchen Temperature & Humidity - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "e6b39070-98c7-430a-ad64-8b0b71f99999",
     "category": "status",
     "name": null,
@@ -5132,7 +5132,7 @@
   },
   {
     "_debug_name": "Kitchen Temperature & Humidity - Temperature Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "74cf7abe-36f9-4bf1-aef4-110562ce7351",
     "category": "temperature",
     "name": null,
@@ -5150,7 +5150,7 @@
   },
   {
     "_debug_name": "Kitchen Temperature & Humidity - Temperature Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "0e66441b-448e-4035-93a4-8cd787aa5172",
     "category": "active",
     "name": null,
@@ -5168,7 +5168,7 @@
   },
   {
     "_debug_name": "Kitchen Temperature & Humidity - Temperature Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "b52d1969-8312-45fe-a52b-b6974153721b",
     "category": "fault",
     "name": null,
@@ -5186,7 +5186,7 @@
   },
   {
     "_debug_name": "Kitchen Temperature & Humidity - Humidity Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "08e1fb6e-2828-4c96-b4d3-408769f1b4d0",
     "category": "humidity",
     "name": null,
@@ -5204,7 +5204,7 @@
   },
   {
     "_debug_name": "Kitchen Temperature & Humidity - Humidity Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "ac025048-718d-4171-842d-6ae03e75ea68",
     "category": "active",
     "name": null,
@@ -5222,7 +5222,7 @@
   },
   {
     "_debug_name": "Kitchen Temperature & Humidity - Humidity Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "c98bdfd5-7b1f-4eec-b088-b6b26130cd33",
     "category": "fault",
     "name": null,
@@ -5240,7 +5240,7 @@
   },
   {
     "_debug_name": "Kitchen Window Contact - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "41192c32-389c-400a-87ce-0fa9d7476685",
     "category": "firmware_revision",
     "name": null,
@@ -5258,7 +5258,7 @@
   },
   {
     "_debug_name": "Kitchen Window Contact - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "8b90e7ae-f4f0-434c-b663-3fdf738ea59a",
     "category": "serial_number",
     "name": null,
@@ -5276,7 +5276,7 @@
   },
   {
     "_debug_name": "Kitchen Window Contact - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "2b047dd8-63f6-4e74-af55-436ad192d2a9",
     "category": "model",
     "name": null,
@@ -5294,7 +5294,7 @@
   },
   {
     "_debug_name": "Kitchen Window Contact - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "70158f22-a84c-46d3-8bc2-f67361c9dce7",
     "category": "manufacturer",
     "name": null,
@@ -5312,7 +5312,7 @@
   },
   {
     "_debug_name": "Kitchen Window Contact - Device Information",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "ea89344e-fc61-48a7-aba5-404f8f42a45c",
     "category": "status",
     "name": null,
@@ -5336,7 +5336,7 @@
   },
   {
     "_debug_name": "Kitchen Window Contact - Contact Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "017b03c3-da52-47b3-bc26-7c3ba4cab2d3",
     "category": "detected",
     "name": null,
@@ -5354,7 +5354,7 @@
   },
   {
     "_debug_name": "Kitchen Window Contact - Contact Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "fca7ea4f-b189-4291-bf50-ec0ddeb86255",
     "category": "active",
     "name": null,
@@ -5372,7 +5372,7 @@
   },
   {
     "_debug_name": "Kitchen Window Contact - Contact Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "0aefa6fb-fc7b-41ac-a12d-9216d410f6c1",
     "category": "fault",
     "name": null,
@@ -5390,7 +5390,7 @@
   },
   {
     "_debug_name": "Kitchen Window Contact - Contact Sensor",
-    "type": "third-party",
+    "type": "devices-simulator",
     "id": "ac1648e1-6487-4b8a-aae6-913df481d517",
     "category": "tampered",
     "name": null,

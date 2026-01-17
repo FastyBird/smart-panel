@@ -6,6 +6,8 @@ import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
+import { SeedModule } from '../seed/seeding.module';
+import { SeedRegistryService } from '../seed/services/seed-registry.service';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
@@ -19,6 +21,7 @@ import { UserEntity } from './entities/users.entity';
 import { RolesGuard } from './guards/roles.guard';
 import { UsersConfigModel } from './models/config.model';
 import { ModuleResetService } from './services/module-reset.service';
+import { UsersSeederService } from './services/users-seeder.service';
 import { UsersService } from './services/users.service';
 import { USERS_MODULE_API_TAG_DESCRIPTION, USERS_MODULE_API_TAG_NAME, USERS_MODULE_NAME } from './users.constants';
 import { USERS_SWAGGER_EXTRA_MODELS } from './users.openapi';
@@ -36,6 +39,7 @@ import { UserExistsConstraintValidator } from './validators/user-exists-constrai
 		forwardRef(() => ExtensionsModule),
 		forwardRef(() => SystemModule),
 		SwaggerModule,
+		SeedModule,
 	],
 	providers: [
 		UsersService,
@@ -46,6 +50,7 @@ import { UserExistsConstraintValidator } from './validators/user-exists-constrai
 			useClass: RolesGuard,
 		},
 		ModuleResetService,
+		UsersSeederService,
 	],
 	controllers: [UsersController],
 	exports: [UsersService, UserExistsConstraintValidator],
@@ -53,13 +58,24 @@ import { UserExistsConstraintValidator } from './validators/user-exists-constrai
 export class UsersModule implements OnModuleInit {
 	constructor(
 		private readonly moduleReset: ModuleResetService,
+		private readonly moduleSeeder: UsersSeederService,
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
+		private readonly seedRegistry: SeedRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
+		// Register seeder (priority 50 - users should be seeded first)
+		this.seedRegistry.register(
+			USERS_MODULE_NAME,
+			async (): Promise<void> => {
+				await this.moduleSeeder.seed();
+			},
+			50,
+		);
+
 		this.factoryResetRegistry.register(
 			USERS_MODULE_NAME,
 			async (): Promise<{ success: boolean; reason?: string }> => {

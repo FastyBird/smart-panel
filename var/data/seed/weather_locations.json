@@ -1,0 +1,10 @@
+[
+  {
+    "id": "d1e2f3a4-1111-4000-b000-000000000001",
+    "name": "Demo Location",
+    "type": "weather-openweathermap",
+    "location_type": "lat_lon",
+    "latitude": 50.0755,
+    "longitude": 14.4378
+  }
+]

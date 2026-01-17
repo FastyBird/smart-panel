@@ -6,6 +6,8 @@ import { ModulesTypeMapperService } from '../config/services/modules-type-mapper
 import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { InfluxDbModule } from '../influxdb/influxdb.module';
+import { SeedModule } from '../seed/seeding.module';
+import { SeedRegistryService } from '../seed/services/seed-registry.service';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
@@ -20,6 +22,7 @@ import { LocationsTypeMapperService } from './services/locations-type-mapper.ser
 import { LocationsService } from './services/locations.service';
 import { WeatherHistoryService } from './services/weather-history.service';
 import { WeatherProviderRegistryService } from './services/weather-provider-registry.service';
+import { WeatherSeederService } from './services/weather-seeder.service';
 import { WeatherService } from './services/weather.service';
 import {
 	WEATHER_MODULE_API_TAG_DESCRIPTION,
@@ -40,6 +43,7 @@ import { WEATHER_SWAGGER_EXTRA_MODELS } from './weather.openapi';
 		SwaggerModule,
 		forwardRef(() => InfluxDbModule),
 		ExtensionsModule,
+		SeedModule,
 	],
 	controllers: [WeatherController, LocationsController, HistoryController],
 	providers: [
@@ -48,6 +52,7 @@ import { WEATHER_SWAGGER_EXTRA_MODELS } from './weather.openapi';
 		LocationsTypeMapperService,
 		WeatherProviderRegistryService,
 		WeatherHistoryService,
+		WeatherSeederService,
 	],
 	exports: [
 		WeatherService,
@@ -62,9 +67,20 @@ export class WeatherModule implements OnModuleInit {
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly extensionsService: ExtensionsService,
+		private readonly moduleSeeder: WeatherSeederService,
+		private readonly seedRegistry: SeedRegistryService,
 	) {}
 
 	onModuleInit() {
+		// Register seeder (priority 250 - after dashboard)
+		this.seedRegistry.register(
+			WEATHER_MODULE_NAME,
+			async (): Promise<void> => {
+				await this.moduleSeeder.seed();
+			},
+			250,
+		);
+
 		this.modulesMapperService.registerMapping<WeatherConfigModel, UpdateWeatherConfigDto>({
 			type: WEATHER_MODULE_NAME,
 			class: WeatherConfigModel,

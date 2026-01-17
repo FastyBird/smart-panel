@@ -1,0 +1,29 @@
+[
+  {
+    "id": "d5e8f9a0-1234-4567-890a-bcdef1234567",
+    "username": "owner",
+    "password": "owner123",
+    "email": "owner@demo.local",
+    "first_name": "Demo",
+    "last_name": "Owner",
+    "role": "owner"
+  },
+  {
+    "id": "e6f9a0b1-2345-4678-901b-cdef12345678",
+    "username": "admin",
+    "password": "admin123",
+    "email": "admin@demo.local",
+    "first_name": "Demo",
+    "last_name": "Admin",
+    "role": "admin"
+  },
+  {
+    "id": "f7a0b1c2-3456-4789-812c-def123456789",
+    "username": "user",
+    "password": "user123",
+    "email": "user@demo.local",
+    "first_name": "Demo",
+    "last_name": "User",
+    "role": "user"
+  }
+]
