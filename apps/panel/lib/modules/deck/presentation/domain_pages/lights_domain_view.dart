@@ -1096,7 +1096,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         }
       }
 
-      if (!success && mounted) {
+      if (success) {
+        // Fetch updated lighting state to ensure UI reflects actual state
+        // (don't rely solely on WebSocket events which may be delayed)
+        await _spacesService?.fetchLightingState(_roomId);
+      } else if (mounted) {
         AlertBar.showError(
           context,
           message: localizations?.action_failed ?? 'Failed to set lighting mode',
