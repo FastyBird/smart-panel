@@ -199,10 +199,13 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
       // Clamp target temp to valid setpoint range to avoid UI inconsistencies
       final rawTargetTemp =
           climateState.targetTemperature ?? _state.targetTemp;
-      final clampedTargetTemp = rawTargetTemp.clamp(
-        climateState.minSetpoint,
-        climateState.maxSetpoint,
-      );
+      // Ensure min <= max to prevent clamp() ArgumentError from malformed API data
+      final safeMinSetpoint =
+          math.min(climateState.minSetpoint, climateState.maxSetpoint);
+      final safeMaxSetpoint =
+          math.max(climateState.minSetpoint, climateState.maxSetpoint);
+      final clampedTargetTemp =
+          rawTargetTemp.clamp(safeMinSetpoint, safeMaxSetpoint);
 
       setState(() {
         _state = _state.copyWith(

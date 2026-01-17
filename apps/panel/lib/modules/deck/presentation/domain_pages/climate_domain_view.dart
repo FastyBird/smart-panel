@@ -354,8 +354,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
 
     // Get temperature values from climate state
-    final minSetpoint = climateState?.minSetpoint ?? 16.0;
-    final maxSetpoint = climateState?.maxSetpoint ?? 30.0;
+    final rawMinSetpoint = climateState?.minSetpoint ?? 16.0;
+    final rawMaxSetpoint = climateState?.maxSetpoint ?? 30.0;
+    // Ensure min <= max to prevent clamp() ArgumentError from malformed API data
+    final minSetpoint = math.min(rawMinSetpoint, rawMaxSetpoint);
+    final maxSetpoint = math.max(rawMinSetpoint, rawMaxSetpoint);
     final rawTargetTemp = climateState?.targetTemperature ?? 22.0;
     // Clamp target temp to valid setpoint range to avoid UI inconsistencies
     final targetTemp = rawTargetTemp.clamp(minSetpoint, maxSetpoint);
@@ -631,8 +634,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
   void _setTargetTemp(double temp) {
     final climateState = _spacesService?.getClimateState(_roomId);
-    final minSetpoint = climateState?.minSetpoint ?? 16.0;
-    final maxSetpoint = climateState?.maxSetpoint ?? 30.0;
+    final rawMinSetpoint = climateState?.minSetpoint ?? 16.0;
+    final rawMaxSetpoint = climateState?.maxSetpoint ?? 30.0;
+    // Ensure min <= max to prevent clamp() ArgumentError from malformed API data
+    final minSetpoint = math.min(rawMinSetpoint, rawMaxSetpoint);
+    final maxSetpoint = math.max(rawMinSetpoint, rawMaxSetpoint);
     final clampedTemp = temp.clamp(minSetpoint, maxSetpoint);
 
     // Optimistic UI update
