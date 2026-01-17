@@ -316,9 +316,10 @@ export class SpaceCoversRoleService {
 				const hasCommand = properties.some((p) => p.category === PropertyCategory.COMMAND);
 				const hasTilt = properties.some((p) => p.category === PropertyCategory.TILT);
 
-				// Get cover type if available
+				// Get cover type if available (with runtime type validation)
 				const typeProperty = properties.find((p) => p.category === PropertyCategory.TYPE);
-				const coverType = typeProperty?.value as string | null;
+				const typeValue = typeProperty?.value;
+				const coverType = typeof typeValue === 'string' ? typeValue : null;
 
 				// Must have at least position or command to be controllable
 				if (!hasPosition && !hasCommand) {
@@ -378,8 +379,8 @@ export class SpaceCoversRoleService {
 			const target = coversTargets[i];
 			let inferredRole = CoversRole.PRIMARY; // Default to PRIMARY
 
-			// Try to infer role from cover type
-			if (target.coverType) {
+			// Try to infer role from cover type (with runtime type safety)
+			if (typeof target.coverType === 'string') {
 				const typeStr = target.coverType.toLowerCase();
 				if (typeStr.includes('blackout') || typeStr.includes('roller')) {
 					inferredRole = CoversRole.BLACKOUT;
