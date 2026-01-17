@@ -211,9 +211,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
   Future<void> _handleCommand(WindowCoveringCommandValue command) async {
     final commandProp = widget._device.windowCoveringChannel.commandProp;
-    if (commandProp != null) {
-      await _setPropertyValue(commandProp.id, command.value);
-    }
+    await _setPropertyValue(commandProp.id, command.value);
   }
 
   Future<void> _setPropertyValue(String propertyId, dynamic value) async {
@@ -396,12 +394,6 @@ class _WindowCoveringCommandButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
-
-    final bool hasCommand = _device.windowCoveringChannel.commandProp != null;
-
-    if (!hasCommand) {
-      return const SizedBox.shrink();
-    }
 
     return Row(
       children: [
