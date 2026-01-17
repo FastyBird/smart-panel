@@ -117,6 +117,17 @@ export class SpacesSeederService implements Seeder {
 	}
 
 	private async createSpace(space: Record<string, any>): Promise<void> {
+		// Check if space with this ID already exists
+		if (space.id) {
+			const existingSpace = await this.spacesService.findOne(space.id as string);
+
+			if (existingSpace) {
+				this.logger.debug(`[SEED] Space with id=${space.id} already exists, skipping`);
+
+				return;
+			}
+		}
+
 		const dtoInstance = toInstance(CreateSpaceDto, space);
 
 		await this.spacesService.create(dtoInstance);
