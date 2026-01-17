@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/modules/devices/models/channels/channel.da
 import 'package:fastybird_smart_panel/modules/devices/models/channels/generic_channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/validation.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/air_particulate.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/air_quality.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/alarm.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/battery.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/camera.dart';
@@ -10,15 +11,19 @@ import 'package:fastybird_smart_panel/modules/devices/views/channels/carbon_diox
 import 'package:fastybird_smart_panel/modules/devices/views/channels/carbon_monoxide.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/contact.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/cooler.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/dehumidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/device_information.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/door.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/doorbell.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_energy.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_power.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/fan.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/filter.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/flow.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/gas.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/generic.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/heater.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/humidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/humidity.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/illuminance.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/leak.dart';
@@ -115,6 +120,9 @@ Map<DevicesModuleChannelCategory, ChannelView Function(ChannelModel, List<Channe
   DevicesModuleChannelCategory.airParticulate: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, AirParticulateChannelView.new);
   },
+  DevicesModuleChannelCategory.airQuality: (channel, properties, isValid, validationIssues) {
+    return _createChannelView(channel, properties, isValid, validationIssues, AirQualityChannelView.new);
+  },
   DevicesModuleChannelCategory.alarm: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, AlarmChannelView.new);
   },
@@ -136,6 +144,9 @@ Map<DevicesModuleChannelCategory, ChannelView Function(ChannelModel, List<Channe
   DevicesModuleChannelCategory.cooler: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, CoolerChannelView.new);
   },
+  DevicesModuleChannelCategory.dehumidifier: (channel, properties, isValid, validationIssues) {
+    return _createChannelView(channel, properties, isValid, validationIssues, DehumidifierChannelView.new);
+  },
   DevicesModuleChannelCategory.deviceInformation: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, DeviceInformationChannelView.new);
   },
@@ -154,11 +165,20 @@ Map<DevicesModuleChannelCategory, ChannelView Function(ChannelModel, List<Channe
   DevicesModuleChannelCategory.fan: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, FanChannelView.new);
   },
+  DevicesModuleChannelCategory.filter: (channel, properties, isValid, validationIssues) {
+    return _createChannelView(channel, properties, isValid, validationIssues, FilterChannelView.new);
+  },
   DevicesModuleChannelCategory.flow: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, FlowChannelView.new);
   },
+  DevicesModuleChannelCategory.gas: (channel, properties, isValid, validationIssues) {
+    return _createChannelView(channel, properties, isValid, validationIssues, GasChannelView.new);
+  },
   DevicesModuleChannelCategory.heater: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, HeaterChannelView.new);
+  },
+  DevicesModuleChannelCategory.humidifier: (channel, properties, isValid, validationIssues) {
+    return _createChannelView(channel, properties, isValid, validationIssues, HumidifierChannelView.new);
   },
   DevicesModuleChannelCategory.humidity: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, HumidityChannelView.new);
@@ -260,6 +280,9 @@ Map<DevicesModuleChannelCategory, IconData Function()> channelIconMappers = {
   DevicesModuleChannelCategory.airParticulate: () {
     return MdiIcons.chip;
   },
+  DevicesModuleChannelCategory.airQuality: () {
+    return MdiIcons.chip;
+  },
   DevicesModuleChannelCategory.alarm: () {
     return MdiIcons.chip;
   },
@@ -281,6 +304,9 @@ Map<DevicesModuleChannelCategory, IconData Function()> channelIconMappers = {
   DevicesModuleChannelCategory.cooler: () {
     return MdiIcons.chip;
   },
+  DevicesModuleChannelCategory.dehumidifier: () {
+    return MdiIcons.chip;
+  },
   DevicesModuleChannelCategory.deviceInformation: () {
     return MdiIcons.chip;
   },
@@ -299,10 +325,19 @@ Map<DevicesModuleChannelCategory, IconData Function()> channelIconMappers = {
   DevicesModuleChannelCategory.fan: () {
     return MdiIcons.chip;
   },
+  DevicesModuleChannelCategory.filter: () {
+    return MdiIcons.chip;
+  },
   DevicesModuleChannelCategory.flow: () {
     return MdiIcons.chip;
   },
+  DevicesModuleChannelCategory.gas: () {
+    return MdiIcons.chip;
+  },
   DevicesModuleChannelCategory.heater: () {
+    return MdiIcons.chip;
+  },
+  DevicesModuleChannelCategory.humidifier: () {
     return MdiIcons.chip;
   },
   DevicesModuleChannelCategory.humidity: () {
