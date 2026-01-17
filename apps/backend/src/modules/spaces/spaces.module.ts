@@ -9,8 +9,8 @@ import { DisplayEntity } from '../displays/entities/displays.entity';
 import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { IntentsModule } from '../intents/intents.module';
-import { SeedRegistryService } from '../seed/services/seed-registry.service';
 import { SeedModule } from '../seed/seeding.module';
+import { SeedRegistryService } from '../seed/services/seed-registry.service';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 

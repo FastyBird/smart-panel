@@ -6,8 +6,8 @@ import { ModulesTypeMapperService } from '../config/services/modules-type-mapper
 import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { InfluxDbModule } from '../influxdb/influxdb.module';
-import { SeedRegistryService } from '../seed/services/seed-registry.service';
 import { SeedModule } from '../seed/seeding.module';
+import { SeedRegistryService } from '../seed/services/seed-registry.service';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
