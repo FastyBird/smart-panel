@@ -12,12 +12,14 @@ export const useDiscoveredDevicesOptions = (): IUseDiscoveredDevicesOptions => {
 
 	const devicesOptions = computed<{ value: IHomeAssistantDiscoveredDevice['id']; label: IHomeAssistantDiscoveredDevice['name'] }[]>(
 		(): { value: IHomeAssistantDiscoveredDevice['id']; label: IHomeAssistantDiscoveredDevice['name'] }[] => {
-			return orderBy<IHomeAssistantDiscoveredDevice>(devices.value, [(device: IHomeAssistantDiscoveredDevice) => device.name.trim() !== '' ? device.name : device.id], ['asc']).map(
-				(device) => ({
-					value: device.id,
-					label: device.name.trim() !== '' ? device.name : device.id,
-				})
-			);
+			return orderBy<IHomeAssistantDiscoveredDevice>(
+				devices.value,
+				[(device: IHomeAssistantDiscoveredDevice) => (device.name.trim() !== '' ? device.name : device.id)],
+				['asc']
+			).map((device) => ({
+				value: device.id,
+				label: device.name.trim() !== '' ? device.name : device.id,
+			}));
 		}
 	);
 

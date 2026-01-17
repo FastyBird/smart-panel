@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsEnum, IsObject, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsEnum, IsIn, IsObject, IsOptional, IsString, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -11,7 +11,12 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
-import { VirtualPropertyType } from '../services/virtual-property.types';
+import { VirtualPropertyType } from '../mappings';
+
+/**
+ * Valid values for virtual property types
+ */
+const VIRTUAL_PROPERTY_TYPES = ['static', 'derived', 'command'] as const;
 
 // ============================================================================
 // Property Mapping Preview
@@ -113,6 +118,17 @@ export class PropertyMappingPreviewModel {
 	haEntityId?: string | null;
 
 	@ApiPropertyOptional({
+		description: 'Transformer name for value conversion between HA and Smart Panel formats',
+		type: 'string',
+		nullable: true,
+		name: 'ha_transformer',
+	})
+	@Expose({ name: 'ha_transformer' })
+	@IsOptional()
+	@IsString()
+	haTransformer?: string | null;
+
+	@ApiPropertyOptional({
 		description: 'Whether this is a virtual property (not directly mapped from HA)',
 		type: 'boolean',
 		name: 'is_virtual',
@@ -124,13 +140,13 @@ export class PropertyMappingPreviewModel {
 
 	@ApiPropertyOptional({
 		description: 'Type of virtual property (static, derived, or command)',
-		enum: VirtualPropertyType,
+		enum: VIRTUAL_PROPERTY_TYPES,
 		nullable: true,
 		name: 'virtual_type',
 	})
 	@Expose({ name: 'virtual_type' })
 	@IsOptional()
-	@IsEnum(VirtualPropertyType)
+	@IsIn(VIRTUAL_PROPERTY_TYPES)
 	virtualType?: VirtualPropertyType | null;
 }
 
@@ -219,11 +235,11 @@ export class EntityMappingPreviewModel {
 
 	@ApiProperty({
 		description: 'Mapping status',
-		enum: ['mapped', 'partial', 'unmapped', 'skipped'],
+		enum: ['mapped', 'partial', 'unmapped', 'skipped', 'incompatible'],
 	})
 	@Expose()
 	@IsString()
-	status: 'mapped' | 'partial' | 'unmapped' | 'skipped';
+	status: 'mapped' | 'partial' | 'unmapped' | 'skipped' | 'incompatible';
 
 	@ApiPropertyOptional({
 		description: 'Suggested channel mapping',
@@ -269,6 +285,17 @@ export class EntityMappingPreviewModel {
 	@IsArray()
 	@IsEnum(PropertyCategory, { each: true })
 	missingRequiredProperties: PropertyCategory[];
+
+	@ApiPropertyOptional({
+		description: 'Reason why this entity is incompatible with the selected device category',
+		type: 'string',
+		nullable: true,
+		name: 'incompatible_reason',
+	})
+	@Expose({ name: 'incompatible_reason' })
+	@IsOptional()
+	@IsString()
+	incompatibleReason?: string | null;
 }
 
 // ============================================================================
@@ -279,11 +306,22 @@ export class EntityMappingPreviewModel {
 export class MappingWarningModel {
 	@ApiProperty({
 		description: 'Warning type',
-		enum: ['missing_required_channel', 'missing_required_property', 'unsupported_entity', 'unknown_device_class'],
+		enum: [
+			'missing_required_channel',
+			'missing_required_property',
+			'unsupported_entity',
+			'unknown_device_class',
+			'incompatible_channel',
+		],
 	})
 	@Expose()
 	@IsString()
-	type: 'missing_required_channel' | 'missing_required_property' | 'unsupported_entity' | 'unknown_device_class';
+	type:
+		| 'missing_required_channel'
+		| 'missing_required_property'
+		| 'unsupported_entity'
+		| 'unknown_device_class'
+		| 'incompatible_channel';
 
 	@ApiPropertyOptional({
 		description: 'Related entity ID',

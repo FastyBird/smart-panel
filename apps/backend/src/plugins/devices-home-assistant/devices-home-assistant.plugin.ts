@@ -55,6 +55,7 @@ import { MapperService } from './mappers/mapper.service';
 import { SensorEntityMapperService } from './mappers/sensor.entity.mapper.service';
 import { SwitchEntityMapperService } from './mappers/switch.entity.mapper.service';
 import { UniversalEntityMapperService } from './mappers/universal.entity.mapper.service';
+import { MappingLoaderService, TransformerRegistry } from './mappings';
 import { HomeAssistantConfigModel } from './models/config.model';
 import { HomeAssistantDevicePlatform } from './platforms/home-assistant.device.platform';
 import { DeviceAdoptionService } from './services/device-adoption.service';
@@ -87,6 +88,10 @@ import { DevicesServiceSubscriber } from './subscribers/devices-service.subscrib
 		ExtensionsModule,
 	],
 	providers: [
+		// Mapping configuration services
+		TransformerRegistry,
+		MappingLoaderService,
+		// Core services
 		HomeAssistantHttpService,
 		HomeAssistantWsService,
 		HomeAssistantDevicePlatform,
@@ -276,14 +281,20 @@ Integration plugin for connecting Smart Panel to Home Assistant.
 - **Real-time Sync** - WebSocket connection for instant state updates
 - **Bidirectional Control** - Control Home Assistant devices from Smart Panel
 - **Entity Mapping** - Automatic mapping of HA entities to Smart Panel channels
+- **YAML Configuration** - Customizable entity mappings and virtual properties
 
 ## Supported Entity Types
 
 - **Switches** - On/off controls
-- **Lights** - Brightness, color temperature, RGB
-- **Sensors** - Temperature, humidity, energy, etc.
-- **Binary Sensors** - Motion, door/window, occupancy
+- **Lights** - Brightness, color temperature, RGB, RGBW
+- **Sensors** - Temperature, humidity, power, energy, illuminance, etc.
+- **Binary Sensors** - Motion, door/window, occupancy, smoke, gas, leak
 - **Climate** - HVAC controls and thermostats
+- **Covers** - Blinds, curtains, garage doors, gates
+- **Fans** - Speed, direction, oscillation
+- **Locks** - Lock/unlock controls
+- **Media Players** - TV, speakers, generic players
+- **And more** - Valves, vacuums, cameras, alarms, water heaters
 
 ## Setup
 
@@ -295,7 +306,162 @@ Integration plugin for connecting Smart Panel to Home Assistant.
 
 - **WebSocket API** - Real-time event subscription
 - **REST API** - State queries and service calls
-- **Auto-reconnect** - Automatic reconnection on connection loss`,
+- **Auto-reconnect** - Automatic reconnection on connection loss
+
+## YAML Configuration
+
+The plugin uses YAML files to define how Home Assistant entities are mapped to Smart Panel channels and properties.
+
+### Configuration Files
+
+Built-in mappings are located in:
+- \`mappings/definitions/entity-mappings.yaml\` - Entity to channel mappings
+- \`mappings/definitions/virtual-properties.yaml\` - Virtual property definitions
+
+User overrides can be placed in:
+- \`var/data/home-assistant/mappings/entity-mappings.yaml\`
+- \`var/data/home-assistant/mappings/virtual-properties.yaml\`
+
+User overrides are merged with built-in mappings and take precedence.
+
+### Entity Mappings Structure
+
+\`\`\`yaml
+version: "1.0"
+
+# Value transformers for converting between HA and Smart Panel formats
+transformers:
+  brightness_to_percent:
+    type: scale
+    input_range: [0, 255]
+    output_range: [0, 100]
+
+# Domain role classification
+domain_roles:
+  primary: [light, switch, climate, cover]    # Main controllable entities
+  standalone: [sensor, binary_sensor]          # Independent sensors
+  secondary: [button, number, select]          # Helper entities
+
+# Entity mapping rules
+mappings:
+  - name: light_default
+    description: "Standard light entity"
+    domain: light
+    device_class: null           # null = fallback for any device_class
+    priority: 50                 # Higher priority = matched first
+    channel:
+      category: LIGHT
+    device_category: LIGHTING
+    property_bindings:
+      - ha_attribute: fb.main_state    # Special: maps entity state
+        property_category: ON
+      - ha_attribute: brightness
+        property_category: BRIGHTNESS
+        transformer: brightness_to_percent
+      - ha_attribute: color_temp_kelvin
+        property_category: COLOR_TEMPERATURE
+\`\`\`
+
+### Virtual Properties Structure
+
+Virtual properties are calculated values or commands not directly from HA attributes:
+
+\`\`\`yaml
+version: "1.0"
+
+# Reusable derivation rules
+derivations:
+  battery_status_from_percentage:
+    description: "Derive battery status from percentage"
+    rule:
+      type: threshold
+      source_property: PERCENTAGE
+      thresholds:
+        - max: 20
+          value: "low"
+        - value: "ok"
+      default_value: "ok"
+
+# Virtual properties by channel category
+virtual_properties:
+  BATTERY:
+    - property_category: STATUS
+      virtual_type: derived
+      data_type: ENUM
+      permissions: [read_only]
+      format: ["ok", "low"]
+      derivation: battery_status_from_percentage
+
+  WINDOW_COVERING:
+    - property_category: COMMAND
+      virtual_type: command
+      data_type: ENUM
+      permissions: [write_only]
+      format: ["open", "close", "stop"]
+      command_mapping:
+        domain: cover
+        services:
+          open: open_cover
+          close: close_cover
+          stop: stop_cover
+\`\`\`
+
+### Custom Mapping Example
+
+To add custom mappings, create a file at \`var/data/home-assistant/mappings/entity-mappings.yaml\`:
+
+\`\`\`yaml
+version: "1.0"
+
+# Custom transformer for Zigbee2MQTT brightness (0-254)
+transformers:
+  z2m_brightness_to_percent:
+    type: scale
+    input_range: [0, 254]
+    output_range: [0, 100]
+
+# Custom mappings
+mappings:
+  # Map Zigbee2MQTT air quality sensor
+  - name: sensor_air_quality_z2m
+    description: "Zigbee2MQTT air quality sensor"
+    domain: sensor
+    device_class: null
+    priority: 30                          # Higher than default sensor (20)
+    entity_id_contains: air_quality       # Match by entity_id pattern
+    channel:
+      category: AIR_PARTICULATE
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: DENSITY
+
+  # Custom smart plug with energy monitoring
+  - name: switch_energy_plug
+    description: "Smart plug with energy monitoring"
+    domain: switch
+    device_class: outlet
+    priority: 70                          # Higher than default outlet (60)
+    channel:
+      category: OUTLET
+    device_category: OUTLET
+    property_bindings:
+      - ha_attribute: fb.main_state
+        property_category: ON
+      - ha_attribute: current_power_w
+        property_category: POWER
+      - ha_attribute: today_energy_kwh
+        property_category: CONSUMPTION
+\`\`\`
+
+### Key Concepts
+
+- **priority** - Higher values are matched first; use >50 to override defaults
+- **device_class** - Match specific HA device classes, or \`null\` for fallback
+- **entity_id_contains** - Pattern matching on entity ID for flexible matching
+- **fb.main_state** - Special attribute that maps the entity's main state
+- **transformer** - Reference to a transformer for value conversion
+- **array_index** - Extract specific index from array attributes (e.g., RGB colors)`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

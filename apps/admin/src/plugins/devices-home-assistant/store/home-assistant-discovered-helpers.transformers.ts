@@ -5,9 +5,7 @@ import { HomeAssistantDiscoveredHelperResSchema, HomeAssistantDiscoveredHelperSc
 import type { IHomeAssistantDiscoveredHelper, IHomeAssistantDiscoveredHelperRes } from './home-assistant-discovered-helpers.store.types';
 import { transformHomeAssistantStateResponse } from './home-assistant-states.transformers';
 
-export const transformHomeAssistantDiscoveredHelperResponse = (
-	response: IHomeAssistantDiscoveredHelperRes,
-): IHomeAssistantDiscoveredHelper => {
+export const transformHomeAssistantDiscoveredHelperResponse = (response: IHomeAssistantDiscoveredHelperRes): IHomeAssistantDiscoveredHelper => {
 	// Validate raw response structure first
 	const parsedRes = HomeAssistantDiscoveredHelperResSchema.safeParse(response);
 

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { PermissionType } from '../../../modules/devices/devices.constants';
+import { DataTypeType, PermissionType } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import {
@@ -16,6 +16,7 @@ import {
 	HomeAssistantChannelPropertyEntity,
 	HomeAssistantDeviceEntity,
 } from '../entities/devices-home-assistant.entity';
+import { TransformerRegistry } from '../mappings/transformers/transformer.registry';
 import { VirtualPropertyService } from '../services/virtual-property.service';
 
 import { IEntityMapper } from './entity.mapper';
@@ -32,7 +33,12 @@ type MappedToHa = {
 	properties: HomeAssistantChannelPropertyEntity[];
 };
 
-type MappedFromHa = Map<HomeAssistantChannelPropertyEntity['id'], string | number | boolean | null>;
+export type MappedFromHaEntry = {
+	property: HomeAssistantChannelPropertyEntity;
+	value: string | number | boolean | null;
+};
+
+export type MappedFromHa = MappedFromHaEntry[];
 
 @Injectable()
 export class MapperService {
@@ -48,6 +54,7 @@ export class MapperService {
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly universalEntityMapperService: UniversalEntityMapperService,
 		private readonly virtualPropertyService: VirtualPropertyService,
+		private readonly transformerRegistry: TransformerRegistry,
 	) {}
 
 	registerMapper(mapper: IEntityMapper): void {
@@ -104,21 +111,73 @@ export class MapperService {
 
 			const secondary = await this.universalEntityMapperService.mapFromHA(properties, state);
 
-			const result = new Map<string, string | number | boolean | null>(primary);
+			const resultMap = new Map<string, string | number | boolean | null>(primary);
 
 			for (const [key, value] of secondary.entries()) {
-				if (!result.has(key)) {
-					result.set(key, value);
+				if (!resultMap.has(key)) {
+					resultMap.set(key, value);
+				}
+			}
+
+			// Convert Map to array with property entities and apply transformers
+			// Transformers are applied when:
+			// 1. Property has a transformer configured (haTransformer is set)
+			// 2. Value is not null
+			//
+			// Domain mappers are aware of transformers and pass through raw values when
+			// a property has a transformer configured. This allows the transformer to
+			// handle the conversion consistently for both read and write paths.
+			const result: MappedFromHaEntry[] = [];
+			for (const [propertyId, value] of resultMap.entries()) {
+				const property = properties.find((p) => p.id === propertyId);
+				if (property) {
+					let transformedValue: string | number | boolean | null = value;
+
+					// Apply transformer if property has one configured
+					if (property.haTransformer && value !== null) {
+						const transformer = this.transformerRegistry.getOrCreate(property.haTransformer);
+						if (transformer.canRead()) {
+							try {
+								const rawTransformed = transformer.read(value);
+								// Ensure transformed value is the expected type
+								if (
+									typeof rawTransformed === 'string' ||
+									typeof rawTransformed === 'number' ||
+									typeof rawTransformed === 'boolean' ||
+									rawTransformed === null
+								) {
+									transformedValue = rawTransformed as string | number | boolean | null;
+								} else {
+									this.logger.warn(
+										`[MAP FROM HA] Transformer ${property.haTransformer} returned unexpected type ` +
+											`for property ${property.id}: ${typeof rawTransformed}`,
+									);
+								}
+							} catch (error) {
+								this.logger.error(
+									`[MAP FROM HA] Transformer ${property.haTransformer} threw error for property ${property.id}: ` +
+										`${error instanceof Error ? error.message : String(error)}`,
+								);
+								// Fall back to original value on transformer error
+							}
+						}
+					} else if (!property.haTransformer && property.dataType === DataTypeType.BOOL && value !== null) {
+						// Fallback: Convert boolean values for properties with BOOL dataType when no transformer is configured.
+						// This maintains backward compatibility for existing devices in the database.
+						const boolValue = this.convertToBoolean(value);
+						if (boolValue !== null) {
+							transformedValue = boolValue;
+						}
+					}
+					result.push({ property, value: transformedValue });
 				}
 			}
 
 			// Log what was mapped
-			if (result.size > 0) {
+			if (result.length > 0) {
 				this.logger.debug(
-					`[MAP FROM HA] Mapped ${result.size} values for entity ${state.entity_id}: ` +
-						`${Array.from(result.entries())
-							.map(([id, val]) => `${id}=${String(val)}`)
-							.join(', ')}`,
+					`[MAP FROM HA] Mapped ${result.length} values for entity ${state.entity_id}: ` +
+						`${result.map(({ property, value }) => `${property.id}=${String(value)}`).join(', ')}`,
 				);
 				updates.push(result);
 			} else {
@@ -148,6 +207,47 @@ export class MapperService {
 			}
 		}
 
+		// Apply transformers to values before passing to domain mappers
+		// This converts Smart Panel values to HA values
+		const transformedValues = new Map<string, string | number | boolean>();
+		for (const [propertyId, value] of values.entries()) {
+			const property = allWritableProperties.find((p) => p.id === propertyId);
+			if (property?.haTransformer) {
+				const transformer = this.transformerRegistry.getOrCreate(property.haTransformer);
+				if (transformer.canWrite()) {
+					try {
+						const transformed = transformer.write(value);
+						const isValidType =
+							typeof transformed === 'string' || typeof transformed === 'number' || typeof transformed === 'boolean';
+						if (isValidType) {
+							transformedValues.set(propertyId, transformed);
+						} else {
+							this.logger.warn(
+								`[MAP TO HA] Transformer ${property.haTransformer} returned unexpected type ` +
+									`for property ${property.id}: ${typeof transformed}`,
+							);
+							transformedValues.set(propertyId, value);
+						}
+					} catch (error) {
+						this.logger.error(
+							`[MAP TO HA] Transformer ${property.haTransformer} threw error for property ${property.id}: ` +
+								`${error instanceof Error ? error.message : String(error)}`,
+						);
+						// Fall back to original value on transformer error
+						transformedValues.set(propertyId, value);
+					}
+				} else {
+					transformedValues.set(propertyId, value);
+				}
+			} else if (property && property.dataType === DataTypeType.BOOL) {
+				// Fallback: Convert boolean values for properties with BOOL dataType when no transformer is configured.
+				// This maintains backward compatibility for existing devices in the database.
+				transformedValues.set(propertyId, this.convertFromBoolean(value));
+			} else {
+				transformedValues.set(propertyId, value);
+			}
+		}
+
 		const updates: MappedToHa[] = [];
 
 		// Handle regular properties through standard mappers
@@ -164,7 +264,7 @@ export class MapperService {
 				continue;
 			}
 
-			const mapped = await mapper.mapToHA(properties, values);
+			const mapped = await mapper.mapToHA(properties, transformedValues);
 
 			if (mapped === null) {
 				continue;
@@ -175,8 +275,8 @@ export class MapperService {
 			updates.push(result);
 		}
 
-		// Handle virtual command properties
-		const virtualUpdates = this.handleVirtualCommandProperties(virtualCommandProps, values, channels);
+		// Handle virtual command properties (also use transformed values)
+		const virtualUpdates = this.handleVirtualCommandProperties(virtualCommandProps, transformedValues, channels);
 		updates.push(...virtualUpdates);
 
 		return updates;
@@ -325,5 +425,69 @@ export class MapperService {
 	 */
 	private isVirtualProperty(property: HomeAssistantChannelPropertyEntity): boolean {
 		return property.haAttribute?.startsWith(VIRTUAL_ATTRIBUTE_PREFIX) ?? false;
+	}
+
+	/**
+	 * Fallback boolean conversion for properties with dataType BOOL when no transformer is configured.
+	 * This maintains backward compatibility for existing devices in the database that were created
+	 * before the transformer system was introduced.
+	 *
+	 * Converts common Home Assistant boolean string representations to actual booleans:
+	 * - 'on', 'true', '1', 'yes' -> true
+	 * - 'off', 'false', '0', 'no' -> false
+	 */
+	private convertToBoolean(value: string | number | boolean | null): boolean | null {
+		if (value === null) {
+			return null;
+		}
+
+		if (typeof value === 'boolean') {
+			return value;
+		}
+
+		if (typeof value === 'number') {
+			return value !== 0;
+		}
+
+		const normalized = String(value).toLowerCase().trim();
+
+		if (['on', 'true', '1', 'yes'].includes(normalized)) {
+			return true;
+		}
+
+		if (['off', 'false', '0', 'no'].includes(normalized)) {
+			return false;
+		}
+
+		// If the string doesn't match known patterns, log a warning and return null
+		this.logger.warn(`[FALLBACK BOOL] Could not convert value "${value}" to boolean, unknown format`);
+
+		return null;
+	}
+
+	/**
+	 * Fallback boolean conversion for mapToHA - converts boolean to Home Assistant 'on'/'off' string.
+	 * This maintains backward compatibility for existing devices without haTransformer configured.
+	 */
+	private convertFromBoolean(value: string | number | boolean): string {
+		if (typeof value === 'boolean') {
+			return value ? 'on' : 'off';
+		}
+
+		if (typeof value === 'number') {
+			return value !== 0 ? 'on' : 'off';
+		}
+
+		// If already a string, check if it needs conversion
+		const normalized = String(value).toLowerCase().trim();
+		if (['true', '1', 'yes'].includes(normalized)) {
+			return 'on';
+		}
+		if (['false', '0', 'no'].includes(normalized)) {
+			return 'off';
+		}
+
+		// Return as-is if not a recognized boolean format
+		return String(value);
 	}
 }

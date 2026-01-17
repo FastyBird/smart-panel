@@ -78,6 +78,16 @@
 				:description="entity.missingRequiredProperties.map((p) => t(`devicesModule.categories.channelsProperties.${p}`)).join(', ')"
 			/>
 		</div>
+
+		<div v-if="entity.status === 'incompatible' && entity.incompatibleReason" class="mt-2">
+			<el-alert
+				type="info"
+				:title="t('devicesHomeAssistantPlugin.fields.mapping.incompatibleChannel')"
+				:closable="false"
+				show-icon
+				:description="entity.incompatibleReason"
+			/>
+		</div>
 	</el-card>
 </template>
 
@@ -107,6 +117,8 @@ const statusType = computed(() => {
 			return 'danger';
 		case 'skipped':
 			return 'info';
+		case 'incompatible':
+			return 'warning';
 		default:
 			return 'info';
 	}

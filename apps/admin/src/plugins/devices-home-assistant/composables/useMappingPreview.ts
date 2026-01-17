@@ -1,7 +1,7 @@
-import { ref, type Ref } from 'vue';
+import { type Ref, ref } from 'vue';
 
-import { getErrorReason, useBackend, useFlashMessage, useLogger } from '../../../common';
 import { PLUGINS_PREFIX } from '../../../app.constants';
+import { getErrorReason, useBackend, useFlashMessage, useLogger } from '../../../common';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantApiException, DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 import type { IMappingPreviewRequest, IMappingPreviewResponse } from '../schemas/mapping-preview.types';
@@ -36,11 +36,7 @@ export const useMappingPreview = (): IUseMappingPreview => {
 	// Request sequence guard: track the current request ID to ignore stale responses
 	let currentRequestId = 0;
 
-	const fetchPreview = async (
-		itemId: string,
-		overrides?: IMappingPreviewRequest,
-		type?: ItemType,
-	): Promise<IMappingPreviewResponse> => {
+	const fetchPreview = async (itemId: string, overrides?: IMappingPreviewRequest, type?: ItemType): Promise<IMappingPreviewResponse> => {
 		// Store the item type for later use
 		const currentType = type ?? itemType.value;
 		itemType.value = currentType;
@@ -68,15 +64,12 @@ export const useMappingPreview = (): IUseMappingPreview => {
 					data: responseData,
 					error: apiError,
 					response,
-				} = await backend.client.POST(
-					`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovered-helpers/{entityId}/preview-mapping`,
-					{
-						params: {
-							path: { entityId: itemId },
-						},
-						body: helperRequestBody as never,
+				} = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovered-helpers/{entityId}/preview-mapping`, {
+					params: {
+						path: { entityId: itemId },
 					},
-				);
+					body: helperRequestBody as never,
+				});
 
 				// Sequence guard: ignore response if this request is no longer the current one
 				if (requestId !== currentRequestId) {
@@ -106,15 +99,12 @@ export const useMappingPreview = (): IUseMappingPreview => {
 					data: responseData,
 					error: apiError,
 					response,
-				} = await backend.client.POST(
-					`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovered-devices/{id}/preview-mapping`,
-					{
-						params: {
-							path: { id: itemId },
-						},
-						body: requestBody as never,
+				} = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovered-devices/{id}/preview-mapping`, {
+					params: {
+						path: { id: itemId },
 					},
-				);
+					body: requestBody as never,
+				});
 
 				// Sequence guard: ignore response if this request is no longer the current one
 				if (requestId !== currentRequestId) {
@@ -175,11 +165,7 @@ export const useMappingPreview = (): IUseMappingPreview => {
 		}
 	};
 
-	const updatePreview = async (
-		itemId: string,
-		overrides: IMappingPreviewRequest,
-		type?: ItemType,
-	): Promise<IMappingPreviewResponse> => {
+	const updatePreview = async (itemId: string, overrides: IMappingPreviewRequest, type?: ItemType): Promise<IMappingPreviewResponse> => {
 		return fetchPreview(itemId, overrides, type ?? itemType.value);
 	};
 

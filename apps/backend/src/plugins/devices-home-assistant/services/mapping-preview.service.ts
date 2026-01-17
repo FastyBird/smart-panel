@@ -25,6 +25,8 @@ import {
 } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantNotFoundException } from '../devices-home-assistant.exceptions';
 import { MappingPreviewRequestDto } from '../dto/mapping-preview.dto';
+import { EntityRole, MappingLoaderService, ResolvedHaMapping, ResolvedPropertyBinding } from '../mappings';
+import { TransformerRegistry } from '../mappings/transformers/transformer.registry';
 import { HomeAssistantDeviceRegistryResultModel, HomeAssistantStateModel } from '../models/home-assistant.model';
 import {
 	EntityMappingPreviewModel,
@@ -36,12 +38,6 @@ import {
 	ValidationSummaryModel,
 } from '../models/mapping-preview.model';
 
-import {
-	HaEntityMappingRule,
-	HaPropertyBinding,
-	findMatchingRule,
-	inferDeviceCategory,
-} from './ha-entity-mapping.rules';
 import { HomeAssistantHttpService } from './home-assistant.http.service';
 import { HomeAssistantWsService } from './home-assistant.ws.service';
 import { LightCapabilityAnalyzer } from './light-capability.analyzer';
@@ -67,6 +63,8 @@ export class MappingPreviewService {
 		private readonly lightCapabilityAnalyzer: LightCapabilityAnalyzer,
 		private readonly virtualPropertyService: VirtualPropertyService,
 		private readonly deviceValidationService: DeviceValidationService,
+		private readonly mappingLoaderService: MappingLoaderService,
+		private readonly transformerRegistry: TransformerRegistry,
 	) {}
 
 	/**
@@ -143,13 +141,19 @@ export class MappingPreviewService {
 
 		// Determine suggested device category
 		const suggestedDeviceCategory =
-			options?.deviceCategory ?? inferDeviceCategory(mappedChannelCategories, entityDomains);
+			options?.deviceCategory ?? this.inferDeviceCategory(mappedChannelCategories, entityDomains);
 
-		// Check for missing required channels
+		// Check for missing required channels and mark incompatible entities
 		const deviceSpec = devicesSchema[suggestedDeviceCategory as keyof typeof devicesSchema];
 		if (deviceSpec && 'channels' in deviceSpec) {
-			const requiredChannels = Object.entries(deviceSpec.channels)
-				.filter(([, spec]) => (spec as { required?: boolean }).required)
+			const deviceChannels = deviceSpec.channels as Record<string, { category: string; required?: boolean }>;
+			const allowedChannelCategories = new Set(Object.keys(deviceChannels) as ChannelCategory[]);
+
+			// Always allow device_information as it's auto-created
+			allowedChannelCategories.add(ChannelCategory.DEVICE_INFORMATION);
+
+			const requiredChannels = Object.entries(deviceChannels)
+				.filter(([, spec]) => spec.required)
 				.map(([key]) => key as ChannelCategory);
 
 			for (const requiredChannel of requiredChannels) {
@@ -163,6 +167,30 @@ export class MappingPreviewService {
 						type: 'missing_required_channel',
 						message: `Required channel "${requiredChannel}" is not mapped`,
 						suggestion: 'You may need to select an entity to map to this channel',
+					});
+				}
+			}
+
+			// Mark entities as incompatible if their channel is not allowed for this device category
+			for (const preview of entityPreviews) {
+				// Skip already skipped/unmapped entities
+				if (preview.status === 'skipped' || preview.status === 'unmapped' || !preview.suggestedChannel) {
+					continue;
+				}
+
+				const channelCategory = preview.suggestedChannel.category;
+
+				// Check if this channel category is allowed for the device
+				if (!allowedChannelCategories.has(channelCategory)) {
+					preview.status = 'incompatible';
+					preview.incompatibleReason = `Channel "${channelCategory}" is not supported by device category "${suggestedDeviceCategory}"`;
+
+					// Add warning for incompatible entity
+					warnings.push({
+						type: 'incompatible_channel',
+						entityId: preview.entityId,
+						message: `Entity "${preview.entityId}" maps to channel "${channelCategory}" which is not allowed for ${suggestedDeviceCategory} devices`,
+						suggestion: 'This entity will be skipped during adoption. You can override the channel category if needed.',
 					});
 				}
 			}
@@ -189,17 +217,14 @@ export class MappingPreviewService {
 		const partialCount = entityPreviews.filter((e) => e.status === 'partial').length;
 		const unmappedCount = entityPreviews.filter((e) => e.status === 'unmapped').length;
 		const skippedCount = entityPreviews.filter((e) => e.status === 'skipped').length;
+		const incompatibleCount = entityPreviews.filter((e) => e.status === 'incompatible').length;
 
 		this.logger.log(
 			`[MAPPING PREVIEW] Summary for device "${deviceRegistry.name}" (${haDeviceId}): ` +
 				`total_entities=${entityPreviews.length}, mapped=${mappedCount}, partial=${partialCount}, ` +
-				`unmapped=${unmappedCount}, skipped=${skippedCount}, suggested_category=${suggestedDeviceCategory}, ` +
-				`ready_to_adopt=${readyToAdopt}`,
+				`unmapped=${unmappedCount}, skipped=${skippedCount}, incompatible=${incompatibleCount}, ` +
+				`suggested_category=${suggestedDeviceCategory}, ready_to_adopt=${readyToAdopt}`,
 		);
-
-		if (unmappedCount > 0) {
-			// Intentionally empty - reserved for future logging
-		}
 
 		// Filter out only generic channels from the preview
 		// - generic channels are fallbacks that shouldn't be adopted
@@ -241,20 +266,20 @@ export class MappingPreviewService {
 			return this.processLightEntity(entityId, state, overrideChannelCategory, friendlyName);
 		}
 
-		// Find matching rule
-		const rule = overrideChannelCategory
-			? this.findRuleForChannel(domain, overrideChannelCategory)
-			: findMatchingRule(domain, deviceClass, entityId);
+		// Find matching mapping from YAML configuration
+		const mapping = overrideChannelCategory
+			? this.findMappingForChannel(domain, overrideChannelCategory)
+			: this.mappingLoaderService.findMatchingMapping(domain, deviceClass ?? null, entityId);
 
-		if (!rule) {
+		if (!mapping) {
 			return this.createUnmappedEntityPreview(entityId, domain, deviceClass, state);
 		}
 
 		// Generate property mappings
-		const { suggestedProperties, unmappedAttributes, missingRequired } = this.generatePropertyMappings(
-			rule,
+		const { suggestedProperties, unmappedAttributes, missingRequired } = this.generatePropertyMappingsFromMapping(
+			mapping,
 			state,
-			overrideChannelCategory ?? rule.channel_category,
+			overrideChannelCategory ?? mapping.channel.category,
 			entityId,
 		);
 
@@ -272,9 +297,9 @@ export class MappingPreviewService {
 			attributes: state?.attributes ?? {},
 			status,
 			suggestedChannel: {
-				category: overrideChannelCategory ?? rule.channel_category,
-				name: friendlyName ?? this.generateChannelName(entityId, rule.channel_category),
-				confidence: overrideChannelCategory ? 'high' : this.determineConfidence(rule, deviceClass),
+				category: overrideChannelCategory ?? mapping.channel.category,
+				name: friendlyName ?? this.generateChannelName(entityId, mapping.channel.category),
+				confidence: overrideChannelCategory ? 'high' : this.determineConfidenceFromMapping(mapping, deviceClass),
 			},
 			suggestedProperties,
 			unmappedAttributes,
@@ -308,6 +333,16 @@ export class MappingPreviewService {
 
 			const haAttribute = this.lightCapabilityAnalyzer.getHaAttributeForProperty(propCategory, capabilities);
 
+			// Determine transformer for this property
+			let transformerName: string | null = null;
+			if (propCategory === PropertyCategory.BRIGHTNESS) {
+				transformerName = 'brightness_to_percent';
+			} else if (propCategory === PropertyCategory.COLOR_TEMPERATURE) {
+				transformerName = 'mireds_to_kelvin';
+			} else if (propCategory === PropertyCategory.ON) {
+				transformerName = 'state_on_off';
+			}
+
 			// Get current value if available
 			let currentValue: unknown = null;
 			if (haAttribute === 'fb.main_state') {
@@ -334,9 +369,12 @@ export class MappingPreviewService {
 				currentValue = state.attributes?.[haAttribute];
 			}
 
-			// Apply brightness transform
-			if (propCategory === PropertyCategory.BRIGHTNESS && typeof currentValue === 'number') {
-				currentValue = Math.round((currentValue / 255) * 100);
+			// Apply transform for preview display using transformer registry
+			if (transformerName && currentValue !== undefined && currentValue !== null) {
+				const transformer = this.transformerRegistry.getOrCreate(transformerName);
+				if (transformer.canRead()) {
+					currentValue = transformer.read(currentValue);
+				}
 			}
 
 			suggestedProperties.push({
@@ -350,6 +388,7 @@ export class MappingPreviewService {
 				required: propertyMetadata.required,
 				currentValue: this.normalizeValue(currentValue),
 				haEntityId: entityId,
+				haTransformer: transformerName,
 			});
 
 			mappedPropertyCategories.add(propCategory);
@@ -384,10 +423,10 @@ export class MappingPreviewService {
 	}
 
 	/**
-	 * Generate property mappings for an entity based on its rule and state
+	 * Generate property mappings for an entity based on resolved YAML mapping
 	 */
-	private generatePropertyMappings(
-		rule: HaEntityMappingRule,
+	private generatePropertyMappingsFromMapping(
+		mapping: ResolvedHaMapping,
 		state: HomeAssistantStateModel | undefined,
 		channelCategory: ChannelCategory,
 		entityId: string,
@@ -400,24 +439,31 @@ export class MappingPreviewService {
 		const mappedAttributes = new Set<string>();
 		const mappedPropertyCategories = new Set<PropertyCategory>();
 
-		// Apply property bindings from the rule
-		for (const binding of rule.property_bindings) {
-			const propertyMetadata = getPropertyMetadata(channelCategory, binding.property_category);
+		// Apply property bindings from the resolved mapping
+		for (const binding of mapping.propertyBindings) {
+			const propertyMetadata = getPropertyMetadata(channelCategory, binding.propertyCategory);
 			if (!propertyMetadata) {
 				// Property not defined in channel spec, skip
 				continue;
 			}
 
 			// Check if attribute exists in state
-			const attributeValue = this.getAttributeValue(binding, state);
+			const attributeValue = this.getAttributeValueFromBinding(binding, state);
 			const hasValue = attributeValue !== undefined && attributeValue !== null;
 
 			if (hasValue || propertyMetadata.required) {
 				suggestedProperties.push(
-					this.createPropertyPreview(binding, propertyMetadata, attributeValue, entityId, state, channelCategory),
+					this.createPropertyPreviewFromBinding(
+						binding,
+						propertyMetadata,
+						attributeValue,
+						entityId,
+						state,
+						channelCategory,
+					),
 				);
-				mappedAttributes.add(binding.ha_attribute === ENTITY_MAIN_STATE_ATTRIBUTE ? 'state' : binding.ha_attribute);
-				mappedPropertyCategories.add(binding.property_category);
+				mappedAttributes.add(binding.haAttribute === ENTITY_MAIN_STATE_ATTRIBUTE ? 'state' : binding.haAttribute);
+				mappedPropertyCategories.add(binding.propertyCategory);
 			}
 		}
 
@@ -466,81 +512,53 @@ export class MappingPreviewService {
 	}
 
 	/**
-	 * Get attribute value from state, handling array indices and transforms
+	 * Get attribute value from state using resolved binding
 	 */
-	private getAttributeValue(binding: HaPropertyBinding, state: HomeAssistantStateModel | undefined): unknown {
+	private getAttributeValueFromBinding(
+		binding: ResolvedPropertyBinding,
+		state: HomeAssistantStateModel | undefined,
+	): unknown {
 		if (!state) return undefined;
 
 		let value: unknown;
 
-		if (binding.ha_attribute === ENTITY_MAIN_STATE_ATTRIBUTE) {
+		if (binding.haAttribute === ENTITY_MAIN_STATE_ATTRIBUTE) {
 			value = state.state;
 		} else {
-			value = state.attributes?.[binding.ha_attribute];
+			value = state.attributes?.[binding.haAttribute];
 		}
 
 		// Handle array index
-		if (binding.array_index !== undefined && Array.isArray(value)) {
-			value = value[binding.array_index];
+		if (binding.arrayIndex !== undefined && Array.isArray(value)) {
+			value = value[binding.arrayIndex];
 		}
 
-		// Apply transform
-		if (binding.transform && value !== undefined && value !== null) {
-			value = this.applyTransform(value, binding.transform);
+		// Apply transform if transformer is specified
+		if (binding.transformerName && value !== undefined && value !== null) {
+			value = this.applyTransform(value, binding.transformerName);
 		}
 
 		return value;
 	}
 
 	/**
-	 * Apply value transformation
+	 * Create a property preview model from resolved binding
 	 */
-	private applyTransform(value: unknown, transform: string): unknown {
-		switch (transform) {
-			case 'brightness_to_percent':
-				if (typeof value === 'number') {
-					return Math.round((value / 255) * 100);
-				}
-				break;
-			case 'percent_to_brightness':
-				if (typeof value === 'number') {
-					return Math.round((value / 100) * 255);
-				}
-				break;
-			case 'invert_boolean':
-				if (typeof value === 'boolean') {
-					return !value;
-				}
-				if (value === 'on') return false;
-				if (value === 'off') return true;
-				break;
-			case 'kelvin_to_mireds':
-				if (typeof value === 'number' && value > 0) {
-					return Math.round(1000000 / value);
-				}
-				break;
-		}
-		return value;
-	}
-
-	/**
-	 * Create a property preview model
-	 */
-	private createPropertyPreview(
-		binding: HaPropertyBinding,
+	private createPropertyPreviewFromBinding(
+		binding: ResolvedPropertyBinding,
 		metadata: PropertyMetadata,
 		currentValue: unknown,
 		entityId?: string,
 		state?: HomeAssistantStateModel,
 		channelCategory?: ChannelCategory,
 	): PropertyMappingPreviewModel {
-		// Try to get HA-provided format values (e.g., hvac_modes for thermostat mode)
-		const haProvidedFormat = this.getHaProvidedFormat(binding.property_category, state, channelCategory);
+		// Try to get HA-provided format values
+		const haProvidedFormat = this.getHaProvidedFormat(binding.propertyCategory, state, channelCategory);
 
 		return {
-			category: binding.property_category,
-			name: this.propertyNameFromCategory(binding.property_category),
-			haAttribute: binding.ha_attribute,
+			category: binding.propertyCategory,
+			name: this.propertyNameFromCategory(binding.propertyCategory),
+			haAttribute: binding.haAttribute,
 			dataType: metadata.data_type,
 			permissions: metadata.permissions,
 			unit: metadata.unit,
@@ -548,7 +566,121 @@ export class MappingPreviewService {
 			required: metadata.required,
 			currentValue: this.normalizeValue(currentValue),
 			haEntityId: entityId ?? null,
+			haTransformer: binding.transformerName ?? null,
 		};
+	}
+
+	/**
+	 * Find a mapping that matches a specific channel category
+	 */
+	private findMappingForChannel(
+		domain: HomeAssistantDomain,
+		channelCategory: ChannelCategory,
+	): ResolvedHaMapping | null {
+		const mapping = this.mappingLoaderService.findMatchingMapping(domain, null);
+		if (mapping) {
+			// Create a modified mapping with the overridden channel category
+			return {
+				...mapping,
+				channel: {
+					...mapping.channel,
+					category: channelCategory,
+				},
+			};
+		}
+		return null;
+	}
+
+	/**
+	 * Determine mapping confidence based on mapping specificity
+	 */
+	private determineConfidenceFromMapping(
+		mapping: ResolvedHaMapping,
+		deviceClass: string | null | undefined,
+	): 'high' | 'medium' | 'low' {
+		if (mapping.deviceClass !== null && deviceClass) {
+			return 'high';
+		}
+		if (mapping.deviceClass === null) {
+			return 'medium';
+		}
+		return 'low';
+	}
+
+	/**
+	 * Infer device category based on mapped channels and entity domains
+	 */
+	private inferDeviceCategory(
+		mappedChannelCategories: ChannelCategory[],
+		entityDomains: HomeAssistantDomain[],
+	): DeviceCategory {
+		const resolvedMappings = this.mappingLoaderService.getMappings();
+
+		// If we have domain information, check for primary domains first
+		if (entityDomains && entityDomains.length > 0) {
+			const primaryDomains = entityDomains.filter(
+				(d) => this.mappingLoaderService.getDomainRole(d) === EntityRole.PRIMARY,
+			);
+
+			if (primaryDomains.length > 0) {
+				// Find the device category hint based on mapped channels for primary domains
+				for (const domain of primaryDomains) {
+					const matchingRule = resolvedMappings.find(
+						(r) =>
+							r.domain === domain &&
+							mappedChannelCategories.includes(r.channel.category) &&
+							r.deviceCategory !== DeviceCategory.GENERIC,
+					);
+
+					if (matchingRule) {
+						return matchingRule.deviceCategory;
+					}
+
+					// Fallback: if no channel-matched rule found, use first non-generic rule for domain
+					const fallbackRule = resolvedMappings.find(
+						(r) => r.domain === domain && r.deviceCategory !== DeviceCategory.GENERIC,
+					);
+
+					if (fallbackRule) {
+						return fallbackRule.deviceCategory;
+					}
+				}
+			}
+		}
+
+		// Fallback to scoring logic for sensor-only devices
+		const hints = new Map<DeviceCategory, number>();
+
+		for (const rule of resolvedMappings) {
+			if (mappedChannelCategories.includes(rule.channel.category)) {
+				const current = hints.get(rule.deviceCategory) ?? 0;
+				hints.set(rule.deviceCategory, current + rule.priority);
+			}
+		}
+
+		// Return the most common/highest priority hint
+		let bestCategory: DeviceCategory = DeviceCategory.GENERIC;
+		let bestScore = 0;
+
+		for (const [category, score] of Array.from(hints.entries())) {
+			if (score > bestScore) {
+				bestScore = score;
+				bestCategory = category;
+			}
+		}
+
+		return bestCategory;
+	}
+
+	/**
+	 * Apply value transformation using TransformerRegistry
+	 */
+	private applyTransform(value: unknown, transformerName: string): unknown {
+		const transformer = this.transformerRegistry.getOrCreate(transformerName);
+		if (transformer.canRead()) {
+			return transformer.read(value);
+		}
+		return value;
 	}
 
 	/**
@@ -714,40 +846,6 @@ export class MappingPreviewService {
 	private extractDomain(entityId: string): HomeAssistantDomain {
 		const domain = entityId.split('.')[0];
 		return domain as HomeAssistantDomain;
-	}
-
-	/**
-	 * Find a rule that matches a specific channel category
-	 */
-	private findRuleForChannel(
-		domain: HomeAssistantDomain,
-		channelCategory: ChannelCategory,
-	): HaEntityMappingRule | null {
-		const rule = findMatchingRule(domain, null);
-		if (rule) {
-			// Create a modified rule with the overridden channel category
-			return {
-				...rule,
-				channel_category: channelCategory,
-			};
-		}
-		return null;
-	}
-
-	/**
-	 * Determine mapping confidence based on rule specificity
-	 */
-	private determineConfidence(
-		rule: HaEntityMappingRule,
-		deviceClass: string | null | undefined,
-	): 'high' | 'medium' | 'low' {
-		if (rule.device_class !== null && deviceClass) {
-			return 'high';
-		}
-		if (rule.device_class === null) {
-			return 'medium';
-		}
-		return 'low';
 	}
 
 	/**
@@ -980,17 +1078,17 @@ export class MappingPreviewService {
 				const resolved = this.virtualPropertyService.resolveVirtualPropertyValue(virtualDef, context);
 
 				// Get property metadata for formatting
-				const propertyMetadata = getPropertyMetadata(channelCategory, virtualDef.property_category);
+				const propertyMetadata = getPropertyMetadata(channelCategory, virtualDef.propertyCategory);
 
 				// Create property preview for the virtual property
 				const virtualPropertyPreview: PropertyMappingPreviewModel = {
-					category: virtualDef.property_category,
-					name: this.propertyNameFromCategory(virtualDef.property_category),
+					category: virtualDef.propertyCategory,
+					name: this.propertyNameFromCategory(virtualDef.propertyCategory),
 					haAttribute: this.virtualPropertyService.getVirtualAttributeMarker(
-						virtualDef.property_category,
-						virtualDef.virtual_type,
+						virtualDef.propertyCategory,
+						virtualDef.virtualType,
 					),
-					dataType: virtualDef.data_type,
+					dataType: virtualDef.dataType,
 					permissions: virtualDef.permissions,
 					unit: virtualDef.unit ?? propertyMetadata?.unit ?? null,
 					format: virtualDef.format ?? propertyMetadata?.format ?? null,
@@ -998,14 +1096,14 @@ export class MappingPreviewService {
 					currentValue: resolved.value,
 					haEntityId: entityPreview.entityId,
 					isVirtual: true,
-					virtualType: virtualDef.virtual_type,
+					virtualType: virtualDef.virtualType,
 				};
 
 				entityPreview.suggestedProperties.push(virtualPropertyPreview);
 				virtualPropertiesAdded++;
 
 				// Remove from missing required properties list
-				const missingIndex = entityPreview.missingRequiredProperties.indexOf(virtualDef.property_category);
+				const missingIndex = entityPreview.missingRequiredProperties.indexOf(virtualDef.propertyCategory);
 				if (missingIndex >= 0) {
 					entityPreview.missingRequiredProperties.splice(missingIndex, 1);
 				}

@@ -1,0 +1,159 @@
+# Home Assistant Virtual Property Configuration
+# Defines virtual properties that are not directly mapped from HA attributes
+# but are calculated or provided as static values
+
+version: "1.0"
+
+# Derivation rules - reusable rules for calculating derived values
+derivations:
+  # Battery status from percentage
+  battery_status_from_percentage:
+    description: "Derive battery status from percentage value"
+    rule:
+      type: threshold
+      source_property: PERCENTAGE
+      thresholds:
+        - max: 20
+          value: "low"
+        - value: "ok"
+      default_value: "ok"
+
+  # Window covering type from device class
+  window_covering_type_from_device_class:
+    description: "Derive window covering type from HA device class"
+    rule:
+      type: device_class_map
+      mapping:
+        blind: "blind"
+        curtain: "curtain"
+        shade: "blind"
+        shutter: "roller"
+        awning: "outdoor_blind"
+        garage: "roller"
+        gate: "roller"
+        door: "roller"
+        window: "blind"
+      default_value: "blind"
+
+  # Door type from device class
+  door_type_from_device_class:
+    description: "Derive door type from HA device class"
+    rule:
+      type: device_class_map
+      mapping:
+        door: "door"
+        garage: "garage"
+        gate: "door"
+      default_value: "door"
+
+  # Illuminance level from density (LUX value)
+  illuminance_level_from_density:
+    description: "Derive illuminance level from LUX density"
+    rule:
+      type: threshold
+      source_property: DENSITY
+      thresholds:
+        - min: 1000
+          value: "bright"
+        - min: 100
+          value: "moderate"
+        - min: 10
+          value: "dusky"
+        - value: "dark"
+      default_value: "moderate"
+
+  # Gas status (static fallback)
+  gas_status_static:
+    description: "Static fallback for gas status"
+    rule:
+      type: static
+      value: "normal"
+
+# Virtual properties by channel category
+virtual_properties:
+  # Window Covering - command and type virtual properties
+  WINDOW_COVERING:
+    - property_category: COMMAND
+      virtual_type: command
+      data_type: ENUM
+      permissions: [write_only]
+      format: ["open", "close", "stop"]
+      command_mapping:
+        domain: cover
+        services:
+          open: open_cover
+          close: close_cover
+          stop: stop_cover
+
+    - property_category: TYPE
+      virtual_type: derived
+      data_type: ENUM
+      permissions: [read_only]
+      format: ["curtain", "blind", "roller", "outdoor_blind"]
+      derivation: window_covering_type_from_device_class
+
+  # Battery - status virtual property
+  BATTERY:
+    - property_category: STATUS
+      virtual_type: derived
+      data_type: ENUM
+      permissions: [read_only]
+      format: ["ok", "low"]
+      derivation: battery_status_from_percentage
+
+  # Door - command, type, and obstruction virtual properties
+  DOOR:
+    - property_category: POSITION
+      virtual_type: command
+      data_type: ENUM
+      permissions: [write_only]
+      format: ["open", "close", "stop"]
+      command_mapping:
+        domain: cover
+        services:
+          open: open_cover
+          close: close_cover
+          stop: stop_cover
+
+    - property_category: TYPE
+      virtual_type: derived
+      data_type: ENUM
+      permissions: [read_only]
+      format: ["door", "garage"]
+      derivation: door_type_from_device_class
+
+    - property_category: OBSTRUCTION
+      virtual_type: static
+      data_type: BOOL
+      permissions: [read_only]
+      static_value: false
+
+  # Lock - ON property for lock/unlock command
+  LOCK:
+    - property_category: ON
+      virtual_type: command
+      data_type: BOOL
+      permissions: [write_only]
+      command_mapping:
+        domain: lock
+        services:
+          "true": lock
+          "false": unlock
+
+  # Illuminance - LEVEL derived from DENSITY
+  ILLUMINANCE:
+    - property_category: LEVEL
+      virtual_type: derived
+      data_type: ENUM
+      permissions: [read_only]
+      format: ["bright", "moderate", "dusky", "dark"]
+      derivation: illuminance_level_from_density
+
+  # Gas - status virtual property
+  GAS:
+    - property_category: STATUS
+      virtual_type: derived
+      data_type: ENUM
+      permissions: [read_only]
+      format: ["normal"]
+      derivation: gas_status_static

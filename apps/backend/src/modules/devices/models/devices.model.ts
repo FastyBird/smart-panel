@@ -5,6 +5,7 @@ import {
 	IsBoolean,
 	IsDate,
 	IsDateString,
+	IsDefined,
 	IsEnum,
 	IsNumber,
 	IsOptional,
@@ -14,7 +15,7 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
+import { ApiExtraModels, ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { ChannelCategory, DataTypeType, DeviceCategory, PermissionType, PropertyCategory } from '../devices.constants';
 
@@ -71,7 +72,69 @@ export class DeviceSpecModel {
 	channels: DeviceChannelSpecModel[];
 }
 
+/**
+ * Data type variant for polymorphic properties (e.g., brightness can be percentage or level)
+ */
+@ApiSchema({ name: 'DevicesModuleDataTypeVariant' })
+export class DataTypeVariantModel {
+	@ApiProperty({
+		description: 'Variant identifier',
+		type: 'string',
+		example: 'percentage',
+	})
+	@Expose()
+	@IsString()
+	id: string;
+
+	@ApiProperty({
+		name: 'data_type',
+		description: 'Data type for this variant',
+		enum: DataTypeType,
+		example: DataTypeType.UCHAR,
+	})
+	@Expose({ name: 'data_type' })
+	@IsEnum(DataTypeType)
+	data_type: DataTypeType;
+
+	@ApiPropertyOptional({
+		description: 'Unit for this variant',
+		type: 'string',
+		nullable: true,
+		example: '%',
+	})
+	@Expose()
+	@IsOptional()
+	@IsString()
+	unit?: string | null;
+
+	@ApiPropertyOptional({
+		description: 'Format constraints for this variant',
+		type: 'array',
+		items: { oneOf: [{ type: 'string' }, { type: 'number' }] },
+		nullable: true,
+	})
+	@Expose()
+	@IsOptional()
+	@IsArray()
+	format?: string[] | number[] | null;
+
+	@ApiPropertyOptional({
+		description: 'Step value for numeric variants',
+		type: 'number',
+		nullable: true,
+	})
+	@Expose()
+	@IsOptional()
+	@IsNumber()
+	step?: number | null;
+
+	@Expose()
+	@IsOptional()
+	description?: { en: string } | null;
+}
+
 @ApiSchema({ name: 'DevicesModuleDataChannelPropertySpec' })
+@ApiExtraModels(DataTypeVariantModel)
 export class ChannelPropertySpecModel {
 	@ApiProperty({
 		description: 'Property category',
@@ -102,15 +165,31 @@ export class ChannelPropertySpecModel {
 	@ArrayNotEmpty()
 	permissions: PermissionType[];
 
-	@ApiProperty({
+	@ApiPropertyOptional({
 		name: 'data_type',
-		description: 'Property data type',
+		description: 'Property data type (for single-type properties)',
 		enum: DataTypeType,
 		example: DataTypeType.STRING,
 	})
 	@Expose()
+	@ValidateIf((o: ChannelPropertySpecModel) => !o.data_types || o.data_types.length === 0)
+	@IsDefined({ message: 'Either data_type or data_types must be provided' })
 	@IsEnum(DataTypeType)
-	data_type: DataTypeType;
+	data_type?: DataTypeType;
+
+	@ApiPropertyOptional({
+		name: 'data_types',
+		description: 'Property data type variants (for polymorphic properties)',
+		type: 'array',
+		items: { $ref: getSchemaPath(DataTypeVariantModel) },
+	})
+	@Expose({ name: 'data_types' })
+	@ValidateIf((o: ChannelPropertySpecModel) => !o.data_type)
+	@IsDefined({ message: 'Either data_type or data_types must be provided' })
+	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => DataTypeVariantModel)
+	data_types?: DataTypeVariantModel[];
 
 	@ApiProperty({
 		description: 'Property unit',

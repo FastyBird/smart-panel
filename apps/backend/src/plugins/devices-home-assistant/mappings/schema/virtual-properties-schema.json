@@ -1,0 +1,232 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://fastybird.com/schemas/home-assistant-virtual-properties-v1.json",
+	"title": "Home Assistant Virtual Properties Configuration",
+	"description": "Schema for defining virtual properties and derivation rules for Home Assistant entities",
+	"type": "object",
+	"required": ["version"],
+	"additionalProperties": false,
+	"properties": {
+		"version": {
+			"type": "string",
+			"pattern": "^[0-9]+\\.[0-9]+$",
+			"description": "Schema version (e.g., '1.0')"
+		},
+		"derivations": {
+			"type": "object",
+			"description": "Reusable derivation rules for derived properties",
+			"additionalProperties": {
+				"$ref": "#/definitions/derivationDefinition"
+			}
+		},
+		"virtual_properties": {
+			"type": "object",
+			"description": "Virtual property definitions by channel category",
+			"additionalProperties": {
+				"type": "array",
+				"items": {
+					"$ref": "#/definitions/virtualProperty"
+				}
+			}
+		}
+	},
+	"definitions": {
+		"derivationDefinition": {
+			"type": "object",
+			"required": ["rule"],
+			"additionalProperties": false,
+			"properties": {
+				"description": {
+					"type": "string",
+					"description": "Description of what this derivation does"
+				},
+				"rule": {
+					"$ref": "#/definitions/derivationRule"
+				}
+			}
+		},
+		"derivationRule": {
+			"type": "object",
+			"required": ["type"],
+			"properties": {
+				"type": {
+					"type": "string",
+					"enum": ["threshold", "device_class_map", "static"],
+					"description": "Type of derivation"
+				}
+			},
+			"allOf": [
+				{
+					"if": {
+						"properties": { "type": { "const": "threshold" } }
+					},
+					"then": {
+						"properties": {
+							"type": { "const": "threshold" },
+							"source_property": {
+								"type": "string",
+								"description": "Source property category to derive from"
+							},
+							"thresholds": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"required": ["value"],
+									"additionalProperties": false,
+									"properties": {
+										"min": {
+											"type": "number",
+											"description": "Minimum value (inclusive)"
+										},
+										"max": {
+											"type": "number",
+											"description": "Maximum value (inclusive)"
+										},
+										"value": {
+											"type": "string",
+											"description": "Output value when threshold matches"
+										}
+									}
+								},
+								"minItems": 1,
+								"description": "Threshold entries (first matching wins)"
+							},
+							"default_value": {
+								"type": "string",
+								"description": "Default value when no threshold matches"
+							}
+						},
+						"required": ["type", "thresholds"],
+						"additionalProperties": false
+					}
+				},
+				{
+					"if": {
+						"properties": { "type": { "const": "device_class_map" } }
+					},
+					"then": {
+						"properties": {
+							"type": { "const": "device_class_map" },
+							"mapping": {
+								"type": "object",
+								"additionalProperties": { "type": "string" },
+								"description": "Device class to value mapping"
+							},
+							"default_value": {
+								"type": "string",
+								"description": "Default value when device class not matched"
+							}
+						},
+						"required": ["type", "mapping", "default_value"],
+						"additionalProperties": false
+					}
+				},
+				{
+					"if": {
+						"properties": { "type": { "const": "static" } }
+					},
+					"then": {
+						"properties": {
+							"type": { "const": "static" },
+							"value": {
+								"oneOf": [
+									{ "type": "string" },
+									{ "type": "number" },
+									{ "type": "boolean" }
+								],
+								"description": "Static value to return"
+							}
+						},
+						"required": ["type", "value"],
+						"additionalProperties": false
+					}
+				}
+			]
+		},
+		"virtualProperty": {
+			"type": "object",
+			"required": ["property_category", "virtual_type", "data_type", "permissions"],
+			"additionalProperties": false,
+			"properties": {
+				"property_category": {
+					"type": "string",
+					"description": "Smart Panel property category"
+				},
+				"virtual_type": {
+					"type": "string",
+					"enum": ["static", "derived", "command"],
+					"description": "Type of virtual property"
+				},
+				"data_type": {
+					"type": "string",
+					"enum": ["BOOL", "CHAR", "UCHAR", "SHORT", "USHORT", "INT", "UINT", "FLOAT", "STRING", "ENUM", "DATE", "TIME", "DATETIME", "COLOR", "BUTTON", "SWITCH", "UNKNOWN"],
+					"description": "Data type"
+				},
+				"permissions": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"enum": ["read_only", "write_only", "read_write"]
+					},
+					"description": "Property permissions"
+				},
+				"format": {
+					"oneOf": [
+						{
+							"type": "array",
+							"items": { "type": "number" },
+							"minItems": 2,
+							"maxItems": 2
+						},
+						{
+							"type": "array",
+							"items": { "type": "string" }
+						}
+					],
+					"description": "Value format/range"
+				},
+				"unit": {
+					"type": "string",
+					"description": "Unit of measurement"
+				},
+				"static_value": {
+					"oneOf": [
+						{ "type": "string" },
+						{ "type": "number" },
+						{ "type": "boolean" }
+					],
+					"description": "Static value (for static virtual properties)"
+				},
+				"derivation": {
+					"type": "string",
+					"description": "Reference to named derivation rule (for derived virtual properties)"
+				},
+				"command_mapping": {
+					"$ref": "#/definitions/commandMapping",
+					"description": "Command mapping configuration (for command virtual properties)"
+				}
+			}
+		},
+		"commandMapping": {
+			"type": "object",
+			"required": ["domain", "services"],
+			"additionalProperties": false,
+			"properties": {
+				"domain": {
+					"type": "string",
+					"description": "HA domain for service calls"
+				},
+				"services": {
+					"type": "object",
+					"additionalProperties": { "type": "string" },
+					"description": "Mapping of command values to HA service names"
+				},
+				"service_data": {
+					"type": "object",
+					"additionalProperties": true,
+					"description": "Additional data to include in service calls"
+				}
+			}
+		}
+	}
+}

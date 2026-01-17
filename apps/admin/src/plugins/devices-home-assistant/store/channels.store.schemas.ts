@@ -1,23 +1,15 @@
 import { type ZodType, z } from 'zod';
 
-import {
-	ChannelControlCreateReqSchema,
-	ChannelControlResSchema,
-	ChannelSchema,
-	ChannelUpdateReqSchema,
-} from '../../../modules/devices';
+import { ChannelControlCreateReqSchema, ChannelControlResSchema, ChannelSchema, ChannelUpdateReqSchema } from '../../../modules/devices';
 import type {
+	DevicesHomeAssistantPluginChannelSchema,
 	DevicesHomeAssistantPluginCreateChannelSchema,
 	DevicesHomeAssistantPluginUpdateChannelSchema,
-	DevicesHomeAssistantPluginChannelSchema,
 } from '../../../openapi.constants';
 import { DevicesModuleChannelCategory } from '../../../openapi.constants';
 import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 
-import {
-	HomeAssistantChannelPropertyCreateReqSchema,
-	HomeAssistantChannelPropertyResSchema,
-} from './channels.properties.store.schemas';
+import { HomeAssistantChannelPropertyCreateReqSchema, HomeAssistantChannelPropertyResSchema } from './channels.properties.store.schemas';
 
 type ApiCreateChannel = DevicesHomeAssistantPluginCreateChannelSchema;
 type ApiUpdateChannel = DevicesHomeAssistantPluginUpdateChannelSchema;

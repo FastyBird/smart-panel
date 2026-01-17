@@ -57,7 +57,7 @@ export type IAdoptDeviceRequest = z.infer<typeof AdoptDeviceRequestSchema>;
 // Helper Types
 // ============================================================================
 
-export type EntityMappingStatus = 'mapped' | 'partial' | 'unmapped' | 'skipped';
+export type EntityMappingStatus = 'mapped' | 'partial' | 'unmapped' | 'skipped' | 'incompatible';
 
 export type MappingConfidence = 'high' | 'medium' | 'low';
 
@@ -66,7 +66,8 @@ export type MappingWarningType =
 	| 'missing_required_property'
 	| 'unsupported_entity'
 	| 'unknown_device_class'
-	| 'no_mapping_rule';
+	| 'no_mapping_rule'
+	| 'incompatible_channel';
 
 export type IVirtualPropertyType = z.infer<typeof VirtualPropertyTypeSchema>;
 

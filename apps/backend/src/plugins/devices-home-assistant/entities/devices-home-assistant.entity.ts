@@ -104,6 +104,26 @@ export class HomeAssistantChannelPropertyEntity extends ChannelPropertyEntity {
 	@Column({ nullable: true })
 	haAttribute: string | null;
 
+	@ApiPropertyOptional({
+		description: 'Transformer name for value conversion between HA and Smart Panel formats',
+		type: 'string',
+		name: 'ha_transformer',
+		nullable: true,
+		example: 'brightness_to_percent',
+	})
+	@Expose({ name: 'ha_transformer' })
+	@IsOptional()
+	@IsString({ message: '[{"field":"ha_transformer","reason":"Transformer name must be a string."}]' })
+	@Transform(
+		({ obj }: { obj: { ha_transformer?: string | null; haTransformer?: string | null } }) =>
+			obj.ha_transformer || obj.haTransformer || null,
+		{
+			toClassOnly: true,
+		},
+	)
+	@Column({ nullable: true })
+	haTransformer: string | null;
+
 	get haDomain(): HomeAssistantDomain {
 		const domain = this.haEntityId.toLowerCase().split('.')[0] as HomeAssistantDomain;
 

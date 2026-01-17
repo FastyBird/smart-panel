@@ -16,11 +16,7 @@ export const useDiscoveredItemsOptions = (): IUseDiscoveredItemsOptions => {
 		const groups: IDiscoveryOptionGroup[] = [];
 
 		// Devices group
-		const deviceOptions = orderBy(
-			devices.value,
-			[(d) => (d.name.trim() !== '' ? d.name : d.id)],
-			['asc']
-		).map((device) => ({
+		const deviceOptions = orderBy(devices.value, [(d) => (d.name.trim() !== '' ? d.name : d.id)], ['asc']).map((device) => ({
 			value: device.id,
 			label: device.name.trim() !== '' ? device.name : device.id,
 			type: 'device' as const,
@@ -34,11 +30,7 @@ export const useDiscoveredItemsOptions = (): IUseDiscoveredItemsOptions => {
 		}
 
 		// Helpers group
-		const helperOptions = orderBy(
-			helpers.value,
-			[(h) => (h.name.trim() !== '' ? h.name : h.entityId)],
-			['asc']
-		).map((helper) => ({
+		const helperOptions = orderBy(helpers.value, [(h) => (h.name.trim() !== '' ? h.name : h.entityId)], ['asc']).map((helper) => ({
 			value: helper.entityId,
 			label: helper.name.trim() !== '' ? helper.name : helper.entityId,
 			type: 'helper' as const,

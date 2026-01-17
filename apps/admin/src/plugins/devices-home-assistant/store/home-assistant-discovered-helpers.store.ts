@@ -2,8 +2,8 @@ import { ref } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
-import { injectStoresManager, useBackend, useLogger } from '../../../common';
 import { PLUGINS_PREFIX } from '../../../app.constants';
+import { injectStoresManager, useBackend, useLogger } from '../../../common';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantApiException, DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 

@@ -155,6 +155,17 @@ export class AdoptPropertyDefinitionDto {
 	@IsOptional()
 	@IsString()
 	haEntityId?: string | null;
+
+	@ApiPropertyOptional({
+		description: 'Transformer name for value conversion between HA and Smart Panel formats',
+		type: 'string',
+		nullable: true,
+		name: 'ha_transformer',
+	})
+	@Expose({ name: 'ha_transformer' })
+	@IsOptional()
+	@IsString()
+	haTransformer?: string | null;
 }
 
 @ApiSchema({ name: 'DevicesHomeAssistantPluginAdoptChannelDefinition' })

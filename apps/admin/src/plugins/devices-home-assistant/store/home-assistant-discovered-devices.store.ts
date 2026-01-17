@@ -2,12 +2,9 @@ import { ref } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
-import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
 import { PLUGINS_PREFIX } from '../../../app.constants';
-import type {
-	DevicesHomeAssistantPluginGetDeviceOperation,
-	DevicesHomeAssistantPluginGetDevicesOperation,
-} from '../../../openapi.constants';
+import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
+import type { DevicesHomeAssistantPluginGetDeviceOperation, DevicesHomeAssistantPluginGetDevicesOperation } from '../../../openapi.constants';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantApiException, DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 

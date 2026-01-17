@@ -1,8 +1,8 @@
 import { computed } from 'vue';
 
 import { injectStoresManager } from '../../../common';
-import { discoveredHelpersStoreKey } from '../store/keys';
 import type { IHomeAssistantDiscoveredHelper } from '../store/home-assistant-discovered-helpers.store.types';
+import { discoveredHelpersStoreKey } from '../store/keys';
 
 import type { IUseDiscoveredHelpers } from './types';
 

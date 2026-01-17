@@ -3,18 +3,17 @@ import { Injectable } from '@nestjs/common';
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME } from '../devices-home-assistant.constants';
-
 import {
-	DerivationType,
-	DerivedVirtualPropertyDefinition,
+	AnyDerivation,
+	DeviceClassMapDerivation,
+	MappingLoaderService,
 	ResolvedVirtualProperty,
-	StaticVirtualPropertyDefinition,
-	VirtualPropertyContext,
-	VirtualPropertyDefinition,
+	StaticDerivation,
+	ThresholdDerivation,
 	VirtualPropertyType,
-	getVirtualPropertiesForChannel,
-	getVirtualPropertyDefinition,
-} from './virtual-property.types';
+} from '../mappings';
+
+import { ResolvedVirtualPropertyValue, VirtualPropertyContext } from './virtual-property.types';
 
 /**
  * Service for resolving virtual property values and handling virtual commands
@@ -34,40 +33,49 @@ export class VirtualPropertyService {
 		'VirtualPropertyService',
 	);
 
+	constructor(private readonly mappingLoaderService: MappingLoaderService) {}
+
 	/**
 	 * Resolve a virtual property value based on its definition and context
 	 */
 	resolveVirtualPropertyValue(
-		definition: VirtualPropertyDefinition,
+		definition: ResolvedVirtualProperty,
 		context: VirtualPropertyContext,
-	): ResolvedVirtualProperty {
+	): ResolvedVirtualPropertyValue {
 		let value: string | number | boolean | null = null;
 
-		switch (definition.virtual_type) {
-			case VirtualPropertyType.STATIC:
+		switch (definition.virtualType) {
+			case 'static':
 				value = this.resolveStaticValue(definition);
 				break;
 
-			case VirtualPropertyType.DERIVED:
+			case 'derived':
 				value = this.resolveDerivedValue(definition, context);
 				break;
 
-			case VirtualPropertyType.COMMAND:
+			case 'command':
 				// Command properties don't have a readable value
 				value = null;
 				break;
 		}
 
 		return {
-			category: definition.property_category,
+			category: definition.propertyCategory,
 			value,
 			isVirtual: true,
-			virtualType: definition.virtual_type,
-			dataType: definition.data_type,
+			virtualType: definition.virtualType,
+			dataType: definition.dataType,
 			permissions: definition.permissions,
 			format: definition.format,
 			unit: definition.unit,
 		};
+	}
+
+	/**
+	 * Get all virtual properties for a channel category
+	 */
+	getVirtualPropertiesForChannel(channelCategory: ChannelCategory): ResolvedVirtualProperty[] {
+		return this.mappingLoaderService.getVirtualProperties(channelCategory);
 	}
 
 	/**
@@ -78,9 +86,9 @@ export class VirtualPropertyService {
 		channelCategory: ChannelCategory,
 		existingPropertyCategories: Set<PropertyCategory>,
 		requiredPropertyCategories: PropertyCategory[],
-	): VirtualPropertyDefinition[] {
-		const virtualProps = getVirtualPropertiesForChannel(channelCategory);
-		const missingVirtuals: VirtualPropertyDefinition[] = [];
+	): ResolvedVirtualProperty[] {
+		const virtualProps = this.mappingLoaderService.getVirtualProperties(channelCategory);
+		const missingVirtuals: ResolvedVirtualProperty[] = [];
 
 		for (const required of requiredPropertyCategories) {
 			// Skip if already mapped from HA entity
@@ -89,7 +97,7 @@ export class VirtualPropertyService {
 			}
 
 			// Check if we have a virtual property definition for this
-			const virtualDef = virtualProps.find((vp) => vp.property_category === required);
+			const virtualDef = virtualProps.find((vp) => vp.propertyCategory === required);
 			if (virtualDef) {
 				missingVirtuals.push(virtualDef);
 			}
@@ -102,7 +110,19 @@ export class VirtualPropertyService {
 	 * Check if a property can be fulfilled by a virtual property
 	 */
 	canFulfillWithVirtual(channelCategory: ChannelCategory, propertyCategory: PropertyCategory): boolean {
-		return getVirtualPropertyDefinition(channelCategory, propertyCategory) !== null;
+		const virtualProps = this.mappingLoaderService.getVirtualProperties(channelCategory);
+		return virtualProps.some((vp) => vp.propertyCategory === propertyCategory);
+	}
+
+	/**
+	 * Get the virtual property definition for a channel and property
+	 */
+	getVirtualPropertyDefinition(
+		channelCategory: ChannelCategory,
+		propertyCategory: PropertyCategory,
+	): ResolvedVirtualProperty | null {
+		const virtualProps = this.mappingLoaderService.getVirtualProperties(channelCategory);
+		return virtualProps.find((vp) => vp.propertyCategory === propertyCategory) ?? null;
 	}
 
 	/**
@@ -114,13 +134,13 @@ export class VirtualPropertyService {
 		commandValue: string,
 		entityId: string,
 	): { domain: string; service: string; entityId: string; data?: Record<string, unknown> } | null {
-		const definition = getVirtualPropertyDefinition(channelCategory, propertyCategory);
+		const definition = this.getVirtualPropertyDefinition(channelCategory, propertyCategory);
 
-		if (!definition || definition.virtual_type !== VirtualPropertyType.COMMAND) {
+		if (!definition || definition.virtualType !== 'command' || !definition.commandMapping) {
 			return null;
 		}
 
-		const serviceName = definition.command_mapping.value_to_service[commandValue];
+		const serviceName = definition.commandMapping.services[commandValue];
 
 		if (!serviceName) {
 			this.logger.warn(
@@ -130,202 +150,120 @@ export class VirtualPropertyService {
 		}
 
 		return {
-			domain: definition.command_mapping.domain,
+			domain: definition.commandMapping.domain,
 			service: serviceName,
 			entityId,
-			data: definition.command_mapping.service_data,
+			data: definition.commandMapping.serviceData,
 		};
 	}
 
 	/**
 	 * Resolve a static virtual property value
 	 */
-	private resolveStaticValue(definition: StaticVirtualPropertyDefinition): string | number | boolean {
-		return definition.static_value;
+	private resolveStaticValue(definition: ResolvedVirtualProperty): string | number | boolean {
+		return definition.staticValue ?? '';
 	}
 
 	/**
 	 * Resolve a derived virtual property value
 	 */
 	private resolveDerivedValue(
-		definition: DerivedVirtualPropertyDefinition,
+		definition: ResolvedVirtualProperty,
 		context: VirtualPropertyContext,
 	): string | number | boolean | null {
-		const { derivation } = definition;
+		const derivationRule = definition.derivationRule;
 
-		switch (derivation.type) {
-			case DerivationType.BATTERY_STATUS_FROM_PERCENTAGE:
-				return this.deriveBatteryStatus(context, derivation.params);
+		if (!derivationRule) {
+			// Try to get derivation by name
+			if (definition.derivationName) {
+				const namedRule = this.mappingLoaderService.getDerivation(definition.derivationName);
+				if (namedRule) {
+					return this.applyDerivationRule(namedRule, context);
+				}
+			}
+			this.logger.warn(`[VIRTUAL] No derivation rule found for property: ${definition.propertyCategory}`);
+			return null;
+		}
 
-			case DerivationType.WINDOW_COVERING_TYPE_FROM_DEVICE_CLASS:
-				return this.deriveWindowCoveringType(context, derivation.params);
+		return this.applyDerivationRule(derivationRule, context);
+	}
 
-			case DerivationType.WINDOW_COVERING_STATUS_FROM_STATE:
-				return this.deriveWindowCoveringStatus(context, derivation.params);
+	/**
+	 * Apply a derivation rule to resolve a value
+	 */
+	private applyDerivationRule(rule: AnyDerivation, context: VirtualPropertyContext): string | number | boolean | null {
+		switch (rule.type) {
+			case 'threshold':
+				return this.applyThresholdDerivation(rule, context);
 
-			case DerivationType.STATIC_FALLBACK:
-				return this.deriveStaticFallback(context, derivation.params);
+			case 'device_class_map':
+				return this.applyDeviceClassMapDerivation(rule, context);
 
-			case DerivationType.ILLUMINANCE_LEVEL_FROM_DENSITY:
-				return this.deriveIlluminanceLevel(context, derivation.params);
+			case 'static':
+				return this.applyStaticDerivation(rule);
 
 			default:
-				this.logger.warn(`[VIRTUAL] Unknown derivation type: ${String(derivation.type)}`);
+				this.logger.warn(`[VIRTUAL] Unknown derivation type: ${(rule as AnyDerivation).type}`);
 				return null;
 		}
 	}
 
 	/**
-	 * Derive battery status from percentage
-	 * Returns: 'ok', 'low', or 'charging'
+	 * Apply threshold derivation
+	 * Maps numeric ranges to enum values
 	 */
-	private deriveBatteryStatus(
-		context: VirtualPropertyContext,
-		params?: Record<string, unknown>,
-	): 'ok' | 'low' | 'charging' {
-		const lowThreshold = (params?.lowThreshold as number) ?? 20;
-		const defaultStatus = (params?.defaultStatus as 'ok' | 'low' | 'charging') ?? 'ok';
+	private applyThresholdDerivation(rule: ThresholdDerivation, context: VirtualPropertyContext): string | null {
+		// Get the source value (default to state value)
+		let sourceValue: number | null = null;
 
-		// Try to get percentage from state
-		const state = context.state;
-		if (!state) {
-			return defaultStatus;
-		}
-
-		// Check if the state itself is a percentage
-		const stateValue = parseFloat(String(state.state));
-		if (!isNaN(stateValue)) {
-			if (stateValue <= lowThreshold) {
-				return 'low';
-			}
-			return 'ok';
-		}
-
-		// Check for battery level attribute
-		const batteryLevel = state.attributes?.battery_level;
-		if (typeof batteryLevel === 'number') {
-			if (batteryLevel <= lowThreshold) {
-				return 'low';
-			}
-			return 'ok';
-		}
-
-		return defaultStatus;
-	}
-
-	/**
-	 * Derive window covering type from HA device class
-	 * Returns: 'curtain', 'blind', 'roller', or 'outdoor_blind'
-	 */
-	private deriveWindowCoveringType(
-		context: VirtualPropertyContext,
-		params?: Record<string, unknown>,
-	): 'curtain' | 'blind' | 'roller' | 'outdoor_blind' {
-		const defaultValue = (params?.defaultValue as 'curtain' | 'blind' | 'roller' | 'outdoor_blind') ?? 'blind';
-		const deviceClassMapping = (params?.deviceClassMapping as Record<string, string>) ?? {};
-
-		if (!context.deviceClass) {
-			return defaultValue;
-		}
-
-		const mappedType = deviceClassMapping[context.deviceClass];
-		if (mappedType && ['curtain', 'blind', 'roller', 'outdoor_blind'].includes(mappedType)) {
-			return mappedType as 'curtain' | 'blind' | 'roller' | 'outdoor_blind';
-		}
-
-		return defaultValue;
-	}
-
-	/**
-	 * Derive window covering status from HA state
-	 * Maps HA states to Smart Panel status values
-	 */
-	private deriveWindowCoveringStatus(
-		context: VirtualPropertyContext,
-		params?: Record<string, unknown>,
-	): 'opened' | 'closed' | 'opening' | 'closing' | 'stopped' {
-		const defaultValue = (params?.defaultValue as 'opened' | 'closed' | 'opening' | 'closing' | 'stopped') ?? 'stopped';
-
-		const state = context.state?.state;
-		if (state === undefined || state === null) {
-			return defaultValue;
-		}
-
-		// HA cover states mapping
-		const stateMapping: Record<string, 'opened' | 'closed' | 'opening' | 'closing' | 'stopped'> = {
-			open: 'opened',
-			opened: 'opened',
-			closed: 'closed',
-			closing: 'closing',
-			opening: 'opening',
-			stopped: 'stopped',
-		};
-
-		return stateMapping[String(state).toLowerCase()] ?? defaultValue;
-	}
-
-	/**
-	 * Static fallback derivation - uses device class mapping or default
-	 */
-	private deriveStaticFallback(
-		context: VirtualPropertyContext,
-		params?: Record<string, unknown>,
-	): string | number | boolean {
-		const defaultValue = params?.defaultValue;
-		const deviceClassMapping = params?.deviceClassMapping as Record<string, unknown> | undefined;
-
-		// Try device class mapping first
-		if (deviceClassMapping && context.deviceClass) {
-			const mappedValue = deviceClassMapping[context.deviceClass];
-			if (mappedValue !== undefined) {
-				return mappedValue as string | number | boolean;
+		if (rule.source_property && context.state?.attributes) {
+			const attrValue = context.state.attributes[rule.source_property];
+			if (typeof attrValue === 'number') {
+				sourceValue = attrValue;
+			} else if (typeof attrValue === 'string') {
+				sourceValue = parseFloat(attrValue);
 			}
 		}
 
-		// Fall back to default
-		if (defaultValue !== undefined) {
-			return defaultValue as string | number | boolean;
+		// Fall back to main state
+		if (sourceValue === null && context.state?.state) {
+			sourceValue = parseFloat(String(context.state.state));
 		}
 
-		return '';
+		if (sourceValue === null || isNaN(sourceValue)) {
+			return rule.default_value ?? null;
+		}
+
+		// Find matching threshold (sorted by min/max boundaries)
+		for (const threshold of rule.thresholds) {
+			const minOk = threshold.min === undefined || sourceValue >= threshold.min;
+			const maxOk = threshold.max === undefined || sourceValue <= threshold.max;
+
+			if (minOk && maxOk) {
+				return threshold.value;
+			}
+		}
+
+		return rule.default_value ?? null;
 	}
 
 	/**
-	 * Derive illuminance level from density (LUX value)
-	 * Returns: 'bright', 'moderate', 'dusky', or 'dark'
+	 * Apply device class map derivation
+	 * Maps HA device class to value
 	 */
-	private deriveIlluminanceLevel(
-		context: VirtualPropertyContext,
-		params?: Record<string, unknown>,
-	): 'bright' | 'moderate' | 'dusky' | 'dark' {
-		// Default thresholds in LUX
-		const brightThreshold = (params?.brightThreshold as number) ?? 1000;
-		const moderateThreshold = (params?.moderateThreshold as number) ?? 100;
-		const duskyThreshold = (params?.duskyThreshold as number) ?? 10;
-
-		// Try to get density (LUX) from state
-		const state = context.state;
-		if (!state) {
-			return 'moderate'; // Default when no data
+	private applyDeviceClassMapDerivation(rule: DeviceClassMapDerivation, context: VirtualPropertyContext): string {
+		if (context.deviceClass && rule.mapping[context.deviceClass]) {
+			return rule.mapping[context.deviceClass];
 		}
+		return rule.default_value;
+	}
 
-		// The state value should be the LUX reading
-		const luxValue = parseFloat(String(state.state));
-
-		if (isNaN(luxValue)) {
-			return 'moderate'; // Default when value is invalid
-		}
-
-		// Determine level based on thresholds
-		if (luxValue >= brightThreshold) {
-			return 'bright';
-		} else if (luxValue >= moderateThreshold) {
-			return 'moderate';
-		} else if (luxValue >= duskyThreshold) {
-			return 'dusky';
-		} else {
-			return 'dark';
-		}
+	/**
+	 * Apply static derivation
+	 * Returns a fixed value
+	 */
+	private applyStaticDerivation(rule: StaticDerivation): string | number | boolean {
+		return rule.value;
 	}
 
 	/**
@@ -334,8 +272,8 @@ export class VirtualPropertyService {
 	resolveAllVirtualProperties(
 		channelCategory: ChannelCategory,
 		context: VirtualPropertyContext,
-	): ResolvedVirtualProperty[] {
-		const virtualDefs = getVirtualPropertiesForChannel(channelCategory);
+	): ResolvedVirtualPropertyValue[] {
+		const virtualDefs = this.mappingLoaderService.getVirtualProperties(channelCategory);
 		return virtualDefs.map((def) => this.resolveVirtualPropertyValue(def, context));
 	}
 
@@ -343,8 +281,8 @@ export class VirtualPropertyService {
 	 * Check if a virtual property is a command type
 	 */
 	isCommandProperty(channelCategory: ChannelCategory, propertyCategory: PropertyCategory): boolean {
-		const def = getVirtualPropertyDefinition(channelCategory, propertyCategory);
-		return def?.virtual_type === VirtualPropertyType.COMMAND;
+		const def = this.getVirtualPropertyDefinition(channelCategory, propertyCategory);
+		return def?.virtualType === 'command';
 	}
 
 	/**

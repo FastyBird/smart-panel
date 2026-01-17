@@ -1,12 +1,25 @@
 <template>
 	<el-card shadow="never" header-class="py-2! px-4!" body-class="px-0!">
 		<template #header>
-			<div class="font-semibold">
-				{{ t('devicesHomeAssistantPlugin.headings.mapping.summary') }}
+			<div class="flex items-center justify-between">
+				<div class="font-semibold">
+					{{ t('devicesHomeAssistantPlugin.headings.mapping.summary') }}
+				</div>
+				<el-button
+					type="info"
+					size="small"
+					plain
+					@click="emit('open-debug')"
+				>
+					<template #icon>
+						<icon icon="mdi:bug-outline" />
+					</template>
+					{{ t('devicesHomeAssistantPlugin.buttons.debug') }}
+				</el-button>
 			</div>
 		</template>
 
-		<div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+		<div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
 			<div>
 				<div class="text-2xl font-bold text-green-600">{{ mappedCount }}</div>
 				<div class="text-sm text-gray-500">{{ t('devicesHomeAssistantPlugin.fields.mapping.mapped') }}</div>
@@ -22,6 +35,10 @@
 			<div>
 				<div class="text-2xl font-bold text-gray-600">{{ skippedCount }}</div>
 				<div class="text-sm text-gray-500">{{ t('devicesHomeAssistantPlugin.fields.mapping.skipped') }}</div>
+			</div>
+			<div>
+				<div class="text-2xl font-bold text-orange-600">{{ incompatibleCount }}</div>
+				<div class="text-sm text-gray-500">{{ t('devicesHomeAssistantPlugin.fields.mapping.incompatible') }}</div>
 			</div>
 		</div>
 
@@ -69,7 +86,8 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElCard, ElDivider, ElTag } from 'element-plus';
+import { ElButton, ElCard, ElDivider, ElTag } from 'element-plus';
+import { Icon } from '@iconify/vue';
 
 import type { IMappingPreviewResponse } from '../../schemas/mapping-preview.types';
 
@@ -79,12 +97,17 @@ interface IMappingSummaryProps {
 
 const props = defineProps<IMappingSummaryProps>();
 
+const emit = defineEmits<{
+	(e: 'open-debug'): void;
+}>();
+
 const { t } = useI18n();
 
 const mappedCount = computed(() => props.preview.entities.filter((e) => e.status === 'mapped').length);
 const partialCount = computed(() => props.preview.entities.filter((e) => e.status === 'partial').length);
 const unmappedCount = computed(() => props.preview.entities.filter((e) => e.status === 'unmapped').length);
 const skippedCount = computed(() => props.preview.entities.filter((e) => e.status === 'skipped').length);
+const incompatibleCount = computed(() => props.preview.entities.filter((e) => e.status === 'incompatible').length);
 
 const virtualPropertiesCount = computed(() => {
 	return props.preview.validation?.fillableWithVirtualCount ?? 0;

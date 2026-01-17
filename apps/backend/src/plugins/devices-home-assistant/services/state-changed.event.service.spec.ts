@@ -20,6 +20,7 @@ import {
 	HomeAssistantDeviceEntity,
 } from '../entities/devices-home-assistant.entity';
 import { MapperService } from '../mappers/mapper.service';
+import { TransformerRegistry } from '../mappings/transformers/transformer.registry';
 import { HomeAssistantDiscoveredDeviceModel } from '../models/home-assistant.model';
 
 import { HomeAssistantHttpService } from './home-assistant.http.service';
@@ -38,11 +39,22 @@ describe('StateChangedEventService', () => {
 			providers: [
 				StateChangedEventService,
 				{ provide: DevicesService, useValue: { findAll: jest.fn() } },
-				{ provide: ChannelsService, useValue: { findOne: jest.fn() } },
+				{ provide: ChannelsService, useValue: { findOne: jest.fn(), findAll: jest.fn().mockResolvedValue([]) } },
 				{ provide: ChannelsPropertiesService, useValue: { findAll: jest.fn(), update: jest.fn() } },
 				{ provide: MapperService, useValue: { mapFromHA: jest.fn() } },
 				{ provide: HomeAssistantHttpService, useValue: { getDiscoveredDevices: jest.fn() } },
 				{ provide: VirtualPropertyService, useValue: { resolveVirtualPropertyValue: jest.fn() } },
+				{
+					provide: TransformerRegistry,
+					useValue: {
+						getOrCreate: jest.fn().mockReturnValue({
+							canRead: () => true,
+							canWrite: () => true,
+							read: (value: unknown) => value,
+							write: (value: unknown) => value,
+						}),
+					},
+				},
 			],
 		}).compile();
 
@@ -92,7 +104,7 @@ describe('StateChangedEventService', () => {
 		httpService.getDiscoveredDevices.mockResolvedValue([haDevice]);
 		devicesService.findAll.mockResolvedValue([device]);
 		channelsPropertiesService.findAll.mockResolvedValue([property]);
-		mapperService.mapFromHA.mockResolvedValue([new Map([[property.id, 25]])]);
+		mapperService.mapFromHA.mockResolvedValue([[{ property, value: 25 }]]);
 
 		const event = {
 			data: {

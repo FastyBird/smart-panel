@@ -36,10 +36,14 @@ export const PropertyMappingPreviewSchema = z.object({
 	dataType: z.nativeEnum(DevicesModuleChannelPropertyDataType),
 	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
 	unit: z.string().nullable().optional(),
-	format: z.array(z.union([z.string(), z.number()])).nullable().optional(),
+	format: z
+		.array(z.union([z.string(), z.number()]))
+		.nullable()
+		.optional(),
 	required: z.boolean(),
 	currentValue: z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
 	haEntityId: z.string().nullable().optional(),
+	haTransformer: z.string().nullable().optional(),
 	isVirtual: z.boolean().optional(),
 	virtualType: VirtualPropertyTypeSchema.nullable().optional(),
 });
@@ -56,15 +60,23 @@ export const EntityMappingPreviewSchema = z.object({
 	deviceClass: z.string().nullable(),
 	currentState: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 	attributes: z.record(z.unknown()),
-	status: z.enum(['mapped', 'partial', 'unmapped', 'skipped']),
+	status: z.enum(['mapped', 'partial', 'unmapped', 'skipped', 'incompatible']),
 	suggestedChannel: SuggestedChannelSchema.nullable(),
 	suggestedProperties: z.array(PropertyMappingPreviewSchema),
 	unmappedAttributes: z.array(z.string()),
 	missingRequiredProperties: z.array(z.nativeEnum(DevicesModuleChannelPropertyCategory)),
+	incompatibleReason: z.string().nullable().optional(),
 });
 
 export const MappingWarningSchema = z.object({
-	type: z.enum(['missing_required_channel', 'missing_required_property', 'unsupported_entity', 'unknown_device_class', 'no_mapping_rule']),
+	type: z.enum([
+		'missing_required_channel',
+		'missing_required_property',
+		'unsupported_entity',
+		'unknown_device_class',
+		'no_mapping_rule',
+		'incompatible_channel',
+	]),
 	entityId: z.string().optional(),
 	message: z.string(),
 	suggestion: z.string().optional(),
@@ -115,8 +127,12 @@ export const AdoptPropertyDefinitionSchema = z.object({
 	dataType: z.nativeEnum(DevicesModuleChannelPropertyDataType),
 	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
 	unit: z.string().nullable().optional(),
-	format: z.array(z.union([z.string(), z.number()])).nullable().optional(),
+	format: z
+		.array(z.union([z.string(), z.number()]))
+		.nullable()
+		.optional(),
 	haEntityId: z.string().optional(),
+	haTransformer: z.string().nullable().optional(),
 });
 
 export const AdoptChannelDefinitionSchema = z.object({
@@ -151,9 +167,13 @@ const HelperPropertyMappingSchema = z.object({
 	dataType: z.string(),
 	permissions: z.array(z.string()),
 	unit: z.string().nullable().optional(),
-	format: z.array(z.union([z.string(), z.number()])).nullable().optional(),
+	format: z
+		.array(z.union([z.string(), z.number()]))
+		.nullable()
+		.optional(),
 	required: z.boolean(),
 	currentValue: z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
+	haTransformer: z.string().nullable().optional(),
 });
 
 const HelperChannelMappingSchema = z.object({

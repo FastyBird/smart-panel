@@ -1,8 +1,8 @@
-import { ref, type Ref } from 'vue';
+import { type Ref, ref } from 'vue';
 
-import { getErrorReason, injectStoresManager, useBackend, useFlashMessage, useLogger } from '../../../common';
 import { PLUGINS_PREFIX } from '../../../app.constants';
-import { DeviceSchema, transformDeviceResponse, type IDevice, devicesStoreKey, useDevicesPlugins } from '../../../modules/devices';
+import { getErrorReason, injectStoresManager, useBackend, useFlashMessage, useLogger } from '../../../common';
+import { DeviceSchema, type IDevice, devicesStoreKey, transformDeviceResponse, useDevicesPlugins } from '../../../modules/devices';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantApiException, DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 import type { IAdoptDeviceRequest } from '../schemas/mapping-preview.types';
@@ -47,12 +47,9 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 				// Adopt helper
 				const requestBody = transformAdoptHelperRequest(request);
 
-				const result = await backend.client.POST(
-					`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovered-helpers/adopt`,
-					{
-						body: requestBody as never,
-					},
-				);
+				const result = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovered-helpers/adopt`, {
+					body: requestBody as never,
+				});
 
 				responseData = result.data;
 				apiError = result.error;
@@ -61,12 +58,9 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 				// Adopt device
 				const requestBody = transformAdoptDeviceRequest(request);
 
-				const result = await backend.client.POST(
-					`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovered-devices/adopt`,
-					{
-						body: requestBody as never,
-					},
-				);
+				const result = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovered-devices/adopt`, {
+					body: requestBody as never,
+				});
 
 				responseData = result.data;
 				apiError = result.error;
