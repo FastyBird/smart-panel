@@ -39,8 +39,10 @@ void main() async {
       // Check direct data_type enum
       if (propertyData['data_type'] == 'enum') {
         final format = propertyData['format'];
-        // Skip if format is null or not a list of strings
-        if (format is List && format.isNotEmpty && format.first is String) {
+        // Skip if format is null or not a list of all strings
+        if (format is List &&
+            format.isNotEmpty &&
+            format.every((item) => item is String)) {
           final enumName = _generateEnumName(channelCategory, propertyCategory);
           final values = format.cast<String>().toList();
           _addEnum(enums, enumName, values);
@@ -54,7 +56,9 @@ void main() async {
           if (dataType is Map<String, dynamic> &&
               dataType['data_type'] == 'enum') {
             final format = dataType['format'];
-            if (format is List && format.isNotEmpty && format.first is String) {
+            if (format is List &&
+                format.isNotEmpty &&
+                format.every((item) => item is String)) {
               final dataTypeId = dataType['id'] as String?;
               final enumName = _generateEnumName(
                 channelCategory,
