@@ -445,10 +445,7 @@ export class CoversIntentService extends SpaceIntentBaseService {
 	/**
 	 * Execute a mode-based covers intent using role-based orchestration.
 	 */
-	private async executeModeIntent(
-		covers: CoverDevice[],
-		mode: CoversMode | undefined,
-	): Promise<CoversIntentResult> {
+	private async executeModeIntent(covers: CoverDevice[], mode: CoversMode | undefined): Promise<CoversIntentResult> {
 		const targetMode = mode ?? CoversMode.OPEN;
 
 		// Use the pure function to determine what to do with each cover

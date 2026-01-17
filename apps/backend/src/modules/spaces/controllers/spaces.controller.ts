@@ -1310,7 +1310,8 @@ export class SpacesController {
 	@ApiOperation({
 		operationId: 'delete-spaces-module-space-covers-role',
 		summary: 'Delete covers role assignment',
-		description: 'Removes the covers role assignment for a specific device/channel in a space. Requires owner or admin role.',
+		description:
+			'Removes the covers role assignment for a specific device/channel in a space. Requires owner or admin role.',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })

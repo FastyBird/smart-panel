@@ -5,8 +5,8 @@ import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { CoversRole, LightingRole, SPACES_MODULE_NAME } from '../spaces.constants';
 
-import { ClimateState, SpaceIntentService } from './space-intent.service';
 import { SpaceCoversRoleService } from './space-covers-role.service';
+import { ClimateState, SpaceIntentService } from './space-intent.service';
 import { SpaceLightingRoleService } from './space-lighting-role.service';
 import { SpacesService } from './spaces.service';
 
@@ -210,8 +210,7 @@ export class SpaceContextSnapshotService {
 			}
 
 			// Find all window covering channels
-			const coverChannels =
-				device.channels?.filter((ch) => ch.category === ChannelCategory.WINDOW_COVERING) ?? [];
+			const coverChannels = device.channels?.filter((ch) => ch.category === ChannelCategory.WINDOW_COVERING) ?? [];
 
 			for (const coverChannel of coverChannels) {
 				// Get the cover state
