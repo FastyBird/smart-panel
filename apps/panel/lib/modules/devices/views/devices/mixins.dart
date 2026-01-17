@@ -2,18 +2,23 @@ import 'dart:ui';
 
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/air_particulate.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/air_quality.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/battery.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/camera.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/carbon_dioxide.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/carbon_monoxide.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/contact.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/cooler.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/dehumidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/device_information.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_energy.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_power.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/fan.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/filter.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/flow.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/gas.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/heater.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/humidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/humidity.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/illuminance.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/leak.dart';
@@ -78,6 +83,28 @@ mixin DeviceAirParticulateMixin {
   bool get hasAirParticulateFault => airParticulateChannel?.hasFault ?? false;
 
   num? get airParticulateFaultCode => airParticulateChannel?.faultCode;
+}
+
+mixin DeviceAirQualityMixin {
+  AirQualityChannelView? get airQualityChannel;
+
+  bool get hasAirQuality => airQualityChannel != null;
+
+  bool get hasAirQualityAqi => airQualityChannel?.hasAqi ?? false;
+
+  int get airQualityAqi => airQualityChannel?.aqi ?? 0;
+
+  bool get hasAirQualityLevel => airQualityChannel?.hasLevel ?? false;
+
+  AirQualityLevelValue? get airQualityLevel => airQualityChannel?.level;
+
+  bool get hasAirQualityActive => airQualityChannel?.hasActive ?? false;
+
+  bool get isAirQualityActive => airQualityChannel?.isActive ?? false;
+
+  bool get hasAirQualityFault => airQualityChannel?.hasFault ?? false;
+
+  num? get airQualityFaultCode => airQualityChannel?.faultCode;
 }
 
 mixin DeviceBatteryMixin {
@@ -313,6 +340,38 @@ mixin DeviceDeviceInformationMixin {
       deviceInformationChannel.connectionType;
 }
 
+mixin DeviceDehumidifierMixin {
+  DehumidifierChannelView? get dehumidifierChannel;
+
+  bool get hasDehumidifier => dehumidifierChannel != null;
+
+  bool get isDehumidifierOn => dehumidifierChannel?.on ?? false;
+
+  int get dehumidifierHumidity => dehumidifierChannel?.humidity ?? 0;
+
+  int get dehumidifierMinHumidity => dehumidifierChannel?.minHumidity ?? 0;
+
+  int get dehumidifierMaxHumidity => dehumidifierChannel?.maxHumidity ?? 100;
+
+  bool get hasDehumidifierMode => dehumidifierChannel?.hasMode ?? false;
+
+  DehumidifierModeValue? get dehumidifierMode => dehumidifierChannel?.mode;
+
+  bool get hasDehumidifierStatus => dehumidifierChannel?.hasStatus ?? false;
+
+  DehumidifierStatusValue? get dehumidifierStatus => dehumidifierChannel?.status;
+
+  bool get isDehumidifierDehumidifying =>
+      dehumidifierChannel?.isDehumidifying ?? false;
+
+  bool get isDehumidifierDefrosting =>
+      dehumidifierChannel?.isDefrosting ?? false;
+
+  bool get hasDehumidifierFault => dehumidifierChannel?.hasFault ?? false;
+
+  num? get dehumidifierFaultCode => dehumidifierChannel?.faultCode;
+}
+
 mixin DeviceElectricalEnergyMixin {
   ElectricalEnergyChannelView? get electricalEnergyChannel;
 
@@ -405,6 +464,28 @@ mixin DeviceFanMixin {
   FanDirectionValue? get fanDirection => fanChannel?.direction;
 }
 
+mixin DeviceFilterMixin {
+  FilterChannelView? get filterChannel;
+
+  bool get hasFilter => filterChannel != null;
+
+  int get filterLifeRemaining => filterChannel?.lifeRemaining ?? 100;
+
+  int get filterMinLifeRemaining => filterChannel?.minLifeRemaining ?? 0;
+
+  int get filterMaxLifeRemaining => filterChannel?.maxLifeRemaining ?? 100;
+
+  FilterStatusValue? get filterStatus => filterChannel?.status;
+
+  bool get isFilterNeedsReplacement => filterChannel?.needsReplacement ?? false;
+
+  bool get isFilterGood => filterChannel?.isGood ?? true;
+
+  bool get hasFilterFault => filterChannel?.hasFault ?? false;
+
+  num? get filterFaultCode => filterChannel?.faultCode;
+}
+
 mixin DeviceFlowMixin {
   FlowChannelView? get flowChannel;
 
@@ -421,6 +502,44 @@ mixin DeviceFlowMixin {
   num? get flowFaultCode => flowChannel?.faultCode;
 }
 
+mixin DeviceGasMixin {
+  GasChannelView? get gasChannel;
+
+  bool get hasGas => gasChannel != null;
+
+  bool get hasGasDetected => gasChannel?.hasDetected ?? false;
+
+  bool get isGasDetected => gasChannel?.detected ?? false;
+
+  GasStatusValue? get gasStatus => gasChannel?.status;
+
+  bool get isGasNormal => gasChannel?.isNormal ?? true;
+
+  bool get isGasWarning => gasChannel?.isWarning ?? false;
+
+  bool get isGasAlarm => gasChannel?.isAlarm ?? false;
+
+  bool get hasGasDensity => gasChannel?.hasDensity ?? false;
+
+  double get gasDensity => gasChannel?.density ?? 0.0;
+
+  double get gasMinDensity => gasChannel?.minDensity ?? 0.0;
+
+  double get gasMaxDensity => gasChannel?.maxDensity ?? 65535.0;
+
+  bool get hasGasActive => gasChannel?.hasActive ?? false;
+
+  bool get isGasActive => gasChannel?.isActive ?? false;
+
+  bool get hasGasTampered => gasChannel?.hasTampered ?? false;
+
+  bool get isGasTampered => gasChannel?.isTampered ?? false;
+
+  bool get hasGasFault => gasChannel?.hasFault ?? false;
+
+  num? get gasFaultCode => gasChannel?.faultCode;
+}
+
 mixin DeviceHeaterMixin {
   HeaterChannelView? get heaterChannel;
 
@@ -433,6 +552,34 @@ mixin DeviceHeaterMixin {
   double get heaterMinTemperature => heaterChannel?.minTemperature ?? 0.0;
 
   double get heaterMaxTemperature => heaterChannel?.maxTemperature ?? 100.0;
+}
+
+mixin DeviceHumidifierMixin {
+  HumidifierChannelView? get humidifierChannel;
+
+  bool get hasHumidifier => humidifierChannel != null;
+
+  bool get isHumidifierOn => humidifierChannel?.on ?? false;
+
+  int get humidifierHumidity => humidifierChannel?.humidity ?? 0;
+
+  int get humidifierMinHumidity => humidifierChannel?.minHumidity ?? 0;
+
+  int get humidifierMaxHumidity => humidifierChannel?.maxHumidity ?? 100;
+
+  bool get hasHumidifierMode => humidifierChannel?.hasMode ?? false;
+
+  HumidifierModeValue? get humidifierMode => humidifierChannel?.mode;
+
+  bool get hasHumidifierStatus => humidifierChannel?.hasStatus ?? false;
+
+  HumidifierStatusValue? get humidifierStatus => humidifierChannel?.status;
+
+  bool get isHumidifierHumidifying => humidifierChannel?.isHumidifying ?? false;
+
+  bool get hasHumidifierFault => humidifierChannel?.hasFault ?? false;
+
+  num? get humidifierFaultCode => humidifierChannel?.faultCode;
 }
 
 mixin DeviceHumidityMixin {

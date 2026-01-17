@@ -25,11 +25,11 @@ class IlluminanceChannelView extends ChannelView
   });
 
   @override
-  DensityChannelPropertyView? get densityProp =>
-      properties.whereType<DensityChannelPropertyView>().firstOrNull;
+  DensityChannelPropertyView get densityProp =>
+      properties.whereType<DensityChannelPropertyView>().first;
 
-  LevelChannelPropertyView? get levelProp =>
-      properties.whereType<LevelChannelPropertyView>().firstOrNull;
+  LevelChannelPropertyView get levelProp =>
+      properties.whereType<LevelChannelPropertyView>().first;
 
   @override
   ActiveChannelPropertyView? get activeProp =>
@@ -39,19 +39,17 @@ class IlluminanceChannelView extends ChannelView
   FaultChannelPropertyView? get faultProp =>
       properties.whereType<FaultChannelPropertyView>().firstOrNull;
 
-  bool get hasLevel => levelProp != null;
+  bool get hasLevel => true;
 
   IlluminanceLevelValue? get level {
-    final LevelChannelPropertyView? prop = levelProp;
-
-    final ValueType? value = prop?.value;
+    final ValueType? value = levelProp.value;
 
     if (value is StringValueType &&
         IlluminanceLevelValue.contains(value.value)) {
       return IlluminanceLevelValue.fromValue(value.value);
     }
 
-    final ValueType? defaultValue = prop?.defaultValue;
+    final ValueType? defaultValue = levelProp.defaultValue;
 
     if (defaultValue is StringValueType &&
         IlluminanceLevelValue.contains(defaultValue.value)) {
@@ -62,9 +60,7 @@ class IlluminanceChannelView extends ChannelView
   }
 
   List<IlluminanceLevelValue> get availableLevels {
-    final LevelChannelPropertyView? prop = levelProp;
-
-    final FormatType? format = prop?.format;
+    final FormatType? format = levelProp.format;
 
     if (format is StringListFormatType) {
       return format.value

@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 
 class ConsumptionChannelPropertyView extends ChannelPropertyView {
@@ -16,4 +17,6 @@ class ConsumptionChannelPropertyView extends ChannelPropertyView {
     super.defaultValue,
     super.value,
   });
+
+  num? get consumption => value is NumberValueType ? (value as NumberValueType).value : null;
 }

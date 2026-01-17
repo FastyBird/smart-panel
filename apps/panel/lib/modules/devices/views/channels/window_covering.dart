@@ -45,8 +45,8 @@ class WindowCoveringChannelView extends ChannelView
   TypeChannelPropertyView get typeProp =>
       properties.whereType<TypeChannelPropertyView>().first;
 
-  CommandChannelPropertyView? get commandProp =>
-      properties.whereType<CommandChannelPropertyView>().firstOrNull;
+  CommandChannelPropertyView get commandProp =>
+      properties.whereType<CommandChannelPropertyView>().first;
 
   @override
   TiltChannelPropertyView? get tiltProp =>

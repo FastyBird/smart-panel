@@ -21,8 +21,8 @@ class PressureChannelView extends ChannelView
   });
 
   @override
-  MeasuredChannelPropertyView? get measuredProp =>
-      properties.whereType<MeasuredChannelPropertyView>().firstOrNull;
+  MeasuredChannelPropertyView get measuredProp =>
+      properties.whereType<MeasuredChannelPropertyView>().first;
 
   @override
   ActiveChannelPropertyView? get activeProp =>

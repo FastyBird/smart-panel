@@ -17,6 +17,6 @@ class SwitcherChannelView extends ChannelView with ChannelOnMixin {
   });
 
   @override
-  OnChannelPropertyView? get onProp =>
-      properties.whereType<OnChannelPropertyView>().firstOrNull;
+  OnChannelPropertyView get onProp =>
+      properties.whereType<OnChannelPropertyView>().first;
 }

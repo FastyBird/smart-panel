@@ -1,5 +1,8 @@
+import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 
+/// Property view for position values.
+/// Supports both numeric (uint, uchar) and enum values.
 class PositionChannelPropertyView extends ChannelPropertyView {
   PositionChannelPropertyView({
     required super.id,
@@ -16,4 +19,16 @@ class PositionChannelPropertyView extends ChannelPropertyView {
     super.defaultValue,
     super.value,
   });
+
+  /// Returns true if the value is numeric.
+  bool get isNumeric => value is NumberValueType;
+
+  /// Returns true if the value is an enum.
+  bool get isEnum => value is StringValueType;
+
+  /// Returns the numeric position value if available.
+  int? get numericValue => value is NumberValueType ? (value as NumberValueType).value.toInt() : null;
+
+  /// Returns the enum position value if available.
+  String? get enumValue => value is StringValueType ? (value as StringValueType).value : null;
 }

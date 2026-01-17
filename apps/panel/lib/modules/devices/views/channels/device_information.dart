@@ -36,8 +36,8 @@ class DeviceInformationChannelView extends ChannelView with ChannelFaultMixin {
   SerialNumberChannelPropertyView get serialNumberProp =>
       properties.whereType<SerialNumberChannelPropertyView>().first;
 
-  FirmwareRevisionChannelPropertyView get firmwareRevisionProp =>
-      properties.whereType<FirmwareRevisionChannelPropertyView>().first;
+  FirmwareRevisionChannelPropertyView? get firmwareRevisionProp =>
+      properties.whereType<FirmwareRevisionChannelPropertyView>().firstOrNull;
 
   HardwareRevisionChannelPropertyView? get hardwareRevisionProp =>
       properties.whereType<HardwareRevisionChannelPropertyView>().firstOrNull;
@@ -91,16 +91,18 @@ class DeviceInformationChannelView extends ChannelView with ChannelFaultMixin {
     );
   }
 
-  String get firmwareRevision {
-    final ValueType? value = firmwareRevisionProp.value;
+  bool get hasFirmwareRevision => firmwareRevisionProp != null;
+
+  String? get firmwareRevision {
+    final FirmwareRevisionChannelPropertyView? prop = firmwareRevisionProp;
+
+    final ValueType? value = prop?.value;
 
     if (value is StringValueType) {
       return value.value;
     }
 
-    throw Exception(
-      'Channel is missing required value for property: ${firmwareRevisionProp.category.json}',
-    );
+    return null;
   }
 
   bool get hasHardwareRevision => hardwareRevisionProp != null;

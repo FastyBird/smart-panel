@@ -28,8 +28,8 @@ class OccupancyChannelView extends ChannelView
   });
 
   @override
-  DetectedChannelPropertyView? get detectedProp =>
-      properties.whereType<DetectedChannelPropertyView>().firstOrNull;
+  DetectedChannelPropertyView get detectedProp =>
+      properties.whereType<DetectedChannelPropertyView>().first;
 
   @override
   DistanceChannelPropertyView? get distanceProp =>

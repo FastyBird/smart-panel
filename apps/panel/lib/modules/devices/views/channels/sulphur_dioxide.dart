@@ -32,15 +32,15 @@ class SulphurDioxideChannelView extends ChannelView
   });
 
   @override
-  DetectedChannelPropertyView? get detectedProp =>
-      properties.whereType<DetectedChannelPropertyView>().firstOrNull;
+  DetectedChannelPropertyView get detectedProp =>
+      properties.whereType<DetectedChannelPropertyView>().first;
 
   @override
-  DensityChannelPropertyView? get densityProp =>
-      properties.whereType<DensityChannelPropertyView>().firstOrNull;
+  DensityChannelPropertyView get densityProp =>
+      properties.whereType<DensityChannelPropertyView>().first;
 
-  LevelChannelPropertyView? get levelProp =>
-      properties.whereType<LevelChannelPropertyView>().firstOrNull;
+  LevelChannelPropertyView get levelProp =>
+      properties.whereType<LevelChannelPropertyView>().first;
 
   @override
   ActiveChannelPropertyView? get activeProp =>
@@ -54,19 +54,17 @@ class SulphurDioxideChannelView extends ChannelView
   TamperedChannelPropertyView? get tamperedProp =>
       properties.whereType<TamperedChannelPropertyView>().firstOrNull;
 
-  bool get hasLevel => levelProp != null;
+  bool get hasLevel => true;
 
   SulphurDioxideLevelValue? get level {
-    final LevelChannelPropertyView? prop = levelProp;
-
-    final ValueType? value = prop?.value;
+    final ValueType? value = levelProp.value;
 
     if (value is StringValueType &&
         SulphurDioxideLevelValue.contains(value.value)) {
       return SulphurDioxideLevelValue.fromValue(value.value);
     }
 
-    final ValueType? defaultValue = prop?.defaultValue;
+    final ValueType? defaultValue = levelProp.defaultValue;
 
     if (defaultValue is StringValueType &&
         SulphurDioxideLevelValue.contains(defaultValue.value)) {
@@ -77,9 +75,7 @@ class SulphurDioxideChannelView extends ChannelView
   }
 
   List<SulphurDioxideLevelValue> get availableLevels {
-    final LevelChannelPropertyView? prop = levelProp;
-
-    final FormatType? format = prop?.format;
+    final FormatType? format = levelProp.format;
 
     if (format is StringListFormatType) {
       return format.value

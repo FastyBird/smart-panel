@@ -24,8 +24,8 @@ class FanChannelView extends ChannelView with ChannelOnMixin {
   });
 
   @override
-  OnChannelPropertyView? get onProp =>
-      properties.whereType<OnChannelPropertyView>().firstOrNull;
+  OnChannelPropertyView get onProp =>
+      properties.whereType<OnChannelPropertyView>().first;
 
   SwingChannelPropertyView? get swingProp =>
       properties.whereType<SwingChannelPropertyView>().firstOrNull;

@@ -27,8 +27,8 @@ class ElectricalPowerChannelView extends ChannelView
     super.validationIssues,
   });
 
-  PowerChannelPropertyView? get powerProp =>
-      properties.whereType<PowerChannelPropertyView>().firstOrNull;
+  PowerChannelPropertyView get powerProp =>
+      properties.whereType<PowerChannelPropertyView>().first;
 
   VolumeChannelPropertyView? get voltageProp =>
       properties.whereType<VolumeChannelPropertyView>().firstOrNull;
@@ -56,7 +56,7 @@ class ElectricalPowerChannelView extends ChannelView
   FaultChannelPropertyView? get faultProp =>
       properties.whereType<FaultChannelPropertyView>().firstOrNull;
 
-  bool get hasPower => powerProp != null;
+  bool get hasPower => true;
 
   bool get hasVoltage => voltageProp != null;
 
@@ -71,7 +71,7 @@ class ElectricalPowerChannelView extends ChannelView
   bool get hasOverPower => overPowerProp != null;
 
   double get power {
-    final ValueType? value = powerProp?.value;
+    final ValueType? value = powerProp.value;
 
     if (value is NumberValueType) {
       return value.value.toDouble();

@@ -22,8 +22,8 @@ class BatteryChannelView extends ChannelView
   });
 
   @override
-  PercentageChannelPropertyView? get percentageProp =>
-      properties.whereType<PercentageChannelPropertyView>().firstOrNull;
+  PercentageChannelPropertyView get percentageProp =>
+      properties.whereType<PercentageChannelPropertyView>().first;
 
   StatusChannelPropertyView get statusProp =>
       properties.whereType<StatusChannelPropertyView>().first;

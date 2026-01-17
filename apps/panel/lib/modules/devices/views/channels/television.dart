@@ -25,12 +25,12 @@ class TelevisionChannelView extends ChannelView
   });
 
   @override
-  OnChannelPropertyView? get onProp =>
-      properties.whereType<OnChannelPropertyView>().firstOrNull;
+  OnChannelPropertyView get onProp =>
+      properties.whereType<OnChannelPropertyView>().first;
 
   @override
-  BrightnessChannelPropertyView? get brightnessProp =>
-      properties.whereType<BrightnessChannelPropertyView>().firstOrNull;
+  BrightnessChannelPropertyView get brightnessProp =>
+      properties.whereType<BrightnessChannelPropertyView>().first;
 
   InputSourceChannelPropertyView get inputSourceProp =>
       properties.whereType<InputSourceChannelPropertyView>().first;

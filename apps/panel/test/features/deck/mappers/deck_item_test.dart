@@ -19,7 +19,7 @@ void main() {
         expect((widget as LightsDomainViewPage).viewItem, domainViewItem);
       });
 
-      test('should route climate domain to DomainViewPage placeholder', () {
+      test('should route climate domain to ClimateDomainViewPage', () {
         final domainViewItem = DomainViewItem(
           id: 'domain-climate-room123',
           domainType: DomainType.climate,
@@ -30,8 +30,8 @@ void main() {
 
         final widget = buildDeckItemWidget(domainViewItem);
 
-        expect(widget, isA<DomainViewPage>());
-        expect((widget as DomainViewPage).viewItem, domainViewItem);
+        expect(widget, isA<ClimateDomainViewPage>());
+        expect((widget as ClimateDomainViewPage).viewItem, domainViewItem);
       });
 
       test('should route sensors domain to DomainViewPage placeholder', () {

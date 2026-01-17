@@ -69,11 +69,11 @@ void main() {
       expect(device.icon, MdiIcons.snowflake);
     });
 
-    test('should return correct icon for heater type', () {
+    test('should return correct icon for heating_unit type', () {
       const device = ClimateDevice(
         id: 'h1',
-        name: 'Heater',
-        type: 'heater',
+        name: 'Heating Unit',
+        type: 'heating_unit',
       );
       expect(device.icon, MdiIcons.fireCircle);
     });

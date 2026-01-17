@@ -109,7 +109,7 @@ String _generateEnumName(
   // For data_types with id, append the id to make it unique
   if (dataTypeId != null && dataTypeId != 'percentage' && dataTypeId != 'duration') {
     final dataTypePart = _snakeToPascalCase(dataTypeId);
-    return '${channelPart}${propertyPart}${dataTypePart}Value';
+    return '$channelPart$propertyPart${dataTypePart}Value';
   }
 
   return '$channelPart${propertyPart}Value';
@@ -129,7 +129,7 @@ void _addEnum(
     var uniqueName = enumName;
     var counter = 2;
     while (enums.containsKey(uniqueName)) {
-      uniqueName = '${enumName}$counter';
+      uniqueName = '$enumName$counter';
       counter++;
     }
     // ignore: avoid_print
@@ -244,10 +244,10 @@ void _writeEnum(StringBuffer buffer, String enumName, List<String> values) {
           'both normalize to identifier "$identifier"');
       // Generate a unique identifier by appending a counter
       var counter = 2;
-      var uniqueIdentifier = '${identifier}$counter';
+      var uniqueIdentifier = '$identifier$counter';
       while (usedIdentifiers.containsKey(uniqueIdentifier)) {
         counter++;
-        uniqueIdentifier = '${identifier}$counter';
+        uniqueIdentifier = '$identifier$counter';
       }
       identifier = uniqueIdentifier;
     }

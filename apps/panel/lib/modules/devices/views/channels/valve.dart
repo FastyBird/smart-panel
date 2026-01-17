@@ -27,8 +27,8 @@ class ValveChannelView extends ChannelView
   });
 
   @override
-  OnChannelPropertyView? get onProp =>
-      properties.whereType<OnChannelPropertyView>().firstOrNull;
+  OnChannelPropertyView get onProp =>
+      properties.whereType<OnChannelPropertyView>().first;
 
   TypeChannelPropertyView get typeProp =>
       properties.whereType<TypeChannelPropertyView>().first;
