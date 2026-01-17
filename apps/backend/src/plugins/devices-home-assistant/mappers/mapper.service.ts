@@ -137,20 +137,28 @@ export class MapperService {
 					if (property.haTransformer && value !== null) {
 						const transformer = this.transformerRegistry.getOrCreate(property.haTransformer);
 						if (transformer.canRead()) {
-							const rawTransformed = transformer.read(value);
-							// Ensure transformed value is the expected type
-							if (
-								typeof rawTransformed === 'string' ||
-								typeof rawTransformed === 'number' ||
-								typeof rawTransformed === 'boolean' ||
-								rawTransformed === null
-							) {
-								transformedValue = rawTransformed as string | number | boolean | null;
-							} else {
-								this.logger.warn(
-									`[MAP FROM HA] Transformer ${property.haTransformer} returned unexpected type ` +
-										`for property ${property.id}: ${typeof rawTransformed}`,
+							try {
+								const rawTransformed = transformer.read(value);
+								// Ensure transformed value is the expected type
+								if (
+									typeof rawTransformed === 'string' ||
+									typeof rawTransformed === 'number' ||
+									typeof rawTransformed === 'boolean' ||
+									rawTransformed === null
+								) {
+									transformedValue = rawTransformed as string | number | boolean | null;
+								} else {
+									this.logger.warn(
+										`[MAP FROM HA] Transformer ${property.haTransformer} returned unexpected type ` +
+											`for property ${property.id}: ${typeof rawTransformed}`,
+									);
+								}
+							} catch (error) {
+								this.logger.error(
+									`[MAP FROM HA] Transformer ${property.haTransformer} threw error for property ${property.id}: ` +
+										`${error instanceof Error ? error.message : String(error)}`,
 								);
+								// Fall back to original value on transformer error
 							}
 						}
 					} else if (!property.haTransformer && property.dataType === DataTypeType.BOOL && value !== null) {
@@ -207,16 +215,25 @@ export class MapperService {
 			if (property?.haTransformer) {
 				const transformer = this.transformerRegistry.getOrCreate(property.haTransformer);
 				if (transformer.canWrite()) {
-					const transformed = transformer.write(value);
-					const isValidType =
-						typeof transformed === 'string' || typeof transformed === 'number' || typeof transformed === 'boolean';
-					if (isValidType) {
-						transformedValues.set(propertyId, transformed);
-					} else {
-						this.logger.warn(
-							`[MAP TO HA] Transformer ${property.haTransformer} returned unexpected type ` +
-								`for property ${property.id}: ${typeof transformed}`,
+					try {
+						const transformed = transformer.write(value);
+						const isValidType =
+							typeof transformed === 'string' || typeof transformed === 'number' || typeof transformed === 'boolean';
+						if (isValidType) {
+							transformedValues.set(propertyId, transformed);
+						} else {
+							this.logger.warn(
+								`[MAP TO HA] Transformer ${property.haTransformer} returned unexpected type ` +
+									`for property ${property.id}: ${typeof transformed}`,
+							);
+							transformedValues.set(propertyId, value);
+						}
+					} catch (error) {
+						this.logger.error(
+							`[MAP TO HA] Transformer ${property.haTransformer} threw error for property ${property.id}: ` +
+								`${error instanceof Error ? error.message : String(error)}`,
 						);
+						// Fall back to original value on transformer error
 						transformedValues.set(propertyId, value);
 					}
 				} else {

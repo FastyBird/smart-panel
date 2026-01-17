@@ -78,5 +78,6 @@ export const HomeAssistantChannelPropertyResSchema: ZodType<ApiChannelProperty> 
 		type: z.literal(DEVICES_HOME_ASSISTANT_TYPE),
 		ha_entity_id: z.string().trim().nonempty().nullable(),
 		ha_attribute: z.string().trim().nonempty().nullable(),
+		ha_transformer: z.string().trim().nonempty().nullable(),
 	})
 );
