@@ -78,9 +78,9 @@ class DoorbellDeviceView extends DeviceView
   SpeakerChannelView? get speakerChannel =>
       channels.whereType<SpeakerChannelView>().firstOrNull;
 
-  ButtonEventValue? get doorbellEvent => doorbellChannel.event;
+  DoorbellEventValue? get doorbellEvent => doorbellChannel.event;
 
-  List<ButtonEventValue> get doorbellAvailableEvents =>
+  List<DoorbellEventValue> get doorbellAvailableEvents =>
       doorbellChannel.availableEvents;
 
   bool get hasDoorbellBrightness => doorbellChannel.hasBrightness;

@@ -35,8 +35,8 @@ class BatteryChannelView extends ChannelView
   bool get isOk {
     final ValueType? value = statusProp.value;
 
-    if (value is StringValueType && BatteryStateValue.contains(value.value)) {
-      return value.value == BatteryStateValue.ok.value;
+    if (value is StringValueType && BatteryStatusValue.contains(value.value)) {
+      return value.value == BatteryStatusValue.ok.value;
     }
 
     return false;
@@ -45,8 +45,8 @@ class BatteryChannelView extends ChannelView
   bool get isLow {
     final ValueType? value = statusProp.value;
 
-    if (value is StringValueType && BatteryStateValue.contains(value.value)) {
-      return value.value == BatteryStateValue.low.value;
+    if (value is StringValueType && BatteryStatusValue.contains(value.value)) {
+      return value.value == BatteryStatusValue.low.value;
     }
 
     return false;
@@ -55,8 +55,8 @@ class BatteryChannelView extends ChannelView
   bool get isCharging {
     final ValueType? value = statusProp.value;
 
-    if (value is StringValueType && BatteryStateValue.contains(value.value)) {
-      return value.value == BatteryStateValue.charging.value;
+    if (value is StringValueType && BatteryStatusValue.contains(value.value)) {
+      return value.value == BatteryStatusValue.charging.value;
     }
 
     return false;

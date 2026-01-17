@@ -42,10 +42,9 @@ class TelevisionDeviceView extends DeviceView
 
   int get televisionMaxBrightness => televisionChannel.maxBrightness;
 
-  TelevisionInputSourceValue? get televisionInputSource =>
-      televisionChannel.inputSource;
+  String? get televisionInputSource => televisionChannel.inputSource;
 
-  List<TelevisionInputSourceValue> get televisionAvailableInputSources =>
+  List<String> get televisionAvailableInputSources =>
       televisionChannel.availableInputSources;
 
   bool get hasTelevisionRemoteKey => televisionChannel.hasRemoteKey;

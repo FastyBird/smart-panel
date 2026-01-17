@@ -69,10 +69,10 @@ class WindowCoveringChannelView extends ChannelView
       }
     }
 
-    return WindowCoveringStatusValue.unknown;
+    return WindowCoveringStatusValue.stopped;
   }
 
-  bool get isOpen => status == WindowCoveringStatusValue.open;
+  bool get isOpen => status == WindowCoveringStatusValue.opened;
 
   bool get isClosed => status == WindowCoveringStatusValue.closed;
 

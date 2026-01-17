@@ -38,32 +38,27 @@ class TelevisionChannelView extends ChannelView
   RemoteKeyChannelPropertyView? get remoteKeyProp =>
       properties.whereType<RemoteKeyChannelPropertyView>().firstOrNull;
 
-  TelevisionInputSourceValue? get inputSource {
+  String? get inputSource {
     final ValueType? value = inputSourceProp.value;
 
-    if (value is StringValueType &&
-        TelevisionInputSourceValue.contains(value.value)) {
-      return TelevisionInputSourceValue.fromValue(value.value);
+    if (value is StringValueType) {
+      return value.value;
     }
 
     final ValueType? defaultValue = inputSourceProp.defaultValue;
 
-    if (defaultValue is StringValueType &&
-        TelevisionInputSourceValue.contains(defaultValue.value)) {
-      return TelevisionInputSourceValue.fromValue(defaultValue.value);
+    if (defaultValue is StringValueType) {
+      return defaultValue.value;
     }
 
     return null;
   }
 
-  List<TelevisionInputSourceValue> get availableInputSources {
+  List<String> get availableInputSources {
     final FormatType? format = inputSourceProp.format;
 
     if (format is StringListFormatType) {
-      return format.value
-          .map((item) => TelevisionInputSourceValue.fromValue(item))
-          .whereType<TelevisionInputSourceValue>()
-          .toList();
+      return format.value;
     }
 
     return [];

@@ -34,23 +34,23 @@ class DoorbellChannelView extends ChannelView
   TamperedChannelPropertyView? get tamperedProp =>
       properties.whereType<TamperedChannelPropertyView>().firstOrNull;
 
-  ButtonEventValue? get event {
+  DoorbellEventValue? get event {
     final ValueType? value = eventPropProp.value;
 
-    if (value is StringValueType && ButtonEventValue.contains(value.value)) {
-      return ButtonEventValue.fromValue(value.value);
+    if (value is StringValueType && DoorbellEventValue.contains(value.value)) {
+      return DoorbellEventValue.fromValue(value.value);
     }
 
     return null;
   }
 
-  List<ButtonEventValue> get availableEvents {
+  List<DoorbellEventValue> get availableEvents {
     final FormatType? format = eventPropProp.format;
 
     if (format is StringListFormatType) {
       return format.value
-          .map((item) => ButtonEventValue.fromValue(item))
-          .whereType<ButtonEventValue>()
+          .map((item) => DoorbellEventValue.fromValue(item))
+          .whereType<DoorbellEventValue>()
           .toList();
     }
 

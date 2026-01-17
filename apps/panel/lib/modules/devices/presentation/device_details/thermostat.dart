@@ -59,11 +59,6 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
       _thermostatModes.add(ThermostatModeType.auto);
     }
 
-    if (widget._device.thermostatAvailableModes
-        .contains(getValueFromMode(ThermostatModeType.manual))) {
-      _thermostatModes.add(ThermostatModeType.manual);
-    }
-
     if (widget._device.isOn == false) {
       _currentModeIndex = 0;
     } else {
@@ -132,11 +127,6 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
                         return AppBottomNavigationItem(
                           icon: Icon(MdiIcons.thermostatAuto),
                           label: localizations.thermostat_mode_auto,
-                        );
-                      case ThermostatModeType.manual:
-                        return AppBottomNavigationItem(
-                          icon: Icon(MdiIcons.gestureTap),
-                          label: localizations.thermostat_mode_manual,
                         );
                     }
                   })
@@ -1355,8 +1345,7 @@ enum ThermostatModeType {
   off('off'),
   heat('heat'),
   cool('cool'),
-  auto('auto'),
-  manual('manual');
+  auto('auto');
 
   final String value;
 
@@ -1377,7 +1366,6 @@ final Map<ThermostatModeValue, ThermostatModeType> modeValueMapping = {
   ThermostatModeValue.heat: ThermostatModeType.heat,
   ThermostatModeValue.cool: ThermostatModeType.cool,
   ThermostatModeValue.auto: ThermostatModeType.auto,
-  ThermostatModeValue.manual: ThermostatModeType.manual,
 };
 
 ThermostatModeType? getModeFromValue(ThermostatModeValue type) {
@@ -1389,7 +1377,6 @@ final Map<ThermostatModeType, ThermostatModeValue> valueModeMapping = {
   ThermostatModeType.heat: ThermostatModeValue.heat,
   ThermostatModeType.cool: ThermostatModeValue.cool,
   ThermostatModeType.auto: ThermostatModeValue.auto,
-  ThermostatModeType.manual: ThermostatModeValue.manual,
 };
 
 ThermostatModeValue? getValueFromMode(ThermostatModeType type) {

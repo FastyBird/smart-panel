@@ -63,7 +63,7 @@ class DoorChannelView extends ChannelView
     );
   }
 
-  bool get isOpen => status == DoorStatusValue.open;
+  bool get isOpen => status == DoorStatusValue.opened;
 
   bool get isClosed => status == DoorStatusValue.closed;
 

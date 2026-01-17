@@ -309,7 +309,7 @@ mixin DeviceDeviceInformationMixin {
   bool get hasDeviceInformationConnectionType =>
       deviceInformationChannel.hasConnectionType;
 
-  ConnectionTypeValue? get deviceInformationConnectionType =>
+  DeviceInformationConnectionTypeValue? get deviceInformationConnectionType =>
       deviceInformationChannel.connectionType;
 }
 
@@ -737,10 +737,10 @@ mixin DeviceNitrogenDioxideMixin {
 
   bool get hasNitrogenDioxideMode => nitrogenDioxideChannel?.hasMode ?? false;
 
-  NitrogenDioxideModeValues? get nitrogenDioxideMode =>
+  NitrogenDioxideModeValue? get nitrogenDioxideMode =>
       nitrogenDioxideChannel?.mode;
 
-  List<NitrogenDioxideModeValues> get nitrogenDioxideAvailableModes =>
+  List<NitrogenDioxideModeValue> get nitrogenDioxideAvailableModes =>
       nitrogenDioxideChannel?.availableModes ?? [];
 
   bool get hasNitrogenDioxideActive =>
