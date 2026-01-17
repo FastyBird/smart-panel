@@ -11,6 +11,7 @@ import { SpaceEntity } from '../entities/space.entity';
 import {
 	ClimateMode,
 	ClimateRole,
+	CoversMode,
 	CoversRole,
 	IntentCategory,
 	LightingMode,
@@ -1075,6 +1076,26 @@ export class CoversStateDataModel {
 	})
 	@Expose({ name: 'covers_by_role' })
 	coversByRole: Record<string, number>;
+
+	@ApiPropertyOptional({
+		name: 'last_applied_mode',
+		description: 'The last covers mode that was explicitly applied via intent (from storage)',
+		enum: CoversMode,
+		nullable: true,
+	})
+	@Expose({ name: 'last_applied_mode' })
+	lastAppliedMode: CoversMode | null;
+
+	@ApiPropertyOptional({
+		name: 'last_applied_at',
+		description: 'When the last mode was applied',
+		type: 'string',
+		format: 'date-time',
+		nullable: true,
+		example: null,
+	})
+	@Expose({ name: 'last_applied_at' })
+	lastAppliedAt: Date | null;
 }
 
 /**

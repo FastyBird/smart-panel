@@ -1129,6 +1129,8 @@ export class SpacesController {
 		stateData.allClosed = state.allClosed;
 		stateData.devicesCount = state.devicesCount;
 		stateData.coversByRole = state.coversByRole;
+		stateData.lastAppliedMode = state.lastAppliedMode;
+		stateData.lastAppliedAt = state.lastAppliedAt;
 
 		const response = new CoversStateResponseModel();
 		response.data = stateData;
