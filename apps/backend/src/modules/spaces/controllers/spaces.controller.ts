@@ -544,6 +544,10 @@ export class SpacesController {
 
 		const result = await this.spaceIntentService.executeLightingIntent(id, body.data);
 
+		if (!result) {
+			throw new SpacesNotFoundException('Space not found');
+		}
+
 		const resultData = new LightingIntentResultDataModel();
 		resultData.success = result.success;
 		resultData.affectedDevices = result.affectedDevices;
@@ -616,6 +620,10 @@ export class SpacesController {
 		this.logger.debug(`Executing climate intent for space with id=${id}`);
 
 		const result = await this.spaceIntentService.executeClimateIntent(id, body.data);
+
+		if (!result) {
+			throw new SpacesNotFoundException('Space not found');
+		}
 
 		const resultData = new ClimateIntentResultDataModel();
 		resultData.success = result.success;
@@ -1144,6 +1152,10 @@ export class SpacesController {
 		this.logger.debug(`Executing covers intent for space with id=${id}`);
 
 		const result = await this.spaceIntentService.executeCoversIntent(id, body.data);
+
+		if (!result) {
+			throw new SpacesNotFoundException('Space not found');
+		}
 
 		const resultData = new CoversIntentResultDataModel();
 		resultData.success = result.success;

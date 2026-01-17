@@ -71,8 +71,9 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 	/**
 	 * Execute a climate intent for the space.
 	 * Supports multi-device control based on mode and roles.
+	 * Returns null if space doesn't exist (controller should throw 404).
 	 */
-	async executeClimateIntent(spaceId: string, intent: ClimateIntentDto): Promise<ClimateIntentResult> {
+	async executeClimateIntent(spaceId: string, intent: ClimateIntentDto): Promise<ClimateIntentResult | null> {
 		const defaultResult: ClimateIntentResult = {
 			success: false,
 			affectedDevices: 0,
@@ -83,13 +84,13 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 			coolingSetpoint: null,
 		};
 
-		// Verify space exists
+		// Verify space exists - return null for controller to throw 404
 		const space = await this.spacesService.findOne(spaceId);
 
 		if (!space) {
 			this.logger.warn(`Space not found id=${spaceId}`);
 
-			return defaultResult;
+			return null;
 		}
 
 		// Get current climate state

@@ -128,14 +128,15 @@ export class CoversIntentService extends SpaceIntentBaseService {
 
 	/**
 	 * Execute a covers intent for all covers in a space.
+	 * Returns null if space doesn't exist (controller should throw 404).
 	 */
-	async executeCoversIntent(spaceId: string, intent: CoversIntentDto): Promise<CoversIntentResult> {
-		// Verify space exists
+	async executeCoversIntent(spaceId: string, intent: CoversIntentDto): Promise<CoversIntentResult | null> {
+		// Verify space exists - return null for controller to throw 404
 		const space = await this.spacesService.findOne(spaceId);
 
 		if (!space) {
 			this.logger.warn(`Space not found id=${spaceId}`);
-			return { success: false, affectedDevices: 0, failedDevices: 0, newPosition: null };
+			return null;
 		}
 
 		// Get all covers in the space

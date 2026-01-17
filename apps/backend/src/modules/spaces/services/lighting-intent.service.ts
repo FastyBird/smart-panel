@@ -158,15 +158,16 @@ export class LightingIntentService extends SpaceIntentBaseService {
 
 	/**
 	 * Execute a lighting intent for all lights in a space.
+	 * Returns null if space doesn't exist (controller should throw 404).
 	 */
-	async executeLightingIntent(spaceId: string, intent: LightingIntentDto): Promise<IntentExecutionResult> {
-		// Verify space exists
+	async executeLightingIntent(spaceId: string, intent: LightingIntentDto): Promise<IntentExecutionResult | null> {
+		// Verify space exists - return null for controller to throw 404
 		const space = await this.spacesService.findOne(spaceId);
 
 		if (!space) {
 			this.logger.warn(`Space not found id=${spaceId}`);
 
-			return { success: false, affectedDevices: 0, failedDevices: 0 };
+			return null;
 		}
 
 		// Get all lights in the space
