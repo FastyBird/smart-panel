@@ -1,6 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/payloads.dart';
+import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/mixins.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
@@ -60,14 +60,14 @@ class ThermostatChannelView extends ChannelView with ChannelActiveMixin {
           .toList();
     }
 
-    return [ThermostatModeValue.manual];
+    return [ThermostatModeValue.auto];
   }
 
   bool get showInCelsius {
     final ValueType? value = unitsProp?.value;
 
     if (value is StringValueType) {
-      return value.value == ThermostatUnitsValue.celsius.value;
+      return value.value == 'celsius';
     }
 
     return false;
@@ -77,7 +77,7 @@ class ThermostatChannelView extends ChannelView with ChannelActiveMixin {
     final ValueType? value = unitsProp?.value;
 
     if (value is StringValueType) {
-      return value.value == ThermostatUnitsValue.fahrenheit.value;
+      return value.value == 'fahrenheit';
     }
 
     return false;

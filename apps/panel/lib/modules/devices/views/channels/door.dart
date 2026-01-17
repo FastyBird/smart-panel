@@ -1,6 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/payloads.dart';
+import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/mixins.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
@@ -63,7 +63,7 @@ class DoorChannelView extends ChannelView
     );
   }
 
-  bool get isOpen => status == DoorStatusValue.open;
+  bool get isOpen => status == DoorStatusValue.opened;
 
   bool get isClosed => status == DoorStatusValue.closed;
 

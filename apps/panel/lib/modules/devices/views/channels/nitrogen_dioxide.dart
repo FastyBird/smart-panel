@@ -1,6 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/payloads.dart';
+import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/mixins.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
@@ -56,15 +56,15 @@ class NitrogenDioxideChannelView extends ChannelView
 
   bool get hasMode => modeProp != null;
 
-  NitrogenDioxideModeValues get mode {
+  NitrogenDioxideModeValue get mode {
     final ModeChannelPropertyView? prop = modeProp;
 
     final ValueType? value = prop?.value;
 
     if (value is StringValueType &&
-        NitrogenDioxideModeValues.contains(value.value)) {
-      NitrogenDioxideModeValues? converted =
-          NitrogenDioxideModeValues.fromValue(value.value);
+        NitrogenDioxideModeValue.contains(value.value)) {
+      NitrogenDioxideModeValue? converted =
+          NitrogenDioxideModeValue.fromValue(value.value);
 
       if (converted != null) {
         return converted;
@@ -74,9 +74,9 @@ class NitrogenDioxideChannelView extends ChannelView
     final ValueType? defaultValue = prop?.defaultValue;
 
     if (defaultValue is StringValueType &&
-        NitrogenDioxideModeValues.contains(defaultValue.value)) {
-      NitrogenDioxideModeValues? converted =
-          NitrogenDioxideModeValues.fromValue(defaultValue.value);
+        NitrogenDioxideModeValue.contains(defaultValue.value)) {
+      NitrogenDioxideModeValue? converted =
+          NitrogenDioxideModeValue.fromValue(defaultValue.value);
 
       if (converted != null) {
         return converted;
@@ -88,15 +88,15 @@ class NitrogenDioxideChannelView extends ChannelView
     );
   }
 
-  List<NitrogenDioxideModeValues> get availableModes {
+  List<NitrogenDioxideModeValue> get availableModes {
     final ModeChannelPropertyView? prop = modeProp;
 
     final FormatType? format = prop?.format;
 
     if (format is StringListFormatType) {
       return format.value
-          .map((item) => NitrogenDioxideModeValues.fromValue(item))
-          .whereType<NitrogenDioxideModeValues>()
+          .map((item) => NitrogenDioxideModeValue.fromValue(item))
+          .whereType<NitrogenDioxideModeValue>()
           .toList();
     }
 

@@ -1,4 +1,4 @@
-import 'package:fastybird_smart_panel/modules/devices/types/payloads.dart';
+import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/device_information.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/speaker.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/television.dart';
@@ -42,10 +42,9 @@ class TelevisionDeviceView extends DeviceView
 
   int get televisionMaxBrightness => televisionChannel.maxBrightness;
 
-  TelevisionInputSourceValue? get televisionInputSource =>
-      televisionChannel.inputSource;
+  String? get televisionInputSource => televisionChannel.inputSource;
 
-  List<TelevisionInputSourceValue> get televisionAvailableInputSources =>
+  List<String> get televisionAvailableInputSources =>
       televisionChannel.availableInputSources;
 
   bool get hasTelevisionRemoteKey => televisionChannel.hasRemoteKey;

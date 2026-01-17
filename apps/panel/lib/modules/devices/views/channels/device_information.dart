@@ -1,5 +1,5 @@
 import 'package:collection/collection.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/payloads.dart';
+import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/mixins.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
@@ -133,13 +133,13 @@ class DeviceInformationChannelView extends ChannelView with ChannelFaultMixin {
 
   bool get hasConnectionType => connectionTypeProp != null;
 
-  ConnectionTypeValue? get connectionType {
+  DeviceInformationConnectionTypeValue? get connectionType {
     final ConnectionTypeChannelPropertyView? prop = connectionTypeProp;
 
     final ValueType? value = prop?.value;
 
-    if (value is StringValueType && ConnectionTypeValue.contains(value.value)) {
-      return ConnectionTypeValue.fromValue(value.value);
+    if (value is StringValueType && DeviceInformationConnectionTypeValue.contains(value.value)) {
+      return DeviceInformationConnectionTypeValue.fromValue(value.value);
     }
 
     return null;
@@ -147,14 +147,14 @@ class DeviceInformationChannelView extends ChannelView with ChannelFaultMixin {
 
   bool get hasStatusProp => statusProp != null;
 
-  ConnectionStatusValue? get status {
+  DeviceInformationStatusValue? get status {
     final StatusChannelPropertyView? prop = statusProp;
 
     final ValueType? value = prop?.value;
 
     if (value is StringValueType &&
-        ConnectionStatusValue.contains(value.value)) {
-      return ConnectionStatusValue.fromValue(value.value);
+        DeviceInformationStatusValue.contains(value.value)) {
+      return DeviceInformationStatusValue.fromValue(value.value);
     }
 
     return null;

@@ -7,7 +7,7 @@ import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/colored_slider.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/payloads.dart';
+import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/window_covering.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -335,7 +335,7 @@ class _WindowCoveringStatus extends StatelessWidget {
 
   IconData _getStatusIcon(WindowCoveringStatusValue status) {
     switch (status) {
-      case WindowCoveringStatusValue.open:
+      case WindowCoveringStatusValue.opened:
         return MdiIcons.arrowExpandVertical;
       case WindowCoveringStatusValue.closed:
         return MdiIcons.arrowCollapseVertical;
@@ -345,8 +345,6 @@ class _WindowCoveringStatus extends StatelessWidget {
         return MdiIcons.arrowDown;
       case WindowCoveringStatusValue.stopped:
         return MdiIcons.pause;
-      case WindowCoveringStatusValue.unknown:
-        return MdiIcons.helpCircleOutline;
     }
   }
 
@@ -354,7 +352,7 @@ class _WindowCoveringStatus extends StatelessWidget {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
 
     switch (status) {
-      case WindowCoveringStatusValue.open:
+      case WindowCoveringStatusValue.opened:
         return isLight ? AppColorsLight.success : AppColorsDark.success;
       case WindowCoveringStatusValue.closed:
         return isLight ? AppTextColorLight.placeholder : AppTextColorDark.placeholder;
@@ -363,8 +361,6 @@ class _WindowCoveringStatus extends StatelessWidget {
         return isLight ? AppColorsLight.info : AppColorsDark.info;
       case WindowCoveringStatusValue.stopped:
         return isLight ? AppColorsLight.warning : AppColorsDark.warning;
-      case WindowCoveringStatusValue.unknown:
-        return isLight ? AppTextColorLight.placeholder : AppTextColorDark.placeholder;
     }
   }
 
@@ -373,7 +369,7 @@ class _WindowCoveringStatus extends StatelessWidget {
     WindowCoveringStatusValue status,
   ) {
     switch (status) {
-      case WindowCoveringStatusValue.open:
+      case WindowCoveringStatusValue.opened:
         return localizations.window_covering_status_open;
       case WindowCoveringStatusValue.closed:
         return localizations.window_covering_status_closed;
@@ -383,8 +379,6 @@ class _WindowCoveringStatus extends StatelessWidget {
         return localizations.window_covering_status_closing;
       case WindowCoveringStatusValue.stopped:
         return localizations.window_covering_status_stopped;
-      case WindowCoveringStatusValue.unknown:
-        return localizations.value_not_available;
     }
   }
 }

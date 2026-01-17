@@ -1,6 +1,6 @@
 import 'dart:ui';
 
-import 'package:fastybird_smart_panel/modules/devices/types/payloads.dart';
+import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/air_particulate.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/battery.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/camera.dart';
@@ -309,7 +309,7 @@ mixin DeviceDeviceInformationMixin {
   bool get hasDeviceInformationConnectionType =>
       deviceInformationChannel.hasConnectionType;
 
-  ConnectionTypeValue? get deviceInformationConnectionType =>
+  DeviceInformationConnectionTypeValue? get deviceInformationConnectionType =>
       deviceInformationChannel.connectionType;
 }
 
@@ -737,10 +737,10 @@ mixin DeviceNitrogenDioxideMixin {
 
   bool get hasNitrogenDioxideMode => nitrogenDioxideChannel?.hasMode ?? false;
 
-  NitrogenDioxideModeValues? get nitrogenDioxideMode =>
+  NitrogenDioxideModeValue? get nitrogenDioxideMode =>
       nitrogenDioxideChannel?.mode;
 
-  List<NitrogenDioxideModeValues> get nitrogenDioxideAvailableModes =>
+  List<NitrogenDioxideModeValue> get nitrogenDioxideAvailableModes =>
       nitrogenDioxideChannel?.availableModes ?? [];
 
   bool get hasNitrogenDioxideActive =>

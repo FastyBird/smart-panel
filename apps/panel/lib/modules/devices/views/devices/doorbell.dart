@@ -1,4 +1,4 @@
-import 'package:fastybird_smart_panel/modules/devices/types/payloads.dart';
+import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/battery.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/camera.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/contact.dart';
@@ -78,9 +78,9 @@ class DoorbellDeviceView extends DeviceView
   SpeakerChannelView? get speakerChannel =>
       channels.whereType<SpeakerChannelView>().firstOrNull;
 
-  ButtonEventValue? get doorbellEvent => doorbellChannel.event;
+  DoorbellEventValue? get doorbellEvent => doorbellChannel.event;
 
-  List<ButtonEventValue> get doorbellAvailableEvents =>
+  List<DoorbellEventValue> get doorbellAvailableEvents =>
       doorbellChannel.availableEvents;
 
   bool get hasDoorbellBrightness => doorbellChannel.hasBrightness;
