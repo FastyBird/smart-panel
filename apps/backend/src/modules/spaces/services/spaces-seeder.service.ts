@@ -61,8 +61,11 @@ export class SpacesSeederService implements Seeder {
 		if (spaces.length) {
 			for (const space of spaces) {
 				try {
-					await this.createSpace(space);
-					seededSpaces++;
+					const created = await this.createSpace(space);
+
+					if (created) {
+						seededSpaces++;
+					}
 				} catch (error) {
 					const err = error as Error;
 
@@ -77,8 +80,11 @@ export class SpacesSeederService implements Seeder {
 		if (lightingRoles.length) {
 			for (const role of lightingRoles) {
 				try {
-					await this.createLightingRole(role);
-					seededLightingRoles++;
+					const created = await this.createLightingRole(role);
+
+					if (created) {
+						seededLightingRoles++;
+					}
 				} catch (error) {
 					const err = error as Error;
 
@@ -96,8 +102,11 @@ export class SpacesSeederService implements Seeder {
 		if (climateRoles.length) {
 			for (const role of climateRoles) {
 				try {
-					await this.createClimateRole(role);
-					seededClimateRoles++;
+					const created = await this.createClimateRole(role);
+
+					if (created) {
+						seededClimateRoles++;
+					}
 				} catch (error) {
 					const err = error as Error;
 
@@ -116,7 +125,7 @@ export class SpacesSeederService implements Seeder {
 		);
 	}
 
-	private async createSpace(space: Record<string, any>): Promise<void> {
+	private async createSpace(space: Record<string, any>): Promise<boolean> {
 		// Check if space with this ID already exists
 		if (space.id) {
 			const existingSpace = await this.spacesService.findOne(space.id as string);
@@ -124,7 +133,7 @@ export class SpacesSeederService implements Seeder {
 			if (existingSpace) {
 				this.logger.debug(`[SEED] Space with id=${space.id} already exists, skipping`);
 
-				return;
+				return false;
 			}
 		}
 
@@ -133,15 +142,17 @@ export class SpacesSeederService implements Seeder {
 		await this.spacesService.create(dtoInstance);
 
 		this.logger.debug(`[SEED] Created space: ${space.name}`);
+
+		return true;
 	}
 
-	private async createLightingRole(role: Record<string, any>): Promise<void> {
+	private async createLightingRole(role: Record<string, any>): Promise<boolean> {
 		const spaceId = role['space_id'] as string | undefined;
 
 		if (typeof spaceId !== 'string' || !uuidValidate(spaceId)) {
 			this.logger.error(`[SEED] Lighting role space_id=${spaceId} is not a valid UUIDv4`);
 
-			return;
+			return false;
 		}
 
 		// Verify space exists
@@ -150,7 +161,7 @@ export class SpacesSeederService implements Seeder {
 		if (!space) {
 			this.logger.error(`[SEED] Space with id=${spaceId} not found for lighting role`);
 
-			return;
+			return false;
 		}
 
 		const dto: SetLightingRoleDto = {
@@ -163,15 +174,17 @@ export class SpacesSeederService implements Seeder {
 		await this.lightingRoleService.setRole(spaceId, dto);
 
 		this.logger.debug(`[SEED] Created lighting role for device=${dto.deviceId} channel=${dto.channelId}`);
+
+		return true;
 	}
 
-	private async createClimateRole(role: Record<string, any>): Promise<void> {
+	private async createClimateRole(role: Record<string, any>): Promise<boolean> {
 		const spaceId = role['space_id'] as string | undefined;
 
 		if (typeof spaceId !== 'string' || !uuidValidate(spaceId)) {
 			this.logger.error(`[SEED] Climate role space_id=${spaceId} is not a valid UUIDv4`);
 
-			return;
+			return false;
 		}
 
 		// Verify space exists
@@ -180,7 +193,7 @@ export class SpacesSeederService implements Seeder {
 		if (!space) {
 			this.logger.error(`[SEED] Space with id=${spaceId} not found for climate role`);
 
-			return;
+			return false;
 		}
 
 		const dto: SetClimateRoleDto = {
@@ -193,5 +206,7 @@ export class SpacesSeederService implements Seeder {
 		await this.climateRoleService.setRole(spaceId, dto);
 
 		this.logger.debug(`[SEED] Created climate role for device=${dto.deviceId}`);
+
+		return true;
 	}
 }
