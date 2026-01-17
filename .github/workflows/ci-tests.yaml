@@ -203,6 +203,33 @@ jobs:
       - name: "Run Dart Analyzer"
         run: "melos run analyze"
 
+  panel-tests:
+    needs: "check-skip"
+    if: needs.check-skip.outputs.skip == 'false'
+    name: "Panel code tests"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      fail-fast: false
+      matrix:
+        flutter-version: [ "3.27.0" ]
+        flutter-channel: [ "stable" ]
+        operating-system: [ "ubuntu-latest" ]
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+
+      - name: "Setup Flutter"
+        uses: "./.github/actions/setup-flutter-project"
+        with:
+          flutter-version: "${{ matrix.flutter-version }}"
+          flutter-channel: "${{ matrix.flutter-channel }}"
+
+      - name: "Run Flutter Tests"
+        working-directory: "apps/panel"
+        run: "flutter test"
+
   website-build:
     needs: "check-skip"
     if: needs.check-skip.outputs.skip == 'false'
