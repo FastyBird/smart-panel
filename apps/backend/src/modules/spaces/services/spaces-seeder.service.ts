@@ -6,8 +6,8 @@ import { Injectable } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { SeedTools, Seeder } from '../../seed/services/seed.service';
-import { CreateSpaceDto } from '../dto/create-space.dto';
 import { SetClimateRoleDto } from '../dto/climate-role.dto';
+import { CreateSpaceDto } from '../dto/create-space.dto';
 import { SetLightingRoleDto } from '../dto/lighting-role.dto';
 import { SPACES_MODULE_NAME } from '../spaces.constants';
 

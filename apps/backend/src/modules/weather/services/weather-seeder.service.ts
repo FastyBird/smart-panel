@@ -8,8 +8,8 @@ import { SeedTools, Seeder } from '../../seed/services/seed.service';
 import { CreateLocationDto } from '../dto/create-location.dto';
 import { WEATHER_MODULE_NAME } from '../weather.constants';
 
-import { LocationsService } from './locations.service';
 import { LocationsTypeMapperService } from './locations-type-mapper.service';
+import { LocationsService } from './locations.service';
 
 // Default seed file name
 const DEFAULT_LOCATIONS_FILE = 'weather_locations.json';
@@ -69,7 +69,7 @@ export class WeatherSeederService implements Seeder {
 
 				const dtoInstance = toInstance(mapping.createDto, location);
 
-				await this.locationsService.create(dtoInstance as CreateLocationDto);
+				await this.locationsService.create(dtoInstance);
 
 				seededLocations++;
 
