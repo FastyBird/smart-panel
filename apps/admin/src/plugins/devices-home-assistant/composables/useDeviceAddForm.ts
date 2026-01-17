@@ -387,7 +387,7 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 								// Use prop.haEntityId if available (from mapping preview), otherwise fallback to entity.entityId
 								haEntityId: prop.haEntityId ?? entity.entityId,
 								// Include transformer from YAML mapping if specified
-								ha_transformer: prop.ha_transformer ?? null,
+								haTransformer: prop.haTransformer ?? null,
 							})),
 						};
 					});

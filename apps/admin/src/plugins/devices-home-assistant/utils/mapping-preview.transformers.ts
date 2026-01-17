@@ -81,6 +81,7 @@ export const transformAdoptHelperRequest = (data: IAdoptDeviceRequest): object =
 				permissions: prop.permissions,
 				unit: prop.unit ?? null,
 				format: prop.format ?? null,
+				ha_transformer: prop.haTransformer ?? null,
 			})),
 		})),
 	};
@@ -214,7 +215,7 @@ export const transformHelperMappingPreviewResponse = (response: object): IMappin
 			// All properties map back to the original entity
 			haEntityId: camelResponse.helper.entityId,
 			// Include transformer from YAML mapping if specified
-			ha_transformer: prop.ha_transformer ?? null,
+			haTransformer: prop.haTransformer ?? null,
 		})),
 		unmappedAttributes: [],
 		missingRequiredProperties: [],
