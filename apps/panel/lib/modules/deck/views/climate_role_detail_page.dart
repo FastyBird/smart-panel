@@ -199,11 +199,15 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
       // Clamp target temp to valid setpoint range to avoid UI inconsistencies
       final rawTargetTemp =
           climateState.targetTemperature ?? _state.targetTemp;
-      // Ensure min <= max to prevent clamp() ArgumentError from malformed API data
-      final safeMinSetpoint =
+      // Ensure min < max to prevent clamp() ArgumentError and satisfy
+      // CircularControlDial assertion (maxValue > minValue requires strict inequality)
+      var safeMinSetpoint =
           math.min(climateState.minSetpoint, climateState.maxSetpoint);
-      final safeMaxSetpoint =
+      var safeMaxSetpoint =
           math.max(climateState.minSetpoint, climateState.maxSetpoint);
+      if (safeMaxSetpoint <= safeMinSetpoint) {
+        safeMaxSetpoint = safeMinSetpoint + 1.0;
+      }
       final clampedTargetTemp =
           rawTargetTemp.clamp(safeMinSetpoint, safeMaxSetpoint);
 
