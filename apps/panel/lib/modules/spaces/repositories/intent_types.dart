@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/modules/spaces/models/covers_state/covers_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
 
 /// Types of lighting intents that can be executed on a space.
@@ -54,6 +55,35 @@ enum ClimateIntentType {
 /// - [medium]: Moderate adjustment (e.g., 1°C)
 /// - [large]: Significant adjustment (e.g., 2°C)
 enum SetpointDelta {
+  small,
+  medium,
+  large,
+}
+
+/// Types of covers intents that can be executed on a space.
+///
+/// Each type corresponds to a specific covers action:
+/// - [open]: Open all covers
+/// - [close]: Close all covers
+/// - [setPosition]: Set covers to a specific position (0-100)
+/// - [positionDelta]: Adjust position by a relative amount
+/// - [rolePosition]: Set position for covers with a specific role
+/// - [setMode]: Set covers mode (e.g., normal, privacy)
+enum CoversIntentType {
+  open,
+  close,
+  setPosition,
+  positionDelta,
+  rolePosition,
+  setMode,
+}
+
+/// Size of position adjustment for delta-based covers changes.
+///
+/// - [small]: Minor adjustment (e.g., 10%)
+/// - [medium]: Moderate adjustment (e.g., 25%)
+/// - [large]: Significant adjustment (e.g., 50%)
+enum PositionDelta {
   small,
   medium,
   large,
@@ -152,5 +182,51 @@ String lightingRoleToString(LightingStateRole role) {
       return 'night';
     case LightingStateRole.other:
       return 'other';
+  }
+}
+
+/// Convert CoversIntentType to API string
+String coversIntentTypeToString(CoversIntentType type) {
+  switch (type) {
+    case CoversIntentType.open:
+      return 'open';
+    case CoversIntentType.close:
+      return 'close';
+    case CoversIntentType.setPosition:
+      return 'set_position';
+    case CoversIntentType.positionDelta:
+      return 'position_delta';
+    case CoversIntentType.rolePosition:
+      return 'role_position';
+    case CoversIntentType.setMode:
+      return 'set_mode';
+  }
+}
+
+/// Convert PositionDelta to API string
+String positionDeltaToString(PositionDelta delta) {
+  switch (delta) {
+    case PositionDelta.small:
+      return 'small';
+    case PositionDelta.medium:
+      return 'medium';
+    case PositionDelta.large:
+      return 'large';
+  }
+}
+
+/// Convert CoversStateRole to API string
+String coversRoleToString(CoversStateRole role) {
+  switch (role) {
+    case CoversStateRole.primary:
+      return 'primary';
+    case CoversStateRole.blackout:
+      return 'blackout';
+    case CoversStateRole.sheer:
+      return 'sheer';
+    case CoversStateRole.outdoor:
+      return 'outdoor';
+    case CoversStateRole.hidden:
+      return 'hidden';
   }
 }

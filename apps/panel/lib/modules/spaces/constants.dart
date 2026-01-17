@@ -20,9 +20,18 @@ class SpacesModuleConstants {
   static const String climateTargetDeletedEvent =
       'SpacesModule.ClimateTarget.Deleted';
 
+  static const String coversTargetCreatedEvent =
+      'SpacesModule.CoversTarget.Created';
+  static const String coversTargetUpdatedEvent =
+      'SpacesModule.CoversTarget.Updated';
+  static const String coversTargetDeletedEvent =
+      'SpacesModule.CoversTarget.Deleted';
+
   // Aggregated state change events
   static const String lightingStateChangedEvent =
       'SpacesModule.Space.LightingStateChanged';
   static const String climateStateChangedEvent =
       'SpacesModule.Space.ClimateStateChanged';
+  static const String coversStateChangedEvent =
+      'SpacesModule.Space.CoversStateChanged';
 }
