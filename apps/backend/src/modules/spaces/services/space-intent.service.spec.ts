@@ -229,7 +229,7 @@ describe('SpaceIntentService', () => {
 		it('should handle set setpoint intent', async () => {
 			const intent: ClimateIntentDto = {
 				type: ClimateIntentType.SETPOINT_SET,
-				value: 25.0,
+				heatingSetpoint: 25.0,
 			};
 			const expectedResult: ClimateIntentResult = {
 				success: true,

@@ -621,7 +621,11 @@ export class SpacesController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() body: ReqClimateIntentDto,
 	): Promise<ClimateIntentResponseModel> {
-		this.logger.debug(`Executing climate intent for space with id=${id}`);
+		this.logger.debug(
+			`Executing climate intent for space with id=${id}, ` +
+				`type=${body.data.type}, mode=${body.data.mode}, ` +
+				`heatingSetpoint=${body.data.heatingSetpoint}, coolingSetpoint=${body.data.coolingSetpoint}`,
+		);
 
 		const result = await this.spaceIntentService.executeClimateIntent(id, body.data);
 

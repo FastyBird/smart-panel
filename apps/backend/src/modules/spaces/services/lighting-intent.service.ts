@@ -2,12 +2,14 @@ import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { toInstance } from '../../../common/utils/transform.utils';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
 import { LightingIntentDto } from '../dto/lighting-intent.dto';
+import { LightingStateDataModel } from '../models/spaces-response.model';
 import {
 	BrightnessDelta,
 	EventType,
@@ -233,9 +235,12 @@ export class LightingIntentService extends SpaceIntentBaseService {
 			const state = await this.lightingStateService.getLightingState(spaceId);
 
 			if (state) {
+				// Convert to LightingStateDataModel for proper snake_case serialization via WebSocket
+				const stateModel = toInstance(LightingStateDataModel, state);
+
 				this.eventEmitter.emit(EventType.LIGHTING_STATE_CHANGED, {
 					space_id: spaceId,
-					state,
+					state: stateModel,
 				});
 
 				this.logger.debug(`Emitted lighting state change event spaceId=${spaceId}`);

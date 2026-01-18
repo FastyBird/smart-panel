@@ -2,10 +2,12 @@ import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { toInstance } from '../../../common/utils/transform.utils';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
 import { CoversIntentDto } from '../dto/covers-intent.dto';
+import { CoversStateDataModel } from '../models/spaces-response.model';
 import {
 	COVERS_MODE_ORCHESTRATION,
 	CoversIntentType,
@@ -473,9 +475,12 @@ export class CoversIntentService extends SpaceIntentBaseService {
 			const state = await this.coversStateService.getCoversState(spaceId);
 
 			if (state) {
+				// Convert to CoversStateDataModel for proper snake_case serialization via WebSocket
+				const stateModel = toInstance(CoversStateDataModel, state);
+
 				this.eventEmitter.emit(EventType.COVERS_STATE_CHANGED, {
 					space_id: spaceId,
-					state,
+					state: stateModel,
 				});
 
 				this.logger.debug(`Emitted covers state change event spaceId=${spaceId}`);

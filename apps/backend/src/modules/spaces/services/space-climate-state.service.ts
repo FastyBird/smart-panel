@@ -243,7 +243,19 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 		}
 
 		// Detect current mode from device states
-		const mode = this.detectClimateMode(primaryDevices);
+		const detectedMode = this.detectClimateMode(primaryDevices);
+
+		// Get last applied mode from InfluxDB (user's intent, more reliable than detected mode)
+		const lastApplied = await this.intentTimeseriesService.getLastClimateMode(spaceId);
+		const lastAppliedMode = lastApplied?.mode
+			? Object.values(ClimateMode).includes(lastApplied.mode as ClimateMode)
+				? (lastApplied.mode as ClimateMode)
+				: null
+			: null;
+
+		// Use lastAppliedMode for calculations if available, as detected mode may be stale
+		// immediately after a mode change (devices take time to update their state)
+		const effectiveMode = lastAppliedMode ?? detectedMode;
 
 		// Calculate target temperatures based on mode
 		let targetTemperature: number | null = null;
@@ -257,12 +269,12 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 			coolingSetpoint = coolingSetpoints.reduce((a, b) => a + b, 0) / coolingSetpoints.length;
 		}
 
-		// Set targetTemperature based on mode
-		if (mode === ClimateMode.HEAT && heatingSetpoint !== null) {
+		// Set targetTemperature based on effective mode (lastApplied or detected)
+		if (effectiveMode === ClimateMode.HEAT && heatingSetpoint !== null) {
 			targetTemperature = heatingSetpoint;
-		} else if (mode === ClimateMode.COOL && coolingSetpoint !== null) {
+		} else if (effectiveMode === ClimateMode.COOL && coolingSetpoint !== null) {
 			targetTemperature = coolingSetpoint;
-		} else if (mode === ClimateMode.AUTO) {
+		} else if (effectiveMode === ClimateMode.AUTO) {
 			// In AUTO mode, use the average of both setpoints as "target"
 			if (heatingSetpoint !== null && coolingSetpoint !== null) {
 				targetTemperature = (heatingSetpoint + coolingSetpoint) / 2;
@@ -276,17 +288,9 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 
 		const canSetSetpoint = supportsHeating || supportsCooling;
 
-		// Get last applied mode from InfluxDB
-		const lastApplied = await this.intentTimeseriesService.getLastClimateMode(spaceId);
-		const lastAppliedMode = lastApplied?.mode
-			? Object.values(ClimateMode).includes(lastApplied.mode as ClimateMode)
-				? (lastApplied.mode as ClimateMode)
-				: null
-			: null;
-
 		return {
 			hasClimate: true,
-			mode,
+			mode: detectedMode,
 			currentTemperature: currentTemperature !== null ? Math.round(currentTemperature * 10) / 10 : null,
 			currentHumidity: currentHumidity !== null ? Math.round(currentHumidity) : null,
 			targetTemperature: targetTemperature !== null ? Math.round(targetTemperature * 2) / 2 : null,

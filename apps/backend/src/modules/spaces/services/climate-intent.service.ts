@@ -2,10 +2,12 @@ import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { toInstance } from '../../../common/utils/transform.utils';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
 import { ClimateIntentDto } from '../dto/climate-intent.dto';
+import { ClimateStateDataModel } from '../models/spaces-response.model';
 import {
 	ClimateIntentType,
 	ClimateMode,
@@ -336,11 +338,20 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		intent: ClimateIntentDto,
 		climateState: ClimateState,
 	): Promise<ClimateIntentResult> {
-		const mode = climateState.mode;
+		// Use lastAppliedMode (user's intent) if available, as detected mode may be stale
+		// immediately after a mode change (devices take time to update their state)
+		const mode = climateState.lastAppliedMode ?? climateState.mode;
 		let affectedDevices = 0;
 		let failedDevices = 0;
 
-		// Determine setpoints based on intent and mode
+		this.logger.debug(
+			`executeSetpointSetIntent: heatingSetpoint=${intent.heatingSetpoint}, coolingSetpoint=${intent.coolingSetpoint}, ` +
+				`lastAppliedMode=${climateState.lastAppliedMode}, detectedMode=${climateState.mode}, effectiveMode=${mode}`,
+		);
+
+		// Determine setpoints based on intent
+		// The panel sends heatingSetpoint for heat/off modes, coolingSetpoint for cool mode,
+		// and both for auto mode
 		let heatingSetpoint: number | null = null;
 		let coolingSetpoint: number | null = null;
 
@@ -354,21 +365,11 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		} else if (intent.coolingSetpoint !== undefined) {
 			// Only cooling setpoint provided - apply to cooling devices
 			coolingSetpoint = this.clampSetpoint(intent.coolingSetpoint, climateState.minSetpoint, climateState.maxSetpoint);
-		} else if (intent.value !== undefined) {
-			// Single value - apply based on mode
-			const value = this.clampSetpoint(intent.value, climateState.minSetpoint, climateState.maxSetpoint);
-			if (mode === ClimateMode.HEAT || mode === ClimateMode.OFF) {
-				heatingSetpoint = value;
-			}
-			if (mode === ClimateMode.COOL || mode === ClimateMode.OFF) {
-				coolingSetpoint = value;
-			}
-			if (mode === ClimateMode.AUTO) {
-				// In AUTO mode with single value, set both (this synchronizes devices)
-				heatingSetpoint = value;
-				coolingSetpoint = value;
-			}
 		}
+
+		this.logger.debug(
+			`executeSetpointSetIntent: determined heatingSetpoint=${heatingSetpoint}, coolingSetpoint=${coolingSetpoint}`,
+		);
 
 		// Apply setpoints to devices based on their roles and capabilities
 		for (const device of devices) {
@@ -482,17 +483,6 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 			coolingSetpoint: coolingSetpoint ?? undefined,
 		};
 
-		// If we only have one setpoint, use value instead
-		if (heatingSetpoint !== null && coolingSetpoint === null) {
-			setIntent.value = heatingSetpoint;
-			delete setIntent.heatingSetpoint;
-			delete setIntent.coolingSetpoint;
-		} else if (coolingSetpoint !== null && heatingSetpoint === null) {
-			setIntent.value = coolingSetpoint;
-			delete setIntent.heatingSetpoint;
-			delete setIntent.coolingSetpoint;
-		}
-
 		return this.executeSetpointSetIntent(devices, setIntent, climateState);
 	}
 
@@ -515,24 +505,46 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 
 		// Set heating setpoint
 		if (heatingSetpoint !== null && device.heaterSetpointProperty && device.heaterChannel) {
+			this.logger.debug(
+				`setDeviceSetpoints: device=${device.device.id}, heatingSetpoint=${heatingSetpoint}, ` +
+					`heaterMin=${device.heaterMinSetpoint}, heaterMax=${device.heaterMaxSetpoint}`,
+			);
 			const clampedValue = this.clampSetpoint(heatingSetpoint, device.heaterMinSetpoint, device.heaterMaxSetpoint);
+			this.logger.debug(`setDeviceSetpoints: clampedValue=${clampedValue}`);
 			commands.push({
 				device: device.device,
 				channel: device.heaterChannel,
 				property: device.heaterSetpointProperty,
 				value: clampedValue,
 			});
+		} else if (heatingSetpoint !== null) {
+			this.logger.debug(
+				`Cannot set heating setpoint on device id=${device.device.id}: ` +
+					`heaterChannel=${device.heaterChannel?.id ?? 'null'}, ` +
+					`heaterSetpointProperty=${device.heaterSetpointProperty?.id ?? 'null'}`,
+			);
 		}
 
 		// Set cooling setpoint
 		if (coolingSetpoint !== null && device.coolerSetpointProperty && device.coolerChannel) {
+			this.logger.debug(
+				`setDeviceSetpoints: device=${device.device.id}, coolingSetpoint=${coolingSetpoint}, ` +
+					`coolerMin=${device.coolerMinSetpoint}, coolerMax=${device.coolerMaxSetpoint}`,
+			);
 			const clampedValue = this.clampSetpoint(coolingSetpoint, device.coolerMinSetpoint, device.coolerMaxSetpoint);
+			this.logger.debug(`setDeviceSetpoints: cooler clampedValue=${clampedValue}`);
 			commands.push({
 				device: device.device,
 				channel: device.coolerChannel,
 				property: device.coolerSetpointProperty,
 				value: clampedValue,
 			});
+		} else if (coolingSetpoint !== null) {
+			this.logger.debug(
+				`Cannot set cooling setpoint on device id=${device.device.id}: ` +
+					`coolerChannel=${device.coolerChannel?.id ?? 'null'}, ` +
+					`coolerSetpointProperty=${device.coolerSetpointProperty?.id ?? 'null'}`,
+			);
 		}
 
 		if (commands.length === 0) {
@@ -584,7 +596,9 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		let modeFailed = 0;
 		let setpointAffected = 0;
 		let setpointFailed = 0;
-		const mode = intent.mode ?? climateState.mode;
+		// Use intent.mode if provided, otherwise use lastAppliedMode (user's intent) if available,
+		// as detected mode may be stale immediately after a mode change
+		const mode = intent.mode ?? climateState.lastAppliedMode ?? climateState.mode;
 		let heatingSetpoint: number | null = null;
 		let coolingSetpoint: number | null = null;
 
@@ -612,8 +626,7 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		}
 
 		// Step 2: Set setpoints if provided
-		const hasSetpoints =
-			intent.value !== undefined || intent.heatingSetpoint !== undefined || intent.coolingSetpoint !== undefined;
+		const hasSetpoints = intent.heatingSetpoint !== undefined || intent.coolingSetpoint !== undefined;
 
 		if (hasSetpoints) {
 			// Determine setpoints based on intent and mode
@@ -629,19 +642,6 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 					climateState.minSetpoint,
 					climateState.maxSetpoint,
 				);
-			} else if (intent.value !== undefined) {
-				// Single value - apply based on mode
-				const value = this.clampSetpoint(intent.value, climateState.minSetpoint, climateState.maxSetpoint);
-				if (mode === ClimateMode.HEAT || mode === ClimateMode.OFF) {
-					heatingSetpoint = value;
-				}
-				if (mode === ClimateMode.COOL || mode === ClimateMode.OFF) {
-					coolingSetpoint = value;
-				}
-				if (mode === ClimateMode.AUTO) {
-					heatingSetpoint = value;
-					coolingSetpoint = value;
-				}
 			} else {
 				// Only one of heating/cooling setpoint provided
 				if (intent.heatingSetpoint !== undefined) {
@@ -748,22 +748,24 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 				if (intent.heatingSetpoint !== undefined && intent.coolingSetpoint !== undefined) {
 					return `Set temperature range ${intent.heatingSetpoint}°C - ${intent.coolingSetpoint}°C`;
 				}
-				return `Set temperature to ${intent.value ?? 'unknown'}°C`;
+				if (intent.heatingSetpoint !== undefined) {
+					return `Set heating temperature to ${intent.heatingSetpoint}°C`;
+				}
+				if (intent.coolingSetpoint !== undefined) {
+					return `Set cooling temperature to ${intent.coolingSetpoint}°C`;
+				}
+				return 'Set temperature';
 			case ClimateIntentType.CLIMATE_SET: {
 				const parts: string[] = [];
 				if (intent.mode !== undefined) {
 					parts.push(`mode to ${intent.mode}`);
 				}
-				if (intent.value !== undefined) {
-					parts.push(`temperature to ${intent.value}°C`);
-				} else if (intent.heatingSetpoint !== undefined || intent.coolingSetpoint !== undefined) {
-					if (intent.heatingSetpoint !== undefined && intent.coolingSetpoint !== undefined) {
-						parts.push(`range ${intent.heatingSetpoint}°C - ${intent.coolingSetpoint}°C`);
-					} else if (intent.heatingSetpoint !== undefined) {
-						parts.push(`heating to ${intent.heatingSetpoint}°C`);
-					} else if (intent.coolingSetpoint !== undefined) {
-						parts.push(`cooling to ${intent.coolingSetpoint}°C`);
-					}
+				if (intent.heatingSetpoint !== undefined && intent.coolingSetpoint !== undefined) {
+					parts.push(`range ${intent.heatingSetpoint}°C - ${intent.coolingSetpoint}°C`);
+				} else if (intent.heatingSetpoint !== undefined) {
+					parts.push(`heating to ${intent.heatingSetpoint}°C`);
+				} else if (intent.coolingSetpoint !== undefined) {
+					parts.push(`cooling to ${intent.coolingSetpoint}°C`);
 				}
 				return parts.length > 0 ? `Set climate ${parts.join(', ')}` : 'Set climate properties';
 			}
@@ -781,9 +783,12 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 			const state = await this.climateStateService.getClimateState(spaceId);
 
 			if (state && state.hasClimate) {
+				// Convert to ClimateStateDataModel for proper snake_case serialization via WebSocket
+				const stateModel = toInstance(ClimateStateDataModel, state);
+
 				this.eventEmitter.emit(EventType.CLIMATE_STATE_CHANGED, {
 					space_id: spaceId,
-					state,
+					state: stateModel,
 				});
 
 				this.logger.debug(`Emitted climate state change event spaceId=${spaceId}`);

@@ -279,23 +279,44 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 
 	private transformPayload(payload: Record<string, any>): Record<string, any> {
 		// Helper function to check and transform a single item
-		const transformItem = (item: unknown) =>
-			item?.constructor?.name && typeof item === 'object' && item.constructor.name !== 'Object'
-				? instanceToPlain(item, {
+		const transformItem = (item: unknown): unknown => {
+			// Handle null/undefined
+			if (item === null || item === undefined) {
+				return item;
+			}
+
+			// Handle arrays by mapping each item recursively
+			if (isArray(item)) {
+				return item.map(transformItem);
+			}
+
+			// Handle objects
+			if (typeof item === 'object') {
+				// Check if it's a class instance (not a plain Object)
+				if (item.constructor?.name && item.constructor.name !== 'Object') {
+					return instanceToPlain(item, {
 						excludeExtraneousValues: true,
 						exposeUnsetFields: false,
 						ignoreDecorators: false,
 						groups: ['api'],
 						enableCircularCheck: true,
-					})
-				: item;
+					});
+				}
 
-		// Handle arrays by mapping each item through the transformation logic
-		if (isArray(payload)) {
-			return payload.map(transformItem) as unknown;
-		}
+				// For plain objects, recursively transform each property
+				const result: Record<string, unknown> = {};
 
-		// Handle single objects
-		return transformItem(payload);
+				for (const [key, value] of Object.entries(item)) {
+					result[key] = transformItem(value);
+				}
+
+				return result;
+			}
+
+			// Return primitives as-is
+			return item;
+		};
+
+		return transformItem(payload) as Record<string, any>;
 	}
 }
