@@ -366,8 +366,8 @@ class _CircularControlDialState extends State<CircularControlDial>
     switch (widget.displayFormat) {
       case DialDisplayFormat.temperature:
         return value == value.roundToDouble()
-            ? '${formatter.formatInteger(value.toInt())}°'
-            : '${formatter.formatDecimal(value, decimalPlaces: 1)}°';
+            ? '${formatter.formatInteger(value.toInt())}°C'
+            : '${formatter.formatDecimal(value, decimalPlaces: 1)}°C';
       case DialDisplayFormat.percentage:
         return '${formatter.formatInteger((value * 100).toInt())}%';
       case DialDisplayFormat.integer:
