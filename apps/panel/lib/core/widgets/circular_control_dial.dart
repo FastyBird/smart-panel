@@ -4,6 +4,7 @@ import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/swipe_event.dart';
 import 'package:flutter/gestures.dart';
@@ -361,17 +362,18 @@ class _CircularControlDialState extends State<CircularControlDial>
   }
 
   String _formatValue(double value) {
+    final formatter = NumberFormatUtils.defaultFormat;
     switch (widget.displayFormat) {
       case DialDisplayFormat.temperature:
         return value == value.roundToDouble()
-            ? '${value.toInt()}°'
-            : '${value.toStringAsFixed(1)}°';
+            ? '${formatter.formatInteger(value.toInt())}°'
+            : '${formatter.formatDecimal(value, decimalPlaces: 1)}°';
       case DialDisplayFormat.percentage:
-        return '${(value * 100).toInt()}%';
+        return '${formatter.formatInteger((value * 100).toInt())}%';
       case DialDisplayFormat.integer:
-        return '${value.toInt()}';
+        return formatter.formatInteger(value.toInt());
       case DialDisplayFormat.decimal:
-        return value.toStringAsFixed(1);
+        return formatter.formatDecimal(value, decimalPlaces: 1);
     }
   }
 
