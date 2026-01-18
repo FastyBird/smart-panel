@@ -1667,6 +1667,95 @@
     "description": "Filter status - unknown or unavailable"
   },
 
+  "dehumidifier_mode_auto": "Auto",
+  "@dehumidifier_mode_auto": {
+    "description": "Dehumidifier mode - automatic"
+  },
+  "dehumidifier_mode_manual": "Manual",
+  "@dehumidifier_mode_manual": {
+    "description": "Dehumidifier mode - manual"
+  },
+  "dehumidifier_mode_continuous": "Continuous",
+  "@dehumidifier_mode_continuous": {
+    "description": "Dehumidifier mode - continuous operation"
+  },
+  "dehumidifier_mode_laundry": "Laundry",
+  "@dehumidifier_mode_laundry": {
+    "description": "Dehumidifier mode - laundry drying"
+  },
+  "dehumidifier_mode_quiet": "Quiet",
+  "@dehumidifier_mode_quiet": {
+    "description": "Dehumidifier mode - quiet/silent operation"
+  },
+
+  "dehumidifier_status_idle": "Idle",
+  "@dehumidifier_status_idle": {
+    "description": "Dehumidifier status - idle"
+  },
+  "dehumidifier_status_dehumidifying": "Dehumidifying",
+  "@dehumidifier_status_dehumidifying": {
+    "description": "Dehumidifier status - actively dehumidifying"
+  },
+  "dehumidifier_status_defrosting": "Defrosting",
+  "@dehumidifier_status_defrosting": {
+    "description": "Dehumidifier status - defrost cycle active"
+  },
+
+  "dehumidifier_timer_off": "Off",
+  "@dehumidifier_timer_off": {
+    "description": "Dehumidifier timer - off"
+  },
+  "dehumidifier_timer_30m": "30 min",
+  "@dehumidifier_timer_30m": {
+    "description": "Dehumidifier timer - 30 minutes"
+  },
+  "dehumidifier_timer_1h": "1 hour",
+  "@dehumidifier_timer_1h": {
+    "description": "Dehumidifier timer - 1 hour"
+  },
+  "dehumidifier_timer_2h": "2 hours",
+  "@dehumidifier_timer_2h": {
+    "description": "Dehumidifier timer - 2 hours"
+  },
+  "dehumidifier_timer_4h": "4 hours",
+  "@dehumidifier_timer_4h": {
+    "description": "Dehumidifier timer - 4 hours"
+  },
+  "dehumidifier_timer_8h": "8 hours",
+  "@dehumidifier_timer_8h": {
+    "description": "Dehumidifier timer - 8 hours"
+  },
+  "dehumidifier_timer_12h": "12 hours",
+  "@dehumidifier_timer_12h": {
+    "description": "Dehumidifier timer - 12 hours"
+  },
+
+  "dehumidifier_water_tank": "Water Tank",
+  "@dehumidifier_water_tank": {
+    "description": "Dehumidifier water tank label"
+  },
+
+  "device_current_humidity": "Current",
+  "@device_current_humidity": {
+    "description": "Current humidity label"
+  },
+  "device_current_temperature": "Temperature",
+  "@device_current_temperature": {
+    "description": "Current temperature label"
+  },
+  "device_fan_speed": "Fan Speed",
+  "@device_fan_speed": {
+    "description": "Fan speed label"
+  },
+  "device_timer": "Timer",
+  "@device_timer": {
+    "description": "Timer label"
+  },
+  "device_child_lock": "Child Lock",
+  "@device_child_lock": {
+    "description": "Child lock label"
+  },
+
   "duration_format_hours_minutes": "{hours}h {minutes}m",
   "@duration_format_hours_minutes": {
     "description": "Duration format with hours and minutes",

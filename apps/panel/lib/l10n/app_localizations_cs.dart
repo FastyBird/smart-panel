@@ -1244,6 +1244,69 @@ class AppLocalizationsCs extends AppLocalizations {
   String get filter_status_unknown => 'Neznámý';
 
   @override
+  String get dehumidifier_mode_auto => 'Automatický';
+
+  @override
+  String get dehumidifier_mode_manual => 'Ruční';
+
+  @override
+  String get dehumidifier_mode_continuous => 'Kontinuální';
+
+  @override
+  String get dehumidifier_mode_laundry => 'Sušení prádla';
+
+  @override
+  String get dehumidifier_mode_quiet => 'Tichý';
+
+  @override
+  String get dehumidifier_status_idle => 'Nečinný';
+
+  @override
+  String get dehumidifier_status_dehumidifying => 'Odvlhčuje';
+
+  @override
+  String get dehumidifier_status_defrosting => 'Odmrazuje';
+
+  @override
+  String get dehumidifier_timer_off => 'Vypnuto';
+
+  @override
+  String get dehumidifier_timer_30m => '30 min';
+
+  @override
+  String get dehumidifier_timer_1h => '1 hodina';
+
+  @override
+  String get dehumidifier_timer_2h => '2 hodiny';
+
+  @override
+  String get dehumidifier_timer_4h => '4 hodiny';
+
+  @override
+  String get dehumidifier_timer_8h => '8 hodin';
+
+  @override
+  String get dehumidifier_timer_12h => '12 hodin';
+
+  @override
+  String get dehumidifier_water_tank => 'Nádržka';
+
+  @override
+  String get device_current_humidity => 'Aktuální';
+
+  @override
+  String get device_current_temperature => 'Teplota';
+
+  @override
+  String get device_fan_speed => 'Rychlost';
+
+  @override
+  String get device_timer => 'Časovač';
+
+  @override
+  String get device_child_lock => 'Dětský zámek';
+
+  @override
   String duration_format_hours_minutes(int hours, int minutes) {
     return '${hours}h ${minutes}m';
   }

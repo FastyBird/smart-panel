@@ -1243,6 +1243,69 @@ class AppLocalizationsEn extends AppLocalizations {
   String get filter_status_unknown => 'Unknown';
 
   @override
+  String get dehumidifier_mode_auto => 'Auto';
+
+  @override
+  String get dehumidifier_mode_manual => 'Manual';
+
+  @override
+  String get dehumidifier_mode_continuous => 'Continuous';
+
+  @override
+  String get dehumidifier_mode_laundry => 'Laundry';
+
+  @override
+  String get dehumidifier_mode_quiet => 'Quiet';
+
+  @override
+  String get dehumidifier_status_idle => 'Idle';
+
+  @override
+  String get dehumidifier_status_dehumidifying => 'Dehumidifying';
+
+  @override
+  String get dehumidifier_status_defrosting => 'Defrosting';
+
+  @override
+  String get dehumidifier_timer_off => 'Off';
+
+  @override
+  String get dehumidifier_timer_30m => '30 min';
+
+  @override
+  String get dehumidifier_timer_1h => '1 hour';
+
+  @override
+  String get dehumidifier_timer_2h => '2 hours';
+
+  @override
+  String get dehumidifier_timer_4h => '4 hours';
+
+  @override
+  String get dehumidifier_timer_8h => '8 hours';
+
+  @override
+  String get dehumidifier_timer_12h => '12 hours';
+
+  @override
+  String get dehumidifier_water_tank => 'Water Tank';
+
+  @override
+  String get device_current_humidity => 'Current';
+
+  @override
+  String get device_current_temperature => 'Temperature';
+
+  @override
+  String get device_fan_speed => 'Fan Speed';
+
+  @override
+  String get device_timer => 'Timer';
+
+  @override
+  String get device_child_lock => 'Child Lock';
+
+  @override
   String duration_format_hours_minutes(int hours, int minutes) {
     return '${hours}h ${minutes}m';
   }
