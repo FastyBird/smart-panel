@@ -167,6 +167,12 @@ class IntentsRepository extends ChangeNotifier {
     // Remove any local overlays for the same targets
     _removeLocalIntentsForTargets(intent.targets);
 
+    // Also remove local space intents if this backend intent has same spaceId
+    final spaceId = intent.context.spaceId;
+    if (spaceId != null && !intent.id.startsWith('local_')) {
+      _removeLocalSpaceIntent(spaceId);
+    }
+
     _intents[intent.id] = intent;
 
     for (final target in intent.targets) {
@@ -374,6 +380,27 @@ class IntentsRepository extends ChangeNotifier {
     }
 
     for (final intentId in localIntentIds) {
+      remove(intentId);
+    }
+  }
+
+  /// Remove local space intent for a given spaceId
+  void _removeLocalSpaceIntent(String spaceId) {
+    // Find and remove any local space intent with matching spaceId
+    final localSpaceIntentIds = <String>[];
+    for (final entry in _intents.entries) {
+      if (entry.key.startsWith('local_space_') &&
+          entry.value.context.spaceId == spaceId) {
+        localSpaceIntentIds.add(entry.key);
+      }
+    }
+
+    for (final intentId in localSpaceIntentIds) {
+      if (kDebugMode) {
+        debugPrint(
+          '[INTENTS MODULE][REPOSITORY] Removing local space intent $intentId (replaced by backend intent)',
+        );
+      }
       remove(intentId);
     }
   }
