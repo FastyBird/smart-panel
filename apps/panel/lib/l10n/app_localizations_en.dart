@@ -1114,26 +1114,146 @@ class AppLocalizationsEn extends AppLocalizations {
   String get entry_cameras => 'Cameras';
 
   @override
-  String get media_other_devices => 'Other Devices';
+  String get air_quality_level_excellent => 'Excellent';
 
   @override
-  String get media_up_next => 'Up Next';
+  String get air_quality_level_good => 'Good';
 
   @override
-  String get media_volume => 'Volume';
+  String get air_quality_level_fair => 'Fair';
 
   @override
-  String get media_playing => 'Playing';
+  String get air_quality_level_inferior => 'Inferior';
 
   @override
-  String get media_idle => 'Idle';
+  String get air_quality_level_poor => 'Poor';
 
   @override
-  String get media_standby => 'Standby';
+  String get air_quality_level_unknown => 'Unknown';
 
   @override
-  String get media_source => 'Source';
+  String get aqi_label_good => 'Good';
 
   @override
-  String get media_queue => 'Queue';
+  String get aqi_label_moderate => 'Moderate';
+
+  @override
+  String get aqi_label_unhealthy_sensitive => 'Unhealthy (Sensitive)';
+
+  @override
+  String get aqi_label_unhealthy => 'Unhealthy';
+
+  @override
+  String get aqi_label_very_unhealthy => 'Very Unhealthy';
+
+  @override
+  String get aqi_label_hazardous => 'Hazardous';
+
+  @override
+  String get particulate_label_pm1 => 'PM1';
+
+  @override
+  String get particulate_label_pm25 => 'PM2.5';
+
+  @override
+  String get particulate_label_pm10 => 'PM10';
+
+  @override
+  String get voc_level_good => 'Good';
+
+  @override
+  String get voc_level_moderate => 'Moderate';
+
+  @override
+  String get voc_level_poor => 'Poor';
+
+  @override
+  String get fan_mode_auto => 'Auto';
+
+  @override
+  String get fan_mode_manual => 'Manual';
+
+  @override
+  String get fan_mode_eco => 'Eco';
+
+  @override
+  String get fan_mode_sleep => 'Sleep';
+
+  @override
+  String get fan_mode_natural => 'Natural';
+
+  @override
+  String get fan_mode_turbo => 'Turbo';
+
+  @override
+  String get fan_speed_off => 'Off';
+
+  @override
+  String get fan_speed_low => 'Low';
+
+  @override
+  String get fan_speed_medium => 'Med';
+
+  @override
+  String get fan_speed_high => 'High';
+
+  @override
+  String get fan_speed_turbo => 'Turbo';
+
+  @override
+  String get fan_speed_auto => 'Auto';
+
+  @override
+  String get fan_timer_off => 'Off';
+
+  @override
+  String get fan_timer_30m => '30m';
+
+  @override
+  String get fan_timer_1h => '1h';
+
+  @override
+  String get fan_timer_2h => '2h';
+
+  @override
+  String get fan_timer_4h => '4h';
+
+  @override
+  String get fan_timer_8h => '8h';
+
+  @override
+  String get fan_timer_12h => '12h';
+
+  @override
+  String get fan_direction_clockwise => 'Clockwise';
+
+  @override
+  String get fan_direction_counter_clockwise => 'Counter-Clockwise';
+
+  @override
+  String get filter_status_good => 'Good';
+
+  @override
+  String get filter_status_replace_soon => 'Replace Soon';
+
+  @override
+  String get filter_status_replace_now => 'Replace Now';
+
+  @override
+  String get filter_status_unknown => 'Unknown';
+
+  @override
+  String duration_format_hours_minutes(int hours, int minutes) {
+    return '${hours}h ${minutes}m';
+  }
+
+  @override
+  String duration_format_hours(int hours) {
+    return '${hours}h';
+  }
+
+  @override
+  String duration_format_minutes(int minutes) {
+    return '${minutes}m';
+  }
 }

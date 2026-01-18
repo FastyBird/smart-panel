@@ -1486,36 +1486,215 @@
     "description": "Label for cameras in security section"
   },
 
-  "media_other_devices": "Other Devices",
-  "@media_other_devices": {
-    "description": "Section title for other media devices in media domain view"
+  "air_quality_level_excellent": "Excellent",
+  "@air_quality_level_excellent": {
+    "description": "Air quality level - excellent"
   },
-  "media_up_next": "Up Next",
-  "@media_up_next": {
-    "description": "Section title for upcoming tracks in media playback queue"
+  "air_quality_level_good": "Good",
+  "@air_quality_level_good": {
+    "description": "Air quality level - good"
   },
-  "media_volume": "Volume",
-  "@media_volume": {
-    "description": "Section title for volume control"
+  "air_quality_level_fair": "Fair",
+  "@air_quality_level_fair": {
+    "description": "Air quality level - fair"
   },
-  "media_playing": "Playing",
-  "@media_playing": {
-    "description": "Status text when media device is playing"
+  "air_quality_level_inferior": "Inferior",
+  "@air_quality_level_inferior": {
+    "description": "Air quality level - inferior"
   },
-  "media_idle": "Idle",
-  "@media_idle": {
-    "description": "Status text when media device is idle"
+  "air_quality_level_poor": "Poor",
+  "@air_quality_level_poor": {
+    "description": "Air quality level - poor"
   },
-  "media_standby": "Standby",
-  "@media_standby": {
-    "description": "Status text when media device is in standby"
+  "air_quality_level_unknown": "Unknown",
+  "@air_quality_level_unknown": {
+    "description": "Air quality level - unknown"
   },
-  "media_source": "Source",
-  "@media_source": {
-    "description": "Section title for media source selection"
+
+  "aqi_label_good": "Good",
+  "@aqi_label_good": {
+    "description": "AQI label for good air quality (0-50)"
   },
-  "media_queue": "Queue",
-  "@media_queue": {
-    "description": "Section title for media playback queue"
+  "aqi_label_moderate": "Moderate",
+  "@aqi_label_moderate": {
+    "description": "AQI label for moderate air quality (51-100)"
+  },
+  "aqi_label_unhealthy_sensitive": "Unhealthy (Sensitive)",
+  "@aqi_label_unhealthy_sensitive": {
+    "description": "AQI label for unhealthy for sensitive groups (101-150)"
+  },
+  "aqi_label_unhealthy": "Unhealthy",
+  "@aqi_label_unhealthy": {
+    "description": "AQI label for unhealthy air quality (151-200)"
+  },
+  "aqi_label_very_unhealthy": "Very Unhealthy",
+  "@aqi_label_very_unhealthy": {
+    "description": "AQI label for very unhealthy air quality (201-300)"
+  },
+  "aqi_label_hazardous": "Hazardous",
+  "@aqi_label_hazardous": {
+    "description": "AQI label for hazardous air quality (301+)"
+  },
+
+  "particulate_label_pm1": "PM1",
+  "@particulate_label_pm1": {
+    "description": "Label for PM1 particulate matter"
+  },
+  "particulate_label_pm25": "PM2.5",
+  "@particulate_label_pm25": {
+    "description": "Label for PM2.5 particulate matter"
+  },
+  "particulate_label_pm10": "PM10",
+  "@particulate_label_pm10": {
+    "description": "Label for PM10 particulate matter"
+  },
+
+  "voc_level_good": "Good",
+  "@voc_level_good": {
+    "description": "VOC level - good/low"
+  },
+  "voc_level_moderate": "Moderate",
+  "@voc_level_moderate": {
+    "description": "VOC level - moderate/medium"
+  },
+  "voc_level_poor": "Poor",
+  "@voc_level_poor": {
+    "description": "VOC level - poor/high"
+  },
+
+  "fan_mode_auto": "Auto",
+  "@fan_mode_auto": {
+    "description": "Fan mode - automatic"
+  },
+  "fan_mode_manual": "Manual",
+  "@fan_mode_manual": {
+    "description": "Fan mode - manual"
+  },
+  "fan_mode_eco": "Eco",
+  "@fan_mode_eco": {
+    "description": "Fan mode - eco/energy saving"
+  },
+  "fan_mode_sleep": "Sleep",
+  "@fan_mode_sleep": {
+    "description": "Fan mode - sleep/quiet"
+  },
+  "fan_mode_natural": "Natural",
+  "@fan_mode_natural": {
+    "description": "Fan mode - natural breeze"
+  },
+  "fan_mode_turbo": "Turbo",
+  "@fan_mode_turbo": {
+    "description": "Fan mode - turbo/high power"
+  },
+
+  "fan_speed_off": "Off",
+  "@fan_speed_off": {
+    "description": "Fan speed level - off"
+  },
+  "fan_speed_low": "Low",
+  "@fan_speed_low": {
+    "description": "Fan speed level - low"
+  },
+  "fan_speed_medium": "Med",
+  "@fan_speed_medium": {
+    "description": "Fan speed level - medium"
+  },
+  "fan_speed_high": "High",
+  "@fan_speed_high": {
+    "description": "Fan speed level - high"
+  },
+  "fan_speed_turbo": "Turbo",
+  "@fan_speed_turbo": {
+    "description": "Fan speed level - turbo"
+  },
+  "fan_speed_auto": "Auto",
+  "@fan_speed_auto": {
+    "description": "Fan speed level - auto"
+  },
+
+  "fan_timer_off": "Off",
+  "@fan_timer_off": {
+    "description": "Fan timer - off"
+  },
+  "fan_timer_30m": "30m",
+  "@fan_timer_30m": {
+    "description": "Fan timer - 30 minutes"
+  },
+  "fan_timer_1h": "1h",
+  "@fan_timer_1h": {
+    "description": "Fan timer - 1 hour"
+  },
+  "fan_timer_2h": "2h",
+  "@fan_timer_2h": {
+    "description": "Fan timer - 2 hours"
+  },
+  "fan_timer_4h": "4h",
+  "@fan_timer_4h": {
+    "description": "Fan timer - 4 hours"
+  },
+  "fan_timer_8h": "8h",
+  "@fan_timer_8h": {
+    "description": "Fan timer - 8 hours"
+  },
+  "fan_timer_12h": "12h",
+  "@fan_timer_12h": {
+    "description": "Fan timer - 12 hours"
+  },
+
+  "fan_direction_clockwise": "Clockwise",
+  "@fan_direction_clockwise": {
+    "description": "Fan direction - clockwise"
+  },
+  "fan_direction_counter_clockwise": "Counter-Clockwise",
+  "@fan_direction_counter_clockwise": {
+    "description": "Fan direction - counter-clockwise"
+  },
+
+  "filter_status_good": "Good",
+  "@filter_status_good": {
+    "description": "Filter status - good condition"
+  },
+  "filter_status_replace_soon": "Replace Soon",
+  "@filter_status_replace_soon": {
+    "description": "Filter status - needs replacement soon"
+  },
+  "filter_status_replace_now": "Replace Now",
+  "@filter_status_replace_now": {
+    "description": "Filter status - needs immediate replacement"
+  },
+  "filter_status_unknown": "Unknown",
+  "@filter_status_unknown": {
+    "description": "Filter status - unknown or unavailable"
+  },
+
+  "duration_format_hours_minutes": "{hours}h {minutes}m",
+  "@duration_format_hours_minutes": {
+    "description": "Duration format with hours and minutes",
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "duration_format_hours": "{hours}h",
+  "@duration_format_hours": {
+    "description": "Duration format with hours only",
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "duration_format_minutes": "{minutes}m",
+  "@duration_format_minutes": {
+    "description": "Duration format with minutes only",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
   }
 }

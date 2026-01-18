@@ -2273,53 +2273,281 @@ abstract class AppLocalizations {
   /// **'Cameras'**
   String get entry_cameras;
 
-  /// Section header for other media devices in media domain view
+  /// Air quality level - excellent
   ///
   /// In en, this message translates to:
-  /// **'Other Devices'**
-  String get media_other_devices;
+  /// **'Excellent'**
+  String get air_quality_level_excellent;
 
-  /// Section header for upcoming tracks in media queue
+  /// Air quality level - good
   ///
   /// In en, this message translates to:
-  /// **'Up Next'**
-  String get media_up_next;
+  /// **'Good'**
+  String get air_quality_level_good;
 
-  /// Label for volume control
+  /// Air quality level - fair
   ///
   /// In en, this message translates to:
-  /// **'Volume'**
-  String get media_volume;
+  /// **'Fair'**
+  String get air_quality_level_fair;
 
-  /// Status when media device is playing
+  /// Air quality level - inferior
   ///
   /// In en, this message translates to:
-  /// **'Playing'**
-  String get media_playing;
+  /// **'Inferior'**
+  String get air_quality_level_inferior;
 
-  /// Status when media device is idle
+  /// Air quality level - poor
   ///
   /// In en, this message translates to:
-  /// **'Idle'**
-  String get media_idle;
+  /// **'Poor'**
+  String get air_quality_level_poor;
 
-  /// Status when media device is in standby
+  /// Air quality level - unknown
   ///
   /// In en, this message translates to:
-  /// **'Standby'**
-  String get media_standby;
+  /// **'Unknown'**
+  String get air_quality_level_unknown;
 
-  /// Label for media source selection
+  /// AQI label for good air quality (0-50)
   ///
   /// In en, this message translates to:
-  /// **'Source'**
-  String get media_source;
+  /// **'Good'**
+  String get aqi_label_good;
 
-  /// Label for media queue
+  /// AQI label for moderate air quality (51-100)
   ///
   /// In en, this message translates to:
-  /// **'Queue'**
-  String get media_queue;
+  /// **'Moderate'**
+  String get aqi_label_moderate;
+
+  /// AQI label for unhealthy for sensitive groups (101-150)
+  ///
+  /// In en, this message translates to:
+  /// **'Unhealthy (Sensitive)'**
+  String get aqi_label_unhealthy_sensitive;
+
+  /// AQI label for unhealthy air quality (151-200)
+  ///
+  /// In en, this message translates to:
+  /// **'Unhealthy'**
+  String get aqi_label_unhealthy;
+
+  /// AQI label for very unhealthy air quality (201-300)
+  ///
+  /// In en, this message translates to:
+  /// **'Very Unhealthy'**
+  String get aqi_label_very_unhealthy;
+
+  /// AQI label for hazardous air quality (301+)
+  ///
+  /// In en, this message translates to:
+  /// **'Hazardous'**
+  String get aqi_label_hazardous;
+
+  /// Label for PM1 particulate matter
+  ///
+  /// In en, this message translates to:
+  /// **'PM1'**
+  String get particulate_label_pm1;
+
+  /// Label for PM2.5 particulate matter
+  ///
+  /// In en, this message translates to:
+  /// **'PM2.5'**
+  String get particulate_label_pm25;
+
+  /// Label for PM10 particulate matter
+  ///
+  /// In en, this message translates to:
+  /// **'PM10'**
+  String get particulate_label_pm10;
+
+  /// VOC level - good/low
+  ///
+  /// In en, this message translates to:
+  /// **'Good'**
+  String get voc_level_good;
+
+  /// VOC level - moderate/medium
+  ///
+  /// In en, this message translates to:
+  /// **'Moderate'**
+  String get voc_level_moderate;
+
+  /// VOC level - poor/high
+  ///
+  /// In en, this message translates to:
+  /// **'Poor'**
+  String get voc_level_poor;
+
+  /// Fan mode - automatic
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get fan_mode_auto;
+
+  /// Fan mode - manual
+  ///
+  /// In en, this message translates to:
+  /// **'Manual'**
+  String get fan_mode_manual;
+
+  /// Fan mode - eco/energy saving
+  ///
+  /// In en, this message translates to:
+  /// **'Eco'**
+  String get fan_mode_eco;
+
+  /// Fan mode - sleep/quiet
+  ///
+  /// In en, this message translates to:
+  /// **'Sleep'**
+  String get fan_mode_sleep;
+
+  /// Fan mode - natural breeze
+  ///
+  /// In en, this message translates to:
+  /// **'Natural'**
+  String get fan_mode_natural;
+
+  /// Fan mode - turbo/high power
+  ///
+  /// In en, this message translates to:
+  /// **'Turbo'**
+  String get fan_mode_turbo;
+
+  /// Fan speed level - off
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get fan_speed_off;
+
+  /// Fan speed level - low
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get fan_speed_low;
+
+  /// Fan speed level - medium
+  ///
+  /// In en, this message translates to:
+  /// **'Med'**
+  String get fan_speed_medium;
+
+  /// Fan speed level - high
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get fan_speed_high;
+
+  /// Fan speed level - turbo
+  ///
+  /// In en, this message translates to:
+  /// **'Turbo'**
+  String get fan_speed_turbo;
+
+  /// Fan speed level - auto
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get fan_speed_auto;
+
+  /// Fan timer - off
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get fan_timer_off;
+
+  /// Fan timer - 30 minutes
+  ///
+  /// In en, this message translates to:
+  /// **'30m'**
+  String get fan_timer_30m;
+
+  /// Fan timer - 1 hour
+  ///
+  /// In en, this message translates to:
+  /// **'1h'**
+  String get fan_timer_1h;
+
+  /// Fan timer - 2 hours
+  ///
+  /// In en, this message translates to:
+  /// **'2h'**
+  String get fan_timer_2h;
+
+  /// Fan timer - 4 hours
+  ///
+  /// In en, this message translates to:
+  /// **'4h'**
+  String get fan_timer_4h;
+
+  /// Fan timer - 8 hours
+  ///
+  /// In en, this message translates to:
+  /// **'8h'**
+  String get fan_timer_8h;
+
+  /// Fan timer - 12 hours
+  ///
+  /// In en, this message translates to:
+  /// **'12h'**
+  String get fan_timer_12h;
+
+  /// Fan direction - clockwise
+  ///
+  /// In en, this message translates to:
+  /// **'Clockwise'**
+  String get fan_direction_clockwise;
+
+  /// Fan direction - counter-clockwise
+  ///
+  /// In en, this message translates to:
+  /// **'Counter-Clockwise'**
+  String get fan_direction_counter_clockwise;
+
+  /// Filter status - good condition
+  ///
+  /// In en, this message translates to:
+  /// **'Good'**
+  String get filter_status_good;
+
+  /// Filter status - needs replacement soon
+  ///
+  /// In en, this message translates to:
+  /// **'Replace Soon'**
+  String get filter_status_replace_soon;
+
+  /// Filter status - needs immediate replacement
+  ///
+  /// In en, this message translates to:
+  /// **'Replace Now'**
+  String get filter_status_replace_now;
+
+  /// Filter status - unknown or unavailable
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get filter_status_unknown;
+
+  /// Duration format with hours and minutes
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h {minutes}m'**
+  String duration_format_hours_minutes(int hours, int minutes);
+
+  /// Duration format with hours only
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h'**
+  String duration_format_hours(int hours);
+
+  /// Duration format with minutes only
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes}m'**
+  String duration_format_minutes(int minutes);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

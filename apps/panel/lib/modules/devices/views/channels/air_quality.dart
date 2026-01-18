@@ -50,10 +50,25 @@ class AirQualityChannelView extends ChannelView
       return value.value.toInt();
     }
 
+    // Handle string values (backend may return numbers as strings)
+    if (value is StringValueType) {
+      final parsed = int.tryParse(value.value);
+      if (parsed != null) {
+        return parsed;
+      }
+    }
+
     final ValueType? defaultValue = prop?.defaultValue;
 
     if (defaultValue is NumberValueType) {
       return defaultValue.value.toInt();
+    }
+
+    if (defaultValue is StringValueType) {
+      final parsed = int.tryParse(defaultValue.value);
+      if (parsed != null) {
+        return parsed;
+      }
     }
 
     return 0;

@@ -352,10 +352,7 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
         'Device view is not valid for Air purifier device detail',
       );
     }
-    return AirPurifierDeviceDetail(
-      name: device.name,
-      initialState: const PurifierDeviceState(),
-    );
+    return AirPurifierDeviceDetail(device: device);
   },
   DevicesModuleDeviceCategory.alarm: (device) {
     if (device is! AlarmDeviceView) {

@@ -367,12 +367,66 @@
   "entry_alarm": "Alarm",
   "entry_cameras": "Kamery",
 
-  "media_other_devices": "Ostatní zařízení",
-  "media_up_next": "Další v pořadí",
-  "media_volume": "Hlasitost",
-  "media_playing": "Přehrává",
-  "media_idle": "Nečinné",
-  "media_standby": "Pohotovost",
-  "media_source": "Zdroj",
-  "media_queue": "Fronta"
+  "air_quality_level_excellent": "Vynikající",
+  "air_quality_level_good": "Dobrá",
+  "air_quality_level_fair": "Přijatelná",
+  "air_quality_level_inferior": "Horší",
+  "air_quality_level_poor": "Špatná",
+  "air_quality_level_unknown": "Neznámá",
+  "aqi_label_good": "Dobrá",
+  "aqi_label_moderate": "Střední",
+  "aqi_label_unhealthy_sensitive": "Nezdravá (citliví)",
+  "aqi_label_unhealthy": "Nezdravá",
+  "aqi_label_very_unhealthy": "Velmi nezdravá",
+  "aqi_label_hazardous": "Nebezpečná",
+  "particulate_label_pm1": "PM1",
+  "particulate_label_pm25": "PM2.5",
+  "particulate_label_pm10": "PM10",
+  "voc_level_good": "Dobrá",
+  "voc_level_moderate": "Střední",
+  "voc_level_poor": "Špatná",
+  "fan_mode_auto": "Automatický",
+  "fan_mode_manual": "Ruční",
+  "fan_mode_eco": "Eko",
+  "fan_mode_sleep": "Spánek",
+  "fan_mode_natural": "Přirozený",
+  "fan_mode_turbo": "Turbo",
+  "fan_speed_off": "Vypnuto",
+  "fan_speed_low": "Nízké",
+  "fan_speed_medium": "Střední",
+  "fan_speed_high": "Vysoké",
+  "fan_speed_turbo": "Turbo",
+  "fan_speed_auto": "Automaticky",
+  "fan_timer_off": "Vypnuto",
+  "fan_timer_30m": "30m",
+  "fan_timer_1h": "1h",
+  "fan_timer_2h": "2h",
+  "fan_timer_4h": "4h",
+  "fan_timer_8h": "8h",
+  "fan_timer_12h": "12h",
+  "fan_direction_clockwise": "Po směru",
+  "fan_direction_counter_clockwise": "Proti směru",
+  "filter_status_good": "Dobrý",
+  "filter_status_replace_soon": "Brzy vyměnit",
+  "filter_status_replace_now": "Vyměnit nyní",
+  "filter_status_unknown": "Neznámý",
+  "duration_format_hours_minutes": "{hours}h {minutes}m",
+  "@duration_format_hours_minutes": {
+    "placeholders": {
+      "hours": {"type": "int"},
+      "minutes": {"type": "int"}
+    }
+  },
+  "duration_format_hours": "{hours}h",
+  "@duration_format_hours": {
+    "placeholders": {
+      "hours": {"type": "int"}
+    }
+  },
+  "duration_format_minutes": "{minutes}m",
+  "@duration_format_minutes": {
+    "placeholders": {
+      "minutes": {"type": "int"}
+    }
+  }
 }

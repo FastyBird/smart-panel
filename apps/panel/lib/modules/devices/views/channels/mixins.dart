@@ -17,6 +17,18 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/temperatu
 import 'package:fastybird_smart_panel/modules/devices/views/properties/tilt.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/volume.dart';
 
+// Helper functions for parsing string values
+bool _parseBool(String value) {
+  final lower = value.toLowerCase();
+  return lower == 'true' || lower == '1' || lower == 'on' || lower == 'yes';
+}
+
+int? _parseInt(String value) => int.tryParse(value);
+
+double? _parseDouble(String value) => double.tryParse(value);
+
+num? _parseNum(String value) => num.tryParse(value);
+
 mixin ChannelActiveMixin {
   ActiveChannelPropertyView? get activeProp;
 
@@ -31,10 +43,18 @@ mixin ChannelActiveMixin {
       return value.value;
     }
 
+    if (value is StringValueType) {
+      return _parseBool(value.value);
+    }
+
     final ValueType? defaultValue = prop?.defaultValue;
 
     if (defaultValue is BooleanValueType) {
       return defaultValue.value;
+    }
+
+    if (defaultValue is StringValueType) {
+      return _parseBool(defaultValue.value);
     }
 
     return false;
@@ -55,10 +75,24 @@ mixin ChannelBrightnessMixin {
       return value.value.toInt();
     }
 
+    if (value is StringValueType) {
+      final parsed = _parseInt(value.value);
+      if (parsed != null) {
+        return parsed;
+      }
+    }
+
     final ValueType? defaultValue = prop?.defaultValue;
 
     if (defaultValue is NumberValueType) {
       return defaultValue.value.toInt();
+    }
+
+    if (defaultValue is StringValueType) {
+      final parsed = _parseInt(defaultValue.value);
+      if (parsed != null) {
+        return parsed;
+      }
     }
 
     return 0;
@@ -99,10 +133,24 @@ mixin ChannelDensityMixin {
       return value.value.toDouble();
     }
 
+    if (value is StringValueType) {
+      final parsed = _parseDouble(value.value);
+      if (parsed != null) {
+        return parsed;
+      }
+    }
+
     final ValueType? defaultValue = prop?.defaultValue;
 
     if (defaultValue is NumberValueType) {
       return defaultValue.value.toDouble();
+    }
+
+    if (defaultValue is StringValueType) {
+      final parsed = _parseDouble(defaultValue.value);
+      if (parsed != null) {
+        return parsed;
+      }
     }
 
     return 0.0;
@@ -143,10 +191,18 @@ mixin ChannelDetectedMixin {
       return value.value;
     }
 
+    if (value is StringValueType) {
+      return _parseBool(value.value);
+    }
+
     final ValueType? defaultValue = prop?.defaultValue;
 
     if (defaultValue is BooleanValueType) {
       return defaultValue.value;
+    }
+
+    if (defaultValue is StringValueType) {
+      return _parseBool(defaultValue.value);
     }
 
     return false;
@@ -167,10 +223,24 @@ mixin ChannelDistanceMixin {
       return value.value.toDouble();
     }
 
+    if (value is StringValueType) {
+      final parsed = _parseDouble(value.value);
+      if (parsed != null) {
+        return parsed;
+      }
+    }
+
     final ValueType? defaultValue = prop?.defaultValue;
 
     if (defaultValue is NumberValueType) {
       return defaultValue.value.toDouble();
+    }
+
+    if (defaultValue is StringValueType) {
+      final parsed = _parseDouble(defaultValue.value);
+      if (parsed != null) {
+        return parsed;
+      }
     }
 
     return 0.0;
@@ -209,6 +279,13 @@ mixin ChannelFaultMixin {
       return value.value > 0;
     }
 
+    if (value is StringValueType) {
+      final parsed = _parseNum(value.value);
+      if (parsed != null) {
+        return parsed > 0;
+      }
+    }
+
     return false;
   }
 
@@ -219,6 +296,10 @@ mixin ChannelFaultMixin {
 
     if (value is NumberValueType) {
       return value.value;
+    }
+
+    if (value is StringValueType) {
+      return _parseNum(value.value);
     }
 
     return null;
@@ -239,10 +320,24 @@ mixin ChannelMeasuredMixin {
       return value.value.toDouble();
     }
 
+    if (value is StringValueType) {
+      final parsed = _parseDouble(value.value);
+      if (parsed != null) {
+        return parsed;
+      }
+    }
+
     final ValueType? defaultValue = prop?.defaultValue;
 
     if (defaultValue is NumberValueType) {
       return defaultValue.value.toDouble();
+    }
+
+    if (defaultValue is StringValueType) {
+      final parsed = _parseDouble(defaultValue.value);
+      if (parsed != null) {
+        return parsed;
+      }
     }
 
     return 0.0;
@@ -283,10 +378,18 @@ mixin ChannelOnMixin {
       return value.value;
     }
 
+    if (value is StringValueType) {
+      return _parseBool(value.value);
+    }
+
     final ValueType? defaultValue = prop?.defaultValue;
 
     if (defaultValue is BooleanValueType) {
       return defaultValue.value;
+    }
+
+    if (defaultValue is StringValueType) {
+      return _parseBool(defaultValue.value);
     }
 
     return false;
@@ -307,10 +410,24 @@ mixin ChannelPercentageMixin {
       return value.value.toInt();
     }
 
+    if (value is StringValueType) {
+      final parsed = _parseInt(value.value);
+      if (parsed != null) {
+        return parsed;
+      }
+    }
+
     final ValueType? defaultValue = prop?.defaultValue;
 
     if (defaultValue is NumberValueType) {
       return defaultValue.value.toInt();
+    }
+
+    if (defaultValue is StringValueType) {
+      final parsed = _parseInt(defaultValue.value);
+      if (parsed != null) {
+        return parsed;
+      }
     }
 
     return 0;
@@ -351,10 +468,24 @@ mixin ChannelPositionMixin {
       return value.value.toInt();
     }
 
+    if (value is StringValueType) {
+      final parsed = _parseInt(value.value);
+      if (parsed != null) {
+        return parsed;
+      }
+    }
+
     final ValueType? defaultValue = prop?.defaultValue;
 
     if (defaultValue is NumberValueType) {
       return defaultValue.value.toInt();
+    }
+
+    if (defaultValue is StringValueType) {
+      final parsed = _parseInt(defaultValue.value);
+      if (parsed != null) {
+        return parsed;
+      }
     }
 
     return 0;
@@ -395,10 +526,18 @@ mixin ChannelObstructionMixin {
       return value.value;
     }
 
+    if (value is StringValueType) {
+      return _parseBool(value.value);
+    }
+
     final ValueType? defaultValue = prop?.defaultValue;
 
     if (defaultValue is BooleanValueType) {
       return defaultValue.value;
+    }
+
+    if (defaultValue is StringValueType) {
+      return _parseBool(defaultValue.value);
     }
 
     return false;
@@ -419,10 +558,24 @@ mixin ChannelPeakLevelMixin {
       return value.value.toDouble();
     }
 
+    if (value is StringValueType) {
+      final parsed = _parseDouble(value.value);
+      if (parsed != null) {
+        return parsed;
+      }
+    }
+
     final ValueType? defaultValue = prop?.defaultValue;
 
     if (defaultValue is NumberValueType) {
       return defaultValue.value.toDouble();
+    }
+
+    if (defaultValue is StringValueType) {
+      final parsed = _parseDouble(defaultValue.value);
+      if (parsed != null) {
+        return parsed;
+      }
     }
 
     return 0.0;
@@ -463,10 +616,18 @@ mixin ChannelTamperedMixin {
       return value.value;
     }
 
+    if (value is StringValueType) {
+      return _parseBool(value.value);
+    }
+
     final ValueType? defaultValue = prop?.defaultValue;
 
     if (defaultValue is BooleanValueType) {
       return defaultValue.value;
+    }
+
+    if (defaultValue is StringValueType) {
+      return _parseBool(defaultValue.value);
     }
 
     return false;
@@ -487,10 +648,24 @@ mixin ChannelTemperatureMixin {
       return value.value.toDouble();
     }
 
+    if (value is StringValueType) {
+      final parsed = _parseDouble(value.value);
+      if (parsed != null) {
+        return parsed;
+      }
+    }
+
     final ValueType? defaultValue = prop?.defaultValue;
 
     if (defaultValue is NumberValueType) {
       return defaultValue.value.toDouble();
+    }
+
+    if (defaultValue is StringValueType) {
+      final parsed = _parseDouble(defaultValue.value);
+      if (parsed != null) {
+        return parsed;
+      }
     }
 
     return 0.0;
@@ -531,10 +706,24 @@ mixin ChannelTiltMixin {
       return value.value.toInt();
     }
 
+    if (value is StringValueType) {
+      final parsed = _parseInt(value.value);
+      if (parsed != null) {
+        return parsed;
+      }
+    }
+
     final ValueType? defaultValue = prop?.defaultValue;
 
     if (defaultValue is NumberValueType) {
       return defaultValue.value.toInt();
+    }
+
+    if (defaultValue is StringValueType) {
+      final parsed = _parseInt(defaultValue.value);
+      if (parsed != null) {
+        return parsed;
+      }
     }
 
     return 0;
@@ -575,10 +764,24 @@ mixin ChannelVolumeMixin {
       return value.value.toInt();
     }
 
+    if (value is StringValueType) {
+      final parsed = _parseInt(value.value);
+      if (parsed != null) {
+        return parsed;
+      }
+    }
+
     final ValueType? defaultValue = prop?.defaultValue;
 
     if (defaultValue is NumberValueType) {
       return defaultValue.value.toInt();
+    }
+
+    if (defaultValue is StringValueType) {
+      final parsed = _parseInt(defaultValue.value);
+      if (parsed != null) {
+        return parsed;
+      }
     }
 
     return 0;
