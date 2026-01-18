@@ -4,6 +4,7 @@ import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
@@ -134,8 +135,16 @@ class ClimateSensor {
         return MdiIcons.thermometer;
       case 'humidity':
         return MdiIcons.waterPercent;
-      case 'air':
+      case 'aqi':
         return MdiIcons.airFilter;
+      case 'pm':
+        return MdiIcons.blur;
+      case 'co2':
+        return MdiIcons.moleculeCo2;
+      case 'voc':
+        return MdiIcons.molecule;
+      case 'pressure':
+        return MdiIcons.gauge;
       default:
         return MdiIcons.eyeSettings;
     }
@@ -431,7 +440,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         ClimateSensor(
           id: 'state_temp',
           label: 'Temperature',
-          value: '${climateState!.currentTemperature!.toStringAsFixed(1)}°C',
+          value:
+              '${NumberFormatUtils.defaultFormat.formatDecimal(climateState!.currentTemperature!, decimalPlaces: 1)}°C',
           type: 'temp',
         ),
       );
@@ -444,7 +454,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         ClimateSensor(
           id: 'state_humidity',
           label: 'Humidity',
-          value: '${climateState!.currentHumidity!.toStringAsFixed(0)}%',
+          value:
+              '${NumberFormatUtils.defaultFormat.formatInteger(climateState!.currentHumidity!.toInt())}%',
           type: 'humidity',
         ),
       );
@@ -490,7 +501,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           sensors.add(ClimateSensor(
             id: '${target.deviceId}_temp',
             label: target.displayName,
-            value: '${tempValue.toStringAsFixed(1)}°C',
+            value:
+                '${NumberFormatUtils.defaultFormat.formatDecimal(tempValue, decimalPlaces: 1)}°C',
             type: 'temp',
           ));
         }
@@ -513,17 +525,132 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           sensors.add(ClimateSensor(
             id: '${target.deviceId}_humidity',
             label: target.displayName,
-            value: '${humidityValue.toStringAsFixed(0)}%',
+            value:
+                '${NumberFormatUtils.defaultFormat.formatInteger(humidityValue.toInt())}%',
             type: 'humidity',
           ));
         }
       }
+
+      // Additional climate sensors - check device channels directly
+      // (backend doesn't provide flags for these yet)
+      _buildAdditionalSensors(device, target, sensors);
     } catch (e) {
       // Device may be missing required channels - skip it
       if (kDebugMode) {
         debugPrint(
             '[ClimateDomainViewPage] Failed to build sensor from device ${device.id}: $e');
       }
+    }
+  }
+
+  /// Builds additional climate sensors (AQI, PM, CO2, VOC, Pressure)
+  /// from device channels that aren't tracked by backend flags yet.
+  void _buildAdditionalSensors(
+    DeviceView device,
+    ClimateTargetView target,
+    List<ClimateSensor> sensors,
+  ) {
+    final formatter = NumberFormatUtils.defaultFormat;
+
+    // Air Quality Index (AQI)
+    if (device is SensorDeviceView || device is AirPurifierDeviceView) {
+      final aqChannel = device is AirPurifierDeviceView
+          ? device.airQualityChannel
+          : null; // SensorDeviceView doesn't have airQualityChannel mixin
+
+      if (aqChannel != null && aqChannel.hasAqi) {
+        sensors.add(ClimateSensor(
+          id: '${target.deviceId}_aqi',
+          label: target.displayName,
+          value: formatter.formatInteger(aqChannel.aqi),
+          type: 'aqi',
+        ));
+      }
+    }
+
+    // Air Particulate (PM2.5/PM10)
+    if (device is SensorDeviceView && device.airParticulateChannel != null) {
+      final pmChannel = device.airParticulateChannel!;
+      if (pmChannel.hasDensity) {
+        sensors.add(ClimateSensor(
+          id: '${target.deviceId}_pm',
+          label: target.displayName,
+          value: '${formatter.formatInteger(pmChannel.density.toInt())} µg/m³',
+          type: 'pm',
+        ));
+      }
+    } else if (device is AirPurifierDeviceView &&
+        device.airParticulateChannel != null) {
+      final pmChannel = device.airParticulateChannel!;
+      if (pmChannel.hasDensity) {
+        sensors.add(ClimateSensor(
+          id: '${target.deviceId}_pm',
+          label: target.displayName,
+          value: '${formatter.formatInteger(pmChannel.density.toInt())} µg/m³',
+          type: 'pm',
+        ));
+      }
+    }
+
+    // Carbon Dioxide (CO2)
+    if (device is SensorDeviceView && device.carbonDioxideChannel != null) {
+      final co2Channel = device.carbonDioxideChannel!;
+      if (co2Channel.hasDensity) {
+        sensors.add(ClimateSensor(
+          id: '${target.deviceId}_co2',
+          label: target.displayName,
+          value: '${formatter.formatInteger(co2Channel.density.toInt())} ppm',
+          type: 'co2',
+        ));
+      }
+    } else if (device is AirPurifierDeviceView &&
+        device.carbonDioxideChannel != null) {
+      final co2Channel = device.carbonDioxideChannel!;
+      if (co2Channel.hasDensity) {
+        sensors.add(ClimateSensor(
+          id: '${target.deviceId}_co2',
+          label: target.displayName,
+          value: '${formatter.formatInteger(co2Channel.density.toInt())} ppm',
+          type: 'co2',
+        ));
+      }
+    }
+
+    // Volatile Organic Compounds (VOC)
+    if (device is SensorDeviceView &&
+        device.volatileOrganicCompoundsChannel != null) {
+      final vocChannel = device.volatileOrganicCompoundsChannel!;
+      if (vocChannel.hasDensity) {
+        sensors.add(ClimateSensor(
+          id: '${target.deviceId}_voc',
+          label: target.displayName,
+          value: '${formatter.formatInteger(vocChannel.density.toInt())} ppb',
+          type: 'voc',
+        ));
+      }
+    } else if (device is AirPurifierDeviceView &&
+        device.volatileOrganicCompoundsChannel != null) {
+      final vocChannel = device.volatileOrganicCompoundsChannel!;
+      if (vocChannel.hasDensity) {
+        sensors.add(ClimateSensor(
+          id: '${target.deviceId}_voc',
+          label: target.displayName,
+          value: '${formatter.formatInteger(vocChannel.density.toInt())} ppb',
+          type: 'voc',
+        ));
+      }
+    }
+
+    // Atmospheric Pressure
+    if (device is SensorDeviceView && device.pressureChannel != null) {
+      final pressureChannel = device.pressureChannel!;
+      sensors.add(ClimateSensor(
+        id: '${target.deviceId}_pressure',
+        label: target.displayName,
+        value: '${formatter.formatInteger(pressureChannel.measured.toInt())} hPa',
+        type: 'pressure',
+      ));
     }
   }
 
@@ -756,8 +883,14 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         return isDark ? AppColorsDark.info : AppColorsLight.info;
       case 'humidity':
         return isDark ? AppColorsDark.success : AppColorsLight.success;
-      case 'air':
-        return isDark ? AppColorsDark.success : AppColorsLight.success;
+      case 'aqi':
+      case 'pm':
+      case 'voc':
+        return isDark ? AppColorsDark.warning : AppColorsLight.warning;
+      case 'co2':
+        return isDark ? AppColorsDark.error : AppColorsLight.error;
+      case 'pressure':
+        return isDark ? AppColorsDark.info : AppColorsLight.info;
       default:
         return isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
     }
@@ -870,7 +1003,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                 ),
                 AppSpacings.spacingXsHorizontal,
                 Text(
-                  '${_state.currentTemp.toStringAsFixed(1)}°',
+                  '${NumberFormatUtils.defaultFormat.formatDecimal(_state.currentTemp, decimalPlaces: 1)}°',
                   style: TextStyle(
                     color: isDark
                         ? AppTextColorDark.primary

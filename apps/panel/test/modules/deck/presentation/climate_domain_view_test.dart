@@ -189,14 +189,54 @@ void main() {
       expect(sensor.icon, MdiIcons.waterPercent);
     });
 
-    test('should return correct icon for air type', () {
+    test('should return correct icon for aqi type', () {
       const sensor = ClimateSensor(
         id: 'a1',
         label: 'Air Quality',
-        value: 'Good',
-        type: 'air',
+        value: '50',
+        type: 'aqi',
       );
       expect(sensor.icon, MdiIcons.airFilter);
+    });
+
+    test('should return correct icon for pm type', () {
+      const sensor = ClimateSensor(
+        id: 'pm1',
+        label: 'PM2.5',
+        value: '25 µg/m³',
+        type: 'pm',
+      );
+      expect(sensor.icon, MdiIcons.blur);
+    });
+
+    test('should return correct icon for co2 type', () {
+      const sensor = ClimateSensor(
+        id: 'co2_1',
+        label: 'CO2',
+        value: '450 ppm',
+        type: 'co2',
+      );
+      expect(sensor.icon, MdiIcons.moleculeCo2);
+    });
+
+    test('should return correct icon for voc type', () {
+      const sensor = ClimateSensor(
+        id: 'voc1',
+        label: 'VOC',
+        value: '100 ppb',
+        type: 'voc',
+      );
+      expect(sensor.icon, MdiIcons.molecule);
+    });
+
+    test('should return correct icon for pressure type', () {
+      const sensor = ClimateSensor(
+        id: 'p1',
+        label: 'Pressure',
+        value: '1013 hPa',
+        type: 'pressure',
+      );
+      expect(sensor.icon, MdiIcons.gauge);
     });
 
     test('should return default icon for unknown type', () {
