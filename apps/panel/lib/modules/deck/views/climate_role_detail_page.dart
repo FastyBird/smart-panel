@@ -306,17 +306,6 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
       final climateState = _spacesService?.getClimateState(widget.roomId);
       if (climateState == null) return;
 
-      // Check convergence during settling
-      final targets = [climateState];
-      _controlStateService.checkConvergence(
-        ClimateControlConstants.modeChannelId,
-        targets,
-      );
-      _controlStateService.checkConvergence(
-        ClimateControlConstants.setpointChannelId,
-        targets,
-      );
-
       // Determine mode from climate state (unless locked by state machine)
       ClimateMode mode = _state.mode;
       if (!_controlStateService.isLocked(ClimateControlConstants.modeChannelId)) {
@@ -398,6 +387,19 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
           maxSetpoint: safeMaxSetpoint,
         );
       });
+
+      // Check convergence AFTER setState
+      // This way unlocking only affects the NEXT update, preventing flicker
+      // from stale WebSocket events that arrive out of order
+      final targets = [climateState];
+      _controlStateService.checkConvergence(
+        ClimateControlConstants.modeChannelId,
+        targets,
+      );
+      _controlStateService.checkConvergence(
+        ClimateControlConstants.setpointChannelId,
+        targets,
+      );
     });
   }
 

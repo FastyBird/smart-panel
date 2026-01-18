@@ -1021,7 +1021,14 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     // Rebuild state and update UI
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        // Check convergence during settling
+        // Build state FIRST with current lock status
+        // This ensures UI shows locked (desired) values during pending/settling
+        _buildState();
+        setState(() {});
+
+        // Check convergence AFTER build
+        // This way unlocking only affects the NEXT update, preventing flicker
+        // from stale WebSocket events that arrive out of order
         final climateState = _spacesService?.getClimateState(_roomId);
         if (climateState != null) {
           final targets = [climateState];
@@ -1034,9 +1041,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             targets,
           );
         }
-
-        _buildState();
-        setState(() {});
       }
     });
   }
