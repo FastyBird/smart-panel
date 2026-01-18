@@ -33,9 +33,9 @@ import {
 import { ReqSuggestionFeedbackDto, SuggestionFeedbackDto } from './dto/suggestion.dto';
 import { ReqUpdateSpaceDto, UpdateSpaceDto } from './dto/update-space.dto';
 import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
-import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
 import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
+import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
 import { SpaceEntity } from './entities/space.entity';
 import {
 	BulkAssignmentDataModel,
@@ -49,6 +49,9 @@ import {
 	BulkCoversRolesResultDataModel,
 	BulkLightingRolesResponseModel,
 	BulkLightingRolesResultDataModel,
+	BulkSensorRoleResultItemModel,
+	BulkSensorRolesResponseModel,
+	BulkSensorRolesResultDataModel,
 	CategoryTemplateDataModel,
 	CategoryTemplatesResponseModel,
 	ClimateIntentResponseModel,
@@ -67,6 +70,7 @@ import {
 	CoversStateResponseModel,
 	CoversTargetDataModel,
 	CoversTargetsResponseModel,
+	EnvironmentSummaryDataModel,
 	IntentCatalogDataModel,
 	IntentCatalogResponseModel,
 	IntentCategoryDataModel,
@@ -86,6 +90,15 @@ import {
 	ProposedSpaceDataModel,
 	ProposedSpacesResponseModel,
 	QuickActionDataModel,
+	SafetyAlertDataModel,
+	SensorReadingDataModel,
+	SensorRoleReadingsDataModel,
+	SensorRoleResponseModel,
+	// Sensor response models
+	SensorStateDataModel,
+	SensorStateResponseModel,
+	SensorTargetDataModel,
+	SensorTargetsResponseModel,
 	SpaceResponseModel,
 	SpacesResponseModel,
 	SuggestionDataModel,
@@ -96,19 +109,6 @@ import {
 	UndoResultResponseModel,
 	UndoStateDataModel,
 	UndoStateResponseModel,
-	// Sensor response models
-	SensorStateDataModel,
-	SensorStateResponseModel,
-	SensorTargetDataModel,
-	SensorTargetsResponseModel,
-	SensorRoleResponseModel,
-	BulkSensorRoleResultItemModel,
-	BulkSensorRolesResultDataModel,
-	BulkSensorRolesResponseModel,
-	SensorReadingDataModel,
-	SensorRoleReadingsDataModel,
-	EnvironmentSummaryDataModel,
-	SafetyAlertDataModel,
 } from './models/spaces-response.model';
 
 export const SPACES_SWAGGER_EXTRA_MODELS = [

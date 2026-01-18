@@ -114,7 +114,7 @@ const transformSensorReading = (data: SensorReadingData): ISensorReading => {
 		channelId: data.channel_id,
 		channelName: data.channel_name,
 		channelCategory: data.channel_category,
-		value: data.value ?? null,
+		value: (data.value ?? null) as number | boolean | string | null,
 		unit: data.unit ?? null,
 		role: data.role ?? null,
 	};

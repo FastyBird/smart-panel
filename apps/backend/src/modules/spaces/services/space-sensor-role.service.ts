@@ -17,8 +17,8 @@ import {
 	SENSOR_ENVIRONMENT_CHANNEL_CATEGORIES,
 	SENSOR_SAFETY_CHANNEL_CATEGORIES,
 	SENSOR_SECURITY_CHANNEL_CATEGORIES,
-	SensorRole,
 	SPACES_MODULE_NAME,
+	SensorRole,
 } from '../spaces.constants';
 import { SpacesValidationException } from '../spaces.exceptions';
 
