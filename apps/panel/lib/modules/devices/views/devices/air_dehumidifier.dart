@@ -1,4 +1,5 @@
-import 'package:fastybird_smart_panel/modules/devices/views/channels/cooler.dart';
+import 'package:collection/collection.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/dehumidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/device_information.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_energy.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_power.dart';
@@ -11,7 +12,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';
 
 class AirDehumidifierDeviceView extends DeviceView
     with
-        DeviceCoolerMixin,
+        DeviceDehumidifierMixin,
         DeviceDeviceInformationMixin,
         DeviceHumidityMixin,
         DeviceElectricalEnergyMixin,
@@ -36,16 +37,16 @@ class AirDehumidifierDeviceView extends DeviceView
   });
 
   @override
-  CoolerChannelView get coolerChannel =>
-      channels.whereType<CoolerChannelView>().first;
+  DehumidifierChannelView? get dehumidifierChannel =>
+      channels.whereType<DehumidifierChannelView>().firstOrNull;
 
   @override
   DeviceInformationChannelView get deviceInformationChannel =>
       channels.whereType<DeviceInformationChannelView>().first;
 
   @override
-  HumidityChannelView get humidityChannel =>
-      channels.whereType<HumidityChannelView>().first;
+  HumidityChannelView? get humidityChannel =>
+      channels.whereType<HumidityChannelView>().firstOrNull;
 
   @override
   ElectricalEnergyChannelView? get electricalEnergyChannel =>
@@ -68,5 +69,17 @@ class AirDehumidifierDeviceView extends DeviceView
       channels.whereType<TemperatureChannelView>().firstOrNull;
 
   @override
-  bool get isOn => coolerChannel.isCooling;
+  bool get isOn {
+    // Use dehumidifier channel's on property
+    final dehumidifier = dehumidifierChannel;
+    if (dehumidifier != null) {
+      return dehumidifier.on;
+    }
+    // Fall back to fan channel if available
+    final fan = fanChannel;
+    if (fan != null) {
+      return fan.on;
+    }
+    return false;
+  }
 }
