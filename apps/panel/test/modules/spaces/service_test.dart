@@ -152,6 +152,8 @@ void main() {
           canSetSetpoint: true,
           supportsHeating: true,
           supportsCooling: false,
+          isHeating: true,
+          isCooling: false,
           isMixed: false,
           devicesCount: 1,
         );
@@ -251,6 +253,8 @@ void main() {
           canSetSetpoint: true,
           supportsHeating: false,
           supportsCooling: true,
+          isHeating: false,
+          isCooling: true,
           isMixed: false,
           devicesCount: 1,
         );
