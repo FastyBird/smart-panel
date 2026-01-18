@@ -1,3 +1,5 @@
+import 'package:collection/collection.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/air_quality.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/air_particulate.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/carbon_dioxide.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/carbon_monoxide.dart';
@@ -5,6 +7,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/channels/device_info
 import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_energy.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_power.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/fan.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/filter.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/humidity.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/leak.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/nitrogen_dioxide.dart';
@@ -20,6 +23,8 @@ class AirPurifierDeviceView extends DeviceView
     with
         DeviceDeviceInformationMixin,
         DeviceFanMixin,
+        DeviceFilterMixin,
+        DeviceAirQualityMixin,
         DeviceAirParticulateMixin,
         DeviceCarbonDioxideMixin,
         DeviceCarbonMonoxideMixin,
@@ -55,6 +60,14 @@ class AirPurifierDeviceView extends DeviceView
 
   @override
   FanChannelView get fanChannel => channels.whereType<FanChannelView>().first;
+
+  @override
+  FilterChannelView? get filterChannel =>
+      channels.whereType<FilterChannelView>().firstOrNull;
+
+  @override
+  AirQualityChannelView? get airQualityChannel =>
+      channels.whereType<AirQualityChannelView>().firstOrNull;
 
   @override
   AirParticulateChannelView? get airParticulateChannel =>

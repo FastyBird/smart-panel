@@ -1113,4 +1113,148 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get entry_cameras => 'Kamery';
+
+  @override
+  String get air_quality_level_excellent => 'Vynikající';
+
+  @override
+  String get air_quality_level_good => 'Dobrá';
+
+  @override
+  String get air_quality_level_fair => 'Přijatelná';
+
+  @override
+  String get air_quality_level_inferior => 'Horší';
+
+  @override
+  String get air_quality_level_poor => 'Špatná';
+
+  @override
+  String get air_quality_level_unknown => 'Neznámá';
+
+  @override
+  String get aqi_label_good => 'Dobrá';
+
+  @override
+  String get aqi_label_moderate => 'Střední';
+
+  @override
+  String get aqi_label_unhealthy_sensitive => 'Nezdravá (citliví)';
+
+  @override
+  String get aqi_label_unhealthy => 'Nezdravá';
+
+  @override
+  String get aqi_label_very_unhealthy => 'Velmi nezdravá';
+
+  @override
+  String get aqi_label_hazardous => 'Nebezpečná';
+
+  @override
+  String get particulate_label_pm1 => 'PM1';
+
+  @override
+  String get particulate_label_pm25 => 'PM2.5';
+
+  @override
+  String get particulate_label_pm10 => 'PM10';
+
+  @override
+  String get voc_level_good => 'Dobrá';
+
+  @override
+  String get voc_level_moderate => 'Střední';
+
+  @override
+  String get voc_level_poor => 'Špatná';
+
+  @override
+  String get fan_mode_auto => 'Automatický';
+
+  @override
+  String get fan_mode_manual => 'Ruční';
+
+  @override
+  String get fan_mode_eco => 'Eko';
+
+  @override
+  String get fan_mode_sleep => 'Spánek';
+
+  @override
+  String get fan_mode_natural => 'Přirozený';
+
+  @override
+  String get fan_mode_turbo => 'Turbo';
+
+  @override
+  String get fan_speed_off => 'Vypnuto';
+
+  @override
+  String get fan_speed_low => 'Nízké';
+
+  @override
+  String get fan_speed_medium => 'Střední';
+
+  @override
+  String get fan_speed_high => 'Vysoké';
+
+  @override
+  String get fan_speed_turbo => 'Turbo';
+
+  @override
+  String get fan_speed_auto => 'Automaticky';
+
+  @override
+  String get fan_timer_off => 'Vypnuto';
+
+  @override
+  String get fan_timer_30m => '30m';
+
+  @override
+  String get fan_timer_1h => '1h';
+
+  @override
+  String get fan_timer_2h => '2h';
+
+  @override
+  String get fan_timer_4h => '4h';
+
+  @override
+  String get fan_timer_8h => '8h';
+
+  @override
+  String get fan_timer_12h => '12h';
+
+  @override
+  String get fan_direction_clockwise => 'Po směru';
+
+  @override
+  String get fan_direction_counter_clockwise => 'Proti směru';
+
+  @override
+  String get filter_status_good => 'Dobrý';
+
+  @override
+  String get filter_status_replace_soon => 'Brzy vyměnit';
+
+  @override
+  String get filter_status_replace_now => 'Vyměnit nyní';
+
+  @override
+  String get filter_status_unknown => 'Neznámý';
+
+  @override
+  String duration_format_hours_minutes(int hours, int minutes) {
+    return '${hours}h ${minutes}m';
+  }
+
+  @override
+  String duration_format_hours(int hours) {
+    return '${hours}h';
+  }
+
+  @override
+  String duration_format_minutes(int minutes) {
+    return '${minutes}m';
+  }
 }

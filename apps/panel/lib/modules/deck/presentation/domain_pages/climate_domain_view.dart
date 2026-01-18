@@ -1549,45 +1549,49 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   }
 
   /// Opens the detail page for an auxiliary device
-  void _openAuxiliaryDeviceDetail(AuxiliaryDevice device) {
-    Widget detailPage;
+  void _openAuxiliaryDeviceDetail(AuxiliaryDevice auxiliaryDevice) {
+    final devicesService = locator<DevicesService>();
+    final deviceView = devicesService.getDevice(auxiliaryDevice.id);
 
-    switch (device.type) {
+    Widget? detailPage;
+
+    switch (auxiliaryDevice.type) {
       case AuxiliaryType.fan:
         detailPage = FanDeviceDetail(
-          name: device.name,
+          name: auxiliaryDevice.name,
           initialState: FanDeviceState(
-            isOn: device.isActive,
-            speed: device.isActive ? 0.6 : 0.0,
+            isOn: auxiliaryDevice.isActive,
+            speed: auxiliaryDevice.isActive ? 0.6 : 0.0,
           ),
           onBack: () => Navigator.of(context).pop(),
         );
         break;
       case AuxiliaryType.purifier:
-        detailPage = AirPurifierDeviceDetail(
-          name: device.name,
-          initialState: PurifierDeviceState(isOn: device.isActive),
-          onBack: () => Navigator.of(context).pop(),
-        );
+        if (deviceView is AirPurifierDeviceView) {
+          detailPage = AirPurifierDeviceDetail(device: deviceView);
+        }
         break;
       case AuxiliaryType.humidifier:
         detailPage = AirHumidifierDeviceDetail(
-          name: device.name,
-          initialState: HumidifierDeviceState(isOn: device.isActive),
+          name: auxiliaryDevice.name,
+          initialState: HumidifierDeviceState(isOn: auxiliaryDevice.isActive),
           onBack: () => Navigator.of(context).pop(),
         );
         break;
       case AuxiliaryType.dehumidifier:
         detailPage = AirDehumidifierDeviceDetail(
-          name: device.name,
-          initialState: DehumidifierDeviceState(isOn: device.isActive),
+          name: auxiliaryDevice.name,
+          initialState:
+              DehumidifierDeviceState(isOn: auxiliaryDevice.isActive),
           onBack: () => Navigator.of(context).pop(),
         );
         break;
     }
 
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => detailPage),
-    );
+    if (detailPage != null) {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => detailPage!),
+      );
+    }
   }
 }
