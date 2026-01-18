@@ -340,6 +340,24 @@ export class ClimateStateDataModel {
 	supportsCooling: boolean;
 
 	@ApiProperty({
+		name: 'is_heating',
+		description: 'Whether any heater device is currently active (ON)',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'is_heating' })
+	isHeating: boolean;
+
+	@ApiProperty({
+		name: 'is_cooling',
+		description: 'Whether any cooler device is currently active (ON)',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'is_cooling' })
+	isCooling: boolean;
+
+	@ApiProperty({
 		name: 'is_mixed',
 		description: 'Whether devices have different setpoint values (out of sync)',
 		type: 'boolean',

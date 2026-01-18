@@ -53,6 +53,10 @@ class ClimateStateModel {
   final bool canSetSetpoint;
   final bool supportsHeating;
   final bool supportsCooling;
+  /// Whether any heater device is currently active (ON)
+  final bool isHeating;
+  /// Whether any cooler device is currently active (ON)
+  final bool isCooling;
   final bool isMixed;
   final int devicesCount;
   final ClimateMode? lastAppliedMode;
@@ -71,17 +75,19 @@ class ClimateStateModel {
     required this.canSetSetpoint,
     required this.supportsHeating,
     required this.supportsCooling,
+    required this.isHeating,
+    required this.isCooling,
     required this.isMixed,
     required this.devicesCount,
     this.lastAppliedMode,
     this.lastAppliedAt,
   });
 
-  /// Check if in heating mode
-  bool get isHeating => mode == ClimateMode.heat;
+  /// Check if in heating mode (mode selection, not actual device activity)
+  bool get isInHeatingMode => mode == ClimateMode.heat;
 
-  /// Check if in cooling mode
-  bool get isCooling => mode == ClimateMode.cool;
+  /// Check if in cooling mode (mode selection, not actual device activity)
+  bool get isInCoolingMode => mode == ClimateMode.cool;
 
   /// Check if in auto mode
   bool get isAuto => mode == ClimateMode.auto;
@@ -128,6 +134,8 @@ class ClimateStateModel {
       canSetSetpoint: json['can_set_setpoint'] as bool? ?? false,
       supportsHeating: json['supports_heating'] as bool? ?? false,
       supportsCooling: json['supports_cooling'] as bool? ?? false,
+      isHeating: json['is_heating'] as bool? ?? false,
+      isCooling: json['is_cooling'] as bool? ?? false,
       isMixed: json['is_mixed'] as bool? ?? false,
       devicesCount: json['devices_count'] as int? ?? 0,
       lastAppliedMode: parseClimateMode(json['last_applied_mode'] as String?),
@@ -147,6 +155,8 @@ class ClimateStateModel {
       canSetSetpoint: false,
       supportsHeating: false,
       supportsCooling: false,
+      isHeating: false,
+      isCooling: false,
       isMixed: false,
       devicesCount: 0,
     );

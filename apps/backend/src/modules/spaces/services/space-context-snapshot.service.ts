@@ -143,6 +143,8 @@ export class SpaceContextSnapshotService {
 			canSetSetpoint: false,
 			supportsHeating: false,
 			supportsCooling: false,
+			isHeating: false,
+			isCooling: false,
 			isMixed: false,
 			devicesCount: 0,
 			lastAppliedMode: null,

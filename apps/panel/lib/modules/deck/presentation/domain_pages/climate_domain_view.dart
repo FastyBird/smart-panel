@@ -1295,15 +1295,10 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   }
 
   bool _isDialActive() {
-    if (_state.mode == ClimateMode.off) return false;
-    if (_state.mode == ClimateMode.heat) {
-      return _state.currentTemp < _state.targetTemp;
-    }
-    if (_state.mode == ClimateMode.cool) {
-      return _state.currentTemp > _state.targetTemp;
-    }
-    // Auto mode: active when temperature differs from target
-    return (_state.currentTemp - _state.targetTemp).abs() > 0.5;
+    final climateState = _spacesService?.getClimateState(_roomId);
+    if (climateState == null) return false;
+    // Use actual device activity status from backend
+    return climateState.isHeating || climateState.isCooling;
   }
 
   @override
