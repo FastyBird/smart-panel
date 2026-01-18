@@ -548,7 +548,11 @@ void main() {
                   200,
                 ));
 
-        final result = await repository.setSetpoint(spaceId, 23.0);
+        final result = await repository.setSetpoint(
+          spaceId,
+          23.0,
+          mode: ClimateMode.heat,
+        );
 
         expect(result, isNotNull);
         expect(result!.success, isTrue);
@@ -563,7 +567,11 @@ void main() {
               body: any(named: 'body'),
             )).thenThrow(DioException(requestOptions: RequestOptions(path: '')));
 
-        final result = await repository.setSetpoint(spaceId, 23.0);
+        final result = await repository.setSetpoint(
+          spaceId,
+          23.0,
+          mode: ClimateMode.heat,
+        );
 
         expect(result, isNull);
       });

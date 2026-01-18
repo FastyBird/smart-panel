@@ -462,13 +462,14 @@ void main() {
       test('delegates to SpaceStateRepository', () async {
         const spaceId = 'space-123';
         const value = 22.5;
+        const mode = ClimateMode.heat;
 
-        when(() => mockSpaceStateRepository.setSetpoint(spaceId, value))
+        when(() => mockSpaceStateRepository.setSetpoint(spaceId, value, mode: mode))
             .thenAnswer((_) async => null);
 
-        await service.setSetpoint(spaceId, value);
+        await service.setSetpoint(spaceId, value, mode: mode);
 
-        verify(() => mockSpaceStateRepository.setSetpoint(spaceId, value)).called(1);
+        verify(() => mockSpaceStateRepository.setSetpoint(spaceId, value, mode: mode)).called(1);
       });
     });
   });

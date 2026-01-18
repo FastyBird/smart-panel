@@ -46,6 +46,20 @@ import 'package:provider/provider.dart';
 
 enum ClimateMode { off, heat, cool, auto }
 
+/// Convert local ClimateMode to the one used by the spaces service
+spaces_climate.ClimateMode _toServiceClimateMode(ClimateMode mode) {
+  switch (mode) {
+    case ClimateMode.off:
+      return spaces_climate.ClimateMode.off;
+    case ClimateMode.heat:
+      return spaces_climate.ClimateMode.heat;
+    case ClimateMode.cool:
+      return spaces_climate.ClimateMode.cool;
+    case ClimateMode.auto:
+      return spaces_climate.ClimateMode.auto;
+  }
+}
+
 enum RoomCapability { none, heaterOnly, coolerOnly, heaterAndCooler }
 
 class ClimateDevice {
@@ -330,9 +344,13 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     final devicesService = _devicesService;
 
     // Determine mode from climate state
+    // Prefer lastAppliedMode (user's intent) over detected mode (device state)
+    // because device states may be stale immediately after a mode change
     ClimateMode mode = ClimateMode.off;
     if (climateState != null) {
-      switch (climateState.mode) {
+      // Use lastAppliedMode if available, otherwise fall back to detected mode
+      final effectiveMode = climateState.lastAppliedMode ?? climateState.mode;
+      switch (effectiveMode) {
         case spaces_climate.ClimateMode.heat:
           mode = ClimateMode.heat;
           break;
@@ -865,6 +883,10 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   }
 
   void _setTargetTemp(double temp) {
+    if (kDebugMode) {
+      debugPrint('[ClimateDomainViewPage] _setTargetTemp called with temp=$temp');
+    }
+
     final climateState = _spacesService?.getClimateState(_roomId);
     final rawMinSetpoint = climateState?.minSetpoint ?? 16.0;
     final rawMaxSetpoint = climateState?.maxSetpoint ?? 30.0;
@@ -876,11 +898,28 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
     final clampedTemp = temp.clamp(minSetpoint, maxSetpoint);
 
+    if (kDebugMode) {
+      debugPrint(
+          '[ClimateDomainViewPage] _setTargetTemp: clampedTemp=$clampedTemp, roomId=$_roomId, spacesService=${_spacesService != null}');
+    }
+
     // Optimistic UI update
     setState(() => _state = _state.copyWith(targetTemp: clampedTemp));
 
-    // Call API to set the setpoint
-    _spacesService?.setSetpoint(_roomId, clampedTemp);
+    // Call API to set the setpoint with current mode
+    _spacesService
+        ?.setSetpoint(_roomId, clampedTemp,
+            mode: _toServiceClimateMode(_state.mode))
+        .then((result) {
+      if (kDebugMode) {
+        debugPrint(
+            '[ClimateDomainViewPage] setSetpoint result: affected=${result?.affectedDevices}, failed=${result?.failedDevices}');
+      }
+    }).catchError((e) {
+      if (kDebugMode) {
+        debugPrint('[ClimateDomainViewPage] setSetpoint error: $e');
+      }
+    });
   }
 
   void _navigateToDetail() {

@@ -7,6 +7,7 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/swipe_event.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
@@ -297,6 +298,9 @@ class _CircularControlDialState extends State<CircularControlDial>
   }
 
   void _handleDragStart(Offset localPosition) {
+    if (kDebugMode) {
+      debugPrint('[CircularControlDial] _handleDragStart: localPosition=$localPosition, enabled=${widget.enabled}');
+    }
     if (!widget.enabled) return;
     setState(() => _isDragging = true);
     _eventBus.fire(PageSwipeBlockEvent(blocked: true));
@@ -309,6 +313,9 @@ class _CircularControlDialState extends State<CircularControlDial>
   }
 
   void _handleDragEnd() {
+    if (kDebugMode) {
+      debugPrint('[CircularControlDial] _handleDragEnd: _isDragging=$_isDragging, value=$_value');
+    }
     if (_isDragging) {
       // Fire unblock event before setState to ensure it fires even if widget is disposed
       _eventBus.fire(PageSwipeBlockEvent(blocked: false));
@@ -733,7 +740,11 @@ class _DialDragGestureRecognizer extends OneSequenceGestureRecognizer {
 
   @override
   void addPointer(PointerDownEvent event) {
-    if (isOnTrack(event.localPosition)) {
+    final onTrack = isOnTrack(event.localPosition);
+    if (kDebugMode) {
+      debugPrint('[_DialDragGestureRecognizer] addPointer: localPosition=${event.localPosition}, onTrack=$onTrack');
+    }
+    if (onTrack) {
       startTrackingPointer(event.pointer, event.transform);
       resolve(GestureDisposition.accepted);
       _isDragging = true;
@@ -750,12 +761,14 @@ class _DialDragGestureRecognizer extends OneSequenceGestureRecognizer {
     if (event is PointerMoveEvent) {
       onUpdate?.call(event.localPosition);
     } else if (event is PointerUpEvent) {
-      stopTrackingPointer(event.pointer);
+      // Set _isDragging to false BEFORE stopTrackingPointer to prevent
+      // didStopTrackingLastPointer from calling onCancel
       _isDragging = false;
+      stopTrackingPointer(event.pointer);
       onEnd?.call();
     } else if (event is PointerCancelEvent) {
-      stopTrackingPointer(event.pointer);
       _isDragging = false;
+      stopTrackingPointer(event.pointer);
       onCancel?.call();
     }
   }

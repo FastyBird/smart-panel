@@ -330,7 +330,24 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
     setState(() => _state = _state.copyWith(targetTemp: clampedTemp));
 
     // Call API to set the setpoint
-    _spacesService?.setSetpoint(widget.roomId, clampedTemp);
+    _spacesService?.setSetpoint(
+      widget.roomId,
+      clampedTemp,
+      mode: _toServiceClimateMode(_state.mode),
+    );
+  }
+
+  spaces_climate.ClimateMode _toServiceClimateMode(ClimateMode mode) {
+    switch (mode) {
+      case ClimateMode.off:
+        return spaces_climate.ClimateMode.off;
+      case ClimateMode.heat:
+        return spaces_climate.ClimateMode.heat;
+      case ClimateMode.cool:
+        return spaces_climate.ClimateMode.cool;
+      case ClimateMode.auto:
+        return spaces_climate.ClimateMode.auto;
+    }
   }
 
   // Theme-aware color getters

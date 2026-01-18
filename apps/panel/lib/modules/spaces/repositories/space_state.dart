@@ -522,6 +522,12 @@ class SpaceStateRepository extends ChangeNotifier {
         body['mode'] = climateModeToString(mode);
       }
 
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][STATE] executeClimateIntent: body=$body',
+        );
+      }
+
       final response = await _apiClient.createSpacesModuleSpaceClimateIntent(
         id: spaceId,
         body: SpacesModuleReqClimateIntent(
@@ -596,16 +602,40 @@ class SpaceStateRepository extends ChangeNotifier {
     );
   }
 
-  /// Set exact setpoint value
+  /// Set exact setpoint value based on mode
+  ///
+  /// For heat mode: sends heatingSetpoint
+  /// For cool mode: sends coolingSetpoint
+  /// For auto mode: sends both heatingSetpoint and coolingSetpoint
+  /// For off mode: sends heatingSetpoint (preparing for when turned back on)
   Future<ClimateIntentResult?> setSetpoint(
     String spaceId,
-    double value,
-  ) {
-    return executeClimateIntent(
-      spaceId: spaceId,
-      type: ClimateIntentType.setpointSet,
-      value: value,
-    );
+    double value, {
+    required ClimateMode mode,
+  }) {
+    switch (mode) {
+      case ClimateMode.heat:
+      case ClimateMode.off:
+        return executeClimateIntent(
+          spaceId: spaceId,
+          type: ClimateIntentType.setpointSet,
+          heatingSetpoint: value,
+        );
+      case ClimateMode.cool:
+        return executeClimateIntent(
+          spaceId: spaceId,
+          type: ClimateIntentType.setpointSet,
+          coolingSetpoint: value,
+        );
+      case ClimateMode.auto:
+        // In auto mode, set both setpoints to the same value
+        return executeClimateIntent(
+          spaceId: spaceId,
+          type: ClimateIntentType.setpointSet,
+          heatingSetpoint: value,
+          coolingSetpoint: value,
+        );
+    }
   }
 
   /// Set climate mode
