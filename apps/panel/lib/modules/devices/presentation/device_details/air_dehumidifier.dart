@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:fastybird_smart_panel/app/locator.dart';
@@ -15,12 +16,14 @@ import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/dehumidifier_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/fan_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/dehumidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_dehumidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class AirDehumidifierDeviceDetail extends StatefulWidget {
@@ -44,24 +47,44 @@ class _AirDehumidifierDeviceDetailState
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
   final DevicesService _devicesService = locator<DevicesService>();
+  DeviceControlStateService? _deviceControlStateService;
 
-  VoidCallback? _devicesListener;
+  // Debounce timer for speed slider to avoid flooding backend
+  Timer? _speedDebounceTimer;
+  static const _speedDebounceDuration = Duration(milliseconds: 300);
 
   @override
   void initState() {
     super.initState();
-    _devicesListener = () {
-      if (mounted) setState(() {});
-    };
-    _devicesService.addListener(_devicesListener!);
+    _devicesService.addListener(_onDeviceChanged);
+
+    try {
+      _deviceControlStateService = locator<DeviceControlStateService>();
+      _deviceControlStateService?.addListener(_onControlStateChanged);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[AirDehumidifierDeviceDetail] Failed to get DeviceControlStateService: $e');
+      }
+    }
   }
 
   @override
   void dispose() {
-    if (_devicesListener != null) {
-      _devicesService.removeListener(_devicesListener!);
-    }
+    _speedDebounceTimer?.cancel();
+    _devicesService.removeListener(_onDeviceChanged);
+    _deviceControlStateService?.removeListener(_onControlStateChanged);
     super.dispose();
+  }
+
+  void _onDeviceChanged() {
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  void _onControlStateChanged() {
+    if (mounted) setState(() {});
   }
 
   double _scale(double value) =>
@@ -548,38 +571,8 @@ class _AirDehumidifierDeviceDetailState
           AppSpacings.spacingMdVertical,
         ],
         // Fan speed control if available
-        if (fanChannel != null && fanChannel.hasSpeed && fanChannel.isSpeedNumeric) ...[
-          if (useVerticalLayout)
-            ValueSelectorRow<double>(
-              currentValue: _normalizedFanSpeed,
-              label: localizations.device_fan_speed,
-              icon: Icons.speed,
-              sheetTitle: localizations.device_fan_speed,
-              activeColor: humidityColor,
-              options: [
-                ValueOption(value: 0.0, label: localizations.fan_speed_low),
-                ValueOption(value: 1.0, label: localizations.fan_speed_high),
-              ],
-              displayFormatter: (v) =>
-                  v != null && v >= 0.5 ? localizations.fan_speed_high : localizations.fan_speed_low,
-              isActiveValue: (v) => _device.isOn,
-              columns: 2,
-              layout: ValueSelectorRowLayout.compact,
-              onChanged: _device.isOn
-                  ? (v) => _setFanSpeed(v ?? 0)
-                  : null,
-            )
-          else
-            SpeedSlider(
-              value: _normalizedFanSpeed,
-              activeColor: humidityColor,
-              steps: [localizations.fan_speed_low, localizations.fan_speed_high],
-              discrete: true,
-              enabled: _device.isOn,
-              onChanged: _setFanSpeed,
-            ),
-          AppSpacings.spacingSmVertical,
-        ],
+        if (fanChannel != null && fanChannel.hasSpeed)
+          _buildFanSpeedControl(localizations, humidityColor, useVerticalLayout),
         // Child Lock
         if (channel != null && channel.hasLocked) ...[
           UniversalTile(
@@ -636,28 +629,183 @@ class _AirDehumidifierDeviceDetailState
     return Column(children: rows);
   }
 
+  Widget _buildFanSpeedControl(
+    AppLocalizations localizations,
+    Color humidityColor,
+    bool useVerticalLayout,
+  ) {
+    final fanChannel = _device.fanChannel;
+    if (fanChannel == null || !fanChannel.hasSpeed) return const SizedBox.shrink();
+
+    if (fanChannel.isSpeedEnum) {
+      // Enum-based speed (off, low, medium, high, etc.)
+      final availableLevels = fanChannel.availableSpeedLevels;
+      if (availableLevels.isEmpty) return const SizedBox.shrink();
+
+      final options = availableLevels
+          .map((level) => ValueOption(
+                value: level,
+                label: FanUtils.getSpeedLevelLabel(localizations, level),
+              ))
+          .toList();
+
+      return Column(
+        children: [
+          ValueSelectorRow<FanSpeedLevelValue>(
+            currentValue: fanChannel.speedLevel,
+            label: localizations.device_fan_speed,
+            icon: Icons.speed,
+            sheetTitle: localizations.device_fan_speed,
+            activeColor: humidityColor,
+            options: options,
+            displayFormatter: (level) => level != null
+                ? FanUtils.getSpeedLevelLabel(localizations, level)
+                : localizations.fan_speed_off,
+            isActiveValue: (level) =>
+                level != null && level != FanSpeedLevelValue.off,
+            columns: availableLevels.length > 4 ? 3 : availableLevels.length,
+            layout: useVerticalLayout
+                ? ValueSelectorRowLayout.compact
+                : ValueSelectorRowLayout.horizontal,
+            onChanged: _device.isOn
+                ? (level) {
+                    if (level != null) {
+                      _setPropertyValue(fanChannel.speedProp, level.value);
+                    }
+                  }
+                : null,
+          ),
+          AppSpacings.spacingSmVertical,
+        ],
+      );
+    } else {
+      // Numeric speed (0-100%)
+      if (useVerticalLayout) {
+        return Column(
+          children: [
+            ValueSelectorRow<double>(
+              currentValue: _normalizedFanSpeed,
+              label: localizations.device_fan_speed,
+              icon: Icons.speed,
+              sheetTitle: localizations.device_fan_speed,
+              activeColor: humidityColor,
+              options: _getFanSpeedOptions(localizations),
+              displayFormatter: (v) => _formatFanSpeed(localizations, v),
+              isActiveValue: (v) => v != null && v > 0,
+              columns: 4,
+              layout: ValueSelectorRowLayout.compact,
+              onChanged: _device.isOn ? (v) => _setFanSpeed(v ?? 0) : null,
+            ),
+            AppSpacings.spacingSmVertical,
+          ],
+        );
+      } else {
+        return SpeedSlider(
+          value: _normalizedFanSpeed,
+          activeColor: humidityColor,
+          enabled: _device.isOn,
+          steps: [
+            localizations.fan_speed_off,
+            localizations.fan_speed_low,
+            localizations.fan_speed_medium,
+            localizations.fan_speed_high,
+          ],
+          onChanged: _setFanSpeed,
+        );
+      }
+    }
+  }
+
   double get _normalizedFanSpeed {
     final fanChannel = _device.fanChannel;
-    if (fanChannel == null || !fanChannel.hasSpeed) return 0.0;
+    if (fanChannel == null || !fanChannel.hasSpeed || !fanChannel.isSpeedNumeric) return 0.0;
 
-    final speed = fanChannel.speed;
+    final speedProp = fanChannel.speedProp;
+    final controlState = _deviceControlStateService;
+
+    double actualSpeed = fanChannel.speed;
+
+    // Check for pending/optimistic value first
+    if (speedProp != null &&
+        controlState != null &&
+        controlState.isLocked(_device.id, fanChannel.id, speedProp.id)) {
+      final desiredValue = controlState.getDesiredValue(
+        _device.id,
+        fanChannel.id,
+        speedProp.id,
+      );
+      if (desiredValue is num) {
+        actualSpeed = desiredValue.toDouble();
+      }
+    }
+
     final minSpeed = fanChannel.minSpeed;
     final maxSpeed = fanChannel.maxSpeed;
     final range = maxSpeed - minSpeed;
     if (range <= 0) return 0.0;
-    return (speed - minSpeed) / range;
+    return (actualSpeed - minSpeed) / range;
   }
 
   void _setFanSpeed(double normalizedSpeed) {
     final fanChannel = _device.fanChannel;
-    if (fanChannel == null || !fanChannel.hasSpeed) return;
+    final speedProp = fanChannel?.speedProp;
+    if (fanChannel == null || !fanChannel.hasSpeed || !fanChannel.isSpeedNumeric || speedProp == null) return;
 
+    // Convert normalized 0-1 value to actual device speed range
     final minSpeed = fanChannel.minSpeed;
     final maxSpeed = fanChannel.maxSpeed;
     final range = maxSpeed - minSpeed;
-    final actualSpeed = minSpeed + (normalizedSpeed * range);
+    final rawSpeed = minSpeed + (normalizedSpeed * range);
 
-    _setPropertyValue(fanChannel.speedProp, actualSpeed);
+    // Round to step value
+    final step = fanChannel.speedStep;
+    final steppedSpeed = (rawSpeed / step).round() * step;
+
+    // Clamp to valid range
+    final actualSpeed = steppedSpeed.clamp(minSpeed, maxSpeed);
+
+    // Set PENDING state immediately for responsive UI
+    _deviceControlStateService?.setPending(
+      _device.id,
+      fanChannel.id,
+      speedProp.id,
+      actualSpeed,
+    );
+    setState(() {});
+
+    // Cancel any pending debounce timer
+    _speedDebounceTimer?.cancel();
+
+    // Debounce the API call to avoid flooding backend
+    _speedDebounceTimer = Timer(_speedDebounceDuration, () async {
+      if (!mounted) return;
+
+      await _setPropertyValue(speedProp, actualSpeed);
+
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          fanChannel.id,
+          speedProp.id,
+        );
+      }
+    });
+  }
+
+  List<ValueOption<double>> _getFanSpeedOptions(AppLocalizations localizations) {
+    return [
+      ValueOption(value: 0.0, label: localizations.fan_speed_off),
+      ValueOption(value: 0.33, label: localizations.fan_speed_low),
+      ValueOption(value: 0.66, label: localizations.fan_speed_medium),
+      ValueOption(value: 1.0, label: localizations.fan_speed_high),
+    ];
+  }
+
+  String _formatFanSpeed(AppLocalizations localizations, double? speed) {
+    if (speed == null || speed == 0) return localizations.fan_speed_off;
+    if (speed <= 0.33) return localizations.fan_speed_low;
+    if (speed <= 0.66) return localizations.fan_speed_medium;
+    return localizations.fan_speed_high;
   }
 
   Widget _buildTimerControl(
