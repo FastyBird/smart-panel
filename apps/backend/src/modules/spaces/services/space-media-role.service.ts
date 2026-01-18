@@ -9,7 +9,13 @@ import { PropertyCategory } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { SetMediaRoleDto } from '../dto/media-role.dto';
 import { SpaceMediaRoleEntity } from '../entities/space-media-role.entity';
-import { EventType, MEDIA_CHANNEL_CATEGORIES, MEDIA_DEVICE_CATEGORIES, MediaRole, SPACES_MODULE_NAME } from '../spaces.constants';
+import {
+	EventType,
+	MEDIA_CHANNEL_CATEGORIES,
+	MEDIA_DEVICE_CATEGORIES,
+	MediaRole,
+	SPACES_MODULE_NAME,
+} from '../spaces.constants';
 import { SpacesValidationException } from '../spaces.exceptions';
 
 import { SpacesService } from './spaces.service';
