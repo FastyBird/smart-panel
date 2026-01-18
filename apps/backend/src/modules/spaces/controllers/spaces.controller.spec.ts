@@ -19,6 +19,8 @@ import { SpaceCoversRoleService } from '../services/space-covers-role.service';
 import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
 import { SpaceLightingStateService } from '../services/space-lighting-state.service';
+import { SpaceMediaRoleService } from '../services/space-media-role.service';
+import { SpaceMediaStateService } from '../services/space-media-state.service';
 import { SpaceSensorRoleService } from '../services/space-sensor-role.service';
 import { SpaceSensorStateService } from '../services/space-sensor-state.service';
 import { SpaceSuggestionService } from '../services/space-suggestion.service';
@@ -210,6 +212,31 @@ describe('SpacesController', () => {
 						getCoversTargetsInSpace: jest.fn().mockResolvedValue([]),
 						inferDefaultCoversRoles: jest.fn().mockResolvedValue([]),
 						getRoleMap: jest.fn().mockResolvedValue(new Map()),
+					},
+				},
+				{
+					provide: SpaceMediaRoleService,
+					useValue: {
+						findBySpace: jest.fn().mockResolvedValue([]),
+						findOne: jest.fn().mockResolvedValue(null),
+						setRole: jest.fn().mockResolvedValue({}),
+						bulkSetRoles: jest.fn().mockResolvedValue({
+							success: true,
+							totalCount: 0,
+							successCount: 0,
+							failureCount: 0,
+							results: [],
+						}),
+						deleteRole: jest.fn().mockResolvedValue(undefined),
+						getMediaTargetsInSpace: jest.fn().mockResolvedValue([]),
+						inferDefaultMediaRoles: jest.fn().mockResolvedValue([]),
+						getRoleMap: jest.fn().mockResolvedValue(new Map()),
+					},
+				},
+				{
+					provide: SpaceMediaStateService,
+					useValue: {
+						getMediaState: jest.fn().mockResolvedValue(null),
 					},
 				},
 				{

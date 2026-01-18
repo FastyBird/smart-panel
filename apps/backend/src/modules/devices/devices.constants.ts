@@ -175,6 +175,7 @@ export enum PropertyCategory {
 	MIST_LEVEL = 'mist_level',
 	MODEL = 'model',
 	MODE = 'mode',
+	MUTE = 'mute',
 	NATURAL_BREEZE = 'natural_breeze',
 	OBSTRUCTION = 'obstruction',
 	ON = 'on',
