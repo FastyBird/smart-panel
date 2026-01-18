@@ -936,8 +936,17 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         status = isActive ? 'Heating' : 'Standby';
       } else if (device is AirConditionerDeviceView) {
         deviceType = 'ac';
-        isActive = device.isOn;
-        status = isActive ? 'Cooling' : 'Standby';
+        // A/C can have both cooler (required) and heater (optional) channels
+        final isCooling = device.coolerChannel.isCooling;
+        final isHeating = device.heaterChannel?.isHeating ?? false;
+        isActive = isCooling || isHeating;
+        if (isCooling) {
+          status = 'Cooling';
+        } else if (isHeating) {
+          status = 'Heating';
+        } else {
+          status = 'Standby';
+        }
       }
 
       climateDevices.add(ClimateDevice(
