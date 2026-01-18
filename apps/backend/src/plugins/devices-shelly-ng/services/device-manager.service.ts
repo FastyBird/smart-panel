@@ -6,7 +6,6 @@ import {
 	ChannelCategory,
 	ConnectionState,
 	DataTypeType,
-	DeviceCategory,
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
@@ -254,40 +253,18 @@ export class DeviceManagerService {
 						};
 
 						const mapping = this.mappingLoaderService.findMatchingMapping(mappingContext);
-						let cat: ChannelCategory;
-						let chanName: string;
 
-						if (mapping && mapping.channels.length > 0) {
-							// Use YAML mapping
-							const channelDef = mapping.channels[0];
-							cat = channelDef.category;
-							chanName =
-								switchConfig.name ??
-								this.mappingLoaderService.interpolateTemplate(channelDef.name ?? `Switch: {key}`, mappingContext);
-						} else {
-							// Fallback to hardcoded logic for backward compatibility
-							if (
-								device.category === DeviceCategory.OUTLET ||
-								device.category === DeviceCategory.SWITCHER ||
-								device.category === DeviceCategory.PUMP
-							) {
-								cat = ChannelCategory.SWITCHER;
-								chanName = switchConfig.name ?? `Switch: ${key}`;
-							} else if (device.category === DeviceCategory.FAN) {
-								cat = ChannelCategory.FAN;
-								chanName = switchConfig.name ?? `Fan: ${key}`;
-							} else if (device.category === DeviceCategory.SPRINKLER || device.category === DeviceCategory.VALVE) {
-								cat = ChannelCategory.VALVE;
-								chanName = switchConfig.name ?? `Valve: ${key}`;
-							} else if (device.category === DeviceCategory.LIGHTING) {
-								cat = ChannelCategory.LIGHT;
-								chanName = switchConfig.name ?? `Light: ${key}`;
-							} else {
-								// Default to SWITCHER for unknown categories
-								cat = ChannelCategory.SWITCHER;
-								chanName = switchConfig.name ?? `Switch: ${key}`;
-							}
+						if (!mapping || mapping.channels.length === 0) {
+							throw new DevicesShellyNgException(
+								`No mapping found for switch component key=${key} device=${device.id} category=${device.category}`,
+							);
 						}
+
+						const channelDef = mapping.channels[0];
+						const cat = channelDef.category;
+						const chanName =
+							switchConfig.name ??
+							this.mappingLoaderService.interpolateTemplate(channelDef.name ?? `Switch: {key}`, mappingContext);
 
 						const chan = await this.ensureChannel(device, 'identifier', `switch:${key}`, cat, chanName);
 

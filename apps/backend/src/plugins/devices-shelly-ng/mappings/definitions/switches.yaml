@@ -96,3 +96,20 @@ mappings:
             data_type: ENUM
             format: ["generic", "irrigation", "shower_head", "water_faucet"]
             value: "generic"
+
+  # Default Switch mapping (fallback for GENERIC and other uncovered device categories)
+  - name: switch_default
+    description: "Default switch mapping for unhandled device categories"
+    priority: 50
+    match:
+      component_type: switch
+    channels:
+      - identifier: "switch:{key}"
+        name: "Switch: {key}"
+        category: SWITCHER
+        properties:
+          - shelly_property: output
+            panel:
+              identifier: ON
+              data_type: BOOL
+            transformer: boolean_state

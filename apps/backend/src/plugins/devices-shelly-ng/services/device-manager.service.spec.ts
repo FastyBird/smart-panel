@@ -37,7 +37,21 @@ const mockChannelsPropertiesService = {
 } as any;
 
 const mockMappingLoaderService = {
-	findMatchingMapping: jest.fn().mockReturnValue(null), // Return null to use fallback logic
+	findMatchingMapping: jest.fn().mockImplementation((context: any) => {
+		// Return a valid mapping for switch components
+		if (context.componentType === 'switch') {
+			return {
+				channels: [
+					{
+						identifier: `switch:${context.componentKey}`,
+						name: `Switch: ${context.componentKey}`,
+						category: 'switcher', // Maps to ChannelCategory.SWITCHER
+					},
+				],
+			};
+		}
+		return null;
+	}),
 	interpolateTemplate: jest.fn((template: string, context: any) =>
 		template.replace(/\{key\}/g, String(context.componentKey)),
 	),
