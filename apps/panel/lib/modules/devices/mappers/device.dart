@@ -330,10 +330,7 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
         'Device view is not valid for Air dehumidifier device detail',
       );
     }
-    return AirDehumidifierDeviceDetail(
-      name: device.name,
-      initialState: const DehumidifierDeviceState(),
-    );
+    return AirDehumidifierDeviceDetail(device: device);
   },
   DevicesModuleDeviceCategory.airHumidifier: (device) {
     if (device is! AirHumidifierDeviceView) {
@@ -341,10 +338,7 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
         'Device view is not valid for Air humidifier device detail',
       );
     }
-    return AirHumidifierDeviceDetail(
-      name: device.name,
-      initialState: const HumidifierDeviceState(),
-    );
+    return AirHumidifierDeviceDetail(device: device);
   },
   DevicesModuleDeviceCategory.airPurifier: (device) {
     if (device is! AirPurifierDeviceView) {
@@ -352,10 +346,7 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
         'Device view is not valid for Air purifier device detail',
       );
     }
-    return AirPurifierDeviceDetail(
-      name: device.name,
-      initialState: const PurifierDeviceState(),
-    );
+    return AirPurifierDeviceDetail(device: device);
   },
   DevicesModuleDeviceCategory.alarm: (device) {
     if (device is! AlarmDeviceView) {
@@ -395,10 +386,7 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
         'Device view is not valid for Fan device detail',
       );
     }
-    return FanDeviceDetail(
-      name: device.name,
-      initialState: const FanDeviceState(),
-    );
+    return FanDeviceDetail(device: device);
   },
   DevicesModuleDeviceCategory.heatingUnit: (device) {
     if (device is! HeaterDeviceView) {

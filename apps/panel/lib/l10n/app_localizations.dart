@@ -2272,6 +2272,588 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cameras'**
   String get entry_cameras;
+
+  /// Air quality level - excellent
+  ///
+  /// In en, this message translates to:
+  /// **'Excellent'**
+  String get air_quality_level_excellent;
+
+  /// Air quality level - good
+  ///
+  /// In en, this message translates to:
+  /// **'Good'**
+  String get air_quality_level_good;
+
+  /// Air quality level - fair
+  ///
+  /// In en, this message translates to:
+  /// **'Fair'**
+  String get air_quality_level_fair;
+
+  /// Air quality level - inferior
+  ///
+  /// In en, this message translates to:
+  /// **'Inferior'**
+  String get air_quality_level_inferior;
+
+  /// Air quality level - poor
+  ///
+  /// In en, this message translates to:
+  /// **'Poor'**
+  String get air_quality_level_poor;
+
+  /// Air quality level - unknown
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get air_quality_level_unknown;
+
+  /// AQI label for good air quality (0-50)
+  ///
+  /// In en, this message translates to:
+  /// **'Good'**
+  String get aqi_label_good;
+
+  /// AQI label for moderate air quality (51-100)
+  ///
+  /// In en, this message translates to:
+  /// **'Moderate'**
+  String get aqi_label_moderate;
+
+  /// AQI label for unhealthy for sensitive groups (101-150)
+  ///
+  /// In en, this message translates to:
+  /// **'Unhealthy (Sensitive)'**
+  String get aqi_label_unhealthy_sensitive;
+
+  /// AQI label for unhealthy air quality (151-200)
+  ///
+  /// In en, this message translates to:
+  /// **'Unhealthy'**
+  String get aqi_label_unhealthy;
+
+  /// AQI label for very unhealthy air quality (201-300)
+  ///
+  /// In en, this message translates to:
+  /// **'Very Unhealthy'**
+  String get aqi_label_very_unhealthy;
+
+  /// AQI label for hazardous air quality (301+)
+  ///
+  /// In en, this message translates to:
+  /// **'Hazardous'**
+  String get aqi_label_hazardous;
+
+  /// Label for PM1 particulate matter
+  ///
+  /// In en, this message translates to:
+  /// **'PM1'**
+  String get particulate_label_pm1;
+
+  /// Label for PM2.5 particulate matter
+  ///
+  /// In en, this message translates to:
+  /// **'PM2.5'**
+  String get particulate_label_pm25;
+
+  /// Label for PM10 particulate matter
+  ///
+  /// In en, this message translates to:
+  /// **'PM10'**
+  String get particulate_label_pm10;
+
+  /// VOC level - good/low
+  ///
+  /// In en, this message translates to:
+  /// **'Good'**
+  String get voc_level_good;
+
+  /// VOC level - moderate/medium
+  ///
+  /// In en, this message translates to:
+  /// **'Moderate'**
+  String get voc_level_moderate;
+
+  /// VOC level - poor/high
+  ///
+  /// In en, this message translates to:
+  /// **'Poor'**
+  String get voc_level_poor;
+
+  /// Fan mode - automatic
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get fan_mode_auto;
+
+  /// Fan mode - manual
+  ///
+  /// In en, this message translates to:
+  /// **'Manual'**
+  String get fan_mode_manual;
+
+  /// Fan mode - eco/energy saving
+  ///
+  /// In en, this message translates to:
+  /// **'Eco'**
+  String get fan_mode_eco;
+
+  /// Fan mode - sleep/quiet
+  ///
+  /// In en, this message translates to:
+  /// **'Sleep'**
+  String get fan_mode_sleep;
+
+  /// Fan mode - natural breeze
+  ///
+  /// In en, this message translates to:
+  /// **'Natural'**
+  String get fan_mode_natural;
+
+  /// Fan mode - turbo/high power
+  ///
+  /// In en, this message translates to:
+  /// **'Turbo'**
+  String get fan_mode_turbo;
+
+  /// Fan speed level - off
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get fan_speed_off;
+
+  /// Fan speed level - low
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get fan_speed_low;
+
+  /// Fan speed level - medium
+  ///
+  /// In en, this message translates to:
+  /// **'Med'**
+  String get fan_speed_medium;
+
+  /// Fan speed level - high
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get fan_speed_high;
+
+  /// Fan speed level - turbo
+  ///
+  /// In en, this message translates to:
+  /// **'Turbo'**
+  String get fan_speed_turbo;
+
+  /// Fan speed level - auto
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get fan_speed_auto;
+
+  /// Fan timer - off
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get fan_timer_off;
+
+  /// Fan timer - 30 minutes
+  ///
+  /// In en, this message translates to:
+  /// **'30m'**
+  String get fan_timer_30m;
+
+  /// Fan timer - 1 hour
+  ///
+  /// In en, this message translates to:
+  /// **'1h'**
+  String get fan_timer_1h;
+
+  /// Fan timer - 2 hours
+  ///
+  /// In en, this message translates to:
+  /// **'2h'**
+  String get fan_timer_2h;
+
+  /// Fan timer - 4 hours
+  ///
+  /// In en, this message translates to:
+  /// **'4h'**
+  String get fan_timer_4h;
+
+  /// Fan timer - 8 hours
+  ///
+  /// In en, this message translates to:
+  /// **'8h'**
+  String get fan_timer_8h;
+
+  /// Fan timer - 12 hours
+  ///
+  /// In en, this message translates to:
+  /// **'12h'**
+  String get fan_timer_12h;
+
+  /// Fan direction - clockwise
+  ///
+  /// In en, this message translates to:
+  /// **'Clockwise'**
+  String get fan_direction_clockwise;
+
+  /// Fan direction - counter-clockwise
+  ///
+  /// In en, this message translates to:
+  /// **'Counter-Clockwise'**
+  String get fan_direction_counter_clockwise;
+
+  /// Filter status - good condition
+  ///
+  /// In en, this message translates to:
+  /// **'Good'**
+  String get filter_status_good;
+
+  /// Filter status - needs replacement soon
+  ///
+  /// In en, this message translates to:
+  /// **'Replace Soon'**
+  String get filter_status_replace_soon;
+
+  /// Filter status - needs immediate replacement
+  ///
+  /// In en, this message translates to:
+  /// **'Replace Now'**
+  String get filter_status_replace_now;
+
+  /// Filter status - unknown or unavailable
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get filter_status_unknown;
+
+  /// Dehumidifier mode - automatic
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get dehumidifier_mode_auto;
+
+  /// Dehumidifier mode - manual
+  ///
+  /// In en, this message translates to:
+  /// **'Manual'**
+  String get dehumidifier_mode_manual;
+
+  /// Dehumidifier mode - continuous operation
+  ///
+  /// In en, this message translates to:
+  /// **'Continuous'**
+  String get dehumidifier_mode_continuous;
+
+  /// Dehumidifier mode - laundry drying
+  ///
+  /// In en, this message translates to:
+  /// **'Laundry'**
+  String get dehumidifier_mode_laundry;
+
+  /// Dehumidifier mode - quiet/silent operation
+  ///
+  /// In en, this message translates to:
+  /// **'Quiet'**
+  String get dehumidifier_mode_quiet;
+
+  /// Dehumidifier status - idle
+  ///
+  /// In en, this message translates to:
+  /// **'Idle'**
+  String get dehumidifier_status_idle;
+
+  /// Dehumidifier status - actively dehumidifying
+  ///
+  /// In en, this message translates to:
+  /// **'Dehumidifying'**
+  String get dehumidifier_status_dehumidifying;
+
+  /// Dehumidifier status - defrost cycle active
+  ///
+  /// In en, this message translates to:
+  /// **'Defrosting'**
+  String get dehumidifier_status_defrosting;
+
+  /// Dehumidifier timer - off
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get dehumidifier_timer_off;
+
+  /// Dehumidifier timer - 30 minutes
+  ///
+  /// In en, this message translates to:
+  /// **'30 min'**
+  String get dehumidifier_timer_30m;
+
+  /// Dehumidifier timer - 1 hour
+  ///
+  /// In en, this message translates to:
+  /// **'1 hour'**
+  String get dehumidifier_timer_1h;
+
+  /// Dehumidifier timer - 2 hours
+  ///
+  /// In en, this message translates to:
+  /// **'2 hours'**
+  String get dehumidifier_timer_2h;
+
+  /// Dehumidifier timer - 4 hours
+  ///
+  /// In en, this message translates to:
+  /// **'4 hours'**
+  String get dehumidifier_timer_4h;
+
+  /// Dehumidifier timer - 8 hours
+  ///
+  /// In en, this message translates to:
+  /// **'8 hours'**
+  String get dehumidifier_timer_8h;
+
+  /// Dehumidifier timer - 12 hours
+  ///
+  /// In en, this message translates to:
+  /// **'12 hours'**
+  String get dehumidifier_timer_12h;
+
+  /// Dehumidifier water tank label
+  ///
+  /// In en, this message translates to:
+  /// **'Water Tank'**
+  String get dehumidifier_water_tank;
+
+  /// Humidifier mode - automatic
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get humidifier_mode_auto;
+
+  /// Humidifier mode - manual
+  ///
+  /// In en, this message translates to:
+  /// **'Manual'**
+  String get humidifier_mode_manual;
+
+  /// Humidifier mode - sleep mode
+  ///
+  /// In en, this message translates to:
+  /// **'Sleep'**
+  String get humidifier_mode_sleep;
+
+  /// Humidifier mode - baby safe mode
+  ///
+  /// In en, this message translates to:
+  /// **'Baby'**
+  String get humidifier_mode_baby;
+
+  /// Humidifier status - idle
+  ///
+  /// In en, this message translates to:
+  /// **'Idle'**
+  String get humidifier_status_idle;
+
+  /// Humidifier status - actively humidifying
+  ///
+  /// In en, this message translates to:
+  /// **'Humidifying'**
+  String get humidifier_status_humidifying;
+
+  /// Mist level control label
+  ///
+  /// In en, this message translates to:
+  /// **'Mist Level'**
+  String get humidifier_mist_level;
+
+  /// Humidifier mist level - off
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get humidifier_mist_level_off;
+
+  /// Humidifier mist level - low
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get humidifier_mist_level_low;
+
+  /// Humidifier mist level - medium
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get humidifier_mist_level_medium;
+
+  /// Humidifier mist level - high
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get humidifier_mist_level_high;
+
+  /// Humidifier timer - off
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get humidifier_timer_off;
+
+  /// Humidifier timer - 30 minutes
+  ///
+  /// In en, this message translates to:
+  /// **'30 min'**
+  String get humidifier_timer_30m;
+
+  /// Humidifier timer - 1 hour
+  ///
+  /// In en, this message translates to:
+  /// **'1 hour'**
+  String get humidifier_timer_1h;
+
+  /// Humidifier timer - 2 hours
+  ///
+  /// In en, this message translates to:
+  /// **'2 hours'**
+  String get humidifier_timer_2h;
+
+  /// Humidifier timer - 4 hours
+  ///
+  /// In en, this message translates to:
+  /// **'4 hours'**
+  String get humidifier_timer_4h;
+
+  /// Humidifier timer - 8 hours
+  ///
+  /// In en, this message translates to:
+  /// **'8 hours'**
+  String get humidifier_timer_8h;
+
+  /// Humidifier timer - 12 hours
+  ///
+  /// In en, this message translates to:
+  /// **'12 hours'**
+  String get humidifier_timer_12h;
+
+  /// Humidifier water tank label
+  ///
+  /// In en, this message translates to:
+  /// **'Water Tank'**
+  String get humidifier_water_tank;
+
+  /// Humidifier warm mist feature label
+  ///
+  /// In en, this message translates to:
+  /// **'Warm Mist'**
+  String get humidifier_warm_mist;
+
+  /// Current humidity label
+  ///
+  /// In en, this message translates to:
+  /// **'Current'**
+  String get device_current_humidity;
+
+  /// Current temperature label
+  ///
+  /// In en, this message translates to:
+  /// **'Temperature'**
+  String get device_current_temperature;
+
+  /// Fan speed label
+  ///
+  /// In en, this message translates to:
+  /// **'Fan Speed'**
+  String get device_fan_speed;
+
+  /// Timer label
+  ///
+  /// In en, this message translates to:
+  /// **'Timer'**
+  String get device_timer;
+
+  /// Child lock label
+  ///
+  /// In en, this message translates to:
+  /// **'Child Lock'**
+  String get device_child_lock;
+
+  /// Fan oscillation/swing label
+  ///
+  /// In en, this message translates to:
+  /// **'Oscillation'**
+  String get device_oscillation;
+
+  /// Fan direction label
+  ///
+  /// In en, this message translates to:
+  /// **'Direction'**
+  String get device_direction;
+
+  /// Auto-off timer sheet title
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-Off Timer'**
+  String get device_auto_off_timer;
+
+  /// Filter life remaining label
+  ///
+  /// In en, this message translates to:
+  /// **'Filter Life'**
+  String get device_filter_life;
+
+  /// Filter status label
+  ///
+  /// In en, this message translates to:
+  /// **'Filter'**
+  String get device_filter_status;
+
+  /// Volatile organic compounds label
+  ///
+  /// In en, this message translates to:
+  /// **'VOC'**
+  String get device_voc;
+
+  /// Carbon dioxide label
+  ///
+  /// In en, this message translates to:
+  /// **'CO₂'**
+  String get device_co2;
+
+  /// Humidity short label
+  ///
+  /// In en, this message translates to:
+  /// **'Humidity'**
+  String get device_humidity;
+
+  /// Air quality index label
+  ///
+  /// In en, this message translates to:
+  /// **'Air Quality Index'**
+  String get device_air_quality_index;
+
+  /// Temperature short label
+  ///
+  /// In en, this message translates to:
+  /// **'Temp'**
+  String get device_temperature;
+
+  /// Duration format with hours and minutes
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h {minutes}m'**
+  String duration_format_hours_minutes(int hours, int minutes);
+
+  /// Duration format with hours only
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h'**
+  String duration_format_hours(int hours);
+
+  /// Duration format with minutes only
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes}m'**
+  String duration_format_minutes(int minutes);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
@@ -12,6 +13,14 @@ import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/climate_domain_view.dart'
     show ClimateMode, RoomCapability, ClimateDevice;
+import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/air_conditioner.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/heater.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart'
+    as spaces_climate;
+import 'package:fastybird_smart_panel/modules/spaces/service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -25,6 +34,8 @@ class ClimateDetailState {
   final RoomCapability capability;
   final double targetTemp;
   final double currentTemp;
+  final double minSetpoint;
+  final double maxSetpoint;
   final List<ClimateDevice> climateDevices;
 
   const ClimateDetailState({
@@ -33,6 +44,8 @@ class ClimateDetailState {
     this.capability = RoomCapability.heaterAndCooler,
     this.targetTemp = 22.0,
     this.currentTemp = 21.0,
+    this.minSetpoint = 16.0,
+    this.maxSetpoint = 30.0,
     this.climateDevices = const [],
   });
 
@@ -42,6 +55,8 @@ class ClimateDetailState {
     RoomCapability? capability,
     double? targetTemp,
     double? currentTemp,
+    double? minSetpoint,
+    double? maxSetpoint,
     List<ClimateDevice>? climateDevices,
   }) {
     return ClimateDetailState(
@@ -50,6 +65,8 @@ class ClimateDetailState {
       capability: capability ?? this.capability,
       targetTemp: targetTemp ?? this.targetTemp,
       currentTemp: currentTemp ?? this.currentTemp,
+      minSetpoint: minSetpoint ?? this.minSetpoint,
+      maxSetpoint: maxSetpoint ?? this.maxSetpoint,
       climateDevices: climateDevices ?? this.climateDevices,
     );
   }
@@ -62,6 +79,8 @@ class ClimateDetailState {
         return 'Heating';
       case ClimateMode.cool:
         return 'Cooling';
+      case ClimateMode.auto:
+        return 'Auto';
     }
   }
 }
@@ -71,17 +90,27 @@ class ClimateDetailState {
 // ============================================================================
 
 class ClimateRoleDetailPage extends StatefulWidget {
+  final String roomId;
   final String roomName;
   final ClimateMode initialMode;
+  final RoomCapability initialCapability;
   final double initialTargetTemp;
   final double currentTemp;
+  final double minSetpoint;
+  final double maxSetpoint;
+  final List<ClimateDevice> climateDevices;
 
   const ClimateRoleDetailPage({
     super.key,
+    required this.roomId,
     required this.roomName,
     this.initialMode = ClimateMode.heat,
+    this.initialCapability = RoomCapability.heaterAndCooler,
     this.initialTargetTemp = 22.0,
     this.currentTemp = 20.3,
+    this.minSetpoint = 16.0,
+    this.maxSetpoint = 30.0,
+    this.climateDevices = const [],
   });
 
   @override
@@ -93,60 +122,176 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
 
+  SpacesService? _spacesService;
+  DevicesService? _devicesService;
   late ClimateDetailState _state;
 
   @override
   void initState() {
     super.initState();
+
+    try {
+      _spacesService = locator<SpacesService>();
+      _spacesService?.addListener(_onDataChanged);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[ClimateRoleDetailPage] Failed to get SpacesService: $e');
+      }
+    }
+
+    try {
+      _devicesService = locator<DevicesService>();
+      _devicesService?.addListener(_onDevicesDataChanged);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[ClimateRoleDetailPage] Failed to get DevicesService: $e');
+      }
+    }
+
     _initializeState();
   }
 
+  @override
+  void dispose() {
+    _spacesService?.removeListener(_onDataChanged);
+    _devicesService?.removeListener(_onDevicesDataChanged);
+    super.dispose();
+  }
+
+  void _onDataChanged() {
+    if (!mounted) return;
+    // Use addPostFrameCallback to avoid "setState during build" errors
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // Update state from climate state when data changes
+      final climateState = _spacesService?.getClimateState(widget.roomId);
+      if (climateState == null) return;
+
+      // Determine mode from climate state
+      ClimateMode mode = _state.mode;
+      switch (climateState.mode) {
+        case spaces_climate.ClimateMode.heat:
+          mode = ClimateMode.heat;
+          break;
+        case spaces_climate.ClimateMode.cool:
+          mode = ClimateMode.cool;
+          break;
+        case spaces_climate.ClimateMode.auto:
+          mode = ClimateMode.auto;
+          break;
+        case spaces_climate.ClimateMode.off:
+        case null:
+          mode = ClimateMode.off;
+          break;
+      }
+
+      // Determine capability from climate state
+      RoomCapability capability;
+      if (climateState.supportsHeating && climateState.supportsCooling) {
+        capability = RoomCapability.heaterAndCooler;
+      } else if (climateState.supportsHeating) {
+        capability = RoomCapability.heaterOnly;
+      } else if (climateState.supportsCooling) {
+        capability = RoomCapability.coolerOnly;
+      } else {
+        capability = RoomCapability.none;
+      }
+
+      // Validate mode is consistent with capability - fall back to off if not supported
+      if (mode == ClimateMode.heat &&
+          capability != RoomCapability.heaterOnly &&
+          capability != RoomCapability.heaterAndCooler) {
+        mode = ClimateMode.off;
+      } else if (mode == ClimateMode.cool &&
+          capability != RoomCapability.coolerOnly &&
+          capability != RoomCapability.heaterAndCooler) {
+        mode = ClimateMode.off;
+      } else if (mode == ClimateMode.auto &&
+          capability != RoomCapability.heaterAndCooler) {
+        mode = ClimateMode.off;
+      }
+
+      // Clamp target temp to valid setpoint range to avoid UI inconsistencies
+      final rawTargetTemp =
+          climateState.targetTemperature ?? _state.targetTemp;
+      // Ensure min < max to prevent clamp() ArgumentError and satisfy
+      // CircularControlDial assertion (maxValue > minValue requires strict inequality)
+      var safeMinSetpoint =
+          math.min(climateState.minSetpoint, climateState.maxSetpoint);
+      var safeMaxSetpoint =
+          math.max(climateState.minSetpoint, climateState.maxSetpoint);
+      if (safeMaxSetpoint <= safeMinSetpoint) {
+        safeMaxSetpoint = safeMinSetpoint + 1.0;
+      }
+      final clampedTargetTemp =
+          rawTargetTemp.clamp(safeMinSetpoint, safeMaxSetpoint);
+
+      setState(() {
+        _state = _state.copyWith(
+          mode: mode,
+          capability: capability,
+          targetTemp: clampedTargetTemp,
+          currentTemp: climateState.currentTemperature ?? _state.currentTemp,
+          minSetpoint: safeMinSetpoint,
+          maxSetpoint: safeMaxSetpoint,
+        );
+      });
+    });
+  }
+
+  void _onDevicesDataChanged() {
+    if (!mounted) return;
+    // Use addPostFrameCallback to avoid "setState during build" errors
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // Update climate device states when device data changes
+      final devicesService = _devicesService;
+      if (devicesService == null) return;
+
+      final updatedDevices = _state.climateDevices.map((climateDevice) {
+        final device = devicesService.getDevice(climateDevice.id);
+        if (device == null) return climateDevice;
+
+        bool isActive = climateDevice.isActive;
+        String? status = climateDevice.status;
+
+        if (device is ThermostatDeviceView) {
+          isActive = device.isOn;
+          status = device.thermostatMode.name;
+        } else if (device is HeaterDeviceView) {
+          isActive = device.isOn;
+          status = isActive ? 'Heating' : 'Standby';
+        } else if (device is AirConditionerDeviceView) {
+          isActive = device.isOn;
+          status = isActive ? 'Cooling' : 'Standby';
+        }
+
+        return ClimateDevice(
+          id: climateDevice.id,
+          name: climateDevice.name,
+          type: climateDevice.type,
+          isActive: isActive,
+          status: status,
+          isPrimary: climateDevice.isPrimary,
+        );
+      }).toList();
+
+      setState(() {
+        _state = _state.copyWith(climateDevices: updatedDevices);
+      });
+    });
+  }
+
   void _initializeState() {
-    // TODO: Build real state from devices
     _state = ClimateDetailState(
       roomName: widget.roomName,
       mode: widget.initialMode,
-      capability: RoomCapability.heaterAndCooler,
+      capability: widget.initialCapability,
       targetTemp: widget.initialTargetTemp,
       currentTemp: widget.currentTemp,
-      climateDevices: const [
-        ClimateDevice(
-          id: 'therm1',
-          name: 'Main Thermostat',
-          type: 'thermostat',
-          isActive: true,
-          status: 'Heating',
-          isPrimary: true,
-        ),
-        ClimateDevice(
-          id: 'ac1',
-          name: 'Living Room AC',
-          type: 'ac',
-          isActive: false,
-          status: 'Standby',
-        ),
-        ClimateDevice(
-          id: 'heater1',
-          name: 'Wall Heater',
-          type: 'heating_unit',
-          isActive: true,
-          status: 'On',
-        ),
-        ClimateDevice(
-          id: 'rad1',
-          name: 'Bedroom Radiator',
-          type: 'radiator',
-          isActive: true,
-          status: 'Warm',
-        ),
-        ClimateDevice(
-          id: 'floor1',
-          name: 'Floor Heating',
-          type: 'floor_heating',
-          isActive: false,
-          status: 'Off',
-        ),
-      ],
+      minSetpoint: widget.minSetpoint,
+      maxSetpoint: widget.maxSetpoint,
+      climateDevices: widget.climateDevices,
     );
   }
 
@@ -154,12 +299,38 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
       _screenService.scale(size, density: _visualDensityService.density);
 
   void _setMode(ClimateMode mode) {
+    // Optimistic UI update
     setState(() => _state = _state.copyWith(mode: mode));
+
+    // Convert to API mode and call service
+    spaces_climate.ClimateMode apiMode;
+    switch (mode) {
+      case ClimateMode.heat:
+        apiMode = spaces_climate.ClimateMode.heat;
+        break;
+      case ClimateMode.cool:
+        apiMode = spaces_climate.ClimateMode.cool;
+        break;
+      case ClimateMode.auto:
+        apiMode = spaces_climate.ClimateMode.auto;
+        break;
+      case ClimateMode.off:
+        apiMode = spaces_climate.ClimateMode.off;
+        break;
+    }
+
+    _spacesService?.setClimateMode(widget.roomId, apiMode);
   }
 
   void _setTargetTemp(double temp) {
-    setState(
-        () => _state = _state.copyWith(targetTemp: temp.clamp(16.0, 30.0)));
+    final clampedTemp =
+        temp.clamp(_state.minSetpoint, _state.maxSetpoint);
+
+    // Optimistic UI update
+    setState(() => _state = _state.copyWith(targetTemp: clampedTemp));
+
+    // Call API to set the setpoint
+    _spacesService?.setSetpoint(widget.roomId, clampedTemp);
   }
 
   // Theme-aware color getters
@@ -174,6 +345,8 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
         return isDark ? AppColorsDark.warning : AppColorsLight.warning;
       case ClimateMode.cool:
         return isDark ? AppColorsDark.info : AppColorsLight.info;
+      case ClimateMode.auto:
+        return isDark ? AppColorsDark.success : AppColorsLight.success;
     }
   }
 
@@ -188,6 +361,10 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
             : AppColorsLight.warningLight5;
       case ClimateMode.cool:
         return isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight5;
+      case ClimateMode.auto:
+        return isDark
+            ? AppColorsDark.successLight5
+            : AppColorsLight.successLight5;
     }
   }
 
@@ -199,6 +376,8 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
         return DialAccentColor.warning;
       case ClimateMode.cool:
         return DialAccentColor.info;
+      case ClimateMode.auto:
+        return DialAccentColor.success;
     }
   }
 
@@ -207,7 +386,11 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
     if (_state.mode == ClimateMode.heat) {
       return _state.currentTemp < _state.targetTemp;
     }
-    return _state.currentTemp > _state.targetTemp;
+    if (_state.mode == ClimateMode.cool) {
+      return _state.currentTemp > _state.targetTemp;
+    }
+    // Auto mode: active when temperature differs from target
+    return (_state.currentTemp - _state.targetTemp).abs() > 0.5;
   }
 
   @override
@@ -287,7 +470,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
             ),
             AppSpacings.spacingXsHorizontal,
             Text(
-              '${_state.currentTemp.toStringAsFixed(1)}°',
+              '${NumberFormatUtils.defaultFormat.formatDecimal(_state.currentTemp, decimalPlaces: 1)}°',
               style: TextStyle(
                 color: isDark
                     ? AppTextColorDark.primary
@@ -635,8 +818,8 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
           CircularControlDial(
             value: _state.targetTemp,
             currentValue: _state.currentTemp,
-            minValue: 16.0,
-            maxValue: 30.0,
+            minValue: _state.minSetpoint,
+            maxValue: _state.maxSetpoint,
             step: 0.5,
             size: dialSize,
             accentType: _getDialAccentType(),
@@ -666,6 +849,15 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
   List<ModeOption<ClimateMode>> _getClimateModeOptions() {
     final modes = <ModeOption<ClimateMode>>[];
 
+    // Auto mode available only when both heating and cooling are supported
+    if (_state.capability == RoomCapability.heaterAndCooler) {
+      modes.add(ModeOption(
+        value: ClimateMode.auto,
+        icon: MdiIcons.thermometerAuto,
+        label: 'Auto',
+        color: ModeSelectorColor.success,
+      ));
+    }
     if (_state.capability == RoomCapability.heaterOnly ||
         _state.capability == RoomCapability.heaterAndCooler) {
       modes.add(ModeOption(
@@ -728,8 +920,8 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
               CircularControlDial(
                 value: _state.targetTemp,
                 currentValue: _state.currentTemp,
-                minValue: 16.0,
-                maxValue: 30.0,
+                minValue: _state.minSetpoint,
+                maxValue: _state.maxSetpoint,
                 step: 0.5,
                 size: dialSize,
                 accentType: _getDialAccentType(),
