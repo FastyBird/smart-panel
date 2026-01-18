@@ -11,11 +11,8 @@ import 'package:flutter/material.dart';
 /// - Customizable step labels
 /// - Theme-aware colors with custom active color support
 /// - Custom thumb with colored border for better visibility
-class SpeedSlider extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
+/// - Smooth animated transitions when value or enabled state changes
+class SpeedSlider extends StatefulWidget {
   /// Current value (0.0 to 1.0)
   final double value;
 
@@ -41,10 +38,10 @@ class SpeedSlider extends StatelessWidget {
   /// Label shown above the slider (default: 'Speed')
   final String label;
 
-  /// Label shown when disabled (default: 'Speed (Auto)')
+  /// Label shown when disabled (defaults to same as label)
   final String? disabledLabel;
 
-  SpeedSlider({
+  const SpeedSlider({
     super.key,
     required this.value,
     this.activeColor,
@@ -57,22 +54,73 @@ class SpeedSlider extends StatelessWidget {
     this.disabledLabel,
   });
 
+  @override
+  State<SpeedSlider> createState() => _SpeedSliderState();
+}
+
+class _SpeedSliderState extends State<SpeedSlider> {
+  final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
+
+  // Track the displayed value to prevent jumps during state changes
+  double _displayValue = 0.0;
+
+  // Grace period after enabled state changes to ignore value fluctuations
+  DateTime? _enabledStateChangeTime;
+  static const _gracePeriod = Duration(milliseconds: 300);
+
+  @override
+  void initState() {
+    super.initState();
+    _displayValue = widget.value.clamp(0.0, 1.0);
+  }
+
+  @override
+  void didUpdateWidget(SpeedSlider oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    final enabledStateChanged = oldWidget.enabled != widget.enabled;
+
+    if (enabledStateChanged) {
+      // Mark when enabled state changed to start grace period
+      _enabledStateChangeTime = DateTime.now();
+      // Don't update display value during transition
+      return;
+    }
+
+    // Check if we're still in the grace period after an enabled state change
+    final inGracePeriod = _enabledStateChangeTime != null &&
+        DateTime.now().difference(_enabledStateChangeTime!) < _gracePeriod;
+
+    if (inGracePeriod) {
+      // Ignore value changes during grace period to prevent animation glitches
+      return;
+    }
+
+    // Clear grace period marker
+    _enabledStateChangeTime = null;
+
+    // Normal value update
+    _displayValue = widget.value.clamp(0.0, 1.0);
+  }
+
   double _scale(double val) =>
       _screenService.scale(val, density: _visualDensityService.density);
 
   /// Get the current step label for discrete mode
   String _getCurrentStepLabel() {
-    if (steps.isEmpty) return '';
-    final clampedValue = value.clamp(0.0, 1.0);
-    final index = (clampedValue * (steps.length - 1)).round().clamp(0, steps.length - 1);
-    return steps[index];
+    if (widget.steps.isEmpty) return '';
+    final clampedValue = _displayValue.clamp(0.0, 1.0);
+    final index = (clampedValue * (widget.steps.length - 1)).round().clamp(0, widget.steps.length - 1);
+    return widget.steps[index];
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final effectiveActiveColor =
-        activeColor ?? (isDark ? AppColorsDark.info : AppColorsLight.info);
+        widget.activeColor ?? (isDark ? AppColorsDark.info : AppColorsLight.info);
     final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
     final borderColor =
         isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
@@ -89,12 +137,17 @@ class SpeedSlider extends StatelessWidget {
 
     // For discrete mode, calculate divisions based on steps
     // divisions must be null or > 0, so use null if steps has fewer than 2 items
-    final divisions = discrete && steps.length > 1 ? steps.length - 1 : null;
+    final divisions = widget.discrete && widget.steps.length > 1 ? widget.steps.length - 1 : null;
 
-    final displayLabel = enabled ? label : (disabledLabel ?? '$label (Auto)');
+    final displayLabel = widget.enabled ? widget.label : (widget.disabledLabel ?? widget.label);
 
-    return Opacity(
-      opacity: enabled ? 1.0 : 0.5,
+    // When disabled, use track color for both active track and thumb border
+    final sliderActiveColor = widget.enabled ? effectiveActiveColor : trackColor;
+    final thumbBorderColor = widget.enabled ? effectiveActiveColor : trackColor;
+
+    return AnimatedOpacity(
+      opacity: widget.enabled ? 1.0 : 0.5,
+      duration: const Duration(milliseconds: 200),
       child: Container(
         padding: AppSpacings.paddingLg,
         decoration: BoxDecoration(
@@ -117,7 +170,7 @@ class SpeedSlider extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  discrete ? _getCurrentStepLabel() : '${(value * 100).toInt()}%',
+                  widget.discrete ? _getCurrentStepLabel() : '${(_displayValue * 100).toInt()}%',
                   style: TextStyle(
                     color: textColor,
                     fontSize: AppFontSize.extraLarge,
@@ -129,29 +182,32 @@ class SpeedSlider extends StatelessWidget {
             AppSpacings.spacingMdVertical,
             SliderTheme(
               data: SliderTheme.of(context).copyWith(
-                activeTrackColor: effectiveActiveColor,
+                activeTrackColor: sliderActiveColor,
                 inactiveTrackColor: trackColor,
                 thumbColor: thumbFillColor,
-                overlayColor: overlayColor ??
+                overlayColor: widget.overlayColor ??
                     (isDark ? AppColorsDark.infoLight7 : AppColorsLight.infoLight7),
                 trackHeight: _scale(8),
                 thumbShape: _SliderThumbWithBorder(
                   thumbRadius: _scale(12),
                   fillColor: thumbFillColor,
-                  borderColor: effectiveActiveColor,
+                  borderColor: thumbBorderColor,
                   borderWidth: _scale(2),
                 ),
               ),
-              child: Slider(
-                value: value,
-                divisions: divisions,
-                onChanged: enabled ? onChanged : null,
+              child: IgnorePointer(
+                ignoring: !widget.enabled,
+                child: Slider(
+                  value: _displayValue,
+                  divisions: divisions,
+                  onChanged: widget.onChanged,
+                ),
               ),
             ),
             AppSpacings.spacingXsVertical,
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: steps
+              children: widget.steps
                   .map((s) => Text(
                         s,
                         style: TextStyle(
