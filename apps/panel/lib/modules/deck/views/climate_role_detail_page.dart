@@ -14,6 +14,9 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/climate_domain_view.dart'
     show ClimateMode, RoomCapability, ClimateDevice;
 import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_conditioner.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/heater.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/thermostat.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_conditioner.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/heater.dart';
@@ -1256,9 +1259,29 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
       onIconTap: () {
         // TODO: Toggle device
       },
-      onTileTap: () {
-        // TODO: Open device detail
-      },
+      onTileTap: () => _openClimateDeviceDetail(device),
     );
+  }
+
+  /// Opens the detail page for a climate device
+  void _openClimateDeviceDetail(ClimateDevice climateDevice) {
+    final devicesService = locator<DevicesService>();
+    final deviceView = devicesService.getDevice(climateDevice.id);
+
+    Widget? detailPage;
+
+    if (deviceView is ThermostatDeviceView) {
+      detailPage = ThermostatDeviceDetail(device: deviceView);
+    } else if (deviceView is HeaterDeviceView) {
+      detailPage = HeaterDeviceDetail(device: deviceView);
+    } else if (deviceView is AirConditionerDeviceView) {
+      detailPage = AirConditionerDeviceDetail(device: deviceView);
+    }
+
+    if (detailPage != null) {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => detailPage!),
+      );
+    }
   }
 }
