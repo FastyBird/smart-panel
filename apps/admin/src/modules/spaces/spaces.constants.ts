@@ -18,9 +18,13 @@ export enum EventType {
 	COVERS_TARGET_CREATED = 'SpacesModule.CoversTarget.Created',
 	COVERS_TARGET_UPDATED = 'SpacesModule.CoversTarget.Updated',
 	COVERS_TARGET_DELETED = 'SpacesModule.CoversTarget.Deleted',
+	SENSOR_TARGET_CREATED = 'SpacesModule.SensorTarget.Created',
+	SENSOR_TARGET_UPDATED = 'SpacesModule.SensorTarget.Updated',
+	SENSOR_TARGET_DELETED = 'SpacesModule.SensorTarget.Deleted',
 	LIGHTING_STATE_CHANGED = 'SpacesModule.Space.LightingStateChanged',
 	CLIMATE_STATE_CHANGED = 'SpacesModule.Space.ClimateStateChanged',
 	COVERS_STATE_CHANGED = 'SpacesModule.Space.CoversStateChanged',
+	SENSOR_STATE_CHANGED = 'SpacesModule.Space.SensorStateChanged',
 }
 
 export const RouteNames = {

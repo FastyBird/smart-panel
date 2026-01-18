@@ -19,6 +19,7 @@ import { UpdateSpacesConfigDto } from './dto/update-config.dto';
 import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
 import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
+import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
 import { SpaceEntity } from './entities/space.entity';
 import { SpaceActivityListener } from './listeners/space-activity.listener';
 import { SpaceClimateStateListener } from './listeners/space-climate-state.listener';
@@ -35,6 +36,8 @@ import { SpaceIntentBaseService } from './services/space-intent-base.service';
 import { SpaceIntentService } from './services/space-intent.service';
 import { SpaceLightingRoleService } from './services/space-lighting-role.service';
 import { SpaceLightingStateService } from './services/space-lighting-state.service';
+import { SpaceSensorRoleService } from './services/space-sensor-role.service';
+import { SpaceSensorStateService } from './services/space-sensor-state.service';
 import { SpaceSuggestionService } from './services/space-suggestion.service';
 import { SpaceUndoHistoryService } from './services/space-undo-history.service';
 import { SpacesSeederService } from './services/spaces-seeder.service';
@@ -55,6 +58,7 @@ import { IntentSpecLoaderService } from './spec';
 			SpaceLightingRoleEntity,
 			SpaceClimateRoleEntity,
 			SpaceCoversRoleEntity,
+			SpaceSensorRoleEntity,
 			DeviceEntity,
 			ChannelEntity,
 			DisplayEntity,
@@ -79,6 +83,8 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceClimateStateService,
 		SpaceCoversRoleService,
 		SpaceCoversStateService,
+		SpaceSensorRoleService,
+		SpaceSensorStateService,
 		SpaceSuggestionService,
 		SpaceContextSnapshotService,
 		SpaceUndoHistoryService,
@@ -93,6 +99,7 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceLightingRoleService,
 		SpaceClimateRoleService,
 		SpaceCoversRoleService,
+		SpaceSensorRoleService,
 		SpaceSuggestionService,
 		SpaceContextSnapshotService,
 		SpaceUndoHistoryService,

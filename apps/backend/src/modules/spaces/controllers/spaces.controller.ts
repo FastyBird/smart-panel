@@ -18,6 +18,7 @@ import { ReqBulkSetClimateRolesDto, ReqSetClimateRoleDto } from '../dto/climate-
 import { ReqCoversIntentDto } from '../dto/covers-intent.dto';
 import { ReqBulkSetCoversRolesDto, ReqSetCoversRoleDto } from '../dto/covers-role.dto';
 import { ReqCreateSpaceDto } from '../dto/create-space.dto';
+import { ReqBulkSetSensorRolesDto, ReqSetSensorRoleDto } from '../dto/sensor-role.dto';
 import { ReqLightingIntentDto } from '../dto/lighting-intent.dto';
 import { ReqBulkSetLightingRolesDto, ReqSetLightingRoleDto } from '../dto/lighting-role.dto';
 import { ReqSuggestionFeedbackDto } from '../dto/suggestion.dto';
@@ -86,6 +87,18 @@ import {
 	UndoResultResponseModel,
 	UndoStateDataModel,
 	UndoStateResponseModel,
+	SensorStateDataModel,
+	SensorStateResponseModel,
+	SensorTargetDataModel,
+	SensorTargetsResponseModel,
+	SensorRoleResponseModel,
+	BulkSensorRoleResultItemModel,
+	BulkSensorRolesResponseModel,
+	BulkSensorRolesResultDataModel,
+	SensorReadingDataModel,
+	SensorRoleReadingsDataModel,
+	EnvironmentSummaryDataModel,
+	SafetyAlertDataModel,
 } from '../models/spaces-response.model';
 import { SpaceClimateRoleService } from '../services/space-climate-role.service';
 import { SpaceContextSnapshotService } from '../services/space-context-snapshot.service';
@@ -93,6 +106,8 @@ import { SpaceCoversRoleService } from '../services/space-covers-role.service';
 import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
 import { SpaceLightingStateService } from '../services/space-lighting-state.service';
+import { SpaceSensorRoleService } from '../services/space-sensor-role.service';
+import { SpaceSensorStateService } from '../services/space-sensor-state.service';
 import { SpaceSuggestionService } from '../services/space-suggestion.service';
 import { SpaceUndoHistoryService } from '../services/space-undo-history.service';
 import { SpacesService } from '../services/spaces.service';
@@ -116,6 +131,18 @@ import { IntentSpecLoaderService } from '../spec';
 	RoleAggregatedStateDataModel,
 	RoleLastIntentDataModel,
 	OtherLightsStateDataModel,
+	SensorStateResponseModel,
+	SensorStateDataModel,
+	SensorReadingDataModel,
+	SensorRoleReadingsDataModel,
+	EnvironmentSummaryDataModel,
+	SafetyAlertDataModel,
+	SensorTargetsResponseModel,
+	SensorTargetDataModel,
+	SensorRoleResponseModel,
+	BulkSensorRolesResponseModel,
+	BulkSensorRolesResultDataModel,
+	BulkSensorRoleResultItemModel,
 )
 @Controller('spaces')
 export class SpacesController {
@@ -128,6 +155,8 @@ export class SpacesController {
 		private readonly spaceLightingStateService: SpaceLightingStateService,
 		private readonly spaceClimateRoleService: SpaceClimateRoleService,
 		private readonly spaceCoversRoleService: SpaceCoversRoleService,
+		private readonly spaceSensorRoleService: SpaceSensorRoleService,
+		private readonly spaceSensorStateService: SpaceSensorStateService,
 		private readonly spaceSuggestionService: SpaceSuggestionService,
 		private readonly spaceContextSnapshotService: SpaceContextSnapshotService,
 		private readonly spaceUndoHistoryService: SpaceUndoHistoryService,
@@ -1359,6 +1388,259 @@ export class SpacesController {
 		await this.spaceCoversRoleService.deleteRole(id, deviceId, channelId);
 
 		this.logger.debug(`Successfully deleted covers role for device=${deviceId} channel=${channelId}`);
+	}
+
+	// ================================
+	// Sensor State & Role Endpoints
+	// ================================
+
+	@Get(':id/sensors')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-sensors',
+		summary: 'Get sensor state for space',
+		description:
+			'Retrieves the current sensor state for a space, including aggregated readings, ' +
+			'environment summary, safety alerts, motion/occupancy status, and readings grouped by role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(SensorStateResponseModel, 'Returns the sensor state')
+	@ApiNotFoundResponse('Space not found')
+	async getSensorState(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<SensorStateResponseModel> {
+		this.logger.debug(`Fetching sensor state for space with id=${id}`);
+
+		const state = await this.spaceSensorStateService.getSensorState(id);
+
+		if (!state) {
+			throw new SpacesNotFoundException('Space not found');
+		}
+
+		const stateData = new SensorStateDataModel();
+		stateData.hasSensors = state.hasSensors;
+		stateData.totalSensors = state.totalSensors;
+		stateData.sensorsByRole = state.sensorsByRole;
+
+		if (state.environment) {
+			const envData = new EnvironmentSummaryDataModel();
+			envData.averageTemperature = state.environment.averageTemperature;
+			envData.averageHumidity = state.environment.averageHumidity;
+			envData.averagePressure = state.environment.averagePressure;
+			envData.averageIlluminance = state.environment.averageIlluminance;
+			stateData.environment = envData;
+		} else {
+			stateData.environment = null;
+		}
+
+		stateData.safetyAlerts = state.safetyAlerts.map((alert) => {
+			const alertData = new SafetyAlertDataModel();
+			alertData.channelCategory = alert.channelCategory;
+			alertData.deviceId = alert.deviceId;
+			alertData.deviceName = alert.deviceName;
+			alertData.channelId = alert.channelId;
+			alertData.triggered = alert.triggered;
+			return alertData;
+		});
+		stateData.hasSafetyAlert = state.hasSafetyAlert;
+		stateData.motionDetected = state.motionDetected;
+		stateData.occupancyDetected = state.occupancyDetected;
+
+		stateData.readings = state.readings.map((roleReadings) => {
+			const roleData = new SensorRoleReadingsDataModel();
+			roleData.role = roleReadings.role;
+			roleData.sensorsCount = roleReadings.sensorsCount;
+			roleData.readings = roleReadings.readings.map((reading) => {
+				const readingData = new SensorReadingDataModel();
+				readingData.deviceId = reading.deviceId;
+				readingData.deviceName = reading.deviceName;
+				readingData.channelId = reading.channelId;
+				readingData.channelName = reading.channelName;
+				readingData.channelCategory = reading.channelCategory;
+				readingData.value = reading.value;
+				readingData.unit = reading.unit;
+				readingData.role = reading.role;
+				return readingData;
+			});
+			return roleData;
+		});
+
+		const response = new SensorStateResponseModel();
+		response.data = stateData;
+
+		return response;
+	}
+
+	@Get(':id/sensors/targets')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-sensor-targets',
+		summary: 'Get sensor targets in space',
+		description:
+			'Retrieves all sensor channels in a space that can be assigned roles, ' +
+			'including their current role assignments.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(SensorTargetsResponseModel, 'Returns the list of sensor targets')
+	@ApiNotFoundResponse('Space not found')
+	async getSensorTargets(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<SensorTargetsResponseModel> {
+		this.logger.debug(`Fetching sensor targets for space with id=${id}`);
+
+		const targets = await this.spaceSensorRoleService.getSensorTargetsInSpace(id);
+
+		const response = new SensorTargetsResponseModel();
+		response.data = targets.map((t) => {
+			const model = new SensorTargetDataModel();
+			model.deviceId = t.deviceId;
+			model.deviceName = t.deviceName;
+			model.deviceCategory = t.deviceCategory;
+			model.channelId = t.channelId;
+			model.channelName = t.channelName;
+			model.channelCategory = t.channelCategory;
+			model.role = t.role;
+			model.priority = t.priority;
+			return model;
+		});
+
+		return response;
+	}
+
+	@Post(':id/sensors/roles')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-sensor-role',
+		summary: 'Set sensor role for a sensor target',
+		description:
+			'Sets or updates the sensor role for a specific device/channel in a space. ' + 'Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(SensorRoleResponseModel, 'Returns the created/updated sensor role assignment')
+	@ApiNotFoundResponse('Space not found')
+	@ApiBadRequestResponse('Invalid role data')
+	@ApiUnprocessableEntityResponse('Role assignment validation failed')
+	async setSensorRole(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqSetSensorRoleDto,
+	): Promise<SensorRoleResponseModel> {
+		this.logger.debug(`Setting sensor role for space with id=${id}`);
+
+		const role = await this.spaceSensorRoleService.setRole(id, body.data);
+
+		const response = new SensorRoleResponseModel();
+		response.data = role;
+
+		return response;
+	}
+
+	@Post(':id/sensors/roles/bulk')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-sensor-roles-bulk',
+		summary: 'Bulk set sensor roles for sensor targets',
+		description:
+			'Sets or updates sensor roles for multiple device/channels in a space in a single operation. ' +
+			'Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(BulkSensorRolesResponseModel, 'Returns the bulk update result')
+	@ApiNotFoundResponse('Space not found')
+	@ApiBadRequestResponse('Invalid role data')
+	@ApiUnprocessableEntityResponse('Role assignment validation failed')
+	async bulkSetSensorRoles(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqBulkSetSensorRolesDto,
+	): Promise<BulkSensorRolesResponseModel> {
+		this.logger.debug(`Bulk setting sensor roles for space with id=${id}`);
+
+		const result = await this.spaceSensorRoleService.bulkSetRoles(id, body.data.roles);
+
+		const resultData = new BulkSensorRolesResultDataModel();
+		resultData.success = result.success;
+		resultData.totalCount = result.totalCount;
+		resultData.successCount = result.successCount;
+		resultData.failureCount = result.failureCount;
+		resultData.results = result.results.map((item) => {
+			const resultItem = new BulkSensorRoleResultItemModel();
+			resultItem.deviceId = item.deviceId;
+			resultItem.channelId = item.channelId;
+			resultItem.success = item.success;
+			resultItem.role = item.role;
+			resultItem.error = item.error;
+			return resultItem;
+		});
+
+		const response = new BulkSensorRolesResponseModel();
+		response.data = resultData;
+
+		return response;
+	}
+
+	@Post(':id/sensors/roles/defaults')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-sensor-roles-defaults',
+		summary: 'Apply default sensor roles',
+		description:
+			'Infers and applies default sensor roles for all sensor channels in the space ' +
+			'based on channel category (environment, safety, security, air quality, energy). ' +
+			'Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(BulkSensorRolesResponseModel, 'Returns the bulk update result')
+	@ApiNotFoundResponse('Space not found')
+	async applyDefaultSensorRoles(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<BulkSensorRolesResponseModel> {
+		this.logger.debug(`Applying default sensor roles for space with id=${id}`);
+
+		const defaultRoles = await this.spaceSensorRoleService.inferDefaultSensorRoles(id);
+		const result = await this.spaceSensorRoleService.bulkSetRoles(id, defaultRoles);
+
+		const resultData = new BulkSensorRolesResultDataModel();
+		resultData.success = result.success;
+		resultData.totalCount = result.totalCount;
+		resultData.successCount = result.successCount;
+		resultData.failureCount = result.failureCount;
+		resultData.results = result.results.map((item) => {
+			const resultItem = new BulkSensorRoleResultItemModel();
+			resultItem.deviceId = item.deviceId;
+			resultItem.channelId = item.channelId;
+			resultItem.success = item.success;
+			resultItem.role = item.role;
+			resultItem.error = item.error;
+			return resultItem;
+		});
+
+		const response = new BulkSensorRolesResponseModel();
+		response.data = resultData;
+
+		return response;
+	}
+
+	@Delete(':id/sensors/roles/:deviceId/:channelId')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'delete-spaces-module-space-sensor-role',
+		summary: 'Delete sensor role assignment',
+		description:
+			'Removes the sensor role assignment for a specific device/channel in a space. Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
+	@ApiNoContentResponse({ description: 'Sensor role deleted successfully' })
+	@ApiNotFoundResponse('Space not found')
+	@HttpCode(204)
+	async deleteSensorRole(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
+		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
+	): Promise<void> {
+		this.logger.debug(`Deleting sensor role for space=${id} device=${deviceId} channel=${channelId}`);
+
+		await this.spaceSensorRoleService.deleteRole(id, deviceId, channelId);
+
+		this.logger.debug(`Successfully deleted sensor role for device=${deviceId} channel=${channelId}`);
 	}
 
 	// ================================

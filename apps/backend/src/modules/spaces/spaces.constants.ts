@@ -25,6 +25,12 @@ export enum EventType {
 	COVERS_TARGET_CREATED = 'SpacesModule.CoversTarget.Created',
 	COVERS_TARGET_UPDATED = 'SpacesModule.CoversTarget.Updated',
 	COVERS_TARGET_DELETED = 'SpacesModule.CoversTarget.Deleted',
+	// Sensor state change events
+	SENSOR_STATE_CHANGED = 'SpacesModule.Space.SensorStateChanged',
+	// Sensor role events
+	SENSOR_TARGET_CREATED = 'SpacesModule.SensorTarget.Created',
+	SENSOR_TARGET_UPDATED = 'SpacesModule.SensorTarget.Updated',
+	SENSOR_TARGET_DELETED = 'SpacesModule.SensorTarget.Deleted',
 }
 
 export enum SpaceType {
@@ -1665,3 +1671,153 @@ export const QUICK_ACTION_CATALOG: QuickActionMeta[] = [
 		category: IntentCategory.CLIMATE,
 	},
 ];
+
+// ========================
+// Sensor Domain Constants
+// ========================
+
+/**
+ * Sensor Roles - classify sensor devices/channels within a space for monitoring
+ * Sensors are read-only devices that provide environmental and safety monitoring data.
+ */
+export enum SensorRole {
+	ENVIRONMENT = 'environment', // Environmental sensors (temperature, humidity, pressure, illuminance)
+	SAFETY = 'safety', // Safety sensors (smoke, gas, leak, carbon monoxide)
+	SECURITY = 'security', // Security sensors (motion, occupancy, contact)
+	AIR_QUALITY = 'air_quality', // Air quality sensors (AQI, CO2, VOC, particulates)
+	ENERGY = 'energy', // Energy monitoring sensors (power, energy consumption)
+	OTHER = 'other', // Unclassified sensors
+	HIDDEN = 'hidden', // Hidden sensors (excluded from UI)
+}
+
+/**
+ * Sensor channel categories relevant for the sensor domain.
+ * These are the channel types that can be assigned roles in the sensor domain.
+ */
+export const SENSOR_CHANNEL_CATEGORIES = [
+	// Environmental
+	ChannelCategory.TEMPERATURE,
+	ChannelCategory.HUMIDITY,
+	ChannelCategory.PRESSURE,
+	ChannelCategory.ILLUMINANCE,
+	// Safety
+	ChannelCategory.SMOKE,
+	ChannelCategory.GAS,
+	ChannelCategory.LEAK,
+	ChannelCategory.CARBON_MONOXIDE,
+	ChannelCategory.CARBON_DIOXIDE,
+	// Security
+	ChannelCategory.MOTION,
+	ChannelCategory.OCCUPANCY,
+	ChannelCategory.CONTACT,
+	// Air quality
+	ChannelCategory.AIR_QUALITY,
+	ChannelCategory.AIR_PARTICULATE,
+	ChannelCategory.NITROGEN_DIOXIDE,
+	ChannelCategory.OZONE,
+	ChannelCategory.SULPHUR_DIOXIDE,
+	ChannelCategory.VOLATILE_ORGANIC_COMPOUNDS,
+	// Energy
+	ChannelCategory.ELECTRICAL_ENERGY,
+	ChannelCategory.ELECTRICAL_POWER,
+	// Device status
+	ChannelCategory.BATTERY,
+] as const;
+
+/**
+ * Environmental sensor channel categories
+ */
+export const SENSOR_ENVIRONMENT_CHANNEL_CATEGORIES = [
+	ChannelCategory.TEMPERATURE,
+	ChannelCategory.HUMIDITY,
+	ChannelCategory.PRESSURE,
+	ChannelCategory.ILLUMINANCE,
+] as const;
+
+/**
+ * Safety sensor channel categories
+ */
+export const SENSOR_SAFETY_CHANNEL_CATEGORIES = [
+	ChannelCategory.SMOKE,
+	ChannelCategory.GAS,
+	ChannelCategory.LEAK,
+	ChannelCategory.CARBON_MONOXIDE,
+] as const;
+
+/**
+ * Security sensor channel categories
+ */
+export const SENSOR_SECURITY_CHANNEL_CATEGORIES = [
+	ChannelCategory.MOTION,
+	ChannelCategory.OCCUPANCY,
+	ChannelCategory.CONTACT,
+] as const;
+
+/**
+ * Air quality sensor channel categories
+ */
+export const SENSOR_AIR_QUALITY_CHANNEL_CATEGORIES = [
+	ChannelCategory.AIR_QUALITY,
+	ChannelCategory.AIR_PARTICULATE,
+	ChannelCategory.CARBON_DIOXIDE,
+	ChannelCategory.NITROGEN_DIOXIDE,
+	ChannelCategory.OZONE,
+	ChannelCategory.SULPHUR_DIOXIDE,
+	ChannelCategory.VOLATILE_ORGANIC_COMPOUNDS,
+] as const;
+
+/**
+ * Energy sensor channel categories
+ */
+export const SENSOR_ENERGY_CHANNEL_CATEGORIES = [
+	ChannelCategory.ELECTRICAL_ENERGY,
+	ChannelCategory.ELECTRICAL_POWER,
+] as const;
+
+/**
+ * Metadata for sensor role values
+ */
+export const SENSOR_ROLE_META: Record<SensorRole, IntentEnumValueMeta> = {
+	[SensorRole.ENVIRONMENT]: {
+		value: SensorRole.ENVIRONMENT,
+		label: 'Environment',
+		description: 'Environmental sensors (temperature, humidity, pressure, light)',
+		icon: 'mdi:thermometer',
+	},
+	[SensorRole.SAFETY]: {
+		value: SensorRole.SAFETY,
+		label: 'Safety',
+		description: 'Safety sensors (smoke, gas, leak, carbon monoxide)',
+		icon: 'mdi:shield-alert',
+	},
+	[SensorRole.SECURITY]: {
+		value: SensorRole.SECURITY,
+		label: 'Security',
+		description: 'Security sensors (motion, occupancy, contact)',
+		icon: 'mdi:motion-sensor',
+	},
+	[SensorRole.AIR_QUALITY]: {
+		value: SensorRole.AIR_QUALITY,
+		label: 'Air Quality',
+		description: 'Air quality sensors (AQI, CO2, VOC, particulates)',
+		icon: 'mdi:air-filter',
+	},
+	[SensorRole.ENERGY]: {
+		value: SensorRole.ENERGY,
+		label: 'Energy',
+		description: 'Energy monitoring sensors (power, consumption)',
+		icon: 'mdi:lightning-bolt',
+	},
+	[SensorRole.OTHER]: {
+		value: SensorRole.OTHER,
+		label: 'Other',
+		description: 'Unclassified sensors',
+		icon: 'mdi:chart-line',
+	},
+	[SensorRole.HIDDEN]: {
+		value: SensorRole.HIDDEN,
+		label: 'Hidden',
+		description: 'Hidden sensors (excluded from UI)',
+		icon: 'mdi:eye-off',
+	},
+};
