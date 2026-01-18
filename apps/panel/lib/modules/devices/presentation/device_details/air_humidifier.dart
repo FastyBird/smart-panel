@@ -369,7 +369,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     if (channel == null) return const SizedBox.shrink();
 
     final isOn = _device.isOn;
-    final targetHumidity = channel.humidity;
+    final rawTargetHumidity = channel.humidity;
 
     // Validate min/max - CircularControlDial asserts maxValue > minValue
     var minHumidity = channel.minHumidity;
@@ -379,6 +379,9 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       minHumidity = 0;
       maxHumidity = 100;
     }
+
+    // Clamp target humidity to valid range to avoid UI inconsistencies
+    final targetHumidity = rawTargetHumidity.clamp(minHumidity, maxHumidity);
 
     // Get current humidity from humidity sensor channel
     final humidityChannel = _device.humidityChannel;
