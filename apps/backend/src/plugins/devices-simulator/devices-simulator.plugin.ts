@@ -25,6 +25,7 @@ import { SwaggerModule } from '../../modules/swagger/swagger.module';
 import { GenerateDeviceCommand } from './commands/generate-device.command';
 import { PopulateValuesCommand } from './commands/populate-values.command';
 import { SetConnectionStateCommand } from './commands/set-connection-state.command';
+import { SimulateCommand } from './commands/simulate.command';
 import { SimulatorController } from './controllers/simulator.controller';
 import {
 	DEVICES_SIMULATOR_PLUGIN_API_TAG_DESCRIPTION,
@@ -48,6 +49,7 @@ import {
 import { SimulatorConfigModel } from './models/config.model';
 import { SimulatorDevicePlatform } from './platforms/simulator-device.platform';
 import { DeviceGeneratorService } from './services/device-generator.service';
+import { SimulationService } from './services/simulation.service';
 
 @ApiTag({
 	tagName: DEVICES_SIMULATOR_PLUGIN_NAME,
@@ -65,12 +67,14 @@ import { DeviceGeneratorService } from './services/device-generator.service';
 	providers: [
 		SimulatorDevicePlatform,
 		DeviceGeneratorService,
+		SimulationService,
 		GenerateDeviceCommand,
 		PopulateValuesCommand,
 		SetConnectionStateCommand,
+		SimulateCommand,
 	],
 	controllers: [SimulatorController],
-	exports: [DeviceGeneratorService],
+	exports: [DeviceGeneratorService, SimulationService],
 })
 export class DevicesSimulatorPlugin {
 	constructor(
@@ -206,77 +210,72 @@ Plugin for creating virtual devices for testing purposes without requiring physi
 ## Features
 
 - **Generate Devices** - Create simulated devices of any category with proper channels and properties
-- **Simulate Values** - Manually set or auto-generate random values for properties
+- **Realistic Simulation** - Time-based and environmental simulation for realistic device behavior
+- **Smart Simulators** - Dedicated simulators for sensors, lighting, AC, heaters, thermostats, and more
 - **Connection Testing** - Simulate connection state changes (online/offline)
-- **Auto-Simulation** - Enable automatic random value updates at configurable intervals
+- **Auto-Simulation** - Enable automatic value updates at configurable intervals
+- **Location-Aware** - Latitude-based simulation for accurate daylight and temperature patterns
 
-## Use Cases
+## Supported Device Categories with Realistic Simulators
 
-- **UI Testing** - Test how the UI handles different device types and states
-- **Development** - Develop features without physical devices
-- **Demo Mode** - Create demo environments with simulated devices
-- **QA Testing** - Test edge cases and error handling
+- **Sensors** - Temperature, humidity, motion, illuminance, pressure, contact, leak, smoke, CO, CO2, air quality
+- **Lighting** - Time-based on/off, brightness, color temperature, RGB colors
+- **Air Conditioners** - Cooling/heating modes, fan control, temperature regulation
+- **Heating Units** - Temperature control, power consumption
+- **Thermostats** - Scheduled temperature control with hysteresis
+- **Outlets** - Power monitoring, energy consumption tracking
+- **Fans** - Temperature-based speed control
+- **Locks** - Time-based lock/unlock patterns
+- **Window Coverings** - Position based on time of day and season
 
-## Available Endpoints
+## Configuration Options
 
-### GET /api/v1/plugins/devices-simulator/simulator/categories
-Lists all available device categories that can be simulated.
-
-### POST /api/v1/plugins/devices-simulator/simulator/generate
-Generate a new simulated device with all channels and properties based on the selected category.
-
-### POST /api/v1/plugins/devices-simulator/simulator/{deviceId}/simulate-value
-Simulate a value change for a specific property.
-
-### POST /api/v1/plugins/devices-simulator/simulator/{deviceId}/simulate-connection
-Simulate connection state changes (connected, disconnected, lost, alert).
-
-### POST /api/v1/plugins/devices-simulator/simulator/{deviceId}/simulate-all
-Generate random values for all properties of a device.
+| Option | Description | Default |
+|--------|-------------|---------|
+| \`update_on_start\` | Simulate values when service starts | \`false\` |
+| \`simulation_interval\` | Auto-simulation interval (ms), 0 = disabled | \`0\` |
+| \`latitude\` | Location for daylight/temperature calculations | \`50.0\` |
+| \`smooth_transitions\` | Gradual value changes for realism | \`true\` |
 
 ## CLI Commands
 
-### List Available Categories
+### Realistic Simulation (New!)
+\`\`\`bash
+pnpm run cli simulator:simulate --list              # List devices with simulator info
+pnpm run cli simulator:simulate --all               # Simulate all devices once
+pnpm run cli simulator:simulate --device <id>       # Simulate specific device
+pnpm run cli simulator:simulate --config            # Show configuration
+pnpm run cli simulator:simulate --start --interval 5000  # Start auto-simulation
+pnpm run cli simulator:simulate --stop              # Stop auto-simulation
+pnpm run cli simulator:simulate                     # Interactive mode
+\`\`\`
+
+### Generate Devices
 \`\`\`bash
 pnpm run cli simulator:generate --list
-\`\`\`
-
-### Generate Devices (Interactive)
-\`\`\`bash
-pnpm run cli simulator:generate
-\`\`\`
-
-### Generate Devices (Non-Interactive)
-\`\`\`bash
-pnpm run cli simulator:generate --category lighting --name "Test Light"
+pnpm run cli simulator:generate --category sensor --name "Living Room Sensor"
 pnpm run cli simulator:generate --category thermostat --count 3
-pnpm run cli simulator:generate --category sensor --required-only
 \`\`\`
 
-### Populate Devices with Random Values
+### Random Values (Legacy)
 \`\`\`bash
-pnpm run cli simulator:populate --list           # List all simulator devices
-pnpm run cli simulator:populate --all            # Populate all devices with random values
-pnpm run cli simulator:populate --device <id>    # Populate specific device
-pnpm run cli simulator:populate                  # Interactive mode
+pnpm run cli simulator:populate --all
+pnpm run cli simulator:populate --device <id>
 \`\`\`
 
-### Set Device Connection State
+### Connection State
 \`\`\`bash
-pnpm run cli simulator:connection --list                        # List devices with connection state
-pnpm run cli simulator:connection --all --state connected       # Set all devices to connected
-pnpm run cli simulator:connection --device <id> --state lost    # Set specific device to lost
-pnpm run cli simulator:connection                               # Interactive mode
+pnpm run cli simulator:connection --all --state connected
+pnpm run cli simulator:connection --device <id> --state lost
 \`\`\`
 
-## Device Categories
+## REST API Endpoints
 
-The plugin supports all standard device categories:
-- Lighting, Outlets, Switches
-- Thermostats, Heaters, Air Conditioners
-- Sensors (temperature, humidity, motion, etc.)
-- Locks, Doors, Windows
-- And many more...`,
+- \`GET /simulator/categories\` - List available device categories
+- \`POST /simulator/generate\` - Generate a new simulated device
+- \`POST /simulator/{deviceId}/simulate-value\` - Set a property value
+- \`POST /simulator/{deviceId}/simulate-connection\` - Change connection state
+- \`POST /simulator/{deviceId}/simulate-all\` - Generate random values`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
