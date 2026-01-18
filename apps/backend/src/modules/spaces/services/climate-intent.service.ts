@@ -972,22 +972,16 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		let heatingSetpoint: number | null = null;
 		let coolingSetpoint: number | null = null;
 
-		// Track which devices have been processed for results
-		const processedDevices = new Set<string>();
+		// Track per-device results: true = all operations succeeded, false = at least one failed
+		const deviceResults = new Map<string, boolean>();
 
 		// Step 1: Set mode if provided
 		if (intent.mode !== undefined) {
 			for (const device of devices) {
 				const success = await this.setDeviceMode(device, intent.mode);
 
-				// Only add to results if not already processed (will be added with combined status later)
-				if (!processedDevices.has(device.device.id)) {
-					processedDevices.add(device.device.id);
-					targetResults.push({
-						deviceId: device.device.id,
-						status: success ? IntentTargetStatus.SUCCESS : IntentTargetStatus.FAILED,
-					});
-				}
+				// Track mode result for this device
+				deviceResults.set(device.device.id, success);
 
 				if (success) {
 					modeAffected++;
@@ -1062,13 +1056,14 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 					shouldSetCooling ? coolingSetpoint : null,
 				);
 
-				// Add to results if not already processed
-				if (!processedDevices.has(device.device.id)) {
-					processedDevices.add(device.device.id);
-					targetResults.push({
-						deviceId: device.device.id,
-						status: success ? IntentTargetStatus.SUCCESS : IntentTargetStatus.FAILED,
-					});
+				// Combine with mode result: device succeeds only if both operations succeed
+				const previousResult = deviceResults.get(device.device.id);
+				if (previousResult === undefined) {
+					// Device was not in mode step, just set setpoint result
+					deviceResults.set(device.device.id, success);
+				} else {
+					// Device was in mode step, combine results (both must succeed)
+					deviceResults.set(device.device.id, previousResult && success);
 				}
 
 				if (success) {
@@ -1077,6 +1072,14 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 					setpointFailed++;
 				}
 			}
+		}
+
+		// Build target results from combined device results
+		for (const [deviceId, success] of deviceResults) {
+			targetResults.push({
+				deviceId,
+				status: success ? IntentTargetStatus.SUCCESS : IntentTargetStatus.FAILED,
+			});
 		}
 
 		const totalAffected = modeAffected + setpointAffected;
