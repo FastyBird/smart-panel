@@ -256,7 +256,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   DeckService? _deckService;
   EventBus? _eventBus;
 
-  late ClimateRoomState _state;
+  ClimateRoomState _state = const ClimateRoomState(roomName: '');
   bool _isLoading = true;
 
   String get _roomId => widget.viewItem.roomId;
@@ -350,16 +350,38 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
 
     // Determine capability from climate state
-    RoomCapability capability = RoomCapability.none;
+    // Capability is based on device hardware (heater/cooler channels), not mode.
+    // Once established, it should remain stable to avoid UI glitches during
+    // mode changes when stale data might temporarily show no capabilities.
+    RoomCapability newCapability = RoomCapability.none;
     if (climateState != null) {
       if (climateState.supportsHeating && climateState.supportsCooling) {
-        capability = RoomCapability.heaterAndCooler;
+        newCapability = RoomCapability.heaterAndCooler;
       } else if (climateState.supportsHeating) {
-        capability = RoomCapability.heaterOnly;
+        newCapability = RoomCapability.heaterOnly;
       } else if (climateState.supportsCooling) {
-        capability = RoomCapability.coolerOnly;
+        newCapability = RoomCapability.coolerOnly;
       } else {
-        capability = RoomCapability.none;
+        newCapability = RoomCapability.none;
+      }
+    }
+
+    // Preserve previous valid capability if new capability is none
+    // This prevents UI glitches when stale data arrives during mode changes
+    RoomCapability capability;
+    if (newCapability != RoomCapability.none) {
+      capability = newCapability;
+    } else if (_isLoading) {
+      // Initial load - use whatever we get
+      capability = newCapability;
+    } else {
+      // Preserve previous capability if we had one
+      capability = _state.capability != RoomCapability.none
+          ? _state.capability
+          : newCapability;
+      if (capability != newCapability && kDebugMode) {
+        debugPrint(
+            '[ClimateDomainViewPage] Preserving previous capability: $capability (API returned: $newCapability)');
       }
     }
 
