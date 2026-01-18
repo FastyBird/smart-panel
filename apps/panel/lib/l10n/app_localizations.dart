@@ -2531,6 +2531,132 @@ abstract class AppLocalizations {
   /// **'Unknown'**
   String get filter_status_unknown;
 
+  /// Dehumidifier mode - automatic
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get dehumidifier_mode_auto;
+
+  /// Dehumidifier mode - manual
+  ///
+  /// In en, this message translates to:
+  /// **'Manual'**
+  String get dehumidifier_mode_manual;
+
+  /// Dehumidifier mode - continuous operation
+  ///
+  /// In en, this message translates to:
+  /// **'Continuous'**
+  String get dehumidifier_mode_continuous;
+
+  /// Dehumidifier mode - laundry drying
+  ///
+  /// In en, this message translates to:
+  /// **'Laundry'**
+  String get dehumidifier_mode_laundry;
+
+  /// Dehumidifier mode - quiet/silent operation
+  ///
+  /// In en, this message translates to:
+  /// **'Quiet'**
+  String get dehumidifier_mode_quiet;
+
+  /// Dehumidifier status - idle
+  ///
+  /// In en, this message translates to:
+  /// **'Idle'**
+  String get dehumidifier_status_idle;
+
+  /// Dehumidifier status - actively dehumidifying
+  ///
+  /// In en, this message translates to:
+  /// **'Dehumidifying'**
+  String get dehumidifier_status_dehumidifying;
+
+  /// Dehumidifier status - defrost cycle active
+  ///
+  /// In en, this message translates to:
+  /// **'Defrosting'**
+  String get dehumidifier_status_defrosting;
+
+  /// Dehumidifier timer - off
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get dehumidifier_timer_off;
+
+  /// Dehumidifier timer - 30 minutes
+  ///
+  /// In en, this message translates to:
+  /// **'30 min'**
+  String get dehumidifier_timer_30m;
+
+  /// Dehumidifier timer - 1 hour
+  ///
+  /// In en, this message translates to:
+  /// **'1 hour'**
+  String get dehumidifier_timer_1h;
+
+  /// Dehumidifier timer - 2 hours
+  ///
+  /// In en, this message translates to:
+  /// **'2 hours'**
+  String get dehumidifier_timer_2h;
+
+  /// Dehumidifier timer - 4 hours
+  ///
+  /// In en, this message translates to:
+  /// **'4 hours'**
+  String get dehumidifier_timer_4h;
+
+  /// Dehumidifier timer - 8 hours
+  ///
+  /// In en, this message translates to:
+  /// **'8 hours'**
+  String get dehumidifier_timer_8h;
+
+  /// Dehumidifier timer - 12 hours
+  ///
+  /// In en, this message translates to:
+  /// **'12 hours'**
+  String get dehumidifier_timer_12h;
+
+  /// Dehumidifier water tank label
+  ///
+  /// In en, this message translates to:
+  /// **'Water Tank'**
+  String get dehumidifier_water_tank;
+
+  /// Current humidity label
+  ///
+  /// In en, this message translates to:
+  /// **'Current'**
+  String get device_current_humidity;
+
+  /// Current temperature label
+  ///
+  /// In en, this message translates to:
+  /// **'Temperature'**
+  String get device_current_temperature;
+
+  /// Fan speed label
+  ///
+  /// In en, this message translates to:
+  /// **'Fan Speed'**
+  String get device_fan_speed;
+
+  /// Timer label
+  ///
+  /// In en, this message translates to:
+  /// **'Timer'**
+  String get device_timer;
+
+  /// Child lock label
+  ///
+  /// In en, this message translates to:
+  /// **'Child Lock'**
+  String get device_child_lock;
+
   /// Duration format with hours and minutes
   ///
   /// In en, this message translates to:

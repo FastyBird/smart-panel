@@ -1573,19 +1573,21 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         }
         break;
       case AuxiliaryType.humidifier:
-        detailPage = AirHumidifierDeviceDetail(
-          name: auxiliaryDevice.name,
-          initialState: HumidifierDeviceState(isOn: auxiliaryDevice.isActive),
-          onBack: () => Navigator.of(context).pop(),
-        );
+        if (deviceView is AirHumidifierDeviceView) {
+          detailPage = AirHumidifierDeviceDetail(
+            name: auxiliaryDevice.name,
+            initialState: HumidifierDeviceState(isOn: auxiliaryDevice.isActive),
+            onBack: () => Navigator.of(context).pop(),
+          );
+        }
         break;
       case AuxiliaryType.dehumidifier:
-        detailPage = AirDehumidifierDeviceDetail(
-          name: auxiliaryDevice.name,
-          initialState:
-              DehumidifierDeviceState(isOn: auxiliaryDevice.isActive),
-          onBack: () => Navigator.of(context).pop(),
-        );
+        if (deviceView is AirDehumidifierDeviceView) {
+          detailPage = AirDehumidifierDeviceDetail(
+            device: deviceView,
+            onBack: () => Navigator.of(context).pop(),
+          );
+        }
         break;
     }
 
