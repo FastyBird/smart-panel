@@ -107,7 +107,6 @@ describe('SpacesController', () => {
 							mode: ClimateMode.OFF,
 							currentTemperature: null,
 							currentHumidity: null,
-							targetTemperature: null,
 							heatingSetpoint: null,
 							coolingSetpoint: null,
 							minSetpoint: 15,
@@ -125,8 +124,7 @@ describe('SpacesController', () => {
 							affectedDevices: 1,
 							failedDevices: 0,
 							mode: ClimateMode.HEAT,
-							newSetpoint: 22.0,
-							heatingSetpoint: null,
+							heatingSetpoint: 22.0,
 							coolingSetpoint: null,
 						}),
 					},
@@ -890,7 +888,6 @@ describe('SpacesController', () => {
 				mode: ClimateMode.HEAT,
 				currentTemperature: 22.5,
 				currentHumidity: 45,
-				targetTemperature: 21.0,
 				heatingSetpoint: 21.0,
 				coolingSetpoint: null,
 				minSetpoint: 16,
@@ -909,7 +906,7 @@ describe('SpacesController', () => {
 
 			expect(result.data.hasClimate).toBe(true);
 			expect(result.data.currentTemperature).toBe(22.5);
-			expect(result.data.targetTemperature).toBe(21.0);
+			expect(result.data.heatingSetpoint).toBe(21.0);
 			expect(spaceIntentService.getClimateState).toHaveBeenCalledWith(mockSpace.id);
 		});
 
@@ -919,7 +916,6 @@ describe('SpacesController', () => {
 				mode: ClimateMode.OFF,
 				currentTemperature: null,
 				currentHumidity: null,
-				targetTemperature: null,
 				heatingSetpoint: null,
 				coolingSetpoint: null,
 				minSetpoint: 15,
@@ -952,7 +948,6 @@ describe('SpacesController', () => {
 				affectedDevices: 1,
 				failedDevices: 0,
 				mode: ClimateMode.HEAT,
-				newSetpoint: 22.0,
 				heatingSetpoint: 22.0,
 				coolingSetpoint: null,
 			});
@@ -967,7 +962,7 @@ describe('SpacesController', () => {
 			const result = await controller.executeClimateIntent(mockSpace.id, intentDto as any);
 
 			expect(result.data.success).toBe(true);
-			expect(result.data.newSetpoint).toBe(22.0);
+			expect(result.data.heatingSetpoint).toBe(22.0);
 			expect(spaceIntentService.executeClimateIntent).toHaveBeenCalledWith(mockSpace.id, intentDto.data);
 		});
 
@@ -1270,7 +1265,6 @@ describe('SpacesController', () => {
 					mode: ClimateMode.OFF,
 					currentTemperature: null,
 					currentHumidity: null,
-					targetTemperature: null,
 					heatingSetpoint: null,
 					coolingSetpoint: null,
 					minSetpoint: 15,

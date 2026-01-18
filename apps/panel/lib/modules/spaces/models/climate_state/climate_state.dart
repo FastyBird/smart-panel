@@ -44,8 +44,9 @@ class ClimateStateModel {
   final ClimateMode? mode;
   final double? currentTemperature;
   final double? currentHumidity;
-  final double? targetTemperature;
+  /// Heating setpoint - target temperature for heating (used in HEAT and AUTO modes)
   final double? heatingSetpoint;
+  /// Cooling setpoint - target temperature for cooling (used in COOL and AUTO modes)
   final double? coolingSetpoint;
   final double minSetpoint;
   final double maxSetpoint;
@@ -63,7 +64,6 @@ class ClimateStateModel {
     this.mode,
     this.currentTemperature,
     this.currentHumidity,
-    this.targetTemperature,
     this.heatingSetpoint,
     this.coolingSetpoint,
     required this.minSetpoint,
@@ -94,13 +94,21 @@ class ClimateStateModel {
 
   /// Get the effective target temperature based on mode
   double? get effectiveTargetTemperature {
-    if (mode == ClimateMode.auto) {
-      // For auto mode, return midpoint between heating and cooling setpoints
-      if (heatingSetpoint != null && coolingSetpoint != null) {
-        return (heatingSetpoint! + coolingSetpoint!) / 2;
-      }
+    switch (mode) {
+      case ClimateMode.heat:
+        return heatingSetpoint;
+      case ClimateMode.cool:
+        return coolingSetpoint;
+      case ClimateMode.auto:
+        // For auto mode, return midpoint between heating and cooling setpoints
+        if (heatingSetpoint != null && coolingSetpoint != null) {
+          return (heatingSetpoint! + coolingSetpoint!) / 2;
+        }
+        return heatingSetpoint ?? coolingSetpoint;
+      case ClimateMode.off:
+      case null:
+        return heatingSetpoint ?? coolingSetpoint;
     }
-    return targetTemperature;
   }
 
   factory ClimateStateModel.fromJson(
@@ -113,7 +121,6 @@ class ClimateStateModel {
       mode: parseClimateMode(json['mode'] as String?),
       currentTemperature: (json['current_temperature'] as num?)?.toDouble(),
       currentHumidity: (json['current_humidity'] as num?)?.toDouble(),
-      targetTemperature: (json['target_temperature'] as num?)?.toDouble(),
       heatingSetpoint: (json['heating_setpoint'] as num?)?.toDouble(),
       coolingSetpoint: (json['cooling_setpoint'] as num?)?.toDouble(),
       minSetpoint: (json['min_setpoint'] as num?)?.toDouble() ?? 5.0,

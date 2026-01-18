@@ -275,18 +275,8 @@ export class ClimateStateDataModel {
 	currentHumidity: number | null;
 
 	@ApiProperty({
-		name: 'target_temperature',
-		description: 'Current target/setpoint temperature (for HEAT/COOL modes)',
-		type: 'number',
-		nullable: true,
-		example: 21.0,
-	})
-	@Expose({ name: 'target_temperature' })
-	targetTemperature: number | null;
-
-	@ApiProperty({
 		name: 'heating_setpoint',
-		description: 'Heating setpoint (lower bound, for AUTO mode)',
+		description: 'Heating setpoint - target temperature for heating (used in HEAT and AUTO modes)',
 		type: 'number',
 		nullable: true,
 		example: 20.0,
@@ -296,7 +286,7 @@ export class ClimateStateDataModel {
 
 	@ApiProperty({
 		name: 'cooling_setpoint',
-		description: 'Cooling setpoint (upper bound, for AUTO mode)',
+		description: 'Cooling setpoint - target temperature for cooling (used in COOL and AUTO modes)',
 		type: 'number',
 		nullable: true,
 		example: 24.0,
@@ -443,18 +433,8 @@ export class ClimateIntentResultDataModel {
 	mode: string;
 
 	@ApiProperty({
-		name: 'new_setpoint',
-		description: 'The new setpoint value (for HEAT/COOL modes)',
-		type: 'number',
-		nullable: true,
-		example: 21.5,
-	})
-	@Expose({ name: 'new_setpoint' })
-	newSetpoint: number | null;
-
-	@ApiProperty({
 		name: 'heating_setpoint',
-		description: 'The new heating setpoint (for AUTO mode)',
+		description: 'The new heating setpoint (used in HEAT and AUTO modes)',
 		type: 'number',
 		nullable: true,
 		example: 20.0,
@@ -464,7 +444,7 @@ export class ClimateIntentResultDataModel {
 
 	@ApiProperty({
 		name: 'cooling_setpoint',
-		description: 'The new cooling setpoint (for AUTO mode)',
+		description: 'The new cooling setpoint (used in COOL and AUTO modes)',
 		type: 'number',
 		nullable: true,
 		example: 24.0,

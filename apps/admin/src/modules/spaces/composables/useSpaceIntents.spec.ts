@@ -37,7 +37,6 @@ describe('useSpaceIntents', () => {
 				affected_devices: 2,
 				failed_devices: 0,
 				mode: 'heat',
-				new_setpoint: 22.5,
 				heating_setpoint: 22.5,
 				cooling_setpoint: 25.0,
 				...overrides,
@@ -196,7 +195,7 @@ describe('useSpaceIntents', () => {
 
 			expect(result).not.toBeNull();
 			expect(result?.success).toBe(true);
-			expect(result?.newSetpoint).toBe(22.5);
+			expect(result?.heatingSetpoint).toBe(22.5);
 			expect(lastResult.value).toEqual(result);
 		});
 	});

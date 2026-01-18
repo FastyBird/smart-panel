@@ -25,7 +25,6 @@ describe('useSpaceClimateState', () => {
 				mode: 'heat',
 				current_temperature: 21.5,
 				current_humidity: 45,
-				target_temperature: 22.0,
 				heating_setpoint: 22.0,
 				cooling_setpoint: 25.0,
 				min_setpoint: 5.0,
@@ -92,7 +91,7 @@ describe('useSpaceClimateState', () => {
 			expect(result).not.toBeNull();
 			expect(result?.currentTemperature).toBe(21.5);
 			expect(result?.mode).toBe('heat');
-			expect(result?.targetTemperature).toBe(22.0);
+			expect(result?.heatingSetpoint).toBe(22.0);
 			expect(result?.hasClimate).toBe(true);
 			expect(climateState.value).toEqual(result);
 		});

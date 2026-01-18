@@ -586,7 +586,6 @@ export class SpacesController {
 		stateData.mode = state.mode;
 		stateData.currentTemperature = state.currentTemperature;
 		stateData.currentHumidity = state.currentHumidity;
-		stateData.targetTemperature = state.targetTemperature;
 		stateData.heatingSetpoint = state.heatingSetpoint;
 		stateData.coolingSetpoint = state.coolingSetpoint;
 		stateData.minSetpoint = state.minSetpoint;
@@ -638,7 +637,6 @@ export class SpacesController {
 		resultData.affectedDevices = result.affectedDevices;
 		resultData.failedDevices = result.failedDevices;
 		resultData.mode = result.mode;
-		resultData.newSetpoint = result.newSetpoint;
 		resultData.heatingSetpoint = result.heatingSetpoint;
 		resultData.coolingSetpoint = result.coolingSetpoint;
 
@@ -1488,7 +1486,6 @@ export class SpacesController {
 		climateState.mode = snapshot.climate.mode;
 		climateState.currentTemperature = snapshot.climate.currentTemperature;
 		climateState.currentHumidity = snapshot.climate.currentHumidity;
-		climateState.targetTemperature = snapshot.climate.targetTemperature;
 		climateState.heatingSetpoint = snapshot.climate.heatingSetpoint;
 		climateState.coolingSetpoint = snapshot.climate.coolingSetpoint;
 		climateState.minSetpoint = snapshot.climate.minSetpoint;

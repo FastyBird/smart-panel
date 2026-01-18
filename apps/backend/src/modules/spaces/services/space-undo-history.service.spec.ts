@@ -47,7 +47,6 @@ describe('SpaceUndoHistoryService', () => {
 			mode: ClimateMode.OFF,
 			currentTemperature: null,
 			currentHumidity: null,
-			targetTemperature: null,
 			heatingSetpoint: null,
 			coolingSetpoint: null,
 			minSetpoint: 5,
@@ -136,7 +135,7 @@ describe('SpaceUndoHistoryService', () => {
 	const createClimateSnapshot = (
 		spaceId: string,
 		thermostatId: string | null,
-		targetTemperature: number | null,
+		heatingSetpointValue: number | null,
 		lights: LightStateSnapshot[] = [],
 	): SpaceContextSnapshot => ({
 		spaceId,
@@ -155,8 +154,7 @@ describe('SpaceUndoHistoryService', () => {
 			mode: thermostatId !== null ? ClimateMode.HEAT : ClimateMode.OFF,
 			currentTemperature: 22,
 			currentHumidity: null,
-			targetTemperature,
-			heatingSetpoint: targetTemperature,
+			heatingSetpoint: heatingSetpointValue,
 			coolingSetpoint: null,
 			minSetpoint: 5,
 			maxSetpoint: 35,

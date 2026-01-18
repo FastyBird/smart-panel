@@ -427,7 +427,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     if (maxSetpoint <= minSetpoint) {
       maxSetpoint = minSetpoint + 1.0;
     }
-    final rawTargetTemp = climateState?.targetTemperature ?? 22.0;
+    final rawTargetTemp = climateState?.effectiveTargetTemperature ?? 22.0;
     // Clamp target temp to valid setpoint range to avoid UI inconsistencies
     final targetTemp = rawTargetTemp.clamp(minSetpoint, maxSetpoint);
     final currentTemp = climateState?.currentTemperature ?? 21.0;

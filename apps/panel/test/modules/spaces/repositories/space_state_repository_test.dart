@@ -173,8 +173,7 @@ void main() {
             'mode': 'heat',
             'current_temperature': 21.5,
             'current_humidity': 45.0,
-            'target_temperature': 22.0,
-            'heating_setpoint': 20.0,
+            'heating_setpoint': 22.0,
             'cooling_setpoint': 24.0,
             'min_setpoint': 15.0,
             'max_setpoint': 30.0,
@@ -202,7 +201,7 @@ void main() {
         expect(result.hasClimate, isTrue);
         expect(result.mode, equals(ClimateMode.heat));
         expect(result.currentTemperature, equals(21.5));
-        expect(result.targetTemperature, equals(22.0));
+        expect(result.heatingSetpoint, equals(22.0));
         verify(() => mockClient.getSpacesModuleSpaceClimate(id: spaceId))
             .called(1);
       });
@@ -399,7 +398,7 @@ void main() {
           'has_climate': true,
           'mode': 'cool',
           'current_temperature': 26.0,
-          'target_temperature': 24.0,
+          'cooling_setpoint': 24.0,
           'can_set_setpoint': true,
           'supports_heating': false,
           'supports_cooling': true,
@@ -415,7 +414,7 @@ void main() {
         expect(cached, isNotNull);
         expect(cached!.mode, equals(ClimateMode.cool));
         expect(cached.currentTemperature, equals(26.0));
-        expect(cached.targetTemperature, equals(24.0));
+        expect(cached.coolingSetpoint, equals(24.0));
       });
     });
 

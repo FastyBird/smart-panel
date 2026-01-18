@@ -153,7 +153,6 @@ describe('SpaceIntentService', () => {
 				mode: ClimateMode.HEAT,
 				currentTemperature: 22.5,
 				currentHumidity: 45,
-				targetTemperature: 23.0,
 				heatingSetpoint: 23.0,
 				coolingSetpoint: null,
 				minSetpoint: 15,
@@ -180,7 +179,6 @@ describe('SpaceIntentService', () => {
 				mode: ClimateMode.OFF,
 				currentTemperature: null,
 				currentHumidity: null,
-				targetTemperature: null,
 				heatingSetpoint: null,
 				coolingSetpoint: null,
 				minSetpoint: DEFAULT_MIN_SETPOINT,
@@ -214,7 +212,6 @@ describe('SpaceIntentService', () => {
 				affectedDevices: 1,
 				failedDevices: 0,
 				mode: ClimateMode.HEAT,
-				newSetpoint: 22.5,
 				heatingSetpoint: 22.5,
 				coolingSetpoint: null,
 			};
@@ -236,7 +233,6 @@ describe('SpaceIntentService', () => {
 				affectedDevices: 1,
 				failedDevices: 0,
 				mode: ClimateMode.HEAT,
-				newSetpoint: 25.0,
 				heatingSetpoint: 25.0,
 				coolingSetpoint: null,
 			};
@@ -245,7 +241,7 @@ describe('SpaceIntentService', () => {
 			const result = await service.executeClimateIntent(mockSpaceId, intent);
 
 			expect(mockClimateIntentService.executeClimateIntent).toHaveBeenCalledWith(mockSpaceId, intent);
-			expect(result.newSetpoint).toBe(25.0);
+			expect(result.heatingSetpoint).toBe(25.0);
 		});
 	});
 

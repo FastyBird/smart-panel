@@ -107,11 +107,9 @@ export interface IClimateIntentResult {
 	failedDevices: number;
 	/** New climate mode after intent execution */
 	mode?: string;
-	/** New setpoint value after intent execution */
-	newSetpoint?: number;
-	/** New heating setpoint for auto mode */
+	/** New heating setpoint (used in HEAT and AUTO modes) */
 	heatingSetpoint?: number;
-	/** New cooling setpoint for auto mode */
+	/** New cooling setpoint (used in COOL and AUTO modes) */
 	coolingSetpoint?: number;
 }
 
@@ -314,7 +312,6 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 				affectedDevices: data.data.affected_devices ?? 0,
 				failedDevices: data.data.failed_devices ?? 0,
 				mode: data.data.mode ?? undefined,
-				newSetpoint: data.data.new_setpoint ?? undefined,
 				heatingSetpoint: data.data.heating_setpoint ?? undefined,
 				coolingSetpoint: data.data.cooling_setpoint ?? undefined,
 			};

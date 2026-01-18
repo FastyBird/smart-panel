@@ -21,11 +21,9 @@ export interface IClimateState {
 	currentTemperature: number | null;
 	/** Current humidity reading as percentage (0-100) */
 	currentHumidity: number | null;
-	/** Target temperature setpoint in Celsius */
-	targetTemperature: number | null;
-	/** Heating setpoint for auto mode (lower bound) */
+	/** Heating setpoint - target temperature for heating (used in HEAT and AUTO modes) */
 	heatingSetpoint: number | null;
-	/** Cooling setpoint for auto mode (upper bound) */
+	/** Cooling setpoint - target temperature for cooling (used in COOL and AUTO modes) */
 	coolingSetpoint: number | null;
 	/** Minimum allowed setpoint value */
 	minSetpoint: number;
@@ -79,7 +77,6 @@ const transformClimateState = (data: ClimateStateData): IClimateState => {
 		mode: (data.mode as IClimateState['mode']) ?? null,
 		currentTemperature: data.current_temperature ?? null,
 		currentHumidity: data.current_humidity ?? null,
-		targetTemperature: data.target_temperature ?? null,
 		heatingSetpoint: data.heating_setpoint ?? null,
 		coolingSetpoint: data.cooling_setpoint ?? null,
 		minSetpoint: data.min_setpoint ?? 5.0,
@@ -111,7 +108,7 @@ const transformClimateState = (data: ClimateStateData): IClimateState => {
  *
  * await fetchClimateState();
  * if (isHeating.value) {
- *   console.log(`Heating to ${climateState.value?.targetTemperature}°C`);
+ *   console.log(`Heating to ${climateState.value?.heatingSetpoint}°C`);
  * }
  * ```
  */

@@ -131,7 +131,6 @@ describe('SpaceContextSnapshotService', () => {
 		mode: ClimateMode.OFF,
 		currentTemperature: null,
 		currentHumidity: null,
-		targetTemperature: null,
 		heatingSetpoint: null,
 		coolingSetpoint: null,
 		minSetpoint: 5,
@@ -304,7 +303,6 @@ describe('SpaceContextSnapshotService', () => {
 				mode: ClimateMode.HEAT,
 				currentTemperature: 22.5,
 				currentHumidity: 45,
-				targetTemperature: 21.0,
 				heatingSetpoint: 21.0,
 				coolingSetpoint: null,
 				minSetpoint: 5,
@@ -329,7 +327,7 @@ describe('SpaceContextSnapshotService', () => {
 			expect(result).not.toBeNull();
 			expect(result.climate.hasClimate).toBe(true);
 			expect(result.climate.currentTemperature).toBe(22.5);
-			expect(result.climate.targetTemperature).toBe(21.0);
+			expect(result.climate.heatingSetpoint).toBe(21.0);
 			expect(result.climate.canSetSetpoint).toBe(true);
 		});
 

@@ -340,8 +340,11 @@ export class SpaceUndoHistoryService implements OnModuleDestroy {
 			return { restored: false, failed: false };
 		}
 
-		// Skip if no target temperature was captured
-		if (climate.targetTemperature === null) {
+		// Determine the setpoint to restore based on mode
+		const setpointToRestore = climate.heatingSetpoint ?? climate.coolingSetpoint;
+
+		// Skip if no setpoint was captured
+		if (setpointToRestore === null) {
 			return { restored: false, failed: false };
 		}
 
@@ -383,7 +386,7 @@ export class SpaceUndoHistoryService implements OnModuleDestroy {
 				device,
 				channel: setpointChannel,
 				property: setpointProperty,
-				value: climate.targetTemperature,
+				value: setpointToRestore,
 			};
 
 			const success = await platform.processBatch([command]);

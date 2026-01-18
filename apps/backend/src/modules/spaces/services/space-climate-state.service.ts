@@ -60,7 +60,6 @@ export interface ClimateState {
 	mode: ClimateMode;
 	currentTemperature: number | null;
 	currentHumidity: number | null;
-	targetTemperature: number | null;
 	heatingSetpoint: number | null;
 	coolingSetpoint: number | null;
 	minSetpoint: number;
@@ -103,7 +102,6 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 			mode: ClimateMode.OFF,
 			currentTemperature: null,
 			currentHumidity: null,
-			targetTemperature: null,
 			heatingSetpoint: null,
 			coolingSetpoint: null,
 			minSetpoint: DEFAULT_MIN_SETPOINT,
@@ -253,12 +251,7 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 				: null
 			: null;
 
-		// Use lastAppliedMode for calculations if available, as detected mode may be stale
-		// immediately after a mode change (devices take time to update their state)
-		const effectiveMode = lastAppliedMode ?? detectedMode;
-
-		// Calculate target temperatures based on mode
-		let targetTemperature: number | null = null;
+		// Calculate setpoints from device values
 		let heatingSetpoint: number | null = null;
 		let coolingSetpoint: number | null = null;
 
@@ -267,20 +260,6 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 		}
 		if (coolingSetpoints.length > 0) {
 			coolingSetpoint = coolingSetpoints.reduce((a, b) => a + b, 0) / coolingSetpoints.length;
-		}
-
-		// Set targetTemperature based on effective mode (lastApplied or detected)
-		if (effectiveMode === ClimateMode.HEAT && heatingSetpoint !== null) {
-			targetTemperature = heatingSetpoint;
-		} else if (effectiveMode === ClimateMode.COOL && coolingSetpoint !== null) {
-			targetTemperature = coolingSetpoint;
-		} else if (effectiveMode === ClimateMode.AUTO) {
-			// In AUTO mode, use the average of both setpoints as "target"
-			if (heatingSetpoint !== null && coolingSetpoint !== null) {
-				targetTemperature = (heatingSetpoint + coolingSetpoint) / 2;
-			} else {
-				targetTemperature = heatingSetpoint ?? coolingSetpoint;
-			}
 		}
 
 		// Detect mixed state (setpoints out of sync)
@@ -293,7 +272,6 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 			mode: detectedMode,
 			currentTemperature: currentTemperature !== null ? Math.round(currentTemperature * 10) / 10 : null,
 			currentHumidity: currentHumidity !== null ? Math.round(currentHumidity) : null,
-			targetTemperature: targetTemperature !== null ? Math.round(targetTemperature * 2) / 2 : null,
 			heatingSetpoint: heatingSetpoint !== null ? Math.round(heatingSetpoint * 2) / 2 : null,
 			coolingSetpoint: coolingSetpoint !== null ? Math.round(coolingSetpoint * 2) / 2 : null,
 			minSetpoint,

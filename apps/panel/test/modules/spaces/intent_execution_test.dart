@@ -451,7 +451,7 @@ void main() {
             'success': true,
             'affected_devices': 2,
             'failed_devices': 0,
-            'new_setpoint': 22.5,
+            'heating_setpoint': 22.5,
           },
         };
 
@@ -479,7 +479,7 @@ void main() {
 
         expect(result, isNotNull);
         expect(result!.success, isTrue);
-        expect(result.newSetpoint, equals(22.5));
+        expect(result.heatingSetpoint, equals(22.5));
       });
 
       test('successfully decreases temperature with medium delta', () async {
@@ -489,7 +489,7 @@ void main() {
             'success': true,
             'affected_devices': 1,
             'failed_devices': 0,
-            'new_setpoint': 21.0,
+            'heating_setpoint': 21.0,
           },
         };
 
@@ -528,7 +528,7 @@ void main() {
             'success': true,
             'affected_devices': 2,
             'failed_devices': 0,
-            'new_setpoint': 23.0,
+            'heating_setpoint': 23.0,
           },
         };
 
@@ -556,7 +556,7 @@ void main() {
 
         expect(result, isNotNull);
         expect(result!.success, isTrue);
-        expect(result.newSetpoint, equals(23.0));
+        expect(result.heatingSetpoint, equals(23.0));
       });
 
       test('returns null on API error', () async {

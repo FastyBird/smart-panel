@@ -136,7 +136,6 @@ export class SpaceContextSnapshotService {
 			mode: ClimateMode.OFF,
 			currentTemperature: null,
 			currentHumidity: null,
-			targetTemperature: null,
 			heatingSetpoint: null,
 			coolingSetpoint: null,
 			minSetpoint: DEFAULT_MIN_SETPOINT,

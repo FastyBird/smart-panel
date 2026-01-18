@@ -398,8 +398,7 @@ void main() {
             'mode': 'heat',
             'current_temperature': 21.5,
             'current_humidity': 45.0,
-            'target_temperature': 22.0,
-            'heating_setpoint': 20.0,
+            'heating_setpoint': 22.0,
             'cooling_setpoint': 24.0,
             'min_setpoint': 15.0,
             'max_setpoint': 30.0,
@@ -421,7 +420,7 @@ void main() {
         expect(state!.hasClimate, isTrue);
         expect(state.mode, equals(ClimateMode.heat));
         expect(state.currentTemperature, equals(21.5));
-        expect(state.targetTemperature, equals(22.0));
+        expect(state.heatingSetpoint, equals(22.0));
         expect(state.supportsHeating, isTrue);
         expect(state.supportsCooling, isTrue);
       });
@@ -434,7 +433,7 @@ void main() {
               'has_climate': true,
               'mode': mode,
               'current_temperature': 21.5,
-              'target_temperature': 22.0,
+              'heating_setpoint': 22.0,
               'min_setpoint': 15.0,
               'max_setpoint': 30.0,
               'can_set_setpoint': true,

@@ -32,7 +32,6 @@ export { ClimateState, PrimaryClimateDevice } from './space-climate-state.servic
  */
 export interface ClimateIntentResult extends IntentExecutionResult {
 	mode: ClimateMode;
-	newSetpoint: number | null;
 	heatingSetpoint: number | null;
 	coolingSetpoint: number | null;
 }
@@ -81,7 +80,6 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 			affectedDevices: 0,
 			failedDevices: 0,
 			mode: ClimateMode.OFF,
-			newSetpoint: null,
 			heatingSetpoint: null,
 			coolingSetpoint: null,
 		};
@@ -210,7 +208,6 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 			affectedDevices,
 			failedDevices,
 			mode,
-			newSetpoint: climateState.targetTemperature,
 			heatingSetpoint: climateState.heatingSetpoint,
 			coolingSetpoint: climateState.coolingSetpoint,
 		};
@@ -404,16 +401,11 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 			}
 		}
 
-		// Determine the "primary" setpoint for the response
-		const newSetpoint =
-			mode === ClimateMode.HEAT ? heatingSetpoint : mode === ClimateMode.COOL ? coolingSetpoint : heatingSetpoint;
-
 		return {
 			success: failedDevices === 0 || affectedDevices > 0,
 			affectedDevices,
 			failedDevices,
 			mode,
-			newSetpoint,
 			heatingSetpoint,
 			coolingSetpoint,
 		};
@@ -434,7 +426,6 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 				affectedDevices: 0,
 				failedDevices: 0,
 				mode: climateState.mode,
-				newSetpoint: null,
 				heatingSetpoint: null,
 				coolingSetpoint: null,
 			};
@@ -452,7 +443,6 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 				affectedDevices: 0,
 				failedDevices: 0,
 				mode: climateState.mode,
-				newSetpoint: null,
 				heatingSetpoint: null,
 				coolingSetpoint: null,
 			};
@@ -697,16 +687,11 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		const totalAffected = modeAffected + setpointAffected;
 		const totalFailed = modeFailed + setpointFailed;
 
-		// Determine the "primary" setpoint for the response
-		const newSetpoint =
-			mode === ClimateMode.HEAT ? heatingSetpoint : mode === ClimateMode.COOL ? coolingSetpoint : heatingSetpoint;
-
 		return {
 			success: totalFailed === 0 || totalAffected > 0,
 			affectedDevices: totalAffected,
 			failedDevices: totalFailed,
 			mode,
-			newSetpoint,
 			heatingSetpoint,
 			coolingSetpoint,
 		};
