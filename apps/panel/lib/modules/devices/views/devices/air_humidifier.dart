@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/device_information.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_energy.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_power.dart';
@@ -40,12 +41,12 @@ class AirHumidifierDeviceView extends DeviceView
       channels.whereType<DeviceInformationChannelView>().first;
 
   @override
-  HumidityChannelView get humidityChannel =>
-      channels.whereType<HumidityChannelView>().first;
+  HumidityChannelView? get humidityChannel =>
+      channels.whereType<HumidityChannelView>().firstOrNull;
 
   @override
-  SwitcherChannelView get switcherChannel =>
-      channels.whereType<SwitcherChannelView>().first;
+  SwitcherChannelView? get switcherChannel =>
+      channels.whereType<SwitcherChannelView>().firstOrNull;
 
   @override
   ElectricalEnergyChannelView? get electricalEnergyChannel =>
@@ -68,5 +69,17 @@ class AirHumidifierDeviceView extends DeviceView
       channels.whereType<TemperatureChannelView>().firstOrNull;
 
   @override
-  bool get isOn => switcherChannel.on;
+  bool get isOn {
+    // Try switcher channel first
+    final switcher = switcherChannel;
+    if (switcher != null) {
+      return switcher.on;
+    }
+    // Fall back to fan channel if available
+    final fan = fanChannel;
+    if (fan != null) {
+      return fan.on;
+    }
+    return false;
+  }
 }
