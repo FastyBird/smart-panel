@@ -201,7 +201,9 @@ class _SpeedSliderState extends State<SpeedSlider> {
                 child: Slider(
                   value: _displayValue,
                   divisions: divisions,
-                  onChanged: widget.onChanged,
+                  // Pass null when disabled so accessibility services correctly
+                  // report the slider as non-interactive
+                  onChanged: widget.enabled ? widget.onChanged : null,
                 ),
               ),
             ),
