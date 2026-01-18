@@ -385,8 +385,29 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 			return;
 		}
 
-		// For boolean safety sensors, check if triggered
-		const triggered = value === true;
+		// Determine if sensor is triggered based on value type and channel category
+		let triggered = false;
+
+		if (typeof value === 'boolean') {
+			// For boolean sensors (smoke detected, leak detected, etc.)
+			triggered = value === true;
+		} else if (typeof value === 'number') {
+			// For numeric sensors (CO ppm, gas ppm), check against safety thresholds
+			switch (channel.category) {
+				case ChannelCategory.CARBON_MONOXIDE:
+					// CO is dangerous above 50 ppm (OSHA limit for 8-hour exposure)
+					triggered = value >= 50;
+					break;
+				case ChannelCategory.GAS:
+					// Generic gas detection - any measurable level may indicate a leak
+					// Using a conservative threshold - any reading above 0 indicates presence
+					triggered = value > 0;
+					break;
+				default:
+					// For other numeric safety sensors, consider any positive value as triggered
+					triggered = value > 0;
+			}
+		}
 
 		// Only add to safetyAlerts if the sensor is actually triggered
 		if (triggered) {
