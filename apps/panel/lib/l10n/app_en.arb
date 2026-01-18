@@ -1836,6 +1836,42 @@
   "@device_child_lock": {
     "description": "Child lock label"
   },
+  "device_oscillation": "Oscillation",
+  "@device_oscillation": {
+    "description": "Fan oscillation/swing label"
+  },
+  "device_direction": "Direction",
+  "@device_direction": {
+    "description": "Fan direction label"
+  },
+  "device_auto_off_timer": "Auto-Off Timer",
+  "@device_auto_off_timer": {
+    "description": "Auto-off timer sheet title"
+  },
+  "device_filter_life": "Filter Life",
+  "@device_filter_life": {
+    "description": "Filter life remaining label"
+  },
+  "device_filter_status": "Filter",
+  "@device_filter_status": {
+    "description": "Filter status label"
+  },
+  "device_voc": "VOC",
+  "@device_voc": {
+    "description": "Volatile organic compounds label"
+  },
+  "device_co2": "CO₂",
+  "@device_co2": {
+    "description": "Carbon dioxide label"
+  },
+  "device_humidity": "Humidity",
+  "@device_humidity": {
+    "description": "Humidity short label"
+  },
+  "device_temperature": "Temp",
+  "@device_temperature": {
+    "description": "Temperature short label"
+  },
 
   "duration_format_hours_minutes": "{hours}h {minutes}m",
   "@duration_format_hours_minutes": {

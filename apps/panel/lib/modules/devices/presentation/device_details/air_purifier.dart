@@ -312,9 +312,9 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
 
       return ValueSelectorRow<FanSpeedLevelValue>(
         currentValue: fanChannel.speedLevel,
-        label: 'Fan Speed',
+        label: localizations.device_fan_speed,
         icon: Icons.speed,
-        sheetTitle: 'Fan Speed',
+        sheetTitle: localizations.device_fan_speed,
         activeColor: airColor,
         options: options,
         displayFormatter: (level) => level != null
@@ -334,9 +334,9 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       if (useVerticalLayout) {
         return ValueSelectorRow<double>(
           currentValue: _state.speed,
-          label: 'Fan Speed',
+          label: localizations.device_fan_speed,
           icon: Icons.speed,
-          sheetTitle: 'Fan Speed',
+          sheetTitle: localizations.device_fan_speed,
           activeColor: airColor,
           options: _getSpeedOptions(localizations),
           displayFormatter: (v) => _formatSpeed(localizations, v),
@@ -694,9 +694,9 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
 
       return ValueSelectorRow<FanTimerPresetValue?>(
         currentValue: fanChannel.timerPreset,
-        label: 'Timer',
+        label: localizations.device_timer,
         icon: Icons.timer_outlined,
-        sheetTitle: 'Auto-Off Timer',
+        sheetTitle: localizations.device_auto_off_timer,
         activeColor: airColor,
         options: options,
         displayFormatter: (p) => _formatTimerPreset(localizations, p),
@@ -719,9 +719,9 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
 
       return ValueSelectorRow<int>(
         currentValue: fanChannel.timer,
-        label: 'Timer',
+        label: localizations.device_timer,
         icon: Icons.timer_outlined,
-        sheetTitle: 'Auto-Off Timer',
+        sheetTitle: localizations.device_auto_off_timer,
         activeColor: airColor,
         options: options,
         displayFormatter: (m) => _formatNumericTimer(localizations, m),
@@ -965,7 +965,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         vocLabel = AirQualityUtils.calculateVocLevelFromDensity(localizations, vocChannel.density);
       }
       infoTiles.add(InfoTile(
-        label: 'VOC',
+        label: localizations.device_voc,
         value: vocLabel,
         valueColor: airColor,
       ));
@@ -977,7 +977,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       if (filterChannel.hasLifeRemaining) {
         // Show life remaining percentage
         infoTiles.add(InfoTile(
-          label: 'Filter Life',
+          label: localizations.device_filter_life,
           value: '${(_state.filterLife * 100).toInt()}',
           unit: '%',
           isWarning: _state.filterLife < 0.3 || _device.isFilterNeedsReplacement,
@@ -985,7 +985,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       } else if (filterChannel.hasStatus) {
         // Show status if no life remaining property
         infoTiles.add(InfoTile(
-          label: 'Filter',
+          label: localizations.device_filter_status,
           value: FilterUtils.getStatusLabel(localizations, filterChannel.status),
           isWarning: _device.isFilterNeedsReplacement,
         ));
@@ -996,7 +996,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     final tempChannel = _device.temperatureChannel;
     if (tempChannel != null && tempChannel.hasTemperature) {
       infoTiles.add(InfoTile(
-        label: 'Temp',
+        label: localizations.device_temperature,
         value: NumberFormatUtils.defaultFormat.formatDecimal(
           tempChannel.temperature,
           decimalPlaces: 1,
@@ -1010,7 +1010,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     final humidityChannel = _device.humidityChannel;
     if (humidityChannel != null) {
       infoTiles.add(InfoTile(
-        label: 'Humidity',
+        label: localizations.device_humidity,
         value: '${humidityChannel.humidity}',
         unit: '%',
         valueColor: airColor,
@@ -1021,7 +1021,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     final co2Channel = _device.carbonDioxideChannel;
     if (co2Channel != null && co2Channel.hasDensity) {
       infoTiles.add(InfoTile(
-        label: 'CO₂',
+        label: localizations.device_co2,
         value: NumberFormatUtils.defaultFormat.formatInteger(co2Channel.density.toInt()),
         unit: 'ppm',
         valueColor: airColor,
@@ -1054,7 +1054,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           UniversalTile(
             layout: TileLayout.horizontal,
             icon: Icons.lock,
-            name: 'Child Lock',
+            name: localizations.device_child_lock,
             status: _state.childLock
                 ? localizations.thermostat_lock_locked
                 : localizations.thermostat_lock_unlocked,

@@ -1364,6 +1364,33 @@ class AppLocalizationsCs extends AppLocalizations {
   String get device_child_lock => 'Dětský zámek';
 
   @override
+  String get device_oscillation => 'Oscilace';
+
+  @override
+  String get device_direction => 'Směr';
+
+  @override
+  String get device_auto_off_timer => 'Automatické vypnutí';
+
+  @override
+  String get device_filter_life => 'Životnost filtru';
+
+  @override
+  String get device_filter_status => 'Filtr';
+
+  @override
+  String get device_voc => 'VOC';
+
+  @override
+  String get device_co2 => 'CO₂';
+
+  @override
+  String get device_humidity => 'Vlhkost';
+
+  @override
+  String get device_temperature => 'Teplota';
+
+  @override
   String duration_format_hours_minutes(int hours, int minutes) {
     return '${hours}h ${minutes}m';
   }
