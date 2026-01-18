@@ -27,30 +27,6 @@ import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.d
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-class PurifierDeviceState {
-  final bool isOn;
-  final FanModeValue? mode;
-  final double speed;
-  final int aqi;
-  final AirQualityLevelValue? aqiLevel;
-  final bool hasAqiData;
-  final int pm25;
-  final double filterLife;
-  final bool childLock;
-
-  const PurifierDeviceState({
-    this.isOn = false,
-    this.mode,
-    this.speed = 0.0,
-    this.aqi = 0,
-    this.aqiLevel,
-    this.hasAqiData = false,
-    this.pm25 = 0,
-    this.filterLife = 1.0,
-    this.childLock = false,
-  });
-}
-
 class AirPurifierDeviceDetail extends StatefulWidget {
   final AirPurifierDeviceView _device;
   final VoidCallback? onBack;
@@ -150,93 +126,91 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     }
   }
 
-  // Computed state from device data
-  PurifierDeviceState get _state {
+  // Computed getters for device state
+
+  FanModeValue? get _mode {
     final fanChannel = _device.fanChannel;
+    return fanChannel.hasMode ? fanChannel.mode : null;
+  }
+
+  double get _normalizedSpeed {
+    final fanChannel = _device.fanChannel;
+    if (!fanChannel.hasSpeed || !fanChannel.isSpeedNumeric) return 0.0;
+
+    final speedProp = fanChannel.speedProp;
+    final controlState = _deviceControlStateService;
+
+    double actualSpeed = fanChannel.speed;
+
+    // Check for pending/optimistic value first
+    if (speedProp != null &&
+        controlState != null &&
+        controlState.isLocked(_device.id, fanChannel.id, speedProp.id)) {
+      final desiredValue = controlState.getDesiredValue(
+        _device.id,
+        fanChannel.id,
+        speedProp.id,
+      );
+      if (desiredValue is num) {
+        actualSpeed = desiredValue.toDouble();
+      }
+    }
+
+    final range = fanChannel.maxSpeed - fanChannel.minSpeed;
+    if (range <= 0) return 0.0;
+    return (actualSpeed - fanChannel.minSpeed) / range;
+  }
+
+  bool get _hasAqiData {
+    final aqChannel = _device.airQualityChannel;
+    final pmChannel = _device.airParticulateChannel;
+    return (aqChannel != null && (aqChannel.hasLevel || aqChannel.hasAqi)) ||
+        (pmChannel != null && pmChannel.hasDensity);
+  }
+
+  int get _aqi {
+    final aqChannel = _device.airQualityChannel;
     final pmChannel = _device.airParticulateChannel;
 
-    // Normalize speed from device range to 0-1
-    // Check for pending state first (optimistic UI)
-    double normalizedSpeed = 0.0;
-    if (fanChannel.hasSpeed && fanChannel.isSpeedNumeric) {
-      final speedProp = fanChannel.speedProp;
-      final controlState = _deviceControlStateService;
-
-      double actualSpeed = fanChannel.speed;
-
-      // Check for pending/optimistic value first
-      if (speedProp != null &&
-          controlState != null &&
-          controlState.isLocked(_device.id, fanChannel.id, speedProp.id)) {
-        final desiredValue = controlState.getDesiredValue(
-          _device.id,
-          fanChannel.id,
-          speedProp.id,
-        );
-        if (desiredValue is num) {
-          actualSpeed = desiredValue.toDouble();
-        }
-      }
-
-      final range = fanChannel.maxSpeed - fanChannel.minSpeed;
-      if (range > 0) {
-        normalizedSpeed = (actualSpeed - fanChannel.minSpeed) / range;
-      }
-    }
-
-    // Get AQI - prefer air quality channel, fall back to air particulate
-    int pm = 0;
-    int aqi = 0;
-    AirQualityLevelValue? aqiLevel;
-    bool hasAqiData = false;
-    final aqChannel = _device.airQualityChannel;
-
     if (aqChannel != null && (aqChannel.hasLevel || aqChannel.hasAqi)) {
-      // Use air quality channel
-      hasAqiData = true;
-
-      // Use level for the label
-      if (aqChannel.hasLevel) {
-        aqiLevel = aqChannel.level;
-        // If no AQI value, calculate from level
-        if (!aqChannel.hasAqi) {
-          aqi = AirQualityUtils.calculateAqiFromLevel(aqChannel.level);
-        }
-      }
-
-      // Use AQI value for bar position if available
       if (aqChannel.hasAqi) {
-        aqi = aqChannel.aqi;
+        return aqChannel.aqi;
       }
-
-      // Still get PM value if available for display
-      if (pmChannel != null && pmChannel.hasDensity) {
-        pm = pmChannel.density.toInt();
+      if (aqChannel.hasLevel) {
+        return AirQualityUtils.calculateAqiFromLevel(aqChannel.level);
       }
     } else if (pmChannel != null && pmChannel.hasDensity) {
-      // Fallback to air particulate - calculate AQI from PM density
-      hasAqiData = true;
-      pm = pmChannel.density.toInt();
-      aqi = AirQualityUtils.calculateAqi(pmChannel.density, pmChannel.mode);
+      return AirQualityUtils.calculateAqi(pmChannel.density, pmChannel.mode);
     }
+    return 0;
+  }
 
-    // Get filter life from filter channel
-    double filterLife = 1.0;
+  AirQualityLevelValue? get _aqiLevel {
+    final aqChannel = _device.airQualityChannel;
+    if (aqChannel != null && aqChannel.hasLevel) {
+      return aqChannel.level;
+    }
+    return null;
+  }
+
+  int get _pm25 {
+    final pmChannel = _device.airParticulateChannel;
+    if (pmChannel != null && pmChannel.hasDensity) {
+      return pmChannel.density.toInt();
+    }
+    return 0;
+  }
+
+  double get _filterLife {
     if (_device.hasFilter) {
-      filterLife = _device.filterLifeRemaining / 100.0;
+      return _device.filterLifeRemaining / 100.0;
     }
+    return 1.0;
+  }
 
-    return PurifierDeviceState(
-      isOn: _device.isOn,
-      mode: fanChannel.hasMode ? fanChannel.mode : null,
-      speed: normalizedSpeed,
-      aqi: aqi,
-      aqiLevel: aqiLevel,
-      hasAqiData: hasAqiData,
-      pm25: pm,
-      filterLife: filterLife,
-      childLock: fanChannel.hasLocked ? fanChannel.locked : false,
-    );
+  bool get _childLock {
+    final fanChannel = _device.fanChannel;
+    return fanChannel.hasLocked ? fanChannel.locked : false;
   }
 
   void _setSpeedValue(double normalizedSpeed) {
@@ -246,11 +220,12 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
 
     // Convert normalized 0-1 value to actual device speed range
     final range = fanChannel.maxSpeed - fanChannel.minSpeed;
+    if (range <= 0) return;
     final rawSpeed = fanChannel.minSpeed + (normalizedSpeed * range);
 
-    // Round to step value
+    // Round to step value (guard against division by zero)
     final step = fanChannel.speedStep;
-    final steppedSpeed = (rawSpeed / step).round() * step;
+    final steppedSpeed = step > 0 ? (rawSpeed / step).round() * step : rawSpeed;
 
     // Clamp to valid range
     final actualSpeed = steppedSpeed.clamp(fanChannel.minSpeed, fanChannel.maxSpeed);
@@ -296,7 +271,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     bool useVerticalLayout,
   ) {
     final fanChannel = _device.fanChannel;
-    final isEnabled = _state.isOn;
+    final isEnabled = _device.isOn;
 
     if (fanChannel.isSpeedEnum) {
       // Enum-based speed (off, low, medium, high, turbo, auto)
@@ -333,7 +308,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       // Numeric speed (0-100%)
       if (useVerticalLayout) {
         return ValueSelectorRow<double>(
-          currentValue: _state.speed,
+          currentValue: _normalizedSpeed,
           label: localizations.device_fan_speed,
           icon: Icons.speed,
           sheetTitle: localizations.device_fan_speed,
@@ -347,7 +322,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         );
       } else {
         return SpeedSlider(
-          value: _state.speed,
+          value: _normalizedSpeed,
           activeColor: airColor,
           enabled: isEnabled,
           steps: [
@@ -367,15 +342,15 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
 
   String _getAqiLabel(AppLocalizations localizations) {
     // Use level label if available, otherwise calculate from AQI value
-    if (_state.aqiLevel != null) {
-      return AirQualityUtils.getAirQualityLevelLabel(localizations, _state.aqiLevel);
+    if (_aqiLevel != null) {
+      return AirQualityUtils.getAirQualityLevelLabel(localizations, _aqiLevel);
     }
-    return AirQualityUtils.getAqiLabel(localizations, _state.aqi);
+    return AirQualityUtils.getAqiLabel(localizations, _aqi);
   }
 
   String _getModeLabel(AppLocalizations localizations) {
-    if (_state.mode == null) return localizations.air_quality_level_unknown;
-    return FanUtils.getModeLabel(localizations, _state.mode!);
+    if (_mode == null) return localizations.air_quality_level_unknown;
+    return FanUtils.getModeLabel(localizations, _mode!);
   }
 
   @override
@@ -413,10 +388,10 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
 
     return PageHeader(
       title: _device.name,
-      subtitle: _state.isOn
+      subtitle: _device.isOn
           ? '${_getModeLabel(localizations)} • ${_getAqiLabel(localizations)}'
           : localizations.on_state_off,
-      subtitleColor: _state.isOn ? airColor : secondaryColor,
+      subtitleColor: _device.isOn ? airColor : secondaryColor,
       backgroundColor: AppColors.blank,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
@@ -430,7 +405,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             width: _scale(44),
             height: _scale(44),
             decoration: BoxDecoration(
-              color: _state.isOn
+              color: _device.isOn
                   ? DeviceColors.airLight9(isDark)
                   : (isDark
                       ? AppFillColorDark.darker
@@ -439,7 +414,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             ),
             child: Icon(
               Icons.air,
-              color: _state.isOn ? airColor : mutedColor,
+              color: _device.isOn ? airColor : mutedColor,
               size: _scale(24),
             ),
           ),
@@ -551,17 +526,17 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       child: Column(
         children: [
           DevicePowerButton(
-            isOn: _state.isOn,
+            isOn: _device.isOn,
             activeColor: airColor,
             activeBgColor: DeviceColors.airLight9(isDark),
             glowColor: DeviceColors.airLight5(isDark),
             showInfoText: false,
             onTap: () => _setPropertyValue(
               _device.fanChannel.onProp,
-              !_state.isOn,
+              !_device.isOn,
             ),
           ),
-          if (_state.hasAqiData) ...[
+          if (_hasAqiData) ...[
             AppSpacings.spacingMdVertical,
             _buildAirQualityBar(context, isDark),
           ],
@@ -584,7 +559,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     }
 
     // Use current mode or fall back to first available mode
-    final selectedMode = _state.mode ?? availableModes.first;
+    final selectedMode = _mode ?? availableModes.first;
 
     return ModeSelector<FanModeValue>(
       modes: _getFanModeOptions(localizations),
@@ -775,7 +750,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               DevicePowerButton(
-                isOn: _state.isOn,
+                isOn: _device.isOn,
                 activeColor: airColor,
                 activeBgColor: DeviceColors.airLight9(isDark),
                 glowColor: DeviceColors.airLight5(isDark),
@@ -783,7 +758,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
                 size: buttonSize,
                 onTap: () => _setPropertyValue(
                   _device.fanChannel.onProp,
-                  !_state.isOn,
+                  !_device.isOn,
                 ),
               ),
               if (_device.fanChannel.hasMode &&
@@ -791,7 +766,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
                 AppSpacings.spacingXlHorizontal,
                 ModeSelector<FanModeValue>(
                   modes: _getFanModeOptions(localizations),
-                  selectedValue: _state.mode ?? _device.fanChannel.availableModes.first,
+                  selectedValue: _mode ?? _device.fanChannel.availableModes.first,
                   onChanged: (mode) => _setPropertyValue(
                     _device.fanChannel.modeProp,
                     mode.value,
@@ -817,8 +792,8 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
 
     Color getAqiColor() {
-      if (_state.aqi < 50) return DeviceColors.air(isDark);
-      if (_state.aqi < 100) {
+      if (_aqi < 50) return DeviceColors.air(isDark);
+      if (_aqi < 100) {
         return isDark ? AppColorsDark.warning : AppColorsLight.warning;
       }
       return isDark ? AppColorsDark.danger : AppColorsLight.danger;
@@ -838,7 +813,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
               ),
             ),
             Text(
-              '${_getAqiLabel(localizations)} (${_state.aqi})',
+              '${_getAqiLabel(localizations)} ($_aqi)',
               style: TextStyle(
                 color: getAqiColor(),
                 fontSize: AppFontSize.base,
@@ -857,7 +832,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final position =
-                  (_state.aqi / 200).clamp(0.0, 1.0) * constraints.maxWidth;
+                  (_aqi / 200).clamp(0.0, 1.0) * constraints.maxWidth;
               return Stack(
                 children: [
                   Container(
@@ -949,7 +924,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     if (pmChannel != null && pmChannel.hasDensity) {
       infoTiles.add(InfoTile(
         label: AirQualityUtils.getParticulateLabel(localizations, pmChannel.mode),
-        value: NumberFormatUtils.defaultFormat.formatInteger(_state.pm25),
+        value: NumberFormatUtils.defaultFormat.formatInteger(_pm25),
         unit: 'µg/m³',
         valueColor: airColor,
       ));
@@ -978,9 +953,9 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         // Show life remaining percentage
         infoTiles.add(InfoTile(
           label: localizations.device_filter_life,
-          value: '${(_state.filterLife * 100).toInt()}',
+          value: '${(_filterLife * 100).toInt()}',
           unit: '%',
-          isWarning: _state.filterLife < 0.3 || _device.isFilterNeedsReplacement,
+          isWarning: _filterLife < 0.3 || _device.isFilterNeedsReplacement,
         ));
       } else if (filterChannel.hasStatus) {
         // Show status if no life remaining property
@@ -1055,14 +1030,14 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             layout: TileLayout.horizontal,
             icon: Icons.lock,
             name: localizations.device_child_lock,
-            status: _state.childLock
+            status: _childLock
                 ? localizations.thermostat_lock_locked
                 : localizations.thermostat_lock_unlocked,
-            isActive: _state.childLock,
+            isActive: _childLock,
             activeColor: airColor,
             onTileTap: () => _setPropertyValue(
               _device.fanChannel.lockedProp,
-              !_state.childLock,
+              !_childLock,
             ),
             showGlow: false,
             showDoubleBorder: false,

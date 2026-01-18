@@ -159,7 +159,7 @@ class _AirDehumidifierDeviceDetailState
 
     final channel = _dehumidifierChannel;
     final isOn = _device.isOn;
-    final measuredHumidity = _device.humidityChannel?.humidity;
+    final measuredHumidity = _device.humidityChannel.humidity;
     final isDehumidifying = channel?.computeIsDehumidifying(
           currentHumidity: measuredHumidity,
         ) ??
@@ -373,13 +373,20 @@ class _AirDehumidifierDeviceDetailState
 
     final isOn = _device.isOn;
     final targetHumidity = channel.humidity;
-    final minHumidity = channel.minHumidity;
-    final maxHumidity = channel.maxHumidity;
 
-    // Get current humidity from humidity channel if available
+    // Validate min/max - CircularControlDial asserts maxValue > minValue
+    var minHumidity = channel.minHumidity;
+    var maxHumidity = channel.maxHumidity;
+    if (minHumidity >= maxHumidity) {
+      // Use safe defaults if API returns malformed data
+      minHumidity = 0;
+      maxHumidity = 100;
+    }
+
+    // Get current humidity from humidity channel
     final humidityChannel = _device.humidityChannel;
-    final measuredHumidity = humidityChannel?.humidity;
-    final currentHumidity = measuredHumidity?.toDouble() ?? targetHumidity.toDouble();
+    final measuredHumidity = humidityChannel.humidity;
+    final currentHumidity = measuredHumidity.toDouble();
 
     // Use fallback method to determine if actively dehumidifying
     final isDehumidifying = channel.computeIsDehumidifying(
@@ -506,17 +513,14 @@ class _AirDehumidifierDeviceDetailState
 
     final infoTiles = <Widget>[];
 
-    // Current humidity from humidity channel
-    final humidityChannel = _device.humidityChannel;
-    final currentHumidity = humidityChannel?.humidity;
-    if (currentHumidity != null) {
-      infoTiles.add(InfoTile(
-        label: localizations.device_current_humidity,
-        value: NumberFormatUtils.defaultFormat.formatInteger(currentHumidity),
-        unit: '%',
-        valueColor: humidityColor,
-      ));
-    }
+    // Current humidity from humidity channel (required per spec)
+    final currentHumidity = _device.humidityChannel.humidity;
+    infoTiles.add(InfoTile(
+      label: localizations.device_current_humidity,
+      value: NumberFormatUtils.defaultFormat.formatInteger(currentHumidity),
+      unit: '%',
+      valueColor: humidityColor,
+    ));
 
     // Fan speed if available
     if (fanChannel != null && fanChannel.hasSpeed) {
