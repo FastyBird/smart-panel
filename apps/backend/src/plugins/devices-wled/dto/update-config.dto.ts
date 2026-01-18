@@ -22,7 +22,7 @@ export class WledUpdateTimeoutsDto {
 		name: 'connection_timeout',
 	})
 	@Expose({ name: 'connection_timeout' })
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsInt({ message: '[{"field":"connection_timeout","reason":"Connection timeout must be a whole number."}]' })
 	@Min(1000, {
@@ -37,7 +37,7 @@ export class WledUpdateTimeoutsDto {
 		name: 'command_debounce',
 	})
 	@Expose({ name: 'command_debounce' })
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsInt({ message: '[{"field":"command_debounce","reason":"Command debounce must be a whole number."}]' })
 	@Min(0, {
@@ -57,7 +57,7 @@ export class WledUpdatePollingDto {
 		minimum: 5000,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsInt({ message: '[{"field":"interval","reason":"Polling interval must be a whole number."}]' })
 	@Min(5000, {
@@ -76,7 +76,7 @@ export class WledUpdateMdnsDto {
 		example: true,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled must be a boolean value."}]' })
 	enabled?: boolean;
@@ -97,7 +97,7 @@ export class WledUpdateMdnsDto {
 		name: 'auto_add',
 	})
 	@Expose({ name: 'auto_add' })
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"auto_add","reason":"Auto add must be a boolean value."}]' })
 	autoAdd?: boolean;
@@ -113,7 +113,7 @@ export class WledUpdateWebSocketDto {
 		example: true,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled must be a boolean value."}]' })
 	enabled?: boolean;
@@ -125,7 +125,7 @@ export class WledUpdateWebSocketDto {
 		name: 'reconnect_interval',
 	})
 	@Expose({ name: 'reconnect_interval' })
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsInt({ message: '[{"field":"reconnect_interval","reason":"Reconnect interval must be a whole number."}]' })
 	@Min(1000, {
@@ -152,7 +152,7 @@ export class WledUpdatePluginConfigDto extends UpdatePluginConfigDto {
 		type: () => WledUpdateTimeoutsDto,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@ValidateNested()
 	@Type(() => WledUpdateTimeoutsDto)
@@ -163,7 +163,7 @@ export class WledUpdatePluginConfigDto extends UpdatePluginConfigDto {
 		type: () => WledUpdatePollingDto,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@ValidateNested()
 	@Type(() => WledUpdatePollingDto)
@@ -174,7 +174,7 @@ export class WledUpdatePluginConfigDto extends UpdatePluginConfigDto {
 		type: () => WledUpdateMdnsDto,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@ValidateNested()
 	@Type(() => WledUpdateMdnsDto)
@@ -185,7 +185,7 @@ export class WledUpdatePluginConfigDto extends UpdatePluginConfigDto {
 		type: () => WledUpdateWebSocketDto,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@ValidateNested()
 	@Type(() => WledUpdateWebSocketDto)

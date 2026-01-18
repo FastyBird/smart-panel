@@ -13,7 +13,7 @@ export class ShellyV1UpdatePluginConfigDiscoveryDto {
 		example: true,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"enabled","reason":"Discovery enabled attribute must be a boolean."}]' })
 	enabled?: boolean;
@@ -38,7 +38,7 @@ export class ShellyV1UpdatePluginConfigTimeoutsDto {
 		name: 'request_timeout',
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsInt({ message: '[{"field":"request_timeout","reason":"Request timeout must be a whole number."}]' })
 	@Min(1, {
@@ -53,7 +53,7 @@ export class ShellyV1UpdatePluginConfigTimeoutsDto {
 		name: 'stale_timeout',
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsInt({
 		message: '[{"field":"stale_timeout","reason":"Stale timeout interval must be a whole number."}]',
@@ -79,7 +79,7 @@ export class ShellyV1UpdatePluginConfigDto extends UpdatePluginConfigDto {
 		type: () => ShellyV1UpdatePluginConfigDiscoveryDto,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@ValidateNested()
 	@Type(() => ShellyV1UpdatePluginConfigDiscoveryDto)
@@ -90,7 +90,7 @@ export class ShellyV1UpdatePluginConfigDto extends UpdatePluginConfigDto {
 		type: () => ShellyV1UpdatePluginConfigTimeoutsDto,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@ValidateNested()
 	@Type(() => ShellyV1UpdatePluginConfigTimeoutsDto)

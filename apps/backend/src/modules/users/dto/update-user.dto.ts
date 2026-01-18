@@ -13,7 +13,7 @@ export class UpdateUserDto {
 		example: 'johndoe',
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"username","reason":"Username must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"username","reason":"Username must be a non-empty string."}]' })

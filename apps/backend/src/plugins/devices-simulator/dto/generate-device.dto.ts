@@ -69,7 +69,7 @@ export class GenerateDeviceDto {
 		example: false,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"required_channels_only","reason":"Required channels only must be a boolean."}]' })
 	required_channels_only?: boolean;
@@ -82,7 +82,7 @@ export class GenerateDeviceDto {
 		example: false,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsBoolean({
 		message: '[{"field":"required_properties_only","reason":"Required properties only must be a boolean."}]',
@@ -97,7 +97,7 @@ export class GenerateDeviceDto {
 		example: false,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"auto_simulate","reason":"Auto simulate must be a boolean."}]' })
 	auto_simulate?: boolean;
@@ -112,7 +112,7 @@ export class GenerateDeviceDto {
 		example: 5000,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsInt({ message: '[{"field":"simulate_interval","reason":"Simulate interval must be an integer."}]' })
 	@Min(1000, { message: '[{"field":"simulate_interval","reason":"Simulate interval must be at least 1000ms."}]' })

@@ -44,7 +44,7 @@ export class UpdateCurrentWeatherDataSourceDto extends UpdateSingleDataSourceDto
 		example: WeatherDataField.TEMPERATURE,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsEnum(WeatherDataField, {
 		message: '[{"field":"field","reason":"Field must be a valid weather data field."}]',
@@ -133,7 +133,7 @@ export class UpdateForecastDayDataSourceDto extends UpdateSingleDataSourceDto {
 		example: WeatherDataField.TEMPERATURE_MAX,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsEnum(WeatherDataField, {
 		message: '[{"field":"field","reason":"Field must be a valid weather data field."}]',

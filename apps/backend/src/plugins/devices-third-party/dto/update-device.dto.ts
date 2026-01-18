@@ -24,7 +24,7 @@ export class UpdateThirdPartyDeviceDto extends UpdateDeviceDto {
 		example: 'http://192.168.1.100:8080',
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"service_address","reason":"Service address must be a valid string."}]' })
 	@IsString({ message: '[{"field":"service_address","reason":"Service address must be a valid string."}]' })

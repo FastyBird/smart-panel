@@ -36,7 +36,7 @@ export class UpdateDeviceChannelDto {
 
 	@ApiPropertyOptional({ description: 'Channel name', type: 'string', example: 'Main Channel' })
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"name","reason":"Name must be a valid string."}]' })
 	@IsString({ message: '[{"field":"name","reason":"Name must be a valid string."}]' })
@@ -57,7 +57,7 @@ export class UpdateDeviceChannelDto {
 
 	@ApiPropertyOptional({ description: 'Channel enabled status', type: 'boolean', example: true })
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled attribute must be a valid true or false."}]' })
 	enabled?: boolean;

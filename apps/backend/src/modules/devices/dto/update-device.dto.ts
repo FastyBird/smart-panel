@@ -33,7 +33,7 @@ export class UpdateDeviceDto {
 		example: DeviceCategory.GENERIC,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsNotEmpty({
 		message: '[{"field":"category","reason":"Category must be a valid device category."}]',
@@ -64,7 +64,7 @@ export class UpdateDeviceDto {
 
 	@ApiPropertyOptional({ description: 'Device name', type: 'string', example: 'My Device' })
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"name","reason":"Name must be a valid string."}]' })
 	@IsString({ message: '[{"field":"name","reason":"Name must be a valid string."}]' })
@@ -85,7 +85,7 @@ export class UpdateDeviceDto {
 
 	@ApiPropertyOptional({ description: 'Device enabled status', type: 'boolean', example: true })
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled attribute must be a valid true or false."}]' })
 	enabled?: boolean;
@@ -112,7 +112,7 @@ export class UpdateDeviceDto {
 		example: ['f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6'],
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsArray({ message: '[{"field":"zone_ids","reason":"Zone IDs must be an array."}]' })
 	@IsUUID('4', { each: true, message: '[{"field":"zone_ids","reason":"Each zone ID must be a valid UUID."}]' })

@@ -24,7 +24,7 @@ export class UpdateDevicePreviewTileDto extends UpdateSingleTileDto {
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"device","reason":"Device must be a valid UUID (version 4)."}]' })
 	@ValidateDeviceExists({ message: '[{"field":"device","reason":"The specified device does not exist."}]' })

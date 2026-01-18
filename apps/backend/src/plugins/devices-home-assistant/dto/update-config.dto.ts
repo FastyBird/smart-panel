@@ -28,7 +28,7 @@ export class HomeAssistantUpdatePluginConfigDto extends UpdatePluginConfigDto {
 	api_key?: string | null = null;
 
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsString({ message: '[{"field":"hostname","reason":"Hostname must be a valid string."}]' })
 	@ApiPropertyOptional({

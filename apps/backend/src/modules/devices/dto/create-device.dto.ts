@@ -28,7 +28,7 @@ export class CreateDeviceDto {
 		example: '123e4567-e89b-12d3-a456-426614174000',
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"id","reason":"ID must be a valid UUID (version 4)."}]' })
 	id?: string;
@@ -93,7 +93,7 @@ export class CreateDeviceDto {
 
 	@ApiPropertyOptional({ description: 'Whether device is enabled', type: 'boolean', example: true })
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled attribute must be a valid true or false."}]' })
 	enabled?: boolean;
@@ -104,7 +104,7 @@ export class CreateDeviceDto {
 		items: { $ref: getSchemaPath(CreateDeviceControlDto) },
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsArray({ message: '[{"field":"controls","reason":"Controls must be an array."}]' })
 	@ValidateNested({ each: true })
@@ -120,7 +120,7 @@ export class CreateDeviceDto {
 		items: { $ref: getSchemaPath(CreateDeviceChannelDto) },
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsArray({ message: '[{"field":"channels","reason":"Channels must be an array."}]' })
 	@ValidateNested({ each: true })
@@ -149,7 +149,7 @@ export class CreateDeviceDto {
 		example: ['f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6'],
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsArray({ message: '[{"field":"zone_ids","reason":"Zone IDs must be an array."}]' })
 	@IsUUID('4', { each: true, message: '[{"field":"zone_ids","reason":"Each zone ID must be a valid UUID."}]' })

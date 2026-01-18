@@ -49,7 +49,7 @@ export class LightingIntentDto {
 		example: LightingMode.RELAX,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@ValidateIf((o: LightingIntentDto) => o.type === LightingIntentType.SET_MODE)
 	@IsDefined({ message: '[{"field":"mode","reason":"Mode is required when type is SET_MODE."}]' })
 	@IsEnum(LightingMode, { message: '[{"field":"mode","reason":"Mode must be a valid lighting mode."}]' })
@@ -61,7 +61,7 @@ export class LightingIntentDto {
 		example: BrightnessDelta.MEDIUM,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@ValidateIf((o: LightingIntentDto) => o.type === LightingIntentType.BRIGHTNESS_DELTA)
 	@IsDefined({ message: '[{"field":"delta","reason":"Delta is required when type is BRIGHTNESS_DELTA."}]' })
 	@IsEnum(BrightnessDelta, { message: '[{"field":"delta","reason":"Delta must be a valid brightness delta."}]' })
@@ -74,7 +74,7 @@ export class LightingIntentDto {
 		example: true,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@ValidateIf((o: LightingIntentDto) => o.type === LightingIntentType.BRIGHTNESS_DELTA)
 	@IsDefined({ message: '[{"field":"increase","reason":"Increase direction is required for brightness delta."}]' })
 	increase?: boolean;
@@ -87,7 +87,7 @@ export class LightingIntentDto {
 		example: LightingRole.MAIN,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@ValidateIf((o: LightingIntentDto) => isRoleIntent(o.type))
 	@IsDefined({ message: '[{"field":"role","reason":"Role is required for role-specific intents."}]' })
 	@IsEnum(LightingRole, { message: '[{"field":"role","reason":"Role must be a valid lighting role."}]' })
@@ -99,7 +99,7 @@ export class LightingIntentDto {
 		example: true,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@ValidateIf((o: LightingIntentDto) => o.type === LightingIntentType.ROLE_SET && o.on !== undefined)
 	@IsBoolean({ message: '[{"field":"on","reason":"On must be a boolean."}]' })
 	on?: boolean;
@@ -112,7 +112,7 @@ export class LightingIntentDto {
 		example: 75,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@ValidateIf((o: LightingIntentDto) => o.type === LightingIntentType.ROLE_BRIGHTNESS)
 	@IsDefined({ message: '[{"field":"brightness","reason":"Brightness is required when type is ROLE_BRIGHTNESS."}]' })
 	@ValidateIf(
@@ -131,7 +131,7 @@ export class LightingIntentDto {
 		example: '#ff6b35',
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@ValidateIf((o: LightingIntentDto) => o.type === LightingIntentType.ROLE_COLOR)
 	@IsDefined({ message: '[{"field":"color","reason":"Color is required when type is ROLE_COLOR."}]' })
 	@ValidateIf(
@@ -154,7 +154,7 @@ export class LightingIntentDto {
 		example: 4000,
 	})
 	@Expose({ name: 'color_temperature' })
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@ValidateIf((o: LightingIntentDto) => o.type === LightingIntentType.ROLE_COLOR_TEMP)
 	@IsDefined({
 		message: '[{"field":"color_temperature","reason":"Color temperature is required when type is ROLE_COLOR_TEMP."}]',
@@ -177,7 +177,7 @@ export class LightingIntentDto {
 		example: 80,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@ValidateIf((o: LightingIntentDto) => o.type === LightingIntentType.ROLE_WHITE)
 	@IsDefined({ message: '[{"field":"white","reason":"White is required when type is ROLE_WHITE."}]' })
 	@ValidateIf(

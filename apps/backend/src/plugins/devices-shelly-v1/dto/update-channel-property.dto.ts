@@ -25,7 +25,7 @@ export class UpdateShellyV1ChannelPropertyDto extends UpdateChannelPropertyDto {
 		example: PropertyCategory.ON,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsNotEmpty({
 		message: '[{"field":"category","reason":"Category must be a valid property category."}]',

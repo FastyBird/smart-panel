@@ -13,7 +13,7 @@ export class UpdateOpenWeatherMapOneCallLocationDto extends UpdateLocationDto {
 		example: 50.0755,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsNumber({}, { message: '[{"field":"latitude","reason":"Latitude must be a number."}]' })
 	@Min(-90, { message: '[{"field":"latitude","reason":"Latitude must be between -90 and 90."}]' })
@@ -26,7 +26,7 @@ export class UpdateOpenWeatherMapOneCallLocationDto extends UpdateLocationDto {
 		example: 14.4378,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsNumber({}, { message: '[{"field":"longitude","reason":"Longitude must be a number."}]' })
 	@Min(-180, { message: '[{"field":"longitude","reason":"Longitude must be between -180 and 180."}]' })

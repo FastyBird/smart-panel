@@ -287,7 +287,6 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 				type: request.type as SpacesModuleClimateIntentType,
 				delta: request.delta as SpacesModuleLightingIntentDelta | undefined,
 				increase: request.increase,
-				value: request.value,
 				heating_setpoint: request.heatingSetpoint,
 				cooling_setpoint: request.coolingSetpoint,
 				mode: request.mode as SpacesModuleClimateIntentMode | undefined,

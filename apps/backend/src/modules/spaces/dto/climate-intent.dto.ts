@@ -39,7 +39,7 @@ export class ClimateIntentDto {
 		example: SetpointDelta.MEDIUM,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@ValidateIf((o: ClimateIntentDto) => o.type === ClimateIntentType.SETPOINT_DELTA)
 	@IsDefined({ message: '[{"field":"delta","reason":"Delta is required when type is SETPOINT_DELTA."}]' })
 	@IsEnum(SetpointDelta, { message: '[{"field":"delta","reason":"Delta must be a valid setpoint delta."}]' })
@@ -52,7 +52,7 @@ export class ClimateIntentDto {
 		example: true,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@ValidateIf((o: ClimateIntentDto) => o.type === ClimateIntentType.SETPOINT_DELTA)
 	@IsDefined({ message: '[{"field":"increase","reason":"Increase direction is required for setpoint delta."}]' })
 	@IsBoolean({ message: '[{"field":"increase","reason":"Increase must be a boolean value."}]' })
@@ -69,7 +69,7 @@ export class ClimateIntentDto {
 		name: 'heating_setpoint',
 	})
 	@Expose({ name: 'heating_setpoint' })
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@ValidateIf(
 		(o: ClimateIntentDto) => o.type === ClimateIntentType.SETPOINT_SET && o.coolingSetpoint === undefined,
 	)
@@ -101,7 +101,7 @@ export class ClimateIntentDto {
 		name: 'cooling_setpoint',
 	})
 	@Expose({ name: 'cooling_setpoint' })
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@ValidateIf(
 		(o: ClimateIntentDto) => o.type === ClimateIntentType.SETPOINT_SET && o.heatingSetpoint === undefined,
 	)
@@ -124,7 +124,7 @@ export class ClimateIntentDto {
 		example: ClimateMode.HEAT,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@ValidateIf((o: ClimateIntentDto) => o.type === ClimateIntentType.SET_MODE)
 	@IsDefined({ message: '[{"field":"mode","reason":"Mode is required when type is SET_MODE."}]' })
 	@ValidateIf((o: ClimateIntentDto) => o.type === ClimateIntentType.CLIMATE_SET && o.mode !== undefined)

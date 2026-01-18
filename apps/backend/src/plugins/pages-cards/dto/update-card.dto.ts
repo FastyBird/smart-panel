@@ -11,7 +11,7 @@ export class UpdateCardDto {
 		example: 'Living Room',
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"title","reason":"Title must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"title","reason":"Title must be a non-empty string."}]' })
@@ -36,7 +36,7 @@ export class UpdateCardDto {
 		example: 1,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsNumber(
 		{ allowNaN: false, allowInfinity: false },

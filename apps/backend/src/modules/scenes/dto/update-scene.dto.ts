@@ -35,7 +35,7 @@ export class UpdateSceneDto {
 
 	@ApiPropertyOptional({ description: 'Scene category', enum: SceneCategory, example: SceneCategory.GENERIC })
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsEnum(SceneCategory, {
 		message: '[{"field":"category","reason":"Category must be a valid scene category."}]',
@@ -44,7 +44,7 @@ export class UpdateSceneDto {
 
 	@ApiPropertyOptional({ description: 'Scene name', type: 'string', example: 'Movie Night' })
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"name","reason":"Name must be a valid string."}]' })
 	@IsString({ message: '[{"field":"name","reason":"Name must be a valid string."}]' })
@@ -70,7 +70,7 @@ export class UpdateSceneDto {
 		example: 0,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsInt({ message: '[{"field":"order","reason":"Order must be a valid integer."}]' })
 	@Min(0, { message: '[{"field":"order","reason":"Order must be a non-negative integer."}]' })
@@ -78,7 +78,7 @@ export class UpdateSceneDto {
 
 	@ApiPropertyOptional({ description: 'Whether scene is enabled', type: 'boolean', example: true })
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled attribute must be a valid true or false."}]' })
 	enabled?: boolean;
@@ -89,7 +89,7 @@ export class UpdateSceneDto {
 		example: true,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"triggerable","reason":"Triggerable must be a valid true or false."}]' })
 	triggerable?: boolean;

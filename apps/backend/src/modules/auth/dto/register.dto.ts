@@ -13,7 +13,7 @@ export class RegisterDto {
 		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"id","reason":"ID must be a valid UUID (version 4)."}]' })
 	id?: string;
@@ -33,7 +33,7 @@ export class RegisterDto {
 		enum: UserRole,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsEnum(UserRole, { message: '[{"field":"role","reason":"Role must be one of the valid roles."}]' })
 	role?: UserRole;

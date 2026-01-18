@@ -28,7 +28,7 @@ export class CreateSceneDto {
 		example: '123e4567-e89b-12d3-a456-426614174000',
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"id","reason":"ID must be a valid UUID (version 4)."}]' })
 	id?: string;
@@ -50,7 +50,7 @@ export class CreateSceneDto {
 
 	@ApiPropertyOptional({ description: 'Scene category', enum: SceneCategory, example: SceneCategory.GENERIC })
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsEnum(SceneCategory, {
 		message: '[{"field":"category","reason":"Category must be a valid scene category."}]',
@@ -83,7 +83,7 @@ export class CreateSceneDto {
 		example: 0,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsInt({ message: '[{"field":"order","reason":"Order must be a valid integer."}]' })
 	@Min(0, { message: '[{"field":"order","reason":"Order must be a non-negative integer."}]' })
@@ -91,7 +91,7 @@ export class CreateSceneDto {
 
 	@ApiPropertyOptional({ description: 'Whether scene is enabled', type: 'boolean', example: true })
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled attribute must be a valid true or false."}]' })
 	enabled?: boolean;
@@ -102,7 +102,7 @@ export class CreateSceneDto {
 		example: true,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"triggerable","reason":"Triggerable must be a valid true or false."}]' })
 	triggerable?: boolean;
@@ -113,7 +113,7 @@ export class CreateSceneDto {
 		items: { $ref: getSchemaPath(CreateSceneActionDto) },
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsArray({ message: '[{"field":"actions","reason":"Actions must be an array."}]' })
 	@ValidateNested({ each: true })

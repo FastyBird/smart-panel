@@ -26,7 +26,7 @@ export class UpdateDisplaysConfigDto extends UpdateModuleConfigDto {
 		example: DeploymentMode.COMBINED,
 	})
 	@Expose({ name: 'deployment_mode' })
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsEnum(DeploymentMode, {
 		message: '[{"field":"deployment_mode","reason":"Deployment mode must be a valid enum value."}]',
@@ -41,7 +41,7 @@ export class UpdateDisplaysConfigDto extends UpdateModuleConfigDto {
 		example: 120000,
 	})
 	@Expose({ name: 'permit_join_duration_ms' })
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsInt({ message: '[{"field":"permit_join_duration_ms","reason":"Permit join duration must be a valid integer."}]' })
 	@Min(1000, {

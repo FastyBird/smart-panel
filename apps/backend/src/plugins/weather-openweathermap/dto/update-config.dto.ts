@@ -24,7 +24,7 @@ export class UpdateOpenWeatherMapConfigDto extends UpdatePluginConfigDto {
 		example: true,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled must be a boolean."}]' })
 	enabled?: boolean;
@@ -50,7 +50,7 @@ export class UpdateOpenWeatherMapConfigDto extends UpdatePluginConfigDto {
 		example: TemperatureUnitType.CELSIUS,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsEnum(TemperatureUnitType, { message: '[{"field":"unit","reason":"Unit must be celsius or fahrenheit."}]' })
 	unit?: TemperatureUnitType;

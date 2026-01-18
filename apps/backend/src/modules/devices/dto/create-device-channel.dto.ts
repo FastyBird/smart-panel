@@ -18,7 +18,7 @@ export class CreateDeviceChannelDto {
 		example: '123e4567-e89b-12d3-a456-426614174000',
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"id","reason":"ID must be a valid UUID (version 4)."}]' })
 	id?: string;
@@ -105,7 +105,7 @@ export class CreateDeviceChannelDto {
 		items: { $ref: getSchemaPath(CreateDeviceChannelControlDto) },
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsArray({ message: '[{"field":"controls","reason":"Controls must be an array."}]' })
 	@ValidateNested({ each: true })
@@ -121,7 +121,7 @@ export class CreateDeviceChannelDto {
 		items: { $ref: getSchemaPath(CreateDeviceChannelPropertyDto) },
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsArray({ message: '[{"field":"properties","reason":"Properties must be an array."}]' })
 	@ValidateNested({ each: true })

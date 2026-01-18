@@ -67,7 +67,7 @@ export class CreateTilesPageDto extends CreatePageDto {
 		items: { $ref: getSchemaPath(CreateTileDto) },
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsArray({ message: '[{"field":"tiles","reason":"Tiles must be a valid array."}]' })
 	@ValidateNested({ each: true })

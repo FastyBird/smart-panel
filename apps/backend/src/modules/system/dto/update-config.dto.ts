@@ -27,7 +27,7 @@ export class UpdateSystemConfigDto extends UpdateModuleConfigDto {
 		example: LanguageType.ENGLISH,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsEnum(LanguageType, { message: '[{"field":"language","reason":"Language must be a valid string."}]' })
 	language?: LanguageType;
@@ -38,7 +38,7 @@ export class UpdateSystemConfigDto extends UpdateModuleConfigDto {
 		example: 'Europe/Prague',
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsString({ message: '[{"field":"timezone","reason":"Timezone must be a valid string."}]' })
 	timezone?: string;
@@ -49,7 +49,7 @@ export class UpdateSystemConfigDto extends UpdateModuleConfigDto {
 		example: TimeFormatType.HOUR_24,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsEnum(TimeFormatType, { message: '[{"field":"time_format","reason":"Time format must be a valid string."}]' })
 	time_format?: TimeFormatType;
@@ -65,7 +65,7 @@ export class UpdateSystemConfigDto extends UpdateModuleConfigDto {
 		example: ['error', 'warn', 'info'],
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsArray({ message: '[{"field":"log_levels","reason":"Log levels must be provided as an array."}]' })
 	@ArrayNotEmpty({ message: '[{"field":"log_levels","reason":"At least one log level must be specified."}]' })
@@ -81,7 +81,7 @@ export class UpdateSystemConfigDto extends UpdateModuleConfigDto {
 		example: HouseMode.HOME,
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsEnum(HouseMode, {
 		message: '[{"field":"house_mode","reason":"House mode must be a valid value (home, away, night)."}]',

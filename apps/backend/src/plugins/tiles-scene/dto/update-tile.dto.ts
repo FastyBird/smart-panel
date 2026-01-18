@@ -24,7 +24,7 @@ export class UpdateSceneTileDto extends UpdateSingleTileDto {
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
 	@Expose()
-	@Transform(({ value }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"scene","reason":"Scene must be a valid UUID (version 4)."}]' })
 	@ValidateSceneExists({ message: '[{"field":"scene","reason":"The specified scene does not exist."}]' })
