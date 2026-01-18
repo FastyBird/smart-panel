@@ -239,7 +239,7 @@ describe('useSpaceIntents', () => {
 					body: expect.objectContaining({
 						data: expect.objectContaining({
 							type: 'setpoint_set',
-							value: 21.0,
+							heating_setpoint: 21.0,
 						}),
 					}),
 				})
