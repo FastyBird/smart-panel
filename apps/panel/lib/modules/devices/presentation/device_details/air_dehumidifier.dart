@@ -692,6 +692,11 @@ class _AirDehumidifierDeviceDetailState
       );
     } else {
       // Numeric speed (0-100%)
+      final minSpeed = fanChannel.minSpeed;
+      final maxSpeed = fanChannel.maxSpeed;
+      final range = maxSpeed - minSpeed;
+      if (range <= 0) return const SizedBox.shrink();
+
       if (useVerticalLayout) {
         return Column(
           children: [
@@ -767,11 +772,13 @@ class _AirDehumidifierDeviceDetailState
     final minSpeed = fanChannel.minSpeed;
     final maxSpeed = fanChannel.maxSpeed;
     final range = maxSpeed - minSpeed;
+    if (range <= 0) return;
+
     final rawSpeed = minSpeed + (normalizedSpeed * range);
 
-    // Round to step value
+    // Round to step value (guard against division by zero)
     final step = fanChannel.speedStep;
-    final steppedSpeed = (rawSpeed / step).round() * step;
+    final steppedSpeed = step > 0 ? (rawSpeed / step).round() * step : rawSpeed;
 
     // Clamp to valid range
     final actualSpeed = steppedSpeed.clamp(minSpeed, maxSpeed);

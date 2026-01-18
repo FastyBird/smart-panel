@@ -132,11 +132,13 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
 
     // Convert normalized (0-1) to actual range
     final range = fanChannel.maxSpeed - fanChannel.minSpeed;
+    if (range <= 0) return;
+
     final rawSpeed = fanChannel.minSpeed + (normalizedSpeed * range);
 
-    // Round to step value
+    // Round to step value (guard against division by zero)
     final step = fanChannel.speedStep;
-    final steppedSpeed = (rawSpeed / step).round() * step;
+    final steppedSpeed = step > 0 ? (rawSpeed / step).round() * step : rawSpeed;
 
     // Clamp to valid range
     final actualSpeed = steppedSpeed.clamp(fanChannel.minSpeed, fanChannel.maxSpeed);
@@ -481,6 +483,9 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
       );
     } else {
       // Numeric speed (0-100%)
+      final range = fanChannel.maxSpeed - fanChannel.minSpeed;
+      if (range <= 0) return const SizedBox.shrink();
+
       if (useVerticalLayout) {
         return ValueSelectorRow<double>(
           currentValue: _speed,
