@@ -22,16 +22,17 @@ class FilterChannelView extends ChannelView with ChannelFaultMixin {
     super.validationIssues,
   });
 
-  /// Life remaining property
-  LifeRemainingChannelPropertyView? get lifeRemainingProp =>
-      properties.whereType<LifeRemainingChannelPropertyView>().firstOrNull;
+  /// Life remaining property (required per spec)
+  LifeRemainingChannelPropertyView get lifeRemainingProp =>
+      properties.whereType<LifeRemainingChannelPropertyView>().first;
 
-  StatusChannelPropertyView? get statusProp =>
-      properties.whereType<StatusChannelPropertyView>().firstOrNull;
+  /// Status property (required per spec)
+  StatusChannelPropertyView get statusProp =>
+      properties.whereType<StatusChannelPropertyView>().first;
 
-  bool get hasLifeRemaining => lifeRemainingProp != null;
+  bool get hasLifeRemaining => true;
 
-  bool get hasStatus => statusProp != null;
+  bool get hasStatus => true;
 
   @override
   FaultChannelPropertyView? get faultProp =>
@@ -39,7 +40,6 @@ class FilterChannelView extends ChannelView with ChannelFaultMixin {
 
   int get lifeRemaining {
     final prop = lifeRemainingProp;
-    if (prop == null) return 100;
 
     final ValueType? value = prop.value;
 
@@ -93,7 +93,6 @@ class FilterChannelView extends ChannelView with ChannelFaultMixin {
 
   FilterStatusValue? get status {
     final prop = statusProp;
-    if (prop == null) return null;
 
     final ValueType? value = prop.value;
 

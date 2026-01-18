@@ -36,17 +36,19 @@ class AirDehumidifierDeviceView extends DeviceView
     super.validationIssues,
   });
 
+  /// Dehumidifier channel (required per spec)
   @override
-  DehumidifierChannelView? get dehumidifierChannel =>
-      channels.whereType<DehumidifierChannelView>().firstOrNull;
+  DehumidifierChannelView get dehumidifierChannel =>
+      channels.whereType<DehumidifierChannelView>().first;
 
   @override
   DeviceInformationChannelView get deviceInformationChannel =>
       channels.whereType<DeviceInformationChannelView>().first;
 
+  /// Humidity channel (required per spec)
   @override
-  HumidityChannelView? get humidityChannel =>
-      channels.whereType<HumidityChannelView>().firstOrNull;
+  HumidityChannelView get humidityChannel =>
+      channels.whereType<HumidityChannelView>().first;
 
   @override
   ElectricalEnergyChannelView? get electricalEnergyChannel =>
@@ -70,16 +72,7 @@ class AirDehumidifierDeviceView extends DeviceView
 
   @override
   bool get isOn {
-    // Use dehumidifier channel's on property
-    final dehumidifier = dehumidifierChannel;
-    if (dehumidifier != null) {
-      return dehumidifier.on;
-    }
-    // Fall back to fan channel if available
-    final fan = fanChannel;
-    if (fan != null) {
-      return fan.on;
-    }
-    return false;
+    // Use dehumidifier channel's on property (always available per spec)
+    return dehumidifierChannel.on;
   }
 }
