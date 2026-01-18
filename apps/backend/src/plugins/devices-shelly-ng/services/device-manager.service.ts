@@ -32,6 +32,7 @@ import {
 	ShellyNgChannelPropertyEntity,
 	ShellyNgDeviceEntity,
 } from '../entities/devices-shelly-ng.entity';
+import { MappingContext, MappingLoaderService } from '../mappings';
 import { rssiToQuality, toEnergy } from '../utils/transform.utils';
 
 import { ShellyRpcClientService } from './shelly-rpc-client.service';
@@ -54,6 +55,7 @@ export class DeviceManagerService {
 		private readonly devicesService: DevicesService,
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
+		private readonly mappingLoaderService: MappingLoaderService,
 	) {}
 
 	async getDeviceInfo(
@@ -242,27 +244,49 @@ export class DeviceManagerService {
 							throw err;
 						});
 
-						let cat: ChannelCategory | null = null;
+						// Use YAML mapping to determine channel category based on device category
+						const mappingContext: MappingContext = {
+							componentType: ComponentType.SWITCH,
+							componentKey: key,
+							deviceCategory: device.category,
+							model: deviceInfo.model,
+							profile: deviceInfo.profile ?? undefined,
+						};
+
+						const mapping = this.mappingLoaderService.findMatchingMapping(mappingContext);
+						let cat: ChannelCategory;
 						let chanName: string;
 
-						if (
-							device.category === DeviceCategory.OUTLET ||
-							device.category === DeviceCategory.SWITCHER ||
-							device.category === DeviceCategory.PUMP
-						) {
-							cat = ChannelCategory.SWITCHER;
-							chanName = switchConfig.name ?? `Switch: ${key}`;
-						} else if (device.category === DeviceCategory.FAN) {
-							cat = ChannelCategory.FAN;
-							chanName = switchConfig.name ?? `Fan: ${key}`;
-						} else if (device.category === DeviceCategory.SPRINKLER || device.category === DeviceCategory.VALVE) {
-							cat = ChannelCategory.VALVE;
-							chanName = switchConfig.name ?? `Valve: ${key}`;
-						} else if (device.category === DeviceCategory.LIGHTING) {
-							cat = ChannelCategory.LIGHT;
-							chanName = switchConfig.name ?? `Light: ${key}`;
+						if (mapping && mapping.channels.length > 0) {
+							// Use YAML mapping
+							const channelDef = mapping.channels[0];
+							cat = channelDef.category;
+							chanName =
+								switchConfig.name ??
+								this.mappingLoaderService.interpolateTemplate(channelDef.name ?? `Switch: {key}`, mappingContext);
 						} else {
-							return;
+							// Fallback to hardcoded logic for backward compatibility
+							if (
+								device.category === DeviceCategory.OUTLET ||
+								device.category === DeviceCategory.SWITCHER ||
+								device.category === DeviceCategory.PUMP
+							) {
+								cat = ChannelCategory.SWITCHER;
+								chanName = switchConfig.name ?? `Switch: ${key}`;
+							} else if (device.category === DeviceCategory.FAN) {
+								cat = ChannelCategory.FAN;
+								chanName = switchConfig.name ?? `Fan: ${key}`;
+							} else if (device.category === DeviceCategory.SPRINKLER || device.category === DeviceCategory.VALVE) {
+								cat = ChannelCategory.VALVE;
+								chanName = switchConfig.name ?? `Valve: ${key}`;
+							} else if (device.category === DeviceCategory.LIGHTING) {
+								cat = ChannelCategory.LIGHT;
+								chanName = switchConfig.name ?? `Light: ${key}`;
+							} else {
+								// Default to SWITCHER for unknown categories
+								cat = ChannelCategory.SWITCHER;
+								chanName = switchConfig.name ?? `Switch: ${key}`;
+							}
 						}
 
 						const chan = await this.ensureChannel(device, 'identifier', `switch:${key}`, cat, chanName);

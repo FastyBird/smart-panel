@@ -51,15 +51,17 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 	}
 
 	async afterUpdate(event: UpdateEvent<ShellyNgDeviceEntity>): Promise<void> {
-		let credentialsUpdated = false;
+		let needsResync = false;
 
 		for (const updatedColumn of event.updatedColumns) {
-			if (['password', 'hostname'].includes(updatedColumn.databaseName.toLowerCase())) {
-				credentialsUpdated = true;
+			// Resync when credentials, hostname, or category changes
+			// Category change requires channel re-creation with new categories
+			if (['password', 'hostname', 'category'].includes(updatedColumn.databaseName.toLowerCase())) {
+				needsResync = true;
 			}
 		}
 
-		if (!credentialsUpdated) {
+		if (!needsResync) {
 			return;
 		}
 

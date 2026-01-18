@@ -36,6 +36,13 @@ const mockChannelsPropertiesService = {
 	update: jest.fn(),
 } as any;
 
+const mockMappingLoaderService = {
+	findMatchingMapping: jest.fn().mockReturnValue(null), // Return null to use fallback logic
+	interpolateTemplate: jest.fn((template: string, context: any) =>
+		template.replace(/\{key\}/g, String(context.componentKey)),
+	),
+} as any;
+
 const mockRpc = {
 	getDeviceInfo: jest.fn(),
 	getComponents: jest.fn(),
@@ -162,7 +169,13 @@ jest.mock('../devices-shelly-ng.constants', () => ({
 }));
 
 const makeService = () =>
-	new DeviceManagerService(mockRpc as any, mockDevicesService, mockChannelsService, mockChannelsPropertiesService);
+	new DeviceManagerService(
+		mockRpc as any,
+		mockDevicesService,
+		mockChannelsService,
+		mockChannelsPropertiesService,
+		mockMappingLoaderService,
+	);
 
 beforeEach(() => {
 	jest.clearAllMocks();
