@@ -1,0 +1,61 @@
+# Shelly NG Cover Component Mappings
+# Maps cover components (roller shutters, blinds) to window covering channels
+
+version: "1.0"
+
+transformers:
+  # Cover position (0-100)
+  cover_position:
+    type: clamp
+    min: 0
+    max: 100
+
+  # Cover state mapping
+  cover_state:
+    type: map
+    bidirectional:
+      open: "opening"
+      close: "closing"
+      stop: "stopped"
+      stopped: "stopped"
+      opening: "opening"
+      closing: "closing"
+
+derivations:
+  # Derive status from state
+  cover_status_from_state:
+    description: "Derive cover status from state"
+    rule:
+      type: boolean_map
+      true_value: "opening"
+      false_value: "stopped"
+
+mappings:
+  # Cover as Window Covering
+  - name: cover_as_window_covering
+    description: "Shelly cover component mapped as window covering channel"
+    priority: 100
+    match:
+      component_type: cover
+    channels:
+      - identifier: "cover:{key}"
+        name: "Cover: {key}"
+        category: WINDOW_COVERING
+        properties:
+          - shelly_property: state
+            panel:
+              identifier: STATUS
+              data_type: STRING
+            transformer: cover_state
+          - shelly_property: current_pos
+            panel:
+              identifier: POSITION
+              data_type: UCHAR
+              format: [0, 100]
+              unit: "%"
+            transformer: cover_position
+        static_properties:
+          - identifier: COMMAND
+            data_type: ENUM
+            format: ["open", "close", "stop"]
+            value: "stop"

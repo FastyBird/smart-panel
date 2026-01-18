@@ -1,0 +1,157 @@
+# Shelly NG RGB/RGBW/CCT Component Mappings
+# Maps RGB, RGBW, and CCT components to light channels with color support
+
+version: "1.0"
+
+transformers:
+  # Boolean state transformer
+  boolean_state:
+    type: boolean
+    true_value: true
+    false_value: false
+
+  # Brightness (0-100)
+  brightness:
+    type: clamp
+    min: 0
+    max: 100
+
+  # RGB color value (0-255)
+  rgb_color:
+    type: clamp
+    min: 0
+    max: 255
+
+  # Color temperature (Kelvin)
+  color_temp:
+    type: clamp
+    min: 2700
+    max: 6500
+
+  # White level (0-100)
+  white_level:
+    type: clamp
+    min: 0
+    max: 100
+
+mappings:
+  # RGB Light
+  - name: rgb_light
+    description: "Shelly RGB component mapped as RGB light channel"
+    priority: 100
+    match:
+      component_type: rgb
+    channels:
+      - identifier: "rgb:{key}"
+        name: "RGB: {key}"
+        category: LIGHT
+        properties:
+          - shelly_property: output
+            panel:
+              identifier: ON
+              data_type: BOOL
+            transformer: boolean_state
+          - shelly_property: brightness
+            panel:
+              identifier: BRIGHTNESS
+              data_type: UCHAR
+              format: [0, 100]
+              unit: "%"
+            transformer: brightness
+          - shelly_property: "rgb:red"
+            panel:
+              identifier: COLOR_RED
+              data_type: UCHAR
+              format: [0, 255]
+            transformer: rgb_color
+          - shelly_property: "rgb:green"
+            panel:
+              identifier: COLOR_GREEN
+              data_type: UCHAR
+              format: [0, 255]
+            transformer: rgb_color
+          - shelly_property: "rgb:blue"
+            panel:
+              identifier: COLOR_BLUE
+              data_type: UCHAR
+              format: [0, 255]
+            transformer: rgb_color
+
+  # RGBW Light
+  - name: rgbw_light
+    description: "Shelly RGBW component mapped as RGBW light channel"
+    priority: 100
+    match:
+      component_type: rgbw
+    channels:
+      - identifier: "rgbw:{key}"
+        name: "RGBW: {key}"
+        category: LIGHT
+        properties:
+          - shelly_property: output
+            panel:
+              identifier: ON
+              data_type: BOOL
+            transformer: boolean_state
+          - shelly_property: brightness
+            panel:
+              identifier: BRIGHTNESS
+              data_type: UCHAR
+              format: [0, 100]
+              unit: "%"
+            transformer: brightness
+          - shelly_property: "rgb:red"
+            panel:
+              identifier: COLOR_RED
+              data_type: UCHAR
+              format: [0, 255]
+            transformer: rgb_color
+          - shelly_property: "rgb:green"
+            panel:
+              identifier: COLOR_GREEN
+              data_type: UCHAR
+              format: [0, 255]
+            transformer: rgb_color
+          - shelly_property: "rgb:blue"
+            panel:
+              identifier: COLOR_BLUE
+              data_type: UCHAR
+              format: [0, 255]
+            transformer: rgb_color
+          - shelly_property: white
+            panel:
+              identifier: COLOR_WHITE
+              data_type: UCHAR
+              format: [0, 100]
+              unit: "%"
+            transformer: white_level
+
+  # CCT Light (Color Temperature Tunable)
+  - name: cct_light
+    description: "Shelly CCT component mapped as tunable white light channel"
+    priority: 100
+    match:
+      component_type: cct
+    channels:
+      - identifier: "cct:{key}"
+        name: "CCT: {key}"
+        category: LIGHT
+        properties:
+          - shelly_property: output
+            panel:
+              identifier: ON
+              data_type: BOOL
+            transformer: boolean_state
+          - shelly_property: brightness
+            panel:
+              identifier: BRIGHTNESS
+              data_type: UCHAR
+              format: [0, 100]
+              unit: "%"
+            transformer: brightness
+          - shelly_property: ct
+            panel:
+              identifier: COLOR_TEMPERATURE
+              data_type: USHORT
+              unit: "K"
+            transformer: color_temp
