@@ -12,6 +12,9 @@ export class SensorSimulator extends BaseDeviceSimulator {
 	// Indoor temperature offset from outdoor (buildings are climate controlled)
 	private static readonly INDOOR_TEMP_OFFSET = 18; // Target ~20-22°C indoor
 
+	// Track raw battery values per device to accumulate small decreases without rounding loss
+	private rawBatteryValues: Map<string, number> = new Map();
+
 	getSupportedCategory(): DeviceCategory {
 		return DeviceCategory.SENSOR;
 	}
@@ -80,7 +83,7 @@ export class SensorSimulator extends BaseDeviceSimulator {
 
 		// Battery channel (common for sensors)
 		if (this.hasChannel(device, ChannelCategory.BATTERY)) {
-			values.push(...this.simulateBattery(previousValues));
+			values.push(...this.simulateBattery(device.id, previousValues));
 		}
 
 		return values;
@@ -422,29 +425,41 @@ export class SensorSimulator extends BaseDeviceSimulator {
 
 	/**
 	 * Simulate battery level (slowly decreasing)
+	 * Uses internal raw value tracking to accumulate small decreases without rounding loss.
 	 */
-	private simulateBattery(previousValues?: Map<string, string | number | boolean>): SimulatedPropertyValue[] {
-		const prevBattery = this.getPreviousValue(
-			previousValues,
-			ChannelCategory.BATTERY,
-			PropertyCategory.PERCENTAGE,
-			100,
-		) as number;
+	private simulateBattery(
+		deviceId: string,
+		previousValues?: Map<string, string | number | boolean>,
+	): SimulatedPropertyValue[] {
+		// Get raw battery value (unrounded) from internal tracking, or initialize from previousValues
+		let rawBattery = this.rawBatteryValues.get(deviceId);
+		if (rawBattery === undefined) {
+			// Initialize from stored value (which is rounded) or default to 100
+			rawBattery = this.getPreviousValue(
+				previousValues,
+				ChannelCategory.BATTERY,
+				PropertyCategory.PERCENTAGE,
+				100,
+			) as number;
+		}
 
 		// Battery decreases slowly (0.01-0.05% per update cycle)
 		const decrease = Math.random() * 0.04 + 0.01;
-		let newBattery = prevBattery - decrease;
+		rawBattery -= decrease;
 
 		// Reset if too low (simulating battery replacement)
-		if (newBattery < 10) {
-			newBattery = 100;
+		if (rawBattery < 10) {
+			rawBattery = 100;
 		}
+
+		// Store the raw (unrounded) value for next cycle
+		this.rawBatteryValues.set(deviceId, rawBattery);
 
 		return [
 			{
 				channelCategory: ChannelCategory.BATTERY,
 				propertyCategory: PropertyCategory.PERCENTAGE,
-				value: Math.round(newBattery),
+				value: Math.round(rawBattery),
 			},
 		];
 	}

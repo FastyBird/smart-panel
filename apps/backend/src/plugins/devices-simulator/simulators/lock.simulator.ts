@@ -9,6 +9,9 @@ import { SimulationContext } from './simulation-context';
  * Simulates realistic lock behavior based on time of day and activity patterns.
  */
 export class LockSimulator extends BaseDeviceSimulator {
+	// Track raw battery values per device to accumulate small decreases without rounding loss
+	private rawBatteryValues: Map<string, number> = new Map();
+
 	getSupportedCategory(): DeviceCategory {
 		return DeviceCategory.LOCK;
 	}
@@ -27,7 +30,7 @@ export class LockSimulator extends BaseDeviceSimulator {
 
 		// Battery channel
 		if (this.hasChannel(device, ChannelCategory.BATTERY)) {
-			values.push(...this.simulateBattery(previousValues));
+			values.push(...this.simulateBattery(device.id, previousValues));
 		}
 
 		return values;
@@ -82,29 +85,41 @@ export class LockSimulator extends BaseDeviceSimulator {
 
 	/**
 	 * Simulate battery level
+	 * Uses internal raw value tracking to accumulate small decreases without rounding loss.
 	 */
-	private simulateBattery(previousValues?: Map<string, string | number | boolean>): SimulatedPropertyValue[] {
-		const prevBattery = this.getPreviousValue(
-			previousValues,
-			ChannelCategory.BATTERY,
-			PropertyCategory.PERCENTAGE,
-			100,
-		) as number;
+	private simulateBattery(
+		deviceId: string,
+		previousValues?: Map<string, string | number | boolean>,
+	): SimulatedPropertyValue[] {
+		// Get raw battery value (unrounded) from internal tracking, or initialize from previousValues
+		let rawBattery = this.rawBatteryValues.get(deviceId);
+		if (rawBattery === undefined) {
+			// Initialize from stored value (which is rounded) or default to 100
+			rawBattery = this.getPreviousValue(
+				previousValues,
+				ChannelCategory.BATTERY,
+				PropertyCategory.PERCENTAGE,
+				100,
+			) as number;
+		}
 
-		// Battery decreases slowly
+		// Battery decreases slowly (0.005-0.025% per update cycle)
 		const decrease = Math.random() * 0.02 + 0.005;
-		let newBattery = prevBattery - decrease;
+		rawBattery -= decrease;
 
 		// Reset if too low (simulating battery replacement)
-		if (newBattery < 10) {
-			newBattery = 100;
+		if (rawBattery < 10) {
+			rawBattery = 100;
 		}
+
+		// Store the raw (unrounded) value for next cycle
+		this.rawBatteryValues.set(deviceId, rawBattery);
 
 		return [
 			{
 				channelCategory: ChannelCategory.BATTERY,
 				propertyCategory: PropertyCategory.PERCENTAGE,
-				value: Math.round(newBattery),
+				value: Math.round(rawBattery),
 			},
 		];
 	}
