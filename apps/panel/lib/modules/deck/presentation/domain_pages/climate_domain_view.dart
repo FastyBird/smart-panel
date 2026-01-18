@@ -1007,7 +1007,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       title: localizations.domain_climate,
       subtitle: _state.mode == ClimateMode.off
           ? 'Off'
-          : '${_state.modeLabel} to ${_state.targetTemp.toInt()}°',
+          : '${_state.modeLabel} to ${_state.targetTemp.toInt()}°C',
       subtitleColor: modeColor,
       backgroundColor: AppColors.blank,
       leading: HeaderDeviceIcon(
@@ -1040,7 +1040,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                 ),
                 AppSpacings.spacingXsHorizontal,
                 Text(
-                  '${NumberFormatUtils.defaultFormat.formatDecimal(_state.currentTemp, decimalPlaces: 1)}°',
+                  '${NumberFormatUtils.defaultFormat.formatDecimal(_state.currentTemp, decimalPlaces: 1)}°C',
                   style: TextStyle(
                     color: isDark
                         ? AppTextColorDark.primary
