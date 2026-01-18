@@ -1735,6 +1735,87 @@
     "description": "Dehumidifier water tank label"
   },
 
+  "humidifier_mode_auto": "Auto",
+  "@humidifier_mode_auto": {
+    "description": "Humidifier mode - automatic"
+  },
+  "humidifier_mode_manual": "Manual",
+  "@humidifier_mode_manual": {
+    "description": "Humidifier mode - manual"
+  },
+  "humidifier_mode_sleep": "Sleep",
+  "@humidifier_mode_sleep": {
+    "description": "Humidifier mode - sleep mode"
+  },
+  "humidifier_mode_baby": "Baby",
+  "@humidifier_mode_baby": {
+    "description": "Humidifier mode - baby safe mode"
+  },
+
+  "humidifier_status_idle": "Idle",
+  "@humidifier_status_idle": {
+    "description": "Humidifier status - idle"
+  },
+  "humidifier_status_humidifying": "Humidifying",
+  "@humidifier_status_humidifying": {
+    "description": "Humidifier status - actively humidifying"
+  },
+
+  "humidifier_mist_level_off": "Off",
+  "@humidifier_mist_level_off": {
+    "description": "Humidifier mist level - off"
+  },
+  "humidifier_mist_level_low": "Low",
+  "@humidifier_mist_level_low": {
+    "description": "Humidifier mist level - low"
+  },
+  "humidifier_mist_level_medium": "Medium",
+  "@humidifier_mist_level_medium": {
+    "description": "Humidifier mist level - medium"
+  },
+  "humidifier_mist_level_high": "High",
+  "@humidifier_mist_level_high": {
+    "description": "Humidifier mist level - high"
+  },
+
+  "humidifier_timer_off": "Off",
+  "@humidifier_timer_off": {
+    "description": "Humidifier timer - off"
+  },
+  "humidifier_timer_30m": "30 min",
+  "@humidifier_timer_30m": {
+    "description": "Humidifier timer - 30 minutes"
+  },
+  "humidifier_timer_1h": "1 hour",
+  "@humidifier_timer_1h": {
+    "description": "Humidifier timer - 1 hour"
+  },
+  "humidifier_timer_2h": "2 hours",
+  "@humidifier_timer_2h": {
+    "description": "Humidifier timer - 2 hours"
+  },
+  "humidifier_timer_4h": "4 hours",
+  "@humidifier_timer_4h": {
+    "description": "Humidifier timer - 4 hours"
+  },
+  "humidifier_timer_8h": "8 hours",
+  "@humidifier_timer_8h": {
+    "description": "Humidifier timer - 8 hours"
+  },
+  "humidifier_timer_12h": "12 hours",
+  "@humidifier_timer_12h": {
+    "description": "Humidifier timer - 12 hours"
+  },
+
+  "humidifier_water_tank": "Water Tank",
+  "@humidifier_water_tank": {
+    "description": "Humidifier water tank label"
+  },
+  "humidifier_warm_mist": "Warm Mist",
+  "@humidifier_warm_mist": {
+    "description": "Humidifier warm mist feature label"
+  },
+
   "device_current_humidity": "Current",
   "@device_current_humidity": {
     "description": "Current humidity label"

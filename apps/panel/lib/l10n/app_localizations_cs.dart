@@ -1292,6 +1292,63 @@ class AppLocalizationsCs extends AppLocalizations {
   String get dehumidifier_water_tank => 'Nádržka';
 
   @override
+  String get humidifier_mode_auto => 'Automatický';
+
+  @override
+  String get humidifier_mode_manual => 'Ruční';
+
+  @override
+  String get humidifier_mode_sleep => 'Spánek';
+
+  @override
+  String get humidifier_mode_baby => 'Dětský';
+
+  @override
+  String get humidifier_status_idle => 'Nečinný';
+
+  @override
+  String get humidifier_status_humidifying => 'Zvlhčuje';
+
+  @override
+  String get humidifier_mist_level_off => 'Vypnuto';
+
+  @override
+  String get humidifier_mist_level_low => 'Nízká';
+
+  @override
+  String get humidifier_mist_level_medium => 'Střední';
+
+  @override
+  String get humidifier_mist_level_high => 'Vysoká';
+
+  @override
+  String get humidifier_timer_off => 'Vypnuto';
+
+  @override
+  String get humidifier_timer_30m => '30 min';
+
+  @override
+  String get humidifier_timer_1h => '1 hodina';
+
+  @override
+  String get humidifier_timer_2h => '2 hodiny';
+
+  @override
+  String get humidifier_timer_4h => '4 hodiny';
+
+  @override
+  String get humidifier_timer_8h => '8 hodin';
+
+  @override
+  String get humidifier_timer_12h => '12 hodin';
+
+  @override
+  String get humidifier_water_tank => 'Nádržka';
+
+  @override
+  String get humidifier_warm_mist => 'Teplá pára';
+
+  @override
   String get device_current_humidity => 'Aktuální';
 
   @override

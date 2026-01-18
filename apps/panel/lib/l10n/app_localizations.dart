@@ -2627,6 +2627,120 @@ abstract class AppLocalizations {
   /// **'Water Tank'**
   String get dehumidifier_water_tank;
 
+  /// Humidifier mode - automatic
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get humidifier_mode_auto;
+
+  /// Humidifier mode - manual
+  ///
+  /// In en, this message translates to:
+  /// **'Manual'**
+  String get humidifier_mode_manual;
+
+  /// Humidifier mode - sleep mode
+  ///
+  /// In en, this message translates to:
+  /// **'Sleep'**
+  String get humidifier_mode_sleep;
+
+  /// Humidifier mode - baby safe mode
+  ///
+  /// In en, this message translates to:
+  /// **'Baby'**
+  String get humidifier_mode_baby;
+
+  /// Humidifier status - idle
+  ///
+  /// In en, this message translates to:
+  /// **'Idle'**
+  String get humidifier_status_idle;
+
+  /// Humidifier status - actively humidifying
+  ///
+  /// In en, this message translates to:
+  /// **'Humidifying'**
+  String get humidifier_status_humidifying;
+
+  /// Humidifier mist level - off
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get humidifier_mist_level_off;
+
+  /// Humidifier mist level - low
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get humidifier_mist_level_low;
+
+  /// Humidifier mist level - medium
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get humidifier_mist_level_medium;
+
+  /// Humidifier mist level - high
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get humidifier_mist_level_high;
+
+  /// Humidifier timer - off
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get humidifier_timer_off;
+
+  /// Humidifier timer - 30 minutes
+  ///
+  /// In en, this message translates to:
+  /// **'30 min'**
+  String get humidifier_timer_30m;
+
+  /// Humidifier timer - 1 hour
+  ///
+  /// In en, this message translates to:
+  /// **'1 hour'**
+  String get humidifier_timer_1h;
+
+  /// Humidifier timer - 2 hours
+  ///
+  /// In en, this message translates to:
+  /// **'2 hours'**
+  String get humidifier_timer_2h;
+
+  /// Humidifier timer - 4 hours
+  ///
+  /// In en, this message translates to:
+  /// **'4 hours'**
+  String get humidifier_timer_4h;
+
+  /// Humidifier timer - 8 hours
+  ///
+  /// In en, this message translates to:
+  /// **'8 hours'**
+  String get humidifier_timer_8h;
+
+  /// Humidifier timer - 12 hours
+  ///
+  /// In en, this message translates to:
+  /// **'12 hours'**
+  String get humidifier_timer_12h;
+
+  /// Humidifier water tank label
+  ///
+  /// In en, this message translates to:
+  /// **'Water Tank'**
+  String get humidifier_water_tank;
+
+  /// Humidifier warm mist feature label
+  ///
+  /// In en, this message translates to:
+  /// **'Warm Mist'**
+  String get humidifier_warm_mist;
+
   /// Current humidity label
   ///
   /// In en, this message translates to:

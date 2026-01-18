@@ -4,6 +4,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/core/widgets/info_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
@@ -11,96 +12,90 @@ import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
+import 'package:fastybird_smart_panel/modules/devices/utils/humidifier_utils.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/humidifier.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/air_humidifier.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
+import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter/material.dart';
 
-enum HumidifierMode { auto, manual, sleep }
-
-class HumidifierDeviceState {
-  final bool isOn;
-  final double targetHumidity;
-  final double currentHumidity;
-  final HumidifierMode mode;
-  final double mistLevel; // 0.0 = Low, 0.5 = Medium, 1.0 = High
-  final double tankLevel;
-  final bool warmMist;
-  final Duration? timer;
-
-  const HumidifierDeviceState({
-    this.isOn = true,
-    this.targetHumidity = 0.5,
-    this.currentHumidity = 0.38,
-    this.mode = HumidifierMode.auto,
-    this.mistLevel = 0.5,
-    this.tankLevel = 0.62,
-    this.warmMist = false,
-    this.timer,
-  });
-
-  HumidifierDeviceState copyWith({
-    bool? isOn,
-    double? targetHumidity,
-    double? currentHumidity,
-    HumidifierMode? mode,
-    double? mistLevel,
-    double? tankLevel,
-    bool? warmMist,
-    Duration? timer,
-  }) {
-    return HumidifierDeviceState(
-      isOn: isOn ?? this.isOn,
-      targetHumidity: targetHumidity ?? this.targetHumidity,
-      currentHumidity: currentHumidity ?? this.currentHumidity,
-      mode: mode ?? this.mode,
-      mistLevel: mistLevel ?? this.mistLevel,
-      tankLevel: tankLevel ?? this.tankLevel,
-      warmMist: warmMist ?? this.warmMist,
-      timer: timer ?? this.timer,
-    );
-  }
-
-  bool get isRunning => isOn && currentHumidity < targetHumidity;
-
-  String get mistLevelLabel {
-    if (mistLevel <= 0.33) return 'Low';
-    if (mistLevel <= 0.66) return 'Medium';
-    return 'High';
-  }
-}
-
 class AirHumidifierDeviceDetail extends StatefulWidget {
-  final String name;
-  final HumidifierDeviceState initialState;
+  final AirHumidifierDeviceView _device;
   final VoidCallback? onBack;
 
   const AirHumidifierDeviceDetail({
     super.key,
-    required this.name,
-    required this.initialState,
+    required AirHumidifierDeviceView device,
     this.onBack,
-  });
+  }) : _device = device;
 
   @override
   State<AirHumidifierDeviceDetail> createState() =>
       _AirHumidifierDeviceDetailState();
 }
 
-class _AirHumidifierDeviceDetailState
-    extends State<AirHumidifierDeviceDetail> {
+class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
+  final DevicesService _devicesService = locator<DevicesService>();
 
-  late HumidifierDeviceState _state;
+  VoidCallback? _devicesListener;
 
   @override
   void initState() {
     super.initState();
-    _state = widget.initialState;
+    _devicesListener = () {
+      if (mounted) setState(() {});
+    };
+    _devicesService.addListener(_devicesListener!);
+  }
+
+  @override
+  void dispose() {
+    if (_devicesListener != null) {
+      _devicesService.removeListener(_devicesListener!);
+    }
+    super.dispose();
   }
 
   double _scale(double value) =>
       _screenService.scale(value, density: _visualDensityService.density);
+
+  AirHumidifierDeviceView get _device {
+    final updated = _devicesService.getDevice(widget._device.id);
+    if (updated is AirHumidifierDeviceView) {
+      return updated;
+    }
+    return widget._device;
+  }
+
+  HumidifierChannelView? get _humidifierChannel => _device.humidifierChannel;
+
+  Future<void> _setPropertyValue(
+    ChannelPropertyView? property,
+    dynamic value,
+  ) async {
+    if (property == null) return;
+
+    final localizations = AppLocalizations.of(context);
+
+    try {
+      bool res = await _devicesService.setPropertyValue(property.id, value);
+
+      if (!res && mounted && localizations != null) {
+        AlertBar.showError(context, message: localizations.action_failed);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      if (localizations != null) {
+        AlertBar.showError(context, message: localizations.action_failed);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -128,18 +123,32 @@ class _AirHumidifierDeviceDetailState
   }
 
   Widget _buildHeader(BuildContext context, bool isDark) {
+    final localizations = AppLocalizations.of(context)!;
     final humidityColor = DeviceColors.humidity(isDark);
     final secondaryColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
     final mutedColor =
         isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled;
 
+    final channel = _humidifierChannel;
+    final isOn = _device.isOn;
+    final isHumidifying = channel?.isHumidifying ?? false;
+    final targetHumidity = channel?.humidity ?? 0;
+
+    String subtitle;
+    if (isOn) {
+      final statusText = isHumidifying
+          ? localizations.humidifier_status_humidifying
+          : localizations.humidifier_status_idle;
+      subtitle = '$targetHumidity% • $statusText';
+    } else {
+      subtitle = localizations.on_state_off;
+    }
+
     return PageHeader(
-      title: widget.name,
-      subtitle: _state.isOn
-          ? 'Target ${(_state.targetHumidity * 100).toInt()}% • ${_state.isRunning ? "Running" : "Idle"}'
-          : 'Off',
-      subtitleColor: _state.isOn ? humidityColor : secondaryColor,
+      title: _device.name,
+      subtitle: subtitle,
+      subtitleColor: isOn ? humidityColor : secondaryColor,
       backgroundColor: AppColors.blank,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
@@ -153,7 +162,7 @@ class _AirHumidifierDeviceDetailState
             width: _scale(44),
             height: _scale(44),
             decoration: BoxDecoration(
-              color: _state.isOn
+              color: isOn
                   ? DeviceColors.humidityLight9(isDark)
                   : (isDark
                       ? AppFillColorDark.darker
@@ -162,33 +171,33 @@ class _AirHumidifierDeviceDetailState
             ),
             child: Icon(
               Icons.water_drop,
-              color: _state.isOn ? humidityColor : mutedColor,
+              color: isOn ? humidityColor : mutedColor,
               size: _scale(24),
             ),
           ),
         ],
       ),
       trailing: GestureDetector(
-        onTap: () => setState(() => _state = _state.copyWith(isOn: !_state.isOn)),
+        onTap: () => _setPropertyValue(channel?.onProp, !isOn),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           width: _scale(48),
           height: _scale(32),
           decoration: BoxDecoration(
-            color: _state.isOn
+            color: isOn
                 ? humidityColor
                 : (isDark
                     ? AppFillColorDark.light
                     : AppFillColorLight.light),
             borderRadius: BorderRadius.circular(AppBorderRadius.round),
-            border: (!_state.isOn && !isDark)
+            border: (!isOn && !isDark)
                 ? Border.all(color: AppBorderColorLight.base, width: _scale(1))
                 : null,
           ),
           child: Icon(
             Icons.power_settings_new,
             size: _scale(18),
-            color: _state.isOn
+            color: isOn
                 ? AppColors.white
                 : (isDark
                     ? AppTextColorDark.secondary
@@ -259,8 +268,11 @@ class _AirHumidifierDeviceDetailState
   }
 
   Widget _buildControlCard(bool isDark, Color humidityColor) {
-    final controlBorderColor = DeviceColors.humidityLight7(isDark);
-    // Use darker bg in dark mode for better contrast with dial inner background
+    final borderColor =
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+    final isOn = _device.isOn;
+    final controlBorderColor =
+        isOn ? DeviceColors.humidityLight7(isDark) : borderColor;
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
 
@@ -273,21 +285,7 @@ class _AirHumidifierDeviceDetailState
       ),
       child: Column(
         children: [
-          CircularControlDial(
-            value: _state.targetHumidity,
-            currentValue: _state.currentHumidity,
-            minValue: 0.3,
-            maxValue: 0.7,
-            step: 0.01,
-            size: _scale(200),
-            accentType: DialAccentColor.teal,
-            isActive: _state.isRunning,
-            enabled: _state.isOn,
-            displayFormat: DialDisplayFormat.percentage,
-            majorTickCount: 8,
-            onChanged: (v) =>
-                setState(() => _state = _state.copyWith(targetHumidity: v)),
-          ),
+          _buildHumidityDial(humidityColor, _scale(200)),
           AppSpacings.spacingLgVertical,
           _buildModeSelector(isDark, humidityColor),
         ],
@@ -295,11 +293,16 @@ class _AirHumidifierDeviceDetailState
     );
   }
 
-  /// Compact control card with dial and vertical icon-only mode selector
   Widget _buildCompactControlCard(
-      BuildContext context, bool isDark, Color humidityColor) {
-    final controlBorderColor = DeviceColors.humidityLight7(isDark);
-    // Use darker bg in dark mode for better contrast with dial inner background
+    BuildContext context,
+    bool isDark,
+    Color humidityColor,
+  ) {
+    final borderColor =
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+    final isOn = _device.isOn;
+    final controlBorderColor =
+        isOn ? DeviceColors.humidityLight7(isDark) : borderColor;
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
 
@@ -312,7 +315,6 @@ class _AirHumidifierDeviceDetailState
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          // Same dial size calculation as climate detail
           final modeIconsWidth = _scale(50);
           final spacing = AppSpacings.pXl;
           final availableForDial =
@@ -324,32 +326,9 @@ class _AirHumidifierDeviceDetailState
           return Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularControlDial(
-                value: _state.targetHumidity,
-                currentValue: _state.currentHumidity,
-                minValue: 0.3,
-                maxValue: 0.7,
-                step: 0.01,
-                size: dialSize,
-                accentType: DialAccentColor.teal,
-                isActive: _state.isRunning,
-                enabled: _state.isOn,
-                displayFormat: DialDisplayFormat.percentage,
-                majorTickCount: 8,
-                onChanged: (v) =>
-                    setState(() => _state = _state.copyWith(targetHumidity: v)),
-              ),
+              _buildHumidityDial(humidityColor, dialSize),
               AppSpacings.spacingXlHorizontal,
-              ModeSelector<HumidifierMode>(
-                modes: _getHumidifierModeOptions(),
-                selectedValue: _state.mode,
-                onChanged: (mode) =>
-                    setState(() => _state = _state.copyWith(mode: mode)),
-                orientation: ModeSelectorOrientation.vertical,
-                showLabels: false,
-                color: ModeSelectorColor.teal,
-                scrollable: true,
-              ),
+              _buildVerticalModeSelector(humidityColor),
             ],
           );
         },
@@ -357,9 +336,48 @@ class _AirHumidifierDeviceDetailState
     );
   }
 
+  Widget _buildHumidityDial(Color humidityColor, double size) {
+    final channel = _humidifierChannel;
+    if (channel == null) return const SizedBox.shrink();
+
+    final isOn = _device.isOn;
+    final isHumidifying = channel.isHumidifying;
+    final targetHumidity = channel.humidity;
+    final minHumidity = channel.minHumidity;
+    final maxHumidity = channel.maxHumidity;
+
+    // Get current humidity from humidity sensor channel if available
+    final humidityChannel = _device.humidityChannel;
+    final measuredHumidity = humidityChannel?.humidity;
+    final currentHumidity =
+        measuredHumidity?.toDouble() ?? targetHumidity.toDouble();
+
+    return CircularControlDial(
+      value: targetHumidity / 100.0,
+      currentValue: currentHumidity / 100.0,
+      minValue: minHumidity / 100.0,
+      maxValue: maxHumidity / 100.0,
+      step: 0.01,
+      size: size,
+      accentType: DialAccentColor.teal,
+      isActive: isHumidifying,
+      enabled: isOn,
+      displayFormat: DialDisplayFormat.percentage,
+      majorTickCount: 8,
+      onChanged: (v) {
+        final newHumidity = (v * 100).round();
+        _setPropertyValue(channel.humidityProp, newHumidity);
+      },
+    );
+  }
+
   Widget _buildPortrait(BuildContext context, bool isDark) {
     final humidityColor = DeviceColors.humidity(isDark);
-    final controlBorderColor = DeviceColors.humidityLight7(isDark);
+    final borderColor =
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+    final isOn = _device.isOn;
+    final controlBorderColor =
+        isOn ? DeviceColors.humidityLight7(isDark) : borderColor;
 
     return SingleChildScrollView(
       padding: AppSpacings.paddingMd,
@@ -375,21 +393,7 @@ class _AirHumidifierDeviceDetailState
             ),
             child: Column(
               children: [
-                CircularControlDial(
-                  value: _state.targetHumidity,
-                  currentValue: _state.currentHumidity,
-                  minValue: 0.3,
-                  maxValue: 0.7,
-                  step: 0.01,
-                  size: _scale(200),
-                  accentType: DialAccentColor.teal,
-                  isActive: _state.isRunning,
-                  enabled: _state.isOn,
-                  displayFormat: DialDisplayFormat.percentage,
-                  majorTickCount: 8,
-                  onChanged: (v) =>
-                      setState(() => _state = _state.copyWith(targetHumidity: v)),
-                ),
+                _buildHumidityDial(humidityColor, _scale(200)),
                 AppSpacings.spacingMdVertical,
                 _buildModeSelector(isDark, humidityColor),
               ],
@@ -403,10 +407,26 @@ class _AirHumidifierDeviceDetailState
   }
 
   Widget _buildModeSelector(bool isDark, Color activeColor) {
-    return ModeSelector<HumidifierMode>(
-      modes: _getHumidifierModeOptions(),
-      selectedValue: _state.mode,
-      onChanged: (mode) => setState(() => _state = _state.copyWith(mode: mode)),
+    final localizations = AppLocalizations.of(context)!;
+    final channel = _humidifierChannel;
+    if (channel == null || !channel.hasMode) return const SizedBox.shrink();
+
+    final availableModes = channel.availableModes;
+    if (availableModes.isEmpty) return const SizedBox.shrink();
+
+    final currentMode = channel.mode;
+    if (currentMode == null) return const SizedBox.shrink();
+
+    return ModeSelector<HumidifierModeValue>(
+      modes: availableModes
+          .map((mode) => ModeOption(
+                value: mode,
+                icon: HumidifierUtils.getModeIcon(mode),
+                label: HumidifierUtils.getModeLabel(localizations, mode),
+              ))
+          .toList(),
+      selectedValue: currentMode,
+      onChanged: (mode) => _setPropertyValue(channel.modeProp, mode.value),
       orientation: ModeSelectorOrientation.horizontal,
       iconPlacement: ModeSelectorIconPlacement.left,
       color: ModeSelectorColor.teal,
@@ -414,151 +434,405 @@ class _AirHumidifierDeviceDetailState
     );
   }
 
-  List<ModeOption<HumidifierMode>> _getHumidifierModeOptions() {
-    return [
-      ModeOption(value: HumidifierMode.auto, icon: Icons.auto_mode, label: 'Auto'),
-      ModeOption(value: HumidifierMode.manual, icon: Icons.tune, label: 'Manual'),
-      ModeOption(value: HumidifierMode.sleep, icon: Icons.bedtime, label: 'Sleep'),
-    ];
-  }
+  Widget _buildVerticalModeSelector(Color activeColor) {
+    final localizations = AppLocalizations.of(context)!;
+    final channel = _humidifierChannel;
+    if (channel == null || !channel.hasMode) return const SizedBox.shrink();
 
-  List<ValueOption<Duration?>> _getTimerOptions() {
-    return [
-      ValueOption(value: null, label: 'Off'),
-      ValueOption(value: const Duration(minutes: 30), label: '30m'),
-      ValueOption(value: const Duration(hours: 1), label: '1h'),
-      ValueOption(value: const Duration(hours: 2), label: '2h'),
-      ValueOption(value: const Duration(hours: 4), label: '4h'),
-      ValueOption(value: const Duration(hours: 6), label: '6h'),
-      ValueOption(value: const Duration(hours: 8), label: '8h'),
-      ValueOption(value: const Duration(hours: 12), label: '12h'),
-    ];
-  }
+    final availableModes = channel.availableModes;
+    if (availableModes.isEmpty) return const SizedBox.shrink();
 
-  List<ValueOption<double>> _getMistLevelOptions() {
-    return [
-      ValueOption(value: 0.0, label: 'Low'),
-      ValueOption(value: 0.5, label: 'Med'),
-      ValueOption(value: 1.0, label: 'High'),
-    ];
-  }
+    final currentMode = channel.mode;
+    if (currentMode == null) return const SizedBox.shrink();
 
-  String _formatMistLevel(double? level) {
-    if (level == null || level <= 0.33) return 'Low';
-    if (level <= 0.66) return 'Med';
-    return 'High';
-  }
-
-  String _formatDuration(Duration? d) {
-    if (d == null) return 'Off';
-    final hours = d.inHours;
-    final minutes = d.inMinutes % 60;
-    if (hours > 0 && minutes > 0) return '${hours}h ${minutes}m';
-    if (hours > 0) return '${hours}h';
-    return '${minutes}m';
+    return ModeSelector<HumidifierModeValue>(
+      modes: availableModes
+          .map((mode) => ModeOption(
+                value: mode,
+                icon: HumidifierUtils.getModeIcon(mode),
+                label: HumidifierUtils.getModeLabel(localizations, mode),
+              ))
+          .toList(),
+      selectedValue: currentMode,
+      onChanged: (mode) => _setPropertyValue(channel.modeProp, mode.value),
+      orientation: ModeSelectorOrientation.vertical,
+      showLabels: false,
+      color: ModeSelectorColor.teal,
+      scrollable: true,
+    );
   }
 
   Widget _buildStatus(bool isDark) {
+    final localizations = AppLocalizations.of(context)!;
     final humidityColor = DeviceColors.humidity(isDark);
+    final channel = _humidifierChannel;
     final useVerticalLayout = _screenService.isLandscape &&
         (_screenService.isSmallScreen || _screenService.isMediumScreen);
 
-    final infoTiles = [
-      InfoTile(
-        label: 'Current',
-        value: '${(_state.currentHumidity * 100).toInt()}',
+    final infoTiles = <Widget>[];
+
+    // Current humidity from humidity sensor channel
+    final humidityChannel = _device.humidityChannel;
+    final currentHumidity = humidityChannel?.humidity;
+    if (currentHumidity != null) {
+      infoTiles.add(InfoTile(
+        label: localizations.device_current_humidity,
+        value: '$currentHumidity',
         unit: '%',
         valueColor: humidityColor,
-      ),
-      InfoTile(
-        label: 'Mist Level',
-        value: _state.mistLevelLabel,
-      ),
-      InfoTile(
-        label: 'Water Tank',
-        value: '${(_state.tankLevel * 100).toInt()}',
+      ));
+    }
+
+    // Mist level if using numeric display
+    if (channel != null &&
+        channel.hasMistLevel &&
+        channel.isMistLevelNumeric) {
+      infoTiles.add(InfoTile(
+        label: localizations.humidifier_mist_level_medium,
+        value: '${channel.mistLevel}',
         unit: '%',
-        isWarning: _state.tankLevel < 0.2,
-      ),
-    ];
+      ));
+    } else if (channel != null &&
+        channel.hasMistLevel &&
+        channel.isMistLevelEnum) {
+      final preset = channel.mistLevelPreset;
+      infoTiles.add(InfoTile(
+        label: localizations.humidifier_mist_level_medium,
+        value: preset != null
+            ? HumidifierUtils.getMistLevelLabel(localizations, preset)
+            : '-',
+      ));
+    }
+
+    // Water tank level
+    if (channel != null && channel.hasWaterTankLevel) {
+      infoTiles.add(InfoTile(
+        label: localizations.humidifier_water_tank,
+        value: '${channel.waterTankLevel}',
+        unit: '%',
+        isWarning: channel.waterTankWarning,
+      ));
+    } else if (channel != null && channel.hasWaterTankEmpty) {
+      infoTiles.add(InfoTile(
+        label: localizations.humidifier_water_tank,
+        value: channel.waterTankEmpty
+            ? localizations.humidifier_mist_level_off
+            : localizations.on_state_on,
+        isWarning: channel.waterTankEmpty,
+      ));
+    }
+
+    // Temperature if available
+    final tempChannel = _device.temperatureChannel;
+    final currentTemp = tempChannel?.temperature;
+    if (currentTemp != null) {
+      infoTiles.add(InfoTile(
+        label: localizations.device_current_temperature,
+        value: currentTemp.toStringAsFixed(1),
+        unit: '°C',
+      ));
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (useVerticalLayout)
-          ...infoTiles
-              .expand((tile) => [
-                    SizedBox(width: double.infinity, child: tile),
-                    AppSpacings.spacingSmVertical,
-                  ])
-              .take(infoTiles.length * 2 - 1)
-        else
-          Row(
-            children: [
-              Expanded(child: infoTiles[0]),
-              AppSpacings.spacingSmHorizontal,
-              Expanded(child: infoTiles[1]),
-              AppSpacings.spacingSmHorizontal,
-              Expanded(child: infoTiles[2]),
-            ],
-          ),
-        AppSpacings.spacingMdVertical,
-        if (useVerticalLayout)
-          ValueSelectorRow<double>(
-            currentValue: _state.mistLevel,
-            label: 'Mist Level',
-            icon: Icons.water,
-            sheetTitle: 'Mist Level',
+        if (infoTiles.isNotEmpty) ...[
+          if (useVerticalLayout)
+            ...infoTiles
+                .expand((tile) => [
+                      SizedBox(width: double.infinity, child: tile),
+                      AppSpacings.spacingSmVertical,
+                    ])
+                .take(infoTiles.length * 2 - 1)
+          else
+            _buildInfoTilesRow(infoTiles),
+          AppSpacings.spacingMdVertical,
+        ],
+        // Mist level control
+        if (channel != null && channel.hasMistLevel) ...[
+          if (channel.isMistLevelEnum)
+            _buildMistLevelEnumControl(localizations, humidityColor, useVerticalLayout)
+          else if (channel.isMistLevelNumeric)
+            _buildMistLevelNumericControl(localizations, humidityColor, useVerticalLayout),
+          AppSpacings.spacingSmVertical,
+        ],
+        // Warm mist toggle
+        if (channel != null && channel.hasWarmMist) ...[
+          UniversalTile(
+            layout: TileLayout.horizontal,
+            icon: Icons.local_fire_department,
+            name: localizations.humidifier_warm_mist,
+            status: channel.warmMist
+                ? localizations.on_state_on
+                : localizations.on_state_off,
+            isActive: channel.warmMist,
             activeColor: humidityColor,
-            options: _getMistLevelOptions(),
-            displayFormatter: _formatMistLevel,
-            isActiveValue: (v) => _state.mode == HumidifierMode.manual,
-            columns: 3,
-            layout: ValueSelectorRowLayout.compact,
-            onChanged: _state.mode == HumidifierMode.manual
-                ? (v) => setState(() => _state = _state.copyWith(mistLevel: v ?? 0))
-                : null,
-          )
-        else
-          SpeedSlider(
-            value: _state.mistLevel,
-            activeColor: humidityColor,
-            enabled: _state.mode == HumidifierMode.manual,
-            steps: const ['Low', 'Med', 'High'],
-            discrete: true,
-            onChanged: (v) =>
-                setState(() => _state = _state.copyWith(mistLevel: v)),
+            onTileTap: () =>
+                _setPropertyValue(channel.warmMistProp, !channel.warmMist),
+            showGlow: false,
+            showDoubleBorder: false,
+            showInactiveBorder: true,
           ),
-        AppSpacings.spacingMdVertical,
-        UniversalTile(
-          layout: TileLayout.horizontal,
-          icon: Icons.local_fire_department,
-          name: 'Warm Mist',
-          status: _state.warmMist ? 'On' : 'Off',
-          isActive: _state.warmMist,
-          activeColor: humidityColor,
-          onTileTap: () =>
-              setState(() => _state = _state.copyWith(warmMist: !_state.warmMist)),
-          showGlow: false,
-          showDoubleBorder: false,
-          showInactiveBorder: true,
-        ),
-        AppSpacings.spacingSmVertical,
-        ValueSelectorRow<Duration?>(
-          currentValue: _state.timer,
-          label: 'Timer',
-          icon: Icons.timer_outlined,
-          sheetTitle: 'Auto-Off Timer',
-          activeColor: humidityColor,
-          options: _getTimerOptions(),
-          displayFormatter: _formatDuration,
-          isActiveValue: (d) => d != null,
-          layout: useVerticalLayout
-              ? ValueSelectorRowLayout.compact
-              : ValueSelectorRowLayout.horizontal,
-          onChanged: (d) => setState(() => _state = _state.copyWith(timer: d)),
-        ),
+          AppSpacings.spacingSmVertical,
+        ],
+        // Child Lock
+        if (channel != null && channel.hasLocked) ...[
+          UniversalTile(
+            layout: TileLayout.horizontal,
+            icon: Icons.lock,
+            name: localizations.device_child_lock,
+            status: channel.locked
+                ? localizations.thermostat_lock_locked
+                : localizations.thermostat_lock_unlocked,
+            isActive: channel.locked,
+            activeColor: humidityColor,
+            onTileTap: () =>
+                _setPropertyValue(channel.lockedProp, !channel.locked),
+            showGlow: false,
+            showDoubleBorder: false,
+            showInactiveBorder: true,
+          ),
+          AppSpacings.spacingSmVertical,
+        ],
+        // Timer
+        if (channel != null && channel.hasTimer)
+          _buildTimerControl(localizations, humidityColor, useVerticalLayout),
       ],
     );
+  }
+
+  Widget _buildInfoTilesRow(List<Widget> tiles) {
+    if (tiles.isEmpty) return const SizedBox.shrink();
+
+    // Max 3 tiles per row
+    if (tiles.length <= 3) {
+      return Row(
+        children: tiles
+            .expand(
+                (tile) => [Expanded(child: tile), AppSpacings.spacingSmHorizontal])
+            .take(tiles.length * 2 - 1)
+            .toList(),
+      );
+    }
+
+    // Split into rows of 3
+    final rows = <Widget>[];
+    for (var i = 0; i < tiles.length; i += 3) {
+      final rowTiles = tiles.skip(i).take(3).toList();
+      rows.add(Row(
+        children: rowTiles
+            .expand(
+                (tile) => [Expanded(child: tile), AppSpacings.spacingSmHorizontal])
+            .take(rowTiles.length * 2 - 1)
+            .toList(),
+      ));
+      if (i + 3 < tiles.length) {
+        rows.add(AppSpacings.spacingSmVertical);
+      }
+    }
+
+    return Column(children: rows);
+  }
+
+  Widget _buildMistLevelEnumControl(
+    AppLocalizations localizations,
+    Color humidityColor,
+    bool useCompactLayout,
+  ) {
+    final channel = _humidifierChannel;
+    if (channel == null) return const SizedBox.shrink();
+
+    final options = channel.availableMistLevelPresets
+        .map((level) => ValueOption(
+              value: level,
+              label: HumidifierUtils.getMistLevelLabel(localizations, level),
+            ))
+        .toList();
+
+    if (options.isEmpty) return const SizedBox.shrink();
+
+    return ValueSelectorRow<HumidifierMistLevelLevelValue?>(
+      currentValue: channel.mistLevelPreset,
+      label: localizations.humidifier_mist_level_medium,
+      icon: Icons.water,
+      sheetTitle: localizations.humidifier_mist_level_medium,
+      activeColor: humidityColor,
+      options: options,
+      displayFormatter: (l) => l != null
+          ? HumidifierUtils.getMistLevelLabel(localizations, l)
+          : localizations.humidifier_mist_level_off,
+      isActiveValue: (level) =>
+          level != null && level != HumidifierMistLevelLevelValue.off,
+      columns: options.length > 4 ? 4 : options.length,
+      layout: useCompactLayout
+          ? ValueSelectorRowLayout.compact
+          : ValueSelectorRowLayout.horizontal,
+      onChanged: (level) {
+        if (level != null) {
+          _setPropertyValue(channel.mistLevelProp, level.value);
+        }
+      },
+    );
+  }
+
+  Widget _buildMistLevelNumericControl(
+    AppLocalizations localizations,
+    Color humidityColor,
+    bool useCompactLayout,
+  ) {
+    final channel = _humidifierChannel;
+    if (channel == null) return const SizedBox.shrink();
+
+    final isOn = _device.isOn;
+    final minLevel = channel.minMistLevel;
+    final maxLevel = channel.maxMistLevel;
+    final range = maxLevel - minLevel;
+    if (range <= 0) return const SizedBox.shrink();
+
+    final normalizedLevel = (channel.mistLevel - minLevel) / range;
+
+    if (useCompactLayout) {
+      return ValueSelectorRow<double>(
+        currentValue: normalizedLevel,
+        label: localizations.humidifier_mist_level_medium,
+        icon: Icons.water,
+        sheetTitle: localizations.humidifier_mist_level_medium,
+        activeColor: humidityColor,
+        options: [
+          ValueOption(value: 0.0, label: localizations.humidifier_mist_level_low),
+          ValueOption(value: 0.5, label: localizations.humidifier_mist_level_medium),
+          ValueOption(value: 1.0, label: localizations.humidifier_mist_level_high),
+        ],
+        displayFormatter: (v) {
+          if (v == null || v <= 0.33) {
+            return localizations.humidifier_mist_level_low;
+          }
+          if (v <= 0.66) return localizations.humidifier_mist_level_medium;
+          return localizations.humidifier_mist_level_high;
+        },
+        isActiveValue: (v) => isOn,
+        columns: 3,
+        layout: ValueSelectorRowLayout.compact,
+        onChanged: isOn
+            ? (v) {
+                if (v != null) {
+                  final actualLevel = minLevel + (v * range).round();
+                  _setPropertyValue(channel.mistLevelProp, actualLevel);
+                }
+              }
+            : null,
+      );
+    }
+
+    return SpeedSlider(
+      value: normalizedLevel,
+      activeColor: humidityColor,
+      steps: [
+        localizations.humidifier_mist_level_low,
+        localizations.humidifier_mist_level_medium,
+        localizations.humidifier_mist_level_high,
+      ],
+      discrete: true,
+      enabled: isOn,
+      onChanged: (v) {
+        final actualLevel = minLevel + (v * range).round();
+        _setPropertyValue(channel.mistLevelProp, actualLevel);
+      },
+    );
+  }
+
+  Widget _buildTimerControl(
+    AppLocalizations localizations,
+    Color humidityColor,
+    bool useCompactLayout,
+  ) {
+    final channel = _humidifierChannel;
+    if (channel == null) return const SizedBox.shrink();
+
+    if (channel.isTimerEnum) {
+      final options = channel.availableTimerPresets
+          .map((preset) => ValueOption(
+                value: preset,
+                label: HumidifierUtils.getTimerPresetLabel(localizations, preset),
+              ))
+          .toList();
+
+      if (options.isEmpty) return const SizedBox.shrink();
+
+      return ValueSelectorRow<HumidifierTimerPresetValue?>(
+        currentValue: channel.timerPreset,
+        label: localizations.device_timer,
+        icon: Icons.timer_outlined,
+        sheetTitle: localizations.device_timer,
+        activeColor: humidityColor,
+        options: options,
+        displayFormatter: (p) => p != null
+            ? HumidifierUtils.getTimerPresetLabel(localizations, p)
+            : localizations.humidifier_timer_off,
+        isActiveValue: (preset) =>
+            preset != null && preset != HumidifierTimerPresetValue.off,
+        columns: options.length > 4 ? 4 : options.length,
+        layout: useCompactLayout
+            ? ValueSelectorRowLayout.compact
+            : ValueSelectorRowLayout.horizontal,
+        onChanged: (preset) {
+          if (preset != null) {
+            _setPropertyValue(channel.timerProp, preset.value);
+          }
+        },
+      );
+    } else {
+      // Numeric timer in seconds
+      final options = _getNumericTimerOptions(localizations, channel);
+      if (options.isEmpty) return const SizedBox.shrink();
+
+      return ValueSelectorRow<int>(
+        currentValue: channel.timer,
+        label: localizations.device_timer,
+        icon: Icons.timer_outlined,
+        sheetTitle: localizations.device_timer,
+        activeColor: humidityColor,
+        options: options,
+        displayFormatter: (s) =>
+            HumidifierUtils.formatSeconds(localizations, s ?? 0),
+        isActiveValue: (seconds) => seconds != null && seconds > 0,
+        columns: options.length > 4 ? 4 : options.length,
+        layout: useCompactLayout
+            ? ValueSelectorRowLayout.compact
+            : ValueSelectorRowLayout.horizontal,
+        onChanged: (seconds) {
+          if (seconds != null) {
+            _setPropertyValue(channel.timerProp, seconds);
+          }
+        },
+      );
+    }
+  }
+
+  List<ValueOption<int>> _getNumericTimerOptions(
+    AppLocalizations localizations,
+    HumidifierChannelView channel,
+  ) {
+    final minTimer = channel.minTimer;
+    final maxTimer = channel.maxTimer;
+
+    final options = <ValueOption<int>>[];
+    options.add(ValueOption(
+      value: 0,
+      label: localizations.humidifier_timer_off,
+    ));
+
+    // Common presets in seconds
+    final presets = [1800, 3600, 7200, 14400, 28800, 43200]; // 30m, 1h, 2h, 4h, 8h, 12h
+    for (final preset in presets) {
+      if (preset >= minTimer && preset <= maxTimer) {
+        options.add(ValueOption(
+          value: preset,
+          label: HumidifierUtils.formatSeconds(localizations, preset),
+        ));
+      }
+    }
+
+    return options;
   }
 }
