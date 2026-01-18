@@ -3127,14 +3127,16 @@ export class SensorTargetsResponseModel extends BaseSuccessResponseModel<SensorT
  * Response wrapper for a single sensor role entity
  */
 @ApiSchema({ name: 'SpacesModuleResSensorRole' })
-export class SensorRoleResponseModel extends BaseSuccessResponseModel<SpaceSensorRoleEntity> {
+export class SensorRoleResponseModel extends BaseSuccessResponseModel<SpaceSensorRoleEntity | null> {
 	@ApiProperty({
-		description: 'The sensor role assignment',
+		description: 'The sensor role assignment, or null if the role was removed',
 		type: () => SpaceSensorRoleEntity,
+		nullable: true,
+		required: false,
 	})
 	@Expose()
 	@Type(() => SpaceSensorRoleEntity)
-	declare data: SpaceSensorRoleEntity;
+	declare data: SpaceSensorRoleEntity | null;
 }
 
 /**
