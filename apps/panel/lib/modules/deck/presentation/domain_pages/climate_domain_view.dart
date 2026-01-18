@@ -1706,14 +1706,50 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         showDoubleBorder: false,
         showWarningBadge: false,
         showInactiveBorder: showInactiveBorder,
-        onIconTap: () {
-          // TODO: Toggle device state
-        },
+        onIconTap: () => _toggleAuxiliaryDevice(device),
         onTileTap: () => _openAuxiliaryDeviceDetail(device),
       ));
     }
 
     return items;
+  }
+
+  /// Toggles the on/off state of an auxiliary device
+  void _toggleAuxiliaryDevice(AuxiliaryDevice auxiliaryDevice) {
+    final devicesService = _devicesService;
+    if (devicesService == null) return;
+
+    final deviceView = devicesService.getDevice(auxiliaryDevice.id);
+    if (deviceView == null) return;
+
+    String? propertyId;
+
+    switch (auxiliaryDevice.type) {
+      case AuxiliaryType.fan:
+        if (deviceView is FanDeviceView) {
+          propertyId = deviceView.fanChannel.onProp.id;
+        }
+        break;
+      case AuxiliaryType.purifier:
+        if (deviceView is AirPurifierDeviceView) {
+          propertyId = deviceView.fanChannel.onProp.id;
+        }
+        break;
+      case AuxiliaryType.humidifier:
+        if (deviceView is AirHumidifierDeviceView) {
+          propertyId = deviceView.humidifierChannel.onProp.id;
+        }
+        break;
+      case AuxiliaryType.dehumidifier:
+        if (deviceView is AirDehumidifierDeviceView) {
+          propertyId = deviceView.dehumidifierChannel.onProp.id;
+        }
+        break;
+    }
+
+    if (propertyId != null) {
+      devicesService.setPropertyValue(propertyId, !auxiliaryDevice.isActive);
+    }
   }
 
   /// Opens the detail page for an auxiliary device
