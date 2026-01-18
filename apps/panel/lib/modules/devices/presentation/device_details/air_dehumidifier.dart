@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
@@ -503,7 +504,7 @@ class _AirDehumidifierDeviceDetailState
     if (currentHumidity != null) {
       infoTiles.add(InfoTile(
         label: localizations.device_current_humidity,
-        value: '$currentHumidity',
+        value: NumberFormatUtils.defaultFormat.formatInteger(currentHumidity),
         unit: '%',
         valueColor: humidityColor,
       ));
@@ -518,7 +519,7 @@ class _AirDehumidifierDeviceDetailState
             ? FanUtils.getSpeedLevelLabel(localizations, level)
             : '-';
       } else {
-        speedLabel = '${fanChannel.speed.toInt()}%';
+        speedLabel = '${NumberFormatUtils.defaultFormat.formatInteger(fanChannel.speed.toInt())}%';
       }
       infoTiles.add(InfoTile(
         label: localizations.device_fan_speed,
@@ -530,7 +531,7 @@ class _AirDehumidifierDeviceDetailState
     if (channel != null && channel.hasWaterTankLevel) {
       infoTiles.add(InfoTile(
         label: localizations.dehumidifier_water_tank,
-        value: '${channel.waterTankLevel}',
+        value: NumberFormatUtils.defaultFormat.formatInteger(channel.waterTankLevel),
         unit: '%',
         isWarning: channel.waterTankWarning,
       ));
@@ -550,7 +551,10 @@ class _AirDehumidifierDeviceDetailState
     if (currentTemp != null) {
       infoTiles.add(InfoTile(
         label: localizations.device_current_temperature,
-        value: currentTemp.toStringAsFixed(1),
+        value: NumberFormatUtils.defaultFormat.formatDecimal(
+          currentTemp,
+          decimalPlaces: 1,
+        ),
         unit: '°C',
       ));
     }

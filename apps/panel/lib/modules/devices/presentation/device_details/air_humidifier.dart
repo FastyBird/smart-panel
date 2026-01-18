@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
@@ -500,7 +501,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     if (currentHumidity != null) {
       infoTiles.add(InfoTile(
         label: localizations.device_current_humidity,
-        value: '$currentHumidity',
+        value: NumberFormatUtils.defaultFormat.formatInteger(currentHumidity),
         unit: '%',
         valueColor: humidityColor,
       ));
@@ -512,7 +513,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         channel.isMistLevelNumeric) {
       infoTiles.add(InfoTile(
         label: localizations.humidifier_mist_level_medium,
-        value: '${channel.mistLevel}',
+        value: NumberFormatUtils.defaultFormat.formatInteger(channel.mistLevel),
         unit: '%',
       ));
     } else if (channel != null &&
@@ -531,7 +532,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     if (channel != null && channel.hasWaterTankLevel) {
       infoTiles.add(InfoTile(
         label: localizations.humidifier_water_tank,
-        value: '${channel.waterTankLevel}',
+        value: NumberFormatUtils.defaultFormat.formatInteger(channel.waterTankLevel),
         unit: '%',
         isWarning: channel.waterTankWarning,
       ));
@@ -551,7 +552,10 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     if (currentTemp != null) {
       infoTiles.add(InfoTile(
         label: localizations.device_current_temperature,
-        value: currentTemp.toStringAsFixed(1),
+        value: NumberFormatUtils.defaultFormat.formatDecimal(
+          currentTemp,
+          decimalPlaces: 1,
+        ),
         unit: '°C',
       ));
     }

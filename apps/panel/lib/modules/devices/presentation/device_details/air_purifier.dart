@@ -949,7 +949,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     if (pmChannel != null && pmChannel.hasDensity) {
       infoTiles.add(InfoTile(
         label: AirQualityUtils.getParticulateLabel(localizations, pmChannel.mode),
-        value: '${_state.pm25}',
+        value: NumberFormatUtils.defaultFormat.formatInteger(_state.pm25),
         unit: 'µg/m³',
         valueColor: airColor,
       ));
@@ -1011,7 +1011,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     if (humidityChannel != null) {
       infoTiles.add(InfoTile(
         label: localizations.device_humidity,
-        value: '${humidityChannel.humidity}',
+        value: NumberFormatUtils.defaultFormat.formatInteger(humidityChannel.humidity),
         unit: '%',
         valueColor: airColor,
       ));
