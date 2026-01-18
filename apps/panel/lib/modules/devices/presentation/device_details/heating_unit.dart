@@ -7,14 +7,14 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/heater.dart'
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
-class HeaterDeviceDetail extends StatelessWidget {
+class HeatingUnitDeviceDetail extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
 
   final HeaterDeviceView device;
 
-  HeaterDeviceDetail({
+  HeatingUnitDeviceDetail({
     super.key,
     required this.device,
   });

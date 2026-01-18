@@ -10,7 +10,7 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/doorbell.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/fan.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/generic.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/heater.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/heating_unit.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/lock.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/media.dart';
@@ -394,7 +394,7 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
         'Device view is not valid for Heating Unit device detail',
       );
     }
-    return HeaterDeviceDetail(device: device);
+    return HeatingUnitDeviceDetail(device: device);
   },
   DevicesModuleDeviceCategory.waterHeater: (device) {
     if (device is! HeaterDeviceView) {
@@ -402,7 +402,7 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
         'Device view is not valid for Water Heater device detail',
       );
     }
-    return HeaterDeviceDetail(device: device);
+    return HeatingUnitDeviceDetail(device: device);
   },
   DevicesModuleDeviceCategory.lighting: (device) {
     if (device is! LightingDeviceView) {

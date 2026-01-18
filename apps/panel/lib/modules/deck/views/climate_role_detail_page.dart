@@ -15,7 +15,7 @@ import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/cli
     show ClimateMode, RoomCapability, ClimateDevice;
 import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_conditioner.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/heater.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/heating_unit.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/thermostat.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_conditioner.dart';
@@ -1273,7 +1273,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
     if (deviceView is ThermostatDeviceView) {
       detailPage = ThermostatDeviceDetail(device: deviceView);
     } else if (deviceView is HeaterDeviceView) {
-      detailPage = HeaterDeviceDetail(device: deviceView);
+      detailPage = HeatingUnitDeviceDetail(device: deviceView);
     } else if (deviceView is AirConditionerDeviceView) {
       detailPage = AirConditionerDeviceDetail(device: deviceView);
     }
