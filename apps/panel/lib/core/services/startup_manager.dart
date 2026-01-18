@@ -719,15 +719,17 @@ class StartupManagerService {
       apiClient: _apiClient,
       socketService: _socketClient,
     );
-    var spacesModuleService = SpacesModuleService(
-      apiClient: _apiClient,
-      socketService: _socketClient,
-    );
     var scenesModuleService = ScenesModuleService(
       apiClient: _apiClient,
       socketService: _socketClient,
     );
+    // IntentsModuleService must be created before SpacesModuleService
+    // because SpacesModuleService depends on IntentsRepository
     var intentsModuleService = IntentsModuleService(
+      socketService: _socketClient,
+    );
+    var spacesModuleService = SpacesModuleService(
+      apiClient: _apiClient,
       socketService: _socketClient,
     );
 
@@ -737,9 +739,9 @@ class StartupManagerService {
     locator.registerSingleton(weatherModuleService);
     locator.registerSingleton(devicesModuleService);
     locator.registerSingleton(dashboardModuleService);
-    locator.registerSingleton(spacesModuleService);
     locator.registerSingleton(scenesModuleService);
     locator.registerSingleton(intentsModuleService);
+    locator.registerSingleton(spacesModuleService);
 
     // Property timeseries service
     var propertyTimeseriesService = PropertyTimeseriesService(dio: _apiIoService);
