@@ -937,6 +937,12 @@ export class SpacesController {
 			model.priority = t.priority;
 			model.hasTemperature = t.hasTemperature;
 			model.hasHumidity = t.hasHumidity;
+			model.hasAirQuality = t.hasAirQuality;
+			model.hasAirParticulate = t.hasAirParticulate;
+			model.hasCarbonDioxide = t.hasCarbonDioxide;
+			model.hasVolatileOrganicCompounds = t.hasVolatileOrganicCompounds;
+			model.hasPressure = t.hasPressure;
+			model.hasMode = t.hasMode;
 			return model;
 		});
 

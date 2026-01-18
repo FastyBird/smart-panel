@@ -63,6 +63,12 @@ export interface ClimateTargetInfo {
 	priority: number;
 	hasTemperature: boolean;
 	hasHumidity: boolean;
+	hasAirQuality: boolean;
+	hasAirParticulate: boolean;
+	hasCarbonDioxide: boolean;
+	hasVolatileOrganicCompounds: boolean;
+	hasPressure: boolean;
+	hasMode: boolean;
 }
 
 /**
@@ -104,6 +110,12 @@ export interface ClimateTargetEventPayload {
 	priority: number;
 	has_temperature: boolean;
 	has_humidity: boolean;
+	has_air_quality: boolean;
+	has_air_particulate: boolean;
+	has_carbon_dioxide: boolean;
+	has_volatile_organic_compounds: boolean;
+	has_pressure: boolean;
+	has_mode: boolean;
 }
 
 @Injectable()
@@ -406,9 +418,14 @@ export class SpaceClimateRoleService {
 						continue;
 					}
 
-					const properties = channel.properties ?? [];
-					const hasTemperature = properties.some((p) => p.category === PropertyCategory.TEMPERATURE);
-					const hasHumidity = properties.some((p) => p.category === PropertyCategory.HUMIDITY);
+					// Set flags based on channel category (the channel IS the sensor type)
+					const hasTemperature = channel.category === ChannelCategory.TEMPERATURE;
+					const hasHumidity = channel.category === ChannelCategory.HUMIDITY;
+					const hasAirQuality = channel.category === ChannelCategory.AIR_QUALITY;
+					const hasAirParticulate = channel.category === ChannelCategory.AIR_PARTICULATE;
+					const hasCarbonDioxide = channel.category === ChannelCategory.CARBON_DIOXIDE;
+					const hasVolatileOrganicCompounds = channel.category === ChannelCategory.VOLATILE_ORGANIC_COMPOUNDS;
+					const hasPressure = channel.category === ChannelCategory.PRESSURE;
 
 					const key = `${device.id}:${channel.id}`;
 					const existingRole = roleMap.get(key);
@@ -424,20 +441,53 @@ export class SpaceClimateRoleService {
 						priority: existingRole?.priority ?? 0,
 						hasTemperature,
 						hasHumidity,
+						hasAirQuality,
+						hasAirParticulate,
+						hasCarbonDioxide,
+						hasVolatileOrganicCompounds,
+						hasPressure,
+						hasMode: false, // Sensors don't have mode
 					});
 				}
 			} else {
 				// For actuators, create a device-level target
+				// Check channel categories for sensor capabilities
 				let hasTemperature = false;
 				let hasHumidity = false;
+				let hasAirQuality = false;
+				let hasAirParticulate = false;
+				let hasCarbonDioxide = false;
+				let hasVolatileOrganicCompounds = false;
+				let hasPressure = false;
+				let hasMode = false;
 
 				for (const channel of device.channels ?? []) {
-					const properties = channel.properties ?? [];
-					if (properties.some((p) => p.category === PropertyCategory.TEMPERATURE)) {
+					// Check channel category for sensor types
+					if (channel.category === ChannelCategory.TEMPERATURE) {
 						hasTemperature = true;
 					}
-					if (properties.some((p) => p.category === PropertyCategory.HUMIDITY)) {
+					if (channel.category === ChannelCategory.HUMIDITY) {
 						hasHumidity = true;
+					}
+					if (channel.category === ChannelCategory.AIR_QUALITY) {
+						hasAirQuality = true;
+					}
+					if (channel.category === ChannelCategory.AIR_PARTICULATE) {
+						hasAirParticulate = true;
+					}
+					if (channel.category === ChannelCategory.CARBON_DIOXIDE) {
+						hasCarbonDioxide = true;
+					}
+					if (channel.category === ChannelCategory.VOLATILE_ORGANIC_COMPOUNDS) {
+						hasVolatileOrganicCompounds = true;
+					}
+					if (channel.category === ChannelCategory.PRESSURE) {
+						hasPressure = true;
+					}
+					// Check properties for mode capability
+					const properties = channel.properties ?? [];
+					if (properties.some((p) => p.category === PropertyCategory.MODE)) {
+						hasMode = true;
 					}
 				}
 
@@ -454,6 +504,12 @@ export class SpaceClimateRoleService {
 					priority: existingRole?.priority ?? 0,
 					hasTemperature,
 					hasHumidity,
+					hasAirQuality,
+					hasAirParticulate,
+					hasCarbonDioxide,
+					hasVolatileOrganicCompounds,
+					hasPressure,
+					hasMode,
 				});
 			}
 		}
@@ -562,32 +618,62 @@ export class SpaceClimateRoleService {
 			return null;
 		}
 
-		// For sensors, get capabilities from the specific channel
-		// For actuators, aggregate from all channels
+		// For sensors, get capabilities from the specific channel category
+		// For actuators, aggregate from all channel categories
 		let hasTemperature = false;
 		let hasHumidity = false;
+		let hasAirQuality = false;
+		let hasAirParticulate = false;
+		let hasCarbonDioxide = false;
+		let hasVolatileOrganicCompounds = false;
+		let hasPressure = false;
+		let hasMode = false;
 		let channelName: string | null = null;
 		let channelCategory: ChannelCategory | null = null;
 
 		if (channelId) {
-			// Sensor - get capabilities from specific channel
+			// Sensor - get capabilities from specific channel category
 			const channel = device.channels?.find((c) => c.id === channelId);
 			if (channel) {
 				channelName = channel.name ?? null;
 				channelCategory = channel.category;
-				const properties = channel.properties ?? [];
-				hasTemperature = properties.some((p) => p.category === PropertyCategory.TEMPERATURE);
-				hasHumidity = properties.some((p) => p.category === PropertyCategory.HUMIDITY);
+				// Set flag based on channel category
+				hasTemperature = channel.category === ChannelCategory.TEMPERATURE;
+				hasHumidity = channel.category === ChannelCategory.HUMIDITY;
+				hasAirQuality = channel.category === ChannelCategory.AIR_QUALITY;
+				hasAirParticulate = channel.category === ChannelCategory.AIR_PARTICULATE;
+				hasCarbonDioxide = channel.category === ChannelCategory.CARBON_DIOXIDE;
+				hasVolatileOrganicCompounds = channel.category === ChannelCategory.VOLATILE_ORGANIC_COMPOUNDS;
+				hasPressure = channel.category === ChannelCategory.PRESSURE;
 			}
 		} else {
-			// Actuator - aggregate from all channels
+			// Actuator - aggregate from all channel categories
 			for (const channel of device.channels ?? []) {
-				const properties = channel.properties ?? [];
-				if (properties.some((p) => p.category === PropertyCategory.TEMPERATURE)) {
+				if (channel.category === ChannelCategory.TEMPERATURE) {
 					hasTemperature = true;
 				}
-				if (properties.some((p) => p.category === PropertyCategory.HUMIDITY)) {
+				if (channel.category === ChannelCategory.HUMIDITY) {
 					hasHumidity = true;
+				}
+				if (channel.category === ChannelCategory.AIR_QUALITY) {
+					hasAirQuality = true;
+				}
+				if (channel.category === ChannelCategory.AIR_PARTICULATE) {
+					hasAirParticulate = true;
+				}
+				if (channel.category === ChannelCategory.CARBON_DIOXIDE) {
+					hasCarbonDioxide = true;
+				}
+				if (channel.category === ChannelCategory.VOLATILE_ORGANIC_COMPOUNDS) {
+					hasVolatileOrganicCompounds = true;
+				}
+				if (channel.category === ChannelCategory.PRESSURE) {
+					hasPressure = true;
+				}
+				// Check properties for mode capability
+				const properties = channel.properties ?? [];
+				if (properties.some((p) => p.category === PropertyCategory.MODE)) {
+					hasMode = true;
 				}
 			}
 		}
@@ -608,6 +694,12 @@ export class SpaceClimateRoleService {
 			priority,
 			has_temperature: hasTemperature,
 			has_humidity: hasHumidity,
+			has_air_quality: hasAirQuality,
+			has_air_particulate: hasAirParticulate,
+			has_carbon_dioxide: hasCarbonDioxide,
+			has_volatile_organic_compounds: hasVolatileOrganicCompounds,
+			has_pressure: hasPressure,
+			has_mode: hasMode,
 		};
 	}
 }

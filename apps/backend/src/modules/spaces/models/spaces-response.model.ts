@@ -824,7 +824,7 @@ export class ClimateTargetDataModel {
 
 	@ApiProperty({
 		name: 'has_temperature',
-		description: 'Whether this device supports temperature control',
+		description: 'Whether this target is a temperature sensor channel',
 		type: 'boolean',
 		example: true,
 	})
@@ -833,12 +833,66 @@ export class ClimateTargetDataModel {
 
 	@ApiProperty({
 		name: 'has_humidity',
-		description: 'Whether this device supports humidity control',
+		description: 'Whether this target is a humidity sensor channel',
 		type: 'boolean',
 		example: false,
 	})
 	@Expose({ name: 'has_humidity' })
 	hasHumidity: boolean;
+
+	@ApiProperty({
+		name: 'has_air_quality',
+		description: 'Whether this target is an air quality sensor channel',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'has_air_quality' })
+	hasAirQuality: boolean;
+
+	@ApiProperty({
+		name: 'has_air_particulate',
+		description: 'Whether this target is an air particulate (PM2.5/PM10) sensor channel',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'has_air_particulate' })
+	hasAirParticulate: boolean;
+
+	@ApiProperty({
+		name: 'has_carbon_dioxide',
+		description: 'Whether this target is a carbon dioxide (CO2) sensor channel',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'has_carbon_dioxide' })
+	hasCarbonDioxide: boolean;
+
+	@ApiProperty({
+		name: 'has_volatile_organic_compounds',
+		description: 'Whether this target is a volatile organic compounds (VOC) sensor channel',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'has_volatile_organic_compounds' })
+	hasVolatileOrganicCompounds: boolean;
+
+	@ApiProperty({
+		name: 'has_pressure',
+		description: 'Whether this target is an atmospheric pressure sensor channel',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'has_pressure' })
+	hasPressure: boolean;
+
+	@ApiProperty({
+		name: 'has_mode',
+		description: 'Whether this device supports HVAC mode control',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'has_mode' })
+	hasMode: boolean;
 }
 
 /**

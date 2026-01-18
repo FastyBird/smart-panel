@@ -11,6 +11,11 @@ class ClimateTargetModel {
   final int _priority;
   final bool _hasTemperature;
   final bool _hasHumidity;
+  final bool _hasAirQuality;
+  final bool _hasAirParticulate;
+  final bool _hasCarbonDioxide;
+  final bool _hasVolatileOrganicCompounds;
+  final bool _hasPressure;
   final bool _hasMode;
   final SpacesModuleDataClimateTargetRole? _role;
   final String _spaceId;
@@ -24,6 +29,11 @@ class ClimateTargetModel {
     required int priority,
     required bool hasTemperature,
     required bool hasHumidity,
+    required bool hasAirQuality,
+    required bool hasAirParticulate,
+    required bool hasCarbonDioxide,
+    required bool hasVolatileOrganicCompounds,
+    required bool hasPressure,
     required bool hasMode,
     SpacesModuleDataClimateTargetRole? role,
     required String spaceId,
@@ -35,6 +45,11 @@ class ClimateTargetModel {
         _priority = priority,
         _hasTemperature = hasTemperature,
         _hasHumidity = hasHumidity,
+        _hasAirQuality = hasAirQuality,
+        _hasAirParticulate = hasAirParticulate,
+        _hasCarbonDioxide = hasCarbonDioxide,
+        _hasVolatileOrganicCompounds = hasVolatileOrganicCompounds,
+        _hasPressure = hasPressure,
         _hasMode = hasMode,
         _role = role,
         _spaceId = UuidUtils.validateUuid(spaceId);
@@ -54,6 +69,16 @@ class ClimateTargetModel {
   bool get hasTemperature => _hasTemperature;
 
   bool get hasHumidity => _hasHumidity;
+
+  bool get hasAirQuality => _hasAirQuality;
+
+  bool get hasAirParticulate => _hasAirParticulate;
+
+  bool get hasCarbonDioxide => _hasCarbonDioxide;
+
+  bool get hasVolatileOrganicCompounds => _hasVolatileOrganicCompounds;
+
+  bool get hasPressure => _hasPressure;
 
   bool get hasMode => _hasMode;
 
@@ -78,6 +103,11 @@ class ClimateTargetModel {
         other._priority == _priority &&
         other._hasTemperature == _hasTemperature &&
         other._hasHumidity == _hasHumidity &&
+        other._hasAirQuality == _hasAirQuality &&
+        other._hasAirParticulate == _hasAirParticulate &&
+        other._hasCarbonDioxide == _hasCarbonDioxide &&
+        other._hasVolatileOrganicCompounds == _hasVolatileOrganicCompounds &&
+        other._hasPressure == _hasPressure &&
         other._hasMode == _hasMode &&
         other._role == _role &&
         other._spaceId == _spaceId;
@@ -93,6 +123,11 @@ class ClimateTargetModel {
         _priority,
         _hasTemperature,
         _hasHumidity,
+        _hasAirQuality,
+        _hasAirParticulate,
+        _hasCarbonDioxide,
+        _hasVolatileOrganicCompounds,
+        _hasPressure,
         _hasMode,
         _role,
         _spaceId,
@@ -113,6 +148,11 @@ class ClimateTargetModel {
       priority: json['priority'] ?? 0,
       hasTemperature: json['has_temperature'] ?? false,
       hasHumidity: json['has_humidity'] ?? false,
+      hasAirQuality: json['has_air_quality'] ?? false,
+      hasAirParticulate: json['has_air_particulate'] ?? false,
+      hasCarbonDioxide: json['has_carbon_dioxide'] ?? false,
+      hasVolatileOrganicCompounds: json['has_volatile_organic_compounds'] ?? false,
+      hasPressure: json['has_pressure'] ?? false,
       hasMode: json['has_mode'] ?? false,
       role: json['role'] != null
           ? SpacesModuleDataClimateTargetRole.fromJson(json['role'])
