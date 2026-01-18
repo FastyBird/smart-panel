@@ -2770,6 +2770,7 @@ export class SensorReadingDataModel {
 
 	@ApiPropertyOptional({
 		description: 'Current sensor value (type depends on sensor)',
+		oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
 		nullable: true,
 		example: 22.5,
 	})

@@ -19,6 +19,8 @@ import { SpaceCoversRoleService } from '../services/space-covers-role.service';
 import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
 import { SpaceLightingStateService } from '../services/space-lighting-state.service';
+import { SpaceSensorRoleService } from '../services/space-sensor-role.service';
+import { SpaceSensorStateService } from '../services/space-sensor-state.service';
 import { SpaceSuggestionService } from '../services/space-suggestion.service';
 import { SpaceUndoHistoryService } from '../services/space-undo-history.service';
 import { SpacesService } from '../services/spaces.service';
@@ -208,6 +210,41 @@ describe('SpacesController', () => {
 						getCoversTargetsInSpace: jest.fn().mockResolvedValue([]),
 						inferDefaultCoversRoles: jest.fn().mockResolvedValue([]),
 						getRoleMap: jest.fn().mockResolvedValue(new Map()),
+					},
+				},
+				{
+					provide: SpaceSensorRoleService,
+					useValue: {
+						findBySpace: jest.fn().mockResolvedValue([]),
+						findOne: jest.fn().mockResolvedValue(null),
+						setRole: jest.fn().mockResolvedValue({}),
+						bulkSetRoles: jest.fn().mockResolvedValue({
+							success: true,
+							totalCount: 0,
+							successCount: 0,
+							failureCount: 0,
+							results: [],
+						}),
+						deleteRole: jest.fn().mockResolvedValue(undefined),
+						getSensorTargetsInSpace: jest.fn().mockResolvedValue([]),
+						inferDefaultSensorRoles: jest.fn().mockResolvedValue([]),
+						getRoleMap: jest.fn().mockResolvedValue(new Map()),
+					},
+				},
+				{
+					provide: SpaceSensorStateService,
+					useValue: {
+						getSensorState: jest.fn().mockResolvedValue({
+							hasSensors: false,
+							totalSensors: 0,
+							sensorsByRole: {},
+							environment: null,
+							safetyAlerts: [],
+							hasSafetyAlert: false,
+							motionDetected: false,
+							occupancyDetected: false,
+							readings: [],
+						}),
 					},
 				},
 				{
