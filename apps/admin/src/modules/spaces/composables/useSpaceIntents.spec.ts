@@ -224,7 +224,7 @@ describe('useSpaceIntents', () => {
 			);
 		});
 
-		it('should set exact setpoint', async () => {
+		it('should set exact setpoint with heating mode by default', async () => {
 			mockPost.mockResolvedValueOnce(createMockClimateIntentResponse());
 
 			const spaceId = ref<string | undefined>('space-123');
@@ -240,6 +240,28 @@ describe('useSpaceIntents', () => {
 						data: expect.objectContaining({
 							type: 'setpoint_set',
 							heating_setpoint: 21.0,
+						}),
+					}),
+				})
+			);
+		});
+
+		it('should set cooling setpoint when mode is cool', async () => {
+			mockPost.mockResolvedValueOnce(createMockClimateIntentResponse());
+
+			const spaceId = ref<string | undefined>('space-123');
+			const { setSetpoint } = useSpaceIntents(spaceId);
+
+			const result = await setSetpoint(24.0, 'cool');
+
+			expect(result?.success).toBe(true);
+			expect(mockPost).toHaveBeenCalledWith(
+				expect.stringContaining('/intents/climate'),
+				expect.objectContaining({
+					body: expect.objectContaining({
+						data: expect.objectContaining({
+							type: 'setpoint_set',
+							cooling_setpoint: 24.0,
 						}),
 					}),
 				})

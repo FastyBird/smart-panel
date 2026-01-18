@@ -143,7 +143,7 @@ export interface IUseSpaceIntents {
 	// Climate intents
 	executeClimateIntent: (request: IClimateIntentRequest) => Promise<IClimateIntentResult | null>;
 	adjustSetpoint: (delta: SetpointDelta, increase: boolean) => Promise<IClimateIntentResult | null>;
-	setSetpoint: (value: number) => Promise<IClimateIntentResult | null>;
+	setSetpoint: (value: number, mode?: ClimateMode) => Promise<IClimateIntentResult | null>;
 	setClimateMode: (mode: ClimateMode) => Promise<IClimateIntentResult | null>;
 }
 
@@ -333,7 +333,13 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 
 	const adjustSetpoint = (delta: SetpointDelta, increase: boolean) =>
 		executeClimateIntent({ type: 'setpoint_delta', delta, increase });
-	const setSetpoint = (value: number) => executeClimateIntent({ type: 'setpoint_set', heatingSetpoint: value });
+	const setSetpoint = (value: number, mode?: ClimateMode) => {
+		// Use coolingSetpoint for COOL mode, heatingSetpoint for all other modes
+		if (mode === 'cool') {
+			return executeClimateIntent({ type: 'setpoint_set', coolingSetpoint: value });
+		}
+		return executeClimateIntent({ type: 'setpoint_set', heatingSetpoint: value });
+	};
 	const setClimateMode = (mode: ClimateMode) => executeClimateIntent({ type: 'set_mode', mode });
 
 	// Clear state when space changes to prevent stale data from appearing in new space

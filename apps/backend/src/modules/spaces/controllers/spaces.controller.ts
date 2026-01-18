@@ -593,6 +593,8 @@ export class SpacesController {
 		stateData.canSetSetpoint = state.canSetSetpoint;
 		stateData.supportsHeating = state.supportsHeating;
 		stateData.supportsCooling = state.supportsCooling;
+		stateData.isHeating = state.isHeating;
+		stateData.isCooling = state.isCooling;
 		stateData.isMixed = state.isMixed;
 		stateData.devicesCount = state.devicesCount;
 
@@ -1493,6 +1495,8 @@ export class SpacesController {
 		climateState.canSetSetpoint = snapshot.climate.canSetSetpoint;
 		climateState.supportsHeating = snapshot.climate.supportsHeating;
 		climateState.supportsCooling = snapshot.climate.supportsCooling;
+		climateState.isHeating = snapshot.climate.isHeating;
+		climateState.isCooling = snapshot.climate.isCooling;
 		climateState.isMixed = snapshot.climate.isMixed;
 		climateState.devicesCount = snapshot.climate.devicesCount;
 
