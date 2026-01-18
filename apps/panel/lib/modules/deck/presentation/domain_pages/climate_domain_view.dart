@@ -1789,15 +1789,16 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   List<ModeOption<ClimateMode>> _getClimateModeOptions() {
     final modes = <ModeOption<ClimateMode>>[];
 
-    // Auto mode available only when both heating and cooling are supported
-    if (_state.capability == RoomCapability.heaterAndCooler) {
-      modes.add(ModeOption(
-        value: ClimateMode.auto,
-        icon: MdiIcons.thermometerAuto,
-        label: 'Auto',
-        color: ModeSelectorColor.success,
-      ));
-    }
+    // TODO: Auto mode requires dual setpoint dial (heating + cooling setpoints)
+    // Will be implemented in a future release
+    // if (_state.capability == RoomCapability.heaterAndCooler) {
+    //   modes.add(ModeOption(
+    //     value: ClimateMode.auto,
+    //     icon: MdiIcons.thermometerAuto,
+    //     label: 'Auto',
+    //     color: ModeSelectorColor.success,
+    //   ));
+    // }
     if (_state.capability == RoomCapability.heaterOnly ||
         _state.capability == RoomCapability.heaterAndCooler) {
       modes.add(ModeOption(
