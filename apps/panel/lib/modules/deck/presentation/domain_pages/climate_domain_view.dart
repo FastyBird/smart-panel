@@ -524,9 +524,40 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     if (maxSetpoint <= minSetpoint) {
       maxSetpoint = minSetpoint + 1.0;
     }
-    final rawTargetTemp = climateState?.effectiveTargetTemperature ?? 22.0;
 
-    // Use desired setpoint if state is locked
+    // Get the appropriate target temperature based on mode
+    // When mode is locked (user just changed it), use the setpoint for the NEW mode
+    // Otherwise, use effectiveTargetTemperature which is based on backend mode
+    double rawTargetTemp;
+    if (modeIsLocked && climateState != null) {
+      // Use setpoint for the desired mode
+      switch (mode) {
+        case ClimateMode.heat:
+          rawTargetTemp = climateState.heatingSetpoint ?? 22.0;
+          break;
+        case ClimateMode.cool:
+          rawTargetTemp = climateState.coolingSetpoint ?? 22.0;
+          break;
+        case ClimateMode.auto:
+          // For auto, use midpoint or heating setpoint
+          if (climateState.heatingSetpoint != null &&
+              climateState.coolingSetpoint != null) {
+            rawTargetTemp =
+                (climateState.heatingSetpoint! + climateState.coolingSetpoint!) / 2;
+          } else {
+            rawTargetTemp =
+                climateState.heatingSetpoint ?? climateState.coolingSetpoint ?? 22.0;
+          }
+          break;
+        case ClimateMode.off:
+          rawTargetTemp = climateState.effectiveTargetTemperature ?? 22.0;
+          break;
+      }
+    } else {
+      rawTargetTemp = climateState?.effectiveTargetTemperature ?? 22.0;
+    }
+
+    // Use desired setpoint if setpoint state is locked (user changed setpoint)
     double targetTemp;
     if (setpointIsLocked) {
       final desiredSetpoint = _controlStateService.getDesiredValue(

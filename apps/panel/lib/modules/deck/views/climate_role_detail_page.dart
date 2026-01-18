@@ -352,9 +352,6 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
         mode = ClimateMode.off;
       }
 
-      // Clamp target temp to valid setpoint range to avoid UI inconsistencies
-      final rawTargetTemp =
-          climateState.effectiveTargetTemperature ?? _state.targetTemp;
       // Ensure min < max to prevent clamp() ArgumentError and satisfy
       // CircularControlDial assertion (maxValue > minValue requires strict inequality)
       var safeMinSetpoint =
@@ -365,7 +362,41 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
         safeMaxSetpoint = safeMinSetpoint + 1.0;
       }
 
-      // Use desired setpoint if state is locked
+      // Get the appropriate target temperature based on mode
+      // When mode is locked (user just changed it), use the setpoint for the NEW mode
+      // Otherwise, use effectiveTargetTemperature which is based on backend mode
+      final modeIsLocked =
+          _controlStateService.isLocked(ClimateControlConstants.modeChannelId);
+      double rawTargetTemp;
+      if (modeIsLocked) {
+        // Use setpoint for the desired mode
+        switch (mode) {
+          case ClimateMode.heat:
+            rawTargetTemp = climateState.heatingSetpoint ?? _state.targetTemp;
+            break;
+          case ClimateMode.cool:
+            rawTargetTemp = climateState.coolingSetpoint ?? _state.targetTemp;
+            break;
+          case ClimateMode.auto:
+            // For auto, use midpoint or heating setpoint
+            if (climateState.heatingSetpoint != null &&
+                climateState.coolingSetpoint != null) {
+              rawTargetTemp =
+                  (climateState.heatingSetpoint! + climateState.coolingSetpoint!) / 2;
+            } else {
+              rawTargetTemp =
+                  climateState.heatingSetpoint ?? climateState.coolingSetpoint ?? _state.targetTemp;
+            }
+            break;
+          case ClimateMode.off:
+            rawTargetTemp = climateState.effectiveTargetTemperature ?? _state.targetTemp;
+            break;
+        }
+      } else {
+        rawTargetTemp = climateState.effectiveTargetTemperature ?? _state.targetTemp;
+      }
+
+      // Use desired setpoint if setpoint state is locked (user changed setpoint)
       double targetTemp;
       if (_controlStateService.isLocked(ClimateControlConstants.setpointChannelId)) {
         final desiredSetpoint = _controlStateService.getDesiredValue(
