@@ -18,6 +18,7 @@ import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_conditioner.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/heater.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
+import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart'
     as spaces_climate;
@@ -452,7 +453,21 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
 
         if (device is ThermostatDeviceView) {
           isActive = device.isOn;
-          status = device.thermostatMode.name;
+          // Convert thermostat mode to display string
+          switch (device.thermostatMode) {
+            case ThermostatModeValue.off:
+              status = 'Off';
+              break;
+            case ThermostatModeValue.heat:
+              status = isActive ? 'Heating' : 'Standby';
+              break;
+            case ThermostatModeValue.cool:
+              status = isActive ? 'Cooling' : 'Standby';
+              break;
+            case ThermostatModeValue.auto:
+              status = isActive ? 'Active' : 'Standby';
+              break;
+          }
         } else if (device is HeaterDeviceView) {
           isActive = device.isOn;
           status = isActive ? 'Heating' : 'Standby';
