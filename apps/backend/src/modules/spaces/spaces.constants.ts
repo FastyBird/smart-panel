@@ -1650,7 +1650,11 @@ export const VOLUME_DELTA_STEPS: Record<VolumeDelta, number> = {
 /**
  * Media device categories for filtering
  */
-export const MEDIA_DEVICE_CATEGORIES = [DeviceCategory.MEDIA, DeviceCategory.SPEAKER, DeviceCategory.TELEVISION] as const;
+export const MEDIA_DEVICE_CATEGORIES = [
+	DeviceCategory.MEDIA,
+	DeviceCategory.SPEAKER,
+	DeviceCategory.TELEVISION,
+] as const;
 
 /**
  * Media channel categories for filtering

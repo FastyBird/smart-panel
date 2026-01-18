@@ -16,7 +16,13 @@ export { ClimateState, ClimateIntentResult } from './climate-intent.service';
 export { CoversState, CoversIntentResult } from './covers-intent.service';
 export { LightDevice, LightModeSelection, selectLightsForMode } from './lighting-intent.service';
 export { CoverDevice, CoverModeSelection, selectCoversForMode } from './covers-intent.service';
-export { MediaDevice, MediaModeSelection, selectMediaForMode, MediaIntentResult, MediaState } from './media-intent.service';
+export {
+	MediaDevice,
+	MediaModeSelection,
+	selectMediaForMode,
+	MediaIntentResult,
+	MediaState,
+} from './media-intent.service';
 export { IntentExecutionResult } from './space-intent-base.service';
 
 /**

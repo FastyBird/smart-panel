@@ -18,6 +18,12 @@ import {
 } from './dto/covers-role.dto';
 import { CreateSpaceDto, ReqCreateSpaceDto } from './dto/create-space.dto';
 import { LightingIntentDto, ReqLightingIntentDto } from './dto/lighting-intent.dto';
+import {
+	BulkSetLightingRolesDto,
+	ReqBulkSetLightingRolesDto,
+	ReqSetLightingRoleDto,
+	SetLightingRoleDto,
+} from './dto/lighting-role.dto';
 import { MediaIntentDto, ReqMediaIntentDto } from './dto/media-intent.dto';
 import {
 	BulkSetMediaRolesDto,
@@ -57,6 +63,9 @@ import {
 	BulkCoversRolesResultDataModel,
 	BulkLightingRolesResponseModel,
 	BulkLightingRolesResultDataModel,
+	BulkMediaRoleResultItemModel,
+	BulkMediaRolesResponseModel,
+	BulkMediaRolesResultDataModel,
 	BulkSensorRoleResultItemModel,
 	BulkSensorRolesResponseModel,
 	BulkSensorRolesResultDataModel,
@@ -95,6 +104,14 @@ import {
 	LightingRoleResponseModel,
 	LightingRolesResponseModel,
 	LightingSummaryDataModel,
+	MediaIntentResponseModel,
+	MediaIntentResultDataModel,
+	MediaRoleResponseModel,
+	// Media response models
+	MediaStateDataModel,
+	MediaStateResponseModel,
+	MediaTargetDataModel,
+	MediaTargetsResponseModel,
 	ProposedSpaceDataModel,
 	ProposedSpacesResponseModel,
 	QuickActionDataModel,
@@ -117,17 +134,6 @@ import {
 	UndoResultResponseModel,
 	UndoStateDataModel,
 	UndoStateResponseModel,
-	// Media response models
-	MediaStateDataModel,
-	MediaStateResponseModel,
-	MediaIntentResultDataModel,
-	MediaIntentResponseModel,
-	MediaTargetDataModel,
-	MediaTargetsResponseModel,
-	MediaRoleResponseModel,
-	BulkMediaRoleResultItemModel,
-	BulkMediaRolesResultDataModel,
-	BulkMediaRolesResponseModel,
 } from './models/spaces-response.model';
 
 export const SPACES_SWAGGER_EXTRA_MODELS = [

@@ -378,9 +378,7 @@ export class SpaceMediaStateService {
 				// Check if device matches rule
 				const onMatches = device.isOn === rule.on;
 				const volumeMatches =
-					rule.volume === null ||
-					device.volume === null ||
-					Math.abs((device.volume ?? 0) - rule.volume) <= 5; // Allow 5% tolerance
+					rule.volume === null || device.volume === null || Math.abs((device.volume ?? 0) - rule.volume) <= 5; // Allow 5% tolerance
 				const muteMatches = device.isMuted === rule.muted;
 
 				if (onMatches && volumeMatches && muteMatches) {

@@ -60,14 +60,14 @@ export class MediaIntentDto {
 	delta?: VolumeDelta;
 
 	@ApiPropertyOptional({
-		description:
-			'Direction of volume change (true = increase, false = decrease). Required when type is VOLUME_DELTA',
+		description: 'Direction of volume change (true = increase, false = decrease). Required when type is VOLUME_DELTA',
 		type: 'boolean',
 		example: true,
 	})
 	@Expose()
 	@ValidateIf((o: MediaIntentDto) => o.type === MediaIntentType.VOLUME_DELTA)
 	@IsDefined({ message: '[{"field":"increase","reason":"Increase direction is required for volume delta."}]' })
+	@IsBoolean({ message: '[{"field":"increase","reason":"Increase must be a boolean."}]' })
 	increase?: boolean;
 
 	// Role-specific intent parameters

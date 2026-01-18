@@ -85,12 +85,13 @@ export function selectMediaForMode(devices: MediaDevice[], mode: MediaMode): Med
 	// Apply role-based rules
 	for (const media of devices) {
 		let rule: MediaRoleVolumeRule;
-		const isFallback = false;
+		let isFallback = false;
 
 		if (media.role === null) {
 			// Device has no role assigned - apply same rule as SECONDARY or turn off
 			const secondaryRule = modeConfig[MediaRole.SECONDARY];
 			rule = secondaryRule ?? { on: false, volume: null, muted: false };
+			isFallback = true; // Treat unconfigured devices as fallback
 		} else if (media.role === MediaRole.HIDDEN) {
 			// Hidden devices are never controlled
 			continue;
@@ -379,9 +380,10 @@ export class MediaIntentService extends SpaceIntentBaseService {
 
 		const overallSuccess = failedDevices === 0 || affectedDevices > 0;
 
-		// Store last applied mode
+		// Store last applied mode in both local cache and state service
 		if (overallSuccess) {
 			this.lastAppliedModes.set(spaceId, { mode, timestamp: new Date() });
+			this.mediaStateService.setLastAppliedMode(spaceId, mode);
 		}
 
 		this.logger.debug(
@@ -480,8 +482,7 @@ export class MediaIntentService extends SpaceIntentBaseService {
 				}
 
 				// Find optional properties
-				const volumeProperty =
-					mediaChannel.properties?.find((p) => p.category === PropertyCategory.VOLUME) ?? null;
+				const volumeProperty = mediaChannel.properties?.find((p) => p.category === PropertyCategory.VOLUME) ?? null;
 				const muteProperty = mediaChannel.properties?.find((p) => p.category === PropertyCategory.MUTE) ?? null;
 
 				// Get role assignment for this device (keyed by deviceId:channelId)
@@ -627,11 +628,7 @@ export class MediaIntentService extends SpaceIntentBaseService {
 	/**
 	 * Build commands for a volume delta adjustment.
 	 */
-	private buildVolumeDeltaCommands(
-		device: MediaDevice,
-		delta: VolumeDelta,
-		increase: boolean,
-	): IDevicePropertyData[] {
+	private buildVolumeDeltaCommands(device: MediaDevice, delta: VolumeDelta, increase: boolean): IDevicePropertyData[] {
 		const commands: IDevicePropertyData[] = [];
 
 		// If device doesn't support volume, just ignore (no-op)

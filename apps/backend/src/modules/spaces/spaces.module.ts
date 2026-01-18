@@ -36,11 +36,11 @@ import { SpaceContextSnapshotService } from './services/space-context-snapshot.s
 import { SpaceCoversRoleService } from './services/space-covers-role.service';
 import { SpaceCoversStateService } from './services/space-covers-state.service';
 import { SpaceIntentBaseService } from './services/space-intent-base.service';
-import { SpaceMediaRoleService } from './services/space-media-role.service';
-import { SpaceMediaStateService } from './services/space-media-state.service';
 import { SpaceIntentService } from './services/space-intent.service';
 import { SpaceLightingRoleService } from './services/space-lighting-role.service';
 import { SpaceLightingStateService } from './services/space-lighting-state.service';
+import { SpaceMediaRoleService } from './services/space-media-role.service';
+import { SpaceMediaStateService } from './services/space-media-state.service';
 import { SpaceSensorRoleService } from './services/space-sensor-role.service';
 import { SpaceSensorStateService } from './services/space-sensor-state.service';
 import { SpaceSuggestionService } from './services/space-suggestion.service';
