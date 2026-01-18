@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:fastybird_smart_panel/app/locator.dart';
@@ -9,63 +10,27 @@ import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_power_button.dart';
+import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
+import 'package:fastybird_smart_panel/modules/devices/utils/fan_utils.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/fan.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
+import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-enum FanMode { low, medium, high, auto }
-
-class FanDeviceState {
-  final bool isOn;
-  final double speed;
-  final FanMode mode;
-  final bool oscillation;
-  final bool reverseDirection;
-  final bool naturalBreeze;
-  final Duration? timer;
-
-  const FanDeviceState({
-    this.isOn = false,
-    this.speed = 0.0,
-    this.mode = FanMode.medium,
-    this.oscillation = false,
-    this.reverseDirection = false,
-    this.naturalBreeze = false,
-    this.timer,
-  });
-
-  FanDeviceState copyWith({
-    bool? isOn,
-    double? speed,
-    FanMode? mode,
-    bool? oscillation,
-    bool? reverseDirection,
-    bool? naturalBreeze,
-    Duration? timer,
-  }) {
-    return FanDeviceState(
-      isOn: isOn ?? this.isOn,
-      speed: speed ?? this.speed,
-      mode: mode ?? this.mode,
-      oscillation: oscillation ?? this.oscillation,
-      reverseDirection: reverseDirection ?? this.reverseDirection,
-      naturalBreeze: naturalBreeze ?? this.naturalBreeze,
-      timer: timer ?? this.timer,
-    );
-  }
-}
-
 class FanDeviceDetail extends StatefulWidget {
-  final String name;
-  final FanDeviceState initialState;
+  final FanDeviceView _device;
   final VoidCallback? onBack;
 
   const FanDeviceDetail({
     super.key,
-    required this.name,
-    required this.initialState,
+    required FanDeviceView device,
     this.onBack,
-  });
+  }) : _device = device;
 
   @override
   State<FanDeviceDetail> createState() => _FanDeviceDetailState();
@@ -75,17 +40,149 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
+  final DevicesService _devicesService = locator<DevicesService>();
+  DeviceControlStateService? _deviceControlStateService;
 
-  late FanDeviceState _state;
+  // Debounce timer for speed slider
+  Timer? _speedDebounceTimer;
+  static const _speedDebounceDuration = Duration(milliseconds: 300);
 
   @override
   void initState() {
     super.initState();
-    _state = widget.initialState;
+    _devicesService.addListener(_onDeviceChanged);
+
+    try {
+      _deviceControlStateService = locator<DeviceControlStateService>();
+      _deviceControlStateService?.addListener(_onControlStateChanged);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[FanDeviceDetail] Failed to get DeviceControlStateService: $e');
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _speedDebounceTimer?.cancel();
+    _devicesService.removeListener(_onDeviceChanged);
+    _deviceControlStateService?.removeListener(_onControlStateChanged);
+    super.dispose();
+  }
+
+  void _onDeviceChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _onControlStateChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  FanDeviceView get _device {
+    final updated = _devicesService.getDevice(widget._device.id);
+    if (updated is FanDeviceView) {
+      return updated;
+    }
+    return widget._device;
+  }
+
+  void _setPropertyValue(ChannelPropertyView? property, dynamic value) {
+    if (property == null) return;
+
+    _devicesService.setPropertyValue(property.id, value);
+  }
+
+  double get _speed {
+    final fanChannel = _device.fanChannel;
+    final speedProp = fanChannel.speedProp;
+
+    // Fall back to actual device value if no speed property
+    if (!fanChannel.hasSpeed || speedProp == null) return 0.0;
+
+    // Check for pending optimistic state first
+    final controlState = _deviceControlStateService;
+    double actualSpeed = fanChannel.speed;
+
+    if (controlState != null &&
+        controlState.isLocked(_device.id, fanChannel.id, speedProp.id)) {
+      final desiredValue = controlState.getDesiredValue(
+        _device.id,
+        fanChannel.id,
+        speedProp.id,
+      );
+      if (desiredValue is num) {
+        actualSpeed = desiredValue.toDouble();
+      }
+    }
+
+    // Normalize to 0-1 range
+    final range = fanChannel.maxSpeed - fanChannel.minSpeed;
+    if (range <= 0) return 0.0;
+    return (actualSpeed - fanChannel.minSpeed) / range;
+  }
+
+  void _setSpeedValue(double normalizedSpeed) {
+    final fanChannel = _device.fanChannel;
+    final speedProp = fanChannel.speedProp;
+    if (!fanChannel.hasSpeed || !fanChannel.isSpeedNumeric || speedProp == null) return;
+
+    // Convert normalized (0-1) to actual range
+    final range = fanChannel.maxSpeed - fanChannel.minSpeed;
+    final rawSpeed = fanChannel.minSpeed + (normalizedSpeed * range);
+
+    // Round to step value
+    final step = fanChannel.speedStep;
+    final steppedSpeed = (rawSpeed / step).round() * step;
+
+    // Clamp to valid range
+    final actualSpeed = steppedSpeed.clamp(fanChannel.minSpeed, fanChannel.maxSpeed);
+
+    // Set PENDING state immediately for responsive UI
+    _deviceControlStateService?.setPending(
+      _device.id,
+      fanChannel.id,
+      speedProp.id,
+      actualSpeed,
+    );
+    setState(() {});
+
+    // Cancel any pending debounce timer
+    _speedDebounceTimer?.cancel();
+
+    // Debounce the API call to avoid flooding backend
+    _speedDebounceTimer = Timer(_speedDebounceDuration, () async {
+      if (!mounted) return;
+
+      _setPropertyValue(speedProp, actualSpeed);
+
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          fanChannel.id,
+          speedProp.id,
+        );
+      }
+    });
+  }
+
+  void _setSpeedLevel(FanSpeedLevelValue level) {
+    final fanChannel = _device.fanChannel;
+    if (!fanChannel.hasSpeed || !fanChannel.isSpeedEnum) return;
+    _setPropertyValue(fanChannel.speedProp, level.value);
   }
 
   double _scale(double value) =>
       _screenService.scale(value, density: _visualDensityService.density);
+
+  String _getModeLabel(AppLocalizations localizations) {
+    final mode = _device.fanChannel.mode;
+    if (mode == null) return localizations.fan_mode_auto;
+    return FanUtils.getModeLabel(localizations, mode);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -113,18 +210,30 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
   }
 
   Widget _buildHeader(BuildContext context, bool isDark) {
+    final localizations = AppLocalizations.of(context)!;
     final fanColor = DeviceColors.fan(isDark);
     final secondaryColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
     final mutedColor =
         isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled;
 
+    String subtitle;
+    if (_device.isOn) {
+      if (_device.fanChannel.hasMode) {
+        subtitle = _getModeLabel(localizations);
+      } else if (_device.fanChannel.hasSpeed && _device.fanChannel.isSpeedNumeric) {
+        subtitle = '${(_speed * 100).toInt()}%';
+      } else {
+        subtitle = localizations.on_state_on;
+      }
+    } else {
+      subtitle = localizations.on_state_off;
+    }
+
     return PageHeader(
-      title: widget.name,
-      subtitle: _state.isOn
-          ? 'Speed ${(_state.speed * 100).toInt()}%'
-          : 'Off',
-      subtitleColor: _state.isOn ? fanColor : secondaryColor,
+      title: _device.name,
+      subtitle: subtitle,
+      subtitleColor: _device.isOn ? fanColor : secondaryColor,
       backgroundColor: AppColors.blank,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
@@ -138,7 +247,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
             width: _scale(44),
             height: _scale(44),
             decoration: BoxDecoration(
-              color: _state.isOn
+              color: _device.isOn
                   ? DeviceColors.fanLight9(isDark)
                   : (isDark
                       ? AppFillColorDark.darker
@@ -147,7 +256,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
             ),
             child: Icon(
               Icons.wind_power,
-              color: _state.isOn ? fanColor : mutedColor,
+              color: _device.isOn ? fanColor : mutedColor,
               size: _scale(24),
             ),
           ),
@@ -157,6 +266,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
   }
 
   Widget _buildLandscape(BuildContext context, bool isDark) {
+    final localizations = AppLocalizations.of(context)!;
     final fanColor = DeviceColors.fan(isDark);
     final borderColor =
         isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
@@ -172,7 +282,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
             flex: 1,
             child: Padding(
               padding: AppSpacings.paddingLg,
-              child: _buildControlCard(isDark, fanColor),
+              child: _buildControlCard(context, isDark, fanColor),
             ),
           ),
           Container(width: _scale(1), color: borderColor),
@@ -185,15 +295,9 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SpeedSlider(
-                      value: _state.speed,
-                      activeColor: fanColor,
-                      enabled: _state.isOn,
-                      onChanged: (v) =>
-                          setState(() => _state = _state.copyWith(speed: v)),
-                    ),
+                    _buildSpeedControl(localizations, isDark, fanColor, false),
                     AppSpacings.spacingMdVertical,
-                    _buildOptions(isDark),
+                    _buildOptions(context, isDark),
                   ],
                 ),
               ),
@@ -203,7 +307,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
       );
     }
 
-    // Small/medium: compact layout with stretch (like climate domain)
+    // Small/medium: compact layout with stretch
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -224,21 +328,8 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ValueSelectorRow<double>(
-                    currentValue: _state.speed,
-                    label: 'Fan Speed',
-                    icon: Icons.speed,
-                    sheetTitle: 'Fan Speed',
-                    activeColor: fanColor,
-                    options: _getSpeedOptions(),
-                    displayFormatter: _formatSpeed,
-                    isActiveValue: (v) => v != null && v > 0,
-                    columns: 3,
-                    layout: ValueSelectorRowLayout.compact,
-                    onChanged: (v) =>
-                        setState(() => _state = _state.copyWith(speed: v ?? 0)),
-                  ),
-                  _buildOptions(isDark),
+                  _buildSpeedControl(localizations, isDark, fanColor, true),
+                  _buildOptions(context, isDark),
                 ],
               ),
             ),
@@ -249,30 +340,25 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
   }
 
   Widget _buildPortrait(BuildContext context, bool isDark) {
+    final localizations = AppLocalizations.of(context)!;
     final fanColor = DeviceColors.fan(isDark);
 
     return SingleChildScrollView(
       padding: AppSpacings.paddingMd,
       child: Column(
         children: [
-          _buildControlCard(isDark, fanColor),
+          _buildControlCard(context, isDark, fanColor),
           AppSpacings.spacingMdVertical,
-          SpeedSlider(
-            value: _state.speed,
-            activeColor: fanColor,
-            enabled: _state.isOn,
-            onChanged: (v) =>
-                setState(() => _state = _state.copyWith(speed: v)),
-          ),
+          _buildSpeedControl(localizations, isDark, fanColor, false),
           AppSpacings.spacingMdVertical,
-          _buildOptions(isDark),
+          _buildOptions(context, isDark),
         ],
       ),
     );
   }
 
-  Widget _buildControlCard(bool isDark, Color fanColor) {
-    // Use lighter bg in dark mode for better contrast with button
+  Widget _buildControlCard(BuildContext context, bool isDark, Color fanColor) {
+    final localizations = AppLocalizations.of(context)!;
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
     final borderColor = DeviceColors.fanLight7(isDark);
@@ -287,28 +373,47 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
       child: Column(
         children: [
           DevicePowerButton(
-            isOn: _state.isOn,
+            isOn: _device.isOn,
             activeColor: fanColor,
             activeBgColor: DeviceColors.fanLight9(isDark),
             glowColor: DeviceColors.fanLight5(isDark),
             showInfoText: false,
-            onTap: () => setState(() => _state = _state.copyWith(
-              isOn: !_state.isOn,
-              speed: _state.isOn ? 0 : 0.6,
-            )),
+            onTap: () => _setPropertyValue(
+              _device.fanChannel.onProp,
+              !_device.isOn,
+            ),
           ),
-          AppSpacings.spacingLgVertical,
-          _buildModeSelector(isDark, fanColor),
+          if (_device.fanChannel.hasMode &&
+              _device.fanChannel.availableModes.isNotEmpty) ...[
+            AppSpacings.spacingLgVertical,
+            _buildModeSelector(localizations, isDark, fanColor),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildModeSelector(bool isDark, Color activeColor) {
-    return ModeSelector<FanMode>(
-      modes: _getFanModeOptions(),
-      selectedValue: _state.mode,
-      onChanged: (mode) => setState(() => _state = _state.copyWith(mode: mode)),
+  Widget _buildModeSelector(
+    AppLocalizations localizations,
+    bool isDark,
+    Color activeColor,
+  ) {
+    final fanChannel = _device.fanChannel;
+    if (!fanChannel.hasMode) {
+      return const SizedBox.shrink();
+    }
+
+    final availableModes = fanChannel.availableModes;
+    if (availableModes.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final selectedMode = fanChannel.mode ?? availableModes.first;
+
+    return ModeSelector<FanModeValue>(
+      modes: _getFanModeOptions(localizations),
+      selectedValue: selectedMode,
+      onChanged: (mode) => _setPropertyValue(fanChannel.modeProp, mode.value),
       orientation: ModeSelectorOrientation.horizontal,
       iconPlacement: ModeSelectorIconPlacement.left,
       color: ModeSelectorColor.info,
@@ -316,56 +421,115 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     );
   }
 
-  List<ModeOption<FanMode>> _getFanModeOptions() {
-    return [
-      ModeOption(value: FanMode.low, icon: Icons.air, label: 'Low'),
-      ModeOption(value: FanMode.medium, icon: Icons.waves, label: 'Medium'),
-      ModeOption(value: FanMode.high, icon: Icons.storm, label: 'High'),
-      ModeOption(value: FanMode.auto, icon: Icons.auto_mode, label: 'Auto'),
-    ];
+  List<ModeOption<FanModeValue>> _getFanModeOptions(AppLocalizations localizations) {
+    final fanChannel = _device.fanChannel;
+    final availableModes = fanChannel.availableModes;
+
+    return availableModes.map((mode) {
+      return ModeOption(
+        value: mode,
+        icon: FanUtils.getModeIcon(mode),
+        label: FanUtils.getModeLabel(localizations, mode),
+      );
+    }).toList();
   }
 
-  List<ValueOption<Duration?>> _getTimerOptions() {
-    return [
-      ValueOption(value: null, label: 'Off'),
-      ValueOption(value: const Duration(minutes: 30), label: '30m'),
-      ValueOption(value: const Duration(hours: 1), label: '1h'),
-      ValueOption(value: const Duration(hours: 2), label: '2h'),
-      ValueOption(value: const Duration(hours: 4), label: '4h'),
-      ValueOption(value: const Duration(hours: 6), label: '6h'),
-      ValueOption(value: const Duration(hours: 8), label: '8h'),
-      ValueOption(value: const Duration(hours: 12), label: '12h'),
-    ];
+  Widget _buildSpeedControl(
+    AppLocalizations localizations,
+    bool isDark,
+    Color fanColor,
+    bool useVerticalLayout,
+  ) {
+    final fanChannel = _device.fanChannel;
+
+    if (!fanChannel.hasSpeed) {
+      return const SizedBox.shrink();
+    }
+
+    if (fanChannel.isSpeedEnum) {
+      // Enum-based speed
+      final availableLevels = fanChannel.availableSpeedLevels;
+      if (availableLevels.isEmpty) return const SizedBox.shrink();
+
+      final options = availableLevels.map((level) {
+        return ValueOption(
+          value: level,
+          label: FanUtils.getSpeedLevelLabel(localizations, level),
+        );
+      }).toList();
+
+      return ValueSelectorRow<FanSpeedLevelValue>(
+        currentValue: fanChannel.speedLevel,
+        label: 'Fan Speed',
+        icon: Icons.speed,
+        sheetTitle: 'Fan Speed',
+        activeColor: fanColor,
+        options: options,
+        displayFormatter: (level) => level != null
+            ? FanUtils.getSpeedLevelLabel(localizations, level)
+            : localizations.fan_speed_off,
+        isActiveValue: (level) => level != null && level != FanSpeedLevelValue.off,
+        columns: availableLevels.length > 4 ? 3 : availableLevels.length,
+        layout: useVerticalLayout
+            ? ValueSelectorRowLayout.compact
+            : ValueSelectorRowLayout.horizontal,
+        onChanged: _device.isOn
+            ? (level) {
+                if (level != null) _setSpeedLevel(level);
+              }
+            : null,
+      );
+    } else {
+      // Numeric speed (0-100%)
+      if (useVerticalLayout) {
+        return ValueSelectorRow<double>(
+          currentValue: _speed,
+          label: 'Fan Speed',
+          icon: Icons.speed,
+          sheetTitle: 'Fan Speed',
+          activeColor: fanColor,
+          options: _getSpeedOptions(localizations),
+          displayFormatter: (v) => _formatSpeed(localizations, v),
+          isActiveValue: (v) => v != null && v > 0,
+          columns: 4,
+          layout: ValueSelectorRowLayout.compact,
+          onChanged: _device.isOn ? (v) => _setSpeedValue(v ?? 0) : null,
+        );
+      } else {
+        return SpeedSlider(
+          value: _speed,
+          activeColor: fanColor,
+          enabled: _device.isOn,
+          steps: [
+            localizations.fan_speed_off,
+            localizations.fan_speed_low,
+            localizations.fan_speed_medium,
+            localizations.fan_speed_high,
+          ],
+          onChanged: _setSpeedValue,
+        );
+      }
+    }
   }
 
-  List<ValueOption<double>> _getSpeedOptions() {
+  List<ValueOption<double>> _getSpeedOptions(AppLocalizations localizations) {
     return [
-      ValueOption(value: 0.0, label: 'Off'),
-      ValueOption(value: 0.2, label: '20%'),
-      ValueOption(value: 0.4, label: '40%'),
-      ValueOption(value: 0.6, label: '60%'),
-      ValueOption(value: 0.8, label: '80%'),
+      ValueOption(value: 0.0, label: localizations.fan_speed_off),
+      ValueOption(value: 0.25, label: '25%'),
+      ValueOption(value: 0.5, label: '50%'),
+      ValueOption(value: 0.75, label: '75%'),
       ValueOption(value: 1.0, label: '100%'),
     ];
   }
 
-  String _formatSpeed(double? speed) {
-    if (speed == null || speed == 0) return 'Off';
+  String _formatSpeed(AppLocalizations localizations, double? speed) {
+    if (speed == null || speed == 0) return localizations.fan_speed_off;
     return '${(speed * 100).toInt()}%';
   }
 
-  String _formatDuration(Duration? d) {
-    if (d == null) return 'Off';
-    final hours = d.inHours;
-    final minutes = d.inMinutes % 60;
-    if (hours > 0 && minutes > 0) return '${hours}h ${minutes}m';
-    if (hours > 0) return '${hours}h';
-    return '${minutes}m';
-  }
-
-  /// Compact control card with vertical icon-only mode selector on the right
   Widget _buildCompactControlCard(
       BuildContext context, bool isDark, Color fanColor) {
+    final localizations = AppLocalizations.of(context)!;
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
     final borderColor = DeviceColors.fanLight7(isDark);
@@ -379,14 +543,12 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          // Calculate in design units (unscaled) since DevicePowerButton scales internally
           final modeIconsWidth = 50.0;
-          final spacing = 24.0; // AppSpacings.pXl equivalent
-          // Convert constraints to design units by dividing by scale factor
-          final scaleFactor = _screenService.scale(1.0, density: _visualDensityService.density);
+          final spacing = 24.0;
+          final scaleFactor =
+              _screenService.scale(1.0, density: _visualDensityService.density);
           final availableWidth = constraints.maxWidth / scaleFactor;
           final availableForButton = availableWidth - modeIconsWidth - spacing;
-          // Use available width as fallback when height is infinite
           final availableHeight = constraints.maxHeight.isFinite
               ? constraints.maxHeight / scaleFactor
               : availableForButton;
@@ -397,28 +559,34 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               DevicePowerButton(
-                isOn: _state.isOn,
+                isOn: _device.isOn,
                 activeColor: fanColor,
                 activeBgColor: DeviceColors.fanLight9(isDark),
                 glowColor: DeviceColors.fanLight5(isDark),
                 showInfoText: false,
                 size: buttonSize,
-                onTap: () => setState(() => _state = _state.copyWith(
-                      isOn: !_state.isOn,
-                      speed: _state.isOn ? 0 : 0.6,
-                    )),
+                onTap: () => _setPropertyValue(
+                  _device.fanChannel.onProp,
+                  !_device.isOn,
+                ),
               ),
-              AppSpacings.spacingXlHorizontal,
-              ModeSelector<FanMode>(
-                modes: _getFanModeOptions(),
-                selectedValue: _state.mode,
-                onChanged: (mode) =>
-                    setState(() => _state = _state.copyWith(mode: mode)),
-                orientation: ModeSelectorOrientation.vertical,
-                showLabels: false,
-                color: ModeSelectorColor.info,
-                scrollable: true,
-              ),
+              if (_device.fanChannel.hasMode &&
+                  _device.fanChannel.availableModes.isNotEmpty) ...[
+                AppSpacings.spacingXlHorizontal,
+                ModeSelector<FanModeValue>(
+                  modes: _getFanModeOptions(localizations),
+                  selectedValue:
+                      _device.fanChannel.mode ?? _device.fanChannel.availableModes.first,
+                  onChanged: (mode) => _setPropertyValue(
+                    _device.fanChannel.modeProp,
+                    mode.value,
+                  ),
+                  orientation: ModeSelectorOrientation.vertical,
+                  showLabels: false,
+                  color: ModeSelectorColor.info,
+                  scrollable: true,
+                ),
+              ],
             ],
           );
         },
@@ -426,71 +594,206 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     );
   }
 
-  Widget _buildOptions(bool isDark) {
+  Widget _buildOptions(BuildContext context, bool isDark) {
+    final localizations = AppLocalizations.of(context)!;
     final fanColor = DeviceColors.fan(isDark);
+    final fanChannel = _device.fanChannel;
     final useCompactLayout = _screenService.isLandscape &&
         (_screenService.isSmallScreen || _screenService.isMediumScreen);
 
+    final options = <Widget>[];
+
+    // Oscillation / Swing
+    if (fanChannel.hasSwing) {
+      options.add(UniversalTile(
+        layout: TileLayout.horizontal,
+        icon: Icons.sync,
+        name: 'Oscillation',
+        status: fanChannel.swing
+            ? localizations.on_state_on
+            : localizations.on_state_off,
+        isActive: fanChannel.swing,
+        activeColor: fanColor,
+        onTileTap: () => _setPropertyValue(fanChannel.swingProp, !fanChannel.swing),
+        showGlow: false,
+        showDoubleBorder: false,
+        showInactiveBorder: true,
+      ));
+      options.add(AppSpacings.spacingSmVertical);
+    }
+
+    // Direction (reverse)
+    if (fanChannel.hasDirection) {
+      final isReversed = fanChannel.direction == FanDirectionValue.counterClockwise;
+      options.add(UniversalTile(
+        layout: TileLayout.horizontal,
+        icon: Icons.swap_vert,
+        name: 'Direction',
+        status: fanChannel.direction != null
+            ? FanUtils.getDirectionLabel(localizations, fanChannel.direction!)
+            : localizations.fan_direction_clockwise,
+        isActive: isReversed,
+        activeColor: fanColor,
+        onTileTap: () {
+          final newDirection = isReversed
+              ? FanDirectionValue.clockwise
+              : FanDirectionValue.counterClockwise;
+          _setPropertyValue(fanChannel.directionProp, newDirection.value);
+        },
+        showGlow: false,
+        showDoubleBorder: false,
+        showInactiveBorder: true,
+      ));
+      options.add(AppSpacings.spacingSmVertical);
+    }
+
+    // Child Lock
+    if (fanChannel.hasLocked) {
+      options.add(UniversalTile(
+        layout: TileLayout.horizontal,
+        icon: Icons.lock,
+        name: 'Child Lock',
+        status: fanChannel.locked
+            ? localizations.thermostat_lock_locked
+            : localizations.thermostat_lock_unlocked,
+        isActive: fanChannel.locked,
+        activeColor: fanColor,
+        onTileTap: () => _setPropertyValue(fanChannel.lockedProp, !fanChannel.locked),
+        showGlow: false,
+        showDoubleBorder: false,
+        showInactiveBorder: true,
+      ));
+      options.add(AppSpacings.spacingSmVertical);
+    }
+
+    // Timer
+    if (fanChannel.hasTimer) {
+      options.add(_buildTimerControl(localizations, fanColor, useCompactLayout));
+    }
+
+    if (options.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // Remove trailing spacer
+    if (options.isNotEmpty && options.last == AppSpacings.spacingSmVertical) {
+      options.removeLast();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        UniversalTile(
-          layout: TileLayout.horizontal,
-          icon: Icons.sync,
-          name: 'Oscillation',
-          status: _state.oscillation ? 'On' : 'Off',
-          isActive: _state.oscillation,
-          activeColor: fanColor,
-          onTileTap: () =>
-              setState(() => _state = _state.copyWith(oscillation: !_state.oscillation)),
-          showGlow: false,
-          showDoubleBorder: false,
-          showInactiveBorder: true,
-        ),
-        AppSpacings.spacingSmVertical,
-        UniversalTile(
-          layout: TileLayout.horizontal,
-          icon: Icons.swap_vert,
-          name: 'Reverse',
-          status: _state.reverseDirection ? 'On' : 'Off',
-          isActive: _state.reverseDirection,
-          activeColor: fanColor,
-          onTileTap: () =>
-              setState(() => _state = _state.copyWith(reverseDirection: !_state.reverseDirection)),
-          showGlow: false,
-          showDoubleBorder: false,
-          showInactiveBorder: true,
-        ),
-        AppSpacings.spacingSmVertical,
-        UniversalTile(
-          layout: TileLayout.horizontal,
-          icon: Icons.park,
-          name: 'Natural Breeze',
-          status: _state.naturalBreeze ? 'On' : 'Off',
-          isActive: _state.naturalBreeze,
-          activeColor: fanColor,
-          onTileTap: () =>
-              setState(() => _state = _state.copyWith(naturalBreeze: !_state.naturalBreeze)),
-          showGlow: false,
-          showDoubleBorder: false,
-          showInactiveBorder: true,
-        ),
-        AppSpacings.spacingSmVertical,
-        ValueSelectorRow<Duration?>(
-          currentValue: _state.timer,
-          label: 'Timer',
-          icon: Icons.timer_outlined,
-          sheetTitle: 'Auto-Off Timer',
-          activeColor: fanColor,
-          options: _getTimerOptions(),
-          displayFormatter: _formatDuration,
-          isActiveValue: (d) => d != null,
-          layout: useCompactLayout
-              ? ValueSelectorRowLayout.compact
-              : ValueSelectorRowLayout.horizontal,
-          onChanged: (d) => setState(() => _state = _state.copyWith(timer: d)),
-        ),
-      ],
+      children: options,
     );
+  }
+
+  Widget _buildTimerControl(
+    AppLocalizations localizations,
+    Color fanColor,
+    bool useCompactLayout,
+  ) {
+    final fanChannel = _device.fanChannel;
+
+    if (fanChannel.isTimerEnum) {
+      final options = _getTimerPresetOptions(localizations);
+      if (options.isEmpty) return const SizedBox.shrink();
+
+      return ValueSelectorRow<FanTimerPresetValue?>(
+        currentValue: fanChannel.timerPreset,
+        label: 'Timer',
+        icon: Icons.timer_outlined,
+        sheetTitle: 'Auto-Off Timer',
+        activeColor: fanColor,
+        options: options,
+        displayFormatter: (p) => _formatTimerPreset(localizations, p),
+        isActiveValue: (preset) =>
+            preset != null && preset != FanTimerPresetValue.off,
+        columns: options.length > 4 ? 4 : options.length,
+        layout: useCompactLayout
+            ? ValueSelectorRowLayout.compact
+            : ValueSelectorRowLayout.horizontal,
+        onChanged: (preset) {
+          if (preset != null) {
+            _setPropertyValue(fanChannel.timerProp, preset.value);
+          }
+        },
+      );
+    } else {
+      final options = _getNumericTimerOptions(localizations);
+      if (options.isEmpty) return const SizedBox.shrink();
+
+      return ValueSelectorRow<int>(
+        currentValue: fanChannel.timer,
+        label: 'Timer',
+        icon: Icons.timer_outlined,
+        sheetTitle: 'Auto-Off Timer',
+        activeColor: fanColor,
+        options: options,
+        displayFormatter: (m) => _formatNumericTimer(localizations, m),
+        isActiveValue: (minutes) => minutes != null && minutes > 0,
+        columns: options.length > 4 ? 4 : options.length,
+        layout: useCompactLayout
+            ? ValueSelectorRowLayout.compact
+            : ValueSelectorRowLayout.horizontal,
+        onChanged: (minutes) {
+          if (minutes != null) {
+            _setPropertyValue(fanChannel.timerProp, minutes);
+          }
+        },
+      );
+    }
+  }
+
+  List<ValueOption<FanTimerPresetValue?>> _getTimerPresetOptions(
+    AppLocalizations localizations,
+  ) {
+    final fanChannel = _device.fanChannel;
+    final availablePresets = fanChannel.availableTimerPresets;
+
+    if (availablePresets.isEmpty) {
+      return [];
+    }
+
+    return availablePresets.map((preset) {
+      return ValueOption(
+        value: preset,
+        label: FanUtils.getTimerPresetLabel(localizations, preset),
+      );
+    }).toList();
+  }
+
+  String _formatTimerPreset(
+    AppLocalizations localizations,
+    FanTimerPresetValue? preset,
+  ) {
+    if (preset == null || preset == FanTimerPresetValue.off) {
+      return localizations.fan_timer_off;
+    }
+    return FanUtils.getTimerPresetLabel(localizations, preset);
+  }
+
+  List<ValueOption<int>> _getNumericTimerOptions(AppLocalizations localizations) {
+    final fanChannel = _device.fanChannel;
+    final minTimer = fanChannel.minTimer;
+    final maxTimer = fanChannel.maxTimer;
+
+    final options = <ValueOption<int>>[];
+    options.add(ValueOption(value: 0, label: localizations.fan_timer_off));
+
+    final presets = [30, 60, 120, 240, 480, 720];
+    for (final preset in presets) {
+      if (preset >= minTimer && preset <= maxTimer) {
+        options.add(ValueOption(
+          value: preset,
+          label: FanUtils.formatMinutes(localizations, preset),
+        ));
+      }
+    }
+
+    return options;
+  }
+
+  String _formatNumericTimer(AppLocalizations localizations, int? minutes) {
+    if (minutes == null || minutes == 0) return localizations.fan_timer_off;
+    return FanUtils.formatMinutes(localizations, minutes);
   }
 }

@@ -1557,14 +1557,12 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
     switch (auxiliaryDevice.type) {
       case AuxiliaryType.fan:
-        detailPage = FanDeviceDetail(
-          name: auxiliaryDevice.name,
-          initialState: FanDeviceState(
-            isOn: auxiliaryDevice.isActive,
-            speed: auxiliaryDevice.isActive ? 0.6 : 0.0,
-          ),
-          onBack: () => Navigator.of(context).pop(),
-        );
+        if (deviceView is FanDeviceView) {
+          detailPage = FanDeviceDetail(
+            device: deviceView,
+            onBack: () => Navigator.of(context).pop(),
+          );
+        }
         break;
       case AuxiliaryType.purifier:
         if (deviceView is AirPurifierDeviceView) {
