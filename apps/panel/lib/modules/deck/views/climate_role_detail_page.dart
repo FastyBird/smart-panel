@@ -17,9 +17,11 @@ import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_conditioner.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/heating_unit.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/thermostat.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/water_heater.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_conditioner.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/devices/heater.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/heating_unit.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/water_heater.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
@@ -471,8 +473,13 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
               status = isActive ? 'Active' : 'Standby';
               break;
           }
-        } else if (device is HeaterDeviceView) {
-          // Heater has a required heater channel
+        } else if (device is HeatingUnitDeviceView) {
+          // Heating unit has a required heater channel
+          final isHeating = device.heaterChannel.isHeating;
+          isActive = isHeating;
+          status = isHeating ? 'Heating' : 'Standby';
+        } else if (device is WaterHeaterDeviceView) {
+          // Water heater has a required heater channel
           final isHeating = device.heaterChannel.isHeating;
           isActive = isHeating;
           status = isHeating ? 'Heating' : 'Standby';
@@ -1272,8 +1279,10 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
 
     if (deviceView is ThermostatDeviceView) {
       detailPage = ThermostatDeviceDetail(device: deviceView);
-    } else if (deviceView is HeaterDeviceView) {
+    } else if (deviceView is HeatingUnitDeviceView) {
       detailPage = HeatingUnitDeviceDetail(device: deviceView);
+    } else if (deviceView is WaterHeaterDeviceView) {
+      detailPage = WaterHeaterDeviceDetail(device: deviceView);
     } else if (deviceView is AirConditionerDeviceView) {
       detailPage = AirConditionerDeviceDetail(device: deviceView);
     }

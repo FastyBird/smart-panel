@@ -7,7 +7,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/channels/temperature
 import 'package:fastybird_smart_panel/modules/devices/views/devices/mixins.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';
 
-class HeaterDeviceView extends DeviceView
+class HeatingUnitDeviceView extends DeviceView
     with
         DeviceDeviceInformationMixin,
         DeviceHeaterMixin,
@@ -15,7 +15,7 @@ class HeaterDeviceView extends DeviceView
         DeviceElectricalEnergyMixin,
         DeviceElectricalPowerMixin,
         DeviceHumidityMixin {
-  HeaterDeviceView({
+  HeatingUnitDeviceView({
     required super.id,
     required super.type,
     super.category,

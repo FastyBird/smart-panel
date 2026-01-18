@@ -6,26 +6,26 @@ import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/devices/heating_unit.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/water_heater.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
-class HeatingUnitDeviceDetail extends StatefulWidget {
-  final HeatingUnitDeviceView _device;
+class WaterHeaterDeviceDetail extends StatefulWidget {
+  final WaterHeaterDeviceView _device;
   final VoidCallback? onBack;
 
-  const HeatingUnitDeviceDetail({
+  const WaterHeaterDeviceDetail({
     super.key,
-    required HeatingUnitDeviceView device,
+    required WaterHeaterDeviceView device,
     this.onBack,
   }) : _device = device;
 
   @override
-  State<HeatingUnitDeviceDetail> createState() =>
-      _HeatingUnitDeviceDetailState();
+  State<WaterHeaterDeviceDetail> createState() =>
+      _WaterHeaterDeviceDetailState();
 }
 
-class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
+class _WaterHeaterDeviceDetailState extends State<WaterHeaterDeviceDetail> {
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
@@ -50,9 +50,9 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     });
   }
 
-  HeatingUnitDeviceView get _device {
+  WaterHeaterDeviceView get _device {
     final updated = _devicesService.getDevice(widget._device.id);
-    if (updated is HeatingUnitDeviceView) {
+    if (updated is WaterHeaterDeviceView) {
       return updated;
     }
     return widget._device;
@@ -120,7 +120,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
               borderRadius: BorderRadius.circular(AppBorderRadius.medium),
             ),
             child: Icon(
-              MdiIcons.radiator,
+              MdiIcons.waterBoiler,
               color: _device.isOn ? heatingColor : mutedColor,
               size: _scale(24),
             ),

@@ -27,7 +27,8 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/air_dehumidi
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_humidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_purifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/fan.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/devices/heater.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/heating_unit.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/water_heater.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/sensor.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';
@@ -676,7 +677,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         double? tempValue;
         if (device is ThermostatDeviceView) {
           tempValue = device.temperatureChannel.temperature;
-        } else if (device is HeaterDeviceView) {
+        } else if (device is HeatingUnitDeviceView) {
+          tempValue = device.temperatureChannel.temperature;
+        } else if (device is WaterHeaterDeviceView) {
           tempValue = device.temperatureChannel.temperature;
         } else if (device is AirConditionerDeviceView) {
           tempValue = device.temperatureChannel.temperature;
@@ -700,7 +703,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         double? humidityValue;
         if (device is ThermostatDeviceView) {
           humidityValue = device.humidityChannel?.humidity.toDouble();
-        } else if (device is HeaterDeviceView) {
+        } else if (device is HeatingUnitDeviceView) {
+          humidityValue = device.humidityChannel?.humidity.toDouble();
+        } else if (device is WaterHeaterDeviceView) {
           humidityValue = device.humidityChannel?.humidity.toDouble();
         } else if (device is AirConditionerDeviceView) {
           humidityValue = device.humidityChannel?.humidity.toDouble();
@@ -930,9 +935,15 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             status = isActive ? 'Active' : 'Standby';
             break;
         }
-      } else if (device is HeaterDeviceView) {
+      } else if (device is HeatingUnitDeviceView) {
         deviceType = 'heating_unit';
-        // Heater has a required heater channel
+        // Heating unit has a required heater channel
+        final isHeating = device.heaterChannel.isHeating;
+        isActive = isHeating;
+        status = isHeating ? 'Heating' : 'Standby';
+      } else if (device is WaterHeaterDeviceView) {
+        deviceType = 'water_heater';
+        // Water heater has a required heater channel
         final isHeating = device.heaterChannel.isHeating;
         isActive = isHeating;
         status = isHeating ? 'Heating' : 'Standby';

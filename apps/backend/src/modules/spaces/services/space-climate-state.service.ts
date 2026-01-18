@@ -355,6 +355,7 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 	} {
 		let anyHeaterOn = false;
 		let anyCoolerOn = false;
+		let hasAutoMode = false;
 
 		for (const device of devices) {
 			// Check heater ON state (actual device activity)
@@ -379,7 +380,8 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 				if (typeof modeValue === 'string') {
 					const modeLower = modeValue.toLowerCase();
 					if (modeLower === 'auto' || modeLower === 'heat_cool') {
-						return { mode: ClimateMode.AUTO, isHeating: anyHeaterOn, isCooling: anyCoolerOn };
+						// Track AUTO mode but continue checking all devices for heater/cooler ON states
+						hasAutoMode = true;
 					}
 					if (modeLower === 'heat') {
 						anyHeaterOn = true;
@@ -392,7 +394,10 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 		}
 
 		let mode: ClimateMode;
-		if (anyHeaterOn && anyCoolerOn) {
+		if (hasAutoMode) {
+			// If any thermostat is in AUTO mode, the overall mode is AUTO
+			mode = ClimateMode.AUTO;
+		} else if (anyHeaterOn && anyCoolerOn) {
 			mode = ClimateMode.AUTO;
 		} else if (anyHeaterOn) {
 			mode = ClimateMode.HEAT;
