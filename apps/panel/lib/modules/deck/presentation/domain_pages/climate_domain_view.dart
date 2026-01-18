@@ -397,9 +397,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     final auxiliaryDevices = <AuxiliaryDevice>[];
     final climateDevices = <ClimateDevice>[];
 
-    // Track processed device IDs per category to avoid duplicates within each list
+    // Track processed IDs per category to avoid duplicates within each list
     // but allow the same device to appear in multiple categories (e.g., as sensor AND actuator)
-    final processedSensorDeviceIds = <String>{};
+    // For sensors: use target.id (deviceId:channelId) since each channel is a separate sensor
+    // For actuators: use deviceId since there's one actuator per device
+    final processedSensorTargetIds = <String>{};
     final processedAuxiliaryDeviceIds = <String>{};
     final processedClimateDeviceIds = <String>{};
 
@@ -410,11 +412,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       final role = target.role;
 
       if (role == ClimateTargetRole.sensor) {
-        // Skip if already processed as sensor
-        if (processedSensorDeviceIds.contains(target.deviceId)) continue;
+        // Skip if already processed as sensor (use target.id which includes channelId)
+        if (processedSensorTargetIds.contains(target.id)) continue;
         // Build sensors from sensor role targets
         _buildSensorsFromDevice(device, target, sensors);
-        processedSensorDeviceIds.add(target.deviceId);
+        processedSensorTargetIds.add(target.id);
       } else if (role == ClimateTargetRole.auxiliary) {
         // Skip if already processed as auxiliary
         if (processedAuxiliaryDeviceIds.contains(target.deviceId)) continue;
@@ -499,7 +501,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
         if (tempValue != null) {
           sensors.add(ClimateSensor(
-            id: '${target.deviceId}_temp',
+            id: '${target.id}_temp',
             label: target.displayName,
             value:
                 '${NumberFormatUtils.defaultFormat.formatDecimal(tempValue, decimalPlaces: 1)}°C',
@@ -523,7 +525,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
         if (humidityValue != null) {
           sensors.add(ClimateSensor(
-            id: '${target.deviceId}_humidity',
+            id: '${target.id}_humidity',
             label: target.displayName,
             value:
                 '${NumberFormatUtils.defaultFormat.formatInteger(humidityValue.toInt())}%',
@@ -532,8 +534,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         }
       }
 
-      // Additional climate sensors - check device channels directly
-      // (backend doesn't provide flags for these yet)
+      // Additional climate sensors using backend flags
       _buildAdditionalSensors(device, target, sensors);
     } catch (e) {
       // Device may be missing required channels - skip it
@@ -545,7 +546,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   }
 
   /// Builds additional climate sensors (AQI, PM, CO2, VOC, Pressure)
-  /// from device channels that aren't tracked by backend flags yet.
+  /// using backend flags to determine which sensor type this target represents.
   void _buildAdditionalSensors(
     DeviceView device,
     ClimateTargetView target,
@@ -554,103 +555,112 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     final formatter = NumberFormatUtils.defaultFormat;
 
     // Air Quality Index (AQI)
-    if (device is SensorDeviceView || device is AirPurifierDeviceView) {
-      final aqChannel = device is AirPurifierDeviceView
-          ? device.airQualityChannel
-          : null; // SensorDeviceView doesn't have airQualityChannel mixin
-
-      if (aqChannel != null && aqChannel.hasAqi) {
+    if (target.hasAirQuality) {
+      if (device is AirPurifierDeviceView &&
+          device.airQualityChannel != null &&
+          device.airQualityChannel!.hasAqi) {
         sensors.add(ClimateSensor(
-          id: '${target.deviceId}_aqi',
+          id: '${target.id}_aqi',
           label: target.displayName,
-          value: formatter.formatInteger(aqChannel.aqi),
+          value: formatter.formatInteger(device.airQualityChannel!.aqi),
           type: 'aqi',
         ));
       }
     }
 
     // Air Particulate (PM2.5/PM10)
-    if (device is SensorDeviceView && device.airParticulateChannel != null) {
-      final pmChannel = device.airParticulateChannel!;
-      if (pmChannel.hasDensity) {
-        sensors.add(ClimateSensor(
-          id: '${target.deviceId}_pm',
-          label: target.displayName,
-          value: '${formatter.formatInteger(pmChannel.density.toInt())} µg/m³',
-          type: 'pm',
-        ));
-      }
-    } else if (device is AirPurifierDeviceView &&
-        device.airParticulateChannel != null) {
-      final pmChannel = device.airParticulateChannel!;
-      if (pmChannel.hasDensity) {
-        sensors.add(ClimateSensor(
-          id: '${target.deviceId}_pm',
-          label: target.displayName,
-          value: '${formatter.formatInteger(pmChannel.density.toInt())} µg/m³',
-          type: 'pm',
-        ));
+    if (target.hasAirParticulate) {
+      if (device is SensorDeviceView && device.airParticulateChannel != null) {
+        final pmChannel = device.airParticulateChannel!;
+        if (pmChannel.hasDensity) {
+          sensors.add(ClimateSensor(
+            id: '${target.id}_pm',
+            label: target.displayName,
+            value:
+                '${formatter.formatInteger(pmChannel.density.toInt())} µg/m³',
+            type: 'pm',
+          ));
+        }
+      } else if (device is AirPurifierDeviceView &&
+          device.airParticulateChannel != null) {
+        final pmChannel = device.airParticulateChannel!;
+        if (pmChannel.hasDensity) {
+          sensors.add(ClimateSensor(
+            id: '${target.id}_pm',
+            label: target.displayName,
+            value:
+                '${formatter.formatInteger(pmChannel.density.toInt())} µg/m³',
+            type: 'pm',
+          ));
+        }
       }
     }
 
     // Carbon Dioxide (CO2)
-    if (device is SensorDeviceView && device.carbonDioxideChannel != null) {
-      final co2Channel = device.carbonDioxideChannel!;
-      if (co2Channel.hasDensity) {
-        sensors.add(ClimateSensor(
-          id: '${target.deviceId}_co2',
-          label: target.displayName,
-          value: '${formatter.formatInteger(co2Channel.density.toInt())} ppm',
-          type: 'co2',
-        ));
-      }
-    } else if (device is AirPurifierDeviceView &&
-        device.carbonDioxideChannel != null) {
-      final co2Channel = device.carbonDioxideChannel!;
-      if (co2Channel.hasDensity) {
-        sensors.add(ClimateSensor(
-          id: '${target.deviceId}_co2',
-          label: target.displayName,
-          value: '${formatter.formatInteger(co2Channel.density.toInt())} ppm',
-          type: 'co2',
-        ));
+    if (target.hasCarbonDioxide) {
+      if (device is SensorDeviceView && device.carbonDioxideChannel != null) {
+        final co2Channel = device.carbonDioxideChannel!;
+        if (co2Channel.hasDensity) {
+          sensors.add(ClimateSensor(
+            id: '${target.id}_co2',
+            label: target.displayName,
+            value: '${formatter.formatInteger(co2Channel.density.toInt())} ppm',
+            type: 'co2',
+          ));
+        }
+      } else if (device is AirPurifierDeviceView &&
+          device.carbonDioxideChannel != null) {
+        final co2Channel = device.carbonDioxideChannel!;
+        if (co2Channel.hasDensity) {
+          sensors.add(ClimateSensor(
+            id: '${target.id}_co2',
+            label: target.displayName,
+            value: '${formatter.formatInteger(co2Channel.density.toInt())} ppm',
+            type: 'co2',
+          ));
+        }
       }
     }
 
     // Volatile Organic Compounds (VOC)
-    if (device is SensorDeviceView &&
-        device.volatileOrganicCompoundsChannel != null) {
-      final vocChannel = device.volatileOrganicCompoundsChannel!;
-      if (vocChannel.hasDensity) {
-        sensors.add(ClimateSensor(
-          id: '${target.deviceId}_voc',
-          label: target.displayName,
-          value: '${formatter.formatInteger(vocChannel.density.toInt())} ppb',
-          type: 'voc',
-        ));
-      }
-    } else if (device is AirPurifierDeviceView &&
-        device.volatileOrganicCompoundsChannel != null) {
-      final vocChannel = device.volatileOrganicCompoundsChannel!;
-      if (vocChannel.hasDensity) {
-        sensors.add(ClimateSensor(
-          id: '${target.deviceId}_voc',
-          label: target.displayName,
-          value: '${formatter.formatInteger(vocChannel.density.toInt())} ppb',
-          type: 'voc',
-        ));
+    if (target.hasVolatileOrganicCompounds) {
+      if (device is SensorDeviceView &&
+          device.volatileOrganicCompoundsChannel != null) {
+        final vocChannel = device.volatileOrganicCompoundsChannel!;
+        if (vocChannel.hasDensity) {
+          sensors.add(ClimateSensor(
+            id: '${target.id}_voc',
+            label: target.displayName,
+            value: '${formatter.formatInteger(vocChannel.density.toInt())} ppb',
+            type: 'voc',
+          ));
+        }
+      } else if (device is AirPurifierDeviceView &&
+          device.volatileOrganicCompoundsChannel != null) {
+        final vocChannel = device.volatileOrganicCompoundsChannel!;
+        if (vocChannel.hasDensity) {
+          sensors.add(ClimateSensor(
+            id: '${target.id}_voc',
+            label: target.displayName,
+            value: '${formatter.formatInteger(vocChannel.density.toInt())} ppb',
+            type: 'voc',
+          ));
+        }
       }
     }
 
     // Atmospheric Pressure
-    if (device is SensorDeviceView && device.pressureChannel != null) {
-      final pressureChannel = device.pressureChannel!;
-      sensors.add(ClimateSensor(
-        id: '${target.deviceId}_pressure',
-        label: target.displayName,
-        value: '${formatter.formatInteger(pressureChannel.measured.toInt())} hPa',
-        type: 'pressure',
-      ));
+    if (target.hasPressure) {
+      if (device is SensorDeviceView && device.pressureChannel != null) {
+        final pressureChannel = device.pressureChannel!;
+        sensors.add(ClimateSensor(
+          id: '${target.id}_pressure',
+          label: target.displayName,
+          value:
+              '${formatter.formatInteger(pressureChannel.measured.toInt())} hPa',
+          type: 'pressure',
+        ));
+      }
     }
   }
 
