@@ -85,7 +85,8 @@ class _SpeedSliderState extends State<SpeedSlider> {
     if (enabledStateChanged) {
       // Mark when enabled state changed to start grace period
       _enabledStateChangeTime = DateTime.now();
-      // Don't update display value during transition
+      // Update display value to new value, then ignore subsequent fluctuations
+      _displayValue = widget.value.clamp(0.0, 1.0);
       return;
     }
 

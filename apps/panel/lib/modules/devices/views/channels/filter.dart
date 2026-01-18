@@ -72,7 +72,7 @@ class FilterChannelView extends ChannelView with ChannelFaultMixin {
   }
 
   int get minLifeRemaining {
-    final FormatType? format = lifeRemainingProp?.format;
+    final FormatType? format = lifeRemainingProp.format;
 
     if (format is NumberListFormatType && format.value.length == 2) {
       return (format.value[0] as num).toInt();
@@ -82,7 +82,7 @@ class FilterChannelView extends ChannelView with ChannelFaultMixin {
   }
 
   int get maxLifeRemaining {
-    final FormatType? format = lifeRemainingProp?.format;
+    final FormatType? format = lifeRemainingProp.format;
 
     if (format is NumberListFormatType && format.value.length == 2) {
       return (format.value[1] as num).toInt();
