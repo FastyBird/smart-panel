@@ -1575,8 +1575,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       case AuxiliaryType.humidifier:
         if (deviceView is AirHumidifierDeviceView) {
           detailPage = AirHumidifierDeviceDetail(
-            name: auxiliaryDevice.name,
-            initialState: HumidifierDeviceState(isOn: auxiliaryDevice.isActive),
+            device: deviceView,
             onBack: () => Navigator.of(context).pop(),
           );
         }

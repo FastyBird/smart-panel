@@ -338,10 +338,7 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
         'Device view is not valid for Air humidifier device detail',
       );
     }
-    return AirHumidifierDeviceDetail(
-      name: device.name,
-      initialState: const HumidifierDeviceState(),
-    );
+    return AirHumidifierDeviceDetail(device: device);
   },
   DevicesModuleDeviceCategory.airPurifier: (device) {
     if (device is! AirPurifierDeviceView) {

@@ -571,11 +571,82 @@ mixin DeviceHumidifierMixin {
 
   HumidifierModeValue? get humidifierMode => humidifierChannel?.mode;
 
+  List<HumidifierModeValue> get humidifierAvailableModes =>
+      humidifierChannel?.availableModes ?? [];
+
   bool get hasHumidifierStatus => humidifierChannel?.hasStatus ?? false;
 
   HumidifierStatusValue? get humidifierStatus => humidifierChannel?.status;
 
   bool get isHumidifierHumidifying => humidifierChannel?.isHumidifying ?? false;
+
+  // Mist Level
+  bool get hasHumidifierMistLevel => humidifierChannel?.hasMistLevel ?? false;
+
+  bool get isHumidifierMistLevelNumeric =>
+      humidifierChannel?.isMistLevelNumeric ?? false;
+
+  bool get isHumidifierMistLevelEnum =>
+      humidifierChannel?.isMistLevelEnum ?? false;
+
+  int get humidifierMistLevel => humidifierChannel?.mistLevel ?? 0;
+
+  int get humidifierMinMistLevel => humidifierChannel?.minMistLevel ?? 0;
+
+  int get humidifierMaxMistLevel => humidifierChannel?.maxMistLevel ?? 100;
+
+  HumidifierMistLevelLevelValue? get humidifierMistLevelPreset =>
+      humidifierChannel?.mistLevelPreset;
+
+  List<HumidifierMistLevelLevelValue> get humidifierAvailableMistLevelPresets =>
+      humidifierChannel?.availableMistLevelPresets ?? [];
+
+  // Warm Mist
+  bool get hasHumidifierWarmMist => humidifierChannel?.hasWarmMist ?? false;
+
+  bool get isHumidifierWarmMistEnabled => humidifierChannel?.warmMist ?? false;
+
+  // Timer
+  bool get hasHumidifierTimer => humidifierChannel?.hasTimer ?? false;
+
+  bool get isHumidifierTimerNumeric =>
+      humidifierChannel?.isTimerNumeric ?? false;
+
+  bool get isHumidifierTimerEnum => humidifierChannel?.isTimerEnum ?? false;
+
+  int get humidifierTimer => humidifierChannel?.timer ?? 0;
+
+  int get humidifierMinTimer => humidifierChannel?.minTimer ?? 0;
+
+  int get humidifierMaxTimer => humidifierChannel?.maxTimer ?? 86400;
+
+  int get humidifierTimerStep => humidifierChannel?.timerStep ?? 60;
+
+  HumidifierTimerPresetValue? get humidifierTimerPreset =>
+      humidifierChannel?.timerPreset;
+
+  List<HumidifierTimerPresetValue> get humidifierAvailableTimerPresets =>
+      humidifierChannel?.availableTimerPresets ?? [];
+
+  // Child Lock
+  bool get hasHumidifierLocked => humidifierChannel?.hasLocked ?? false;
+
+  bool get isHumidifierLocked => humidifierChannel?.locked ?? false;
+
+  // Water Tank
+  bool get hasHumidifierWaterTankLevel =>
+      humidifierChannel?.hasWaterTankLevel ?? false;
+
+  int get humidifierWaterTankLevel => humidifierChannel?.waterTankLevel ?? 100;
+
+  bool get hasHumidifierWaterTankEmpty =>
+      humidifierChannel?.hasWaterTankEmpty ?? false;
+
+  bool get isHumidifierWaterTankEmpty =>
+      humidifierChannel?.waterTankEmpty ?? false;
+
+  bool get humidifierWaterTankWarning =>
+      humidifierChannel?.waterTankWarning ?? false;
 
   bool get hasHumidifierFault => humidifierChannel?.hasFault ?? false;
 

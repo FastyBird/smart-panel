@@ -1291,6 +1291,63 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dehumidifier_water_tank => 'Water Tank';
 
   @override
+  String get humidifier_mode_auto => 'Auto';
+
+  @override
+  String get humidifier_mode_manual => 'Manual';
+
+  @override
+  String get humidifier_mode_sleep => 'Sleep';
+
+  @override
+  String get humidifier_mode_baby => 'Baby';
+
+  @override
+  String get humidifier_status_idle => 'Idle';
+
+  @override
+  String get humidifier_status_humidifying => 'Humidifying';
+
+  @override
+  String get humidifier_mist_level_off => 'Off';
+
+  @override
+  String get humidifier_mist_level_low => 'Low';
+
+  @override
+  String get humidifier_mist_level_medium => 'Medium';
+
+  @override
+  String get humidifier_mist_level_high => 'High';
+
+  @override
+  String get humidifier_timer_off => 'Off';
+
+  @override
+  String get humidifier_timer_30m => '30 min';
+
+  @override
+  String get humidifier_timer_1h => '1 hour';
+
+  @override
+  String get humidifier_timer_2h => '2 hours';
+
+  @override
+  String get humidifier_timer_4h => '4 hours';
+
+  @override
+  String get humidifier_timer_8h => '8 hours';
+
+  @override
+  String get humidifier_timer_12h => '12 hours';
+
+  @override
+  String get humidifier_water_tank => 'Water Tank';
+
+  @override
+  String get humidifier_warm_mist => 'Warm Mist';
+
+  @override
   String get device_current_humidity => 'Current';
 
   @override
