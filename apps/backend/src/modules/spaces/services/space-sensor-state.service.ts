@@ -250,7 +250,7 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 				unit = 'hPa';
 				break;
 			case ChannelCategory.ILLUMINANCE:
-				primaryProperty = properties.find((p) => p.category === PropertyCategory.DENSITY);
+				primaryProperty = properties.find((p) => p.category === PropertyCategory.MEASURED);
 				unit = 'lux';
 				break;
 			case ChannelCategory.MOTION:
@@ -360,7 +360,7 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 		}
 
 		if (channel.category === ChannelCategory.ILLUMINANCE) {
-			const illumProp = properties.find((p) => p.category === PropertyCategory.DENSITY);
+			const illumProp = properties.find((p) => p.category === PropertyCategory.MEASURED);
 			const illuminance = this.getPropertyNumericValue(illumProp);
 			if (illuminance !== null) {
 				illuminances.push(illuminance);
