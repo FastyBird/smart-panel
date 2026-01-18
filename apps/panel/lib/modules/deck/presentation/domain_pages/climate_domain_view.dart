@@ -14,6 +14,7 @@ import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
+import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_dehumidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_humidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_purifier.dart';
@@ -421,7 +422,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         // Skip if already processed as auxiliary
         if (processedAuxiliaryDeviceIds.contains(target.deviceId)) continue;
         // Build auxiliary devices
-        _buildAuxiliaryFromDevice(device, auxiliaryDevices);
+        _buildAuxiliaryFromDevice(device, auxiliaryDevices, roomName);
         processedAuxiliaryDeviceIds.add(target.deviceId);
       } else if (role == ClimateTargetRole.heatingOnly ||
           role == ClimateTargetRole.coolingOnly ||
@@ -670,6 +671,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   void _buildAuxiliaryFromDevice(
     DeviceView device,
     List<AuxiliaryDevice> auxiliaryDevices,
+    String roomName,
   ) {
     // Wrap in try-catch to handle devices with missing required channels
     // Some devices may not have all expected channels configured
@@ -677,7 +679,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       if (device is FanDeviceView) {
         auxiliaryDevices.add(AuxiliaryDevice(
           id: device.id,
-          name: device.name,
+          name: stripRoomNameFromDevice(device.name, roomName),
           type: AuxiliaryType.fan,
           isActive: device.isOn,
           status: device.isOn ? 'On' : 'Off',
@@ -685,7 +687,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       } else if (device is AirPurifierDeviceView) {
         auxiliaryDevices.add(AuxiliaryDevice(
           id: device.id,
-          name: device.name,
+          name: stripRoomNameFromDevice(device.name, roomName),
           type: AuxiliaryType.purifier,
           isActive: device.isOn,
           status: device.isOn ? 'On' : 'Off',
@@ -693,7 +695,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       } else if (device is AirHumidifierDeviceView) {
         auxiliaryDevices.add(AuxiliaryDevice(
           id: device.id,
-          name: device.name,
+          name: stripRoomNameFromDevice(device.name, roomName),
           type: AuxiliaryType.humidifier,
           isActive: device.isOn,
           status: device.isOn ? 'On' : 'Off',
@@ -701,7 +703,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       } else if (device is AirDehumidifierDeviceView) {
         auxiliaryDevices.add(AuxiliaryDevice(
           id: device.id,
-          name: device.name,
+          name: stripRoomNameFromDevice(device.name, roomName),
           type: AuxiliaryType.dehumidifier,
           isActive: device.isOn,
           status: device.isOn ? 'On' : 'Off',
