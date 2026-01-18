@@ -484,8 +484,14 @@ export class SpaceClimateRoleService {
 					if (channel.category === ChannelCategory.PRESSURE) {
 						hasPressure = true;
 					}
-					// Check properties for mode capability
+					// Check properties for capabilities (thermostats have these as properties, not channel categories)
 					const properties = channel.properties ?? [];
+					if (properties.some((p) => p.category === PropertyCategory.TEMPERATURE)) {
+						hasTemperature = true;
+					}
+					if (properties.some((p) => p.category === PropertyCategory.HUMIDITY)) {
+						hasHumidity = true;
+					}
 					if (properties.some((p) => p.category === PropertyCategory.MODE)) {
 						hasMode = true;
 					}
@@ -670,8 +676,14 @@ export class SpaceClimateRoleService {
 				if (channel.category === ChannelCategory.PRESSURE) {
 					hasPressure = true;
 				}
-				// Check properties for mode capability
+				// Check properties for capabilities (thermostats have these as properties, not channel categories)
 				const properties = channel.properties ?? [];
+				if (properties.some((p) => p.category === PropertyCategory.TEMPERATURE)) {
+					hasTemperature = true;
+				}
+				if (properties.some((p) => p.category === PropertyCategory.HUMIDITY)) {
+					hasHumidity = true;
+				}
 				if (properties.some((p) => p.category === PropertyCategory.MODE)) {
 					hasMode = true;
 				}
