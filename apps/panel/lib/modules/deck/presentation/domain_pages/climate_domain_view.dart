@@ -443,9 +443,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       // during setpoint changes
       mode = _state.mode;
     } else if (climateState != null) {
-      // Normal case: Use lastAppliedMode if available, otherwise fall back to detected mode
-      final effectiveMode = climateState.lastAppliedMode ?? climateState.mode;
-      switch (effectiveMode) {
+      // Normal case: Use detected mode from device state
+      // Note: lastAppliedMode is the last mode explicitly set by the user, but it
+      // can be stale (from hours/days ago). The 'mode' field reflects the actual
+      // current state which is more reliable for display purposes.
+      switch (climateState.mode) {
         case spaces_climate.ClimateMode.heat:
           mode = ClimateMode.heat;
           break;
