@@ -30,6 +30,33 @@ enum IntentType {
 
   // Scene operations
   sceneRun,
+
+  // Space lighting operations
+  spaceLightingOn,
+  spaceLightingOff,
+  spaceLightingSetMode,
+  spaceLightingBrightnessDelta,
+  spaceLightingRoleOn,
+  spaceLightingRoleOff,
+  spaceLightingRoleBrightness,
+  spaceLightingRoleColor,
+  spaceLightingRoleColorTemp,
+  spaceLightingRoleWhite,
+  spaceLightingRoleSet,
+
+  // Space climate operations
+  spaceClimateSetMode,
+  spaceClimateSetpointSet,
+  spaceClimateSetpointDelta,
+  spaceClimateSet,
+
+  // Space covers operations
+  spaceCoversOpen,
+  spaceCoversClose,
+  spaceCoversSetPosition,
+  spaceCoversPositionDelta,
+  spaceCoversRolePosition,
+  spaceCoversSetMode,
 }
 
 /// Origin of the intent (where it was initiated from)
@@ -41,6 +68,7 @@ enum IntentOrigin {
   panelDashboardCards,
   panelDevice,
   panelScenes,
+  panelSpaces,
   admin,
   api,
 }
@@ -99,6 +127,55 @@ IntentType parseIntentType(String type) {
     // Scene operations
     case 'scene.run':
       return IntentType.sceneRun;
+
+    // Space lighting operations
+    case 'space.lighting.on':
+      return IntentType.spaceLightingOn;
+    case 'space.lighting.off':
+      return IntentType.spaceLightingOff;
+    case 'space.lighting.setMode':
+      return IntentType.spaceLightingSetMode;
+    case 'space.lighting.brightnessDelta':
+      return IntentType.spaceLightingBrightnessDelta;
+    case 'space.lighting.roleOn':
+      return IntentType.spaceLightingRoleOn;
+    case 'space.lighting.roleOff':
+      return IntentType.spaceLightingRoleOff;
+    case 'space.lighting.roleBrightness':
+      return IntentType.spaceLightingRoleBrightness;
+    case 'space.lighting.roleColor':
+      return IntentType.spaceLightingRoleColor;
+    case 'space.lighting.roleColorTemp':
+      return IntentType.spaceLightingRoleColorTemp;
+    case 'space.lighting.roleWhite':
+      return IntentType.spaceLightingRoleWhite;
+    case 'space.lighting.roleSet':
+      return IntentType.spaceLightingRoleSet;
+
+    // Space climate operations
+    case 'space.climate.setMode':
+      return IntentType.spaceClimateSetMode;
+    case 'space.climate.setpointSet':
+      return IntentType.spaceClimateSetpointSet;
+    case 'space.climate.setpointDelta':
+      return IntentType.spaceClimateSetpointDelta;
+    case 'space.climate.set':
+      return IntentType.spaceClimateSet;
+
+    // Space covers operations
+    case 'space.covers.open':
+      return IntentType.spaceCoversOpen;
+    case 'space.covers.close':
+      return IntentType.spaceCoversClose;
+    case 'space.covers.setPosition':
+      return IntentType.spaceCoversSetPosition;
+    case 'space.covers.positionDelta':
+      return IntentType.spaceCoversPositionDelta;
+    case 'space.covers.rolePosition':
+      return IntentType.spaceCoversRolePosition;
+    case 'space.covers.setMode':
+      return IntentType.spaceCoversSetMode;
+
     default:
       return IntentType.deviceSetProperty;
   }
@@ -122,6 +199,8 @@ IntentOrigin? parseIntentOrigin(String? origin) {
       return IntentOrigin.panelDevice;
     case 'panel.scenes':
       return IntentOrigin.panelScenes;
+    case 'panel.spaces':
+      return IntentOrigin.panelSpaces;
     case 'admin':
       return IntentOrigin.admin;
     case 'api':
@@ -132,29 +211,34 @@ IntentOrigin? parseIntentOrigin(String? origin) {
 }
 
 /// Represents a target affected by an intent.
-/// Can be either a device target (deviceId/channelId/propertyId) or a scene target (sceneId).
+/// Can be a device target (deviceId/channelId/propertyId), scene target (sceneId),
+/// or space target (spaceId for space-level intents).
 class IntentTarget {
   final String? _deviceId;
   final String? _channelId;
   final String? _propertyId;
   final String? _sceneId;
+  final String? _spaceId;
 
   IntentTarget({
     String? deviceId,
     String? channelId,
     String? propertyId,
     String? sceneId,
+    String? spaceId,
   })  : _deviceId = deviceId != null ? UuidUtils.validateUuid(deviceId) : null,
         _channelId =
             channelId != null ? UuidUtils.validateUuid(channelId) : null,
         _propertyId =
             propertyId != null ? UuidUtils.validateUuid(propertyId) : null,
-        _sceneId = sceneId != null ? UuidUtils.validateUuid(sceneId) : null;
+        _sceneId = sceneId != null ? UuidUtils.validateUuid(sceneId) : null,
+        _spaceId = spaceId != null ? UuidUtils.validateUuid(spaceId) : null;
 
   String? get deviceId => _deviceId;
   String? get channelId => _channelId;
   String? get propertyId => _propertyId;
   String? get sceneId => _sceneId;
+  String? get spaceId => _spaceId;
 
   /// Check if this is a device target
   bool get isDeviceTarget => _deviceId != null;
@@ -162,12 +246,19 @@ class IntentTarget {
   /// Check if this is a scene target
   bool get isSceneTarget => _sceneId != null;
 
+  /// Check if this is a space target (space-level intent)
+  bool get isSpaceTarget => _spaceId != null && _deviceId == null;
+
   /// Create a unique key for indexing.
   /// For device targets: "device:deviceId:channelId:propertyId" (using * for null values)
   /// For scene targets: "scene:sceneId"
+  /// For space targets: "space:spaceId"
   String get key {
     if (_sceneId != null) {
       return 'scene:$_sceneId';
+    }
+    if (_spaceId != null && _deviceId == null) {
+      return 'space:$_spaceId';
     }
     return 'device:${_deviceId ?? '*'}:${_channelId ?? '*'}:${_propertyId ?? '*'}';
   }
@@ -178,6 +269,7 @@ class IntentTarget {
       channelId: json['channel_id'] as String?,
       propertyId: json['property_id'] as String?,
       sceneId: json['scene_id'] as String?,
+      spaceId: json['space_id'] as String?,
     );
   }
 }
@@ -454,6 +546,41 @@ class IntentModel extends Model {
     );
   }
 
+  /// Create a local optimistic intent for space-level commands
+  /// (lighting mode, climate setpoint, covers position, etc.)
+  factory IntentModel.createLocalForSpace({
+    required String spaceId,
+    required IntentType type,
+    required dynamic value,
+    int ttlMs = 5000, // Space commands may take longer (multi-device)
+  }) {
+    final now = DateTime.now();
+    final localIntentId = 'local_space_${spaceId}_${now.millisecondsSinceEpoch}';
+
+    // Build value map for consistency with backend format
+    final valueMap = {'space:$spaceId': value};
+
+    return IntentModel(
+      id: localIntentId,
+      type: type,
+      context: IntentContext(
+        origin: IntentOrigin.panelSpaces,
+        spaceId: spaceId,
+      ),
+      targets: [
+        IntentTarget(spaceId: spaceId),
+      ],
+      value: valueMap,
+      status: IntentStatus.pending,
+      ttlMs: ttlMs,
+      createdAt: now,
+      expiresAt: now.add(Duration(milliseconds: ttlMs)),
+    );
+  }
+
   /// Check if this is a local (optimistic) intent
   bool get isLocal => id.startsWith('local_');
+
+  /// Check if this is a space-level intent
+  bool get isSpaceIntent => targets.any((t) => t.isSpaceTarget);
 }

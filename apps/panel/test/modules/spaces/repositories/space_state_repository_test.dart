@@ -4,6 +4,8 @@ import 'package:fastybird_smart_panel/api/models/spaces_module_res_lighting_stat
 import 'package:fastybird_smart_panel/api/models/spaces_module_res_suggestion.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_res_undo_state.dart';
 import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
+import 'package:fastybird_smart_panel/modules/intents/models/intents/intent.dart';
+import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/suggestion/suggestion.dart';
@@ -15,6 +17,36 @@ import 'package:retrofit/retrofit.dart';
 
 // Mock classes
 class MockSpacesModuleClient extends Mock implements SpacesModuleClient {}
+
+/// Fake IntentsRepository that provides minimal implementation for testing
+class FakeIntentsRepository extends Fake implements IntentsRepository {
+  int _counter = 0;
+
+  @override
+  IntentModel createLocalSpaceIntent({
+    required String spaceId,
+    required IntentType type,
+    required dynamic value,
+    int ttlMs = 5000,
+  }) {
+    _counter++;
+    // Generate a valid UUID-like ID for testing
+    final fakeId =
+        '00000000-0000-4000-8000-${_counter.toString().padLeft(12, '0')}';
+    return IntentModel(
+      id: fakeId,
+      type: type,
+      // Don't pass spaceId to context since test IDs aren't valid UUIDs
+      context: IntentContext(origin: IntentOrigin.panelSpaces),
+      targets: [],
+      value: {'space:$spaceId': value},
+      status: IntentStatus.pending,
+      ttlMs: ttlMs,
+      createdAt: DateTime.now(),
+      expiresAt: DateTime.now().add(Duration(milliseconds: ttlMs)),
+    );
+  }
+}
 
 class FakeSpacesModuleResLightingState extends Fake
     implements SpacesModuleResLightingState {}
@@ -47,15 +79,22 @@ HttpResponse<T> createMockHttpResponse<T>(
 
 void main() {
   late MockSpacesModuleClient mockClient;
+  late FakeIntentsRepository fakeIntentsRepository;
   late SpaceStateRepository repository;
 
   setUp(() {
     mockClient = MockSpacesModuleClient();
-    repository = SpaceStateRepository(apiClient: mockClient);
+    fakeIntentsRepository = FakeIntentsRepository();
+
+    repository = SpaceStateRepository(
+      apiClient: mockClient,
+      intentsRepository: fakeIntentsRepository,
+    );
   });
 
   tearDown(() {
     repository.dispose();
+    reset(mockClient);
   });
 
   group('SpaceStateRepository', () {

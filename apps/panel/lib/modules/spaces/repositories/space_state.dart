@@ -9,6 +9,8 @@ import 'package:fastybird_smart_panel/api/models/spaces_module_req_suggestion_fe
 import 'package:fastybird_smart_panel/api/models/spaces_module_suggestion_feedback.dart';
 import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
 import 'package:fastybird_smart_panel/core/services/metrics_service.dart';
+import 'package:fastybird_smart_panel/modules/intents/models/intents/intent.dart';
+import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/covers_state/covers_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/intent_result/intent_result.dart';
@@ -50,6 +52,7 @@ import 'package:flutter/foundation.dart';
 /// ```
 class SpaceStateRepository extends ChangeNotifier {
   final SpacesModuleClient _apiClient;
+  final IntentsRepository _intentsRepository;
 
   /// Cached lighting states by space ID
   final Map<String, LightingStateModel> _lightingStates = {};
@@ -71,7 +74,9 @@ class SpaceStateRepository extends ChangeNotifier {
 
   SpaceStateRepository({
     required SpacesModuleClient apiClient,
-  }) : _apiClient = apiClient;
+    required IntentsRepository intentsRepository,
+  })  : _apiClient = apiClient,
+        _intentsRepository = intentsRepository;
 
   SpacesModuleClient get apiClient => _apiClient;
 
@@ -278,6 +283,27 @@ class SpaceStateRepository extends ChangeNotifier {
   }) async {
     final stopwatch = Stopwatch()..start();
     final intentName = 'lighting_${lightingIntentTypeToString(type)}';
+
+    // Build intent value for optimistic UI
+    final intentValue = <String, dynamic>{
+      'type': lightingIntentTypeToString(type),
+      if (mode != null) 'mode': lightingModeToString(mode),
+      if (delta != null) 'delta': brightnessDeltaToString(delta),
+      if (increase != null) 'increase': increase,
+      if (role != null) 'role': lightingRoleToString(role),
+      if (on != null) 'on': on,
+      if (brightness != null) 'brightness': brightness,
+      if (color != null) 'color': color,
+      if (colorTemperature != null) 'colorTemperature': colorTemperature,
+      if (white != null) 'white': white,
+    };
+
+    // Create local intent for optimistic UI before API call
+    _intentsRepository.createLocalSpaceIntent(
+      spaceId: spaceId,
+      type: _mapLightingIntentType(type),
+      value: intentValue,
+    );
 
     try {
       final Map<String, dynamic> body = {
@@ -498,6 +524,24 @@ class SpaceStateRepository extends ChangeNotifier {
     final stopwatch = Stopwatch()..start();
     final intentName = 'climate_${climateIntentTypeToString(type)}';
 
+    // Build intent value for optimistic UI
+    final intentValue = <String, dynamic>{
+      'type': climateIntentTypeToString(type),
+      if (delta != null) 'delta': setpointDeltaToString(delta),
+      if (increase != null) 'increase': increase,
+      if (value != null) 'value': value,
+      if (heatingSetpoint != null) 'heatingSetpoint': heatingSetpoint,
+      if (coolingSetpoint != null) 'coolingSetpoint': coolingSetpoint,
+      if (mode != null) 'mode': climateModeToString(mode),
+    };
+
+    // Create local intent for optimistic UI before API call
+    _intentsRepository.createLocalSpaceIntent(
+      spaceId: spaceId,
+      type: _mapClimateIntentType(type),
+      value: intentValue,
+    );
+
     try {
       final Map<String, dynamic> body = {
         'type': climateIntentTypeToString(type),
@@ -666,6 +710,23 @@ class SpaceStateRepository extends ChangeNotifier {
   }) async {
     final stopwatch = Stopwatch()..start();
     final intentName = 'covers_${coversIntentTypeToString(type)}';
+
+    // Build intent value for optimistic UI
+    final intentValue = <String, dynamic>{
+      'type': coversIntentTypeToString(type),
+      if (delta != null) 'delta': positionDeltaToString(delta),
+      if (increase != null) 'increase': increase,
+      if (position != null) 'position': position,
+      if (role != null) 'role': coversRoleToString(role),
+      if (mode != null) 'mode': mode,
+    };
+
+    // Create local intent for optimistic UI before API call
+    _intentsRepository.createLocalSpaceIntent(
+      spaceId: spaceId,
+      type: _mapCoversIntentType(type),
+      value: intentValue,
+    );
 
     try {
       final Map<String, dynamic> body = {
@@ -1037,5 +1098,69 @@ class SpaceStateRepository extends ChangeNotifier {
     _suggestions.remove(spaceId);
     _undoStates.remove(spaceId);
     notifyListeners();
+  }
+
+  // ============================================
+  // INTENT TYPE MAPPING HELPERS
+  // ============================================
+
+  /// Map LightingIntentType to IntentType
+  IntentType _mapLightingIntentType(LightingIntentType type) {
+    switch (type) {
+      case LightingIntentType.on:
+        return IntentType.spaceLightingOn;
+      case LightingIntentType.off:
+        return IntentType.spaceLightingOff;
+      case LightingIntentType.setMode:
+        return IntentType.spaceLightingSetMode;
+      case LightingIntentType.brightnessDelta:
+        return IntentType.spaceLightingBrightnessDelta;
+      case LightingIntentType.roleOn:
+        return IntentType.spaceLightingRoleOn;
+      case LightingIntentType.roleOff:
+        return IntentType.spaceLightingRoleOff;
+      case LightingIntentType.roleBrightness:
+        return IntentType.spaceLightingRoleBrightness;
+      case LightingIntentType.roleColor:
+        return IntentType.spaceLightingRoleColor;
+      case LightingIntentType.roleColorTemp:
+        return IntentType.spaceLightingRoleColorTemp;
+      case LightingIntentType.roleWhite:
+        return IntentType.spaceLightingRoleWhite;
+      case LightingIntentType.roleSet:
+        return IntentType.spaceLightingRoleSet;
+    }
+  }
+
+  /// Map ClimateIntentType to IntentType
+  IntentType _mapClimateIntentType(ClimateIntentType type) {
+    switch (type) {
+      case ClimateIntentType.setMode:
+        return IntentType.spaceClimateSetMode;
+      case ClimateIntentType.setpointSet:
+        return IntentType.spaceClimateSetpointSet;
+      case ClimateIntentType.setpointDelta:
+        return IntentType.spaceClimateSetpointDelta;
+      case ClimateIntentType.climateSet:
+        return IntentType.spaceClimateSet;
+    }
+  }
+
+  /// Map CoversIntentType to IntentType
+  IntentType _mapCoversIntentType(CoversIntentType type) {
+    switch (type) {
+      case CoversIntentType.open:
+        return IntentType.spaceCoversOpen;
+      case CoversIntentType.close:
+        return IntentType.spaceCoversClose;
+      case CoversIntentType.setPosition:
+        return IntentType.spaceCoversSetPosition;
+      case CoversIntentType.positionDelta:
+        return IntentType.spaceCoversPositionDelta;
+      case CoversIntentType.rolePosition:
+        return IntentType.spaceCoversRolePosition;
+      case CoversIntentType.setMode:
+        return IntentType.spaceCoversSetMode;
+    }
   }
 }

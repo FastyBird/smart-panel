@@ -1,6 +1,7 @@
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
+import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/modules/spaces/constants.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart';
@@ -17,6 +18,8 @@ class MockApiClient extends Mock implements ApiClient {}
 class MockSpacesModuleClient extends Mock implements SpacesModuleClient {}
 
 class MockSocketService extends Mock implements SocketService {}
+
+class MockIntentsRepository extends Mock implements IntentsRepository {}
 
 /// Test harness for testing WebSocket event handling
 ///
@@ -91,6 +94,7 @@ class SpacesModuleEventHandler {
 
 void main() {
   late MockSpacesModuleClient mockApiClient;
+  late MockIntentsRepository mockIntentsRepository;
   late SpacesRepository spacesRepository;
   late LightTargetsRepository lightTargetsRepository;
   late ClimateTargetsRepository climateTargetsRepository;
@@ -99,10 +103,14 @@ void main() {
 
   setUp(() {
     mockApiClient = MockSpacesModuleClient();
+    mockIntentsRepository = MockIntentsRepository();
     spacesRepository = SpacesRepository(apiClient: mockApiClient);
     lightTargetsRepository = LightTargetsRepository(apiClient: mockApiClient);
     climateTargetsRepository = ClimateTargetsRepository(apiClient: mockApiClient);
-    spaceStateRepository = SpaceStateRepository(apiClient: mockApiClient);
+    spaceStateRepository = SpaceStateRepository(
+      apiClient: mockApiClient,
+      intentsRepository: mockIntentsRepository,
+    );
 
     eventHandler = SpacesModuleEventHandler(
       spacesRepository: spacesRepository,

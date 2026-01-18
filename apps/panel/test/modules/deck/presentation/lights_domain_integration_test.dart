@@ -1,4 +1,5 @@
 import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
+import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/light_targets.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/space_state.dart';
@@ -14,6 +15,8 @@ import 'package:mocktail/mocktail.dart';
 
 // Mock classes
 class MockSpacesModuleClient extends Mock implements SpacesModuleClient {}
+
+class MockIntentsRepository extends Mock implements IntentsRepository {}
 
 /// Test harness for simulating lighting mode selection flows
 /// This mirrors the behavior of SpacesService.setLightingMode and turnLightsOff
@@ -125,6 +128,7 @@ class LightingModeTestHarness {
 
 void main() {
   late MockSpacesModuleClient mockApiClient;
+  late MockIntentsRepository mockIntentsRepository;
   late SpacesRepository spacesRepository;
   late LightTargetsRepository lightTargetsRepository;
   late SpaceStateRepository spaceStateRepository;
@@ -134,9 +138,13 @@ void main() {
 
   setUp(() {
     mockApiClient = MockSpacesModuleClient();
+    mockIntentsRepository = MockIntentsRepository();
     spacesRepository = SpacesRepository(apiClient: mockApiClient);
     lightTargetsRepository = LightTargetsRepository(apiClient: mockApiClient);
-    spaceStateRepository = SpaceStateRepository(apiClient: mockApiClient);
+    spaceStateRepository = SpaceStateRepository(
+      apiClient: mockApiClient,
+      intentsRepository: mockIntentsRepository,
+    );
 
     harness = LightingModeTestHarness(
       spacesRepository: spacesRepository,

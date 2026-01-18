@@ -55,6 +55,12 @@ class IntentsRepository extends ChangeNotifier {
     return _targetIndex.containsKey(key);
   }
 
+  /// Check if a space is currently locked by an active space-level intent
+  bool isSpaceLocked(String spaceId) {
+    final key = 'space:$spaceId';
+    return _targetIndex.containsKey(key);
+  }
+
   /// Check if any property on a device is locked
   bool isDeviceLocked(String deviceId) {
     return _targetIndex.keys.any((key) => key.startsWith('device:$deviceId:'));
@@ -76,6 +82,12 @@ class IntentsRepository extends ChangeNotifier {
     return _targetIndex[key];
   }
 
+  /// Get the intent ID for a locked space
+  String? getIntentIdForSpace(String spaceId) {
+    final key = 'space:$spaceId';
+    return _targetIndex[key];
+  }
+
   /// Get the active intent affecting a device
   IntentModel? getActiveIntentForDevice(String deviceId) {
     for (final intent in _intents.values) {
@@ -90,6 +102,16 @@ class IntentsRepository extends ChangeNotifier {
   IntentModel? getActiveIntentForScene(String sceneId) {
     for (final intent in _intents.values) {
       if (intent.targets.any((t) => t.sceneId == sceneId)) {
+        return intent;
+      }
+    }
+    return null;
+  }
+
+  /// Get the active intent affecting a space
+  IntentModel? getActiveIntentForSpace(String spaceId) {
+    for (final intent in _intents.values) {
+      if (intent.targets.any((t) => t.spaceId == spaceId && t.isSpaceTarget)) {
         return intent;
       }
     }
@@ -196,6 +218,34 @@ class IntentsRepository extends ChangeNotifier {
     if (kDebugMode) {
       debugPrint(
         '[INTENTS MODULE][REPOSITORY] Created local intent ${intent.id} for device:$deviceId:$channelId:$propertyId',
+      );
+    }
+
+    return intent;
+  }
+
+  /// Create a local optimistic intent for space-level commands
+  IntentModel createLocalSpaceIntent({
+    required String spaceId,
+    required IntentType type,
+    required dynamic value,
+    int ttlMs = 5000, // Space commands may take longer (multi-device)
+  }) {
+    final intent = IntentModel.createLocalForSpace(
+      spaceId: spaceId,
+      type: type,
+      value: value,
+      ttlMs: ttlMs,
+    );
+
+    insert(intent);
+
+    // Schedule local expiration
+    _scheduleExpiration(intent.id, Duration(milliseconds: ttlMs));
+
+    if (kDebugMode) {
+      debugPrint(
+        '[INTENTS MODULE][REPOSITORY] Created local space intent ${intent.id} for space:$spaceId type:$type',
       );
     }
 
