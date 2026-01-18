@@ -20,6 +20,7 @@ import {
 	ClimateMode,
 	SetpointDelta,
 } from '../spaces.constants';
+import { AtLeastOneSetpointRequired } from '../validators/at-least-one-setpoint.validator';
 import { IsValidSetpointOrder } from '../validators/setpoint-order-constraint.validator';
 
 @ApiSchema({ name: 'SpacesModuleClimateIntent' })
@@ -31,6 +32,7 @@ export class ClimateIntentDto {
 	})
 	@Expose()
 	@IsEnum(ClimateIntentType, { message: '[{"field":"type","reason":"Type must be a valid climate intent type."}]' })
+	@AtLeastOneSetpointRequired()
 	type: ClimateIntentType;
 
 	@ApiPropertyOptional({
@@ -71,12 +73,10 @@ export class ClimateIntentDto {
 	@Expose({ name: 'heating_setpoint' })
 	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@ValidateIf(
-		(o: ClimateIntentDto) => o.type === ClimateIntentType.SETPOINT_SET && o.coolingSetpoint === undefined,
+		(o: ClimateIntentDto) =>
+			o.heatingSetpoint !== undefined &&
+			(o.type === ClimateIntentType.SETPOINT_SET || o.type === ClimateIntentType.CLIMATE_SET),
 	)
-	@IsDefined({
-		message:
-			'[{"field":"heating_setpoint","reason":"At least one of heating_setpoint or cooling_setpoint is required for SETPOINT_SET."}]',
-	})
 	@IsNumber({}, { message: '[{"field":"heating_setpoint","reason":"Heating setpoint must be a number."}]' })
 	@Min(ABSOLUTE_MIN_SETPOINT, {
 		message: `[{"field":"heating_setpoint","reason":"Heating setpoint must be at least ${ABSOLUTE_MIN_SETPOINT} degrees."}]`,
@@ -103,12 +103,10 @@ export class ClimateIntentDto {
 	@Expose({ name: 'cooling_setpoint' })
 	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@ValidateIf(
-		(o: ClimateIntentDto) => o.type === ClimateIntentType.SETPOINT_SET && o.heatingSetpoint === undefined,
+		(o: ClimateIntentDto) =>
+			o.coolingSetpoint !== undefined &&
+			(o.type === ClimateIntentType.SETPOINT_SET || o.type === ClimateIntentType.CLIMATE_SET),
 	)
-	@IsDefined({
-		message:
-			'[{"field":"cooling_setpoint","reason":"At least one of heating_setpoint or cooling_setpoint is required for SETPOINT_SET."}]',
-	})
 	@IsNumber({}, { message: '[{"field":"cooling_setpoint","reason":"Cooling setpoint must be a number."}]' })
 	@Min(ABSOLUTE_MIN_SETPOINT, {
 		message: `[{"field":"cooling_setpoint","reason":"Cooling setpoint must be at least ${ABSOLUTE_MIN_SETPOINT} degrees."}]`,
