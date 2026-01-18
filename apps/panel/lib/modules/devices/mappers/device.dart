@@ -392,10 +392,7 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
         'Device view is not valid for Fan device detail',
       );
     }
-    return FanDeviceDetail(
-      name: device.name,
-      initialState: const FanDeviceState(),
-    );
+    return FanDeviceDetail(device: device);
   },
   DevicesModuleDeviceCategory.heatingUnit: (device) {
     if (device is! HeaterDeviceView) {

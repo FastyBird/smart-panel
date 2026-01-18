@@ -1754,6 +1754,21 @@
             }
           }
         ]
+      },
+      "locked": {
+        "category": "locked",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
       }
     }
   },
