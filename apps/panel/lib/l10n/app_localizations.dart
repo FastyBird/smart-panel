@@ -2771,6 +2771,60 @@ abstract class AppLocalizations {
   /// **'Child Lock'**
   String get device_child_lock;
 
+  /// Fan oscillation/swing label
+  ///
+  /// In en, this message translates to:
+  /// **'Oscillation'**
+  String get device_oscillation;
+
+  /// Fan direction label
+  ///
+  /// In en, this message translates to:
+  /// **'Direction'**
+  String get device_direction;
+
+  /// Auto-off timer sheet title
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-Off Timer'**
+  String get device_auto_off_timer;
+
+  /// Filter life remaining label
+  ///
+  /// In en, this message translates to:
+  /// **'Filter Life'**
+  String get device_filter_life;
+
+  /// Filter status label
+  ///
+  /// In en, this message translates to:
+  /// **'Filter'**
+  String get device_filter_status;
+
+  /// Volatile organic compounds label
+  ///
+  /// In en, this message translates to:
+  /// **'VOC'**
+  String get device_voc;
+
+  /// Carbon dioxide label
+  ///
+  /// In en, this message translates to:
+  /// **'CO₂'**
+  String get device_co2;
+
+  /// Humidity short label
+  ///
+  /// In en, this message translates to:
+  /// **'Humidity'**
+  String get device_humidity;
+
+  /// Temperature short label
+  ///
+  /// In en, this message translates to:
+  /// **'Temp'**
+  String get device_temperature;
+
   /// Duration format with hours and minutes
   ///
   /// In en, this message translates to:

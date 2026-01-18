@@ -1363,6 +1363,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get device_child_lock => 'Child Lock';
 
   @override
+  String get device_oscillation => 'Oscillation';
+
+  @override
+  String get device_direction => 'Direction';
+
+  @override
+  String get device_auto_off_timer => 'Auto-Off Timer';
+
+  @override
+  String get device_filter_life => 'Filter Life';
+
+  @override
+  String get device_filter_status => 'Filter';
+
+  @override
+  String get device_voc => 'VOC';
+
+  @override
+  String get device_co2 => 'CO₂';
+
+  @override
+  String get device_humidity => 'Humidity';
+
+  @override
+  String get device_temperature => 'Temp';
+
+  @override
   String duration_format_hours_minutes(int hours, int minutes) {
     return '${hours}h ${minutes}m';
   }

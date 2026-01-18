@@ -460,9 +460,9 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
 
       return ValueSelectorRow<FanSpeedLevelValue>(
         currentValue: fanChannel.speedLevel,
-        label: 'Fan Speed',
+        label: localizations.device_fan_speed,
         icon: Icons.speed,
-        sheetTitle: 'Fan Speed',
+        sheetTitle: localizations.device_fan_speed,
         activeColor: fanColor,
         options: options,
         displayFormatter: (level) => level != null
@@ -484,9 +484,9 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
       if (useVerticalLayout) {
         return ValueSelectorRow<double>(
           currentValue: _speed,
-          label: 'Fan Speed',
+          label: localizations.device_fan_speed,
           icon: Icons.speed,
-          sheetTitle: 'Fan Speed',
+          sheetTitle: localizations.device_fan_speed,
           activeColor: fanColor,
           options: _getSpeedOptions(localizations),
           displayFormatter: (v) => _formatSpeed(localizations, v),
@@ -608,7 +608,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
       options.add(UniversalTile(
         layout: TileLayout.horizontal,
         icon: Icons.sync,
-        name: 'Oscillation',
+        name: localizations.device_oscillation,
         status: fanChannel.swing
             ? localizations.on_state_on
             : localizations.on_state_off,
@@ -628,7 +628,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
       options.add(UniversalTile(
         layout: TileLayout.horizontal,
         icon: Icons.swap_vert,
-        name: 'Direction',
+        name: localizations.device_direction,
         status: fanChannel.direction != null
             ? FanUtils.getDirectionLabel(localizations, fanChannel.direction!)
             : localizations.fan_direction_clockwise,
@@ -652,7 +652,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
       options.add(UniversalTile(
         layout: TileLayout.horizontal,
         icon: Icons.lock,
-        name: 'Child Lock',
+        name: localizations.device_child_lock,
         status: fanChannel.locked
             ? localizations.thermostat_lock_locked
             : localizations.thermostat_lock_unlocked,
@@ -699,9 +699,9 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
 
       return ValueSelectorRow<FanTimerPresetValue?>(
         currentValue: fanChannel.timerPreset,
-        label: 'Timer',
+        label: localizations.device_timer,
         icon: Icons.timer_outlined,
-        sheetTitle: 'Auto-Off Timer',
+        sheetTitle: localizations.device_auto_off_timer,
         activeColor: fanColor,
         options: options,
         displayFormatter: (p) => _formatTimerPreset(localizations, p),
@@ -723,9 +723,9 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
 
       return ValueSelectorRow<int>(
         currentValue: fanChannel.timer,
-        label: 'Timer',
+        label: localizations.device_timer,
         icon: Icons.timer_outlined,
-        sheetTitle: 'Auto-Off Timer',
+        sheetTitle: localizations.device_auto_off_timer,
         activeColor: fanColor,
         options: options,
         displayFormatter: (m) => _formatNumericTimer(localizations, m),

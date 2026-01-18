@@ -450,6 +450,15 @@
   "device_fan_speed": "Rychlost",
   "device_timer": "Časovač",
   "device_child_lock": "Dětský zámek",
+  "device_oscillation": "Oscilace",
+  "device_direction": "Směr",
+  "device_auto_off_timer": "Automatické vypnutí",
+  "device_filter_life": "Životnost filtru",
+  "device_filter_status": "Filtr",
+  "device_voc": "VOC",
+  "device_co2": "CO₂",
+  "device_humidity": "Vlhkost",
+  "device_temperature": "Teplota",
   "duration_format_hours_minutes": "{hours}h {minutes}m",
   "@duration_format_hours_minutes": {
     "placeholders": {
