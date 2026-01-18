@@ -520,8 +520,41 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
     // Track that we're waiting for an intent
     _modeWasLocked = true;
 
-    // Optimistic UI update
-    setState(() => _state = _state.copyWith(mode: mode));
+    // Get the target temperature for the new mode (optimistic update)
+    // Each mode has its own setpoint, so we show it immediately
+    final climateState = _spacesService?.getClimateState(widget.roomId);
+    double? newTargetTemp;
+    if (climateState != null) {
+      switch (mode) {
+        case ClimateMode.heat:
+          newTargetTemp = climateState.heatingSetpoint;
+          break;
+        case ClimateMode.cool:
+          newTargetTemp = climateState.coolingSetpoint;
+          break;
+        case ClimateMode.auto:
+          if (climateState.heatingSetpoint != null &&
+              climateState.coolingSetpoint != null) {
+            newTargetTemp =
+                (climateState.heatingSetpoint! + climateState.coolingSetpoint!) / 2;
+          } else {
+            newTargetTemp =
+                climateState.heatingSetpoint ?? climateState.coolingSetpoint;
+          }
+          break;
+        case ClimateMode.off:
+          // Keep current target temp when turning off
+          break;
+      }
+    }
+
+    // Optimistic UI update - update both mode and target temperature
+    setState(() {
+      _state = _state.copyWith(
+        mode: mode,
+        targetTemp: newTargetTemp ?? _state.targetTemp,
+      );
+    });
 
     // Call API to set the mode
     _spacesService?.setClimateMode(widget.roomId, apiMode);
