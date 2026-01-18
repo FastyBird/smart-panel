@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/info_tile.dart';
@@ -890,6 +891,44 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     );
   }
 
+  /// Builds sensor tiles in a grid layout with max 3 tiles per row.
+  Widget _buildSensorTilesGrid(List<Widget> tiles) {
+    const int tilesPerRow = 3;
+    final rows = <Widget>[];
+
+    for (var i = 0; i < tiles.length; i += tilesPerRow) {
+      final rowTiles = tiles.skip(i).take(tilesPerRow).toList();
+
+      // Build row with tiles
+      final rowChildren = <Widget>[];
+      for (var j = 0; j < rowTiles.length; j++) {
+        rowChildren.add(Expanded(child: rowTiles[j]));
+        if (j < rowTiles.length - 1) {
+          rowChildren.add(AppSpacings.spacingSmHorizontal);
+        }
+      }
+
+      // Add empty spacers if row is not full (to maintain consistent sizing)
+      final emptySlots = tilesPerRow - rowTiles.length;
+      for (var j = 0; j < emptySlots; j++) {
+        rowChildren.add(AppSpacings.spacingSmHorizontal);
+        rowChildren.add(const Expanded(child: SizedBox.shrink()));
+      }
+
+      rows.add(Row(children: rowChildren));
+
+      // Add spacing between rows
+      if (i + tilesPerRow < tiles.length) {
+        rows.add(AppSpacings.spacingSmVertical);
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: rows,
+    );
+  }
+
   Widget _buildStatus(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
     final airColor = DeviceColors.air(isDark);
@@ -947,6 +986,43 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       }
     }
 
+    // Temperature tile - only show if temperature channel exists
+    final tempChannel = _device.temperatureChannel;
+    if (tempChannel != null && tempChannel.hasTemperature) {
+      infoTiles.add(InfoTile(
+        label: 'Temp',
+        value: NumberFormatUtils.defaultFormat.formatDecimal(
+          tempChannel.temperature,
+          decimalPlaces: 1,
+        ),
+        unit: '°C',
+        valueColor: airColor,
+      ));
+    }
+
+    // Humidity tile - only show if humidity channel exists
+    final humidityChannel = _device.humidityChannel;
+    if (humidityChannel != null) {
+      infoTiles.add(InfoTile(
+        label: 'Humidity',
+        value: '${humidityChannel.humidity}',
+        unit: '%',
+        valueColor: airColor,
+      ));
+    }
+
+    // CO₂ tile - only show if carbon dioxide channel exists and has density
+    final co2Channel = _device.carbonDioxideChannel;
+    if (co2Channel != null && co2Channel.hasDensity) {
+      infoTiles.add(InfoTile(
+        label: 'CO₂',
+        value: NumberFormatUtils.defaultFormat.formatInteger(co2Channel.density.toInt()),
+        unit: 'ppm',
+        valueColor: airColor,
+        isWarning: co2Channel.density > 1000, // Warn if CO₂ exceeds 1000 ppm
+      ));
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -959,12 +1035,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
                     ])
                 .take(infoTiles.length * 2 - 1)
           else
-            Row(
-              children: infoTiles
-                  .expand((tile) => [Expanded(child: tile), AppSpacings.spacingSmHorizontal])
-                  .take(infoTiles.length * 2 - 1)
-                  .toList(),
-            ),
+            _buildSensorTilesGrid(infoTiles),
           AppSpacings.spacingMdVertical,
         ],
         // Speed control - only show if fan has speed property
