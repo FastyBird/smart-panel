@@ -797,6 +797,8 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     final minLevel = channel.minMistLevel;
     final maxLevel = channel.maxMistLevel;
     final range = maxLevel - minLevel;
+    if (range <= 0) return;
+
     final actualLevel = (minLevel + (normalizedLevel * range)).round();
 
     // Clamp to valid range
