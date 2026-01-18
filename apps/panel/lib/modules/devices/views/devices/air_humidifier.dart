@@ -40,13 +40,15 @@ class AirHumidifierDeviceView extends DeviceView
   DeviceInformationChannelView get deviceInformationChannel =>
       channels.whereType<DeviceInformationChannelView>().first;
 
+  /// Humidifier channel (required per spec)
   @override
-  HumidifierChannelView? get humidifierChannel =>
-      channels.whereType<HumidifierChannelView>().firstOrNull;
+  HumidifierChannelView get humidifierChannel =>
+      channels.whereType<HumidifierChannelView>().first;
 
+  /// Humidity channel (required per spec)
   @override
-  HumidityChannelView? get humidityChannel =>
-      channels.whereType<HumidityChannelView>().firstOrNull;
+  HumidityChannelView get humidityChannel =>
+      channels.whereType<HumidityChannelView>().first;
 
   @override
   ElectricalEnergyChannelView? get electricalEnergyChannel =>
@@ -70,16 +72,7 @@ class AirHumidifierDeviceView extends DeviceView
 
   @override
   bool get isOn {
-    // Try humidifier channel first
-    final humidifier = humidifierChannel;
-    if (humidifier != null) {
-      return humidifier.on;
-    }
-    // Fall back to fan channel if available
-    final fan = fanChannel;
-    if (fan != null) {
-      return fan.on;
-    }
-    return false;
+    // Use humidifier channel's on property (always available per spec)
+    return humidifierChannel.on;
   }
 }
