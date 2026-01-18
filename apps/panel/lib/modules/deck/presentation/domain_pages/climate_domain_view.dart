@@ -609,7 +609,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         // Skip if already processed as climate device
         if (processedClimateDeviceIds.contains(target.deviceId)) continue;
         // Build climate devices (actuators)
-        _buildClimateDeviceFromTarget(device, target, climateDevices, mode);
+        _buildClimateDeviceFromTarget(
+            device, target, climateDevices, mode, roomName);
         processedClimateDeviceIds.add(target.deviceId);
       }
     }
@@ -902,6 +903,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     ClimateTargetView target,
     List<ClimateDevice> climateDevices,
     ClimateMode currentMode,
+    String roomName,
   ) {
     // Wrap in try-catch to handle devices with missing required channels
     try {
@@ -925,7 +927,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
       climateDevices.add(ClimateDevice(
         id: target.deviceId,
-        name: target.displayName,
+        name: stripRoomNameFromDevice(target.displayName, roomName),
         type: deviceType,
         isActive: isActive,
         status: status,
