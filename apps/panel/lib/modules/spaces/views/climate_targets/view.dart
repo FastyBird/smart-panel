@@ -64,6 +64,16 @@ class ClimateTargetView {
 
   bool get hasHumidity => _model.hasHumidity;
 
+  bool get hasAirQuality => _model.hasAirQuality;
+
+  bool get hasAirParticulate => _model.hasAirParticulate;
+
+  bool get hasCarbonDioxide => _model.hasCarbonDioxide;
+
+  bool get hasVolatileOrganicCompounds => _model.hasVolatileOrganicCompounds;
+
+  bool get hasPressure => _model.hasPressure;
+
   bool get hasMode => _model.hasMode;
 
   /// Converted role from API enum to local enum
