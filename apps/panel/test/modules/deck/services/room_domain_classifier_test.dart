@@ -200,6 +200,7 @@ void main() {
       const counts = DomainCounts(
         lights: 1,
         climate: 1,
+        climateActuators: 1, // Required for climate domain to be visible
         media: 1,
         sensors: 1,
       );
