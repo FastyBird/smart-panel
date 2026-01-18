@@ -469,8 +469,10 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
               break;
           }
         } else if (device is HeaterDeviceView) {
-          isActive = device.isOn;
-          status = isActive ? 'Heating' : 'Standby';
+          // Heater has a required heater channel
+          final isHeating = device.heaterChannel.isHeating;
+          isActive = isHeating;
+          status = isHeating ? 'Heating' : 'Standby';
         } else if (device is AirConditionerDeviceView) {
           // A/C can have both cooler (required) and heater (optional) channels
           final isCooling = device.coolerChannel.isCooling;
