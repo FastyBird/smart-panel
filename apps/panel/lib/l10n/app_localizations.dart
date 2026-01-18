@@ -2663,6 +2663,12 @@ abstract class AppLocalizations {
   /// **'Humidifying'**
   String get humidifier_status_humidifying;
 
+  /// Mist level control label
+  ///
+  /// In en, this message translates to:
+  /// **'Mist Level'**
+  String get humidifier_mist_level;
+
   /// Humidifier mist level - off
   ///
   /// In en, this message translates to:
@@ -2818,6 +2824,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Humidity'**
   String get device_humidity;
+
+  /// Air quality index label
+  ///
+  /// In en, this message translates to:
+  /// **'Air Quality Index'**
+  String get device_air_quality_index;
 
   /// Temperature short label
   ///
