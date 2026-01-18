@@ -49,6 +49,33 @@ export enum IntentType {
 
 	// Scene operations
 	SCENE_RUN = 'scene.run',
+
+	// Space lighting operations
+	SPACE_LIGHTING_ON = 'space.lighting.on',
+	SPACE_LIGHTING_OFF = 'space.lighting.off',
+	SPACE_LIGHTING_SET_MODE = 'space.lighting.setMode',
+	SPACE_LIGHTING_BRIGHTNESS_DELTA = 'space.lighting.brightnessDelta',
+	SPACE_LIGHTING_ROLE_ON = 'space.lighting.roleOn',
+	SPACE_LIGHTING_ROLE_OFF = 'space.lighting.roleOff',
+	SPACE_LIGHTING_ROLE_BRIGHTNESS = 'space.lighting.roleBrightness',
+	SPACE_LIGHTING_ROLE_COLOR = 'space.lighting.roleColor',
+	SPACE_LIGHTING_ROLE_COLOR_TEMP = 'space.lighting.roleColorTemp',
+	SPACE_LIGHTING_ROLE_WHITE = 'space.lighting.roleWhite',
+	SPACE_LIGHTING_ROLE_SET = 'space.lighting.roleSet',
+
+	// Space climate operations
+	SPACE_CLIMATE_SET_MODE = 'space.climate.setMode',
+	SPACE_CLIMATE_SETPOINT_SET = 'space.climate.setpointSet',
+	SPACE_CLIMATE_SETPOINT_DELTA = 'space.climate.setpointDelta',
+	SPACE_CLIMATE_SET = 'space.climate.set',
+
+	// Space covers operations
+	SPACE_COVERS_OPEN = 'space.covers.open',
+	SPACE_COVERS_CLOSE = 'space.covers.close',
+	SPACE_COVERS_SET_POSITION = 'space.covers.setPosition',
+	SPACE_COVERS_POSITION_DELTA = 'space.covers.positionDelta',
+	SPACE_COVERS_ROLE_POSITION = 'space.covers.rolePosition',
+	SPACE_COVERS_SET_MODE = 'space.covers.setMode',
 }
 
 /**
@@ -56,6 +83,7 @@ export enum IntentType {
  */
 export const DEFAULT_TTL_DEVICE_COMMAND = 3000; // 3 seconds for device commands
 export const DEFAULT_TTL_SCENE = 5000; // 5 seconds for scene execution
+export const DEFAULT_TTL_SPACE_COMMAND = 5000; // 5 seconds for space commands (multi-device)
 
 /**
  * Cleanup interval for expired intents
@@ -73,6 +101,7 @@ export type IntentOrigin =
 	| 'panel.dashboard.cards'
 	| 'panel.device'
 	| 'panel.scenes'
+	| 'panel.spaces'
 	| 'admin'
 	| 'api';
 
@@ -87,6 +116,7 @@ export const INTENT_ORIGINS: IntentOrigin[] = [
 	'panel.dashboard.cards',
 	'panel.device',
 	'panel.scenes',
+	'panel.spaces',
 	'admin',
 	'api',
 ];
