@@ -432,6 +432,7 @@
   "humidifier_mode_baby": "Dětský",
   "humidifier_status_idle": "Nečinný",
   "humidifier_status_humidifying": "Zvlhčuje",
+  "humidifier_mist_level": "Úroveň mlhy",
   "humidifier_mist_level_off": "Vypnuto",
   "humidifier_mist_level_low": "Nízká",
   "humidifier_mist_level_medium": "Střední",
@@ -458,6 +459,7 @@
   "device_voc": "VOC",
   "device_co2": "CO₂",
   "device_humidity": "Vlhkost",
+  "device_air_quality_index": "Index kvality vzduchu",
   "device_temperature": "Teplota",
   "duration_format_hours_minutes": "{hours}h {minutes}m",
   "@duration_format_hours_minutes": {

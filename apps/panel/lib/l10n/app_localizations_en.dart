@@ -1309,6 +1309,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get humidifier_status_humidifying => 'Humidifying';
 
   @override
+  String get humidifier_mist_level => 'Mist Level';
+
+  @override
   String get humidifier_mist_level_off => 'Off';
 
   @override
@@ -1385,6 +1388,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get device_humidity => 'Humidity';
+
+  @override
+  String get device_air_quality_index => 'Air Quality Index';
 
   @override
   String get device_temperature => 'Temp';

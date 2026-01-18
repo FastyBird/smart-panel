@@ -520,7 +520,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         channel.hasMistLevel &&
         channel.isMistLevelNumeric) {
       infoTiles.add(InfoTile(
-        label: localizations.humidifier_mist_level_medium,
+        label: localizations.humidifier_mist_level,
         value: NumberFormatUtils.defaultFormat.formatInteger(channel.mistLevel),
         unit: '%',
       ));
@@ -529,7 +529,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         channel.isMistLevelEnum) {
       final preset = channel.mistLevelPreset;
       infoTiles.add(InfoTile(
-        label: localizations.humidifier_mist_level_medium,
+        label: localizations.humidifier_mist_level,
         value: preset != null
             ? HumidifierUtils.getMistLevelLabel(localizations, preset)
             : '-',
@@ -688,9 +688,9 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
 
     return ValueSelectorRow<HumidifierMistLevelLevelValue?>(
       currentValue: channel.mistLevelPreset,
-      label: localizations.humidifier_mist_level_medium,
+      label: localizations.humidifier_mist_level,
       icon: Icons.water,
-      sheetTitle: localizations.humidifier_mist_level_medium,
+      sheetTitle: localizations.humidifier_mist_level,
       activeColor: humidityColor,
       options: options,
       displayFormatter: (l) => l != null
@@ -727,13 +727,13 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     if (useCompactLayout) {
       return ValueSelectorRow<double>(
         currentValue: _normalizedMistLevel,
-        label: localizations.humidifier_mist_level_medium,
+        label: localizations.humidifier_mist_level,
         icon: Icons.water,
-        sheetTitle: localizations.humidifier_mist_level_medium,
+        sheetTitle: localizations.humidifier_mist_level,
         activeColor: humidityColor,
         options: [
           ValueOption(value: 0.0, label: localizations.humidifier_mist_level_low),
-          ValueOption(value: 0.5, label: localizations.humidifier_mist_level_medium),
+          ValueOption(value: 0.5, label: localizations.humidifier_mist_level),
           ValueOption(value: 1.0, label: localizations.humidifier_mist_level_high),
         ],
         displayFormatter: (v) => _formatMistLevel(localizations, v),
@@ -749,7 +749,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       activeColor: humidityColor,
       steps: [
         localizations.humidifier_mist_level_low,
-        localizations.humidifier_mist_level_medium,
+        localizations.humidifier_mist_level,
         localizations.humidifier_mist_level_high,
       ],
       discrete: true,
@@ -832,7 +832,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
 
   String _formatMistLevel(AppLocalizations localizations, double? level) {
     if (level == null || level <= 0.33) return localizations.humidifier_mist_level_low;
-    if (level <= 0.66) return localizations.humidifier_mist_level_medium;
+    if (level <= 0.66) return localizations.humidifier_mist_level;
     return localizations.humidifier_mist_level_high;
   }
 

@@ -1310,6 +1310,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get humidifier_status_humidifying => 'Zvlhčuje';
 
   @override
+  String get humidifier_mist_level => 'Úroveň mlhy';
+
+  @override
   String get humidifier_mist_level_off => 'Vypnuto';
 
   @override
@@ -1386,6 +1389,9 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get device_humidity => 'Vlhkost';
+
+  @override
+  String get device_air_quality_index => 'Index kvality vzduchu';
 
   @override
   String get device_temperature => 'Teplota';

@@ -515,11 +515,15 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
   List<ValueOption<double>> _getSpeedOptions(AppLocalizations localizations) {
     return [
       ValueOption(value: 0.0, label: localizations.fan_speed_off),
-      ValueOption(value: 0.25, label: '25%'),
-      ValueOption(value: 0.5, label: '50%'),
-      ValueOption(value: 0.75, label: '75%'),
-      ValueOption(value: 1.0, label: '100%'),
+      ValueOption(value: 0.25, label: _formatSpeedPercent(0.25)),
+      ValueOption(value: 0.5, label: _formatSpeedPercent(0.5)),
+      ValueOption(value: 0.75, label: _formatSpeedPercent(0.75)),
+      ValueOption(value: 1.0, label: _formatSpeedPercent(1.0)),
     ];
+  }
+
+  String _formatSpeedPercent(double speed) {
+    return '${(speed * 100).toInt()}%';
   }
 
   String _formatSpeed(AppLocalizations localizations, double? speed) {

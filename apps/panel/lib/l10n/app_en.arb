@@ -1761,6 +1761,10 @@
     "description": "Humidifier status - actively humidifying"
   },
 
+  "humidifier_mist_level": "Mist Level",
+  "@humidifier_mist_level": {
+    "description": "Mist level control label"
+  },
   "humidifier_mist_level_off": "Off",
   "@humidifier_mist_level_off": {
     "description": "Humidifier mist level - off"
@@ -1867,6 +1871,10 @@
   "device_humidity": "Humidity",
   "@device_humidity": {
     "description": "Humidity short label"
+  },
+  "device_air_quality_index": "Air Quality Index",
+  "@device_air_quality_index": {
+    "description": "Air quality index label"
   },
   "device_temperature": "Temp",
   "@device_temperature": {

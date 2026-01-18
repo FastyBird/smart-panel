@@ -831,7 +831,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Air Quality Index',
+              localizations.device_air_quality_index,
               style: TextStyle(
                 color: secondaryColor,
                 fontSize: AppFontSize.small,
