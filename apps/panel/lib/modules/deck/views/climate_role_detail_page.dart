@@ -13,16 +13,37 @@ import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/climate_domain_view.dart'
     show ClimateMode, RoomCapability, ClimateDevice;
+import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_conditioner.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/heater.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
+import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart'
     as spaces_climate;
 import 'package:fastybird_smart_panel/modules/spaces/service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+
+// ============================================================================
+// CLIMATE CONTROL CONSTANTS
+// ============================================================================
+
+class ClimateControlConstants {
+  /// Settling window for mode changes (ms)
+  static const int modeSettlingWindowMs = 3000;
+
+  /// Settling window for setpoint changes (ms)
+  static const int setpointSettlingWindowMs = 2500;
+
+  /// Tolerance for setpoint convergence (degrees)
+  static const double setpointTolerance = 0.5;
+
+  /// Control channel IDs
+  static const String modeChannelId = 'mode';
+  static const String setpointChannelId = 'setpoint';
+}
 
 // ============================================================================
 // DATA MODELS
@@ -124,11 +145,42 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
 
   SpacesService? _spacesService;
   DevicesService? _devicesService;
+  IntentsRepository? _intentsRepository;
   late ClimateDetailState _state;
+
+  // Control state service for optimistic UI
+  late DomainControlStateService<spaces_climate.ClimateStateModel>
+      _controlStateService;
+
+  // Track which space intent we're waiting for
+  bool _modeWasLocked = false;
+  bool _setpointWasLocked = false;
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize the control state service with climate-specific config
+    _controlStateService = DomainControlStateService<
+        spaces_climate.ClimateStateModel>(
+      channelConfigs: {
+        ClimateControlConstants.modeChannelId: ControlChannelConfig(
+          id: ClimateControlConstants.modeChannelId,
+          convergenceChecker: _checkModeConvergence,
+          intentLockChecker: _isModeLocked,
+          settlingWindowMs: ClimateControlConstants.modeSettlingWindowMs,
+          tolerance: 0.0, // Mode is exact match
+        ),
+        ClimateControlConstants.setpointChannelId: ControlChannelConfig(
+          id: ClimateControlConstants.setpointChannelId,
+          convergenceChecker: _checkSetpointConvergence,
+          intentLockChecker: _isSetpointLocked,
+          settlingWindowMs: ClimateControlConstants.setpointSettlingWindowMs,
+          tolerance: ClimateControlConstants.setpointTolerance,
+        ),
+      },
+    );
+    _controlStateService.addListener(_onControlStateChanged);
 
     try {
       _spacesService = locator<SpacesService>();
@@ -148,6 +200,16 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
       }
     }
 
+    try {
+      _intentsRepository = locator<IntentsRepository>();
+      _intentsRepository?.addListener(_onIntentChanged);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+            '[ClimateRoleDetailPage] Failed to get IntentsRepository: $e');
+      }
+    }
+
     _initializeState();
   }
 
@@ -155,7 +217,84 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
   void dispose() {
     _spacesService?.removeListener(_onDataChanged);
     _devicesService?.removeListener(_onDevicesDataChanged);
+    _intentsRepository?.removeListener(_onIntentChanged);
+    _controlStateService.removeListener(_onControlStateChanged);
+    _controlStateService.dispose();
     super.dispose();
+  }
+
+  // ============================================================================
+  // CONTROL STATE SERVICE CALLBACKS
+  // ============================================================================
+
+  /// Check if climate mode has converged to desired value.
+  bool _checkModeConvergence(
+    List<spaces_climate.ClimateStateModel> targets,
+    double desiredValue,
+    double tolerance,
+  ) {
+    if (targets.isEmpty) return true;
+    final actual = targets.first;
+    // desiredValue is the mode enum index
+    final desiredMode = spaces_climate.ClimateMode.values[desiredValue.toInt()];
+    return actual.mode == desiredMode;
+  }
+
+  /// Check if setpoint has converged to desired value.
+  bool _checkSetpointConvergence(
+    List<spaces_climate.ClimateStateModel> targets,
+    double desiredValue,
+    double tolerance,
+  ) {
+    if (targets.isEmpty) return true;
+    final actual = targets.first;
+    final actualTemp = actual.effectiveTargetTemperature;
+    if (actualTemp == null) return false;
+    return (actualTemp - desiredValue).abs() <= tolerance;
+  }
+
+  /// Check if any climate mode intent is active for this space.
+  bool _isModeLocked(List<spaces_climate.ClimateStateModel> targets) {
+    return _intentsRepository?.isSpaceLocked(widget.roomId) ?? false;
+  }
+
+  /// Check if any setpoint intent is active for this space.
+  bool _isSetpointLocked(List<spaces_climate.ClimateStateModel> targets) {
+    return _intentsRepository?.isSpaceLocked(widget.roomId) ?? false;
+  }
+
+  void _onControlStateChanged() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  void _onIntentChanged() {
+    if (!mounted) return;
+
+    // Check if space intent was unlocked (completed)
+    final isNowLocked = _intentsRepository?.isSpaceLocked(widget.roomId) ?? false;
+
+    final climateState = _spacesService?.getClimateState(widget.roomId);
+    final targets = climateState != null ? [climateState] : <spaces_climate.ClimateStateModel>[];
+
+    // Detect mode intent unlock
+    if (_modeWasLocked && !isNowLocked) {
+      _controlStateService.onIntentCompleted(
+        ClimateControlConstants.modeChannelId,
+        targets,
+      );
+    }
+
+    // Detect setpoint intent unlock
+    if (_setpointWasLocked && !isNowLocked) {
+      _controlStateService.onIntentCompleted(
+        ClimateControlConstants.setpointChannelId,
+        targets,
+      );
+    }
+
+    _modeWasLocked = isNowLocked;
+    _setpointWasLocked = isNowLocked;
   }
 
   void _onDataChanged() {
@@ -167,22 +306,35 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
       final climateState = _spacesService?.getClimateState(widget.roomId);
       if (climateState == null) return;
 
-      // Determine mode from climate state
+      // Check convergence during settling
+      final targets = [climateState];
+      _controlStateService.checkConvergence(
+        ClimateControlConstants.modeChannelId,
+        targets,
+      );
+      _controlStateService.checkConvergence(
+        ClimateControlConstants.setpointChannelId,
+        targets,
+      );
+
+      // Determine mode from climate state (unless locked by state machine)
       ClimateMode mode = _state.mode;
-      switch (climateState.mode) {
-        case spaces_climate.ClimateMode.heat:
-          mode = ClimateMode.heat;
-          break;
-        case spaces_climate.ClimateMode.cool:
-          mode = ClimateMode.cool;
-          break;
-        case spaces_climate.ClimateMode.auto:
-          mode = ClimateMode.auto;
-          break;
-        case spaces_climate.ClimateMode.off:
-        case null:
-          mode = ClimateMode.off;
-          break;
+      if (!_controlStateService.isLocked(ClimateControlConstants.modeChannelId)) {
+        switch (climateState.mode) {
+          case spaces_climate.ClimateMode.heat:
+            mode = ClimateMode.heat;
+            break;
+          case spaces_climate.ClimateMode.cool:
+            mode = ClimateMode.cool;
+            break;
+          case spaces_climate.ClimateMode.auto:
+            mode = ClimateMode.auto;
+            break;
+          case spaces_climate.ClimateMode.off:
+          case null:
+            mode = ClimateMode.off;
+            break;
+        }
       }
 
       // Determine capability from climate state
@@ -223,8 +375,18 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
       if (safeMaxSetpoint <= safeMinSetpoint) {
         safeMaxSetpoint = safeMinSetpoint + 1.0;
       }
-      final clampedTargetTemp =
-          rawTargetTemp.clamp(safeMinSetpoint, safeMaxSetpoint);
+
+      // Use desired setpoint if state is locked
+      double targetTemp;
+      if (_controlStateService.isLocked(ClimateControlConstants.setpointChannelId)) {
+        final desiredSetpoint = _controlStateService.getDesiredValue(
+          ClimateControlConstants.setpointChannelId,
+        );
+        targetTemp = desiredSetpoint ?? rawTargetTemp;
+      } else {
+        targetTemp = rawTargetTemp;
+      }
+      final clampedTargetTemp = targetTemp.clamp(safeMinSetpoint, safeMaxSetpoint);
 
       setState(() {
         _state = _state.copyWith(
@@ -299,10 +461,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
       _screenService.scale(size, density: _visualDensityService.density);
 
   void _setMode(ClimateMode mode) {
-    // Optimistic UI update
-    setState(() => _state = _state.copyWith(mode: mode));
-
-    // Convert to API mode and call service
+    // Convert to API mode
     spaces_climate.ClimateMode apiMode;
     switch (mode) {
       case ClimateMode.heat:
@@ -319,12 +478,34 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
         break;
     }
 
+    // Set pending state in control service (will lock UI to show desired value)
+    _controlStateService.setPending(
+      ClimateControlConstants.modeChannelId,
+      apiMode.index.toDouble(),
+    );
+
+    // Track that we're waiting for an intent
+    _modeWasLocked = true;
+
+    // Optimistic UI update
+    setState(() => _state = _state.copyWith(mode: mode));
+
+    // Call API to set the mode
     _spacesService?.setClimateMode(widget.roomId, apiMode);
   }
 
   void _setTargetTemp(double temp) {
     final clampedTemp =
         temp.clamp(_state.minSetpoint, _state.maxSetpoint);
+
+    // Set pending state in control service (will lock UI to show desired value)
+    _controlStateService.setPending(
+      ClimateControlConstants.setpointChannelId,
+      clampedTemp,
+    );
+
+    // Track that we're waiting for an intent
+    _setpointWasLocked = true;
 
     // Optimistic UI update
     setState(() => _state = _state.copyWith(targetTemp: clampedTemp));
