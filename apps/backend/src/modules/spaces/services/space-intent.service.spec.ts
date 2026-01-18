@@ -25,6 +25,7 @@ import { ResolvedModeOrchestration } from '../spec';
 import { ClimateIntentResult, ClimateIntentService, ClimateState } from './climate-intent.service';
 import { CoversIntentService } from './covers-intent.service';
 import { LightingIntentService } from './lighting-intent.service';
+import { MediaIntentService } from './media-intent.service';
 import { IntentExecutionResult } from './space-intent-base.service';
 import { SpaceIntentService, selectLightsForMode } from './space-intent.service';
 
@@ -100,7 +101,17 @@ describe('SpaceIntentService', () => {
 			executeCoversIntent: jest.fn(),
 		} as unknown as jest.Mocked<CoversIntentService>;
 
-		service = new SpaceIntentService(mockLightingIntentService, mockClimateIntentService, mockCoversIntentService);
+		const mockMediaIntentService = {
+			getMediaState: jest.fn(),
+			executeMediaIntent: jest.fn(),
+		} as unknown as jest.Mocked<MediaIntentService>;
+
+		service = new SpaceIntentService(
+			mockLightingIntentService,
+			mockClimateIntentService,
+			mockCoversIntentService,
+			mockMediaIntentService,
+		);
 	});
 
 	afterEach(() => {

@@ -3,10 +3,12 @@ import { Injectable } from '@nestjs/common';
 import { ClimateIntentDto } from '../dto/climate-intent.dto';
 import { CoversIntentDto } from '../dto/covers-intent.dto';
 import { LightingIntentDto } from '../dto/lighting-intent.dto';
+import { MediaIntentDto } from '../dto/media-intent.dto';
 
 import { ClimateIntentResult, ClimateIntentService, ClimateState } from './climate-intent.service';
 import { CoversIntentResult, CoversIntentService, CoversState } from './covers-intent.service';
 import { LightingIntentService } from './lighting-intent.service';
+import { MediaIntentResult, MediaIntentService, MediaState } from './media-intent.service';
 import { IntentExecutionResult } from './space-intent-base.service';
 
 // Re-export types for backward compatibility
@@ -14,6 +16,7 @@ export { ClimateState, ClimateIntentResult } from './climate-intent.service';
 export { CoversState, CoversIntentResult } from './covers-intent.service';
 export { LightDevice, LightModeSelection, selectLightsForMode } from './lighting-intent.service';
 export { CoverDevice, CoverModeSelection, selectCoversForMode } from './covers-intent.service';
+export { MediaDevice, MediaModeSelection, selectMediaForMode, MediaIntentResult, MediaState } from './media-intent.service';
 export { IntentExecutionResult } from './space-intent-base.service';
 
 /**
@@ -27,6 +30,7 @@ export class SpaceIntentService {
 		private readonly lightingIntentService: LightingIntentService,
 		private readonly climateIntentService: ClimateIntentService,
 		private readonly coversIntentService: CoversIntentService,
+		private readonly mediaIntentService: MediaIntentService,
 	) {}
 
 	// =====================
@@ -112,5 +116,34 @@ export class SpaceIntentService {
 	 */
 	async executeCoversIntent(spaceId: string, intent: CoversIntentDto): Promise<CoversIntentResult | null> {
 		return this.coversIntentService.executeCoversIntent(spaceId, intent);
+	}
+
+	// =====================
+	// Media Methods
+	// =====================
+
+	/**
+	 * Get the current media state for a space.
+	 * Delegates to MediaIntentService.
+	 *
+	 * @param spaceId - The UUID of the space to get media state for
+	 * @returns The aggregated media state including volume, power, mute status, and device counts,
+	 *          or null if the space doesn't exist
+	 */
+	async getMediaState(spaceId: string): Promise<MediaState | null> {
+		return this.mediaIntentService.getMediaState(spaceId);
+	}
+
+	/**
+	 * Execute a media intent for the space.
+	 * Delegates to MediaIntentService.
+	 *
+	 * @param spaceId - The UUID of the space to execute the intent in
+	 * @param intent - The media intent to execute (POWER_ON, POWER_OFF, VOLUME_SET, VOLUME_DELTA, MUTE, UNMUTE, SET_MODE)
+	 * @returns The execution result with affected/failed device counts and new volume/mute state,
+	 *          or null if the space doesn't exist
+	 */
+	async executeMediaIntent(spaceId: string, intent: MediaIntentDto): Promise<MediaIntentResult | null> {
+		return this.mediaIntentService.executeMediaIntent(spaceId, intent);
 	}
 }
