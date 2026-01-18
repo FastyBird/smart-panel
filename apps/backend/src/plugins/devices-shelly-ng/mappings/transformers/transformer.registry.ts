@@ -121,15 +121,24 @@ export const BUILTIN_TRANSFORMERS: Record<string, AnyTransformerDefinition> = {
 	},
 
 	// Cover state to status
+	// Read: Shelly states pass through, Write: Panel commands map to Shelly commands
 	cover_state: {
 		type: 'map',
-		bidirectional: {
+		read: {
+			opening: 'opening',
+			closing: 'closing',
+			stopped: 'stopped',
 			open: 'opening',
 			close: 'closing',
 			stop: 'stopped',
-			stopped: 'stopped',
-			opening: 'opening',
-			closing: 'closing',
+		},
+		write: {
+			opening: 'open',
+			closing: 'close',
+			stopped: 'stop',
+			open: 'open',
+			close: 'close',
+			stop: 'stop',
 		},
 	},
 };
