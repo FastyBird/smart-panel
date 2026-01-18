@@ -22,17 +22,17 @@ class FilterChannelView extends ChannelView with ChannelFaultMixin {
     super.validationIssues,
   });
 
-  /// Life remaining property (required per spec)
-  LifeRemainingChannelPropertyView get lifeRemainingProp =>
-      properties.whereType<LifeRemainingChannelPropertyView>().first;
+  /// Life remaining property (optional - may not be present on all devices)
+  LifeRemainingChannelPropertyView? get lifeRemainingProp =>
+      properties.whereType<LifeRemainingChannelPropertyView>().firstOrNull;
 
-  /// Status property (required per spec)
-  StatusChannelPropertyView get statusProp =>
-      properties.whereType<StatusChannelPropertyView>().first;
+  /// Status property (optional - may not be present on all devices)
+  StatusChannelPropertyView? get statusProp =>
+      properties.whereType<StatusChannelPropertyView>().firstOrNull;
 
-  bool get hasLifeRemaining => true;
+  bool get hasLifeRemaining => lifeRemainingProp != null;
 
-  bool get hasStatus => true;
+  bool get hasStatus => statusProp != null;
 
   @override
   FaultChannelPropertyView? get faultProp =>
@@ -40,6 +40,7 @@ class FilterChannelView extends ChannelView with ChannelFaultMixin {
 
   int get lifeRemaining {
     final prop = lifeRemainingProp;
+    if (prop == null) return 100;
 
     final ValueType? value = prop.value;
 
@@ -72,7 +73,10 @@ class FilterChannelView extends ChannelView with ChannelFaultMixin {
   }
 
   int get minLifeRemaining {
-    final FormatType? format = lifeRemainingProp.format;
+    final prop = lifeRemainingProp;
+    if (prop == null) return 0;
+
+    final FormatType? format = prop.format;
 
     if (format is NumberListFormatType && format.value.length == 2) {
       return (format.value[0] as num).toInt();
@@ -82,7 +86,10 @@ class FilterChannelView extends ChannelView with ChannelFaultMixin {
   }
 
   int get maxLifeRemaining {
-    final FormatType? format = lifeRemainingProp.format;
+    final prop = lifeRemainingProp;
+    if (prop == null) return 100;
+
+    final FormatType? format = prop.format;
 
     if (format is NumberListFormatType && format.value.length == 2) {
       return (format.value[1] as num).toInt();
@@ -93,6 +100,7 @@ class FilterChannelView extends ChannelView with ChannelFaultMixin {
 
   FilterStatusValue? get status {
     final prop = statusProp;
+    if (prop == null) return null;
 
     final ValueType? value = prop.value;
 
