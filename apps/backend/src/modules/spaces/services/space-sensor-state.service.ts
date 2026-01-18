@@ -179,11 +179,11 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 				// Check for safety alerts
 				this.checkSafetyAlerts(device, channel, value, safetyAlerts);
 
-				// Check for motion/occupancy
-				if (channel.category === ChannelCategory.MOTION && value === true) {
+				// Check for motion/occupancy (handle string-encoded booleans)
+				if (channel.category === ChannelCategory.MOTION && this.isBooleanTrue(value)) {
 					motionDetected = true;
 				}
-				if (channel.category === ChannelCategory.OCCUPANCY && value === true) {
+				if (channel.category === ChannelCategory.OCCUPANCY && this.isBooleanTrue(value)) {
 					occupancyDetected = true;
 				}
 			}
@@ -247,7 +247,7 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 				break;
 			case ChannelCategory.PRESSURE:
 				primaryProperty = properties.find((p) => p.category === PropertyCategory.MEASURED);
-				unit = 'kPa';
+				unit = 'hPa';
 				break;
 			case ChannelCategory.ILLUMINANCE:
 				primaryProperty = properties.find((p) => p.category === PropertyCategory.DENSITY);
@@ -388,10 +388,7 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 		// Determine if sensor is triggered based on value type and channel category
 		let triggered = false;
 
-		if (typeof value === 'boolean') {
-			// For boolean sensors (smoke detected, leak detected, etc.)
-			triggered = value === true;
-		} else if (typeof value === 'number') {
+		if (typeof value === 'number') {
 			// For numeric sensors (CO ppm, gas ppm), check against safety thresholds
 			switch (channel.category) {
 				case ChannelCategory.CARBON_MONOXIDE:
@@ -407,6 +404,10 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 					// For other numeric safety sensors, consider any positive value as triggered
 					triggered = value > 0;
 			}
+		} else {
+			// For boolean/string sensors (smoke detected, leak detected, etc.)
+			// Handle string-encoded booleans like "true", "on", "1"
+			triggered = this.isBooleanTrue(value);
 		}
 
 		// Only add to safetyAlerts if the sensor is actually triggered
@@ -470,5 +471,26 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 		}
 		const sum = values.reduce((a, b) => a + b, 0);
 		return Math.round((sum / values.length) * 10) / 10;
+	}
+
+	/**
+	 * Convert a value to boolean, handling string-encoded booleans
+	 * like "true", "on", "1", etc.
+	 */
+	private isBooleanTrue(value: number | boolean | string | null): boolean {
+		if (typeof value === 'boolean') {
+			return value;
+		}
+
+		if (typeof value === 'string') {
+			const lower = value.toLowerCase();
+			return lower === 'true' || lower === 'on' || lower === '1';
+		}
+
+		if (typeof value === 'number') {
+			return value === 1;
+		}
+
+		return false;
 	}
 }
