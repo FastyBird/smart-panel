@@ -463,6 +463,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       );
     }
 
+    // Sort sensors by type priority
+    sensors.sort((a, b) => _sensorTypePriority(a.type).compareTo(_sensorTypePriority(b.type)));
+
     _state = ClimateRoomState(
       roomName: roomName,
       mode: mode,
@@ -753,6 +756,28 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         debugPrint(
             '[ClimateDomainViewPage] Failed to build climate device ${device.id}: $e');
       }
+    }
+  }
+
+  /// Returns sort priority for sensor types (lower = higher priority)
+  int _sensorTypePriority(String type) {
+    switch (type) {
+      case 'temp':
+        return 0;
+      case 'humidity':
+        return 1;
+      case 'aqi':
+        return 2;
+      case 'pm':
+        return 3;
+      case 'co2':
+        return 4;
+      case 'voc':
+        return 5;
+      case 'pressure':
+        return 6;
+      default:
+        return 99;
     }
   }
 
