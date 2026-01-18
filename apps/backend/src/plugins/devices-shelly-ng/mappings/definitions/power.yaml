@@ -1,0 +1,70 @@
+# Shelly NG Power Monitoring Mappings
+# Maps PM1 and power monitoring properties to electrical channels
+
+version: "1.0"
+
+transformers:
+  # Power (Watts)
+  power:
+    type: round
+    precision: 1
+
+  # Energy (kWh)
+  energy:
+    type: round
+    precision: 3
+
+  # Voltage (Volts)
+  voltage:
+    type: round
+    precision: 1
+
+  # Current (Amps)
+  current:
+    type: round
+    precision: 3
+
+mappings:
+  # PM1 power monitoring
+  - name: pm1_power_monitor
+    description: "Shelly PM1 component mapped as electrical power and energy channels"
+    priority: 100
+    match:
+      component_type: pm1
+    channels:
+      - identifier: "power:{key}"
+        name: "Power: {key}"
+        category: ELECTRICAL_POWER
+        properties:
+          - shelly_property: apower
+            panel:
+              identifier: POWER
+              data_type: FLOAT
+              unit: "W"
+              settable: false
+            transformer: power
+          - shelly_property: voltage
+            panel:
+              identifier: VOLTAGE
+              data_type: FLOAT
+              unit: "V"
+              settable: false
+            transformer: voltage
+          - shelly_property: current
+            panel:
+              identifier: CURRENT
+              data_type: FLOAT
+              unit: "A"
+              settable: false
+            transformer: current
+      - identifier: "energy:{key}"
+        name: "Consumption: {key}"
+        category: ELECTRICAL_ENERGY
+        properties:
+          - shelly_property: aenergy
+            panel:
+              identifier: CONSUMPTION
+              data_type: FLOAT
+              unit: "kWh"
+              settable: false
+            transformer: energy

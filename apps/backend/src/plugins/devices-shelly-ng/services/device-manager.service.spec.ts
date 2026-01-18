@@ -36,6 +36,27 @@ const mockChannelsPropertiesService = {
 	update: jest.fn(),
 } as any;
 
+const mockMappingLoaderService = {
+	findMatchingMapping: jest.fn().mockImplementation((context: any) => {
+		// Return a valid mapping for switch components
+		if (context.componentType === 'switch') {
+			return {
+				channels: [
+					{
+						identifier: `switch:${context.componentKey}`,
+						name: `Switch: ${context.componentKey}`,
+						category: 'switcher', // Maps to ChannelCategory.SWITCHER
+					},
+				],
+			};
+		}
+		return null;
+	}),
+	interpolateTemplate: jest.fn((template: string, context: any) =>
+		template.replace(/\{key\}/g, String(context.componentKey)),
+	),
+} as any;
+
 const mockRpc = {
 	getDeviceInfo: jest.fn(),
 	getComponents: jest.fn(),
@@ -162,7 +183,13 @@ jest.mock('../devices-shelly-ng.constants', () => ({
 }));
 
 const makeService = () =>
-	new DeviceManagerService(mockRpc as any, mockDevicesService, mockChannelsService, mockChannelsPropertiesService);
+	new DeviceManagerService(
+		mockRpc as any,
+		mockDevicesService,
+		mockChannelsService,
+		mockChannelsPropertiesService,
+		mockMappingLoaderService,
+	);
 
 beforeEach(() => {
 	jest.clearAllMocks();

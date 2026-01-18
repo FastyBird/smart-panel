@@ -1,0 +1,42 @@
+# Shelly NG Light Component Mappings
+# Maps light components (dimmers) to light channels
+
+version: "1.0"
+
+transformers:
+  # Boolean state transformer
+  boolean_state:
+    type: boolean
+    true_value: true
+    false_value: false
+
+  # Brightness (0-100)
+  brightness:
+    type: clamp
+    min: 0
+    max: 100
+
+mappings:
+  # Light (dimmer) as Light channel
+  - name: light_dimmer
+    description: "Shelly light/dimmer component mapped as dimmable light channel"
+    priority: 100
+    match:
+      component_type: light
+    channels:
+      - identifier: "light:{key}"
+        name: "Light: {key}"
+        category: LIGHT
+        properties:
+          - shelly_property: output
+            panel:
+              identifier: ON
+              data_type: BOOL
+            transformer: boolean_state
+          - shelly_property: brightness
+            panel:
+              identifier: BRIGHTNESS
+              data_type: UCHAR
+              format: [0, 100]
+              unit: "%"
+            transformer: brightness
