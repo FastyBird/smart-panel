@@ -169,8 +169,8 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 
 				allReadings.push(reading);
 
-				// Count by role
-				const roleKey = role ?? 'unassigned';
+				// Count by role (unassigned sensors are counted as 'other')
+				const roleKey = role ?? SensorRole.OTHER;
 				sensorsByRole[roleKey] = (sensorsByRole[roleKey] ?? 0) + 1;
 
 				// Collect environment readings for averaging
@@ -388,23 +388,27 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 		// For boolean safety sensors, check if triggered
 		const triggered = value === true;
 
-		safetyAlerts.push({
-			channelCategory: channel.category,
-			deviceId: device.id,
-			deviceName: device.name,
-			channelId: channel.id,
-			triggered,
-		});
+		// Only add to safetyAlerts if the sensor is actually triggered
+		if (triggered) {
+			safetyAlerts.push({
+				channelCategory: channel.category,
+				deviceId: device.id,
+				deviceName: device.name,
+				channelId: channel.id,
+				triggered,
+			});
+		}
 	}
 
 	/**
 	 * Group readings by role
 	 */
 	private groupReadingsByRole(readings: SensorReading[]): SensorRoleReadings[] {
-		const byRole = new Map<SensorRole | 'unassigned', SensorReading[]>();
+		const byRole = new Map<SensorRole, SensorReading[]>();
 
 		for (const reading of readings) {
-			const roleKey = reading.role ?? ('unassigned' as const);
+			// Treat unassigned (null) readings as OTHER role
+			const roleKey = reading.role ?? SensorRole.OTHER;
 			const existing = byRole.get(roleKey) ?? [];
 			existing.push(reading);
 			byRole.set(roleKey, existing);
@@ -412,7 +416,7 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 
 		const result: SensorRoleReadings[] = [];
 
-		// Process assigned roles first
+		// Process roles in order
 		const roleOrder: SensorRole[] = [
 			SensorRole.ENVIRONMENT,
 			SensorRole.SAFETY,
@@ -431,16 +435,6 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 					readings: roleReadings,
 				});
 			}
-		}
-
-		// Add unassigned at the end (as OTHER)
-		const unassigned = byRole.get('unassigned');
-		if (unassigned && unassigned.length > 0) {
-			result.push({
-				role: SensorRole.OTHER,
-				sensorsCount: unassigned.length,
-				readings: unassigned,
-			});
 		}
 
 		return result;
