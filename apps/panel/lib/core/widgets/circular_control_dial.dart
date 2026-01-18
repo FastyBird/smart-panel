@@ -414,7 +414,7 @@ class _CircularControlDialState extends State<CircularControlDial>
                   trackColor: trackColor,
                   tickColor: tickColor,
                   glowIntensity: _showActiveGlow ? _glowController.value : 0,
-                  isActive: widget.enabled,
+                  isActive: widget.isActive && widget.enabled,
                   showTicks: widget.showTicks,
                   majorTickCount: widget.majorTickCount,
                 ),
