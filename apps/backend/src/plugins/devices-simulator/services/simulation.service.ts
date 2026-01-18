@@ -1,12 +1,14 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
+import { ConfigService } from '../../../modules/config/services/config.service';
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { getAllProperties } from '../../../modules/devices/utils/schema.utils';
 import { DEVICES_SIMULATOR_PLUGIN_NAME, DEVICES_SIMULATOR_TYPE } from '../devices-simulator.constants';
 import { SimulatorDeviceEntity } from '../entities/devices-simulator.entity';
+import { SimulatorConfigModel } from '../models/config.model';
 import {
 	AirConditionerSimulator,
 	FanSimulator,
@@ -79,6 +81,7 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy {
 	private isRunning = false;
 
 	constructor(
+		private readonly configService: ConfigService,
 		private readonly devicesService: DevicesService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 	) {
@@ -113,6 +116,9 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy {
 	async onModuleInit(): Promise<void> {
 		this.logger.log('Simulation service initialized');
 
+		// Load persisted plugin configuration
+		this.loadPluginConfig();
+
 		if (this.config.updateOnStart) {
 			this.logger.log('Running initial simulation on startup...');
 			await this.simulateAllDevices();
@@ -120,6 +126,27 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy {
 
 		if (this.config.simulationInterval > 0) {
 			this.startAutoSimulation();
+		}
+	}
+
+	/**
+	 * Load configuration from the persisted plugin config
+	 */
+	private loadPluginConfig(): void {
+		try {
+			const pluginConfig = this.configService.getPluginConfig<SimulatorConfigModel>(DEVICES_SIMULATOR_PLUGIN_NAME);
+
+			this.config = {
+				updateOnStart: pluginConfig.updateOnStart ?? DEFAULT_CONFIG.updateOnStart,
+				simulationInterval: pluginConfig.simulationInterval ?? DEFAULT_CONFIG.simulationInterval,
+				latitude: pluginConfig.latitude ?? DEFAULT_CONFIG.latitude,
+				smoothTransitions: pluginConfig.smoothTransitions ?? DEFAULT_CONFIG.smoothTransitions,
+			};
+
+			this.logger.log('Loaded plugin configuration', { config: this.config });
+		} catch (error) {
+			this.logger.warn('Failed to load plugin configuration, using defaults', { error: (error as Error).message });
+			this.config = { ...DEFAULT_CONFIG };
 		}
 	}
 

@@ -9,6 +9,9 @@ import { SimulationContext } from './simulation-context';
  * Simulates realistic outlet behavior with power monitoring.
  */
 export class OutletSimulator extends BaseDeviceSimulator {
+	// Store last simulation timestamp per device for accurate energy calculation
+	private lastSimulationTime: Map<string, number> = new Map();
+
 	getSupportedCategory(): DeviceCategory {
 		return DeviceCategory.OUTLET;
 	}
@@ -28,14 +31,24 @@ export class OutletSimulator extends BaseDeviceSimulator {
 			values.push(...this.simulateOutlet(isOn));
 		}
 
-		// Electrical power channel
+		// Electrical power channel - get the actual power value
+		let currentPower = 0;
 		if (this.hasChannel(device, ChannelCategory.ELECTRICAL_POWER)) {
-			values.push(...this.simulatePower(isOn, previousValues));
+			const powerValues = this.simulatePower(isOn);
+			values.push(...powerValues);
+
+			// Extract the power value for energy calculation
+			const powerValue = powerValues.find(
+				(v) => v.channelCategory === ChannelCategory.ELECTRICAL_POWER && v.propertyCategory === PropertyCategory.POWER,
+			);
+			if (powerValue) {
+				currentPower = powerValue.value as number;
+			}
 		}
 
-		// Electrical energy channel (consumption tracking)
+		// Electrical energy channel (consumption tracking) - use actual power value
 		if (this.hasChannel(device, ChannelCategory.ELECTRICAL_ENERGY)) {
-			values.push(...this.simulateEnergy(isOn, previousValues));
+			values.push(...this.simulateEnergy(device.id, currentPower, context, previousValues));
 		}
 
 		return values;
@@ -82,10 +95,7 @@ export class OutletSimulator extends BaseDeviceSimulator {
 	/**
 	 * Simulate power consumption
 	 */
-	private simulatePower(
-		isOn: boolean,
-		_previousValues?: Map<string, string | number | boolean>,
-	): SimulatedPropertyValue[] {
+	private simulatePower(isOn: boolean): SimulatedPropertyValue[] {
 		const values: SimulatedPropertyValue[] = [];
 
 		if (!isOn) {
@@ -151,9 +161,17 @@ export class OutletSimulator extends BaseDeviceSimulator {
 
 	/**
 	 * Simulate energy consumption (cumulative)
+	 * Uses actual power value and elapsed time since last simulation.
+	 *
+	 * @param deviceId Device ID for tracking last simulation time
+	 * @param currentPower Current power consumption in watts
+	 * @param context Simulation context with timestamp
+	 * @param previousValues Previous property values
 	 */
 	private simulateEnergy(
-		isOn: boolean,
+		deviceId: string,
+		currentPower: number,
+		context: SimulationContext,
 		previousValues?: Map<string, string | number | boolean>,
 	): SimulatedPropertyValue[] {
 		const prevEnergy = this.getPreviousValue(
@@ -163,12 +181,17 @@ export class OutletSimulator extends BaseDeviceSimulator {
 			0,
 		) as number;
 
-		// Add energy based on power and time (assume 5 second update interval)
+		// Calculate elapsed time since last simulation
+		const now = context.timestamp.getTime();
+		const lastTime = this.lastSimulationTime.get(deviceId);
+		this.lastSimulationTime.set(deviceId, now);
+
+		// Calculate energy increment based on actual power and elapsed time
 		let energyIncrement = 0;
-		if (isOn) {
-			// Random power between 50-200W, converted to kWh for 5 seconds
-			const avgPower = 100 + Math.random() * 100;
-			energyIncrement = (avgPower * 5) / 3600000; // W to kWh for 5 seconds
+		if (currentPower > 0 && lastTime !== undefined) {
+			const elapsedMs = now - lastTime;
+			// Convert: W * ms -> kWh (divide by 1000 for kW, divide by 3600000 for hours from ms)
+			energyIncrement = (currentPower * elapsedMs) / 3600000000;
 		}
 
 		const newEnergy = Math.round((prevEnergy + energyIncrement) * 1000) / 1000;
