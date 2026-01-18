@@ -11,15 +11,24 @@ transformers:
     max: 100
 
   # Cover state mapping
+  # Read: Shelly states (opening, closing, stopped) pass through
+  # Write: Panel commands (open, close, stop) map to Shelly commands
   cover_state:
     type: map
-    bidirectional:
+    read:
+      opening: "opening"
+      closing: "closing"
+      stopped: "stopped"
       open: "opening"
       close: "closing"
       stop: "stopped"
-      stopped: "stopped"
-      opening: "opening"
-      closing: "closing"
+    write:
+      opening: "open"
+      closing: "close"
+      stopped: "stop"
+      open: "open"
+      close: "close"
+      stop: "stop"
 
 derivations:
   # Derive status from state
