@@ -1335,14 +1335,17 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
 
+    // Only show "tap for details" when there are multiple climate devices
+    final showDetailHint = _state.climateDevices.length > 1;
+
     // Use less bottom padding on small/medium to fit hint text
-    final cardPadding = _screenService.isLargeScreen
+    final cardPadding = _screenService.isLargeScreen || !showDetailHint
         ? AppSpacings.paddingLg
         : EdgeInsets.fromLTRB(
             AppSpacings.pLg, AppSpacings.pLg, AppSpacings.pLg, AppSpacings.pSm);
 
     return GestureDetector(
-      onTap: _navigateToDetail,
+      onTap: showDetailHint ? _navigateToDetail : null,
       child: Container(
         padding: cardPadding,
         decoration: BoxDecoration(
@@ -1357,7 +1360,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             final availableForDial =
                 constraints.maxWidth - modeIconsWidth - spacing;
             // Reserve space for hint text + spacing on small/medium devices
-            final hintHeight = _screenService.isLargeScreen
+            final hintHeight = _screenService.isLargeScreen || !showDetailHint
                 ? 0.0
                 : _scale(16) + AppSpacings.pXs;
             final maxDialHeight = constraints.maxHeight - hintHeight;
@@ -1391,29 +1394,31 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                     _buildVerticalModeIcons(context),
                   ],
                 ),
-                SizedBox(height: hintSpacing),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Tap for details',
-                      style: TextStyle(
+                if (showDetailHint) ...[
+                  SizedBox(height: hintSpacing),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Tap for details',
+                        style: TextStyle(
+                          color: isDark
+                              ? AppTextColorDark.secondary
+                              : AppTextColorLight.secondary,
+                          fontSize: AppFontSize.extraSmall,
+                        ),
+                      ),
+                      AppSpacings.spacingXsHorizontal,
+                      Icon(
+                        Icons.chevron_right,
                         color: isDark
                             ? AppTextColorDark.secondary
                             : AppTextColorLight.secondary,
-                        fontSize: AppFontSize.extraSmall,
+                        size: _scale(14),
                       ),
-                    ),
-                    AppSpacings.spacingXsHorizontal,
-                    Icon(
-                      Icons.chevron_right,
-                      color: isDark
-                          ? AppTextColorDark.secondary
-                          : AppTextColorLight.secondary,
-                      size: _scale(14),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ],
             );
           },
@@ -1490,8 +1495,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
 
+    // Only show "tap for details" when there are multiple climate devices
+    final showDetailHint = _state.climateDevices.length > 1;
+
     return GestureDetector(
-      onTap: _navigateToDetail,
+      onTap: showDetailHint ? _navigateToDetail : null,
       child: Container(
         padding: AppSpacings.paddingLg,
         decoration: BoxDecoration(
@@ -1517,29 +1525,31 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             ),
             AppSpacings.spacingMdVertical,
             _buildModeSelector(context),
-            AppSpacings.spacingSmVertical,
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Tap for details',
-                  style: TextStyle(
+            if (showDetailHint) ...[
+              AppSpacings.spacingSmVertical,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Tap for details',
+                    style: TextStyle(
+                      color: isDark
+                          ? AppTextColorDark.secondary
+                          : AppTextColorLight.secondary,
+                      fontSize: AppFontSize.extraSmall,
+                    ),
+                  ),
+                  AppSpacings.spacingXsHorizontal,
+                  Icon(
+                    Icons.chevron_right,
                     color: isDark
                         ? AppTextColorDark.secondary
                         : AppTextColorLight.secondary,
-                    fontSize: AppFontSize.extraSmall,
+                    size: _scale(14),
                   ),
-                ),
-                AppSpacings.spacingXsHorizontal,
-                Icon(
-                  Icons.chevron_right,
-                  color: isDark
-                      ? AppTextColorDark.secondary
-                      : AppTextColorLight.secondary,
-                  size: _scale(14),
-                ),
-              ],
-            ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
