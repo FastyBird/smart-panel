@@ -140,7 +140,13 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 
 		switch (intent.type) {
 			case ClimateIntentType.SET_MODE:
-				result = await this.executeSetModeIntentWithResults(spaceId, primaryDevices, intent, climateState, targetResults);
+				result = await this.executeSetModeIntentWithResults(
+					spaceId,
+					primaryDevices,
+					intent,
+					climateState,
+					targetResults,
+				);
 				break;
 
 			case ClimateIntentType.SETPOINT_SET:
