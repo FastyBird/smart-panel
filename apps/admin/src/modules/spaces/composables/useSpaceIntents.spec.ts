@@ -191,7 +191,7 @@ describe('useSpaceIntents', () => {
 			const spaceId = ref<string | undefined>('space-123');
 			const { executeClimateIntent, lastResult } = useSpaceIntents(spaceId);
 
-			const result = await executeClimateIntent({ type: 'setpoint_set', value: 22.5 });
+			const result = await executeClimateIntent({ type: 'setpoint_set', heatingSetpoint: 22.5 });
 
 			expect(result).not.toBeNull();
 			expect(result?.success).toBe(true);
@@ -331,7 +331,7 @@ describe('useSpaceIntents', () => {
 			const exec1 = executeLightingIntent({ type: 'off' });
 			expect(isExecuting.value).toBe(true);
 
-			const exec2 = executeClimateIntent({ type: 'setpoint_set', value: 22 });
+			const exec2 = executeClimateIntent({ type: 'setpoint_set', heatingSetpoint: 22 });
 			expect(isExecuting.value).toBe(true);
 
 			resolveFirst!(createMockLightingIntentResponse());
