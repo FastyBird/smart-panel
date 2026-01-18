@@ -1568,7 +1568,10 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         break;
       case AuxiliaryType.purifier:
         if (deviceView is AirPurifierDeviceView) {
-          detailPage = AirPurifierDeviceDetail(device: deviceView);
+          detailPage = AirPurifierDeviceDetail(
+            device: deviceView,
+            onBack: () => Navigator.of(context).pop(),
+          );
         }
         break;
       case AuxiliaryType.humidifier:

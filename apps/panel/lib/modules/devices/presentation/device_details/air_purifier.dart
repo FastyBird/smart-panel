@@ -53,10 +53,12 @@ class PurifierDeviceState {
 
 class AirPurifierDeviceDetail extends StatefulWidget {
   final AirPurifierDeviceView _device;
+  final VoidCallback? onBack;
 
   const AirPurifierDeviceDetail({
     super.key,
     required AirPurifierDeviceView device,
+    this.onBack,
   }) : _device = device;
 
   @override
@@ -419,6 +421,10 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       leading: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          HeaderIconButton(
+            icon: Icons.arrow_back_ios_new,
+            onTap: widget.onBack,
+          ),
           AppSpacings.spacingMdHorizontal,
           Container(
             width: _scale(44),
