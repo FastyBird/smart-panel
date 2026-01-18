@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import { IsBoolean, IsDefined, IsEnum, IsInt, Max, Min, ValidateIf, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
@@ -22,6 +22,7 @@ export class CoversIntentDto {
 		example: CoversMode.PRIVACY,
 	})
 	@Expose()
+	@Transform(({ value }) => (value === null ? undefined : value))
 	@ValidateIf((o: CoversIntentDto) => o.type === CoversIntentType.SET_MODE)
 	@IsDefined({ message: '[{"field":"mode","reason":"Mode is required when type is SET_MODE."}]' })
 	@IsEnum(CoversMode, { message: '[{"field":"mode","reason":"Mode must be a valid covers mode."}]' })
@@ -35,6 +36,7 @@ export class CoversIntentDto {
 		example: 50,
 	})
 	@Expose()
+	@Transform(({ value }) => (value === null ? undefined : value))
 	@ValidateIf(
 		(o: CoversIntentDto) => o.type === CoversIntentType.SET_POSITION || o.type === CoversIntentType.ROLE_POSITION,
 	)
@@ -52,6 +54,7 @@ export class CoversIntentDto {
 		example: PositionDelta.MEDIUM,
 	})
 	@Expose()
+	@Transform(({ value }) => (value === null ? undefined : value))
 	@ValidateIf((o: CoversIntentDto) => o.type === CoversIntentType.POSITION_DELTA)
 	@IsDefined({ message: '[{"field":"delta","reason":"Delta is required when type is POSITION_DELTA."}]' })
 	@IsEnum(PositionDelta, { message: '[{"field":"delta","reason":"Delta must be a valid position delta."}]' })
@@ -64,6 +67,7 @@ export class CoversIntentDto {
 		example: true,
 	})
 	@Expose()
+	@Transform(({ value }) => (value === null ? undefined : value))
 	@ValidateIf((o: CoversIntentDto) => o.type === CoversIntentType.POSITION_DELTA)
 	@IsDefined({ message: '[{"field":"increase","reason":"Increase direction is required for position delta."}]' })
 	@IsBoolean({ message: '[{"field":"increase","reason":"Increase must be a boolean."}]' })
@@ -75,6 +79,7 @@ export class CoversIntentDto {
 		example: CoversRole.PRIMARY,
 	})
 	@Expose()
+	@Transform(({ value }) => (value === null ? undefined : value))
 	@ValidateIf((o: CoversIntentDto) => o.type === CoversIntentType.ROLE_POSITION)
 	@IsDefined({ message: '[{"field":"role","reason":"Role is required for ROLE_POSITION intent."}]' })
 	@IsEnum(CoversRole, { message: '[{"field":"role","reason":"Role must be a valid covers role."}]' })

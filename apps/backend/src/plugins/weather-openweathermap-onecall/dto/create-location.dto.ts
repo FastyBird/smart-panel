@@ -50,10 +50,11 @@ export class CreateOpenWeatherMapOneCallLocationDto extends CreateLocationDto {
 	})
 	@Expose({ name: 'country_code' })
 	@Transform(
-		({ obj }: { obj: { country_code?: string; countryCode?: string } }) => obj.country_code || obj.countryCode,
-		{
-			toClassOnly: true,
+		({ obj }: { obj: { country_code?: string | null; countryCode?: string | null } }) => {
+			const value = obj.country_code || obj.countryCode;
+			return value === null ? undefined : value;
 		},
+		{ toClassOnly: true },
 	)
 	@IsOptional()
 	@IsString({ message: '[{"field":"country_code","reason":"Country code must be a string."}]' })

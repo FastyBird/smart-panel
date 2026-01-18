@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
@@ -13,6 +13,7 @@ export class RegisterDto {
 		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
 	})
 	@Expose()
+	@Transform(({ value }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"id","reason":"ID must be a valid UUID (version 4)."}]' })
 	id?: string;
@@ -32,9 +33,9 @@ export class RegisterDto {
 		enum: UserRole,
 	})
 	@Expose()
+	@Transform(({ value }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsEnum(UserRole, { message: '[{"field":"role","reason":"Role must be one of the valid roles."}]' })
-	@ValidateIf((_, value) => value !== null)
 	role?: UserRole;
 
 	@ApiProperty({

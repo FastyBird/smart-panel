@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import { IsArray, IsOptional, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
@@ -28,6 +28,7 @@ export class CreateHomeAssistantChannelDto extends CreateChannelDto {
 		items: { $ref: getSchemaPath(CreateHomeAssistantChannelPropertyDto) },
 	})
 	@Expose()
+	@Transform(({ value }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsArray({ message: '[{"field":"properties","reason":"Properties must be an array."}]' })
 	@ValidateNested({ each: true })

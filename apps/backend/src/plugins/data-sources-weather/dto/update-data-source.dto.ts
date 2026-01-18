@@ -44,6 +44,7 @@ export class UpdateCurrentWeatherDataSourceDto extends UpdateSingleDataSourceDto
 		example: WeatherDataField.TEMPERATURE,
 	})
 	@Expose()
+	@Transform(({ value }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsEnum(WeatherDataField, {
 		message: '[{"field":"field","reason":"Field must be a valid weather data field."}]',
@@ -113,9 +114,13 @@ export class UpdateForecastDayDataSourceDto extends UpdateSingleDataSourceDto {
 		example: 1,
 	})
 	@Expose({ name: 'day_offset' })
-	@Transform(({ obj }: { obj: { day_offset?: number; dayOffset?: number } }) => obj.day_offset ?? obj.dayOffset, {
-		toClassOnly: true,
-	})
+	@Transform(
+		({ obj }: { obj: { day_offset?: number | null; dayOffset?: number | null } }) => {
+			const value = obj.day_offset ?? obj.dayOffset;
+			return value === null ? undefined : value;
+		},
+		{ toClassOnly: true },
+	)
 	@IsOptional()
 	@IsNumber({}, { message: '[{"field":"day_offset","reason":"Day offset must be a number."}]' })
 	@Min(0, { message: '[{"field":"day_offset","reason":"Day offset must be at least 0."}]' })
@@ -128,6 +133,7 @@ export class UpdateForecastDayDataSourceDto extends UpdateSingleDataSourceDto {
 		example: WeatherDataField.TEMPERATURE_MAX,
 	})
 	@Expose()
+	@Transform(({ value }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsEnum(WeatherDataField, {
 		message: '[{"field":"field","reason":"Field must be a valid weather data field."}]',

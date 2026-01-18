@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import { IsOptional, IsUUID, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
@@ -24,6 +24,7 @@ export class CreateDayWeatherTileDto extends CreateSingleTileDto {
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
 	@Expose({ name: 'location_id' })
+	@Transform(({ value }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsUUID('4')
 	readonly location_id?: string;
@@ -47,6 +48,7 @@ export class CreateForecastWeatherTileDto extends CreateSingleTileDto {
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
 	@Expose({ name: 'location_id' })
+	@Transform(({ value }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsUUID('4')
 	readonly location_id?: string;

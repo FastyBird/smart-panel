@@ -1,4 +1,4 @@
-import { Expose } from 'class-transformer';
+import { Expose, Transform } from 'class-transformer';
 import {
 	IsBoolean,
 	IsInt,
@@ -65,6 +65,7 @@ export class RotatingFileUpdateConfigDto extends UpdatePluginConfigDto {
 		example: true,
 	})
 	@Expose()
+	@Transform(({ value }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled must be a boolean."}]' })
 	enabled?: boolean;
@@ -90,6 +91,7 @@ export class RotatingFileUpdateConfigDto extends UpdatePluginConfigDto {
 		example: 7,
 	})
 	@Expose()
+	@Transform(({ value }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsInt({ message: '[{"field":"retention_days","reason":"Retention days must be an integer."}]' })
 	@Min(1, { message: '[{"field":"retention_days","reason":"Retention days must be at least 1."}]' })

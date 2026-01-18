@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import { IsArray, IsOptional, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
@@ -24,6 +24,7 @@ export class CreateCardsPageDto extends CreatePageDto {
 		items: { $ref: '#/components/schemas/PagesCardsPluginCreateCard' },
 	})
 	@Expose()
+	@Transform(({ value }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsArray({ message: '[{"field":"tiles","reason":"Cards must be a valid array."}]' })
 	@ValidateNested({ each: true })

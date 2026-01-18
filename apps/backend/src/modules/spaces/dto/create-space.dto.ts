@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
 	IsBoolean,
 	IsEnum,
@@ -26,6 +26,7 @@ export class CreateSpaceDto {
 		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
 	})
 	@Expose()
+	@Transform(({ value }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"id","reason":"ID must be a valid UUID (version 4)."}]' })
 	id?: string;
@@ -110,6 +111,7 @@ export class CreateSpaceDto {
 		example: 0,
 	})
 	@Expose()
+	@Transform(({ value }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsInt({ message: '[{"field":"display_order","reason":"Display order must be an integer."}]' })
 	@Min(0, { message: '[{"field":"display_order","reason":"Display order must be at least 0."}]' })
@@ -122,6 +124,7 @@ export class CreateSpaceDto {
 		example: true,
 	})
 	@Expose()
+	@Transform(({ value }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"suggestions_enabled","reason":"Suggestions enabled must be a boolean."}]' })
 	suggestions_enabled?: boolean;

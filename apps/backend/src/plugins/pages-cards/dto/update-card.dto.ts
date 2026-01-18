@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import { IsNotEmpty, IsNumber, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
@@ -11,6 +11,7 @@ export class UpdateCardDto {
 		example: 'Living Room',
 	})
 	@Expose()
+	@Transform(({ value }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"title","reason":"Title must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"title","reason":"Title must be a non-empty string."}]' })
@@ -35,6 +36,7 @@ export class UpdateCardDto {
 		example: 1,
 	})
 	@Expose()
+	@Transform(({ value }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsNumber(
 		{ allowNaN: false, allowInfinity: false },
