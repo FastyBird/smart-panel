@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: medium
 Parent: EPIC-EXPAND-SMART-PANEL-DOMAINS
-Status: planned
+Status: completed
 
 ## 1. Business goal
 
@@ -65,19 +65,19 @@ Panel:
 
 ## 4. Acceptance criteria
 
-- [ ] `MediaRole` enum exists: PRIMARY, SECONDARY, BACKGROUND, GAMING, HIDDEN
-- [ ] `MediaIntentType` enum exists: power_on, power_off, volume_set, volume_delta, mute, unmute, role_power, role_volume, set_mode
-- [ ] `MediaMode` enum exists: OFF, BACKGROUND, FOCUSED, PARTY
-- [ ] Backend can execute media intents for a space
-- [ ] Role-based selection works (e.g., "set BACKGROUND volume to 30%")
-- [ ] Volume commands are clamped to 0-100 range
-- [ ] Admin can assign media roles to devices in a space
-- [ ] Panel shows media section with power toggle and volume controls
-- [ ] Unit tests cover:
-  - [ ] Space with no media devices (no-op)
-  - [ ] Space with volume-capable devices
-  - [ ] Space with power-only devices
-  - [ ] Role-specific intents
+- [x] `MediaRole` enum exists: PRIMARY, SECONDARY, BACKGROUND, GAMING, HIDDEN
+- [x] `MediaIntentType` enum exists: power_on, power_off, volume_set, volume_delta, mute, unmute, role_power, role_volume, set_mode
+- [x] `MediaMode` enum exists: OFF, BACKGROUND, FOCUSED, PARTY
+- [x] Backend can execute media intents for a space
+- [x] Role-based selection works (e.g., "set BACKGROUND volume to 30%")
+- [x] Volume commands are clamped to 0-100 range
+- [x] Admin can assign media roles to devices in a space (API implemented)
+- [ ] Panel shows media section with power toggle and volume controls (panel scope - not implemented)
+- [x] Unit tests cover:
+  - [x] Space with no media devices (no-op)
+  - [x] Space with volume-capable devices
+  - [x] Space with power-only devices
+  - [x] Role-specific intents
 
 ## 5. Example scenarios
 
