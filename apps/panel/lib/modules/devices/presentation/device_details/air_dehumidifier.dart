@@ -159,7 +159,11 @@ class _AirDehumidifierDeviceDetailState
 
     final channel = _dehumidifierChannel;
     final isOn = _device.isOn;
-    final isDehumidifying = channel?.isDehumidifying ?? false;
+    final measuredHumidity = _device.humidityChannel?.humidity;
+    final isDehumidifying = channel?.computeIsDehumidifying(
+          currentHumidity: measuredHumidity,
+        ) ??
+        false;
     final targetHumidity = channel?.humidity ?? 0;
 
     String subtitle;
@@ -368,7 +372,6 @@ class _AirDehumidifierDeviceDetailState
     if (channel == null) return const SizedBox.shrink();
 
     final isOn = _device.isOn;
-    final isDehumidifying = channel.isDehumidifying;
     final targetHumidity = channel.humidity;
     final minHumidity = channel.minHumidity;
     final maxHumidity = channel.maxHumidity;
@@ -377,6 +380,11 @@ class _AirDehumidifierDeviceDetailState
     final humidityChannel = _device.humidityChannel;
     final measuredHumidity = humidityChannel?.humidity;
     final currentHumidity = measuredHumidity?.toDouble() ?? targetHumidity.toDouble();
+
+    // Use fallback method to determine if actively dehumidifying
+    final isDehumidifying = channel.computeIsDehumidifying(
+      currentHumidity: measuredHumidity,
+    );
 
     return CircularControlDial(
       value: targetHumidity / 100.0,

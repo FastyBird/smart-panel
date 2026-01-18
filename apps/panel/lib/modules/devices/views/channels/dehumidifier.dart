@@ -173,6 +173,33 @@ class DehumidifierChannelView extends ChannelView
     return status == DehumidifierStatusValue.defrosting;
   }
 
+  /// Computes whether the dehumidifier is actively dehumidifying.
+  ///
+  /// If the status property is available, uses it directly.
+  /// Otherwise, falls back to comparing current humidity vs target:
+  /// - If current > target (with delta tolerance), device should be dehumidifying
+  /// - If current <= target, device is idle
+  ///
+  /// [currentHumidity] - The measured humidity from the humidity sensor channel
+  /// [delta] - Tolerance in percentage points (default: 2%)
+  bool computeIsDehumidifying({int? currentHumidity, int delta = 2}) {
+    // If status is available, use it directly
+    if (hasStatus && status != null) {
+      return status == DehumidifierStatusValue.dehumidifying;
+    }
+
+    // Fallback: compare current humidity vs target
+    if (currentHumidity == null) {
+      return false;
+    }
+
+    final target = humidity;
+
+    // If current is above target (plus delta), device should be dehumidifying
+    // e.g., target = 50%, current = 55%, delta = 2 => 55 > (50 + 2) = true
+    return currentHumidity > (target + delta);
+  }
+
   // ---------------------------------------------------------------------------
   // Timer
   // ---------------------------------------------------------------------------

@@ -156,7 +156,11 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
 
     final channel = _humidifierChannel;
     final isOn = _device.isOn;
-    final isHumidifying = channel?.isHumidifying ?? false;
+    final measuredHumidity = _device.humidityChannel?.humidity;
+    final isHumidifying = channel?.computeIsHumidifying(
+          currentHumidity: measuredHumidity,
+        ) ??
+        false;
     final targetHumidity = channel?.humidity ?? 0;
 
     String subtitle;
@@ -365,7 +369,6 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     if (channel == null) return const SizedBox.shrink();
 
     final isOn = _device.isOn;
-    final isHumidifying = channel.isHumidifying;
     final targetHumidity = channel.humidity;
     final minHumidity = channel.minHumidity;
     final maxHumidity = channel.maxHumidity;
@@ -375,6 +378,11 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     final measuredHumidity = humidityChannel?.humidity;
     final currentHumidity =
         measuredHumidity?.toDouble() ?? targetHumidity.toDouble();
+
+    // Use fallback method to determine if actively humidifying
+    final isHumidifying = channel.computeIsHumidifying(
+      currentHumidity: measuredHumidity,
+    );
 
     return CircularControlDial(
       value: targetHumidity / 100.0,
