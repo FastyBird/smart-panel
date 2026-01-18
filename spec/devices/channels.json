@@ -1792,7 +1792,7 @@
     "properties": {
       "life_remaining": {
         "category": "life_remaining",
-        "required": true,
+        "required": false,
         "description": {
           "en": "Remaining filter life as percentage"
         },
@@ -1808,7 +1808,7 @@
       },
       "status": {
         "category": "status",
-        "required": true,
+        "required": false,
         "description": {
           "en": "Current filter status"
         },
