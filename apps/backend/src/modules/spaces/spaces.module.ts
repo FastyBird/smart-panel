@@ -19,12 +19,14 @@ import { UpdateSpacesConfigDto } from './dto/update-config.dto';
 import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
 import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
+import { SpaceMediaRoleEntity } from './entities/space-media-role.entity';
 import { SpaceEntity } from './entities/space.entity';
 import { SpaceActivityListener } from './listeners/space-activity.listener';
 import { SpacesConfigModel } from './models/config.model';
 import { ClimateIntentService } from './services/climate-intent.service';
 import { CoversIntentService } from './services/covers-intent.service';
 import { LightingIntentService } from './services/lighting-intent.service';
+import { MediaIntentService } from './services/media-intent.service';
 import { SpaceClimateRoleService } from './services/space-climate-role.service';
 import { SpaceClimateStateService } from './services/space-climate-state.service';
 import { SpaceContextSnapshotService } from './services/space-context-snapshot.service';
@@ -34,6 +36,8 @@ import { SpaceIntentBaseService } from './services/space-intent-base.service';
 import { SpaceIntentService } from './services/space-intent.service';
 import { SpaceLightingRoleService } from './services/space-lighting-role.service';
 import { SpaceLightingStateService } from './services/space-lighting-state.service';
+import { SpaceMediaRoleService } from './services/space-media-role.service';
+import { SpaceMediaStateService } from './services/space-media-state.service';
 import { SpaceSuggestionService } from './services/space-suggestion.service';
 import { SpaceUndoHistoryService } from './services/space-undo-history.service';
 import { SpacesSeederService } from './services/spaces-seeder.service';
@@ -54,6 +58,7 @@ import { IntentSpecLoaderService } from './spec';
 			SpaceLightingRoleEntity,
 			SpaceClimateRoleEntity,
 			SpaceCoversRoleEntity,
+			SpaceMediaRoleEntity,
 			DeviceEntity,
 			ChannelEntity,
 			DisplayEntity,
@@ -71,6 +76,7 @@ import { IntentSpecLoaderService } from './spec';
 		LightingIntentService,
 		ClimateIntentService,
 		CoversIntentService,
+		MediaIntentService,
 		SpaceIntentService,
 		SpaceLightingRoleService,
 		SpaceLightingStateService,
@@ -78,6 +84,8 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceClimateStateService,
 		SpaceCoversRoleService,
 		SpaceCoversStateService,
+		SpaceMediaRoleService,
+		SpaceMediaStateService,
 		SpaceSuggestionService,
 		SpaceContextSnapshotService,
 		SpaceUndoHistoryService,
@@ -91,6 +99,7 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceLightingRoleService,
 		SpaceClimateRoleService,
 		SpaceCoversRoleService,
+		SpaceMediaRoleService,
 		SpaceSuggestionService,
 		SpaceContextSnapshotService,
 		SpaceUndoHistoryService,

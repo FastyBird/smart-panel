@@ -24,11 +24,19 @@ import {
 	ReqSetLightingRoleDto,
 	SetLightingRoleDto,
 } from './dto/lighting-role.dto';
+import { MediaIntentDto, ReqMediaIntentDto } from './dto/media-intent.dto';
+import {
+	BulkSetMediaRolesDto,
+	ReqBulkSetMediaRolesDto,
+	ReqSetMediaRoleDto,
+	SetMediaRoleDto,
+} from './dto/media-role.dto';
 import { ReqSuggestionFeedbackDto, SuggestionFeedbackDto } from './dto/suggestion.dto';
 import { ReqUpdateSpaceDto, UpdateSpaceDto } from './dto/update-space.dto';
 import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
 import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
+import { SpaceMediaRoleEntity } from './entities/space-media-role.entity';
 import { SpaceEntity } from './entities/space.entity';
 import {
 	BulkAssignmentDataModel,
@@ -42,6 +50,9 @@ import {
 	BulkCoversRolesResultDataModel,
 	BulkLightingRolesResponseModel,
 	BulkLightingRolesResultDataModel,
+	BulkMediaRoleResultItemModel,
+	BulkMediaRolesResponseModel,
+	BulkMediaRolesResultDataModel,
 	CategoryTemplateDataModel,
 	CategoryTemplatesResponseModel,
 	ClimateIntentResponseModel,
@@ -76,6 +87,14 @@ import {
 	LightingRoleResponseModel,
 	LightingRolesResponseModel,
 	LightingSummaryDataModel,
+	MediaIntentResponseModel,
+	MediaIntentResultDataModel,
+	MediaRoleResponseModel,
+	// Media response models
+	MediaStateDataModel,
+	MediaStateResponseModel,
+	MediaTargetDataModel,
+	MediaTargetsResponseModel,
 	ProposedSpaceDataModel,
 	ProposedSpacesResponseModel,
 	QuickActionDataModel,
@@ -117,6 +136,12 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	ReqSetCoversRoleDto,
 	BulkSetCoversRolesDto,
 	ReqBulkSetCoversRolesDto,
+	MediaIntentDto,
+	ReqMediaIntentDto,
+	SetMediaRoleDto,
+	ReqSetMediaRoleDto,
+	BulkSetMediaRolesDto,
+	ReqBulkSetMediaRolesDto,
 	SuggestionFeedbackDto,
 	ReqSuggestionFeedbackDto,
 	// Response models
@@ -156,6 +181,17 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	BulkCoversRoleResultItemModel,
 	BulkCoversRolesResultDataModel,
 	BulkCoversRolesResponseModel,
+	// Media response models
+	MediaStateDataModel,
+	MediaStateResponseModel,
+	MediaIntentResultDataModel,
+	MediaIntentResponseModel,
+	MediaTargetDataModel,
+	MediaTargetsResponseModel,
+	MediaRoleResponseModel,
+	BulkMediaRoleResultItemModel,
+	BulkMediaRolesResultDataModel,
+	BulkMediaRolesResponseModel,
 	SuggestionDataModel,
 	SuggestionResponseModel,
 	SuggestionFeedbackResultDataModel,
@@ -187,4 +223,5 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	SpaceLightingRoleEntity,
 	SpaceClimateRoleEntity,
 	SpaceCoversRoleEntity,
+	SpaceMediaRoleEntity,
 ];
