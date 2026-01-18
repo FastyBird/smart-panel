@@ -3,6 +3,7 @@ export * from './useSpaceAddForm';
 export * from './useSpaceCategories';
 export * from './useSpaceClimateState';
 export * from './useSpaceCoversState';
+export * from './useSpaceSensorState';
 export * from './useSpaceDevices';
 export * from './useSpaceDisplays';
 export * from './useSpaceEditForm';

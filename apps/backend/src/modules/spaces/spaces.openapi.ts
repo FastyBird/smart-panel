@@ -24,9 +24,16 @@ import {
 	ReqSetLightingRoleDto,
 	SetLightingRoleDto,
 } from './dto/lighting-role.dto';
+import {
+	BulkSetSensorRolesDto,
+	ReqBulkSetSensorRolesDto,
+	ReqSetSensorRoleDto,
+	SetSensorRoleDto,
+} from './dto/sensor-role.dto';
 import { ReqSuggestionFeedbackDto, SuggestionFeedbackDto } from './dto/suggestion.dto';
 import { ReqUpdateSpaceDto, UpdateSpaceDto } from './dto/update-space.dto';
 import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
+import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
 import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
 import { SpaceEntity } from './entities/space.entity';
@@ -89,6 +96,19 @@ import {
 	UndoResultResponseModel,
 	UndoStateDataModel,
 	UndoStateResponseModel,
+	// Sensor response models
+	SensorStateDataModel,
+	SensorStateResponseModel,
+	SensorTargetDataModel,
+	SensorTargetsResponseModel,
+	SensorRoleResponseModel,
+	BulkSensorRoleResultItemModel,
+	BulkSensorRolesResultDataModel,
+	BulkSensorRolesResponseModel,
+	SensorReadingDataModel,
+	SensorRoleReadingsDataModel,
+	EnvironmentSummaryDataModel,
+	SafetyAlertDataModel,
 } from './models/spaces-response.model';
 
 export const SPACES_SWAGGER_EXTRA_MODELS = [
@@ -119,6 +139,11 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	ReqBulkSetCoversRolesDto,
 	SuggestionFeedbackDto,
 	ReqSuggestionFeedbackDto,
+	// Sensor DTOs
+	SetSensorRoleDto,
+	ReqSetSensorRoleDto,
+	BulkSetSensorRolesDto,
+	ReqBulkSetSensorRolesDto,
 	// Response models
 	SpaceResponseModel,
 	SpacesResponseModel,
@@ -156,6 +181,19 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	BulkCoversRoleResultItemModel,
 	BulkCoversRolesResultDataModel,
 	BulkCoversRolesResponseModel,
+	// Sensor response models
+	SensorStateDataModel,
+	SensorStateResponseModel,
+	SensorTargetDataModel,
+	SensorTargetsResponseModel,
+	SensorRoleResponseModel,
+	BulkSensorRoleResultItemModel,
+	BulkSensorRolesResultDataModel,
+	BulkSensorRolesResponseModel,
+	SensorReadingDataModel,
+	SensorRoleReadingsDataModel,
+	EnvironmentSummaryDataModel,
+	SafetyAlertDataModel,
 	SuggestionDataModel,
 	SuggestionResponseModel,
 	SuggestionFeedbackResultDataModel,
@@ -187,4 +225,5 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	SpaceLightingRoleEntity,
 	SpaceClimateRoleEntity,
 	SpaceCoversRoleEntity,
+	SpaceSensorRoleEntity,
 ];
