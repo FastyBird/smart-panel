@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:fastybird_smart_panel/app/locator.dart';
@@ -15,11 +16,13 @@ import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/humidifier_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/humidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_humidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class AirHumidifierDeviceDetail extends StatefulWidget {
@@ -42,24 +45,44 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
   final DevicesService _devicesService = locator<DevicesService>();
+  DeviceControlStateService? _deviceControlStateService;
 
-  VoidCallback? _devicesListener;
+  // Debounce timer for mist level slider to avoid flooding backend
+  Timer? _mistLevelDebounceTimer;
+  static const _mistLevelDebounceDuration = Duration(milliseconds: 300);
 
   @override
   void initState() {
     super.initState();
-    _devicesListener = () {
-      if (mounted) setState(() {});
-    };
-    _devicesService.addListener(_devicesListener!);
+    _devicesService.addListener(_onDeviceChanged);
+
+    try {
+      _deviceControlStateService = locator<DeviceControlStateService>();
+      _deviceControlStateService?.addListener(_onControlStateChanged);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[AirHumidifierDeviceDetail] Failed to get DeviceControlStateService: $e');
+      }
+    }
   }
 
   @override
   void dispose() {
-    if (_devicesListener != null) {
-      _devicesService.removeListener(_devicesListener!);
-    }
+    _mistLevelDebounceTimer?.cancel();
+    _devicesService.removeListener(_onDeviceChanged);
+    _deviceControlStateService?.removeListener(_onControlStateChanged);
     super.dispose();
+  }
+
+  void _onDeviceChanged() {
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  void _onControlStateChanged() {
+    if (mounted) setState(() {});
   }
 
   double _scale(double value) =>
@@ -689,11 +712,9 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     final range = maxLevel - minLevel;
     if (range <= 0) return const SizedBox.shrink();
 
-    final normalizedLevel = (channel.mistLevel - minLevel) / range;
-
     if (useCompactLayout) {
       return ValueSelectorRow<double>(
-        currentValue: normalizedLevel,
+        currentValue: _normalizedMistLevel,
         label: localizations.humidifier_mist_level_medium,
         icon: Icons.water,
         sheetTitle: localizations.humidifier_mist_level_medium,
@@ -703,29 +724,16 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
           ValueOption(value: 0.5, label: localizations.humidifier_mist_level_medium),
           ValueOption(value: 1.0, label: localizations.humidifier_mist_level_high),
         ],
-        displayFormatter: (v) {
-          if (v == null || v <= 0.33) {
-            return localizations.humidifier_mist_level_low;
-          }
-          if (v <= 0.66) return localizations.humidifier_mist_level_medium;
-          return localizations.humidifier_mist_level_high;
-        },
-        isActiveValue: (v) => isOn,
+        displayFormatter: (v) => _formatMistLevel(localizations, v),
+        isActiveValue: (v) => v != null && v > 0,
         columns: 3,
         layout: ValueSelectorRowLayout.compact,
-        onChanged: isOn
-            ? (v) {
-                if (v != null) {
-                  final actualLevel = minLevel + (v * range).round();
-                  _setPropertyValue(channel.mistLevelProp, actualLevel);
-                }
-              }
-            : null,
+        onChanged: isOn ? (v) => _setMistLevel(v ?? 0) : null,
       );
     }
 
     return SpeedSlider(
-      value: normalizedLevel,
+      value: _normalizedMistLevel,
       activeColor: humidityColor,
       steps: [
         localizations.humidifier_mist_level_low,
@@ -734,11 +742,86 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       ],
       discrete: true,
       enabled: isOn,
-      onChanged: (v) {
-        final actualLevel = minLevel + (v * range).round();
-        _setPropertyValue(channel.mistLevelProp, actualLevel);
-      },
+      onChanged: _setMistLevel,
     );
+  }
+
+  double get _normalizedMistLevel {
+    final channel = _humidifierChannel;
+    if (channel == null || !channel.hasMistLevel || !channel.isMistLevelNumeric) return 0.0;
+
+    final mistLevelProp = channel.mistLevelProp;
+    final controlState = _deviceControlStateService;
+
+    double actualLevel = channel.mistLevel.toDouble();
+
+    // Check for pending/optimistic value first
+    if (mistLevelProp != null &&
+        controlState != null &&
+        controlState.isLocked(_device.id, channel.id, mistLevelProp.id)) {
+      final desiredValue = controlState.getDesiredValue(
+        _device.id,
+        channel.id,
+        mistLevelProp.id,
+      );
+      if (desiredValue is num) {
+        actualLevel = desiredValue.toDouble();
+      }
+    }
+
+    final minLevel = channel.minMistLevel;
+    final maxLevel = channel.maxMistLevel;
+    final range = maxLevel - minLevel;
+    if (range <= 0) return 0.0;
+    return (actualLevel - minLevel) / range;
+  }
+
+  void _setMistLevel(double normalizedLevel) {
+    final channel = _humidifierChannel;
+    final mistLevelProp = channel?.mistLevelProp;
+    if (channel == null || !channel.hasMistLevel || !channel.isMistLevelNumeric || mistLevelProp == null) return;
+
+    // Convert normalized 0-1 value to actual device level range
+    final minLevel = channel.minMistLevel;
+    final maxLevel = channel.maxMistLevel;
+    final range = maxLevel - minLevel;
+    final actualLevel = (minLevel + (normalizedLevel * range)).round();
+
+    // Clamp to valid range
+    final clampedLevel = actualLevel.clamp(minLevel, maxLevel);
+
+    // Set PENDING state immediately for responsive UI
+    _deviceControlStateService?.setPending(
+      _device.id,
+      channel.id,
+      mistLevelProp.id,
+      clampedLevel,
+    );
+    setState(() {});
+
+    // Cancel any pending debounce timer
+    _mistLevelDebounceTimer?.cancel();
+
+    // Debounce the API call to avoid flooding backend
+    _mistLevelDebounceTimer = Timer(_mistLevelDebounceDuration, () async {
+      if (!mounted) return;
+
+      await _setPropertyValue(mistLevelProp, clampedLevel);
+
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          channel.id,
+          mistLevelProp.id,
+        );
+      }
+    });
+  }
+
+  String _formatMistLevel(AppLocalizations localizations, double? level) {
+    if (level == null || level <= 0.33) return localizations.humidifier_mist_level_low;
+    if (level <= 0.66) return localizations.humidifier_mist_level_medium;
+    return localizations.humidifier_mist_level_high;
   }
 
   Widget _buildTimerControl(
