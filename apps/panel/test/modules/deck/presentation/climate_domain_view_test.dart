@@ -13,25 +13,27 @@ void main() {
         ClimateMode.off,
         ClimateMode.heat,
         ClimateMode.cool,
+        ClimateMode.auto,
       ]);
     });
 
-    test('should have 3 climate modes', () {
-      expect(ClimateMode.values.length, 3);
+    test('should have 4 climate modes', () {
+      expect(ClimateMode.values.length, 4);
     });
   });
 
   group('RoomCapability', () {
     test('should have all expected room capabilities', () {
       expect(RoomCapability.values, [
+        RoomCapability.none,
         RoomCapability.heaterOnly,
         RoomCapability.coolerOnly,
         RoomCapability.heaterAndCooler,
       ]);
     });
 
-    test('should have 3 room capabilities', () {
-      expect(RoomCapability.values.length, 3);
+    test('should have 4 room capabilities', () {
+      expect(RoomCapability.values.length, 4);
     });
   });
 
