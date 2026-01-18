@@ -1,6 +1,7 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -985,19 +986,19 @@ class _SensorDetailBottomSheetState extends State<SensorDetailBottomSheet> {
           _buildStatItem(
             context,
             'Min',
-            _timeseries!.minValue.toStringAsFixed(1),
+            NumberFormatUtils.defaultFormat.formatDecimal(_timeseries!.minValue, decimalPlaces: 1),
             widget.sensor.property?.unit,
           ),
           _buildStatItem(
             context,
             'Avg',
-            _timeseries!.avgValue.toStringAsFixed(1),
+            NumberFormatUtils.defaultFormat.formatDecimal(_timeseries!.avgValue, decimalPlaces: 1),
             widget.sensor.property?.unit,
           ),
           _buildStatItem(
             context,
             'Max',
-            _timeseries!.maxValue.toStringAsFixed(1),
+            NumberFormatUtils.defaultFormat.formatDecimal(_timeseries!.maxValue, decimalPlaces: 1),
             widget.sensor.property?.unit,
           ),
         ],
@@ -1167,7 +1168,7 @@ class SensorTimeseriesChart extends StatelessWidget {
               interval: _calculateInterval(minY - padding, maxY + padding),
               getTitlesWidget: (value, meta) {
                 return Text(
-                  value.toStringAsFixed(1),
+                  NumberFormatUtils.defaultFormat.formatDecimal(value, decimalPlaces: 1),
                   style: TextStyle(
                     color: isLight
                         ? AppTextColorLight.placeholder
@@ -1216,7 +1217,7 @@ class SensorTimeseriesChart extends StatelessWidget {
                 }
                 final point = timeseries.points[index];
                 return LineTooltipItem(
-                  '${point.numericValue.toStringAsFixed(1)}${unit != null ? ' $unit' : ''}\n${_formatDateTime(point.time)}',
+                  '${NumberFormatUtils.defaultFormat.formatDecimal(point.numericValue, decimalPlaces: 1)}${unit != null ? ' $unit' : ''}\n${_formatDateTime(point.time)}',
                   TextStyle(
                     color: isLight
                         ? AppTextColorLight.primary

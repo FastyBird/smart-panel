@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
@@ -469,7 +470,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
             ),
             AppSpacings.spacingXsHorizontal,
             Text(
-              '${_state.currentTemp.toStringAsFixed(1)}°',
+              '${NumberFormatUtils.defaultFormat.formatDecimal(_state.currentTemp, decimalPlaces: 1)}°',
               style: TextStyle(
                 color: isDark
                     ? AppTextColorDark.primary
