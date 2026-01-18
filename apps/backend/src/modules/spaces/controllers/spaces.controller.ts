@@ -18,9 +18,9 @@ import { ReqBulkSetClimateRolesDto, ReqSetClimateRoleDto } from '../dto/climate-
 import { ReqCoversIntentDto } from '../dto/covers-intent.dto';
 import { ReqBulkSetCoversRolesDto, ReqSetCoversRoleDto } from '../dto/covers-role.dto';
 import { ReqCreateSpaceDto } from '../dto/create-space.dto';
-import { ReqBulkSetSensorRolesDto, ReqSetSensorRoleDto } from '../dto/sensor-role.dto';
 import { ReqLightingIntentDto } from '../dto/lighting-intent.dto';
 import { ReqBulkSetLightingRolesDto, ReqSetLightingRoleDto } from '../dto/lighting-role.dto';
+import { ReqBulkSetSensorRolesDto, ReqSetSensorRoleDto } from '../dto/sensor-role.dto';
 import { ReqSuggestionFeedbackDto } from '../dto/suggestion.dto';
 import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
 import {
@@ -35,6 +35,9 @@ import {
 	BulkLightingRoleResultItemModel,
 	BulkLightingRolesResponseModel,
 	BulkLightingRolesResultDataModel,
+	BulkSensorRoleResultItemModel,
+	BulkSensorRolesResponseModel,
+	BulkSensorRolesResultDataModel,
 	CategoryTemplateDataModel,
 	CategoryTemplatesResponseModel,
 	ClimateIntentResponseModel,
@@ -53,6 +56,7 @@ import {
 	CoversStateResponseModel,
 	CoversTargetDataModel,
 	CoversTargetsResponseModel,
+	EnvironmentSummaryDataModel,
 	IntentCatalogDataModel,
 	IntentCatalogResponseModel,
 	IntentCategoryDataModel,
@@ -77,6 +81,14 @@ import {
 	RoleAggregatedStateDataModel,
 	RoleLastIntentDataModel,
 	RolesStateMapDataModel,
+	SafetyAlertDataModel,
+	SensorReadingDataModel,
+	SensorRoleReadingsDataModel,
+	SensorRoleResponseModel,
+	SensorStateDataModel,
+	SensorStateResponseModel,
+	SensorTargetDataModel,
+	SensorTargetsResponseModel,
 	SpaceResponseModel,
 	SpacesResponseModel,
 	SuggestionDataModel,
@@ -87,18 +99,6 @@ import {
 	UndoResultResponseModel,
 	UndoStateDataModel,
 	UndoStateResponseModel,
-	SensorStateDataModel,
-	SensorStateResponseModel,
-	SensorTargetDataModel,
-	SensorTargetsResponseModel,
-	SensorRoleResponseModel,
-	BulkSensorRoleResultItemModel,
-	BulkSensorRolesResponseModel,
-	BulkSensorRolesResultDataModel,
-	SensorReadingDataModel,
-	SensorRoleReadingsDataModel,
-	EnvironmentSummaryDataModel,
-	SafetyAlertDataModel,
 } from '../models/spaces-response.model';
 import { SpaceClimateRoleService } from '../services/space-climate-role.service';
 import { SpaceContextSnapshotService } from '../services/space-context-snapshot.service';

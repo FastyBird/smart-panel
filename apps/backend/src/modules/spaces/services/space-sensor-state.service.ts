@@ -4,14 +4,10 @@ import { createExtensionLogger } from '../../../common/logger/extension-logger.s
 import { ChannelCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import {
-	SENSOR_AIR_QUALITY_CHANNEL_CATEGORIES,
 	SENSOR_CHANNEL_CATEGORIES,
-	SENSOR_ENERGY_CHANNEL_CATEGORIES,
-	SENSOR_ENVIRONMENT_CHANNEL_CATEGORIES,
 	SENSOR_SAFETY_CHANNEL_CATEGORIES,
-	SENSOR_SECURITY_CHANNEL_CATEGORIES,
-	SensorRole,
 	SPACES_MODULE_NAME,
+	SensorRole,
 } from '../spaces.constants';
 
 import { SpaceIntentBaseService } from './space-intent-base.service';
@@ -230,7 +226,10 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 	/**
 	 * Extract the primary value and unit from a sensor channel
 	 */
-	private extractChannelValue(channel: ChannelEntity): { value: number | boolean | string | null; unit: string | null } {
+	private extractChannelValue(channel: ChannelEntity): {
+		value: number | boolean | string | null;
+		unit: string | null;
+	} {
 		const properties = channel.properties ?? [];
 
 		// Try to find the primary property based on channel category
