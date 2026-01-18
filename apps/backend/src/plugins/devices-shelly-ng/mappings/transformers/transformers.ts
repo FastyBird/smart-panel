@@ -47,16 +47,38 @@ export class ScaleTransformer extends BaseTransformer {
 	private readonly inputMax: number;
 	private readonly outputMin: number;
 	private readonly outputMax: number;
+	private readonly inputRangeValid: boolean;
+	private readonly outputRangeValid: boolean;
 
 	constructor(def: ScaleTransformerDefinition) {
 		super(def.direction);
 		[this.inputMin, this.inputMax] = def.input_range;
 		[this.outputMin, this.outputMax] = def.output_range;
+
+		// Validate ranges to prevent division by zero
+		this.inputRangeValid = this.inputMax !== this.inputMin;
+		this.outputRangeValid = this.outputMax !== this.outputMin;
+
+		if (!this.inputRangeValid) {
+			console.warn(
+				`ScaleTransformer: degenerate input_range [${this.inputMin}, ${this.inputMax}] - read() will return outputMin`,
+			);
+		}
+		if (!this.outputRangeValid) {
+			console.warn(
+				`ScaleTransformer: degenerate output_range [${this.outputMin}, ${this.outputMax}] - write() will return inputMin`,
+			);
+		}
 	}
 
 	read(value: unknown): unknown {
 		if (typeof value !== 'number') {
 			return value;
+		}
+
+		// Handle degenerate input range - return outputMin (or outputMax, they're equal)
+		if (!this.inputRangeValid) {
+			return this.outputMin;
 		}
 
 		// Linear interpolation: Shelly -> Panel
@@ -67,6 +89,11 @@ export class ScaleTransformer extends BaseTransformer {
 	write(value: unknown): unknown {
 		if (typeof value !== 'number') {
 			return value;
+		}
+
+		// Handle degenerate output range - return inputMin (or inputMax, they're equal)
+		if (!this.outputRangeValid) {
+			return this.inputMin;
 		}
 
 		// Inverse interpolation: Panel -> Shelly

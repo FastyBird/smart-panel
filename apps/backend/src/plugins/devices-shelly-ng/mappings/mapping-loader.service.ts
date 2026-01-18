@@ -536,16 +536,32 @@ export class MappingLoaderService implements OnModuleInit {
 	 * Check if a match condition is satisfied
 	 */
 	private matchesCondition(condition: ResolvedMatchCondition, context: MappingContext): boolean {
-		// Check all_of conditions
+		// First, check simple conditions at this level (these apply regardless of allOf/anyOf)
+		if (!this.matchesSimpleConditions(condition, context)) {
+			return false;
+		}
+
+		// Check all_of conditions (all must match)
 		if (condition.allOf) {
-			return condition.allOf.every((c) => this.matchesCondition(c, context));
+			if (!condition.allOf.every((c) => this.matchesCondition(c, context))) {
+				return false;
+			}
 		}
 
-		// Check any_of conditions
+		// Check any_of conditions (at least one must match)
 		if (condition.anyOf) {
-			return condition.anyOf.some((c) => this.matchesCondition(c, context));
+			if (!condition.anyOf.some((c) => this.matchesCondition(c, context))) {
+				return false;
+			}
 		}
 
+		return true;
+	}
+
+	/**
+	 * Check simple conditions (componentType, deviceCategory, model, profile)
+	 */
+	private matchesSimpleConditions(condition: ResolvedMatchCondition, context: MappingContext): boolean {
 		// Check component_type
 		if (condition.componentType !== undefined && condition.componentType !== context.componentType) {
 			return false;
