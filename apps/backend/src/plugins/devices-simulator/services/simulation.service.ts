@@ -280,11 +280,17 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy {
 
 		const ctx = context ?? createSimulationContext({ latitude: this.config.latitude });
 
-		// Get or create previous values map for this device
-		let devicePrevValues = this.previousValues.get(device.id);
-		if (!devicePrevValues && this.config.smoothTransitions) {
-			devicePrevValues = this.loadCurrentValues(device);
-			this.previousValues.set(device.id, devicePrevValues);
+		// Get or create previous values map for this device (only if smoothTransitions is enabled)
+		let devicePrevValues: Map<string, string | number | boolean> | undefined;
+		if (this.config.smoothTransitions) {
+			devicePrevValues = this.previousValues.get(device.id);
+			if (!devicePrevValues) {
+				devicePrevValues = this.loadCurrentValues(device);
+				this.previousValues.set(device.id, devicePrevValues);
+			}
+		} else {
+			// Clear any cached values when smooth transitions are disabled
+			this.previousValues.delete(device.id);
 		}
 
 		try {

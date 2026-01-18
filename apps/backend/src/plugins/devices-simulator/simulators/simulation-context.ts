@@ -124,8 +124,15 @@ function getIsNight(hour: number, dayOfYear: number, latitude: number): boolean 
 	const winterSunrise = 8;
 	const winterSunset = 17;
 
-	// Calculate seasonal variation (peak at summer solstice ~day 172)
-	const seasonalFactor = Math.cos(((dayOfYear - 172) * Math.PI) / 182.5);
+	// Calculate seasonal variation (peak at summer solstice ~day 172 for northern hemisphere)
+	// For northern hemisphere: day 172 (June 21) = longest day, day 355 (Dec 21) = shortest day
+	// For southern hemisphere: day 172 (June 21) = shortest day, day 355 (Dec 21) = longest day
+	let seasonalFactor = Math.cos(((dayOfYear - 172) * Math.PI) / 182.5);
+
+	// Invert for southern hemisphere (their summer is our winter)
+	if (latitude < 0) {
+		seasonalFactor = -seasonalFactor;
+	}
 
 	// Adjust for latitude (higher latitudes have more extreme day length variation)
 	const latitudeFactor = Math.abs(latitude) / 90;
