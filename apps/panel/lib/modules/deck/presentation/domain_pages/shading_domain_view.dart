@@ -171,7 +171,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     bool showActions = false,
   }) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final Color stateColor = _getPositionColor(position);
+    final Color stateColor = _getPositionColor(position, isLight);
     final Color stateColorLight = stateColor.withValues(alpha: 0.15);
 
     return Container(
@@ -486,6 +486,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final primaryColor =
         isLight ? AppColorsLight.primary : AppColorsDark.primary;
+    final bool isActive = _aggregatedPosition == preset.position;
 
     return GestureDetector(
       onTap: () {
@@ -494,13 +495,13 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       child: Container(
         padding: EdgeInsets.all(AppSpacings.pSm),
         decoration: BoxDecoration(
-          color: preset.isActive
+          color: isActive
               ? primaryColor.withValues(alpha: 0.15)
               : (isLight
                   ? AppFillColorLight.base
                   : AppFillColorDark.base),
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          border: preset.isActive
+          border: isActive
               ? Border.all(color: primaryColor)
               : (isLight ? Border.all(color: AppBorderColorLight.base) : null),
         ),
@@ -516,7 +517,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                 density: _visualDensityService.density,
               ),
               decoration: BoxDecoration(
-                color: preset.isActive
+                color: isActive
                     ? primaryColor
                     : (isLight
                         ? AppFillColorLight.light
@@ -529,7 +530,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                   20,
                   density: _visualDensityService.density,
                 ),
-                color: preset.isActive
+                color: isActive
                     ? AppColors.white
                     : (isLight
                         ? AppTextColorLight.secondary
@@ -621,7 +622,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
   Widget _buildDeviceTile(BuildContext context, _MockDevice device) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final Color stateColor = _getPositionColor(device.position);
+    final Color stateColor = _getPositionColor(device.position, isLight);
     final Color stateColorLight = stateColor.withValues(alpha: 0.15);
     final primaryColor =
         isLight ? AppColorsLight.primary : AppColorsDark.primary;
@@ -723,7 +724,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
   Widget _buildDeviceTileCompact(BuildContext context, _MockDevice device) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final Color stateColor = _getPositionColor(device.position);
+    final Color stateColor = _getPositionColor(device.position, isLight);
     final Color stateColorLight = stateColor.withValues(alpha: 0.15);
     final primaryColor =
         isLight ? AppColorsLight.primary : AppColorsDark.primary;
@@ -879,10 +880,14 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   // HELPERS
   // ===========================================================================
 
-  Color _getPositionColor(int position) {
-    if (position == 100) return AppColorsLight.success;
-    if (position == 0) return AppColorsLight.info;
-    return AppColorsLight.warning;
+  Color _getPositionColor(int position, bool isLight) {
+    if (position == 100) {
+      return isLight ? AppColorsLight.success : AppColorsDark.success;
+    }
+    if (position == 0) {
+      return isLight ? AppColorsLight.info : AppColorsDark.info;
+    }
+    return isLight ? AppColorsLight.warning : AppColorsDark.warning;
   }
 
   String _getPositionText(int position) {
@@ -944,7 +949,6 @@ final _mockPresets = [
     name: 'Day',
     icon: MdiIcons.whiteBalanceSunny,
     position: 75,
-    isActive: true,
   ),
   _MockPreset(
     name: 'Evening',
