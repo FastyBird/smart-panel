@@ -433,11 +433,12 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     if (_currentMode == ThermostatModeValue.off) {
       return localizations.on_state_off;
     }
+    final tempStr = '${_targetSetpoint.toStringAsFixed(0)}°C';
     if (_isCooling) {
-      return localizations.thermostat_state_cooling;
+      return localizations.thermostat_state_cooling_to(tempStr);
     }
     if (_isHeating) {
-      return localizations.thermostat_state_heating;
+      return localizations.thermostat_state_heating_to(tempStr);
     }
     return localizations.thermostat_state_idling;
   }

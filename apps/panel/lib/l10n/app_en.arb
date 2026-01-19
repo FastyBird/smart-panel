@@ -468,9 +468,29 @@
   "@thermostat_state_heating": {
     "description": "Indicates the thermostat is actively heating the space"
   },
+  "thermostat_state_heating_to": "Heating to {temperature}",
+  "@thermostat_state_heating_to": {
+    "description": "Indicates the thermostat is actively heating to a target temperature",
+    "placeholders": {
+      "temperature": {
+        "type": "String",
+        "example": "22°C"
+      }
+    }
+  },
   "thermostat_state_cooling": "Cooling",
   "@thermostat_state_cooling": {
     "description": "Indicates the thermostat is actively cooling the space"
+  },
+  "thermostat_state_cooling_to": "Cooling to {temperature}",
+  "@thermostat_state_cooling_to": {
+    "description": "Indicates the thermostat is actively cooling to a target temperature",
+    "placeholders": {
+      "temperature": {
+        "type": "String",
+        "example": "24°C"
+      }
+    }
   },
   "thermostat_state_idling": "Idling",
   "@thermostat_state_idling": {

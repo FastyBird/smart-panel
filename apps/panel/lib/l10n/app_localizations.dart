@@ -797,11 +797,23 @@ abstract class AppLocalizations {
   /// **'Heating'**
   String get thermostat_state_heating;
 
+  /// Indicates the thermostat is actively heating to a target temperature
+  ///
+  /// In en, this message translates to:
+  /// **'Heating to {temperature}'**
+  String thermostat_state_heating_to(String temperature);
+
   /// Indicates the thermostat is actively cooling the space
   ///
   /// In en, this message translates to:
   /// **'Cooling'**
   String get thermostat_state_cooling;
+
+  /// Indicates the thermostat is actively cooling to a target temperature
+  ///
+  /// In en, this message translates to:
+  /// **'Cooling to {temperature}'**
+  String thermostat_state_cooling_to(String temperature);
 
   /// Indicates the thermostat is in idle state
   ///

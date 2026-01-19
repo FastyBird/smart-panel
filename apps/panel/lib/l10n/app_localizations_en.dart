@@ -360,7 +360,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get thermostat_state_heating => 'Heating';
 
   @override
+  String thermostat_state_heating_to(String temperature) {
+    return 'Heating to $temperature';
+  }
+
+  @override
   String get thermostat_state_cooling => 'Cooling';
+
+  @override
+  String thermostat_state_cooling_to(String temperature) {
+    return 'Cooling to $temperature';
+  }
 
   @override
   String get thermostat_state_idling => 'Idling';

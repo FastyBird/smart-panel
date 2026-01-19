@@ -132,8 +132,9 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     if (_currentMode == HeaterMode.off) {
       return localizations.on_state_off;
     }
+    final tempStr = '${_targetSetpoint.toStringAsFixed(0)}°C';
     if (_isHeating) {
-      return localizations.thermostat_state_heating;
+      return localizations.thermostat_state_heating_to(tempStr);
     }
     return localizations.thermostat_state_idling;
   }
