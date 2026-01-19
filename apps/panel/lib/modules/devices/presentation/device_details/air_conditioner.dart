@@ -325,16 +325,22 @@ class _AirConditionerDeviceDetailState
   Widget _buildLandscapeLayout(BuildContext context, bool isDark) {
     final borderColor =
         isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+    final isLargeScreen = _screenService.isLargeScreen;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Left column: dial with vertical mode icons
+        // Left column: dial with mode selector
         Expanded(
           flex: 1,
-          child: Padding(
-            padding: AppSpacings.paddingLg,
-            child: _buildCompactDialWithModes(context, isDark),
+          child: Center(
+            child: SingleChildScrollView(
+              padding: AppSpacings.paddingLg,
+              child: isLargeScreen
+                  ? _buildPrimaryControlCard(context, isDark,
+                      dialSize: _scale(200))
+                  : _buildCompactDialWithModes(context, isDark),
+            ),
           ),
         ),
         Container(width: _scale(1), color: borderColor),
