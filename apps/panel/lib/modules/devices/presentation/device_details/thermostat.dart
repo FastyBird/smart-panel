@@ -112,6 +112,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   void _onModeChanged(ThermostatModeValue mode) {
     setState(() {
       _pendingMode = mode;
+      _pendingSetpoint = null; // Clear to use new mode's target temperature
     });
 
     // TODO: Send mode change command to device
