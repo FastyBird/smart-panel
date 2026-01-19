@@ -1309,7 +1309,7 @@ class _AirConditionerDeviceDetailState
               ),
               // Mode selector (if available)
               if (hasMode) ...[
-                AppSpacings.spacingMdVertical,
+                AppSpacings.spacingLgVertical,
                 Center(child: _buildFanModeSelector(localizations, modeColor)),
               ],
             ],
