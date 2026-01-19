@@ -1180,7 +1180,11 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         ),
         SectionTitle(title: 'Alerts', icon: Icons.warning_amber),
         AppSpacings.spacingMdVertical,
-        if (!_hasAlerts)
+        if (_hasAlerts)
+          ..._sensors
+              .where((s) => s.status == SensorStatus.alert)
+              .map((sensor) => _buildAlertItem(context, sensor))
+        else
           Center(
             child: Padding(
               padding: EdgeInsets.all(AppSpacings.pLg),
@@ -1196,6 +1200,73 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildAlertItem(BuildContext context, SensorData sensor) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final dangerColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
+    final dangerBgColor =
+        isDark ? AppColorsDark.dangerLight5 : AppColorsLight.dangerLight5;
+
+    return GestureDetector(
+      onTap: () => _openSensorDetail(context, sensor),
+      child: Container(
+        padding: AppSpacings.paddingSm,
+        margin: EdgeInsets.only(bottom: AppSpacings.pSm),
+        decoration: BoxDecoration(
+          color: dangerBgColor,
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
+          border: Border.all(
+            color: dangerColor.withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: _scale(32),
+              height: _scale(32),
+              decoration: BoxDecoration(
+                color: dangerColor.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(AppBorderRadius.small),
+              ),
+              child: Icon(sensor.icon, size: _scale(18), color: dangerColor),
+            ),
+            AppSpacings.spacingMdHorizontal,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'High ${sensor.name} Alert',
+                    style: TextStyle(
+                      color: dangerColor,
+                      fontSize: AppFontSize.small,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  AppSpacings.spacingXsVertical,
+                  Text(
+                    '${sensor.value}${sensor.unit} - Threshold exceeded',
+                    style: TextStyle(
+                      color: isDark
+                          ? AppTextColorDark.secondary
+                          : AppTextColorLight.secondary,
+                      fontSize: AppFontSize.extraSmall,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              size: _scale(20),
+              color: dangerColor,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1335,11 +1406,61 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
   late double _highThreshold;
   late double _lowThreshold;
 
+  late TextEditingController _highThresholdController;
+  late TextEditingController _lowThresholdController;
+
   @override
   void initState() {
     super.initState();
-    _highThreshold = widget.sensor.highThreshold ?? 28.0;
-    _lowThreshold = widget.sensor.lowThreshold ?? 16.0;
+    _highThreshold = widget.sensor.highThreshold ?? _getDefaultHighThreshold();
+    _lowThreshold = widget.sensor.lowThreshold ?? _getDefaultLowThreshold();
+    _highThresholdController =
+        TextEditingController(text: _highThreshold.toStringAsFixed(0));
+    _lowThresholdController =
+        TextEditingController(text: _lowThreshold.toStringAsFixed(0));
+  }
+
+  double _getDefaultHighThreshold() {
+    switch (widget.sensor.category) {
+      case SensorCategory.temperature:
+        return 28.0;
+      case SensorCategory.humidity:
+        return 70.0;
+      case SensorCategory.airQuality:
+        return 1000.0;
+      case SensorCategory.light:
+        return 1000.0;
+      case SensorCategory.energy:
+        return 500.0;
+      case SensorCategory.motion:
+      case SensorCategory.safety:
+        return 1.0;
+    }
+  }
+
+  double _getDefaultLowThreshold() {
+    switch (widget.sensor.category) {
+      case SensorCategory.temperature:
+        return 16.0;
+      case SensorCategory.humidity:
+        return 30.0;
+      case SensorCategory.airQuality:
+        return 400.0;
+      case SensorCategory.light:
+        return 50.0;
+      case SensorCategory.energy:
+        return 0.0;
+      case SensorCategory.motion:
+      case SensorCategory.safety:
+        return 0.0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _highThresholdController.dispose();
+    _lowThresholdController.dispose();
+    super.dispose();
   }
 
   double _scale(double size) =>
@@ -1371,82 +1492,22 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: AppSpacings.pLg,
-        vertical: AppSpacings.pMd,
-      ),
-      decoration: BoxDecoration(
-        color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-        border: Border(
-          bottom: BorderSide(
-            color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
-            width: 1,
-          ),
-        ),
-      ),
-      child: Row(
+    return PageHeader(
+      title: widget.sensor.name,
+      subtitle: '${widget.sensor.location} • Online',
+      backgroundColor: AppColors.blank,
+      leading: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          GestureDetector(
+          HeaderIconButton(
+            icon: Icons.arrow_back_ios_new,
             onTap: () => Navigator.pop(context),
-            child: Container(
-              width: _scale(40),
-              height: _scale(40),
-              decoration: BoxDecoration(
-                color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Icon(
-                Icons.arrow_back_ios_new,
-                color: isDark
-                    ? AppTextColorDark.secondary
-                    : AppTextColorLight.secondary,
-                size: _scale(18),
-              ),
-            ),
           ),
           AppSpacings.spacingMdHorizontal,
-          Container(
-            width: _scale(44),
-            height: _scale(44),
-            decoration: BoxDecoration(
-              color: widget.categoryBgColor,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              widget.sensor.icon,
-              color: widget.categoryColor,
-              size: _scale(24),
-            ),
-          ),
-          AppSpacings.spacingMdHorizontal,
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.sensor.name,
-                  style: TextStyle(
-                    color: isDark
-                        ? AppTextColorDark.primary
-                        : AppTextColorLight.primary,
-                    fontSize: AppFontSize.large,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Text(
-                  '${widget.sensor.location} • Online',
-                  style: TextStyle(
-                    color: isDark
-                        ? AppTextColorDark.secondary
-                        : AppTextColorLight.secondary,
-                    fontSize: AppFontSize.small,
-                  ),
-                ),
-              ],
-            ),
+          HeaderDeviceIcon(
+            icon: widget.sensor.icon,
+            backgroundColor: widget.categoryBgColor,
+            iconColor: widget.categoryColor,
           ),
         ],
       ),
@@ -1570,29 +1631,50 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
     return '${diff.inHours} hours ago';
   }
 
+  String _getDefaultValue(String type) {
+    // Provide sensible defaults based on sensor type
+    switch (widget.sensor.category) {
+      case SensorCategory.temperature:
+        return type == 'min' ? '19.2' : (type == 'max' ? '24.8' : '22.1');
+      case SensorCategory.humidity:
+        return type == 'min' ? '35' : (type == 'max' ? '65' : '48');
+      case SensorCategory.airQuality:
+        return type == 'min' ? '400' : (type == 'max' ? '800' : '612');
+      case SensorCategory.light:
+        return type == 'min' ? '100' : (type == 'max' ? '800' : '420');
+      case SensorCategory.energy:
+        return type == 'min' ? '50' : (type == 'max' ? '500' : '245');
+      case SensorCategory.motion:
+      case SensorCategory.safety:
+        return '-';
+    }
+  }
+
   Widget _buildStatsRow(BuildContext context) {
+    final unit = widget.sensor.unit;
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
       child: Row(
         children: [
-          _buildStatCard(context, '24h Min', '${widget.sensor.minValue ?? 19.2}°', true),
+          _buildStatCard(context, '24h Min', '${widget.sensor.minValue ?? _getDefaultValue('min')}$unit', true),
           AppSpacings.spacingMdHorizontal,
-          _buildStatCard(context, '24h Max', '${widget.sensor.maxValue ?? 24.8}°', false),
+          _buildStatCard(context, '24h Max', '${widget.sensor.maxValue ?? _getDefaultValue('max')}$unit', false),
           AppSpacings.spacingMdHorizontal,
-          _buildStatCard(context, '24h Avg', '${widget.sensor.avgValue ?? 22.1}°', null),
+          _buildStatCard(context, '24h Avg', '${widget.sensor.avgValue ?? _getDefaultValue('avg')}$unit', null),
         ],
       ),
     );
   }
 
   Widget _buildStatsRowCompact(BuildContext context) {
+    final unit = widget.sensor.unit;
     return Row(
       children: [
-        _buildStatCard(context, 'Min', '${widget.sensor.minValue ?? 19.2}°', true),
+        _buildStatCard(context, 'Min', '${widget.sensor.minValue ?? _getDefaultValue('min')}$unit', true),
         AppSpacings.spacingSmHorizontal,
-        _buildStatCard(context, 'Max', '${widget.sensor.maxValue ?? 24.8}°', false),
+        _buildStatCard(context, 'Max', '${widget.sensor.maxValue ?? _getDefaultValue('max')}$unit', false),
         AppSpacings.spacingSmHorizontal,
-        _buildStatCard(context, 'Avg', '${widget.sensor.avgValue ?? 22.1}°', null),
+        _buildStatCard(context, 'Avg', '${widget.sensor.avgValue ?? _getDefaultValue('avg')}$unit', null),
       ],
     );
   }
@@ -1817,16 +1899,20 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
             context,
             icon: Icons.arrow_upward,
             label: 'High Alert',
-            value: _highThreshold,
-            onChanged: (v) => setState(() => _highThreshold = v),
+            controller: _highThresholdController,
+            onChanged: (v) {
+              setState(() => _highThreshold = v);
+            },
           ),
           AppSpacings.spacingSmVertical,
           _buildThresholdRow(
             context,
             icon: Icons.arrow_downward,
             label: 'Low Alert',
-            value: _lowThreshold,
-            onChanged: (v) => setState(() => _lowThreshold = v),
+            controller: _lowThresholdController,
+            onChanged: (v) {
+              setState(() => _lowThreshold = v);
+            },
           ),
           AppSpacings.spacingSmVertical,
           _buildNotificationRow(context),
@@ -1872,8 +1958,10 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
                 context,
                 icon: Icons.arrow_upward,
                 label: 'High Alert',
-                value: _highThreshold,
-                onChanged: (v) => setState(() => _highThreshold = v),
+                controller: _highThresholdController,
+                onChanged: (v) {
+                  setState(() => _highThreshold = v);
+                },
               ),
             ),
             AppSpacings.spacingMdHorizontal,
@@ -1882,8 +1970,10 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
                 context,
                 icon: Icons.arrow_downward,
                 label: 'Low Alert',
-                value: _lowThreshold,
-                onChanged: (v) => setState(() => _lowThreshold = v),
+                controller: _lowThresholdController,
+                onChanged: (v) {
+                  setState(() => _lowThreshold = v);
+                },
               ),
             ),
             AppSpacings.spacingMdHorizontal,
@@ -1898,7 +1988,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
     BuildContext context, {
     required IconData icon,
     required String label,
-    required double value,
+    required TextEditingController controller,
     required ValueChanged<double> onChanged,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1960,7 +2050,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
                   borderSide: BorderSide.none,
                 ),
               ),
-              controller: TextEditingController(text: value.toStringAsFixed(0)),
+              controller: controller,
               keyboardType: TextInputType.number,
               onChanged: (text) {
                 final parsed = double.tryParse(text);
