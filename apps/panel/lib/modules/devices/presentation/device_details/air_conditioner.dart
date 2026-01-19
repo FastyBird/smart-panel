@@ -8,7 +8,6 @@ import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_conditioner.dart';
 import 'package:flutter/material.dart';
@@ -164,11 +163,22 @@ class _AirConditionerDeviceDetailState
   Color _getModeColor(bool isDark) {
     switch (_currentMode) {
       case AcMode.heat:
-        return DeviceColors.heating(isDark);
+        return isDark ? AppColorsDark.warning : AppColorsLight.warning;
       case AcMode.cool:
-        return DeviceColors.cooling(isDark);
+        return isDark ? AppColorsDark.info : AppColorsLight.info;
       case AcMode.off:
         return isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+    }
+  }
+
+  Color _getModeLightColor(bool isDark) {
+    switch (_currentMode) {
+      case AcMode.heat:
+        return isDark ? AppColorsDark.warningLight5 : AppColorsLight.warningLight5;
+      case AcMode.cool:
+        return isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight5;
+      case AcMode.off:
+        return isDark ? AppFillColorDark.light : AppFillColorLight.light;
     }
   }
 
@@ -278,9 +288,7 @@ class _AirConditionerDeviceDetailState
             height: _scale(44),
             decoration: BoxDecoration(
               color: _isActive
-                  ? (_currentMode == AcMode.heat
-                      ? DeviceColors.heatingLight9(isDark)
-                      : DeviceColors.coolingLight9(isDark))
+                  ? _getModeLightColor(isDark)
                   : (isDark
                       ? AppFillColorDark.darker
                       : AppFillColorLight.darker),

@@ -8,7 +8,6 @@ import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
@@ -148,13 +147,26 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   Color _getModeColor(bool isDark) {
     switch (_currentMode) {
       case ThermostatModeValue.heat:
-        return DeviceColors.heating(isDark);
+        return isDark ? AppColorsDark.warning : AppColorsLight.warning;
       case ThermostatModeValue.cool:
-        return DeviceColors.cooling(isDark);
+        return isDark ? AppColorsDark.info : AppColorsLight.info;
       case ThermostatModeValue.auto:
         return isDark ? AppColorsDark.success : AppColorsLight.success;
       case ThermostatModeValue.off:
         return isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+    }
+  }
+
+  Color _getModeLightColor(bool isDark) {
+    switch (_currentMode) {
+      case ThermostatModeValue.heat:
+        return isDark ? AppColorsDark.warningLight5 : AppColorsLight.warningLight5;
+      case ThermostatModeValue.cool:
+        return isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight5;
+      case ThermostatModeValue.auto:
+        return isDark ? AppColorsDark.successLight5 : AppColorsLight.successLight5;
+      case ThermostatModeValue.off:
+        return isDark ? AppFillColorDark.light : AppFillColorLight.light;
     }
   }
 
@@ -267,9 +279,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
             height: _scale(44),
             decoration: BoxDecoration(
               color: _isActive
-                  ? (_currentMode == ThermostatModeValue.cool
-                      ? DeviceColors.coolingLight9(isDark)
-                      : DeviceColors.heatingLight9(isDark))
+                  ? _getModeLightColor(isDark)
                   : (isDark
                       ? AppFillColorDark.darker
                       : AppFillColorLight.darker),

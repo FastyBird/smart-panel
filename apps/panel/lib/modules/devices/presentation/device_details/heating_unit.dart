@@ -8,7 +8,6 @@ import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/heating_unit.dart';
 import 'package:flutter/material.dart';
@@ -142,9 +141,18 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   Color _getModeColor(bool isDark) {
     switch (_currentMode) {
       case HeaterMode.heat:
-        return DeviceColors.heating(isDark);
+        return isDark ? AppColorsDark.warning : AppColorsLight.warning;
       case HeaterMode.off:
         return isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+    }
+  }
+
+  Color _getModeLightColor(bool isDark) {
+    switch (_currentMode) {
+      case HeaterMode.heat:
+        return isDark ? AppColorsDark.warningLight5 : AppColorsLight.warningLight5;
+      case HeaterMode.off:
+        return isDark ? AppFillColorDark.light : AppFillColorLight.light;
     }
   }
 
@@ -237,7 +245,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
             height: _scale(44),
             decoration: BoxDecoration(
               color: _isActive
-                  ? DeviceColors.heatingLight9(isDark)
+                  ? _getModeLightColor(isDark)
                   : (isDark
                       ? AppFillColorDark.darker
                       : AppFillColorLight.darker),
