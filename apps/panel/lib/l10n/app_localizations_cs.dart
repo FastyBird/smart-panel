@@ -309,6 +309,15 @@ class AppLocalizationsCs extends AppLocalizations {
   String get thermostat_openings_state_description => 'Termostat je vypnutý.';
 
   @override
+  String get contact_sensor_window => 'Okno';
+
+  @override
+  String get contact_sensor_open => 'Otevřeno';
+
+  @override
+  String get contact_sensor_closed => 'Zavřeno';
+
+  @override
   String get thermostat_lock_locked => 'Uzamčeno';
 
   @override

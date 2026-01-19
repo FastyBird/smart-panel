@@ -604,50 +604,62 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     Color modeColor,
   ) {
     final humidityChannel = _device.humidityChannel;
-    final hasHumidity = humidityChannel != null;
+    final contactChannel = _device.contactChannel;
+    final useVerticalLayout = _screenService.isLandscape &&
+        (_screenService.isSmallScreen || _screenService.isMediumScreen);
+
+    // Build info tiles list
+    final infoTiles = <Widget>[];
+
+    // Temperature (always present)
+    infoTiles.add(InfoTile(
+      label: localizations.device_current_temperature,
+      value: NumberFormatUtils.defaultFormat.formatDecimal(
+        _currentTemperature,
+        decimalPlaces: 1,
+      ),
+      unit: '°C',
+      valueColor: modeColor,
+    ));
+
+    // Humidity (optional)
+    if (humidityChannel != null) {
+      infoTiles.add(InfoTile(
+        label: localizations.device_current_humidity,
+        value: NumberFormatUtils.defaultFormat
+            .formatInteger(humidityChannel.humidity),
+        unit: '%',
+      ));
+    }
+
+    // Contact sensor (optional) - shows window/door status
+    if (contactChannel != null) {
+      final isOpen = !contactChannel.detected;
+      infoTiles.add(InfoTile(
+        label: localizations.contact_sensor_window,
+        value: isOpen
+            ? localizations.contact_sensor_open
+            : localizations.contact_sensor_closed,
+        isWarning: isOpen,
+      ));
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Temperature and Humidity info boxes
-        if (hasHumidity)
-          // Two column layout when humidity is available
-          Row(
-            children: [
-              Expanded(
-                child: InfoTile(
-                  label: localizations.device_current_temperature,
-                  value: NumberFormatUtils.defaultFormat.formatDecimal(
-                    _currentTemperature,
-                    decimalPlaces: 1,
-                  ),
-                  unit: '°C',
-                  valueColor: modeColor,
-                ),
-              ),
-              AppSpacings.spacingSmHorizontal,
-              Expanded(
-                child: InfoTile(
-                  label: localizations.device_current_humidity,
-                  value: NumberFormatUtils.defaultFormat
-                      .formatInteger(humidityChannel.humidity),
-                  unit: '%',
-                ),
-              ),
-            ],
-          )
-        else
-          // Full width when only temperature
-          InfoTile(
-            label: localizations.device_current_temperature,
-            value: NumberFormatUtils.defaultFormat.formatDecimal(
-              _currentTemperature,
-              decimalPlaces: 1,
-            ),
-            unit: '°C',
-            valueColor: modeColor,
-          ),
-        AppSpacings.spacingMdVertical,
+        // Info tiles
+        if (infoTiles.isNotEmpty) ...[
+          if (useVerticalLayout)
+            ...infoTiles
+                .expand((tile) => [
+                      SizedBox(width: double.infinity, child: tile),
+                      AppSpacings.spacingSmVertical,
+                    ])
+                .take(infoTiles.length * 2 - 1)
+          else
+            _buildInfoTilesGrid(infoTiles),
+          AppSpacings.spacingMdVertical,
+        ],
         // Lock control if available
         if (_device.hasThermostatLock) ...[
           UniversalTile(
@@ -670,6 +682,43 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
           AppSpacings.spacingSmVertical,
         ],
       ],
+    );
+  }
+
+  Widget _buildInfoTilesGrid(List<Widget> tiles) {
+    const int tilesPerRow = 3;
+    final rows = <Widget>[];
+
+    for (var i = 0; i < tiles.length; i += tilesPerRow) {
+      final rowTiles = tiles.skip(i).take(tilesPerRow).toList();
+
+      // Build row with tiles
+      final rowChildren = <Widget>[];
+      for (var j = 0; j < rowTiles.length; j++) {
+        rowChildren.add(Expanded(child: rowTiles[j]));
+        if (j < rowTiles.length - 1) {
+          rowChildren.add(AppSpacings.spacingSmHorizontal);
+        }
+      }
+
+      // Add empty spacers if row is not full (to maintain consistent sizing)
+      final emptySlots = tilesPerRow - rowTiles.length;
+      for (var j = 0; j < emptySlots; j++) {
+        rowChildren.add(AppSpacings.spacingSmHorizontal);
+        rowChildren.add(const Expanded(child: SizedBox.shrink()));
+      }
+
+      rows.add(Row(children: rowChildren));
+
+      // Add spacing between rows
+      if (i + tilesPerRow < tiles.length) {
+        rows.add(AppSpacings.spacingSmVertical);
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: rows,
     );
   }
 

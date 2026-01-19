@@ -400,6 +400,18 @@
   "@thermostat_openings_state_description": {
     "description": "Displays that the thermostat is disabled due to an open window"
   },
+  "contact_sensor_window": "Window",
+  "@contact_sensor_window": {
+    "description": "Label for window contact sensor"
+  },
+  "contact_sensor_open": "Open",
+  "@contact_sensor_open": {
+    "description": "Contact sensor state when window/door is open"
+  },
+  "contact_sensor_closed": "Closed",
+  "@contact_sensor_closed": {
+    "description": "Contact sensor state when window/door is closed"
+  },
   "thermostat_lock_locked": "Locked",
   "@thermostat_lock_locked": {
     "description": "Indicates the child lock is active"

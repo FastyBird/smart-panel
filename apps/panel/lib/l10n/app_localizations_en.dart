@@ -309,6 +309,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get thermostat_openings_state_description => 'Thermostat is disabled';
 
   @override
+  String get contact_sensor_window => 'Window';
+
+  @override
+  String get contact_sensor_open => 'Open';
+
+  @override
+  String get contact_sensor_closed => 'Closed';
+
+  @override
   String get thermostat_lock_locked => 'Locked';
 
   @override

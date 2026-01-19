@@ -695,6 +695,24 @@ abstract class AppLocalizations {
   /// **'Thermostat is disabled'**
   String get thermostat_openings_state_description;
 
+  /// Label for window contact sensor
+  ///
+  /// In en, this message translates to:
+  /// **'Window'**
+  String get contact_sensor_window;
+
+  /// Contact sensor state when window/door is open
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get contact_sensor_open;
+
+  /// Contact sensor state when window/door is closed
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get contact_sensor_closed;
+
   /// Indicates the child lock is active
   ///
   /// In en, this message translates to:
