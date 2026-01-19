@@ -143,7 +143,22 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
   bool get _isCooling => _device.coolerChannel?.isCooling ?? false;
 
-  bool get _isActive => _isHeating || _isCooling;
+  /// Dial glow is active when:
+  /// - heat mode: thermostat.active = true AND heater.status = true
+  /// - cool mode: thermostat.active = true AND cooler.status = true
+  bool get _isActive {
+    final thermostatActive = _device.thermostatChannel.isActive;
+
+    switch (_currentMode) {
+      case ThermostatModeValue.heat:
+        return thermostatActive && _isHeating;
+      case ThermostatModeValue.cool:
+        return thermostatActive && _isCooling;
+      case ThermostatModeValue.auto:
+      case ThermostatModeValue.off:
+        return false;
+    }
+  }
 
   double get _currentTemperature => _device.temperatureChannel.temperature;
 
@@ -156,7 +171,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         return _device.coolerChannel?.minTemperature ?? 16.0;
       case ThermostatModeValue.auto:
       case ThermostatModeValue.off:
-        // Use heater min as default
+        // Use heater min as default for display
         return _device.heaterChannel?.minTemperature ?? 16.0;
     }
   }
@@ -170,7 +185,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         return _device.coolerChannel?.maxTemperature ?? 30.0;
       case ThermostatModeValue.auto:
       case ThermostatModeValue.off:
-        // Use heater max as default
+        // Use heater max as default for display
         return _device.heaterChannel?.maxTemperature ?? 30.0;
     }
   }
@@ -183,7 +198,8 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         return _device.coolerChannel?.temperatureProp;
       case ThermostatModeValue.auto:
       case ThermostatModeValue.off:
-        return _device.heaterChannel?.temperatureProp;
+        // No setpoint control in auto/off modes
+        return null;
     }
   }
 
@@ -195,7 +211,8 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         return _device.coolerChannel?.id;
       case ThermostatModeValue.auto:
       case ThermostatModeValue.off:
-        return _device.heaterChannel?.id;
+        // No setpoint control in auto/off modes
+        return null;
     }
   }
 
@@ -226,9 +243,8 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
       case ThermostatModeValue.cool:
         return _device.coolerChannel?.temperature ?? 24.0;
       case ThermostatModeValue.auto:
-        // For auto, use heating setpoint as default
-        return _device.heaterChannel?.temperature ?? 21.0;
       case ThermostatModeValue.off:
+        // Show heater setpoint for display purposes
         return _device.heaterChannel?.temperature ?? 21.0;
     }
   }
@@ -239,6 +255,8 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
   void _onModeChanged(ThermostatModeValue mode) {
     final modeProp = _device.thermostatChannel.modeProp;
+    final heaterOnProp = _device.heaterChannel?.onProp;
+    final coolerOnProp = _device.coolerChannel?.onProp;
 
     // Set PENDING state immediately for responsive UI
     _deviceControlStateService?.setPending(
@@ -250,15 +268,42 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     setState(() {});
 
     // Send mode change command to backend
-    _setPropertyValue(modeProp, mode.value).then((_) {
-      if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          _device.thermostatChannel.id,
-          modeProp.id,
-        );
-      }
-    });
+    _setPropertyValue(modeProp, mode.value);
+
+    // Send heater/cooler on commands based on mode
+    switch (mode) {
+      case ThermostatModeValue.heat:
+        // Turn on heater
+        if (heaterOnProp != null) {
+          _setPropertyValue(heaterOnProp, true);
+        }
+        break;
+      case ThermostatModeValue.cool:
+        // Turn on cooler
+        if (coolerOnProp != null) {
+          _setPropertyValue(coolerOnProp, true);
+        }
+        break;
+      case ThermostatModeValue.off:
+        // Turn off both heater and cooler
+        if (heaterOnProp != null) {
+          _setPropertyValue(heaterOnProp, false);
+        }
+        if (coolerOnProp != null) {
+          _setPropertyValue(coolerOnProp, false);
+        }
+        break;
+      case ThermostatModeValue.auto:
+        // Auto mode - hidden for now, no additional commands
+        break;
+    }
+
+    // Transition to settling state
+    _deviceControlStateService?.setSettling(
+      _device.id,
+      _device.thermostatChannel.id,
+      modeProp.id,
+    );
   }
 
   void _onSetpointChanged(double value) {
@@ -390,14 +435,15 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
       ));
     }
 
-    if (availableModes.contains(ThermostatModeValue.auto)) {
-      modes.add(ModeOption(
-        value: ThermostatModeValue.auto,
-        icon: MdiIcons.autorenew,
-        label: 'Auto',
-        color: ModeSelectorColor.success,
-      ));
-    }
+    // Auto mode hidden for now - will be implemented in future
+    // if (availableModes.contains(ThermostatModeValue.auto)) {
+    //   modes.add(ModeOption(
+    //     value: ThermostatModeValue.auto,
+    //     icon: MdiIcons.autorenew,
+    //     label: 'Auto',
+    //     color: ModeSelectorColor.success,
+    //   ));
+    // }
 
     // Always add OFF mode
     modes.add(ModeOption(
@@ -627,7 +673,8 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
             size: dialSize,
             accentType: _getDialAccentColor(),
             isActive: _isActive,
-            enabled: _currentMode != ThermostatModeValue.off,
+            enabled: _currentMode == ThermostatModeValue.heat ||
+                _currentMode == ThermostatModeValue.cool,
             modeLabel: _currentMode.value,
             displayFormat: DialDisplayFormat.temperature,
             onChanged: _onSetpointChanged,
@@ -686,7 +733,8 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
                 size: dialSize,
                 accentType: _getDialAccentColor(),
                 isActive: _isActive,
-                enabled: _currentMode != ThermostatModeValue.off,
+                enabled: _currentMode == ThermostatModeValue.heat ||
+                _currentMode == ThermostatModeValue.cool,
                 modeLabel: _currentMode.value,
                 displayFormat: DialDisplayFormat.temperature,
                 onChanged: _onSetpointChanged,
