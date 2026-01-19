@@ -180,7 +180,8 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         return AirQualityUtils.calculateAqiFromLevel(aqChannel.level);
       }
     } else if (pmChannel != null && pmChannel.hasDensity) {
-      return AirQualityUtils.calculateAqi(pmChannel.density, pmChannel.mode);
+      final mode = pmChannel.hasMode ? pmChannel.mode : AirParticulateModeValue.pm25;
+      return AirQualityUtils.calculateAqi(pmChannel.density, mode);
     }
     return 0;
   }
@@ -922,8 +923,9 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     // PM tile - only show if air particulate channel exists and has density
     final pmChannel = _device.airParticulateChannel;
     if (pmChannel != null && pmChannel.hasDensity) {
+      final pmMode = pmChannel.hasMode ? pmChannel.mode : AirParticulateModeValue.pm25;
       infoTiles.add(InfoTile(
-        label: AirQualityUtils.getParticulateLabel(localizations, pmChannel.mode),
+        label: AirQualityUtils.getParticulateLabel(localizations, pmMode),
         value: NumberFormatUtils.defaultFormat.formatInteger(_pm25),
         unit: 'µg/m³',
         valueColor: airColor,
