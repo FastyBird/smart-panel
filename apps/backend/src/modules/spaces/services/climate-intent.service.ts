@@ -150,11 +150,23 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 				break;
 
 			case ClimateIntentType.SETPOINT_SET:
-				result = await this.executeSetpointSetIntentWithResults(primaryDevices, intent, climateState, targetResults);
+				result = await this.executeSetpointSetIntentWithResults(
+					spaceId,
+					primaryDevices,
+					intent,
+					climateState,
+					targetResults,
+				);
 				break;
 
 			case ClimateIntentType.SETPOINT_DELTA:
-				result = await this.executeSetpointDeltaIntentWithResults(primaryDevices, intent, climateState, targetResults);
+				result = await this.executeSetpointDeltaIntentWithResults(
+					spaceId,
+					primaryDevices,
+					intent,
+					climateState,
+					targetResults,
+				);
 				break;
 
 			case ClimateIntentType.CLIMATE_SET:
@@ -550,6 +562,7 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 	 * Execute SETPOINT_SET intent with per-target results tracking.
 	 */
 	private async executeSetpointSetIntentWithResults(
+		spaceId: string,
 		devices: PrimaryClimateDevice[],
 		intent: ClimateIntentDto,
 		climateState: ClimateState,
@@ -611,8 +624,24 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 			}
 		}
 
+		const overallSuccess = failedDevices === 0 || affectedDevices > 0;
+
+		// Store setpoint change to InfluxDB for historical tracking (fire and forget)
+		// Preserve the current mode and merge setpoints (only update what was provided)
+		if (overallSuccess) {
+			void this.intentTimeseriesService.storeClimateModeChange(
+				spaceId,
+				mode, // preserve current mode (lastAppliedMode ?? calculatedMode)
+				heatingSetpoint ?? climateState.heatingSetpoint, // preserve existing if not provided
+				coolingSetpoint ?? climateState.coolingSetpoint, // preserve existing if not provided
+				devices.length,
+				affectedDevices,
+				failedDevices,
+			);
+		}
+
 		return {
-			success: failedDevices === 0 || affectedDevices > 0,
+			success: overallSuccess,
 			affectedDevices,
 			failedDevices,
 			mode,
@@ -690,6 +719,7 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 	 * Execute SETPOINT_DELTA intent with per-target results tracking.
 	 */
 	private async executeSetpointDeltaIntentWithResults(
+		spaceId: string,
 		devices: PrimaryClimateDevice[],
 		intent: ClimateIntentDto,
 		climateState: ClimateState,
@@ -745,7 +775,7 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 			coolingSetpoint: coolingSetpoint ?? undefined,
 		};
 
-		return this.executeSetpointSetIntentWithResults(devices, setIntent, climateState, targetResults);
+		return this.executeSetpointSetIntentWithResults(spaceId, devices, setIntent, climateState, targetResults);
 	}
 
 	/**
