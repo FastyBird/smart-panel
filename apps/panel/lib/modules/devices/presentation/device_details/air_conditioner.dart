@@ -747,24 +747,53 @@ class _AirConditionerDeviceDetailState
     final isLargeScreen = _screenService.isLargeScreen;
     final modeColor = _getModeColor(isDark);
 
+    // Large screen: equal columns
+    if (isLargeScreen) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            flex: 1,
+            child: Padding(
+              padding: AppSpacings.paddingLg,
+              child: _buildPrimaryControlCard(context, isDark,
+                  dialSize: _scale(200)),
+            ),
+          ),
+          Container(width: _scale(1), color: borderColor),
+          Expanded(
+            flex: 1,
+            child: Container(
+              color: cardColor,
+              padding: AppSpacings.paddingLg,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildStatusSection(localizations, isDark, modeColor),
+                    AppSpacings.spacingMdVertical,
+                    _buildFanControls(localizations, isDark, modeColor, false),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Small/medium: 2:1 ratio with stretched dial
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Left column: dial with mode selector
         Expanded(
-          flex: 1,
-          child: Center(
-            child: SingleChildScrollView(
-              padding: AppSpacings.paddingLg,
-              child: isLargeScreen
-                  ? _buildPrimaryControlCard(context, isDark,
-                      dialSize: _scale(200))
-                  : _buildCompactDialWithModes(context, isDark),
-            ),
+          flex: 2,
+          child: Padding(
+            padding: AppSpacings.paddingLg,
+            child: _buildCompactDialWithModes(context, isDark),
           ),
         ),
         Container(width: _scale(1), color: borderColor),
-        // Right column: status info and fan controls
         Expanded(
           flex: 1,
           child: Container(
@@ -776,7 +805,7 @@ class _AirConditionerDeviceDetailState
                 children: [
                   _buildStatusSection(localizations, isDark, modeColor),
                   AppSpacings.spacingMdVertical,
-                  _buildFanControls(localizations, isDark, modeColor, !isLargeScreen),
+                  _buildFanControls(localizations, isDark, modeColor, true),
                 ],
               ),
             ),

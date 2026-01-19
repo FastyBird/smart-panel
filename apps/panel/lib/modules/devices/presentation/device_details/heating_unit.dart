@@ -282,36 +282,69 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   Widget _buildLandscapeLayout(BuildContext context, bool isDark) {
     final borderColor =
         isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+    final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.light;
     final isLargeScreen = _screenService.isLargeScreen;
 
+    // Large screen: equal columns
+    if (isLargeScreen) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            flex: 1,
+            child: Padding(
+              padding: AppSpacings.paddingLg,
+              child: _buildPrimaryControlCard(context, isDark,
+                  dialSize: _scale(200)),
+            ),
+          ),
+          Container(width: _scale(1), color: borderColor),
+          Expanded(
+            flex: 1,
+            child: Container(
+              color: cardColor,
+              child: Center(
+                child: Text(
+                  _device.name,
+                  style: TextStyle(
+                    color: isDark
+                        ? AppTextColorDark.secondary
+                        : AppTextColorLight.secondary,
+                    fontSize: AppFontSize.base,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Small/medium: 2:1 ratio with stretched dial
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Left column: dial with mode selector
         Expanded(
-          flex: 1,
-          child: Center(
-            child: SingleChildScrollView(
-              padding: AppSpacings.paddingLg,
-              child: isLargeScreen
-                  ? _buildPrimaryControlCard(context, isDark,
-                      dialSize: _scale(200))
-                  : _buildCompactDialWithModes(context, isDark),
-            ),
+          flex: 2,
+          child: Padding(
+            padding: AppSpacings.paddingLg,
+            child: _buildCompactDialWithModes(context, isDark),
           ),
         ),
         Container(width: _scale(1), color: borderColor),
-        // Right column: empty for now (could add device info later)
         Expanded(
           flex: 1,
-          child: Center(
-            child: Text(
-              _device.name,
-              style: TextStyle(
-                color: isDark
-                    ? AppTextColorDark.secondary
-                    : AppTextColorLight.secondary,
-                fontSize: AppFontSize.base,
+          child: Container(
+            color: cardColor,
+            child: Center(
+              child: Text(
+                _device.name,
+                style: TextStyle(
+                  color: isDark
+                      ? AppTextColorDark.secondary
+                      : AppTextColorLight.secondary,
+                  fontSize: AppFontSize.base,
+                ),
               ),
             ),
           ),
