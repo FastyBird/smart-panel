@@ -11,11 +11,17 @@ import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/core/widgets/info_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
+import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
+import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
+import 'package:fastybird_smart_panel/modules/devices/utils/fan_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_conditioner.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
+import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -50,6 +56,10 @@ class _AirConditionerDeviceDetailState
   Timer? _setpointDebounceTimer;
   static const _setpointDebounceDuration = Duration(milliseconds: 300);
 
+  // Debounce timer for fan speed slider
+  Timer? _speedDebounceTimer;
+  static const _speedDebounceDuration = Duration(milliseconds: 300);
+
   @override
   void initState() {
     super.initState();
@@ -69,6 +79,7 @@ class _AirConditionerDeviceDetailState
   @override
   void dispose() {
     _setpointDebounceTimer?.cancel();
+    _speedDebounceTimer?.cancel();
     _devicesService.removeListener(_onDeviceChanged);
     _deviceControlStateService?.removeListener(_onControlStateChanged);
     super.dispose();
@@ -274,9 +285,10 @@ class _AirConditionerDeviceDetailState
   // MODE AND SETPOINT HANDLERS
   // --------------------------------------------------------------------------
 
-  void _onModeChanged(AcMode mode) {
+  void _onModeChanged(AcMode mode) async {
     final coolerOnProp = _device.coolerChannel.onProp;
     final heaterOnProp = _device.heaterChannel?.onProp;
+    final fanOnProp = _device.fanChannel.onProp;
 
     // Set PENDING state immediately for responsive UI
     if (coolerOnProp != null) {
@@ -295,31 +307,113 @@ class _AirConditionerDeviceDetailState
         mode == AcMode.heat,
       );
     }
+    // Fan on/off based on mode
+    _deviceControlStateService?.setPending(
+      _device.id,
+      _device.fanChannel.id,
+      fanOnProp.id,
+      mode != AcMode.off,
+    );
     setState(() {});
 
-    // Send commands based on mode
+    // Build batch command list
+    final commands = <PropertyCommandItem>[];
+
     switch (mode) {
       case AcMode.heat:
-        // Turn on heater, turn off cooler
+        // Turn on heater, turn off cooler, turn on fan
         if (heaterOnProp != null) {
-          _setPropertyValue(heaterOnProp, true);
+          commands.add(PropertyCommandItem(
+            deviceId: _device.id,
+            channelId: _device.heaterChannel!.id,
+            propertyId: heaterOnProp.id,
+            value: true,
+          ));
         }
-        _setPropertyValue(coolerOnProp, false);
+        if (coolerOnProp != null) {
+          commands.add(PropertyCommandItem(
+            deviceId: _device.id,
+            channelId: _device.coolerChannel.id,
+            propertyId: coolerOnProp.id,
+            value: false,
+          ));
+        }
+        commands.add(PropertyCommandItem(
+          deviceId: _device.id,
+          channelId: _device.fanChannel.id,
+          propertyId: fanOnProp.id,
+          value: true,
+        ));
         break;
       case AcMode.cool:
-        // Turn on cooler, turn off heater
-        _setPropertyValue(coolerOnProp, true);
-        if (heaterOnProp != null) {
-          _setPropertyValue(heaterOnProp, false);
+        // Turn on cooler, turn off heater, turn on fan
+        if (coolerOnProp != null) {
+          commands.add(PropertyCommandItem(
+            deviceId: _device.id,
+            channelId: _device.coolerChannel.id,
+            propertyId: coolerOnProp.id,
+            value: true,
+          ));
         }
+        if (heaterOnProp != null) {
+          commands.add(PropertyCommandItem(
+            deviceId: _device.id,
+            channelId: _device.heaterChannel!.id,
+            propertyId: heaterOnProp.id,
+            value: false,
+          ));
+        }
+        commands.add(PropertyCommandItem(
+          deviceId: _device.id,
+          channelId: _device.fanChannel.id,
+          propertyId: fanOnProp.id,
+          value: true,
+        ));
         break;
       case AcMode.off:
-        // Turn off both
-        _setPropertyValue(coolerOnProp, false);
-        if (heaterOnProp != null) {
-          _setPropertyValue(heaterOnProp, false);
+        // Turn off cooler, heater, and fan
+        if (coolerOnProp != null) {
+          commands.add(PropertyCommandItem(
+            deviceId: _device.id,
+            channelId: _device.coolerChannel.id,
+            propertyId: coolerOnProp.id,
+            value: false,
+          ));
         }
+        if (heaterOnProp != null) {
+          commands.add(PropertyCommandItem(
+            deviceId: _device.id,
+            channelId: _device.heaterChannel!.id,
+            propertyId: heaterOnProp.id,
+            value: false,
+          ));
+        }
+        commands.add(PropertyCommandItem(
+          deviceId: _device.id,
+          channelId: _device.fanChannel.id,
+          propertyId: fanOnProp.id,
+          value: false,
+        ));
         break;
+    }
+
+    // Send all commands as a single batch
+    if (commands.isNotEmpty) {
+      final localizations = AppLocalizations.of(context);
+
+      try {
+        bool res = await _devicesService.setMultiplePropertyValues(
+          properties: commands,
+        );
+
+        if (!res && mounted && localizations != null) {
+          AlertBar.showError(context, message: localizations.action_failed);
+        }
+      } catch (e) {
+        if (mounted && localizations != null) {
+          AlertBar.showError(context, message: localizations.action_failed);
+        }
+      }
     }
 
     // Transition to settling state
@@ -337,6 +431,11 @@ class _AirConditionerDeviceDetailState
         heaterOnProp.id,
       );
     }
+    _deviceControlStateService?.setSettling(
+      _device.id,
+      _device.fanChannel.id,
+      fanOnProp.id,
+    );
   }
 
   void _onSetpointChanged(double value) {
@@ -376,6 +475,78 @@ class _AirConditionerDeviceDetailState
         );
       }
     });
+  }
+
+  // --------------------------------------------------------------------------
+  // FAN SPEED HELPERS
+  // --------------------------------------------------------------------------
+
+  double get _fanSpeed {
+    final fanChannel = _device.fanChannel;
+    final speedProp = fanChannel.speedProp;
+
+    if (!fanChannel.hasSpeed || speedProp == null) return 0.0;
+
+    final controlState = _deviceControlStateService;
+    double actualSpeed = fanChannel.speed;
+
+    if (controlState != null &&
+        controlState.isLocked(_device.id, fanChannel.id, speedProp.id)) {
+      final desiredValue = controlState.getDesiredValue(
+        _device.id,
+        fanChannel.id,
+        speedProp.id,
+      );
+      if (desiredValue is num) {
+        actualSpeed = desiredValue.toDouble();
+      }
+    }
+
+    // Normalize to 0-1 range
+    final range = fanChannel.maxSpeed - fanChannel.minSpeed;
+    if (range <= 0) return 0.0;
+    return (actualSpeed - fanChannel.minSpeed) / range;
+  }
+
+  void _setFanSpeedValue(double normalizedSpeed) {
+    final fanChannel = _device.fanChannel;
+    final speedProp = fanChannel.speedProp;
+    if (!fanChannel.hasSpeed || !fanChannel.isSpeedNumeric || speedProp == null) return;
+
+    final range = fanChannel.maxSpeed - fanChannel.minSpeed;
+    if (range <= 0) return;
+
+    final rawSpeed = fanChannel.minSpeed + (normalizedSpeed * range);
+    final step = fanChannel.speedStep;
+    final steppedSpeed = step > 0 ? (rawSpeed / step).round() * step : rawSpeed;
+    final actualSpeed = steppedSpeed.clamp(fanChannel.minSpeed, fanChannel.maxSpeed);
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      fanChannel.id,
+      speedProp.id,
+      actualSpeed,
+    );
+    setState(() {});
+
+    _speedDebounceTimer?.cancel();
+    _speedDebounceTimer = Timer(_speedDebounceDuration, () async {
+      if (!mounted) return;
+      _setPropertyValue(speedProp, actualSpeed);
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          fanChannel.id,
+          speedProp.id,
+        );
+      }
+    });
+  }
+
+  void _setFanSpeedLevel(FanSpeedLevelValue level) {
+    final fanChannel = _device.fanChannel;
+    if (!fanChannel.hasSpeed || !fanChannel.isSpeedEnum) return;
+    _setPropertyValue(fanChannel.speedProp, level.value);
   }
 
   // --------------------------------------------------------------------------
@@ -557,6 +728,8 @@ class _AirConditionerDeviceDetailState
           _buildPrimaryControlCard(context, isDark, dialSize: _scale(200)),
           AppSpacings.spacingMdVertical,
           _buildStatusSection(localizations, isDark, modeColor),
+          AppSpacings.spacingMdVertical,
+          _buildFanControls(localizations, isDark, modeColor, false),
         ],
       ),
     );
@@ -591,14 +764,21 @@ class _AirConditionerDeviceDetailState
           ),
         ),
         Container(width: _scale(1), color: borderColor),
-        // Right column: status info
+        // Right column: status info and fan controls
         Expanded(
           flex: 1,
           child: Container(
             color: cardColor,
             padding: AppSpacings.paddingLg,
             child: SingleChildScrollView(
-              child: _buildStatusSection(localizations, isDark, modeColor),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildStatusSection(localizations, isDark, modeColor),
+                  AppSpacings.spacingMdVertical,
+                  _buildFanControls(localizations, isDark, modeColor, !isLargeScreen),
+                ],
+              ),
             ),
           ),
         ),
@@ -852,5 +1032,352 @@ class _AirConditionerDeviceDetailState
       iconPlacement: ModeSelectorIconPlacement.left,
       showLabels: showLabels,
     );
+  }
+
+  // --------------------------------------------------------------------------
+  // FAN CONTROLS
+  // --------------------------------------------------------------------------
+
+  Widget _buildFanControls(
+    AppLocalizations localizations,
+    bool isDark,
+    Color modeColor,
+    bool useCompactLayout,
+  ) {
+    final fanChannel = _device.fanChannel;
+    final controls = <Widget>[];
+
+    // Speed control
+    if (fanChannel.hasSpeed) {
+      controls.add(_buildFanSpeedControl(localizations, isDark, modeColor, useCompactLayout));
+      controls.add(AppSpacings.spacingMdVertical);
+    }
+
+    // Options (swing, direction, natural breeze, timer, locked)
+    final options = _buildFanOptions(localizations, isDark, modeColor, useCompactLayout);
+    if (options.isNotEmpty) {
+      controls.addAll(options);
+    }
+
+    if (controls.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // Remove trailing spacer
+    if (controls.isNotEmpty && controls.last == AppSpacings.spacingMdVertical) {
+      controls.removeLast();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: controls,
+    );
+  }
+
+  Widget _buildFanSpeedControl(
+    AppLocalizations localizations,
+    bool isDark,
+    Color modeColor,
+    bool useCompactLayout,
+  ) {
+    final fanChannel = _device.fanChannel;
+
+    if (!fanChannel.hasSpeed) {
+      return const SizedBox.shrink();
+    }
+
+    if (fanChannel.isSpeedEnum) {
+      final availableLevels = fanChannel.availableSpeedLevels;
+      if (availableLevels.isEmpty) return const SizedBox.shrink();
+
+      final options = availableLevels.map((level) {
+        return ValueOption(
+          value: level,
+          label: FanUtils.getSpeedLevelLabel(localizations, level),
+        );
+      }).toList();
+
+      return ValueSelectorRow<FanSpeedLevelValue>(
+        currentValue: fanChannel.speedLevel,
+        label: localizations.device_fan_speed,
+        icon: Icons.speed,
+        sheetTitle: localizations.device_fan_speed,
+        activeColor: modeColor,
+        options: options,
+        displayFormatter: (level) => level != null
+            ? FanUtils.getSpeedLevelLabel(localizations, level)
+            : localizations.fan_speed_off,
+        isActiveValue: (level) => level != null && level != FanSpeedLevelValue.off,
+        columns: availableLevels.length > 4 ? 3 : availableLevels.length,
+        layout: useCompactLayout
+            ? ValueSelectorRowLayout.compact
+            : ValueSelectorRowLayout.horizontal,
+        onChanged: _currentMode != AcMode.off
+            ? (level) {
+                if (level != null) _setFanSpeedLevel(level);
+              }
+            : null,
+      );
+    } else {
+      final range = fanChannel.maxSpeed - fanChannel.minSpeed;
+      if (range <= 0) return const SizedBox.shrink();
+
+      if (useCompactLayout) {
+        return ValueSelectorRow<double>(
+          currentValue: _fanSpeed,
+          label: localizations.device_fan_speed,
+          icon: Icons.speed,
+          sheetTitle: localizations.device_fan_speed,
+          activeColor: modeColor,
+          options: _getFanSpeedOptions(localizations),
+          displayFormatter: (v) => _formatFanSpeed(localizations, v),
+          isActiveValue: (v) => v != null && v > 0,
+          columns: 4,
+          layout: ValueSelectorRowLayout.compact,
+          onChanged: _currentMode != AcMode.off ? (v) => _setFanSpeedValue(v ?? 0) : null,
+        );
+      } else {
+        return SpeedSlider(
+          value: _fanSpeed,
+          activeColor: modeColor,
+          enabled: _currentMode != AcMode.off,
+          steps: [
+            localizations.fan_speed_off,
+            localizations.fan_speed_low,
+            localizations.fan_speed_medium,
+            localizations.fan_speed_high,
+          ],
+          onChanged: _setFanSpeedValue,
+        );
+      }
+    }
+  }
+
+  List<ValueOption<double>> _getFanSpeedOptions(AppLocalizations localizations) {
+    return [
+      ValueOption(value: 0.0, label: localizations.fan_speed_off),
+      ValueOption(value: 0.25, label: '25%'),
+      ValueOption(value: 0.5, label: '50%'),
+      ValueOption(value: 0.75, label: '75%'),
+      ValueOption(value: 1.0, label: '100%'),
+    ];
+  }
+
+  String _formatFanSpeed(AppLocalizations localizations, double? speed) {
+    if (speed == null || speed == 0) return localizations.fan_speed_off;
+    return '${(speed * 100).toInt()}%';
+  }
+
+  List<Widget> _buildFanOptions(
+    AppLocalizations localizations,
+    bool isDark,
+    Color modeColor,
+    bool useCompactLayout,
+  ) {
+    final fanChannel = _device.fanChannel;
+    final options = <Widget>[];
+
+    // Oscillation / Swing
+    if (fanChannel.hasSwing) {
+      options.add(UniversalTile(
+        layout: TileLayout.horizontal,
+        icon: Icons.sync,
+        name: localizations.device_oscillation,
+        status: fanChannel.swing
+            ? localizations.on_state_on
+            : localizations.on_state_off,
+        isActive: fanChannel.swing,
+        activeColor: modeColor,
+        onTileTap: () => _setPropertyValue(fanChannel.swingProp, !fanChannel.swing),
+        showGlow: false,
+        showDoubleBorder: false,
+        showInactiveBorder: true,
+      ));
+      options.add(AppSpacings.spacingSmVertical);
+    }
+
+    // Direction
+    if (fanChannel.hasDirection) {
+      final isReversed = fanChannel.direction == FanDirectionValue.counterClockwise;
+      options.add(UniversalTile(
+        layout: TileLayout.horizontal,
+        icon: Icons.swap_vert,
+        name: localizations.device_direction,
+        status: fanChannel.direction != null
+            ? FanUtils.getDirectionLabel(localizations, fanChannel.direction!)
+            : localizations.fan_direction_clockwise,
+        isActive: isReversed,
+        activeColor: modeColor,
+        onTileTap: () {
+          final newDirection = isReversed
+              ? FanDirectionValue.clockwise
+              : FanDirectionValue.counterClockwise;
+          _setPropertyValue(fanChannel.directionProp, newDirection.value);
+        },
+        showGlow: false,
+        showDoubleBorder: false,
+        showInactiveBorder: true,
+      ));
+      options.add(AppSpacings.spacingSmVertical);
+    }
+
+    // Natural Breeze
+    if (fanChannel.hasNaturalBreeze) {
+      options.add(UniversalTile(
+        layout: TileLayout.horizontal,
+        icon: MdiIcons.weatherWindy,
+        name: localizations.device_natural_breeze,
+        status: fanChannel.naturalBreeze
+            ? localizations.on_state_on
+            : localizations.on_state_off,
+        isActive: fanChannel.naturalBreeze,
+        activeColor: modeColor,
+        onTileTap: () => _setPropertyValue(fanChannel.naturalBreezeProp, !fanChannel.naturalBreeze),
+        showGlow: false,
+        showDoubleBorder: false,
+        showInactiveBorder: true,
+      ));
+      options.add(AppSpacings.spacingSmVertical);
+    }
+
+    // Child Lock
+    if (fanChannel.hasLocked) {
+      options.add(UniversalTile(
+        layout: TileLayout.horizontal,
+        icon: Icons.lock,
+        name: localizations.device_child_lock,
+        status: fanChannel.locked
+            ? localizations.thermostat_lock_locked
+            : localizations.thermostat_lock_unlocked,
+        isActive: fanChannel.locked,
+        activeColor: modeColor,
+        onTileTap: () => _setPropertyValue(fanChannel.lockedProp, !fanChannel.locked),
+        showGlow: false,
+        showDoubleBorder: false,
+        showInactiveBorder: true,
+      ));
+      options.add(AppSpacings.spacingSmVertical);
+    }
+
+    // Timer
+    if (fanChannel.hasTimer) {
+      options.add(_buildTimerControl(localizations, modeColor, useCompactLayout));
+    }
+
+    // Remove trailing spacer
+    if (options.isNotEmpty && options.last == AppSpacings.spacingSmVertical) {
+      options.removeLast();
+    }
+
+    return options;
+  }
+
+  Widget _buildTimerControl(
+    AppLocalizations localizations,
+    Color modeColor,
+    bool useCompactLayout,
+  ) {
+    final fanChannel = _device.fanChannel;
+
+    if (fanChannel.isTimerEnum) {
+      final options = _getTimerPresetOptions(localizations);
+      if (options.isEmpty) return const SizedBox.shrink();
+
+      return ValueSelectorRow<FanTimerPresetValue?>(
+        currentValue: fanChannel.timerPreset,
+        label: localizations.device_timer,
+        icon: Icons.timer_outlined,
+        sheetTitle: localizations.device_auto_off_timer,
+        activeColor: modeColor,
+        options: options,
+        displayFormatter: (p) => _formatTimerPreset(localizations, p),
+        isActiveValue: (preset) =>
+            preset != null && preset != FanTimerPresetValue.off,
+        columns: options.length > 4 ? 4 : options.length,
+        layout: useCompactLayout
+            ? ValueSelectorRowLayout.compact
+            : ValueSelectorRowLayout.horizontal,
+        onChanged: (preset) {
+          if (preset != null) {
+            _setPropertyValue(fanChannel.timerProp, preset.value);
+          }
+        },
+      );
+    } else {
+      final options = _getNumericTimerOptions(localizations);
+      if (options.isEmpty) return const SizedBox.shrink();
+
+      return ValueSelectorRow<int>(
+        currentValue: fanChannel.timer,
+        label: localizations.device_timer,
+        icon: Icons.timer_outlined,
+        sheetTitle: localizations.device_auto_off_timer,
+        activeColor: modeColor,
+        options: options,
+        displayFormatter: (m) => _formatNumericTimer(localizations, m),
+        isActiveValue: (minutes) => minutes != null && minutes > 0,
+        columns: options.length > 4 ? 4 : options.length,
+        layout: useCompactLayout
+            ? ValueSelectorRowLayout.compact
+            : ValueSelectorRowLayout.horizontal,
+        onChanged: (minutes) {
+          if (minutes != null) {
+            _setPropertyValue(fanChannel.timerProp, minutes);
+          }
+        },
+      );
+    }
+  }
+
+  List<ValueOption<FanTimerPresetValue?>> _getTimerPresetOptions(
+    AppLocalizations localizations,
+  ) {
+    final fanChannel = _device.fanChannel;
+    final availablePresets = fanChannel.availableTimerPresets;
+
+    if (availablePresets.isEmpty) return [];
+
+    return availablePresets.map((preset) {
+      return ValueOption(
+        value: preset,
+        label: FanUtils.getTimerPresetLabel(localizations, preset),
+      );
+    }).toList();
+  }
+
+  String _formatTimerPreset(
+    AppLocalizations localizations,
+    FanTimerPresetValue? preset,
+  ) {
+    if (preset == null || preset == FanTimerPresetValue.off) {
+      return localizations.fan_timer_off;
+    }
+    return FanUtils.getTimerPresetLabel(localizations, preset);
+  }
+
+  List<ValueOption<int>> _getNumericTimerOptions(AppLocalizations localizations) {
+    final fanChannel = _device.fanChannel;
+    final minTimer = fanChannel.minTimer;
+    final maxTimer = fanChannel.maxTimer;
+
+    final options = <ValueOption<int>>[];
+    options.add(ValueOption(value: 0, label: localizations.fan_timer_off));
+
+    final presets = [30, 60, 120, 240, 480, 720];
+    for (final preset in presets) {
+      if (preset >= minTimer && preset <= maxTimer) {
+        options.add(ValueOption(
+          value: preset,
+          label: FanUtils.formatMinutes(localizations, preset),
+        ));
+      }
+    }
+
+    return options;
+  }
+
+  String _formatNumericTimer(AppLocalizations localizations, int? minutes) {
+    if (minutes == null || minutes == 0) return localizations.fan_timer_off;
+    return FanUtils.formatMinutes(localizations, minutes);
   }
 }

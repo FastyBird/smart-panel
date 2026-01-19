@@ -1381,6 +1381,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get device_direction => 'Direction';
 
   @override
+  String get device_natural_breeze => 'Natural Breeze';
+
+  @override
   String get device_auto_off_timer => 'Auto-Off Timer';
 
   @override

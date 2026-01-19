@@ -1382,6 +1382,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get device_direction => 'Směr';
 
   @override
+  String get device_natural_breeze => 'Přírodní vánek';
+
+  @override
   String get device_auto_off_timer => 'Automatické vypnutí';
 
   @override

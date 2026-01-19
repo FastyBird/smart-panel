@@ -2807,6 +2807,12 @@ abstract class AppLocalizations {
   /// **'Direction'**
   String get device_direction;
 
+  /// Natural breeze mode label
+  ///
+  /// In en, this message translates to:
+  /// **'Natural Breeze'**
+  String get device_natural_breeze;
+
   /// Auto-off timer sheet title
   ///
   /// In en, this message translates to:

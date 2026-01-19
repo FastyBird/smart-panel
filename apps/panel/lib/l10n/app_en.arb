@@ -1860,6 +1860,10 @@
   "@device_direction": {
     "description": "Fan direction label"
   },
+  "device_natural_breeze": "Natural Breeze",
+  "@device_natural_breeze": {
+    "description": "Natural breeze mode label"
+  },
   "device_auto_off_timer": "Auto-Off Timer",
   "@device_auto_off_timer": {
     "description": "Auto-off timer sheet title"

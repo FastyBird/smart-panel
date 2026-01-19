@@ -13,6 +13,7 @@ import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
@@ -255,7 +256,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   // MODE AND SETPOINT HANDLERS
   // --------------------------------------------------------------------------
 
-  void _onModeChanged(ThermostatModeValue mode) {
+  void _onModeChanged(ThermostatModeValue mode) async {
     final modeProp = _device.thermostatChannel.modeProp;
     final heaterOnProp = _device.heaterChannel?.onProp;
     final coolerOnProp = _device.coolerChannel?.onProp;
@@ -267,37 +268,100 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
       modeProp.id,
       mode.value,
     );
+    if (heaterOnProp != null && _device.heaterChannel != null) {
+      _deviceControlStateService?.setPending(
+        _device.id,
+        _device.heaterChannel!.id,
+        heaterOnProp.id,
+        mode == ThermostatModeValue.heat,
+      );
+    }
+    if (coolerOnProp != null && _device.coolerChannel != null) {
+      _deviceControlStateService?.setPending(
+        _device.id,
+        _device.coolerChannel!.id,
+        coolerOnProp.id,
+        mode == ThermostatModeValue.cool,
+      );
+    }
     setState(() {});
 
-    // Send mode change command to backend
-    _setPropertyValue(modeProp, mode.value);
+    // Build batch command list
+    final commands = <PropertyCommandItem>[];
 
-    // Send heater/cooler on commands based on mode
+    // Always add mode command
+    commands.add(PropertyCommandItem(
+      deviceId: _device.id,
+      channelId: _device.thermostatChannel.id,
+      propertyId: modeProp.id,
+      value: mode.value,
+    ));
+
+    // Add heater/cooler on commands based on mode
     switch (mode) {
       case ThermostatModeValue.heat:
         // Turn on heater
         if (heaterOnProp != null) {
-          _setPropertyValue(heaterOnProp, true);
+          commands.add(PropertyCommandItem(
+            deviceId: _device.id,
+            channelId: _device.heaterChannel!.id,
+            propertyId: heaterOnProp.id,
+            value: true,
+          ));
         }
         break;
       case ThermostatModeValue.cool:
         // Turn on cooler
         if (coolerOnProp != null) {
-          _setPropertyValue(coolerOnProp, true);
+          commands.add(PropertyCommandItem(
+            deviceId: _device.id,
+            channelId: _device.coolerChannel!.id,
+            propertyId: coolerOnProp.id,
+            value: true,
+          ));
         }
         break;
       case ThermostatModeValue.off:
         // Turn off both heater and cooler
         if (heaterOnProp != null) {
-          _setPropertyValue(heaterOnProp, false);
+          commands.add(PropertyCommandItem(
+            deviceId: _device.id,
+            channelId: _device.heaterChannel!.id,
+            propertyId: heaterOnProp.id,
+            value: false,
+          ));
         }
         if (coolerOnProp != null) {
-          _setPropertyValue(coolerOnProp, false);
+          commands.add(PropertyCommandItem(
+            deviceId: _device.id,
+            channelId: _device.coolerChannel!.id,
+            propertyId: coolerOnProp.id,
+            value: false,
+          ));
         }
         break;
       case ThermostatModeValue.auto:
         // Auto mode - hidden for now, no additional commands
         break;
+    }
+
+    // Send all commands as a single batch
+    if (commands.isNotEmpty) {
+      final localizations = AppLocalizations.of(context);
+
+      try {
+        bool res = await _devicesService.setMultiplePropertyValues(
+          properties: commands,
+        );
+
+        if (!res && mounted && localizations != null) {
+          AlertBar.showError(context, message: localizations.action_failed);
+        }
+      } catch (e) {
+        if (mounted && localizations != null) {
+          AlertBar.showError(context, message: localizations.action_failed);
+        }
+      }
     }
 
     // Transition to settling state
@@ -306,6 +370,20 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
       _device.thermostatChannel.id,
       modeProp.id,
     );
+    if (heaterOnProp != null && _device.heaterChannel != null) {
+      _deviceControlStateService?.setSettling(
+        _device.id,
+        _device.heaterChannel!.id,
+        heaterOnProp.id,
+      );
+    }
+    if (coolerOnProp != null && _device.coolerChannel != null) {
+      _deviceControlStateService?.setSettling(
+        _device.id,
+        _device.coolerChannel!.id,
+        coolerOnProp.id,
+      );
+    }
   }
 
   void _onSetpointChanged(double value) {

@@ -7,6 +7,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/direction.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/locked.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/mode.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/natural_breeze.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/on.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/speed.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/swing.dart';
@@ -47,6 +48,9 @@ class FanChannelView extends ChannelView with ChannelOnMixin {
 
   TimerChannelPropertyView? get timerProp =>
       properties.whereType<TimerChannelPropertyView>().firstOrNull;
+
+  NaturalBreezeChannelPropertyView? get naturalBreezeProp =>
+      properties.whereType<NaturalBreezeChannelPropertyView>().firstOrNull;
 
   bool get hasSwing => swingProp != null;
 
@@ -238,6 +242,39 @@ class FanChannelView extends ChannelView with ChannelOnMixin {
 
   bool get locked {
     final LockedChannelPropertyView? prop = lockedProp;
+
+    final ValueType? value = prop?.value;
+
+    if (value is BooleanValueType) {
+      return value.value;
+    }
+
+    // Handle string values (backend may return booleans as strings)
+    if (value is StringValueType) {
+      final lower = value.value.toLowerCase();
+      if (lower == 'true' || lower == '1') return true;
+      if (lower == 'false' || lower == '0') return false;
+    }
+
+    final ValueType? defaultValue = prop?.defaultValue;
+
+    if (defaultValue is BooleanValueType) {
+      return defaultValue.value;
+    }
+
+    if (defaultValue is StringValueType) {
+      final lower = defaultValue.value.toLowerCase();
+      if (lower == 'true' || lower == '1') return true;
+      if (lower == 'false' || lower == '0') return false;
+    }
+
+    return false;
+  }
+
+  bool get hasNaturalBreeze => naturalBreezeProp != null;
+
+  bool get naturalBreeze {
+    final NaturalBreezeChannelPropertyView? prop = naturalBreezeProp;
 
     final ValueType? value = prop?.value;
 
