@@ -61,6 +61,11 @@ class _AirConditionerDeviceDetailState
   Timer? _speedDebounceTimer;
   static const _speedDebounceDuration = Duration(milliseconds: 300);
 
+  // Grace period after mode changes to prevent control state listener from
+  // causing flickering in SpeedSlider enabled state
+  DateTime? _modeChangeTime;
+  static const _modeChangeGracePeriod = Duration(milliseconds: 500);
+
   @override
   void initState() {
     super.initState();
@@ -87,14 +92,23 @@ class _AirConditionerDeviceDetailState
   }
 
   void _onDeviceChanged() {
-    if (!mounted) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() {});
-    });
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _onControlStateChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+
+    // Skip rebuilds during grace period after mode changes to prevent
+    // SpeedSlider flickering (enabled state depends on _currentMode which
+    // uses control state)
+    if (_modeChangeTime != null &&
+        DateTime.now().difference(_modeChangeTime!) < _modeChangeGracePeriod) {
+      return;
+    }
+
+    setState(() {});
   }
 
   AirConditionerDeviceView get _device {
@@ -287,6 +301,10 @@ class _AirConditionerDeviceDetailState
   // --------------------------------------------------------------------------
 
   void _onModeChanged(AcMode mode) async {
+    // Set grace period to prevent control state listener from causing
+    // SpeedSlider flickering during mode transitions
+    _modeChangeTime = DateTime.now();
+
     final coolerOnProp = _device.coolerChannel.onProp;
     final heaterOnProp = _device.heaterChannel?.onProp;
     final fanOnProp = _device.fanChannel.onProp;
@@ -1246,14 +1264,14 @@ class _AirConditionerDeviceDetailState
             : null,
       );
 
-      // If fan has mode, add mode selector below
+      // If fan has mode, add mode selector below (always button since speed is button)
       if (hasMode) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             speedWidget,
             AppSpacings.spacingMdVertical,
-            _buildFanModeControl(localizations, modeColor, useCompactLayout),
+            _buildFanModeControl(localizations, modeColor, true),
           ],
         );
       }
@@ -1293,9 +1311,10 @@ class _AirConditionerDeviceDetailState
         return speedWidget;
       } else {
         // Use SpeedSlider widget for landscape layout
+        // Mode selector goes inside the slider's bordered box as footer
         final isEnabled = _currentMode != AcMode.off;
 
-        final speedSlider = SpeedSlider(
+        return SpeedSlider(
           value: _fanSpeed.clamp(0.0, 1.0),
           activeColor: modeColor,
           enabled: isEnabled,
@@ -1306,21 +1325,10 @@ class _AirConditionerDeviceDetailState
             localizations.fan_speed_high,
           ],
           onChanged: _setFanSpeedValue,
+          footer: hasMode
+              ? _buildFanModeControl(localizations, modeColor, false)
+              : null,
         );
-
-        // If fan has mode, add mode selector below
-        if (hasMode) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              speedSlider,
-              AppSpacings.spacingMdVertical,
-              _buildFanModeControl(localizations, modeColor, false),
-            ],
-          );
-        }
-
-        return speedSlider;
       }
     }
   }

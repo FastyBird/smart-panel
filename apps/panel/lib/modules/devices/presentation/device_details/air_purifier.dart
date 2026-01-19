@@ -78,10 +78,9 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
   }
 
   void _onDeviceChanged() {
-    if (!mounted) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() {});
-    });
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _onControlStateChanged() {

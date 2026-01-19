@@ -83,10 +83,9 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
   }
 
   void _onDeviceChanged() {
-    if (!mounted) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() {});
-    });
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _onControlStateChanged() {
@@ -1048,14 +1047,14 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
             : null,
       );
 
-      // If fan has mode, add mode selector below
+      // If fan has mode, add mode selector below (always button since speed is button)
       if (hasMode) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             speedWidget,
             AppSpacings.spacingMdVertical,
-            _buildFanModeControl(localizations, humidityColor, useVerticalLayout),
+            _buildFanModeControl(localizations, humidityColor, true),
           ],
         );
       }
@@ -1108,7 +1107,8 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         );
       } else {
         // Use SpeedSlider widget for landscape layout
-        final speedSlider = SpeedSlider(
+        // Mode selector goes inside the slider's bordered box as footer
+        return SpeedSlider(
           value: _normalizedFanSpeed,
           activeColor: humidityColor,
           enabled: _device.isOn,
@@ -1119,21 +1119,10 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
             localizations.fan_speed_high,
           ],
           onChanged: _setFanSpeed,
+          footer: hasMode
+              ? _buildFanModeControl(localizations, humidityColor, false)
+              : null,
         );
-
-        // If fan has mode, add mode selector below
-        if (hasMode) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              speedSlider,
-              AppSpacings.spacingMdVertical,
-              _buildFanModeControl(localizations, humidityColor, false),
-            ],
-          );
-        }
-
-        return speedSlider;
       }
     }
   }

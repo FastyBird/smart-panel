@@ -41,6 +41,10 @@ class SpeedSlider extends StatefulWidget {
   /// Label shown when disabled (defaults to same as label)
   final String? disabledLabel;
 
+  /// Optional footer widget rendered inside the container below the step labels.
+  /// Useful for placing mode selectors or other controls within the slider box.
+  final Widget? footer;
+
   const SpeedSlider({
     super.key,
     required this.value,
@@ -52,6 +56,7 @@ class SpeedSlider extends StatefulWidget {
     this.discrete = false,
     this.label = 'Speed',
     this.disabledLabel,
+    this.footer,
   });
 
   @override
@@ -220,6 +225,10 @@ class _SpeedSliderState extends State<SpeedSlider> {
                       ))
                   .toList(),
             ),
+            if (widget.footer != null) ...[
+              AppSpacings.spacingMdVertical,
+              widget.footer!,
+            ],
           ],
         ),
       ),
