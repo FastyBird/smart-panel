@@ -416,6 +416,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
   // --------------------------------------------------------------------------
 
   Widget _buildPortraitLayout(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     final hasQueue = _queue.isNotEmpty;
     final hasOtherDevices = _otherDevices.isNotEmpty;
     final isSmallScreen = _screenService.isSmallScreen;
@@ -453,7 +454,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
                 // Other Devices
                 if (hasOtherDevices) ...[
                   SectionTitle(
-                    title: 'Other Devices',
+                    title: localizations.media_other_devices,
                     icon: MdiIcons.devices,
                   ),
                   AppSpacings.spacingMdVertical,
@@ -468,7 +469,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
                 // Queue
                 if (hasQueue && _primaryDevice != null) ...[
                   SectionTitle(
-                    title: 'Up Next',
+                    title: localizations.media_up_next,
                     icon: MdiIcons.playlistMusic,
                   ),
                   AppSpacings.spacingMdVertical,
@@ -494,6 +495,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
   // --------------------------------------------------------------------------
 
   Widget _buildLandscapeLayout(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasQueue = _queue.isNotEmpty;
     final hasOtherDevices = _otherDevices.isNotEmpty;
@@ -525,7 +527,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
                 ],
                 if (hasOtherDevices) ...[
                   SectionTitle(
-                    title: 'Other Devices',
+                    title: localizations.media_other_devices,
                     icon: MdiIcons.devices,
                   ),
                   AppSpacings.spacingMdVertical,
@@ -558,7 +560,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
             children: [
               if (_primaryDevice != null) ...[
                 SectionTitle(
-                  title: 'Volume',
+                  title: localizations.media_volume,
                   icon: MdiIcons.volumeHigh,
                 ),
                 AppSpacings.spacingMdVertical,
@@ -570,7 +572,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
               ],
               if (hasQueue) ...[
                 SectionTitle(
-                  title: 'Up Next',
+                  title: localizations.media_up_next,
                   icon: MdiIcons.playlistMusic,
                 ),
                 AppSpacings.spacingMdVertical,
@@ -963,13 +965,15 @@ class _MediaDeviceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+
     String statusText;
     if (device.isPlaying) {
-      statusText = 'Playing';
+      statusText = localizations.media_playing;
     } else if (device.state == PlaybackState.idle) {
-      statusText = 'Idle';
+      statusText = localizations.media_idle;
     } else {
-      statusText = 'Standby';
+      statusText = localizations.media_standby;
     }
 
     return UniversalTile(
@@ -1373,7 +1377,7 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SectionTitle(
-                  title: 'Volume',
+                  title: localizations.media_volume,
                   icon: MdiIcons.volumeHigh,
                 ),
                 AppSpacings.spacingMdVertical,
@@ -1383,7 +1387,7 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
                 ),
                 AppSpacings.spacingLgVertical,
                 SectionTitle(
-                  title: 'Source',
+                  title: localizations.media_source,
                   icon: MdiIcons.radioTower,
                 ),
                 AppSpacings.spacingMdVertical,
@@ -1414,7 +1418,7 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SectionTitle(
-                title: 'Queue',
+                title: localizations.media_queue,
                 icon: MdiIcons.playlistMusic,
               ),
               AppSpacings.spacingMdVertical,
@@ -1520,7 +1524,7 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
           AppSpacings.spacingLgVertical,
 
           SectionTitle(
-            title: 'Source',
+            title: localizations.media_source,
             icon: MdiIcons.radioTower,
           ),
           AppSpacings.spacingMdVertical,
@@ -1587,7 +1591,7 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
           AppSpacings.spacingLgVertical,
 
           SectionTitle(
-            title: 'Up Next',
+            title: localizations.media_up_next,
             icon: MdiIcons.playlistMusic,
           ),
           AppSpacings.spacingMdVertical,
