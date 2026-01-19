@@ -2516,13 +2516,13 @@ abstract class AppLocalizations {
   /// Filter status - needs replacement soon
   ///
   /// In en, this message translates to:
-  /// **'Replace Soon'**
+  /// **'Due Soon'**
   String get filter_status_replace_soon;
 
   /// Filter status - needs immediate replacement
   ///
   /// In en, this message translates to:
-  /// **'Replace Now'**
+  /// **'Replace'**
   String get filter_status_replace_now;
 
   /// Filter status - unknown or unavailable

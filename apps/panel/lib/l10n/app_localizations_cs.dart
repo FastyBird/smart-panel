@@ -1235,10 +1235,10 @@ class AppLocalizationsCs extends AppLocalizations {
   String get filter_status_good => 'Dobrý';
 
   @override
-  String get filter_status_replace_soon => 'Brzy vyměnit';
+  String get filter_status_replace_soon => 'Brzy';
 
   @override
-  String get filter_status_replace_now => 'Vyměnit nyní';
+  String get filter_status_replace_now => 'Vyměnit';
 
   @override
   String get filter_status_unknown => 'Neznámý';

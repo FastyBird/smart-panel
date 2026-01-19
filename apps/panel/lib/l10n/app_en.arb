@@ -1654,11 +1654,11 @@
   "@filter_status_good": {
     "description": "Filter status - good condition"
   },
-  "filter_status_replace_soon": "Replace Soon",
+  "filter_status_replace_soon": "Due Soon",
   "@filter_status_replace_soon": {
     "description": "Filter status - needs replacement soon"
   },
-  "filter_status_replace_now": "Replace Now",
+  "filter_status_replace_now": "Replace",
   "@filter_status_replace_now": {
     "description": "Filter status - needs immediate replacement"
   },

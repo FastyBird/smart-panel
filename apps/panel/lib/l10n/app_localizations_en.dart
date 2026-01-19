@@ -1234,10 +1234,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get filter_status_good => 'Good';
 
   @override
-  String get filter_status_replace_soon => 'Replace Soon';
+  String get filter_status_replace_soon => 'Due Soon';
 
   @override
-  String get filter_status_replace_now => 'Replace Now';
+  String get filter_status_replace_now => 'Replace';
 
   @override
   String get filter_status_unknown => 'Unknown';
