@@ -1158,9 +1158,9 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
               // Slider
               SliderTheme(
                 data: SliderTheme.of(context).copyWith(
-                  activeTrackColor: humidityColor,
+                  activeTrackColor: _device.isOn ? humidityColor : mutedColor,
                   inactiveTrackColor: trackColor,
-                  thumbColor: humidityColor,
+                  thumbColor: _device.isOn ? humidityColor : mutedColor,
                   overlayColor: humidityColor.withValues(alpha: 0.2),
                   trackHeight: _scale(6),
                   thumbShape: _CircularThumbWithBorder(
@@ -1173,6 +1173,24 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
                   value: _normalizedFanSpeed,
                   onChanged: _device.isOn ? _setFanSpeed : null,
                 ),
+              ),
+              // Step labels
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  localizations.fan_speed_off,
+                  localizations.fan_speed_low,
+                  localizations.fan_speed_medium,
+                  localizations.fan_speed_high,
+                ].map((label) {
+                  return Text(
+                    label,
+                    style: TextStyle(
+                      color: _device.isOn ? secondaryColor : mutedColor,
+                      fontSize: AppFontSize.extraSmall,
+                    ),
+                  );
+                }).toList(),
               ),
               // Fan mode selector if available
               if (hasMode) ...[
