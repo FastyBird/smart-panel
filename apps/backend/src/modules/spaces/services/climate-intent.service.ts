@@ -581,6 +581,11 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 				(role === ClimateRole.AUTO || role === ClimateRole.COOLING_ONLY || role === null);
 
 			if (!shouldSetHeating && !shouldSetCooling) {
+				// Device doesn't support the requested operation - mark as skipped
+				targetResults.push({
+					deviceId: device.device.id,
+					status: IntentTargetStatus.SKIPPED,
+				});
 				continue;
 			}
 
@@ -978,8 +983,8 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		let heatingSetpoint: number | null = null;
 		let coolingSetpoint: number | null = null;
 
-		// Track per-device results: true = all operations succeeded, false = at least one failed
-		const deviceResults = new Map<string, boolean>();
+		// Track per-device results: true = all operations succeeded, false = at least one failed, null = skipped
+		const deviceResults = new Map<string, boolean | null>();
 
 		// Step 1: Set mode if provided
 		if (intent.mode !== undefined) {
@@ -1053,6 +1058,11 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 					(role === ClimateRole.AUTO || role === ClimateRole.COOLING_ONLY || role === null);
 
 				if (!shouldSetHeating && !shouldSetCooling) {
+					// Device doesn't support the requested setpoint operation
+					// Only mark as skipped if it wasn't already processed in mode step
+					if (!deviceResults.has(device.device.id)) {
+						deviceResults.set(device.device.id, null); // null indicates skipped
+					}
 					continue;
 				}
 
@@ -1064,8 +1074,8 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 
 				// Combine with mode result: device succeeds only if both operations succeed
 				const previousResult = deviceResults.get(device.device.id);
-				if (previousResult === undefined) {
-					// Device was not in mode step, just set setpoint result
+				if (previousResult === undefined || previousResult === null) {
+					// Device was not in mode step (or was skipped), just set setpoint result
 					deviceResults.set(device.device.id, success);
 				} else {
 					// Device was in mode step, combine results (both must succeed)
@@ -1081,11 +1091,16 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		}
 
 		// Build target results from combined device results
-		for (const [deviceId, success] of deviceResults) {
-			targetResults.push({
-				deviceId,
-				status: success ? IntentTargetStatus.SUCCESS : IntentTargetStatus.FAILED,
-			});
+		for (const [deviceId, result] of deviceResults) {
+			let status: IntentTargetStatus;
+			if (result === null) {
+				status = IntentTargetStatus.SKIPPED;
+			} else if (result) {
+				status = IntentTargetStatus.SUCCESS;
+			} else {
+				status = IntentTargetStatus.FAILED;
+			}
+			targetResults.push({ deviceId, status });
 		}
 
 		const totalAffected = modeAffected + setpointAffected;

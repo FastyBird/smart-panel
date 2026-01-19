@@ -125,8 +125,10 @@ export class ClimateIntentDto {
 	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@ValidateIf((o: ClimateIntentDto) => o.type === ClimateIntentType.SET_MODE)
 	@IsDefined({ message: '[{"field":"mode","reason":"Mode is required when type is SET_MODE."}]' })
-	@ValidateIf((o: ClimateIntentDto) => o.type === ClimateIntentType.CLIMATE_SET && o.mode !== undefined)
-	@IsOptional()
+	@ValidateIf(
+		(o: ClimateIntentDto) =>
+			o.type === ClimateIntentType.SET_MODE || (o.type === ClimateIntentType.CLIMATE_SET && o.mode !== undefined),
+	)
 	@IsEnum(ClimateMode, { message: '[{"field":"mode","reason":"Mode must be a valid climate mode."}]' })
 	mode?: ClimateMode;
 }

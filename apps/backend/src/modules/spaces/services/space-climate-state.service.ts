@@ -405,6 +405,9 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 		} else if (hasHeatMode && hasCoolMode) {
 			// Multiple thermostats with different modes
 			mode = ClimateMode.AUTO;
+		} else if (isHeating && isCooling) {
+			// Both heater and cooler are active (no thermostat mode property)
+			mode = ClimateMode.AUTO;
 		} else if (hasHeatMode || isHeating) {
 			mode = ClimateMode.HEAT;
 		} else if (hasCoolMode || isCooling) {
