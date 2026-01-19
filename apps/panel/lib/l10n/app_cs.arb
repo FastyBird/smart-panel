@@ -504,5 +504,13 @@
     "placeholders": {
       "minutes": {"type": "int"}
     }
-  }
+  },
+  "media_playing": "Přehrává",
+  "media_idle": "Nečinný",
+  "media_standby": "Pohotovost",
+  "media_volume": "Hlasitost",
+  "media_source": "Zdroj",
+  "media_queue": "Fronta",
+  "media_up_next": "Další",
+  "media_other_devices": "Ostatní zařízení"
 }

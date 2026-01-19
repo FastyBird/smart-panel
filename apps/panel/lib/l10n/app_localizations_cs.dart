@@ -1491,4 +1491,28 @@ class AppLocalizationsCs extends AppLocalizations {
   String duration_format_minutes(int minutes) {
     return '${minutes}m';
   }
+
+  @override
+  String get media_playing => 'Přehrává';
+
+  @override
+  String get media_idle => 'Nečinný';
+
+  @override
+  String get media_standby => 'Pohotovost';
+
+  @override
+  String get media_volume => 'Hlasitost';
+
+  @override
+  String get media_source => 'Zdroj';
+
+  @override
+  String get media_queue => 'Fronta';
+
+  @override
+  String get media_up_next => 'Další';
+
+  @override
+  String get media_other_devices => 'Ostatní zařízení';
 }

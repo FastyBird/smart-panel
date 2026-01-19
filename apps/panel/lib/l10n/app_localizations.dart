@@ -3004,6 +3004,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{minutes}m'**
   String duration_format_minutes(int minutes);
+
+  /// Media player status - playing
+  ///
+  /// In en, this message translates to:
+  /// **'Playing'**
+  String get media_playing;
+
+  /// Media player status - idle
+  ///
+  /// In en, this message translates to:
+  /// **'Idle'**
+  String get media_idle;
+
+  /// Media player status - standby
+  ///
+  /// In en, this message translates to:
+  /// **'Standby'**
+  String get media_standby;
+
+  /// Media player volume label
+  ///
+  /// In en, this message translates to:
+  /// **'Volume'**
+  String get media_volume;
+
+  /// Media player source label
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get media_source;
+
+  /// Media player queue label
+  ///
+  /// In en, this message translates to:
+  /// **'Queue'**
+  String get media_queue;
+
+  /// Media player up next section label
+  ///
+  /// In en, this message translates to:
+  /// **'Up Next'**
+  String get media_up_next;
+
+  /// Media player other devices section label
+  ///
+  /// In en, this message translates to:
+  /// **'Other Devices'**
+  String get media_other_devices;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

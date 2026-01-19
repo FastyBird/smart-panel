@@ -1490,4 +1490,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String duration_format_minutes(int minutes) {
     return '${minutes}m';
   }
+
+  @override
+  String get media_playing => 'Playing';
+
+  @override
+  String get media_idle => 'Idle';
+
+  @override
+  String get media_standby => 'Standby';
+
+  @override
+  String get media_volume => 'Volume';
+
+  @override
+  String get media_source => 'Source';
+
+  @override
+  String get media_queue => 'Queue';
+
+  @override
+  String get media_up_next => 'Up Next';
+
+  @override
+  String get media_other_devices => 'Other Devices';
 }

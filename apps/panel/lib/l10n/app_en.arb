@@ -2028,5 +2028,38 @@
         "type": "int"
       }
     }
+  },
+
+  "media_playing": "Playing",
+  "@media_playing": {
+    "description": "Media player status - playing"
+  },
+  "media_idle": "Idle",
+  "@media_idle": {
+    "description": "Media player status - idle"
+  },
+  "media_standby": "Standby",
+  "@media_standby": {
+    "description": "Media player status - standby"
+  },
+  "media_volume": "Volume",
+  "@media_volume": {
+    "description": "Media player volume label"
+  },
+  "media_source": "Source",
+  "@media_source": {
+    "description": "Media player source label"
+  },
+  "media_queue": "Queue",
+  "@media_queue": {
+    "description": "Media player queue label"
+  },
+  "media_up_next": "Up Next",
+  "@media_up_next": {
+    "description": "Media player up next section label"
+  },
+  "media_other_devices": "Other Devices",
+  "@media_other_devices": {
+    "description": "Media player other devices section label"
   }
 }
