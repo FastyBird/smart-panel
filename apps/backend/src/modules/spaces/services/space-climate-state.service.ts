@@ -557,8 +557,7 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 		// Find heater channel
 		const heaterChannel = channels.find((ch) => ch.category === ChannelCategory.HEATER) ?? null;
 		const heaterOnProperty = heaterChannel?.properties?.find((p) => p.category === PropertyCategory.ON) ?? null;
-		const heaterStatusProperty =
-			heaterChannel?.properties?.find((p) => p.category === PropertyCategory.STATUS) ?? null;
+		const heaterStatusProperty = heaterChannel?.properties?.find((p) => p.category === PropertyCategory.STATUS) ?? null;
 		const heaterSetpointProperty =
 			heaterChannel?.properties?.find((p) => p.category === PropertyCategory.TEMPERATURE) ?? null;
 		const heaterMinMax = this.getClimatePropertyMinMax(heaterSetpointProperty);
@@ -566,8 +565,7 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 		// Find cooler channel
 		const coolerChannel = channels.find((ch) => ch.category === ChannelCategory.COOLER) ?? null;
 		const coolerOnProperty = coolerChannel?.properties?.find((p) => p.category === PropertyCategory.ON) ?? null;
-		const coolerStatusProperty =
-			coolerChannel?.properties?.find((p) => p.category === PropertyCategory.STATUS) ?? null;
+		const coolerStatusProperty = coolerChannel?.properties?.find((p) => p.category === PropertyCategory.STATUS) ?? null;
 		const coolerSetpointProperty =
 			coolerChannel?.properties?.find((p) => p.category === PropertyCategory.TEMPERATURE) ?? null;
 		const coolerMinMax = this.getClimatePropertyMinMax(coolerSetpointProperty);

@@ -1,15 +1,5 @@
 import { Expose, Transform, Type } from 'class-transformer';
-import {
-	IsBoolean,
-	IsDefined,
-	IsEnum,
-	IsNumber,
-	IsOptional,
-	Max,
-	Min,
-	ValidateIf,
-	ValidateNested,
-} from 'class-validator';
+import { IsBoolean, IsDefined, IsEnum, IsNumber, Max, Min, ValidateIf, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
