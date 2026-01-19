@@ -219,8 +219,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     return Container(
       padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
-        color: isLight ? AppBgColorLight.block : AppBgColorDark.block,
-        borderRadius: BorderRadius.circular(AppBorderRadius.large),
+        color: isLight ? AppFillColorLight.light : AppFillColorDark.light,
+        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
         border: isLight ? Border.all(color: AppBorderColorLight.base) : null,
       ),
       child: Column(
@@ -480,8 +480,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           color: isActive
               ? (isLight ? AppColorsLight.primary : AppColorsDark.primary)
               : (isLight
-                  ? AppBgColorLight.blockSecondary
-                  : AppBgColorDark.blockSecondary),
+                  ? AppFillColorLight.base
+                  : AppFillColorDark.base),
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: isActive || !isLight
               ? null
@@ -534,21 +534,21 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     return Container(
       padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
-        color: isLight ? AppBgColorLight.block : AppBgColorDark.block,
-        borderRadius: BorderRadius.circular(AppBorderRadius.large),
+        color: isLight ? AppFillColorLight.light : AppFillColorDark.light,
+        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
         border: isLight ? Border.all(color: AppBorderColorLight.base) : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildCardTitle(context, 'Tilt Angle', MdiIcons.rotate3dVariant),
+          _buildCardTitle(context, 'Tilt Angle', Icons.rotate_90_degrees_cw),
           AppSpacings.spacingMdVertical,
           Container(
             padding: AppSpacings.paddingMd,
             decoration: BoxDecoration(
               color: isLight
-                  ? AppBgColorLight.blockSecondary
-                  : AppBgColorDark.blockSecondary,
+                  ? AppFillColorLight.base
+                  : AppFillColorDark.base,
               borderRadius: BorderRadius.circular(AppBorderRadius.base),
             ),
             child: Row(
@@ -651,8 +651,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     return Container(
       padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
-        color: isLight ? AppBgColorLight.block : AppBgColorDark.block,
-        borderRadius: BorderRadius.circular(AppBorderRadius.large),
+        color: isLight ? AppFillColorLight.light : AppFillColorDark.light,
+        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
         border: isLight ? Border.all(color: AppBorderColorLight.base) : null,
       ),
       child: Column(
@@ -758,8 +758,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       padding: AppSpacings.paddingSm,
       decoration: BoxDecoration(
         color: isLight
-            ? AppBgColorLight.blockSecondary
-            : AppBgColorDark.blockSecondary,
+            ? AppFillColorLight.base
+            : AppFillColorDark.base,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
       child: Row(
@@ -830,8 +830,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       padding: AppSpacings.paddingSm,
       decoration: BoxDecoration(
         color: isLight
-            ? AppBgColorLight.blockSecondary
-            : AppBgColorDark.blockSecondary,
+            ? AppFillColorLight.base
+            : AppFillColorDark.base,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
       child: Row(
@@ -900,8 +900,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     return Container(
       padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
-        color: isLight ? AppBgColorLight.block : AppBgColorDark.block,
-        borderRadius: BorderRadius.circular(AppBorderRadius.large),
+        color: isLight ? AppFillColorLight.light : AppFillColorDark.light,
+        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
         border: isLight ? Border.all(color: AppBorderColorLight.base) : null,
       ),
       child: Column(
@@ -965,8 +965,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           color: preset.isActive
               ? primaryColor
               : (isLight
-                  ? AppBgColorLight.blockSecondary
-                  : AppBgColorDark.blockSecondary),
+                  ? AppFillColorLight.base
+                  : AppFillColorDark.base),
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: preset.isActive || !isLight
               ? null
@@ -1024,8 +1024,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           color: preset.isActive
               ? primaryColor.withValues(alpha: 0.15)
               : (isLight
-                  ? AppBgColorLight.blockSecondary
-                  : AppBgColorDark.blockSecondary),
+                  ? AppFillColorLight.base
+                  : AppFillColorDark.base),
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: preset.isActive
               ? Border.all(color: primaryColor)
@@ -1046,8 +1046,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                 color: preset.isActive
                     ? primaryColor
                     : (isLight
-                        ? AppBgColorLight.block
-                        : AppBgColorDark.block),
+                        ? AppFillColorLight.light
+                        : AppFillColorDark.light),
                 borderRadius: BorderRadius.circular(AppBorderRadius.small),
               ),
               child: Icon(

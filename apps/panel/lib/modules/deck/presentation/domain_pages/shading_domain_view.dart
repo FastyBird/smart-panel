@@ -177,8 +177,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     return Container(
       padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
-        color: isLight ? AppBgColorLight.block : AppBgColorDark.block,
-        borderRadius: BorderRadius.circular(AppBorderRadius.large),
+        color: isLight ? AppFillColorLight.light : AppFillColorDark.light,
+        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
         border: isLight
             ? Border.all(color: AppBorderColorLight.base)
             : null,
@@ -380,8 +380,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
           color: isActive
               ? (isLight ? AppColorsLight.primary : AppColorsDark.primary)
               : (isLight
-                  ? AppBgColorLight.blockSecondary
-                  : AppBgColorDark.blockSecondary),
+                  ? AppFillColorLight.base
+                  : AppFillColorDark.base),
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: isActive || !isLight
               ? null
@@ -432,8 +432,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     return Container(
       padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
-        color: isLight ? AppBgColorLight.block : AppBgColorDark.block,
-        borderRadius: BorderRadius.circular(AppBorderRadius.large),
+        color: isLight ? AppFillColorLight.light : AppFillColorDark.light,
+        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
         border: isLight
             ? Border.all(color: AppBorderColorLight.base)
             : null,
@@ -497,8 +497,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
           color: preset.isActive
               ? primaryColor.withValues(alpha: 0.15)
               : (isLight
-                  ? AppBgColorLight.blockSecondary
-                  : AppBgColorDark.blockSecondary),
+                  ? AppFillColorLight.base
+                  : AppFillColorDark.base),
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: preset.isActive
               ? Border.all(color: primaryColor)
@@ -519,8 +519,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                 color: preset.isActive
                     ? primaryColor
                     : (isLight
-                        ? AppBgColorLight.block
-                        : AppBgColorDark.block),
+                        ? AppFillColorLight.light
+                        : AppFillColorDark.light),
                 borderRadius: BorderRadius.circular(AppBorderRadius.small),
               ),
               child: Icon(
@@ -580,8 +580,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     return Container(
       padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
-        color: isLight ? AppBgColorLight.block : AppBgColorDark.block,
-        borderRadius: BorderRadius.circular(AppBorderRadius.large),
+        color: isLight ? AppFillColorLight.light : AppFillColorDark.light,
+        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
         border: isLight
             ? Border.all(color: AppBorderColorLight.base)
             : null,
@@ -634,8 +634,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         padding: EdgeInsets.all(AppSpacings.pSm),
         decoration: BoxDecoration(
           color: isLight
-              ? AppBgColorLight.blockSecondary
-              : AppBgColorDark.blockSecondary,
+              ? AppFillColorLight.base
+              : AppFillColorDark.base,
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: isLight
               ? Border.all(color: AppBorderColorLight.base)
@@ -736,8 +736,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         padding: EdgeInsets.all(AppSpacings.pSm),
         decoration: BoxDecoration(
           color: isLight
-              ? AppBgColorLight.blockSecondary
-              : AppBgColorDark.blockSecondary,
+              ? AppFillColorLight.base
+              : AppFillColorDark.base,
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: isLight
               ? Border.all(color: AppBorderColorLight.base)
