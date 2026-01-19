@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/window_covering.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -80,37 +81,48 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   }
 
   // ===========================================================================
-  // LANDSCAPE LAYOUT
+  // HEADER
   // ===========================================================================
 
-  Widget _buildLandscapeLayout(BuildContext context) {
-    return Padding(
-      padding: AppSpacings.paddingMd,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+  Widget _buildHeader(BuildContext context) {
+    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final primaryColor =
+        isLight ? AppColorsLight.primary : AppColorsDark.primary;
+    final primaryBgColor =
+        isLight ? AppColorsLight.primaryLight9 : AppColorsDark.primaryLight9;
+
+    return PageHeader(
+      title: widget._device.name,
+      subtitle: widget._device.windowCoveringTypeName,
+      backgroundColor: AppColors.blank,
+      leading: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Left: Main Control
-          Expanded(
-            flex: 2,
-            child: _buildMainControlCard(context),
+          HeaderIconButton(
+            icon: Icons.arrow_back_ios_new,
+            onTap: () => Navigator.of(context).pop(),
           ),
           AppSpacings.spacingMdHorizontal,
-          // Right: Tilt, Info, Presets
-          SizedBox(
+          Container(
             width: _screenService.scale(
-              280,
+              44,
               density: _visualDensityService.density,
             ),
-            child: Column(
-              children: [
-                if (widget._device.hasWindowCoveringTilt) ...[
-                  _buildTiltCard(context),
-                  AppSpacings.spacingMdVertical,
-                ],
-                _buildInfoCard(context),
-                AppSpacings.spacingMdVertical,
-                Expanded(child: _buildPresetsCard(context)),
-              ],
+            height: _screenService.scale(
+              44,
+              density: _visualDensityService.density,
+            ),
+            decoration: BoxDecoration(
+              color: primaryBgColor,
+              borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+            ),
+            child: Icon(
+              MdiIcons.blindsHorizontal,
+              color: primaryColor,
+              size: _screenService.scale(
+                24,
+                density: _visualDensityService.density,
+              ),
             ),
           ),
         ],
@@ -119,28 +131,81 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   }
 
   // ===========================================================================
+  // LANDSCAPE LAYOUT
+  // ===========================================================================
+
+  Widget _buildLandscapeLayout(BuildContext context) {
+    return Column(
+      children: [
+        _buildHeader(context),
+        Expanded(
+          child: Padding(
+            padding: AppSpacings.paddingMd,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Left: Main Control
+                Expanded(
+                  flex: 2,
+                  child: _buildMainControlCard(context),
+                ),
+                AppSpacings.spacingMdHorizontal,
+                // Right: Tilt, Info, Presets
+                SizedBox(
+                  width: _screenService.scale(
+                    280,
+                    density: _visualDensityService.density,
+                  ),
+                  child: Column(
+                    children: [
+                      if (widget._device.hasWindowCoveringTilt) ...[
+                        _buildTiltCard(context),
+                        AppSpacings.spacingMdVertical,
+                      ],
+                      _buildInfoCard(context),
+                      AppSpacings.spacingMdVertical,
+                      Expanded(child: _buildPresetsCard(context)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ===========================================================================
   // PORTRAIT LAYOUT
   // ===========================================================================
 
   Widget _buildPortraitLayout(BuildContext context) {
-    return SingleChildScrollView(
-      padding: AppSpacings.paddingMd,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildMainControlCard(context),
-          AppSpacings.spacingMdVertical,
-          if (widget._device.hasWindowCoveringTilt) ...[
-            _buildTiltCard(context),
-            AppSpacings.spacingMdVertical,
-          ],
-          _buildSectionTitle(context, 'Presets', MdiIcons.tune),
-          AppSpacings.spacingSmVertical,
-          _buildPresetsHorizontalScroll(context),
-          AppSpacings.spacingLgVertical,
-          _buildInfoRow(context),
-        ],
-      ),
+    return Column(
+      children: [
+        _buildHeader(context),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: AppSpacings.paddingMd,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildMainControlCard(context),
+                AppSpacings.spacingMdVertical,
+                if (widget._device.hasWindowCoveringTilt) ...[
+                  _buildTiltCard(context),
+                  AppSpacings.spacingMdVertical,
+                ],
+                _buildSectionTitle(context, 'Presets', MdiIcons.tune),
+                AppSpacings.spacingSmVertical,
+                _buildPresetsHorizontalScroll(context),
+                AppSpacings.spacingLgVertical,
+                _buildInfoRow(context),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
