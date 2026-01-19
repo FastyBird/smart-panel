@@ -496,6 +496,16 @@
   "@thermostat_state_idling": {
     "description": "Indicates the thermostat is in idle state"
   },
+  "thermostat_state_idle_at": "Idle at {temperature}",
+  "@thermostat_state_idle_at": {
+    "description": "Indicates the thermostat is idle at a target temperature",
+    "placeholders": {
+      "temperature": {
+        "type": "String",
+        "example": "22°C"
+      }
+    }
+  },
   "thermostat_with_invalid_configuration": "This thermostat device is wrongly configured.",
   "@thermostat_with_invalid_configuration": {
     "description": "Displays an error when the thermostat configuration is invalid"

@@ -120,6 +120,7 @@
   "thermostat_state_cooling": "Chlazení",
   "thermostat_state_cooling_to": "Chlazení na {temperature}",
   "thermostat_state_idling": "V klidu",
+  "thermostat_state_idle_at": "V klidu na {temperature}",
   "thermostat_with_invalid_configuration": "Zařízení termostatu je nesprávně nakonfigurováno.",
   "on_state_on": "Zapnuto",
   "on_state_off": "Vypnuto",

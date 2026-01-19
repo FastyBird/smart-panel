@@ -376,6 +376,11 @@ class AppLocalizationsCs extends AppLocalizations {
   String get thermostat_state_idling => 'V klidu';
 
   @override
+  String thermostat_state_idle_at(String temperature) {
+    return 'V klidu na $temperature';
+  }
+
+  @override
   String get thermostat_with_invalid_configuration => 'Zařízení termostatu je nesprávně nakonfigurováno.';
 
   @override

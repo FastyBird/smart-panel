@@ -821,6 +821,12 @@ abstract class AppLocalizations {
   /// **'Idling'**
   String get thermostat_state_idling;
 
+  /// Indicates the thermostat is idle at a target temperature
+  ///
+  /// In en, this message translates to:
+  /// **'Idle at {temperature}'**
+  String thermostat_state_idle_at(String temperature);
+
   /// Displays an error when the thermostat configuration is invalid
   ///
   /// In en, this message translates to:

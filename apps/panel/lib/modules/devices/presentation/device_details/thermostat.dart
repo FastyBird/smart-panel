@@ -440,7 +440,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     if (_isHeating) {
       return localizations.thermostat_state_heating_to(tempStr);
     }
-    return localizations.thermostat_state_idling;
+    return localizations.thermostat_state_idle_at(tempStr);
   }
 
   Color _getModeColor(bool isDark) {

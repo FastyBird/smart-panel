@@ -376,6 +376,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get thermostat_state_idling => 'Idling';
 
   @override
+  String thermostat_state_idle_at(String temperature) {
+    return 'Idle at $temperature';
+  }
+
+  @override
   String get thermostat_with_invalid_configuration => 'This thermostat device is wrongly configured.';
 
   @override
