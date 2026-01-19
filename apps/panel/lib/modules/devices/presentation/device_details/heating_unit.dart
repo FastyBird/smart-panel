@@ -25,7 +25,8 @@ class HeatingUnitDeviceDetail extends StatefulWidget {
       _HeatingUnitDeviceDetailState();
 }
 
-class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
+class _HeatingUnitDeviceDetailState
+    extends State<HeatingUnitDeviceDetail> {
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
@@ -61,8 +62,17 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   double _scale(double value) =>
       _screenService.scale(value, density: _visualDensityService.density);
 
+  bool get _isActive {
+    final heaterChannel = _device.heaterChannel;
+    if (heaterChannel != null && heaterChannel.isHeating) {
+      return true;
+    }
+    return false;
+  }
+
   String _getStatusLabel(AppLocalizations localizations) {
-    if (_device.isOn) {
+    final heaterChannel = _device.heaterChannel;
+    if (heaterChannel != null && heaterChannel.isHeating) {
       return localizations.thermostat_state_heating;
     }
     return localizations.on_state_off;
@@ -89,7 +99,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
 
   Widget _buildHeader(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
-    final heatingColor = DeviceColors.heating(isDark);
+    final coolingColor = DeviceColors.cooling(isDark);
     final secondaryColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
     final mutedColor =
@@ -98,7 +108,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     return PageHeader(
       title: _device.name,
       subtitle: _getStatusLabel(localizations),
-      subtitleColor: _device.isOn ? heatingColor : secondaryColor,
+      subtitleColor: _isActive ? coolingColor : secondaryColor,
       backgroundColor: AppColors.blank,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
@@ -112,16 +122,16 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
             width: _scale(44),
             height: _scale(44),
             decoration: BoxDecoration(
-              color: _device.isOn
-                  ? DeviceColors.heatingLight9(isDark)
+              color: _isActive
+                  ? DeviceColors.coolingLight9(isDark)
                   : (isDark
                       ? AppFillColorDark.darker
                       : AppFillColorLight.darker),
               borderRadius: BorderRadius.circular(AppBorderRadius.medium),
             ),
             child: Icon(
-              MdiIcons.radiator,
-              color: _device.isOn ? heatingColor : mutedColor,
+              MdiIcons.airConditioner,
+              color: _isActive ? coolingColor : mutedColor,
               size: _scale(24),
             ),
           ),
