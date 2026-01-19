@@ -172,6 +172,14 @@ class _AirConditionerDeviceDetailState
     }
   }
 
+  Color _getModeBorderColor(bool isDark) {
+    final modeColor = _getModeColor(isDark);
+    if (_currentMode == AcMode.off) {
+      return isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+    }
+    return modeColor.withValues(alpha: 0.3);
+  }
+
   DialAccentColor _getDialAccentColor() {
     switch (_currentMode) {
       case AcMode.heat:
@@ -230,7 +238,13 @@ class _AirConditionerDeviceDetailState
           children: [
             _buildHeader(context, isDark),
             Expanded(
-              child: _buildContent(context, isDark),
+              child: OrientationBuilder(
+                builder: (context, orientation) {
+                  return orientation == Orientation.landscape
+                      ? _buildLandscapeLayout(context, isDark)
+                      : _buildPortraitLayout(context, isDark);
+                },
+              ),
             ),
           ],
         ),
@@ -283,17 +297,126 @@ class _AirConditionerDeviceDetailState
     );
   }
 
-  Widget _buildContent(BuildContext context, bool isDark) {
-    final dialSize = math.min(
-      _screenService.screenWidth * 0.7,
-      _screenService.screenHeight * 0.4,
-    );
+  // --------------------------------------------------------------------------
+  // PORTRAIT LAYOUT
+  // --------------------------------------------------------------------------
 
-    return Center(
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: AppSpacings.paddingMd,
-          child: Column(
+  Widget _buildPortraitLayout(BuildContext context, bool isDark) {
+    return SingleChildScrollView(
+      padding: AppSpacings.paddingLg,
+      child: Center(
+        child: _buildPrimaryControlCard(context, isDark, dialSize: _scale(200)),
+      ),
+    );
+  }
+
+  // --------------------------------------------------------------------------
+  // LANDSCAPE LAYOUT
+  // --------------------------------------------------------------------------
+
+  Widget _buildLandscapeLayout(BuildContext context, bool isDark) {
+    final borderColor =
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Left column: dial with vertical mode icons
+        Expanded(
+          flex: 1,
+          child: Padding(
+            padding: AppSpacings.paddingLg,
+            child: _buildCompactDialWithModes(context, isDark),
+          ),
+        ),
+        Container(width: _scale(1), color: borderColor),
+        // Right column: empty for now (could add device info later)
+        Expanded(
+          flex: 1,
+          child: Center(
+            child: Text(
+              _device.name,
+              style: TextStyle(
+                color: isDark
+                    ? AppTextColorDark.secondary
+                    : AppTextColorLight.secondary,
+                fontSize: AppFontSize.base,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // --------------------------------------------------------------------------
+  // PRIMARY CONTROL CARD
+  // --------------------------------------------------------------------------
+
+  Widget _buildPrimaryControlCard(
+    BuildContext context,
+    bool isDark, {
+    required double dialSize,
+  }) {
+    final borderColor = _getModeBorderColor(isDark);
+    final cardColor =
+        isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
+
+    return Container(
+      padding: AppSpacings.paddingLg,
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(AppBorderRadius.round),
+        border: Border.all(color: borderColor, width: _scale(1)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularControlDial(
+            value: _targetSetpoint,
+            currentValue: _currentTemperature,
+            minValue: _minSetpoint,
+            maxValue: _maxSetpoint,
+            step: 0.5,
+            size: dialSize,
+            accentType: _getDialAccentColor(),
+            isActive: _isActive,
+            enabled: _currentMode != AcMode.off,
+            modeLabel: _currentMode.name,
+            displayFormat: DialDisplayFormat.temperature,
+            onChanged: _onSetpointChanged,
+          ),
+          AppSpacings.spacingMdVertical,
+          _buildModeSelector(context, ModeSelectorOrientation.horizontal),
+        ],
+      ),
+    );
+  }
+
+  /// Compact dial with vertical icon-only mode selector on the right
+  Widget _buildCompactDialWithModes(BuildContext context, bool isDark) {
+    final borderColor = _getModeBorderColor(isDark);
+    final cardColor =
+        isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
+
+    return Container(
+      padding: AppSpacings.paddingLg,
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(AppBorderRadius.round),
+        border: Border.all(color: borderColor, width: _scale(1)),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final modeIconsWidth = _scale(50);
+          final spacing = AppSpacings.pXl;
+          final availableForDial =
+              constraints.maxWidth - modeIconsWidth - spacing;
+          final maxDialHeight = constraints.maxHeight;
+          final dialSize =
+              math.min(availableForDial, maxDialHeight).clamp(120.0, 400.0);
+
+          return Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               CircularControlDial(
@@ -310,22 +433,28 @@ class _AirConditionerDeviceDetailState
                 displayFormat: DialDisplayFormat.temperature,
                 onChanged: _onSetpointChanged,
               ),
-              AppSpacings.spacingMdVertical,
-              _buildModeSelector(context),
+              AppSpacings.spacingXlHorizontal,
+              _buildModeSelector(context, ModeSelectorOrientation.vertical,
+                  showLabels: false),
             ],
-          ),
-        ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildModeSelector(BuildContext context) {
+  Widget _buildModeSelector(
+    BuildContext context,
+    ModeSelectorOrientation orientation, {
+    bool showLabels = true,
+  }) {
     return ModeSelector<AcMode>(
       modes: _getModeOptions(),
       selectedValue: _currentMode,
       onChanged: _onModeChanged,
-      orientation: ModeSelectorOrientation.horizontal,
+      orientation: orientation,
       iconPlacement: ModeSelectorIconPlacement.left,
+      showLabels: showLabels,
     );
   }
 }
