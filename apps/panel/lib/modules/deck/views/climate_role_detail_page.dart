@@ -456,13 +456,14 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
         String? status = climateDevice.status;
 
         if (device is ThermostatDeviceView) {
-          // Derive mode from heater/cooler ON states
+          // Thermostat has optional heater and cooler channels
           final heaterOn = device.heaterChannel?.on ?? false;
           final coolerOn = device.coolerChannel?.on ?? false;
           final isHeating = device.heaterChannel?.isHeating ?? false;
           final isCooling = device.coolerChannel?.isCooling ?? false;
 
-          isActive = device.isOn;
+          // isActive based on actual heating/cooling status (like air_conditioner)
+          isActive = isHeating || isCooling;
 
           if (!heaterOn && !coolerOn) {
             status = 'Off';
@@ -470,7 +471,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
             status = 'Heating';
           } else if (isCooling) {
             status = 'Cooling';
-          } else if (heaterOn || coolerOn) {
+          } else {
             status = 'Standby';
           }
         } else if (device is HeatingUnitDeviceView) {
