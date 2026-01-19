@@ -2663,6 +2663,18 @@ abstract class AppLocalizations {
   /// **'Water Tank'**
   String get dehumidifier_water_tank;
 
+  /// Dehumidifier defrost cycle label
+  ///
+  /// In en, this message translates to:
+  /// **'Defrost'**
+  String get dehumidifier_defrost;
+
+  /// Dehumidifier defrost cycle is active
+  ///
+  /// In en, this message translates to:
+  /// **'Defrosting'**
+  String get dehumidifier_defrost_active;
+
   /// Humidifier mode - automatic
   ///
   /// In en, this message translates to:

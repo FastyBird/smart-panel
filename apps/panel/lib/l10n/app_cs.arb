@@ -432,6 +432,8 @@
   "dehumidifier_timer_8h": "8 hodin",
   "dehumidifier_timer_12h": "12 hodin",
   "dehumidifier_water_tank": "Nádržka",
+  "dehumidifier_defrost": "Odmrazování",
+  "dehumidifier_defrost_active": "Odmrazuje",
   "humidifier_mode_auto": "Automatický",
   "humidifier_mode_manual": "Ruční",
   "humidifier_mode_sleep": "Spánek",

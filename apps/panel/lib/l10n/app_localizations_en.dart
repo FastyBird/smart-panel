@@ -1309,6 +1309,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dehumidifier_water_tank => 'Water Tank';
 
   @override
+  String get dehumidifier_defrost => 'Defrost';
+
+  @override
+  String get dehumidifier_defrost_active => 'Defrosting';
+
+  @override
   String get humidifier_mode_auto => 'Auto';
 
   @override

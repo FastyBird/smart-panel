@@ -1758,6 +1758,14 @@
   "@dehumidifier_water_tank": {
     "description": "Dehumidifier water tank label"
   },
+  "dehumidifier_defrost": "Defrost",
+  "@dehumidifier_defrost": {
+    "description": "Dehumidifier defrost cycle label"
+  },
+  "dehumidifier_defrost_active": "Defrosting",
+  "@dehumidifier_defrost_active": {
+    "description": "Dehumidifier defrost cycle is active"
+  },
 
   "humidifier_mode_auto": "Auto",
   "@humidifier_mode_auto": {

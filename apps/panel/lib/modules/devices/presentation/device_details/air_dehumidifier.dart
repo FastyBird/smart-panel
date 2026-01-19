@@ -514,7 +514,29 @@ class _AirDehumidifierDeviceDetailState
     final useVerticalLayout = _screenService.isLandscape &&
         (_screenService.isSmallScreen || _screenService.isMediumScreen);
 
+    // Build info tiles ordered by priority
     final infoTiles = <Widget>[];
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PRIORITY 1: SAFETY-CRITICAL
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // Leak sensor (optional) - water damage prevention
+    final leakChannel = _device.leakChannel;
+    if (leakChannel != null) {
+      final isLeaking = leakChannel.detected;
+      infoTiles.add(InfoTile(
+        label: localizations.leak_sensor_water,
+        value: isLeaking
+            ? localizations.leak_sensor_detected
+            : localizations.leak_sensor_dry,
+        isWarning: isLeaking,
+      ));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PRIORITY 2: DEVICE STATUS
+    // ═══════════════════════════════════════════════════════════════════════
 
     // Current humidity from humidity channel (required per spec)
     final currentHumidity = _device.humidityChannel.humidity;
@@ -524,23 +546,6 @@ class _AirDehumidifierDeviceDetailState
       unit: '%',
       valueColor: humidityColor,
     ));
-
-    // Fan speed if available
-    if (fanChannel != null && fanChannel.hasSpeed) {
-      String speedLabel;
-      if (fanChannel.isSpeedEnum) {
-        final level = fanChannel.speedLevel;
-        speedLabel = level != null
-            ? FanUtils.getSpeedLevelLabel(localizations, level)
-            : '-';
-      } else {
-        speedLabel = '${NumberFormatUtils.defaultFormat.formatInteger(fanChannel.speed.toInt())}%';
-      }
-      infoTiles.add(InfoTile(
-        label: localizations.device_fan_speed,
-        value: speedLabel,
-      ));
-    }
 
     // Water tank level
     if (channel != null && channel.hasWaterTankLevel) {
@@ -559,6 +564,36 @@ class _AirDehumidifierDeviceDetailState
         isWarning: channel.waterTankFull,
       ));
     }
+
+    // Defrost indicator (only show when defrosting is active)
+    if (channel != null && channel.hasStatus && channel.isDefrosting) {
+      infoTiles.add(InfoTile(
+        label: localizations.dehumidifier_defrost,
+        value: localizations.dehumidifier_defrost_active,
+        isWarning: true,
+      ));
+    }
+
+    // Fan speed if available
+    if (fanChannel != null && fanChannel.hasSpeed) {
+      String speedLabel;
+      if (fanChannel.isSpeedEnum) {
+        final level = fanChannel.speedLevel;
+        speedLabel = level != null
+            ? FanUtils.getSpeedLevelLabel(localizations, level)
+            : '-';
+      } else {
+        speedLabel = '${NumberFormatUtils.defaultFormat.formatInteger(fanChannel.speed.toInt())}%';
+      }
+      infoTiles.add(InfoTile(
+        label: localizations.device_fan_speed,
+        value: speedLabel,
+      ));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PRIORITY 3: ENVIRONMENTAL
+    // ═══════════════════════════════════════════════════════════════════════
 
     // Temperature if available
     final tempChannel = _device.temperatureChannel;

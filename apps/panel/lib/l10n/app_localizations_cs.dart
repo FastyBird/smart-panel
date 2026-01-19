@@ -1310,6 +1310,12 @@ class AppLocalizationsCs extends AppLocalizations {
   String get dehumidifier_water_tank => 'Nádržka';
 
   @override
+  String get dehumidifier_defrost => 'Odmrazování';
+
+  @override
+  String get dehumidifier_defrost_active => 'Odmrazuje';
+
+  @override
   String get humidifier_mode_auto => 'Automatický';
 
   @override
