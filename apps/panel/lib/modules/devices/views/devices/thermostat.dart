@@ -44,8 +44,8 @@ class ThermostatDeviceView extends DeviceView
   TemperatureChannelView get temperatureChannel =>
       channels.whereType<TemperatureChannelView>().first;
 
-  ThermostatChannelView? get thermostatChannel =>
-      channels.whereType<ThermostatChannelView>().firstOrNull;
+  ThermostatChannelView get thermostatChannel =>
+      channels.whereType<ThermostatChannelView>().first;
 
   @override
   ContactChannelView? get contactChannel =>
@@ -79,7 +79,7 @@ class ThermostatDeviceView extends DeviceView
     return heaterOn || coolerOn;
   }
 
-  bool get hasThermostatLock => thermostatChannel?.lockedProp != null;
+  bool get hasThermostatLock => thermostatChannel.lockedProp != null;
 
-  bool get isThermostatLocked => thermostatChannel?.isLocked ?? false;
+  bool get isThermostatLocked => thermostatChannel.isLocked;
 }

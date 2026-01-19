@@ -1,4 +1,3 @@
-import 'package:collection/collection.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/mixins.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
@@ -26,11 +25,11 @@ class CoolerChannelView extends ChannelView
       properties.whereType<TemperatureChannelPropertyView>().first;
 
   @override
-  OnChannelPropertyView? get onProp =>
-      properties.whereType<OnChannelPropertyView>().firstOrNull;
+  OnChannelPropertyView get onProp =>
+      properties.whereType<OnChannelPropertyView>().first;
 
-  StatusChannelPropertyView? get statusProp =>
-      properties.whereType<StatusChannelPropertyView>().firstOrNull;
+  StatusChannelPropertyView get statusProp =>
+      properties.whereType<StatusChannelPropertyView>().first;
 
   OnChannelPropertyView get onProp =>
       properties.whereType<OnChannelPropertyView>().first;
@@ -42,7 +41,7 @@ class CoolerChannelView extends ChannelView
   }
 
   bool get isCooling {
-    final value = statusProp?.value;
+    final value = statusProp.value;
 
     return value is BooleanValueType ? value.value : false;
   }
