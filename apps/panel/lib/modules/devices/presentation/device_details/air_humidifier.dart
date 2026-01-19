@@ -517,7 +517,29 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     final useVerticalLayout = _screenService.isLandscape &&
         (_screenService.isSmallScreen || _screenService.isMediumScreen);
 
+    // Build info tiles ordered by priority
     final infoTiles = <Widget>[];
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PRIORITY 1: SAFETY-CRITICAL
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // Leak sensor (optional) - water damage prevention
+    final leakChannel = _device.leakChannel;
+    if (leakChannel != null) {
+      final isLeaking = leakChannel.detected;
+      infoTiles.add(InfoTile(
+        label: localizations.leak_sensor_water,
+        value: isLeaking
+            ? localizations.leak_sensor_detected
+            : localizations.leak_sensor_dry,
+        isWarning: isLeaking,
+      ));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PRIORITY 2: DEVICE STATUS
+    // ═══════════════════════════════════════════════════════════════════════
 
     // Current humidity from humidity sensor channel (required per spec)
     final currentHumidity = _device.humidityChannel.humidity;
@@ -528,20 +550,21 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       valueColor: humidityColor,
     ));
 
-    // Fan speed if available
-    if (fanChannel != null && fanChannel.hasSpeed) {
-      String speedLabel;
-      if (fanChannel.isSpeedEnum) {
-        final level = fanChannel.speedLevel;
-        speedLabel = level != null
-            ? FanUtils.getSpeedLevelLabel(localizations, level)
-            : '-';
-      } else {
-        speedLabel = '${NumberFormatUtils.defaultFormat.formatInteger(fanChannel.speed.toInt())}%';
-      }
+    // Water tank level
+    if (channel != null && channel.hasWaterTankLevel) {
       infoTiles.add(InfoTile(
-        label: localizations.device_fan_speed,
-        value: speedLabel,
+        label: localizations.humidifier_water_tank,
+        value: NumberFormatUtils.defaultFormat.formatInteger(channel.waterTankLevel),
+        unit: '%',
+        isWarning: channel.waterTankWarning,
+      ));
+    } else if (channel != null && channel.hasWaterTankEmpty) {
+      infoTiles.add(InfoTile(
+        label: localizations.humidifier_water_tank,
+        value: channel.waterTankEmpty
+            ? localizations.humidifier_mist_level_off
+            : localizations.on_state_on,
+        isWarning: channel.waterTankEmpty,
       ));
     }
 
@@ -566,23 +589,26 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       ));
     }
 
-    // Water tank level
-    if (channel != null && channel.hasWaterTankLevel) {
+    // Fan speed if available
+    if (fanChannel != null && fanChannel.hasSpeed) {
+      String speedLabel;
+      if (fanChannel.isSpeedEnum) {
+        final level = fanChannel.speedLevel;
+        speedLabel = level != null
+            ? FanUtils.getSpeedLevelLabel(localizations, level)
+            : '-';
+      } else {
+        speedLabel = '${NumberFormatUtils.defaultFormat.formatInteger(fanChannel.speed.toInt())}%';
+      }
       infoTiles.add(InfoTile(
-        label: localizations.humidifier_water_tank,
-        value: NumberFormatUtils.defaultFormat.formatInteger(channel.waterTankLevel),
-        unit: '%',
-        isWarning: channel.waterTankWarning,
-      ));
-    } else if (channel != null && channel.hasWaterTankEmpty) {
-      infoTiles.add(InfoTile(
-        label: localizations.humidifier_water_tank,
-        value: channel.waterTankEmpty
-            ? localizations.humidifier_mist_level_off
-            : localizations.on_state_on,
-        isWarning: channel.waterTankEmpty,
+        label: localizations.device_fan_speed,
+        value: speedLabel,
       ));
     }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PRIORITY 3: ENVIRONMENTAL
+    // ═══════════════════════════════════════════════════════════════════════
 
     // Temperature if available
     final tempChannel = _device.temperatureChannel;
