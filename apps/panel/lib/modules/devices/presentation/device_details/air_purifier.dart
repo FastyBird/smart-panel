@@ -26,6 +26,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class AirPurifierDeviceDetail extends StatefulWidget {
   final AirPurifierDeviceView _device;
@@ -920,32 +921,56 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     // Build info tiles dynamically based on available channels
     final infoTiles = <Widget>[];
 
-    // PM tile - only show if air particulate channel exists and has density
+    // PM tile - show density if available, otherwise detected status
     final pmChannel = _device.airParticulateChannel;
-    if (pmChannel != null && pmChannel.hasDensity) {
+    if (pmChannel != null) {
       final pmMode = pmChannel.hasMode ? pmChannel.mode : AirParticulateModeValue.pm25;
-      infoTiles.add(InfoTile(
-        label: AirQualityUtils.getParticulateLabel(localizations, pmMode),
-        value: NumberFormatUtils.defaultFormat.formatInteger(_pm25),
-        unit: 'µg/m³',
-        valueColor: airColor,
-      ));
+      if (pmChannel.hasDensity) {
+        infoTiles.add(InfoTile(
+          label: AirQualityUtils.getParticulateLabel(localizations, pmMode),
+          value: NumberFormatUtils.defaultFormat.formatInteger(_pm25),
+          unit: 'µg/m³',
+          valueColor: airColor,
+        ));
+      } else if (pmChannel.hasDetected) {
+        final isDetected = pmChannel.detected;
+        infoTiles.add(InfoTile(
+          label: AirQualityUtils.getParticulateLabel(localizations, pmMode),
+          value: isDetected
+              ? localizations.air_quality_unhealthy
+              : localizations.air_quality_healthy,
+          valueColor: airColor,
+          isWarning: isDetected,
+        ));
+      }
     }
 
-    // VOC tile - show level (from property or calculated from density)
+    // VOC tile - prioritize: level > density > detected
     final vocChannel = _device.volatileOrganicCompoundsChannel;
-    if (vocChannel != null && (vocChannel.hasLevel || vocChannel.hasDensity)) {
-      String vocLabel;
-      if (vocChannel.hasLevel) {
-        vocLabel = AirQualityUtils.getVocLevelLabel(localizations, vocChannel.level);
-      } else {
-        vocLabel = AirQualityUtils.calculateVocLevelFromDensity(localizations, vocChannel.density);
+    if (vocChannel != null) {
+      if (vocChannel.hasLevel && vocChannel.level != null) {
+        infoTiles.add(InfoTile(
+          label: localizations.device_voc,
+          value: AirQualityUtils.getVocLevelLabel(localizations, vocChannel.level),
+          valueColor: airColor,
+        ));
+      } else if (vocChannel.hasDensity) {
+        infoTiles.add(InfoTile(
+          label: localizations.device_voc,
+          value: AirQualityUtils.calculateVocLevelFromDensity(localizations, vocChannel.density),
+          valueColor: airColor,
+        ));
+      } else if (vocChannel.hasDetected) {
+        final isDetected = vocChannel.detected;
+        infoTiles.add(InfoTile(
+          label: localizations.device_voc,
+          value: isDetected
+              ? localizations.air_quality_unhealthy
+              : localizations.air_quality_healthy,
+          valueColor: airColor,
+          isWarning: isDetected,
+        ));
       }
-      infoTiles.add(InfoTile(
-        label: localizations.device_voc,
-        value: vocLabel,
-        valueColor: airColor,
-      ));
     }
 
     // Filter tile - show life remaining or status
@@ -1006,6 +1031,138 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       ));
     }
 
+    // CO tile - carbon monoxide (safety-critical)
+    final coChannel = _device.carbonMonoxideChannel;
+    if (coChannel != null) {
+      if (coChannel.hasDensity) {
+        infoTiles.add(InfoTile(
+          label: localizations.device_co,
+          value: NumberFormatUtils.defaultFormat.formatDecimal(coChannel.density, decimalPlaces: 1),
+          unit: 'ppm',
+          valueColor: airColor,
+          isWarning: coChannel.density > 35, // Warn if CO exceeds 35 ppm (EPA 1-hour limit)
+        ));
+      } else if (coChannel.hasDetected) {
+        final isDetected = coChannel.detected;
+        infoTiles.add(InfoTile(
+          label: localizations.device_co,
+          value: isDetected
+              ? localizations.gas_detected
+              : localizations.gas_clear,
+          valueColor: airColor,
+          isWarning: isDetected,
+        ));
+      }
+    }
+
+    // NO₂ tile - nitrogen dioxide
+    final no2Channel = _device.nitrogenDioxideChannel;
+    if (no2Channel != null) {
+      if (no2Channel.hasDensity) {
+        infoTiles.add(InfoTile(
+          label: localizations.device_no2,
+          value: NumberFormatUtils.defaultFormat.formatInteger(no2Channel.density.toInt()),
+          unit: 'µg/m³',
+          valueColor: airColor,
+          isWarning: no2Channel.density > 200, // Warn if exceeds WHO 1-hour limit
+        ));
+      } else if (no2Channel.hasDetected) {
+        final isDetected = no2Channel.detected;
+        infoTiles.add(InfoTile(
+          label: localizations.device_no2,
+          value: isDetected
+              ? localizations.gas_detected
+              : localizations.gas_clear,
+          valueColor: airColor,
+          isWarning: isDetected,
+        ));
+      }
+    }
+
+    // O₃ tile - ozone
+    final o3Channel = _device.ozoneChannel;
+    if (o3Channel != null) {
+      if (o3Channel.hasLevel && o3Channel.level != null) {
+        infoTiles.add(InfoTile(
+          label: localizations.device_o3,
+          value: AirQualityUtils.getOzoneLevelLabel(localizations, o3Channel.level),
+          valueColor: airColor,
+        ));
+      } else if (o3Channel.hasDensity) {
+        infoTiles.add(InfoTile(
+          label: localizations.device_o3,
+          value: NumberFormatUtils.defaultFormat.formatInteger(o3Channel.density.toInt()),
+          unit: 'µg/m³',
+          valueColor: airColor,
+          isWarning: o3Channel.density > 100, // Warn if exceeds WHO 8-hour limit
+        ));
+      } else if (o3Channel.hasDetected) {
+        final isDetected = o3Channel.detected;
+        infoTiles.add(InfoTile(
+          label: localizations.device_o3,
+          value: isDetected
+              ? localizations.gas_detected
+              : localizations.gas_clear,
+          valueColor: airColor,
+          isWarning: isDetected,
+        ));
+      }
+    }
+
+    // SO₂ tile - sulphur dioxide
+    final so2Channel = _device.sulphurDioxideChannel;
+    if (so2Channel != null) {
+      if (so2Channel.hasLevel && so2Channel.level != null) {
+        infoTiles.add(InfoTile(
+          label: localizations.device_so2,
+          value: AirQualityUtils.getSulphurDioxideLevelLabel(localizations, so2Channel.level),
+          valueColor: airColor,
+        ));
+      } else if (so2Channel.hasDensity) {
+        infoTiles.add(InfoTile(
+          label: localizations.device_so2,
+          value: NumberFormatUtils.defaultFormat.formatInteger(so2Channel.density.toInt()),
+          unit: 'µg/m³',
+          valueColor: airColor,
+          isWarning: so2Channel.density > 500, // Warn if exceeds WHO 10-min limit
+        ));
+      } else if (so2Channel.hasDetected) {
+        final isDetected = so2Channel.detected;
+        infoTiles.add(InfoTile(
+          label: localizations.device_so2,
+          value: isDetected
+              ? localizations.gas_detected
+              : localizations.gas_clear,
+          valueColor: airColor,
+          isWarning: isDetected,
+        ));
+      }
+    }
+
+    // Pressure tile - atmospheric pressure
+    final pressureChannel = _device.pressureChannel;
+    if (pressureChannel != null) {
+      infoTiles.add(InfoTile(
+        label: localizations.device_pressure,
+        value: NumberFormatUtils.defaultFormat.formatDecimal(pressureChannel.measured, decimalPlaces: 1),
+        unit: 'kPa',
+        valueColor: airColor,
+      ));
+    }
+
+    // Leak sensor tile
+    final leakChannel = _device.leakChannel;
+    if (leakChannel != null) {
+      final isLeaking = leakChannel.detected;
+      infoTiles.add(InfoTile(
+        label: localizations.leak_sensor_water,
+        value: isLeaking
+            ? localizations.leak_sensor_detected
+            : localizations.leak_sensor_dry,
+        isWarning: isLeaking,
+      ));
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1025,6 +1182,72 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         if (_device.fanChannel.hasSpeed) ...[
           _buildSpeedControl(localizations, isDark, airColor, useVerticalLayout),
           AppSpacings.spacingMdVertical,
+        ],
+        // Oscillation / Swing tile - only show if fan has swing property
+        if (_device.fanChannel.hasSwing) ...[
+          UniversalTile(
+            layout: TileLayout.horizontal,
+            icon: Icons.sync,
+            name: localizations.device_oscillation,
+            status: _device.fanChannel.swing
+                ? localizations.on_state_on
+                : localizations.on_state_off,
+            isActive: _device.fanChannel.swing,
+            activeColor: airColor,
+            onTileTap: () => _setPropertyValue(
+              _device.fanChannel.swingProp,
+              !_device.fanChannel.swing,
+            ),
+            showGlow: false,
+            showDoubleBorder: false,
+            showInactiveBorder: true,
+          ),
+          AppSpacings.spacingSmVertical,
+        ],
+        // Direction tile - only show if fan has direction property
+        if (_device.fanChannel.hasDirection) ...[
+          UniversalTile(
+            layout: TileLayout.horizontal,
+            icon: Icons.swap_vert,
+            name: localizations.device_direction,
+            status: _device.fanChannel.direction != null
+                ? FanUtils.getDirectionLabel(localizations, _device.fanChannel.direction!)
+                : localizations.fan_direction_clockwise,
+            isActive: _device.fanChannel.direction == FanDirectionValue.counterClockwise,
+            activeColor: airColor,
+            onTileTap: () {
+              final isReversed = _device.fanChannel.direction == FanDirectionValue.counterClockwise;
+              final newDirection = isReversed
+                  ? FanDirectionValue.clockwise
+                  : FanDirectionValue.counterClockwise;
+              _setPropertyValue(_device.fanChannel.directionProp, newDirection.value);
+            },
+            showGlow: false,
+            showDoubleBorder: false,
+            showInactiveBorder: true,
+          ),
+          AppSpacings.spacingSmVertical,
+        ],
+        // Natural Breeze tile - only show if fan has natural breeze property
+        if (_device.fanChannel.hasNaturalBreeze) ...[
+          UniversalTile(
+            layout: TileLayout.horizontal,
+            icon: MdiIcons.weatherWindy,
+            name: localizations.device_natural_breeze,
+            status: _device.fanChannel.naturalBreeze
+                ? localizations.on_state_on
+                : localizations.on_state_off,
+            isActive: _device.fanChannel.naturalBreeze,
+            activeColor: airColor,
+            onTileTap: () => _setPropertyValue(
+              _device.fanChannel.naturalBreezeProp,
+              !_device.fanChannel.naturalBreeze,
+            ),
+            showGlow: false,
+            showDoubleBorder: false,
+            showInactiveBorder: true,
+          ),
+          AppSpacings.spacingSmVertical,
         ],
         // Child Lock tile - only show if fan has locked property
         if (_device.fanChannel.hasLocked) ...[

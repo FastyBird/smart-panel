@@ -1411,6 +1411,42 @@ class AppLocalizationsEn extends AppLocalizations {
   String get device_co2 => 'CO₂';
 
   @override
+  String get device_co => 'CO';
+
+  @override
+  String get device_no2 => 'NO₂';
+
+  @override
+  String get device_o3 => 'O₃';
+
+  @override
+  String get device_so2 => 'SO₂';
+
+  @override
+  String get device_pressure => 'Pressure';
+
+  @override
+  String get air_quality_healthy => 'Healthy';
+
+  @override
+  String get air_quality_unhealthy => 'Unhealthy';
+
+  @override
+  String get gas_detected => 'Detected';
+
+  @override
+  String get gas_clear => 'Clear';
+
+  @override
+  String get gas_level_low => 'Low';
+
+  @override
+  String get gas_level_medium => 'Medium';
+
+  @override
+  String get gas_level_high => 'High';
+
+  @override
   String get device_humidity => 'Humidity';
 
   @override

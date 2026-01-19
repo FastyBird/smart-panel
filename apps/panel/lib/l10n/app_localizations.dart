@@ -2867,6 +2867,78 @@ abstract class AppLocalizations {
   /// **'CO₂'**
   String get device_co2;
 
+  /// Carbon monoxide label
+  ///
+  /// In en, this message translates to:
+  /// **'CO'**
+  String get device_co;
+
+  /// Nitrogen dioxide label
+  ///
+  /// In en, this message translates to:
+  /// **'NO₂'**
+  String get device_no2;
+
+  /// Ozone label
+  ///
+  /// In en, this message translates to:
+  /// **'O₃'**
+  String get device_o3;
+
+  /// Sulphur dioxide label
+  ///
+  /// In en, this message translates to:
+  /// **'SO₂'**
+  String get device_so2;
+
+  /// Atmospheric pressure label
+  ///
+  /// In en, this message translates to:
+  /// **'Pressure'**
+  String get device_pressure;
+
+  /// Air quality status when healthy
+  ///
+  /// In en, this message translates to:
+  /// **'Healthy'**
+  String get air_quality_healthy;
+
+  /// Air quality status when unhealthy
+  ///
+  /// In en, this message translates to:
+  /// **'Unhealthy'**
+  String get air_quality_unhealthy;
+
+  /// Gas detected status
+  ///
+  /// In en, this message translates to:
+  /// **'Detected'**
+  String get gas_detected;
+
+  /// No gas detected status
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get gas_clear;
+
+  /// Low gas level
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get gas_level_low;
+
+  /// Medium gas level
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get gas_level_medium;
+
+  /// High gas level
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get gas_level_high;
+
   /// Humidity short label
   ///
   /// In en, this message translates to:

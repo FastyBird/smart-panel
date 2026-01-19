@@ -137,4 +137,36 @@ class AirQualityUtils {
     if (density < 500) return localizations.voc_level_moderate;
     return localizations.voc_level_poor;
   }
+
+  /// Get human-readable label for ozone level.
+  static String getOzoneLevelLabel(
+    AppLocalizations localizations,
+    OzoneLevelValue? level,
+  ) {
+    if (level == null) return localizations.air_quality_level_unknown;
+    switch (level) {
+      case OzoneLevelValue.low:
+        return localizations.gas_level_low;
+      case OzoneLevelValue.medium:
+        return localizations.gas_level_medium;
+      case OzoneLevelValue.high:
+        return localizations.gas_level_high;
+    }
+  }
+
+  /// Get human-readable label for sulphur dioxide level.
+  static String getSulphurDioxideLevelLabel(
+    AppLocalizations localizations,
+    SulphurDioxideLevelValue? level,
+  ) {
+    if (level == null) return localizations.air_quality_level_unknown;
+    switch (level) {
+      case SulphurDioxideLevelValue.low:
+        return localizations.gas_level_low;
+      case SulphurDioxideLevelValue.medium:
+        return localizations.gas_level_medium;
+      case SulphurDioxideLevelValue.high:
+        return localizations.gas_level_high;
+    }
+  }
 }

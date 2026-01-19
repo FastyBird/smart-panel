@@ -1900,6 +1900,54 @@
   "@device_co2": {
     "description": "Carbon dioxide label"
   },
+  "device_co": "CO",
+  "@device_co": {
+    "description": "Carbon monoxide label"
+  },
+  "device_no2": "NO₂",
+  "@device_no2": {
+    "description": "Nitrogen dioxide label"
+  },
+  "device_o3": "O₃",
+  "@device_o3": {
+    "description": "Ozone label"
+  },
+  "device_so2": "SO₂",
+  "@device_so2": {
+    "description": "Sulphur dioxide label"
+  },
+  "device_pressure": "Pressure",
+  "@device_pressure": {
+    "description": "Atmospheric pressure label"
+  },
+  "air_quality_healthy": "Healthy",
+  "@air_quality_healthy": {
+    "description": "Air quality status when healthy"
+  },
+  "air_quality_unhealthy": "Unhealthy",
+  "@air_quality_unhealthy": {
+    "description": "Air quality status when unhealthy"
+  },
+  "gas_detected": "Detected",
+  "@gas_detected": {
+    "description": "Gas detected status"
+  },
+  "gas_clear": "Clear",
+  "@gas_clear": {
+    "description": "No gas detected status"
+  },
+  "gas_level_low": "Low",
+  "@gas_level_low": {
+    "description": "Low gas level"
+  },
+  "gas_level_medium": "Medium",
+  "@gas_level_medium": {
+    "description": "Medium gas level"
+  },
+  "gas_level_high": "High",
+  "@gas_level_high": {
+    "description": "High gas level"
+  },
   "device_humidity": "Humidity",
   "@device_humidity": {
     "description": "Humidity short label"
