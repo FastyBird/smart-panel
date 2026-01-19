@@ -688,6 +688,23 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
     return climateState.isHeating || climateState.isCooling;
   }
 
+  String _getStatusLabel(AppLocalizations localizations) {
+    if (_state.mode == ClimateMode.off) {
+      return localizations.thermostat_state_off;
+    }
+
+    final climateState = _spacesService?.getClimateState(widget.roomId);
+    final tempStr = '${_state.targetTemp.toStringAsFixed(0)}°C';
+
+    if (climateState?.isCooling ?? false) {
+      return localizations.thermostat_state_cooling_to(tempStr);
+    }
+    if (climateState?.isHeating ?? false) {
+      return localizations.thermostat_state_heating_to(tempStr);
+    }
+    return localizations.thermostat_state_idle_at(tempStr);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -720,14 +737,14 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
   Widget _buildHeader(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final modeColor = _getModeColor(context);
+    final secondaryColor =
+        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
     final localizations = AppLocalizations.of(context)!;
 
     return PageHeader(
       title: localizations.domain_climate,
-      subtitle: _state.mode == ClimateMode.off
-          ? 'Off'
-          : '${_state.modeLabel} to ${_state.targetTemp.toInt()}°C',
-      subtitleColor: modeColor,
+      subtitle: _getStatusLabel(localizations),
+      subtitleColor: _isDialActive() ? modeColor : secondaryColor,
       backgroundColor: AppColors.blank,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
