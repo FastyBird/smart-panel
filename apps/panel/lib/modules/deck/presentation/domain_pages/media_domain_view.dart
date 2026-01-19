@@ -454,7 +454,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
                 // Other Devices
                 if (hasOtherDevices) ...[
                   SectionTitle(
-                    title: localizations.media_other_devices,
+                    title: 'Other Devices',
                     icon: MdiIcons.devices,
                   ),
                   AppSpacings.spacingMdVertical,
@@ -469,7 +469,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
                 // Queue
                 if (hasQueue && _primaryDevice != null) ...[
                   SectionTitle(
-                    title: localizations.media_up_next,
+                    title: 'Up Next',
                     icon: MdiIcons.playlistMusic,
                   ),
                   AppSpacings.spacingMdVertical,
@@ -527,7 +527,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
                 ],
                 if (hasOtherDevices) ...[
                   SectionTitle(
-                    title: localizations.media_other_devices,
+                    title: 'Other Devices',
                     icon: MdiIcons.devices,
                   ),
                   AppSpacings.spacingMdVertical,
@@ -560,7 +560,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
             children: [
               if (_primaryDevice != null) ...[
                 SectionTitle(
-                  title: localizations.media_volume,
+                  title: 'Volume',
                   icon: MdiIcons.volumeHigh,
                 ),
                 AppSpacings.spacingMdVertical,
@@ -572,7 +572,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
               ],
               if (hasQueue) ...[
                 SectionTitle(
-                  title: localizations.media_up_next,
+                  title: 'Up Next',
                   icon: MdiIcons.playlistMusic,
                 ),
                 AppSpacings.spacingMdVertical,
@@ -969,11 +969,11 @@ class _MediaDeviceTile extends StatelessWidget {
 
     String statusText;
     if (device.isPlaying) {
-      statusText = localizations.media_playing;
+      statusText = 'Playing';
     } else if (device.state == PlaybackState.idle) {
-      statusText = localizations.media_idle;
+      statusText = 'Idle';
     } else {
-      statusText = localizations.media_standby;
+      statusText = 'Standby';
     }
 
     return UniversalTile(
@@ -1262,7 +1262,8 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
                 backgroundColor: primaryLightColor,
                 iconColor: primaryColor,
               ),
-              trailing: HeaderBackButton(
+              trailing: HeaderIconButton(
+                icon: Icons.arrow_back_ios_new,
                 onTap: widget.onBack,
               ),
             ),
@@ -1376,7 +1377,7 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SectionTitle(
-                  title: localizations.media_volume,
+                  title: 'Volume',
                   icon: MdiIcons.volumeHigh,
                 ),
                 AppSpacings.spacingMdVertical,
@@ -1386,8 +1387,8 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
                 ),
                 AppSpacings.spacingLgVertical,
                 SectionTitle(
-                  title: localizations.media_source,
-                  icon: MdiIcons.import_,
+                  title: 'Source',
+                  icon: MdiIcons.radioTower,
                 ),
                 AppSpacings.spacingMdVertical,
                 _SourceSelector(
@@ -1417,7 +1418,7 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SectionTitle(
-                title: localizations.media_queue,
+                title: 'Queue',
                 icon: MdiIcons.playlistMusic,
               ),
               AppSpacings.spacingMdVertical,
@@ -1523,8 +1524,8 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
           AppSpacings.spacingLgVertical,
 
           SectionTitle(
-            title: localizations.media_source,
-            icon: MdiIcons.import_,
+            title: 'Source',
+            icon: MdiIcons.radioTower,
           ),
           AppSpacings.spacingMdVertical,
           Row(
@@ -1590,7 +1591,7 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
           AppSpacings.spacingLgVertical,
 
           SectionTitle(
-            title: localizations.media_up_next,
+            title: 'Up Next',
             icon: MdiIcons.playlistMusic,
           ),
           AppSpacings.spacingMdVertical,
