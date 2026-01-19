@@ -1073,7 +1073,7 @@ class _AirConditionerDeviceDetailState
     if (fanChannel.hasSpeed) {
       controls.add(_buildFanSpeedControl(localizations, isDark, modeColor, useCompactLayout));
       controls.add(AppSpacings.spacingMdVertical);
-    } else if (fanChannel.hasMode && fanChannel.availableModes.isNotEmpty) {
+    } else if (fanChannel.hasMode && fanChannel.availableModes.length > 1) {
       // If no speed but has mode, show mode selector standalone
       controls.add(_buildFanModeSelector(localizations, modeColor));
       controls.add(AppSpacings.spacingMdVertical);
@@ -1137,7 +1137,7 @@ class _AirConditionerDeviceDetailState
       return const SizedBox.shrink();
     }
 
-    final hasMode = fanChannel.hasMode && fanChannel.availableModes.isNotEmpty;
+    final hasMode = fanChannel.hasMode && fanChannel.availableModes.length > 1;
 
     if (fanChannel.isSpeedEnum) {
       final availableLevels = fanChannel.availableSpeedLevels;
