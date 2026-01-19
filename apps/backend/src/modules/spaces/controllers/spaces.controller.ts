@@ -590,7 +590,6 @@ export class SpacesController {
 		stateData.coolingSetpoint = state.coolingSetpoint;
 		stateData.minSetpoint = state.minSetpoint;
 		stateData.maxSetpoint = state.maxSetpoint;
-		stateData.canSetSetpoint = state.canSetSetpoint;
 		stateData.supportsHeating = state.supportsHeating;
 		stateData.supportsCooling = state.supportsCooling;
 		stateData.isHeating = state.isHeating;
@@ -1492,7 +1491,6 @@ export class SpacesController {
 		climateState.coolingSetpoint = snapshot.climate.coolingSetpoint;
 		climateState.minSetpoint = snapshot.climate.minSetpoint;
 		climateState.maxSetpoint = snapshot.climate.maxSetpoint;
-		climateState.canSetSetpoint = snapshot.climate.canSetSetpoint;
 		climateState.supportsHeating = snapshot.climate.supportsHeating;
 		climateState.supportsCooling = snapshot.climate.supportsCooling;
 		climateState.isHeating = snapshot.climate.isHeating;

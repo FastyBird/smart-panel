@@ -140,7 +140,6 @@ export class SpaceContextSnapshotService {
 			coolingSetpoint: null,
 			minSetpoint: DEFAULT_MIN_SETPOINT,
 			maxSetpoint: DEFAULT_MAX_SETPOINT,
-			canSetSetpoint: false,
 			supportsHeating: false,
 			supportsCooling: false,
 			isHeating: false,

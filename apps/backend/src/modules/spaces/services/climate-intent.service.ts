@@ -276,6 +276,8 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 			void this.intentTimeseriesService.storeClimateModeChange(
 				spaceId,
 				mode,
+				climateState.heatingSetpoint,
+				climateState.coolingSetpoint,
 				devices.length,
 				affectedDevices,
 				failedDevices,
@@ -328,6 +330,8 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 			void this.intentTimeseriesService.storeClimateModeChange(
 				spaceId,
 				mode,
+				climateState.heatingSetpoint,
+				climateState.coolingSetpoint,
 				devices.length,
 				affectedDevices,
 				failedDevices,
@@ -870,17 +874,6 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 					modeFailed++;
 				}
 			}
-
-			// Store mode change to InfluxDB
-			if (modeAffected > 0) {
-				void this.intentTimeseriesService.storeClimateModeChange(
-					spaceId,
-					intent.mode,
-					devices.length,
-					modeAffected,
-					modeFailed,
-				);
-			}
 		}
 
 		// Step 2: Set setpoints if provided
@@ -954,9 +947,23 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		// This ensures the response accurately reflects all changes made
 		const totalAffected = modeAffected + setpointAffected;
 		const totalFailed = modeFailed + setpointFailed;
+		const overallSuccess = totalFailed === 0 || totalAffected > 0;
+
+		// Store climate state to InfluxDB at the end with all values (fire and forget)
+		if (overallSuccess) {
+			void this.intentTimeseriesService.storeClimateModeChange(
+				spaceId,
+				intent.mode ?? null,
+				heatingSetpoint,
+				coolingSetpoint,
+				devices.length,
+				totalAffected,
+				totalFailed,
+			);
+		}
 
 		return {
-			success: totalFailed === 0 || totalAffected > 0,
+			success: overallSuccess,
 			affectedDevices: totalAffected,
 			failedDevices: totalFailed,
 			mode,
@@ -999,16 +1006,6 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 				} else {
 					modeFailed++;
 				}
-			}
-
-			if (modeAffected > 0) {
-				void this.intentTimeseriesService.storeClimateModeChange(
-					spaceId,
-					intent.mode,
-					devices.length,
-					modeAffected,
-					modeFailed,
-				);
 			}
 		}
 
@@ -1105,9 +1102,23 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 
 		const totalAffected = modeAffected + setpointAffected;
 		const totalFailed = modeFailed + setpointFailed;
+		const overallSuccess = totalFailed === 0 || totalAffected > 0;
+
+		// Store climate state to InfluxDB at the end with all values (fire and forget)
+		if (overallSuccess) {
+			void this.intentTimeseriesService.storeClimateModeChange(
+				spaceId,
+				intent.mode ?? null,
+				heatingSetpoint,
+				coolingSetpoint,
+				devices.length,
+				totalAffected,
+				totalFailed,
+			);
+		}
 
 		return {
-			success: totalFailed === 0 || totalAffected > 0,
+			success: overallSuccess,
 			affectedDevices: totalAffected,
 			failedDevices: totalFailed,
 			mode,

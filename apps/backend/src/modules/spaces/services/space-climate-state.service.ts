@@ -36,20 +36,21 @@ export interface PrimaryClimateDevice {
 	// Heater control
 	heaterChannel: ChannelEntity | null;
 	heaterOnProperty: ChannelPropertyEntity | null;
+	heaterStatusProperty: ChannelPropertyEntity | null; // RO - is heater actively working
 	heaterSetpointProperty: ChannelPropertyEntity | null;
 	heaterMinSetpoint: number;
 	heaterMaxSetpoint: number;
 	// Cooler control
 	coolerChannel: ChannelEntity | null;
 	coolerOnProperty: ChannelPropertyEntity | null;
+	coolerStatusProperty: ChannelPropertyEntity | null; // RO - is cooler actively working
 	coolerSetpointProperty: ChannelPropertyEntity | null;
 	coolerMinSetpoint: number;
 	coolerMaxSetpoint: number;
-	// Thermostat channel (for devices with unified thermostat control)
+	// Thermostat channel (for child lock only)
 	thermostatChannel: ChannelEntity | null;
-	thermostatActiveProperty: ChannelPropertyEntity | null;
-	thermostatModeProperty: ChannelPropertyEntity | null;
-	// Capabilities
+	thermostatLockedProperty: ChannelPropertyEntity | null;
+	// Capabilities (respecting device role)
 	supportsHeating: boolean;
 	supportsCooling: boolean;
 }
@@ -66,15 +67,15 @@ export interface ClimateState {
 	coolingSetpoint: number | null;
 	minSetpoint: number;
 	maxSetpoint: number;
-	canSetSetpoint: boolean;
 	supportsHeating: boolean;
 	supportsCooling: boolean;
-	// Actual device activity status (from heater/cooler channel ON property)
+	// Actual device activity status (heater.on + heater.status = actively working)
 	isHeating: boolean;
 	isCooling: boolean;
+	// Mixed state: devices have different setpoints or modes
 	isMixed: boolean;
 	devicesCount: number;
-	// Last applied mode from InfluxDB storage
+	// Last applied values from InfluxDB storage
 	lastAppliedMode: ClimateMode | null;
 	lastAppliedAt: Date | null;
 }
@@ -111,7 +112,6 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 			coolingSetpoint: null,
 			minSetpoint: DEFAULT_MIN_SETPOINT,
 			maxSetpoint: DEFAULT_MAX_SETPOINT,
-			canSetSetpoint: false,
 			supportsHeating: false,
 			supportsCooling: false,
 			isHeating: false,
@@ -250,29 +250,35 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 		// Detect current mode and activity status from device states
 		const { mode: detectedMode, isHeating, isCooling } = this.detectClimateModeAndActivity(primaryDevices);
 
-		// Get last applied mode from InfluxDB (user's intent, more reliable than detected mode)
-		const lastApplied = await this.intentTimeseriesService.getLastClimateMode(spaceId);
+		// Get last applied climate state from InfluxDB (user's intent, includes mode and setpoints)
+		const lastApplied = await this.intentTimeseriesService.getLastClimateState(spaceId);
 		const lastAppliedMode = lastApplied?.mode
 			? Object.values(ClimateMode).includes(lastApplied.mode as ClimateMode)
 				? (lastApplied.mode as ClimateMode)
 				: null
 			: null;
 
-		// Calculate setpoints from device values
+		// Calculate setpoints using priority: InfluxDB > device consensus > null
 		let heatingSetpoint: number | null = null;
 		let coolingSetpoint: number | null = null;
 
-		if (heatingSetpoints.length > 0) {
-			heatingSetpoint = heatingSetpoints.reduce((a, b) => a + b, 0) / heatingSetpoints.length;
-		}
-		if (coolingSetpoints.length > 0) {
-			coolingSetpoint = coolingSetpoints.reduce((a, b) => a + b, 0) / coolingSetpoints.length;
+		// Try InfluxDB values first
+		if (lastApplied?.heatingSetpoint !== null && lastApplied?.heatingSetpoint !== undefined) {
+			heatingSetpoint = lastApplied.heatingSetpoint;
+		} else if (heatingSetpoints.length > 0) {
+			// Check if all devices have same value (consensus)
+			heatingSetpoint = this.getConsensusValue(heatingSetpoints);
 		}
 
-		// Detect mixed state (setpoints out of sync)
-		const isMixed = this.detectMixedState(heatingSetpoints, coolingSetpoints);
+		if (lastApplied?.coolingSetpoint !== null && lastApplied?.coolingSetpoint !== undefined) {
+			coolingSetpoint = lastApplied.coolingSetpoint;
+		} else if (coolingSetpoints.length > 0) {
+			// Check if all devices have same value (consensus)
+			coolingSetpoint = this.getConsensusValue(coolingSetpoints);
+		}
 
-		const canSetSetpoint = supportsHeating || supportsCooling;
+		// Detect mixed state (setpoints or modes out of sync)
+		const isMixed = this.detectMixedState(heatingSetpoint, heatingSetpoints, coolingSetpoint, coolingSetpoints);
 
 		return {
 			hasClimate: true,
@@ -283,7 +289,6 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 			coolingSetpoint: coolingSetpoint !== null ? Math.round(coolingSetpoint * 2) / 2 : null,
 			minSetpoint,
 			maxSetpoint,
-			canSetSetpoint,
 			supportsHeating,
 			supportsCooling,
 			isHeating,
@@ -337,80 +342,72 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 
 	/**
 	 * Detect climate mode and activity status from device states.
-	 * Returns:
-	 * - mode: HEAT, COOL, AUTO, or OFF based on which devices are active
-	 * - isHeating: true if any heater device is actively heating
-	 * - isCooling: true if any cooler device is actively cooling
 	 *
-	 * Mode detection logic:
-	 * - If any heater is ON and no cooler is ON → HEAT
-	 * - If any cooler is ON and no heater is ON → COOL
-	 * - If both heater and cooler are ON → AUTO
-	 * - If nothing is ON → OFF
+	 * Unified detection logic for all device types (AIR_CONDITIONER, HEATING_UNIT, THERMOSTAT):
+	 * - isHeating: heater.on = true AND heater.status = true (device is actively heating)
+	 * - isCooling: cooler.on = true AND cooler.status = true (device is actively cooling)
+	 *
+	 * Mode detection:
+	 * - If any device is heating AND cooling → AUTO
+	 * - If any device is only heating → HEAT
+	 * - If any device is only cooling → COOL
+	 * - If nothing is active → OFF
+	 *
+	 * Device roles are already applied in supportsHeating/supportsCooling.
 	 */
 	detectClimateModeAndActivity(devices: PrimaryClimateDevice[]): {
 		mode: ClimateMode;
 		isHeating: boolean;
 		isCooling: boolean;
 	} {
-		// Track actual device activity (from heater/cooler ON properties)
 		let isHeating = false;
 		let isCooling = false;
 
-		// Track thermostat configured modes (for determining overall mode)
-		let hasHeatMode = false;
-		let hasCoolMode = false;
-		let hasAutoMode = false;
+		// Track if any device has heater/cooler ON (even if not actively working)
+		let anyHeaterOn = false;
+		let anyCoolerOn = false;
 
 		for (const device of devices) {
-			// Check heater ON state (actual device activity)
-			if (device.heaterOnProperty) {
+			// Check heater state (respecting role via supportsHeating)
+			if (device.supportsHeating && device.heaterOnProperty) {
 				const heaterOn = this.getPropertyBooleanValue(device.heaterOnProperty);
 				if (heaterOn) {
-					isHeating = true;
+					anyHeaterOn = true;
+					// Check if heater is actively working (status = true)
+					const heaterStatus = device.heaterStatusProperty
+						? this.getPropertyBooleanValue(device.heaterStatusProperty)
+						: true; // If no status property, assume active when on
+					if (heaterStatus) {
+						isHeating = true;
+					}
 				}
 			}
 
-			// Check cooler ON state (actual device activity)
-			if (device.coolerOnProperty) {
+			// Check cooler state (respecting role via supportsCooling)
+			if (device.supportsCooling && device.coolerOnProperty) {
 				const coolerOn = this.getPropertyBooleanValue(device.coolerOnProperty);
 				if (coolerOn) {
-					isCooling = true;
-				}
-			}
-
-			// Check thermostat mode property for mode detection (NOT activity)
-			if (device.thermostatModeProperty) {
-				const modeValue = device.thermostatModeProperty.value;
-				if (typeof modeValue === 'string') {
-					const modeLower = modeValue.toLowerCase();
-					if (modeLower === 'auto' || modeLower === 'heat_cool') {
-						hasAutoMode = true;
-					}
-					if (modeLower === 'heat') {
-						hasHeatMode = true;
-					}
-					if (modeLower === 'cool') {
-						hasCoolMode = true;
+					anyCoolerOn = true;
+					// Check if cooler is actively working (status = true)
+					const coolerStatus = device.coolerStatusProperty
+						? this.getPropertyBooleanValue(device.coolerStatusProperty)
+						: true; // If no status property, assume active when on
+					if (coolerStatus) {
+						isCooling = true;
 					}
 				}
 			}
 		}
 
-		// Determine overall mode based on thermostat modes and actual activity
+		// Determine mode from device ON states (not just active status)
+		// This shows the intended mode, not just what's currently running
 		let mode: ClimateMode;
-		if (hasAutoMode) {
-			// If any thermostat is in AUTO mode, the overall mode is AUTO
+		if (anyHeaterOn && anyCoolerOn) {
+			// Both heater and cooler are commanded on → AUTO mode
 			mode = ClimateMode.AUTO;
-		} else if (hasHeatMode && hasCoolMode) {
-			// Multiple thermostats with different modes
-			mode = ClimateMode.AUTO;
-		} else if (isHeating && isCooling) {
-			// Both heater and cooler are active (no thermostat mode property)
-			mode = ClimateMode.AUTO;
-		} else if (hasHeatMode || isHeating) {
+		} else if (anyHeaterOn) {
 			mode = ClimateMode.HEAT;
-		} else if (hasCoolMode || isCooling) {
+		} else if (anyCoolerOn) {
 			mode = ClimateMode.COOL;
 		} else {
 			mode = ClimateMode.OFF;
@@ -420,26 +417,82 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 	}
 
 	/**
-	 * Detect if setpoints are out of sync (mixed state).
-	 * Similar to lighting mixed state detection.
+	 * Get consensus value from an array of numbers.
+	 * Returns the value if all values are within 0.5°C tolerance, otherwise null.
 	 */
-	private detectMixedState(heatingSetpoints: number[], coolingSetpoints: number[]): boolean {
-		// Check heating setpoints variance
-		if (heatingSetpoints.length > 1) {
-			const min = Math.min(...heatingSetpoints);
-			const max = Math.max(...heatingSetpoints);
-			if (max - min > 0.5) {
-				// More than 0.5 degree difference
-				return true;
+	private getConsensusValue(values: number[]): number | null {
+		if (values.length === 0) {
+			return null;
+		}
+		if (values.length === 1) {
+			return values[0];
+		}
+
+		const min = Math.min(...values);
+		const max = Math.max(...values);
+
+		// All values must be within 0.5°C tolerance
+		if (max - min <= 0.5) {
+			// Return the first value (or could use average, but first is simpler)
+			return values[0];
+		}
+
+		// No consensus - devices have different values
+		return null;
+	}
+
+	/**
+	 * Detect if devices are out of sync (mixed state).
+	 *
+	 * isMixed = true when:
+	 * 1. setpoint has value AND any device differs by >0.5°C
+	 * 2. setpoint is null because devices have different values (no consensus)
+	 */
+	private detectMixedState(
+		heatingSetpoint: number | null,
+		heatingDeviceValues: number[],
+		coolingSetpoint: number | null,
+		coolingDeviceValues: number[],
+	): boolean {
+		// Check heating setpoints
+		if (heatingDeviceValues.length > 0) {
+			if (heatingSetpoint !== null) {
+				// Check if any device differs from the setpoint
+				for (const value of heatingDeviceValues) {
+					if (Math.abs(value - heatingSetpoint) > 0.5) {
+						return true;
+					}
+				}
+			} else {
+				// No setpoint means no consensus (devices have different values)
+				if (heatingDeviceValues.length > 1) {
+					const min = Math.min(...heatingDeviceValues);
+					const max = Math.max(...heatingDeviceValues);
+					if (max - min > 0.5) {
+						return true;
+					}
+				}
 			}
 		}
 
-		// Check cooling setpoints variance
-		if (coolingSetpoints.length > 1) {
-			const min = Math.min(...coolingSetpoints);
-			const max = Math.max(...coolingSetpoints);
-			if (max - min > 0.5) {
-				return true;
+		// Check cooling setpoints
+		if (coolingDeviceValues.length > 0) {
+			if (coolingSetpoint !== null) {
+				// Check if any device differs from the setpoint
+				for (const value of coolingDeviceValues) {
+					if (Math.abs(value - coolingSetpoint) > 0.5) {
+						return true;
+					}
+				}
+			} else {
+				// No setpoint means no consensus (devices have different values)
+				if (coolingDeviceValues.length > 1) {
+					const min = Math.min(...coolingDeviceValues);
+					const max = Math.max(...coolingDeviceValues);
+					if (max - min > 0.5) {
+						return true;
+					}
+				}
 			}
 		}
 
@@ -504,6 +557,8 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 		// Find heater channel
 		const heaterChannel = channels.find((ch) => ch.category === ChannelCategory.HEATER) ?? null;
 		const heaterOnProperty = heaterChannel?.properties?.find((p) => p.category === PropertyCategory.ON) ?? null;
+		const heaterStatusProperty =
+			heaterChannel?.properties?.find((p) => p.category === PropertyCategory.STATUS) ?? null;
 		const heaterSetpointProperty =
 			heaterChannel?.properties?.find((p) => p.category === PropertyCategory.TEMPERATURE) ?? null;
 		const heaterMinMax = this.getClimatePropertyMinMax(heaterSetpointProperty);
@@ -511,16 +566,16 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 		// Find cooler channel
 		const coolerChannel = channels.find((ch) => ch.category === ChannelCategory.COOLER) ?? null;
 		const coolerOnProperty = coolerChannel?.properties?.find((p) => p.category === PropertyCategory.ON) ?? null;
+		const coolerStatusProperty =
+			coolerChannel?.properties?.find((p) => p.category === PropertyCategory.STATUS) ?? null;
 		const coolerSetpointProperty =
 			coolerChannel?.properties?.find((p) => p.category === PropertyCategory.TEMPERATURE) ?? null;
 		const coolerMinMax = this.getClimatePropertyMinMax(coolerSetpointProperty);
 
-		// Find thermostat channel (for unified control)
+		// Find thermostat channel (for child lock only)
 		const thermostatChannel = channels.find((ch) => ch.category === ChannelCategory.THERMOSTAT) ?? null;
-		const thermostatActiveProperty =
-			thermostatChannel?.properties?.find((p) => p.category === PropertyCategory.ACTIVE) ?? null;
-		const thermostatModeProperty =
-			thermostatChannel?.properties?.find((p) => p.category === PropertyCategory.MODE) ?? null;
+		const thermostatLockedProperty =
+			thermostatChannel?.properties?.find((p) => p.category === PropertyCategory.LOCKED) ?? null;
 
 		// Determine capabilities based on role and channel presence
 		let supportsHeating = heaterChannel !== null;
@@ -553,17 +608,18 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 			humidityProperty,
 			heaterChannel,
 			heaterOnProperty,
+			heaterStatusProperty,
 			heaterSetpointProperty,
 			heaterMinSetpoint: heaterMinMax.min,
 			heaterMaxSetpoint: heaterMinMax.max,
 			coolerChannel,
 			coolerOnProperty,
+			coolerStatusProperty,
 			coolerSetpointProperty,
 			coolerMinSetpoint: coolerMinMax.min,
 			coolerMaxSetpoint: coolerMinMax.max,
 			thermostatChannel,
-			thermostatActiveProperty,
-			thermostatModeProperty,
+			thermostatLockedProperty,
 			supportsHeating,
 			supportsCooling,
 		};

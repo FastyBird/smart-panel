@@ -157,7 +157,6 @@ describe('SpaceIntentService', () => {
 				coolingSetpoint: null,
 				minSetpoint: 15,
 				maxSetpoint: 30,
-				canSetSetpoint: true,
 				supportsHeating: true,
 				supportsCooling: false,
 				isHeating: true,
@@ -185,7 +184,6 @@ describe('SpaceIntentService', () => {
 				coolingSetpoint: null,
 				minSetpoint: DEFAULT_MIN_SETPOINT,
 				maxSetpoint: DEFAULT_MAX_SETPOINT,
-				canSetSetpoint: false,
 				supportsHeating: false,
 				supportsCooling: false,
 				isHeating: false,
@@ -200,7 +198,6 @@ describe('SpaceIntentService', () => {
 			const result = await service.getClimateState(mockSpaceId);
 
 			expect(result.hasClimate).toBe(false);
-			expect(result.canSetSetpoint).toBe(false);
 		});
 	});
 

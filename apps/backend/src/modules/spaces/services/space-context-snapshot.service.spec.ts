@@ -135,7 +135,6 @@ describe('SpaceContextSnapshotService', () => {
 		coolingSetpoint: null,
 		minSetpoint: 5,
 		maxSetpoint: 35,
-		canSetSetpoint: false,
 		supportsHeating: false,
 		supportsCooling: false,
 		isHeating: false,
@@ -309,7 +308,6 @@ describe('SpaceContextSnapshotService', () => {
 				coolingSetpoint: null,
 				minSetpoint: 5,
 				maxSetpoint: 35,
-				canSetSetpoint: true,
 				supportsHeating: true,
 				supportsCooling: false,
 				isHeating: true,
@@ -332,7 +330,6 @@ describe('SpaceContextSnapshotService', () => {
 			expect(result.climate.hasClimate).toBe(true);
 			expect(result.climate.currentTemperature).toBe(22.5);
 			expect(result.climate.heatingSetpoint).toBe(21.0);
-			expect(result.climate.canSetSetpoint).toBe(true);
 		});
 
 		it('should use default climate state when getClimateState returns null', async () => {
@@ -354,7 +351,6 @@ describe('SpaceContextSnapshotService', () => {
 			expect(result.climate.mode).toBe(ClimateMode.OFF);
 			expect(result.climate.currentTemperature).toBeNull();
 			expect(result.climate.currentHumidity).toBeNull();
-			expect(result.climate.canSetSetpoint).toBe(false);
 			expect(result.climate.minSetpoint).toBe(5); // DEFAULT_MIN_SETPOINT
 			expect(result.climate.maxSetpoint).toBe(35); // DEFAULT_MAX_SETPOINT
 			expect(result.climate.primaryThermostatId).toBeNull();

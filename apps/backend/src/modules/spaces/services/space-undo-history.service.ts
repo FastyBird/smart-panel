@@ -336,7 +336,7 @@ export class SpaceUndoHistoryService implements OnModuleDestroy {
 	 */
 	private async restoreClimateState(climate: ClimateStateSnapshot): Promise<{ restored: boolean; failed: boolean }> {
 		// Skip if no climate devices or no setpoint capability
-		if (!climate.hasClimate || !climate.canSetSetpoint || !climate.primaryThermostatId) {
+		if (!climate.hasClimate || !(climate.supportsHeating || climate.supportsCooling) || !climate.primaryThermostatId) {
 			return { restored: false, failed: false };
 		}
 

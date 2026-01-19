@@ -313,15 +313,6 @@ export class ClimateStateDataModel {
 	maxSetpoint: number;
 
 	@ApiProperty({
-		name: 'can_set_setpoint',
-		description: 'Whether the space has devices that can adjust setpoint',
-		type: 'boolean',
-		example: true,
-	})
-	@Expose({ name: 'can_set_setpoint' })
-	canSetSetpoint: boolean;
-
-	@ApiProperty({
 		name: 'supports_heating',
 		description: 'Whether any device in the space supports heating',
 		type: 'boolean',

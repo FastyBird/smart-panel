@@ -29,8 +29,6 @@ export interface IClimateState {
 	minSetpoint: number;
 	/** Maximum allowed setpoint value */
 	maxSetpoint: number;
-	/** Whether setpoint can be adjusted */
-	canSetSetpoint: boolean;
 	/** Whether heating is supported */
 	supportsHeating: boolean;
 	/** Whether cooling is supported */
@@ -81,7 +79,6 @@ const transformClimateState = (data: ClimateStateData): IClimateState => {
 		coolingSetpoint: data.cooling_setpoint ?? null,
 		minSetpoint: data.min_setpoint ?? 5.0,
 		maxSetpoint: data.max_setpoint ?? 35.0,
-		canSetSetpoint: data.can_set_setpoint ?? false,
 		supportsHeating: data.supports_heating ?? false,
 		supportsCooling: data.supports_cooling ?? false,
 		isMixed: data.is_mixed ?? false,
@@ -132,7 +129,7 @@ export const useSpaceClimateState = (spaceId: Ref<ISpace['id'] | undefined>): IU
 	const isOff = computed(() => climateStateData.value?.mode === 'off');
 	const canAdjustTemperature = computed(() => {
 		const state = climateStateData.value;
-		return state !== null && state.hasClimate && state.canSetSetpoint;
+		return state !== null && state.hasClimate && (state.supportsHeating || state.supportsCooling);
 	});
 
 	const fetchClimateState = async (): Promise<IClimateState | null> => {
