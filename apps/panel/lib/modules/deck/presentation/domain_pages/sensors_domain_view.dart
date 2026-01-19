@@ -1137,6 +1137,24 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     bool isAlert,
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final dangerColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
+
+    // If alert, always use danger color regardless of direction
+    if (isAlert) {
+      IconData icon;
+      switch (direction) {
+        case TrendDirection.up:
+          icon = Icons.arrow_upward;
+          break;
+        case TrendDirection.down:
+          icon = Icons.arrow_downward;
+          break;
+        case TrendDirection.stable:
+          icon = Icons.remove;
+          break;
+      }
+      return Icon(icon, size: _scale(12), color: dangerColor);
+    }
 
     IconData icon;
     Color color;
@@ -1367,11 +1385,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => _SensorDetailPage(
-          sensor: sensor,
-          categoryColor: _getCategoryColor(context, sensor.category),
-          categoryBgColor: _getCategoryLightColor(context, sensor.category),
-        ),
+        builder: (_) => _SensorDetailPage(sensor: sensor),
       ),
     );
   }
@@ -1383,13 +1397,9 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
 
 class _SensorDetailPage extends StatefulWidget {
   final SensorData sensor;
-  final Color categoryColor;
-  final Color categoryBgColor;
 
   const _SensorDetailPage({
     required this.sensor,
-    required this.categoryColor,
-    required this.categoryBgColor,
   });
 
   @override
@@ -1466,6 +1476,59 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
   double _scale(double size) =>
       _screenService.scale(size, density: _visualDensityService.density);
 
+  // Theme-aware color getters - computed locally to support theme changes
+  Color _getCategoryColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    switch (widget.sensor.category) {
+      case SensorCategory.temperature:
+        return isDark ? AppColorsDark.info : AppColorsLight.info;
+      case SensorCategory.humidity:
+        return isDark ? AppColorsDark.success : AppColorsLight.success;
+      case SensorCategory.airQuality:
+        return isDark ? AppColorsDark.success : AppColorsLight.success;
+      case SensorCategory.motion:
+        return isDark ? AppColorsDark.warning : AppColorsLight.warning;
+      case SensorCategory.safety:
+        return isDark ? AppColorsDark.danger : AppColorsLight.danger;
+      case SensorCategory.light:
+        return isDark ? AppColorsDark.warning : AppColorsLight.warning;
+      case SensorCategory.energy:
+        return isDark ? AppColorsDark.primary : AppColorsLight.primary;
+    }
+  }
+
+  Color _getCategoryBgColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    switch (widget.sensor.category) {
+      case SensorCategory.temperature:
+        return isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight5;
+      case SensorCategory.humidity:
+        return isDark
+            ? AppColorsDark.successLight5
+            : AppColorsLight.successLight5;
+      case SensorCategory.airQuality:
+        return isDark
+            ? AppColorsDark.successLight5
+            : AppColorsLight.successLight5;
+      case SensorCategory.motion:
+        return isDark
+            ? AppColorsDark.warningLight5
+            : AppColorsLight.warningLight5;
+      case SensorCategory.safety:
+        return isDark
+            ? AppColorsDark.dangerLight5
+            : AppColorsLight.dangerLight5;
+      case SensorCategory.light:
+        return isDark
+            ? AppColorsDark.warningLight5
+            : AppColorsLight.warningLight5;
+      case SensorCategory.energy:
+        return isDark
+            ? AppColorsDark.primaryLight5
+            : AppColorsLight.primaryLight5;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1506,8 +1569,8 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
           AppSpacings.spacingMdHorizontal,
           HeaderDeviceIcon(
             icon: widget.sensor.icon,
-            backgroundColor: widget.categoryBgColor,
-            iconColor: widget.categoryColor,
+            backgroundColor: _getCategoryBgColor(context),
+            iconColor: _getCategoryColor(context),
           ),
         ],
       ),
@@ -1585,7 +1648,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
               style: TextStyle(
                 fontSize: _scale(72),
                 fontWeight: FontWeight.w200,
-                color: widget.categoryColor,
+                color: _getCategoryColor(context),
               ),
               children: [
                 TextSpan(text: widget.sensor.value),
@@ -1781,7 +1844,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
             height: _scale(160),
             child: CustomPaint(
               size: Size(double.infinity, _scale(160)),
-              painter: _ChartPainter(color: widget.categoryColor),
+              painter: _ChartPainter(color: _getCategoryColor(context)),
             ),
           ),
           AppSpacings.spacingSmVertical,
@@ -2219,5 +2282,6 @@ class _ChartPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _ChartPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
