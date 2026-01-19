@@ -1118,16 +1118,16 @@ class AppLocalizationsCs extends AppLocalizations {
   String get media_other_devices => 'Ostatní zařízení';
 
   @override
-  String get media_up_next => 'Dále přehrát';
+  String get media_up_next => 'Další v pořadí';
 
   @override
   String get media_volume => 'Hlasitost';
 
   @override
-  String get media_playing => 'Přehrávání';
+  String get media_playing => 'Přehrává';
 
   @override
-  String get media_idle => 'Nečinný';
+  String get media_idle => 'Nečinné';
 
   @override
   String get media_standby => 'Pohotovost';
