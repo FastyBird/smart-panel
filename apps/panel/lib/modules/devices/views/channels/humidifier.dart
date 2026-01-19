@@ -176,31 +176,28 @@ class HumidifierChannelView extends ChannelView
     return status == HumidifierStatusValue.humidifying;
   }
 
-  /// Computes whether the humidifier is actively humidifying.
+  /// Computes whether the humidifier is actively working.
   ///
-  /// If the status property is available, uses it directly.
-  /// Otherwise, falls back to comparing current humidity vs target:
-  /// - If current < target (with delta tolerance), device should be humidifying
-  /// - If current >= target, device is idle
+  /// If the status property is available, returns true when status != idle.
+  /// Otherwise, falls back to comparing target humidity vs current:
+  /// - If target > current, device should be humidifying
+  /// - If target <= current, device is idle
   ///
   /// [currentHumidity] - The measured humidity from the humidity sensor channel
-  /// [delta] - Tolerance in percentage points (default: 2%)
-  bool computeIsHumidifying({int? currentHumidity, int delta = 2}) {
-    // If status is available, use it directly
+  bool computeIsHumidifying({int? currentHumidity}) {
+    // If status is available, active when not idle
     if (hasStatus && status != null) {
-      return status == HumidifierStatusValue.humidifying;
+      return status != HumidifierStatusValue.idle;
     }
 
-    // Fallback: compare current humidity vs target
+    // Fallback: compare target humidity vs current
+    // Active when target > current (needs to add humidity)
     if (currentHumidity == null) {
       return false;
     }
 
     final target = humidity;
-
-    // If current is below target (minus delta), device should be humidifying
-    // e.g., target = 50%, current = 45%, delta = 2 => 45 < (50 - 2) = true
-    return currentHumidity < (target - delta);
+    return target > currentHumidity;
   }
 
   // ---------------------------------------------------------------------------

@@ -388,8 +388,8 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     final measuredHumidity = humidityChannel.humidity;
     final currentHumidity = measuredHumidity.toDouble();
 
-    // Use fallback method to determine if actively humidifying
-    final isHumidifying = channel.computeIsHumidifying(
+    // Determine if actively humidifying (must be on AND actively working)
+    final isActivelyWorking = channel.computeIsHumidifying(
       currentHumidity: measuredHumidity,
     );
 
@@ -401,7 +401,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       step: 0.01,
       size: size,
       accentType: DialAccentColor.teal,
-      isActive: isHumidifying,
+      isActive: isOn && isActivelyWorking,
       enabled: isOn,
       displayFormat: DialDisplayFormat.percentage,
       majorTickCount: 8,

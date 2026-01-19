@@ -2512,10 +2512,9 @@
         "data_type": "enum",
         "unit": null,
         "format": [
-          "bright",
-          "moderate",
-          "dusky",
-          "dark"
+          "low",
+          "medium",
+          "high"
         ],
         "invalid": null,
         "step": null
