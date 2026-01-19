@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:event_bus/event_bus.dart';
@@ -151,6 +152,10 @@ class _CircularControlDialState extends State<CircularControlDial>
   late double _value;
   late AnimationController _glowController;
   bool _isDragging = false;
+  Timer? _buttonDebounceTimer;
+
+  /// Debounce duration for +/- button taps (ms)
+  static const int _buttonDebounceDuration = 500;
 
   final Map<Type, GestureRecognizerFactory> _gestures = {};
 
@@ -234,6 +239,7 @@ class _CircularControlDialState extends State<CircularControlDial>
     if (_isDragging) {
       _eventBus.fire(PageSwipeBlockEvent(blocked: false));
     }
+    _buttonDebounceTimer?.cancel();
     _glowController.dispose();
     _gestures.clear();
     super.dispose();
@@ -348,14 +354,28 @@ class _CircularControlDialState extends State<CircularControlDial>
     if (!widget.enabled) return;
     final newValue = (_value + widget.step).clamp(widget.minValue, widget.maxValue);
     setState(() => _value = newValue);
-    widget.onChanged?.call(_value);
+    _scheduleButtonCallback();
   }
 
   void _decrementValue() {
     if (!widget.enabled) return;
     final newValue = (_value - widget.step).clamp(widget.minValue, widget.maxValue);
     setState(() => _value = newValue);
-    widget.onChanged?.call(_value);
+    _scheduleButtonCallback();
+  }
+
+  /// Schedules a debounced callback for button presses.
+  /// The callback fires after [_buttonDebounceDuration] ms of no button activity.
+  void _scheduleButtonCallback() {
+    _buttonDebounceTimer?.cancel();
+    _buttonDebounceTimer = Timer(
+      const Duration(milliseconds: _buttonDebounceDuration),
+      () {
+        if (mounted) {
+          widget.onChanged?.call(_value);
+        }
+      },
+    );
   }
 
   Offset _getThumbPosition() {
