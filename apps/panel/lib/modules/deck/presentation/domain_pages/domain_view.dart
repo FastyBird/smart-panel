@@ -97,6 +97,10 @@ class _DomainViewPageState extends State<DomainViewPage> {
         hint = 'Manage temperature and climate';
         hintIcon = MdiIcons.thermometerLines;
         break;
+      case DomainType.shading:
+        hint = 'Control your window coverings';
+        hintIcon = MdiIcons.blindsHorizontal;
+        break;
       case DomainType.media:
         hint = 'Control your entertainment';
         hintIcon = MdiIcons.speaker;

@@ -25,6 +25,10 @@ DomainType? classifyDeviceToDomain(DevicesModuleDeviceCategory category) {
     case DevicesModuleDeviceCategory.airPurifier:
       return DomainType.climate;
 
+    // SHADING domain
+    case DevicesModuleDeviceCategory.windowCovering:
+      return DomainType.shading;
+
     // MEDIA domain
     case DevicesModuleDeviceCategory.television:
     case DevicesModuleDeviceCategory.media:
@@ -49,7 +53,6 @@ DomainType? classifyDeviceToDomain(DevicesModuleDeviceCategory category) {
     case DevicesModuleDeviceCategory.switcher:
     case DevicesModuleDeviceCategory.valve:
     case DevicesModuleDeviceCategory.waterHeater:
-    case DevicesModuleDeviceCategory.windowCovering:
     case DevicesModuleDeviceCategory.$unknown:
       return null;
   }
@@ -59,12 +62,14 @@ DomainType? classifyDeviceToDomain(DevicesModuleDeviceCategory category) {
 class DomainCounts {
   final int lights;
   final int climate;
+  final int shading;
   final int media;
   final int sensors;
 
   const DomainCounts({
     this.lights = 0,
     this.climate = 0,
+    this.shading = 0,
     this.media = 0,
     this.sensors = 0,
   });
@@ -76,6 +81,8 @@ class DomainCounts {
         return lights;
       case DomainType.climate:
         return climate;
+      case DomainType.shading:
+        return shading;
       case DomainType.media:
         return media;
       case DomainType.sensors:
@@ -95,14 +102,15 @@ class DomainCounts {
   }
 
   /// Returns true if any domain has devices.
-  bool get hasAnyDomain => lights > 0 || climate > 0 || media > 0 || sensors > 0;
+  bool get hasAnyDomain =>
+      lights > 0 || climate > 0 || shading > 0 || media > 0 || sensors > 0;
 
   /// Total device count across all domains.
-  int get total => lights + climate + media + sensors;
+  int get total => lights + climate + shading + media + sensors;
 
   @override
   String toString() {
-    return 'DomainCounts(lights: $lights, climate: $climate, media: $media, sensors: $sensors)';
+    return 'DomainCounts(lights: $lights, climate: $climate, shading: $shading, media: $media, sensors: $sensors)';
   }
 }
 
@@ -113,6 +121,7 @@ class DomainCounts {
 DomainCounts buildDomainCounts(List<DevicesModuleDeviceCategory> deviceCategories) {
   int lights = 0;
   int climate = 0;
+  int shading = 0;
   int media = 0;
   int sensors = 0;
 
@@ -127,6 +136,9 @@ DomainCounts buildDomainCounts(List<DevicesModuleDeviceCategory> deviceCategorie
       case DomainType.climate:
         climate++;
         break;
+      case DomainType.shading:
+        shading++;
+        break;
       case DomainType.media:
         media++;
         break;
@@ -139,6 +151,7 @@ DomainCounts buildDomainCounts(List<DevicesModuleDeviceCategory> deviceCategorie
   return DomainCounts(
     lights: lights,
     climate: climate,
+    shading: shading,
     media: media,
     sensors: sensors,
   );

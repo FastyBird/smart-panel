@@ -12,6 +12,9 @@ enum DomainType {
   /// Climate control devices (thermostats, AC, heaters, fans, humidifiers)
   climate,
 
+  /// Shading devices (window coverings, blinds, curtains, rollers)
+  shading,
+
   /// Media devices (TVs, speakers, media players)
   media,
 
@@ -28,6 +31,8 @@ extension DomainTypeUI on DomainType {
         return MdiIcons.lightbulbOutline;
       case DomainType.climate:
         return MdiIcons.thermometer;
+      case DomainType.shading:
+        return MdiIcons.blindsHorizontal;
       case DomainType.media:
         return MdiIcons.playCircleOutline;
       case DomainType.sensors:
@@ -42,6 +47,8 @@ extension DomainTypeUI on DomainType {
         return 'Lights';
       case DomainType.climate:
         return 'Climate';
+      case DomainType.shading:
+        return 'Shading';
       case DomainType.media:
         return 'Media';
       case DomainType.sensors:
@@ -56,10 +63,12 @@ extension DomainTypeUI on DomainType {
         return 0;
       case DomainType.climate:
         return 1;
-      case DomainType.media:
+      case DomainType.shading:
         return 2;
-      case DomainType.sensors:
+      case DomainType.media:
         return 3;
+      case DomainType.sensors:
+        return 4;
     }
   }
 }
