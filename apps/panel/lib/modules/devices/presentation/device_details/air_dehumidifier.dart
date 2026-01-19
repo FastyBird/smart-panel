@@ -391,8 +391,8 @@ class _AirDehumidifierDeviceDetailState
     final measuredHumidity = humidityChannel.humidity;
     final currentHumidity = measuredHumidity.toDouble();
 
-    // Use fallback method to determine if actively dehumidifying
-    final isDehumidifying = channel.computeIsDehumidifying(
+    // Determine if actively dehumidifying (must be on AND actively working)
+    final isActivelyWorking = channel.computeIsDehumidifying(
       currentHumidity: measuredHumidity,
     );
 
@@ -404,7 +404,7 @@ class _AirDehumidifierDeviceDetailState
       step: 0.01,
       size: size,
       accentType: DialAccentColor.teal,
-      isActive: isDehumidifying,
+      isActive: isOn && isActivelyWorking,
       enabled: isOn,
       displayFormat: DialDisplayFormat.percentage,
       majorTickCount: 8,
