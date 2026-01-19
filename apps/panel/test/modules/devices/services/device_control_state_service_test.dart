@@ -1,5 +1,6 @@
 import 'package:fake_async/fake_async.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/control_ui_state.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -59,7 +60,7 @@ void main() {
 
         final state = service.getState('device-1', 'channel-1', 'property-1');
         expect(state, isNotNull);
-        expect(state!.state, ControlUIState.pending);
+        expect(state!.state, DeviceControlUIState.pending);
       });
 
       test('notifies listeners when setting pending', () {
@@ -84,7 +85,7 @@ void main() {
           async.elapse(const Duration(milliseconds: 500));
           final state =
               service.getState('device-1', 'channel-1', 'property-1');
-          expect(state!.state, ControlUIState.pending);
+          expect(state!.state, DeviceControlUIState.pending);
           expect(state.desiredValue, 75);
         });
       });
@@ -97,7 +98,7 @@ void main() {
 
         final state = service.getState('device-1', 'channel-1', 'property-1');
         expect(state, isNotNull);
-        expect(state!.state, ControlUIState.settling);
+        expect(state!.state, DeviceControlUIState.settling);
         expect(state.isSettling, isTrue);
         expect(state.desiredValue, 100);
       });
@@ -123,7 +124,7 @@ void main() {
     });
 
     group('timer expiration', () {
-      test('settling timer clears state after duration', () {
+      test('settling timer transitions to mixed state after duration', () {
         fakeAsync((async) {
           service.setPending('device-1', 'channel-1', 'property-1', true);
           service.setSettling('device-1', 'channel-1', 'property-1');
@@ -134,17 +135,25 @@ void main() {
             service.isLocked('device-1', 'channel-1', 'property-1'),
             isTrue,
           );
+          expect(
+            service.isSettling('device-1', 'channel-1', 'property-1'),
+            isTrue,
+          );
 
-          // After timer expires (default 800ms), state should be cleared
+          // After timer expires (default 800ms), state should transition to mixed
           async.elapse(const Duration(milliseconds: 200));
           expect(
             service.isLocked('device-1', 'channel-1', 'property-1'),
-            isFalse,
+            isTrue, // Still locked in mixed state
           );
           expect(
-            service.getState('device-1', 'channel-1', 'property-1'),
-            isNull,
+            service.isMixed('device-1', 'channel-1', 'property-1'),
+            isTrue,
           );
+          final state =
+              service.getState('device-1', 'channel-1', 'property-1');
+          expect(state, isNotNull);
+          expect(state!.state, DeviceControlUIState.mixed);
         });
       });
 
@@ -164,12 +173,20 @@ void main() {
             service.isLocked('device-1', 'channel-1', 'property-1'),
             isTrue,
           );
+          expect(
+            service.isSettling('device-1', 'channel-1', 'property-1'),
+            isTrue,
+          );
 
-          // After 2000ms total, state should be cleared
+          // After 2000ms total, state should transition to mixed
           async.elapse(const Duration(milliseconds: 600));
           expect(
             service.isLocked('device-1', 'channel-1', 'property-1'),
-            isFalse,
+            isTrue, // Still locked in mixed state
+          );
+          expect(
+            service.isMixed('device-1', 'channel-1', 'property-1'),
+            isTrue,
           );
         });
       });

@@ -8,8 +8,8 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/light_channel_detail.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
-import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart'
-    show DeviceControlStateService;
+import 'package:fastybird_smart_panel/modules/devices/models/control_state.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/light.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
@@ -485,10 +485,50 @@ class _LightSingleChannelControlPanelState
   Color? _getColor() {
     if (!_channel.hasColor) return null;
 
-    // Check for overlay value
+    final controlStateService = _deviceControlStateService;
+
+    // Check for color group overlay (RGB/HSV tracked together)
+    if (controlStateService != null &&
+        controlStateService.isGroupLocked(_device.id, 'color:${_channel.id}')) {
+      // Try to get RGB values from group
+      final red = controlStateService.getGroupPropertyValue(
+        _device.id,
+        'color:${_channel.id}',
+        _channel.id,
+        _channel.colorRedProp?.id ?? '',
+      );
+      final green = controlStateService.getGroupPropertyValue(
+        _device.id,
+        'color:${_channel.id}',
+        _channel.id,
+        _channel.colorGreenProp?.id ?? '',
+      );
+      final blue = controlStateService.getGroupPropertyValue(
+        _device.id,
+        'color:${_channel.id}',
+        _channel.id,
+        _channel.colorBlueProp?.id ?? '',
+      );
+
+      if (red is num && green is num && blue is num) {
+        return ColorUtils.fromRGB(red.toInt(), green.toInt(), blue.toInt());
+      }
+
+      // Try to get hue value from group
+      final hue = controlStateService.getGroupPropertyValue(
+        _device.id,
+        'color:${_channel.id}',
+        _channel.id,
+        _channel.hueProp?.id ?? '',
+      );
+      if (hue is num) {
+        return HSVColor.fromAHSV(1.0, hue.toDouble(), 1.0, 1.0).toColor();
+      }
+    }
+
+    // Fallback: check single property for hue
     final hueProp = _channel.hueProp;
     if (hueProp != null) {
-      final controlStateService = _deviceControlStateService;
       if (controlStateService != null &&
           controlStateService.isLocked(_device.id, _channel.id, hueProp.id)) {
         final desiredValue = controlStateService.getDesiredValue(
@@ -718,16 +758,54 @@ class _LightSingleChannelControlPanelState
   }
 
   void _handleColorChanged(Color color, double saturation) {
-    final hueProp = _channel.hueProp;
-    final hue = HSVColor.fromColor(color).hue;
+    final rgbValue = ColorUtils.toRGB(color);
+    final hsvValue = ColorUtils.toHSV(color);
 
-    // Set PENDING state for hue if available
-    if (hueProp != null) {
-      _deviceControlStateService?.setPending(
+    // Build property configs for the color group
+    final List<PropertyConfig> colorProperties = [];
+
+    if (_channel.colorRedProp != null) {
+      colorProperties.add(PropertyConfig(
+        channelId: _channel.id,
+        propertyId: _channel.colorRedProp!.id,
+        desiredValue: rgbValue.red,
+      ));
+    }
+    if (_channel.colorGreenProp != null) {
+      colorProperties.add(PropertyConfig(
+        channelId: _channel.id,
+        propertyId: _channel.colorGreenProp!.id,
+        desiredValue: rgbValue.green,
+      ));
+    }
+    if (_channel.colorBlueProp != null) {
+      colorProperties.add(PropertyConfig(
+        channelId: _channel.id,
+        propertyId: _channel.colorBlueProp!.id,
+        desiredValue: rgbValue.blue,
+      ));
+    }
+    if (_channel.hueProp != null) {
+      colorProperties.add(PropertyConfig(
+        channelId: _channel.id,
+        propertyId: _channel.hueProp!.id,
+        desiredValue: hsvValue.hue.round(),
+      ));
+    }
+    if (_channel.saturationProp != null) {
+      colorProperties.add(PropertyConfig(
+        channelId: _channel.id,
+        propertyId: _channel.saturationProp!.id,
+        desiredValue: (hsvValue.saturation * 100).round(),
+      ));
+    }
+
+    // Set PENDING state for color group
+    if (colorProperties.isNotEmpty) {
+      _deviceControlStateService?.setGroupPending(
         _device.id,
-        _channel.id,
-        hueProp.id,
-        hue.round(),
+        'color:${_channel.id}',
+        colorProperties,
       );
     }
     setState(() {});
@@ -738,9 +816,6 @@ class _LightSingleChannelControlPanelState
       const Duration(milliseconds: 150),
       () async {
         if (!mounted) return;
-
-        final rgbValue = ColorUtils.toRGB(color);
-        final hsvValue = ColorUtils.toHSV(color);
 
         // Build list of properties to update
         final List<PropertyCommandItem> properties = [];
@@ -804,11 +879,11 @@ class _LightSingleChannelControlPanelState
           await _valueHelper.setMultiplePropertyValues(context, properties);
         }
 
-        if (mounted && hueProp != null) {
-          _deviceControlStateService?.setSettling(
+        // Start settling for color group (intent system will also auto-settle)
+        if (mounted && colorProperties.isNotEmpty) {
+          _deviceControlStateService?.setGroupSettling(
             _device.id,
-            _channel.id,
-            hueProp.id,
+            'color:${_channel.id}',
           );
         }
       },
@@ -1258,6 +1333,58 @@ class _LightMultiChannelControlPanelState
     final channel = _selectedChannel;
     if (!channel.hasColor) return;
 
+    final rgbValue = ColorUtils.toRGB(color);
+    final hsv = HSVColor.fromColor(color);
+
+    // Build property configs for the color group
+    final List<PropertyConfig> colorProperties = [];
+
+    if (channel.colorRedProp != null) {
+      colorProperties.add(PropertyConfig(
+        channelId: channel.id,
+        propertyId: channel.colorRedProp!.id,
+        desiredValue: rgbValue.red,
+      ));
+    }
+    if (channel.colorGreenProp != null) {
+      colorProperties.add(PropertyConfig(
+        channelId: channel.id,
+        propertyId: channel.colorGreenProp!.id,
+        desiredValue: rgbValue.green,
+      ));
+    }
+    if (channel.colorBlueProp != null) {
+      colorProperties.add(PropertyConfig(
+        channelId: channel.id,
+        propertyId: channel.colorBlueProp!.id,
+        desiredValue: rgbValue.blue,
+      ));
+    }
+    if (channel.hueProp != null) {
+      colorProperties.add(PropertyConfig(
+        channelId: channel.id,
+        propertyId: channel.hueProp!.id,
+        desiredValue: hsv.hue.round(),
+      ));
+    }
+    if (channel.saturationProp != null) {
+      colorProperties.add(PropertyConfig(
+        channelId: channel.id,
+        propertyId: channel.saturationProp!.id,
+        desiredValue: (saturation * 100).round(),
+      ));
+    }
+
+    // Set PENDING state for color group
+    if (colorProperties.isNotEmpty) {
+      _deviceControlStateService?.setGroupPending(
+        _device.id,
+        'color:${channel.id}',
+        colorProperties,
+      );
+    }
+    setState(() {});
+
     _colorDebounceTimer?.cancel();
     _colorDebounceTimer = Timer(
       const Duration(milliseconds: 150),
@@ -1278,7 +1405,6 @@ class _LightMultiChannelControlPanelState
 
         // HSV mode
         if (channel.hasHue) {
-          final hsv = HSVColor.fromColor(color);
           if (channel.hueProp != null) {
             commands.add(PropertyCommandItem(
               deviceId: _device.id,
@@ -1298,7 +1424,6 @@ class _LightMultiChannelControlPanelState
         }
         // RGB mode
         else if (channel.hasColorRed) {
-          final rgbValue = ColorUtils.toRGB(color);
           if (channel.colorRedProp != null) {
             commands.add(PropertyCommandItem(
               deviceId: _device.id,
@@ -1326,6 +1451,14 @@ class _LightMultiChannelControlPanelState
         }
 
         await _valueHelper.setMultiplePropertyValues(context, commands);
+
+        // Start settling for color group (intent system will also auto-settle)
+        if (mounted && colorProperties.isNotEmpty) {
+          _deviceControlStateService?.setGroupSettling(
+            _device.id,
+            'color:${channel.id}',
+          );
+        }
       },
     );
   }
@@ -1439,6 +1572,47 @@ class _LightMultiChannelControlPanelState
   Color? _getSelectedChannelColor() {
     final channel = _selectedChannel;
     if (!channel.hasColor) return null;
+
+    final controlState = _deviceControlStateService;
+
+    // Check for color group overlay (RGB/HSV tracked together)
+    if (controlState != null &&
+        controlState.isGroupLocked(_device.id, 'color:${channel.id}')) {
+      // Try to get RGB values from group
+      final red = controlState.getGroupPropertyValue(
+        _device.id,
+        'color:${channel.id}',
+        channel.id,
+        channel.colorRedProp?.id ?? '',
+      );
+      final green = controlState.getGroupPropertyValue(
+        _device.id,
+        'color:${channel.id}',
+        channel.id,
+        channel.colorGreenProp?.id ?? '',
+      );
+      final blue = controlState.getGroupPropertyValue(
+        _device.id,
+        'color:${channel.id}',
+        channel.id,
+        channel.colorBlueProp?.id ?? '',
+      );
+
+      if (red is num && green is num && blue is num) {
+        return ColorUtils.fromRGB(red.toInt(), green.toInt(), blue.toInt());
+      }
+
+      // Try to get hue value from group
+      final hue = controlState.getGroupPropertyValue(
+        _device.id,
+        'color:${channel.id}',
+        channel.id,
+        channel.hueProp?.id ?? '',
+      );
+      if (hue is num) {
+        return HSVColor.fromAHSV(1.0, hue.toDouble(), 1.0, 1.0).toColor();
+      }
+    }
 
     try {
       if (channel.hasColorRed) {

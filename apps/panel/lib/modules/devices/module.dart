@@ -11,6 +11,7 @@ import 'package:fastybird_smart_panel/modules/devices/repositories/validation.da
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/role_control_state_repository.dart';
+import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/plugins/devices-home-assistant/plugin.dart';
 import 'package:fastybird_smart_panel/plugins/devices-shelly-ng/plugin.dart';
 import 'package:fastybird_smart_panel/plugins/devices-shelly-v1/plugin.dart';
@@ -82,7 +83,22 @@ class DevicesModuleService {
     );
 
     _roleControlStateRepository = RoleControlStateRepository();
-    _deviceControlStateService = DeviceControlStateService();
+
+    // Get IntentsRepository if available (registered by IntentsModule)
+    IntentsRepository? intentsRepository;
+    try {
+      intentsRepository = locator<IntentsRepository>();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[DEVICES MODULE][MODULE] IntentsRepository not available, intent-based settling disabled',
+        );
+      }
+    }
+
+    _deviceControlStateService = DeviceControlStateService(
+      intentsRepository: intentsRepository,
+    );
 
     _devicesService = DevicesService(
       devicesRepository: _devicesRepository,

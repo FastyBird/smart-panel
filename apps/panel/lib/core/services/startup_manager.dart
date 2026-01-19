@@ -711,6 +711,11 @@ class StartupManagerService {
       apiClient: _apiClient,
       socketService: _socketClient,
     );
+    // IntentsModuleService must be created before DevicesModuleService and SpacesModuleService
+    // because they depend on IntentsRepository for intent-based optimistic UI
+    var intentsModuleService = IntentsModuleService(
+      socketService: _socketClient,
+    );
     var devicesModuleService = DevicesModuleService(
       apiClient: _apiClient,
       socketService: _socketClient,
@@ -721,11 +726,6 @@ class StartupManagerService {
     );
     var scenesModuleService = ScenesModuleService(
       apiClient: _apiClient,
-      socketService: _socketClient,
-    );
-    // IntentsModuleService must be created before SpacesModuleService
-    // because SpacesModuleService depends on IntentsRepository
-    var intentsModuleService = IntentsModuleService(
       socketService: _socketClient,
     );
     var spacesModuleService = SpacesModuleService(
