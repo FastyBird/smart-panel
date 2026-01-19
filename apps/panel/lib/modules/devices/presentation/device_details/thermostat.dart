@@ -633,8 +633,9 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     }
 
     // Contact sensor (optional) - shows window/door status
+    // detected = true means window is open
     if (contactChannel != null) {
-      final isOpen = !contactChannel.detected;
+      final isOpen = contactChannel.detected;
       infoTiles.add(InfoTile(
         label: localizations.contact_sensor_window,
         value: isOpen
