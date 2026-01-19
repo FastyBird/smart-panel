@@ -32,7 +32,6 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/water_heater
 import 'package:fastybird_smart_panel/modules/devices/views/devices/sensor.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';
-import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
 import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart'
@@ -919,21 +918,22 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
       if (device is ThermostatDeviceView) {
         deviceType = 'thermostat';
+        // Derive mode from heater/cooler ON states
+        final heaterOn = device.heaterChannel?.on ?? false;
+        final coolerOn = device.coolerChannel?.on ?? false;
+        final isHeating = device.heaterChannel?.isHeating ?? false;
+        final isCooling = device.coolerChannel?.isCooling ?? false;
+
         isActive = device.isOn;
-        // Convert thermostat mode to display string
-        switch (device.thermostatMode) {
-          case ThermostatModeValue.off:
-            status = 'Off';
-            break;
-          case ThermostatModeValue.heat:
-            status = isActive ? 'Heating' : 'Standby';
-            break;
-          case ThermostatModeValue.cool:
-            status = isActive ? 'Cooling' : 'Standby';
-            break;
-          case ThermostatModeValue.auto:
-            status = isActive ? 'Active' : 'Standby';
-            break;
+
+        if (!heaterOn && !coolerOn) {
+          status = 'Off';
+        } else if (isHeating) {
+          status = 'Heating';
+        } else if (isCooling) {
+          status = 'Cooling';
+        } else if (heaterOn || coolerOn) {
+          status = 'Standby';
         }
       } else if (device is HeatingUnitDeviceView) {
         deviceType = 'heating_unit';

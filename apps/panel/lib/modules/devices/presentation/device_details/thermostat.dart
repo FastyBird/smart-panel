@@ -18,10 +18,19 @@ import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
-import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+
+/// Local thermostat mode enum - derived from heater/cooler ON states
+enum ThermostatMode {
+  off,
+  heat,
+  cool,
+  auto;
+
+  String get value => name;
+}
 
 class ThermostatDeviceDetail extends StatefulWidget {
   final ThermostatDeviceView _device;
@@ -120,45 +129,70 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   // STATE HELPERS
   // --------------------------------------------------------------------------
 
-  ThermostatModeValue get _currentMode {
-    final modeProp = _device.thermostatChannel.modeProp;
+  /// Get current mode from heater/cooler ON states or pending control state
+  ThermostatMode get _currentMode {
     final controlState = _deviceControlStateService;
+    final heaterChannel = _device.heaterChannel;
+    final coolerChannel = _device.coolerChannel;
 
-    // Check for pending/optimistic value first
+    // Check for pending/optimistic heater.on value
+    bool heaterOn = heaterChannel?.on ?? false;
     if (controlState != null &&
-        controlState.isLocked(
-            _device.id, _device.thermostatChannel.id, modeProp.id)) {
+        heaterChannel != null &&
+        heaterChannel.onProp != null &&
+        controlState.isLocked(_device.id, heaterChannel.id, heaterChannel.onProp!.id)) {
       final desiredValue = controlState.getDesiredValue(
         _device.id,
-        _device.thermostatChannel.id,
-        modeProp.id,
+        heaterChannel.id,
+        heaterChannel.onProp!.id,
       );
-      if (desiredValue is String && ThermostatModeValue.contains(desiredValue)) {
-        return ThermostatModeValue.fromValue(desiredValue) ??
-            _device.thermostatMode;
+      if (desiredValue is bool) {
+        heaterOn = desiredValue;
       }
     }
 
-    return _device.thermostatMode;
+    // Check for pending/optimistic cooler.on value
+    bool coolerOn = coolerChannel?.on ?? false;
+    if (controlState != null &&
+        coolerChannel != null &&
+        coolerChannel.onProp != null &&
+        controlState.isLocked(_device.id, coolerChannel.id, coolerChannel.onProp!.id)) {
+      final desiredValue = controlState.getDesiredValue(
+        _device.id,
+        coolerChannel.id,
+        coolerChannel.onProp!.id,
+      );
+      if (desiredValue is bool) {
+        coolerOn = desiredValue;
+      }
+    }
+
+    // Derive mode from heater/cooler ON states
+    if (heaterOn && coolerOn) {
+      return ThermostatMode.auto;
+    } else if (heaterOn) {
+      return ThermostatMode.heat;
+    } else if (coolerOn) {
+      return ThermostatMode.cool;
+    } else {
+      return ThermostatMode.off;
+    }
   }
 
   bool get _isHeating => _device.heaterChannel?.isHeating ?? false;
 
   bool get _isCooling => _device.coolerChannel?.isCooling ?? false;
 
-  /// Dial glow is active when:
-  /// - heat mode: thermostat.active = true AND heater.status = true
-  /// - cool mode: thermostat.active = true AND cooler.status = true
+  /// Dial glow is active when heater or cooler is actively working
   bool get _isActive {
-    final thermostatActive = _device.thermostatChannel.isActive;
-
     switch (_currentMode) {
-      case ThermostatModeValue.heat:
-        return thermostatActive && _isHeating;
-      case ThermostatModeValue.cool:
-        return thermostatActive && _isCooling;
-      case ThermostatModeValue.auto:
-      case ThermostatModeValue.off:
+      case ThermostatMode.heat:
+        return _isHeating;
+      case ThermostatMode.cool:
+        return _isCooling;
+      case ThermostatMode.auto:
+        return _isHeating || _isCooling;
+      case ThermostatMode.off:
         return false;
     }
   }
@@ -168,12 +202,12 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   double get _minSetpoint {
     // Get min from the appropriate channel based on mode
     switch (_currentMode) {
-      case ThermostatModeValue.heat:
+      case ThermostatMode.heat:
         return _device.heaterChannel?.minTemperature ?? 16.0;
-      case ThermostatModeValue.cool:
+      case ThermostatMode.cool:
         return _device.coolerChannel?.minTemperature ?? 16.0;
-      case ThermostatModeValue.auto:
-      case ThermostatModeValue.off:
+      case ThermostatMode.auto:
+      case ThermostatMode.off:
         // Use heater min as default for display
         return _device.heaterChannel?.minTemperature ?? 16.0;
     }
@@ -182,12 +216,12 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   double get _maxSetpoint {
     // Get max from the appropriate channel based on mode
     switch (_currentMode) {
-      case ThermostatModeValue.heat:
+      case ThermostatMode.heat:
         return _device.heaterChannel?.maxTemperature ?? 30.0;
-      case ThermostatModeValue.cool:
+      case ThermostatMode.cool:
         return _device.coolerChannel?.maxTemperature ?? 30.0;
-      case ThermostatModeValue.auto:
-      case ThermostatModeValue.off:
+      case ThermostatMode.auto:
+      case ThermostatMode.off:
         // Use heater max as default for display
         return _device.heaterChannel?.maxTemperature ?? 30.0;
     }
@@ -195,12 +229,12 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
   ChannelPropertyView? get _activeSetpointProp {
     switch (_currentMode) {
-      case ThermostatModeValue.heat:
+      case ThermostatMode.heat:
         return _device.heaterChannel?.temperatureProp;
-      case ThermostatModeValue.cool:
+      case ThermostatMode.cool:
         return _device.coolerChannel?.temperatureProp;
-      case ThermostatModeValue.auto:
-      case ThermostatModeValue.off:
+      case ThermostatMode.auto:
+      case ThermostatMode.off:
         // No setpoint control in auto/off modes
         return null;
     }
@@ -208,12 +242,12 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
   String? get _activeSetpointChannelId {
     switch (_currentMode) {
-      case ThermostatModeValue.heat:
+      case ThermostatMode.heat:
         return _device.heaterChannel?.id;
-      case ThermostatModeValue.cool:
+      case ThermostatMode.cool:
         return _device.coolerChannel?.id;
-      case ThermostatModeValue.auto:
-      case ThermostatModeValue.off:
+      case ThermostatMode.auto:
+      case ThermostatMode.off:
         // No setpoint control in auto/off modes
         return null;
     }
@@ -241,12 +275,12 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
     // Get setpoint based on current mode
     switch (_currentMode) {
-      case ThermostatModeValue.heat:
+      case ThermostatMode.heat:
         return _device.heaterChannel?.temperature ?? 21.0;
-      case ThermostatModeValue.cool:
+      case ThermostatMode.cool:
         return _device.coolerChannel?.temperature ?? 24.0;
-      case ThermostatModeValue.auto:
-      case ThermostatModeValue.off:
+      case ThermostatMode.auto:
+      case ThermostatMode.off:
         // Show heater setpoint for display purposes
         return _device.heaterChannel?.temperature ?? 21.0;
     }
@@ -256,92 +290,112 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   // MODE AND SETPOINT HANDLERS
   // --------------------------------------------------------------------------
 
-  void _onModeChanged(ThermostatModeValue mode) async {
-    final modeProp = _device.thermostatChannel.modeProp;
-    final heaterOnProp = _device.heaterChannel?.onProp;
-    final coolerOnProp = _device.coolerChannel?.onProp;
+  void _onModeChanged(ThermostatMode mode) async {
+    final heaterChannel = _device.heaterChannel;
+    final coolerChannel = _device.coolerChannel;
+    final heaterOnProp = heaterChannel?.onProp;
+    final coolerOnProp = coolerChannel?.onProp;
 
     // Set PENDING state immediately for responsive UI
-    _deviceControlStateService?.setPending(
-      _device.id,
-      _device.thermostatChannel.id,
-      modeProp.id,
-      mode.value,
-    );
-    if (heaterOnProp != null && _device.heaterChannel != null) {
+    if (heaterOnProp != null && heaterChannel != null) {
+      final heaterOn = mode == ThermostatMode.heat || mode == ThermostatMode.auto;
       _deviceControlStateService?.setPending(
         _device.id,
-        _device.heaterChannel!.id,
+        heaterChannel.id,
         heaterOnProp.id,
-        mode == ThermostatModeValue.heat,
+        heaterOn,
       );
     }
-    if (coolerOnProp != null && _device.coolerChannel != null) {
+    if (coolerOnProp != null && coolerChannel != null) {
+      final coolerOn = mode == ThermostatMode.cool || mode == ThermostatMode.auto;
       _deviceControlStateService?.setPending(
         _device.id,
-        _device.coolerChannel!.id,
+        coolerChannel.id,
         coolerOnProp.id,
-        mode == ThermostatModeValue.cool,
+        coolerOn,
       );
     }
     setState(() {});
 
-    // Build batch command list
+    // Build batch command list - mode is controlled via heater.on/cooler.on
     final commands = <PropertyCommandItem>[];
 
-    // Always add mode command
-    commands.add(PropertyCommandItem(
-      deviceId: _device.id,
-      channelId: _device.thermostatChannel.id,
-      propertyId: modeProp.id,
-      value: mode.value,
-    ));
-
-    // Add heater/cooler on commands based on mode
     switch (mode) {
-      case ThermostatModeValue.heat:
-        // Turn on heater
-        if (heaterOnProp != null) {
+      case ThermostatMode.heat:
+        // Turn on heater, turn off cooler
+        if (heaterOnProp != null && heaterChannel != null) {
           commands.add(PropertyCommandItem(
             deviceId: _device.id,
-            channelId: _device.heaterChannel!.id,
+            channelId: heaterChannel.id,
             propertyId: heaterOnProp.id,
             value: true,
           ));
         }
-        break;
-      case ThermostatModeValue.cool:
-        // Turn on cooler
-        if (coolerOnProp != null) {
+        if (coolerOnProp != null && coolerChannel != null) {
           commands.add(PropertyCommandItem(
             deviceId: _device.id,
-            channelId: _device.coolerChannel!.id,
+            channelId: coolerChannel.id,
+            propertyId: coolerOnProp.id,
+            value: false,
+          ));
+        }
+        break;
+      case ThermostatMode.cool:
+        // Turn off heater, turn on cooler
+        if (heaterOnProp != null && heaterChannel != null) {
+          commands.add(PropertyCommandItem(
+            deviceId: _device.id,
+            channelId: heaterChannel.id,
+            propertyId: heaterOnProp.id,
+            value: false,
+          ));
+        }
+        if (coolerOnProp != null && coolerChannel != null) {
+          commands.add(PropertyCommandItem(
+            deviceId: _device.id,
+            channelId: coolerChannel.id,
             propertyId: coolerOnProp.id,
             value: true,
           ));
         }
         break;
-      case ThermostatModeValue.off:
+      case ThermostatMode.auto:
+        // Turn on both heater and cooler
+        if (heaterOnProp != null && heaterChannel != null) {
+          commands.add(PropertyCommandItem(
+            deviceId: _device.id,
+            channelId: heaterChannel.id,
+            propertyId: heaterOnProp.id,
+            value: true,
+          ));
+        }
+        if (coolerOnProp != null && coolerChannel != null) {
+          commands.add(PropertyCommandItem(
+            deviceId: _device.id,
+            channelId: coolerChannel.id,
+            propertyId: coolerOnProp.id,
+            value: true,
+          ));
+        }
+        break;
+      case ThermostatMode.off:
         // Turn off both heater and cooler
-        if (heaterOnProp != null) {
+        if (heaterOnProp != null && heaterChannel != null) {
           commands.add(PropertyCommandItem(
             deviceId: _device.id,
-            channelId: _device.heaterChannel!.id,
+            channelId: heaterChannel.id,
             propertyId: heaterOnProp.id,
             value: false,
           ));
         }
-        if (coolerOnProp != null) {
+        if (coolerOnProp != null && coolerChannel != null) {
           commands.add(PropertyCommandItem(
             deviceId: _device.id,
-            channelId: _device.coolerChannel!.id,
+            channelId: coolerChannel.id,
             propertyId: coolerOnProp.id,
             value: false,
           ));
         }
-        break;
-      case ThermostatModeValue.auto:
-        // Auto mode - hidden for now, no additional commands
         break;
     }
 
@@ -365,22 +419,17 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     }
 
     // Transition to settling state
-    _deviceControlStateService?.setSettling(
-      _device.id,
-      _device.thermostatChannel.id,
-      modeProp.id,
-    );
-    if (heaterOnProp != null && _device.heaterChannel != null) {
+    if (heaterOnProp != null && heaterChannel != null) {
       _deviceControlStateService?.setSettling(
         _device.id,
-        _device.heaterChannel!.id,
+        heaterChannel.id,
         heaterOnProp.id,
       );
     }
-    if (coolerOnProp != null && _device.coolerChannel != null) {
+    if (coolerOnProp != null && coolerChannel != null) {
       _deviceControlStateService?.setSettling(
         _device.id,
-        _device.coolerChannel!.id,
+        coolerChannel.id,
         coolerOnProp.id,
       );
     }
@@ -430,7 +479,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   // --------------------------------------------------------------------------
 
   String _getStatusLabel(AppLocalizations localizations) {
-    if (_currentMode == ThermostatModeValue.off) {
+    if (_currentMode == ThermostatMode.off) {
       return localizations.on_state_off;
     }
     final tempStr = '${_targetSetpoint.toStringAsFixed(0)}°C';
@@ -445,37 +494,37 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
   Color _getModeColor(bool isDark) {
     switch (_currentMode) {
-      case ThermostatModeValue.heat:
+      case ThermostatMode.heat:
         return isDark ? AppColorsDark.warning : AppColorsLight.warning;
-      case ThermostatModeValue.cool:
+      case ThermostatMode.cool:
         return isDark ? AppColorsDark.info : AppColorsLight.info;
-      case ThermostatModeValue.auto:
+      case ThermostatMode.auto:
         return isDark ? AppColorsDark.success : AppColorsLight.success;
-      case ThermostatModeValue.off:
+      case ThermostatMode.off:
         return isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
     }
   }
 
   Color _getModeLightColor(bool isDark) {
     switch (_currentMode) {
-      case ThermostatModeValue.heat:
+      case ThermostatMode.heat:
         return isDark
             ? AppColorsDark.warningLight5
             : AppColorsLight.warningLight5;
-      case ThermostatModeValue.cool:
+      case ThermostatMode.cool:
         return isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight5;
-      case ThermostatModeValue.auto:
+      case ThermostatMode.auto:
         return isDark
             ? AppColorsDark.successLight5
             : AppColorsLight.successLight5;
-      case ThermostatModeValue.off:
+      case ThermostatMode.off:
         return isDark ? AppFillColorDark.light : AppFillColorLight.light;
     }
   }
 
   Color _getModeBorderColor(bool isDark) {
     final modeColor = _getModeColor(isDark);
-    if (_currentMode == ThermostatModeValue.off) {
+    if (_currentMode == ThermostatMode.off) {
       return isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
     }
     return modeColor.withValues(alpha: 0.3);
@@ -483,33 +532,34 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
   DialAccentColor _getDialAccentColor() {
     switch (_currentMode) {
-      case ThermostatModeValue.heat:
+      case ThermostatMode.heat:
         return DialAccentColor.warning;
-      case ThermostatModeValue.cool:
+      case ThermostatMode.cool:
         return DialAccentColor.info;
-      case ThermostatModeValue.auto:
+      case ThermostatMode.auto:
         return DialAccentColor.neutral;
-      case ThermostatModeValue.off:
+      case ThermostatMode.off:
         return DialAccentColor.neutral;
     }
   }
 
-  List<ModeOption<ThermostatModeValue>> _getModeOptions() {
-    final availableModes = _device.thermostatAvailableModes;
-    final modes = <ModeOption<ThermostatModeValue>>[];
+  List<ModeOption<ThermostatMode>> _getModeOptions() {
+    final modes = <ModeOption<ThermostatMode>>[];
+    final hasHeater = _device.heaterChannel != null;
+    final hasCooler = _device.coolerChannel != null;
 
-    if (availableModes.contains(ThermostatModeValue.heat)) {
+    if (hasHeater) {
       modes.add(ModeOption(
-        value: ThermostatModeValue.heat,
+        value: ThermostatMode.heat,
         icon: MdiIcons.fireCircle,
         label: 'Heat',
         color: ModeSelectorColor.warning,
       ));
     }
 
-    if (availableModes.contains(ThermostatModeValue.cool)) {
+    if (hasCooler) {
       modes.add(ModeOption(
-        value: ThermostatModeValue.cool,
+        value: ThermostatMode.cool,
         icon: MdiIcons.snowflake,
         label: 'Cool',
         color: ModeSelectorColor.info,
@@ -517,9 +567,9 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     }
 
     // Auto mode hidden for now - will be implemented in future
-    // if (availableModes.contains(ThermostatModeValue.auto)) {
+    // if (hasHeater && hasCooler) {
     //   modes.add(ModeOption(
-    //     value: ThermostatModeValue.auto,
+    //     value: ThermostatMode.auto,
     //     icon: MdiIcons.autorenew,
     //     label: 'Auto',
     //     color: ModeSelectorColor.success,
@@ -528,7 +578,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
     // Always add OFF mode
     modes.add(ModeOption(
-      value: ThermostatModeValue.off,
+      value: ThermostatMode.off,
       icon: MdiIcons.power,
       label: 'Off',
       color: ModeSelectorColor.neutral,
@@ -774,7 +824,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
             isActive: _device.isThermostatLocked,
             activeColor: modeColor,
             onTileTap: () => _setPropertyValue(
-              _device.thermostatChannel.lockedProp,
+              _device.thermostatChannel?.lockedProp,
               !_device.isThermostatLocked,
             ),
             showGlow: false,
@@ -875,8 +925,8 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
             size: dialSize,
             accentType: _getDialAccentColor(),
             isActive: _isActive,
-            enabled: _currentMode == ThermostatModeValue.heat ||
-                _currentMode == ThermostatModeValue.cool,
+            enabled: _currentMode == ThermostatMode.heat ||
+                _currentMode == ThermostatMode.cool,
             modeLabel: _currentMode.value,
             displayFormat: DialDisplayFormat.temperature,
             onChanged: _onSetpointChanged,
@@ -935,8 +985,8 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
                 size: dialSize,
                 accentType: _getDialAccentColor(),
                 isActive: _isActive,
-                enabled: _currentMode == ThermostatModeValue.heat ||
-                _currentMode == ThermostatModeValue.cool,
+                enabled: _currentMode == ThermostatMode.heat ||
+                _currentMode == ThermostatMode.cool,
                 modeLabel: _currentMode.value,
                 displayFormat: DialDisplayFormat.temperature,
                 onChanged: _onSetpointChanged,
@@ -956,7 +1006,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     ModeSelectorOrientation orientation, {
     bool showLabels = true,
   }) {
-    return ModeSelector<ThermostatModeValue>(
+    return ModeSelector<ThermostatMode>(
       modes: _getModeOptions(),
       selectedValue: _currentMode,
       onChanged: _onModeChanged,
