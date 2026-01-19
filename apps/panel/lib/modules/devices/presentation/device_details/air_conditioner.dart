@@ -122,7 +122,7 @@ class _AirConditionerDeviceDetailState
         children: [
           HeaderIconButton(
             icon: Icons.arrow_back_ios_new,
-            onTap: widget.onBack,
+            onTap: widget.onBack ?? () => Navigator.of(context).pop(),
           ),
           AppSpacings.spacingMdHorizontal,
           Container(
