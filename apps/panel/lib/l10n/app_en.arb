@@ -1484,5 +1484,38 @@
   "entry_cameras": "Cameras",
   "@entry_cameras": {
     "description": "Label for cameras in security section"
+  },
+
+  "media_other_devices": "Other Devices",
+  "@media_other_devices": {
+    "description": "Section title for other media devices in media domain view"
+  },
+  "media_up_next": "Up Next",
+  "@media_up_next": {
+    "description": "Section title for upcoming tracks in media playback queue"
+  },
+  "media_volume": "Volume",
+  "@media_volume": {
+    "description": "Section title for volume control"
+  },
+  "media_playing": "Playing",
+  "@media_playing": {
+    "description": "Status text when media device is playing"
+  },
+  "media_idle": "Idle",
+  "@media_idle": {
+    "description": "Status text when media device is idle"
+  },
+  "media_standby": "Standby",
+  "@media_standby": {
+    "description": "Status text when media device is in standby"
+  },
+  "media_source": "Source",
+  "@media_source": {
+    "description": "Section title for media source selection"
+  },
+  "media_queue": "Queue",
+  "@media_queue": {
+    "description": "Section title for media playback queue"
   }
 }
