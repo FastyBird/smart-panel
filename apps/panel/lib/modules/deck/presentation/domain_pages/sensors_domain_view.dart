@@ -726,7 +726,11 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
           child: Container(
             color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
             padding: AppSpacings.paddingLg,
-            child: _buildActivityPanel(context),
+            child: Column(
+              children: [
+                _buildActivityPanel(context),
+              ],
+            ),
           ),
         ),
       ],
@@ -1186,38 +1190,42 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   Widget _buildActivityPanel(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionTitle(title: 'Recent Activity', icon: Icons.history),
-        AppSpacings.spacingMdVertical,
-        ..._activity.map((item) => _buildActivityItem(context, item)),
-        Divider(
-          height: _scale(32),
-          color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
-        ),
-        SectionTitle(title: 'Alerts', icon: Icons.warning_amber),
-        AppSpacings.spacingMdVertical,
-        if (_hasAlerts)
-          ..._sensors
-              .where((s) => s.status == SensorStatus.alert)
-              .map((sensor) => _buildAlertItem(context, sensor))
-        else
-          Center(
-            child: Padding(
-              padding: EdgeInsets.all(AppSpacings.pLg),
-              child: Text(
-                'No active alerts',
-                style: TextStyle(
-                  color: isDark
-                      ? AppTextColorDark.placeholder
-                      : AppTextColorLight.placeholder,
-                  fontSize: AppFontSize.small,
+    return Expanded(
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionTitle(title: 'Recent Activity', icon: Icons.history),
+            AppSpacings.spacingMdVertical,
+            ..._activity.map((item) => _buildActivityItem(context, item)),
+            Divider(
+              height: _scale(32),
+              color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
+            ),
+            SectionTitle(title: 'Alerts', icon: Icons.warning_amber),
+            AppSpacings.spacingMdVertical,
+            if (_hasAlerts)
+              ..._sensors
+                  .where((s) => s.status == SensorStatus.alert)
+                  .map((sensor) => _buildAlertItem(context, sensor))
+            else
+              Center(
+                child: Padding(
+                  padding: EdgeInsets.all(AppSpacings.pLg),
+                  child: Text(
+                    'No active alerts',
+                    style: TextStyle(
+                      color: isDark
+                          ? AppTextColorDark.placeholder
+                          : AppTextColorLight.placeholder,
+                      fontSize: AppFontSize.small,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-      ],
+          ],
+        ),
+      ),
     );
   }
 
@@ -1850,17 +1858,28 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
           AppSpacings.spacingSmVertical,
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildTimeLabel(context, '00:00'),
-              _buildTimeLabel(context, '06:00'),
-              _buildTimeLabel(context, '12:00'),
-              _buildTimeLabel(context, '18:00'),
-              _buildTimeLabel(context, 'Now'),
-            ],
+            children: _getTimeLabels()
+                .map((label) => _buildTimeLabel(context, label))
+                .toList(),
           ),
         ],
       ),
     );
+  }
+
+  List<String> _getTimeLabels() {
+    switch (_selectedPeriod) {
+      case 0: // 1H
+        return ['-60m', '-45m', '-30m', '-15m', 'Now'];
+      case 1: // 24H
+        return ['00:00', '06:00', '12:00', '18:00', 'Now'];
+      case 2: // 7D
+        return ['-7d', '-5d', '-3d', '-1d', 'Now'];
+      case 3: // 30D
+        return ['-30d', '-22d', '-15d', '-7d', 'Now'];
+      default:
+        return ['00:00', '06:00', '12:00', '18:00', 'Now'];
+    }
   }
 
   Widget _buildTimeLabel(BuildContext context, String text) {
