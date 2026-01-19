@@ -353,9 +353,6 @@ class _CircularControlDialState extends State<CircularControlDial>
   void _incrementValue() {
     if (!widget.enabled) return;
     final newValue = (_value + widget.step).clamp(widget.minValue, widget.maxValue);
-    if (kDebugMode) {
-      debugPrint('[CircularControlDial] _incrementValue: $_value -> $newValue');
-    }
     setState(() => _value = newValue);
     _scheduleButtonCallback();
   }
@@ -363,9 +360,6 @@ class _CircularControlDialState extends State<CircularControlDial>
   void _decrementValue() {
     if (!widget.enabled) return;
     final newValue = (_value - widget.step).clamp(widget.minValue, widget.maxValue);
-    if (kDebugMode) {
-      debugPrint('[CircularControlDial] _decrementValue: $_value -> $newValue');
-    }
     setState(() => _value = newValue);
     _scheduleButtonCallback();
   }
@@ -378,9 +372,6 @@ class _CircularControlDialState extends State<CircularControlDial>
       const Duration(milliseconds: _buttonDebounceDuration),
       () {
         if (mounted) {
-          if (kDebugMode) {
-            debugPrint('[CircularControlDial] Debounce timer fired, calling onChanged with value=$_value');
-          }
           widget.onChanged?.call(_value);
         }
       },
