@@ -49,6 +49,7 @@ export 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/dom
 export 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/lights_domain_view.dart';
 export 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/media_domain_view.dart';
 export 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/shading_domain_view.dart';
+export 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/sensors_domain_view.dart';
 export 'package:fastybird_smart_panel/modules/deck/presentation/system_pages/entry_overview.dart';
 export 'package:fastybird_smart_panel/modules/deck/presentation/system_pages/master_overview.dart';
 export 'package:fastybird_smart_panel/modules/deck/presentation/system_pages/room_overview.dart';

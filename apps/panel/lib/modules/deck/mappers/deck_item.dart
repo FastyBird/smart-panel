@@ -29,7 +29,6 @@ Widget _buildDomainViewWidget(DomainViewItem domainView) {
     case DomainType.media:
       return MediaDomainViewPage(viewItem: domainView);
     case DomainType.sensors:
-      // Use placeholder for sensors domain (to be implemented)
-      return DomainViewPage(viewItem: domainView);
+      return SensorsDomainViewPage(viewItem: domainView);
   }
 }
