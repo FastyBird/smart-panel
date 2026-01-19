@@ -4,9 +4,11 @@ import 'dart:math' as math;
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
+import 'package:fastybird_smart_panel/core/widgets/info_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
@@ -601,9 +603,51 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     bool isDark,
     Color modeColor,
   ) {
+    final humidityChannel = _device.humidityChannel;
+    final hasHumidity = humidityChannel != null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Temperature and Humidity info boxes
+        if (hasHumidity)
+          // Two column layout when humidity is available
+          Row(
+            children: [
+              Expanded(
+                child: InfoTile(
+                  label: localizations.device_current_temperature,
+                  value: NumberFormatUtils.defaultFormat.formatDecimal(
+                    _currentTemperature,
+                    decimalPlaces: 1,
+                  ),
+                  unit: '°C',
+                  valueColor: modeColor,
+                ),
+              ),
+              AppSpacings.spacingSmHorizontal,
+              Expanded(
+                child: InfoTile(
+                  label: localizations.device_current_humidity,
+                  value: NumberFormatUtils.defaultFormat
+                      .formatInteger(humidityChannel.humidity),
+                  unit: '%',
+                ),
+              ),
+            ],
+          )
+        else
+          // Full width when only temperature
+          InfoTile(
+            label: localizations.device_current_temperature,
+            value: NumberFormatUtils.defaultFormat.formatDecimal(
+              _currentTemperature,
+              decimalPlaces: 1,
+            ),
+            unit: '°C',
+            valueColor: modeColor,
+          ),
+        AppSpacings.spacingMdVertical,
         // Lock control if available
         if (_device.hasThermostatLock) ...[
           UniversalTile(
