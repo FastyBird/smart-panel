@@ -93,6 +93,14 @@
           "en": "Measures the relative humidity in the environment, reported as a percentage."
         }
       },
+      "contact": {
+        "category": "contact",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Tracks the open or closed state of a contact point, such as a door, window, or cabinet."
+        }
+      },
       "leak": {
         "category": "leak",
         "required": false,
@@ -755,6 +763,14 @@
         "multiple": false,
         "description": {
           "en": "Measures the relative humidity in the environment, reported as a percentage."
+        }
+      },
+      "contact": {
+        "category": "contact",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Tracks the open or closed state of a contact point, such as a door, window, or cabinet."
         }
       }
     }
