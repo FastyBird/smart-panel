@@ -452,6 +452,7 @@
   "device_current_humidity": "Aktuální",
   "device_current_temperature": "Teplota",
   "device_fan_speed": "Rychlost",
+  "device_fan_mode": "Režim ventilátoru",
   "device_timer": "Časovač",
   "device_child_lock": "Dětský zámek",
   "device_oscillation": "Oscilace",

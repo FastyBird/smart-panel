@@ -2783,6 +2783,12 @@ abstract class AppLocalizations {
   /// **'Fan Speed'**
   String get device_fan_speed;
 
+  /// Fan mode label
+  ///
+  /// In en, this message translates to:
+  /// **'Fan Mode'**
+  String get device_fan_mode;
+
   /// Timer label
   ///
   /// In en, this message translates to:

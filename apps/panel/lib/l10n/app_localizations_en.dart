@@ -1369,6 +1369,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get device_fan_speed => 'Fan Speed';
 
   @override
+  String get device_fan_mode => 'Fan Mode';
+
+  @override
   String get device_timer => 'Timer';
 
   @override

@@ -1370,6 +1370,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get device_fan_speed => 'Rychlost';
 
   @override
+  String get device_fan_mode => 'Režim ventilátoru';
+
+  @override
   String get device_timer => 'Časovač';
 
   @override

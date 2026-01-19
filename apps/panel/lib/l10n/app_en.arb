@@ -1844,6 +1844,10 @@
   "@device_fan_speed": {
     "description": "Fan speed label"
   },
+  "device_fan_mode": "Fan Mode",
+  "@device_fan_mode": {
+    "description": "Fan mode label"
+  },
   "device_timer": "Timer",
   "@device_timer": {
     "description": "Timer label"

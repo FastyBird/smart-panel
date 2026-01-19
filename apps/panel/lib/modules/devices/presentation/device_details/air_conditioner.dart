@@ -1075,7 +1075,7 @@ class _AirConditionerDeviceDetailState
       controls.add(AppSpacings.spacingMdVertical);
     } else if (fanChannel.hasMode && fanChannel.availableModes.length > 1) {
       // If no speed but has mode, show mode selector standalone
-      controls.add(_buildFanModeSelector(localizations, modeColor));
+      controls.add(_buildFanModeControl(localizations, modeColor, useCompactLayout));
       controls.add(AppSpacings.spacingMdVertical);
     }
 
@@ -1100,13 +1100,43 @@ class _AirConditionerDeviceDetailState
     );
   }
 
-  Widget _buildFanModeSelector(
+  Widget _buildFanModeControl(
     AppLocalizations localizations,
     Color activeColor,
+    bool useCompactLayout,
   ) {
     final fanChannel = _device.fanChannel;
     final availableModes = fanChannel.availableModes;
     final selectedMode = fanChannel.mode ?? availableModes.first;
+
+    if (useCompactLayout) {
+      final options = availableModes.map((mode) {
+        return ValueOption(
+          value: mode,
+          label: FanUtils.getModeLabel(localizations, mode),
+        );
+      }).toList();
+
+      return ValueSelectorRow<FanModeValue>(
+        currentValue: selectedMode,
+        label: localizations.device_fan_mode,
+        icon: Icons.air,
+        sheetTitle: localizations.device_fan_mode,
+        activeColor: activeColor,
+        options: options,
+        displayFormatter: (mode) => mode != null
+            ? FanUtils.getModeLabel(localizations, mode)
+            : '',
+        isActiveValue: (mode) => mode != null,
+        columns: availableModes.length > 4 ? 3 : availableModes.length,
+        layout: ValueSelectorRowLayout.compact,
+        onChanged: (mode) {
+          if (mode != null) {
+            _setPropertyValue(fanChannel.modeProp, mode.value);
+          }
+        },
+      );
+    }
 
     return ModeSelector<FanModeValue>(
       modes: availableModes.map((mode) {
@@ -1179,7 +1209,7 @@ class _AirConditionerDeviceDetailState
           children: [
             speedWidget,
             AppSpacings.spacingMdVertical,
-            Center(child: _buildFanModeSelector(localizations, modeColor)),
+            _buildFanModeControl(localizations, modeColor, useCompactLayout),
           ],
         );
       }
@@ -1211,7 +1241,7 @@ class _AirConditionerDeviceDetailState
             children: [
               speedWidget,
               AppSpacings.spacingMdVertical,
-              Center(child: _buildFanModeSelector(localizations, modeColor)),
+              _buildFanModeControl(localizations, modeColor, useCompactLayout),
             ],
           );
         }
@@ -1310,7 +1340,7 @@ class _AirConditionerDeviceDetailState
               // Mode selector (if available)
               if (hasMode) ...[
                 AppSpacings.spacingLgVertical,
-                Center(child: _buildFanModeSelector(localizations, modeColor)),
+                Center(child: _buildFanModeControl(localizations, modeColor, false)),
               ],
             ],
           ),
