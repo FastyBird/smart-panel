@@ -627,6 +627,76 @@ class _AirDehumidifierDeviceDetailState
         // Fan speed control if available
         if (fanChannel != null && fanChannel.hasSpeed)
           _buildFanSpeedControl(localizations, humidityColor, useVerticalLayout),
+        // Fan mode selector if available
+        if (fanChannel != null && fanChannel.hasMode)
+          _buildFanModeControl(localizations, humidityColor, useVerticalLayout),
+        // Oscillation / Swing tile - only show if fan has swing property
+        if (fanChannel != null && fanChannel.hasSwing) ...[
+          UniversalTile(
+            layout: TileLayout.horizontal,
+            icon: Icons.sync,
+            name: localizations.device_oscillation,
+            status: fanChannel.swing
+                ? localizations.on_state_on
+                : localizations.on_state_off,
+            isActive: fanChannel.swing,
+            activeColor: humidityColor,
+            onTileTap: () => _setPropertyValue(
+              fanChannel.swingProp,
+              !fanChannel.swing,
+            ),
+            showGlow: false,
+            showDoubleBorder: false,
+            showInactiveBorder: true,
+          ),
+          AppSpacings.spacingSmVertical,
+        ],
+        // Direction tile - only show if fan has direction property
+        if (fanChannel != null && fanChannel.hasDirection) ...[
+          UniversalTile(
+            layout: TileLayout.horizontal,
+            icon: Icons.swap_vert,
+            name: localizations.device_direction,
+            status: fanChannel.direction != null
+                ? FanUtils.getDirectionLabel(localizations, fanChannel.direction!)
+                : '-',
+            isActive: fanChannel.direction != null,
+            activeColor: humidityColor,
+            onTileTap: () {
+              // Toggle between clockwise and counter_clockwise
+              final newDirection =
+                  fanChannel.direction == FanDirectionValue.clockwise
+                      ? FanDirectionValue.counterClockwise
+                      : FanDirectionValue.clockwise;
+              _setPropertyValue(fanChannel.directionProp, newDirection.value);
+            },
+            showGlow: false,
+            showDoubleBorder: false,
+            showInactiveBorder: true,
+          ),
+          AppSpacings.spacingSmVertical,
+        ],
+        // Natural breeze tile - only show if fan has natural_breeze property
+        if (fanChannel != null && fanChannel.hasNaturalBreeze) ...[
+          UniversalTile(
+            layout: TileLayout.horizontal,
+            icon: Icons.air,
+            name: localizations.device_natural_breeze,
+            status: fanChannel.naturalBreeze
+                ? localizations.on_state_on
+                : localizations.on_state_off,
+            isActive: fanChannel.naturalBreeze,
+            activeColor: humidityColor,
+            onTileTap: () => _setPropertyValue(
+              fanChannel.naturalBreezeProp,
+              !fanChannel.naturalBreeze,
+            ),
+            showGlow: false,
+            showDoubleBorder: false,
+            showInactiveBorder: true,
+          ),
+          AppSpacings.spacingSmVertical,
+        ],
         // Child Lock
         if (channel != null && channel.hasLocked) ...[
           UniversalTile(
@@ -773,6 +843,57 @@ class _AirDehumidifierDeviceDetailState
         );
       }
     }
+  }
+
+  Widget _buildFanModeControl(
+    AppLocalizations localizations,
+    Color humidityColor,
+    bool useCompactLayout,
+  ) {
+    final fanChannel = _device.fanChannel;
+    if (fanChannel == null || !fanChannel.hasMode) return const SizedBox.shrink();
+
+    final availableModes = fanChannel.availableModes;
+    if (availableModes.length <= 1) return const SizedBox.shrink();
+
+    final currentMode = fanChannel.mode;
+    if (currentMode == null) return const SizedBox.shrink();
+
+    final options = availableModes
+        .map((mode) => ValueOption(
+              value: mode,
+              label: FanUtils.getModeLabel(localizations, mode),
+            ))
+        .toList();
+
+    return Column(
+      children: [
+        ValueSelectorRow<FanModeValue>(
+          currentValue: currentMode,
+          label: localizations.device_fan_mode,
+          icon: Icons.tune,
+          sheetTitle: localizations.device_fan_mode,
+          activeColor: humidityColor,
+          options: options,
+          displayFormatter: (mode) => mode != null
+              ? FanUtils.getModeLabel(localizations, mode)
+              : '-',
+          isActiveValue: (mode) => mode != null,
+          columns: availableModes.length > 4 ? 3 : availableModes.length,
+          layout: useCompactLayout
+              ? ValueSelectorRowLayout.compact
+              : ValueSelectorRowLayout.horizontal,
+          onChanged: _device.isOn
+              ? (mode) {
+                  if (mode != null) {
+                    _setPropertyValue(fanChannel.modeProp, mode.value);
+                  }
+                }
+              : null,
+        ),
+        AppSpacings.spacingSmVertical,
+      ],
+    );
   }
 
   double get _normalizedFanSpeed {
