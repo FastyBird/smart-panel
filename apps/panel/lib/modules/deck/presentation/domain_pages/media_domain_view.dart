@@ -416,7 +416,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
   // --------------------------------------------------------------------------
 
   Widget _buildPortraitLayout(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
     final hasQueue = _queue.isNotEmpty;
     final hasOtherDevices = _otherDevices.isNotEmpty;
     final isSmallScreen = _screenService.isSmallScreen;
@@ -496,7 +495,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 
   Widget _buildLandscapeLayout(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final localizations = AppLocalizations.of(context)!;
     final hasQueue = _queue.isNotEmpty;
     final hasOtherDevices = _otherDevices.isNotEmpty;
     final isLargeScreen = _screenService.isLargeScreen;
@@ -965,8 +963,6 @@ class _MediaDeviceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-
     String statusText;
     if (device.isPlaying) {
       statusText = 'Playing';
