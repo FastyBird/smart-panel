@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/modules/devices/views/channels/contact.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/cooler.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/device_information.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_energy.dart';
@@ -12,6 +13,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';
 
 class AirConditionerDeviceView extends DeviceView
     with
+        DeviceContactMixin,
         DeviceCoolerMixin,
         DeviceDeviceInformationMixin,
         DeviceFanMixin,
@@ -71,6 +73,10 @@ class AirConditionerDeviceView extends DeviceView
   @override
   LeakChannelView? get leakChannel =>
       channels.whereType<LeakChannelView>().firstOrNull;
+
+  @override
+  ContactChannelView? get contactChannel =>
+      channels.whereType<ContactChannelView>().firstOrNull;
 
   @override
   bool get isOn => coolerChannel.isCooling;

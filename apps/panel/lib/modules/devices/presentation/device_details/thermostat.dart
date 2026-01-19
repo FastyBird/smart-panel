@@ -687,7 +687,14 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   }
 
   Widget _buildInfoTilesGrid(List<Widget> tiles) {
-    const int tilesPerRow = 3;
+    // Dynamic tiles per row based on total count:
+    // 1 tile: full width, 2 tiles: 2 per row, 3+ tiles: 3 per row
+    final int tilesPerRow = tiles.length == 1
+        ? 1
+        : tiles.length == 2
+            ? 2
+            : 3;
+
     final rows = <Widget>[];
 
     for (var i = 0; i < tiles.length; i += tilesPerRow) {
