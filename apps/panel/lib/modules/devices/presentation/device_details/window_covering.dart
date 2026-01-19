@@ -38,7 +38,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   // Mock presets
   static const _mockPresets = [
     _MockPreset(name: 'Morning', icon: Icons.wb_sunny, position: 100),
-    _MockPreset(name: 'Day', icon: Icons.light_mode, position: 75, isActive: true),
+    _MockPreset(name: 'Day', icon: Icons.light_mode, position: 75),
     _MockPreset(name: 'Evening', icon: Icons.nights_stay, position: 30),
     _MockPreset(name: 'Night', icon: Icons.bedtime, position: 0),
     _MockPreset(name: 'Privacy', icon: Icons.lock, position: 0, tiltAngle: 45),
@@ -952,6 +952,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final primaryColor =
         isLight ? AppColorsLight.primary : AppColorsDark.primary;
+    final bool isActive = _position == preset.position;
 
     return GestureDetector(
       onTap: () {
@@ -962,13 +963,13 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       },
       child: Container(
         decoration: BoxDecoration(
-          color: preset.isActive
+          color: isActive
               ? primaryColor
               : (isLight
                   ? AppFillColorLight.base
                   : AppFillColorDark.base),
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          border: preset.isActive || !isLight
+          border: isActive || !isLight
               ? null
               : Border.all(color: AppBorderColorLight.base),
         ),
@@ -981,7 +982,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                 26,
                 density: _visualDensityService.density,
               ),
-              color: preset.isActive
+              color: isActive
                   ? AppColors.white
                   : (isLight
                       ? AppTextColorLight.secondary
@@ -993,7 +994,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
               style: TextStyle(
                 fontSize: AppFontSize.extraSmall,
                 fontWeight: FontWeight.w500,
-                color: preset.isActive
+                color: isActive
                     ? AppColors.white
                     : (isLight
                         ? AppTextColorLight.regular
@@ -1010,6 +1011,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final primaryColor =
         isLight ? AppColorsLight.primary : AppColorsDark.primary;
+    final bool isActive = _position == preset.position;
 
     return GestureDetector(
       onTap: () {
@@ -1021,13 +1023,13 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       child: Container(
         padding: EdgeInsets.all(AppSpacings.pSm),
         decoration: BoxDecoration(
-          color: preset.isActive
+          color: isActive
               ? primaryColor.withValues(alpha: 0.15)
               : (isLight
                   ? AppFillColorLight.base
                   : AppFillColorDark.base),
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          border: preset.isActive
+          border: isActive
               ? Border.all(color: primaryColor)
               : (isLight ? Border.all(color: AppBorderColorLight.base) : null),
         ),
@@ -1043,7 +1045,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                 density: _visualDensityService.density,
               ),
               decoration: BoxDecoration(
-                color: preset.isActive
+                color: isActive
                     ? primaryColor
                     : (isLight
                         ? AppFillColorLight.light
@@ -1056,7 +1058,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                   20,
                   density: _visualDensityService.density,
                 ),
-                color: preset.isActive
+                color: isActive
                     ? AppColors.white
                     : (isLight
                         ? AppTextColorLight.secondary
@@ -1173,14 +1175,12 @@ class _MockPreset {
   final IconData icon;
   final int position;
   final int? tiltAngle;
-  final bool isActive;
 
   const _MockPreset({
     required this.name,
     required this.icon,
     required this.position,
     this.tiltAngle,
-    this.isActive = false,
   });
 }
 

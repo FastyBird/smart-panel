@@ -905,13 +905,11 @@ class _MockPreset {
   final String name;
   final IconData icon;
   final int position;
-  final bool isActive;
 
   const _MockPreset({
     required this.name,
     required this.icon,
     required this.position,
-    this.isActive = false,
   });
 }
 
