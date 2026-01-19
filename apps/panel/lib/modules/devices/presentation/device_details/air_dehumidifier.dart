@@ -14,6 +14,7 @@ import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
@@ -123,6 +124,53 @@ class _AirDehumidifierDeviceDetailState
     }
   }
 
+  /// Toggle power on/off for dehumidifier and fan together
+  Future<void> _togglePower(bool turnOn) async {
+    final channel = _dehumidifierChannel;
+    final fanChannel = _device.fanChannel;
+
+    if (channel == null) return;
+
+    final localizations = AppLocalizations.of(context);
+
+    // Build batch command list
+    final commands = <PropertyCommandItem>[];
+
+    // Dehumidifier on/off
+    commands.add(PropertyCommandItem(
+      deviceId: _device.id,
+      channelId: channel.id,
+      propertyId: channel.onProp.id,
+      value: turnOn,
+    ));
+
+    // Fan on/off (if fan channel exists)
+    if (fanChannel != null) {
+      commands.add(PropertyCommandItem(
+        deviceId: _device.id,
+        channelId: fanChannel.id,
+        propertyId: fanChannel.onProp.id,
+        value: turnOn,
+      ));
+    }
+
+    // Send all commands as a single batch
+    try {
+      bool res = await _devicesService.setMultiplePropertyValues(
+        properties: commands,
+      );
+
+      if (!res && mounted && localizations != null) {
+        AlertBar.showError(context, message: localizations.action_failed);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      if (localizations != null) {
+        AlertBar.showError(context, message: localizations.action_failed);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -208,7 +256,7 @@ class _AirDehumidifierDeviceDetailState
         ],
       ),
       trailing: GestureDetector(
-        onTap: () => _setPropertyValue(channel?.onProp, !isOn),
+        onTap: () => _togglePower(!isOn),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           width: _scale(48),
