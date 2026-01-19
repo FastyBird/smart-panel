@@ -713,6 +713,24 @@ abstract class AppLocalizations {
   /// **'Closed'**
   String get contact_sensor_closed;
 
+  /// Label for water leak sensor
+  ///
+  /// In en, this message translates to:
+  /// **'Water Leak'**
+  String get leak_sensor_water;
+
+  /// Leak sensor state when water is detected
+  ///
+  /// In en, this message translates to:
+  /// **'Detected'**
+  String get leak_sensor_detected;
+
+  /// Leak sensor state when no water is detected
+  ///
+  /// In en, this message translates to:
+  /// **'Dry'**
+  String get leak_sensor_dry;
+
   /// Indicates the child lock is active
   ///
   /// In en, this message translates to:

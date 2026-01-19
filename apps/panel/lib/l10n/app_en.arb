@@ -412,6 +412,18 @@
   "@contact_sensor_closed": {
     "description": "Contact sensor state when window/door is closed"
   },
+  "leak_sensor_water": "Water Leak",
+  "@leak_sensor_water": {
+    "description": "Label for water leak sensor"
+  },
+  "leak_sensor_detected": "Detected",
+  "@leak_sensor_detected": {
+    "description": "Leak sensor state when water is detected"
+  },
+  "leak_sensor_dry": "Dry",
+  "@leak_sensor_dry": {
+    "description": "Leak sensor state when no water is detected"
+  },
   "thermostat_lock_locked": "Locked",
   "@thermostat_lock_locked": {
     "description": "Indicates the child lock is active"

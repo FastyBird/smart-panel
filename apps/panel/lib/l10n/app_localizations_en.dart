@@ -318,6 +318,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get contact_sensor_closed => 'Closed';
 
   @override
+  String get leak_sensor_water => 'Water Leak';
+
+  @override
+  String get leak_sensor_detected => 'Detected';
+
+  @override
+  String get leak_sensor_dry => 'Dry';
+
+  @override
   String get thermostat_lock_locked => 'Locked';
 
   @override

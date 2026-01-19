@@ -318,6 +318,15 @@ class AppLocalizationsCs extends AppLocalizations {
   String get contact_sensor_closed => 'Zavřeno';
 
   @override
+  String get leak_sensor_water => 'Únik vody';
+
+  @override
+  String get leak_sensor_detected => 'Detekován';
+
+  @override
+  String get leak_sensor_dry => 'Sucho';
+
+  @override
   String get thermostat_lock_locked => 'Uzamčeno';
 
   @override

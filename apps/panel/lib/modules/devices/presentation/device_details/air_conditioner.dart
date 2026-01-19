@@ -866,6 +866,20 @@ class _AirConditionerDeviceDetailState
       ));
     }
 
+    // Leak sensor (optional) - shows water leak status
+    // detected = true means leak detected
+    final leakChannel = _device.leakChannel;
+    if (leakChannel != null) {
+      final isLeaking = leakChannel.detected;
+      infoTiles.add(InfoTile(
+        label: localizations.leak_sensor_water,
+        value: isLeaking
+            ? localizations.leak_sensor_detected
+            : localizations.leak_sensor_dry,
+        isWarning: isLeaking,
+      ));
+    }
+
     // Filter (optional) - show life remaining or status
     final filterChannel = _device.filterChannel;
     if (filterChannel != null) {
