@@ -21,6 +21,7 @@ import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
 import { SpaceEntity } from './entities/space.entity';
 import { SpaceActivityListener } from './listeners/space-activity.listener';
+import { SpaceClimateStateListener } from './listeners/space-climate-state.listener';
 import { SpacesConfigModel } from './models/config.model';
 import { ClimateIntentService } from './services/climate-intent.service';
 import { CoversIntentService } from './services/covers-intent.service';
@@ -82,6 +83,7 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceContextSnapshotService,
 		SpaceUndoHistoryService,
 		SpaceActivityListener,
+		SpaceClimateStateListener,
 		IntentSpecLoaderService,
 		SpacesSeederService,
 	],
