@@ -961,7 +961,7 @@ describe('SpacesController', () => {
 			const intentDto = {
 				data: {
 					type: 'setpoint_set',
-					value: 22.0,
+					heating_setpoint: 22.0,
 				},
 			};
 
@@ -978,7 +978,7 @@ describe('SpacesController', () => {
 			const intentDto = {
 				data: {
 					type: 'setpoint_set',
-					value: 22.0,
+					heating_setpoint: 22.0,
 				},
 			};
 

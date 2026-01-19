@@ -353,8 +353,13 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 		isHeating: boolean;
 		isCooling: boolean;
 	} {
-		let anyHeaterOn = false;
-		let anyCoolerOn = false;
+		// Track actual device activity (from heater/cooler ON properties)
+		let isHeating = false;
+		let isCooling = false;
+
+		// Track thermostat configured modes (for determining overall mode)
+		let hasHeatMode = false;
+		let hasCoolMode = false;
 		let hasAutoMode = false;
 
 		for (const device of devices) {
@@ -362,7 +367,7 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 			if (device.heaterOnProperty) {
 				const heaterOn = this.getPropertyBooleanValue(device.heaterOnProperty);
 				if (heaterOn) {
-					anyHeaterOn = true;
+					isHeating = true;
 				}
 			}
 
@@ -370,44 +375,45 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 			if (device.coolerOnProperty) {
 				const coolerOn = this.getPropertyBooleanValue(device.coolerOnProperty);
 				if (coolerOn) {
-					anyCoolerOn = true;
+					isCooling = true;
 				}
 			}
 
-			// Check thermostat mode property for AUTO detection
+			// Check thermostat mode property for mode detection (NOT activity)
 			if (device.thermostatModeProperty) {
 				const modeValue = device.thermostatModeProperty.value;
 				if (typeof modeValue === 'string') {
 					const modeLower = modeValue.toLowerCase();
 					if (modeLower === 'auto' || modeLower === 'heat_cool') {
-						// Track AUTO mode but continue checking all devices for heater/cooler ON states
 						hasAutoMode = true;
 					}
 					if (modeLower === 'heat') {
-						anyHeaterOn = true;
+						hasHeatMode = true;
 					}
 					if (modeLower === 'cool') {
-						anyCoolerOn = true;
+						hasCoolMode = true;
 					}
 				}
 			}
 		}
 
+		// Determine overall mode based on thermostat modes and actual activity
 		let mode: ClimateMode;
 		if (hasAutoMode) {
 			// If any thermostat is in AUTO mode, the overall mode is AUTO
 			mode = ClimateMode.AUTO;
-		} else if (anyHeaterOn && anyCoolerOn) {
+		} else if (hasHeatMode && hasCoolMode) {
+			// Multiple thermostats with different modes
 			mode = ClimateMode.AUTO;
-		} else if (anyHeaterOn) {
+		} else if (hasHeatMode || isHeating) {
 			mode = ClimateMode.HEAT;
-		} else if (anyCoolerOn) {
+		} else if (hasCoolMode || isCooling) {
 			mode = ClimateMode.COOL;
 		} else {
 			mode = ClimateMode.OFF;
 		}
 
-		return { mode, isHeating: anyHeaterOn, isCooling: anyCoolerOn };
+		return { mode, isHeating, isCooling };
 	}
 
 	/**
