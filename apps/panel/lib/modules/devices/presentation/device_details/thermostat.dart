@@ -1,16 +1,22 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -33,23 +39,33 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
   final DevicesService _devicesService = locator<DevicesService>();
+  DeviceControlStateService? _deviceControlStateService;
 
-  // Local state for optimistic UI updates
-  ThermostatModeValue? _pendingMode;
-  double? _pendingSetpoint;
-
-  static const double _minSetpoint = 16.0;
-  static const double _maxSetpoint = 30.0;
+  // Debounce timer for setpoint changes to avoid flooding backend
+  Timer? _setpointDebounceTimer;
+  static const _setpointDebounceDuration = Duration(milliseconds: 300);
 
   @override
   void initState() {
     super.initState();
     _devicesService.addListener(_onDeviceChanged);
+
+    try {
+      _deviceControlStateService = locator<DeviceControlStateService>();
+      _deviceControlStateService?.addListener(_onControlStateChanged);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+            '[ThermostatDeviceDetail] Failed to get DeviceControlStateService: $e');
+      }
+    }
   }
 
   @override
   void dispose() {
+    _setpointDebounceTimer?.cancel();
     _devicesService.removeListener(_onDeviceChanged);
+    _deviceControlStateService?.removeListener(_onControlStateChanged);
     super.dispose();
   }
 
@@ -58,6 +74,10 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() {});
     });
+  }
+
+  void _onControlStateChanged() {
+    if (mounted) setState(() {});
   }
 
   ThermostatDeviceView get _device {
@@ -71,11 +91,53 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   double _scale(double value) =>
       _screenService.scale(value, density: _visualDensityService.density);
 
+  Future<void> _setPropertyValue(
+    ChannelPropertyView? property,
+    dynamic value,
+  ) async {
+    if (property == null) return;
+
+    final localizations = AppLocalizations.of(context);
+
+    try {
+      bool res = await _devicesService.setPropertyValue(property.id, value);
+
+      if (!res && mounted && localizations != null) {
+        AlertBar.showError(context, message: localizations.action_failed);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      if (localizations != null) {
+        AlertBar.showError(context, message: localizations.action_failed);
+      }
+    }
+  }
+
   // --------------------------------------------------------------------------
   // STATE HELPERS
   // --------------------------------------------------------------------------
 
-  ThermostatModeValue get _currentMode => _pendingMode ?? _device.thermostatMode;
+  ThermostatModeValue get _currentMode {
+    final modeProp = _device.thermostatChannel.modeProp;
+    final controlState = _deviceControlStateService;
+
+    // Check for pending/optimistic value first
+    if (controlState != null &&
+        controlState.isLocked(
+            _device.id, _device.thermostatChannel.id, modeProp.id)) {
+      final desiredValue = controlState.getDesiredValue(
+        _device.id,
+        _device.thermostatChannel.id,
+        modeProp.id,
+      );
+      if (desiredValue is String && ThermostatModeValue.contains(desiredValue)) {
+        return ThermostatModeValue.fromValue(desiredValue) ??
+            _device.thermostatMode;
+      }
+    }
+
+    return _device.thermostatMode;
+  }
 
   bool get _isHeating => _device.heaterChannel?.isHeating ?? false;
 
@@ -85,9 +147,76 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
   double get _currentTemperature => _device.temperatureChannel.temperature;
 
+  double get _minSetpoint {
+    // Get min from the appropriate channel based on mode
+    switch (_currentMode) {
+      case ThermostatModeValue.heat:
+        return _device.heaterChannel?.minTemperature ?? 16.0;
+      case ThermostatModeValue.cool:
+        return _device.coolerChannel?.minTemperature ?? 16.0;
+      case ThermostatModeValue.auto:
+      case ThermostatModeValue.off:
+        // Use heater min as default
+        return _device.heaterChannel?.minTemperature ?? 16.0;
+    }
+  }
+
+  double get _maxSetpoint {
+    // Get max from the appropriate channel based on mode
+    switch (_currentMode) {
+      case ThermostatModeValue.heat:
+        return _device.heaterChannel?.maxTemperature ?? 30.0;
+      case ThermostatModeValue.cool:
+        return _device.coolerChannel?.maxTemperature ?? 30.0;
+      case ThermostatModeValue.auto:
+      case ThermostatModeValue.off:
+        // Use heater max as default
+        return _device.heaterChannel?.maxTemperature ?? 30.0;
+    }
+  }
+
+  ChannelPropertyView? get _activeSetpointProp {
+    switch (_currentMode) {
+      case ThermostatModeValue.heat:
+        return _device.heaterChannel?.temperatureProp;
+      case ThermostatModeValue.cool:
+        return _device.coolerChannel?.temperatureProp;
+      case ThermostatModeValue.auto:
+      case ThermostatModeValue.off:
+        return _device.heaterChannel?.temperatureProp;
+    }
+  }
+
+  String? get _activeSetpointChannelId {
+    switch (_currentMode) {
+      case ThermostatModeValue.heat:
+        return _device.heaterChannel?.id;
+      case ThermostatModeValue.cool:
+        return _device.coolerChannel?.id;
+      case ThermostatModeValue.auto:
+      case ThermostatModeValue.off:
+        return _device.heaterChannel?.id;
+    }
+  }
+
   double get _targetSetpoint {
-    if (_pendingSetpoint != null) {
-      return _pendingSetpoint!;
+    final setpointProp = _activeSetpointProp;
+    final channelId = _activeSetpointChannelId;
+    final controlState = _deviceControlStateService;
+
+    // Check for pending/optimistic value first
+    if (setpointProp != null &&
+        channelId != null &&
+        controlState != null &&
+        controlState.isLocked(_device.id, channelId, setpointProp.id)) {
+      final desiredValue = controlState.getDesiredValue(
+        _device.id,
+        channelId,
+        setpointProp.id,
+      );
+      if (desiredValue is num) {
+        return desiredValue.toDouble();
+      }
     }
 
     // Get setpoint based on current mode
@@ -109,22 +238,66 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   // --------------------------------------------------------------------------
 
   void _onModeChanged(ThermostatModeValue mode) {
-    setState(() {
-      _pendingMode = mode;
-      _pendingSetpoint = null; // Clear to use new mode's target temperature
-    });
+    final modeProp = _device.thermostatChannel.modeProp;
 
-    // TODO: Send mode change command to device
-    // For now, just update local state
+    // Set PENDING state immediately for responsive UI
+    _deviceControlStateService?.setPending(
+      _device.id,
+      _device.thermostatChannel.id,
+      modeProp.id,
+      mode.value,
+    );
+    setState(() {});
+
+    // Send mode change command to backend
+    _setPropertyValue(modeProp, mode.value).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          _device.thermostatChannel.id,
+          modeProp.id,
+        );
+      }
+    });
   }
 
   void _onSetpointChanged(double value) {
-    setState(() {
-      _pendingSetpoint = value;
-    });
+    final setpointProp = _activeSetpointProp;
+    final channelId = _activeSetpointChannelId;
+    if (setpointProp == null || channelId == null) return;
 
-    // TODO: Send setpoint change command to device
-    // For now, just update local state
+    // Round to step value (0.5)
+    final steppedValue = (value * 2).round() / 2;
+
+    // Clamp to valid range
+    final clampedValue = steppedValue.clamp(_minSetpoint, _maxSetpoint);
+
+    // Set PENDING state immediately for responsive UI
+    _deviceControlStateService?.setPending(
+      _device.id,
+      channelId,
+      setpointProp.id,
+      clampedValue,
+    );
+    setState(() {});
+
+    // Cancel any pending debounce timer
+    _setpointDebounceTimer?.cancel();
+
+    // Debounce the API call to avoid flooding backend
+    _setpointDebounceTimer = Timer(_setpointDebounceDuration, () async {
+      if (!mounted) return;
+
+      await _setPropertyValue(setpointProp, clampedValue);
+
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          channelId,
+          setpointProp.id,
+        );
+      }
+    });
   }
 
   // --------------------------------------------------------------------------
@@ -160,11 +333,15 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   Color _getModeLightColor(bool isDark) {
     switch (_currentMode) {
       case ThermostatModeValue.heat:
-        return isDark ? AppColorsDark.warningLight5 : AppColorsLight.warningLight5;
+        return isDark
+            ? AppColorsDark.warningLight5
+            : AppColorsLight.warningLight5;
       case ThermostatModeValue.cool:
         return isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight5;
       case ThermostatModeValue.auto:
-        return isDark ? AppColorsDark.successLight5 : AppColorsLight.successLight5;
+        return isDark
+            ? AppColorsDark.successLight5
+            : AppColorsLight.successLight5;
       case ThermostatModeValue.off:
         return isDark ? AppFillColorDark.light : AppFillColorLight.light;
     }
@@ -210,6 +387,15 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         icon: MdiIcons.snowflake,
         label: 'Cool',
         color: ModeSelectorColor.info,
+      ));
+    }
+
+    if (availableModes.contains(ThermostatModeValue.auto)) {
+      modes.add(ModeOption(
+        value: ThermostatModeValue.auto,
+        icon: MdiIcons.autorenew,
+        label: 'Auto',
+        color: ModeSelectorColor.success,
       ));
     }
 
@@ -301,10 +487,17 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   // --------------------------------------------------------------------------
 
   Widget _buildPortraitLayout(BuildContext context, bool isDark) {
+    final localizations = AppLocalizations.of(context)!;
+    final modeColor = _getModeColor(isDark);
+
     return SingleChildScrollView(
       padding: AppSpacings.paddingLg,
-      child: Center(
-        child: _buildPrimaryControlCard(context, isDark, dialSize: _scale(200)),
+      child: Column(
+        children: [
+          _buildPrimaryControlCard(context, isDark, dialSize: _scale(200)),
+          AppSpacings.spacingMdVertical,
+          _buildStatusSection(localizations, isDark, modeColor),
+        ],
       ),
     );
   }
@@ -314,9 +507,12 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   // --------------------------------------------------------------------------
 
   Widget _buildLandscapeLayout(BuildContext context, bool isDark) {
+    final localizations = AppLocalizations.of(context)!;
     final borderColor =
         isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+    final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.light;
     final isLargeScreen = _screenService.isLargeScreen;
+    final modeColor = _getModeColor(isDark);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -335,21 +531,54 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
           ),
         ),
         Container(width: _scale(1), color: borderColor),
-        // Right column: empty for now (could add device info later)
+        // Right column: status info
         Expanded(
           flex: 1,
-          child: Center(
-            child: Text(
-              _device.name,
-              style: TextStyle(
-                color: isDark
-                    ? AppTextColorDark.secondary
-                    : AppTextColorLight.secondary,
-                fontSize: AppFontSize.base,
-              ),
+          child: Container(
+            color: cardColor,
+            padding: AppSpacings.paddingLg,
+            child: SingleChildScrollView(
+              child: _buildStatusSection(localizations, isDark, modeColor),
             ),
           ),
         ),
+      ],
+    );
+  }
+
+  // --------------------------------------------------------------------------
+  // STATUS SECTION
+  // --------------------------------------------------------------------------
+
+  Widget _buildStatusSection(
+    AppLocalizations localizations,
+    bool isDark,
+    Color modeColor,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Lock control if available
+        if (_device.hasThermostatLock) ...[
+          UniversalTile(
+            layout: TileLayout.horizontal,
+            icon: Icons.lock,
+            name: localizations.device_child_lock,
+            status: _device.isThermostatLocked
+                ? localizations.thermostat_lock_locked
+                : localizations.thermostat_lock_unlocked,
+            isActive: _device.isThermostatLocked,
+            activeColor: modeColor,
+            onTileTap: () => _setPropertyValue(
+              _device.thermostatChannel.lockedProp,
+              !_device.isThermostatLocked,
+            ),
+            showGlow: false,
+            showDoubleBorder: false,
+            showInactiveBorder: true,
+          ),
+          AppSpacings.spacingSmVertical,
+        ],
       ],
     );
   }
@@ -367,6 +596,18 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
 
+    // Validate min/max - CircularControlDial asserts maxValue > minValue
+    var minSetpoint = _minSetpoint;
+    var maxSetpoint = _maxSetpoint;
+    if (minSetpoint >= maxSetpoint) {
+      // Use safe defaults if API returns malformed data
+      minSetpoint = 16.0;
+      maxSetpoint = 30.0;
+    }
+
+    // Clamp target to valid range
+    final targetSetpoint = _targetSetpoint.clamp(minSetpoint, maxSetpoint);
+
     return Container(
       padding: AppSpacings.paddingLg,
       decoration: BoxDecoration(
@@ -378,10 +619,10 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         mainAxisSize: MainAxisSize.min,
         children: [
           CircularControlDial(
-            value: _targetSetpoint,
+            value: targetSetpoint,
             currentValue: _currentTemperature,
-            minValue: _minSetpoint,
-            maxValue: _maxSetpoint,
+            minValue: minSetpoint,
+            maxValue: maxSetpoint,
             step: 0.5,
             size: dialSize,
             accentType: _getDialAccentColor(),
@@ -404,6 +645,18 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
 
+    // Validate min/max - CircularControlDial asserts maxValue > minValue
+    var minSetpoint = _minSetpoint;
+    var maxSetpoint = _maxSetpoint;
+    if (minSetpoint >= maxSetpoint) {
+      // Use safe defaults if API returns malformed data
+      minSetpoint = 16.0;
+      maxSetpoint = 30.0;
+    }
+
+    // Clamp target to valid range
+    final targetSetpoint = _targetSetpoint.clamp(minSetpoint, maxSetpoint);
+
     return Container(
       padding: AppSpacings.paddingLg,
       decoration: BoxDecoration(
@@ -425,10 +678,10 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               CircularControlDial(
-                value: _targetSetpoint,
+                value: targetSetpoint,
                 currentValue: _currentTemperature,
-                minValue: _minSetpoint,
-                maxValue: _maxSetpoint,
+                minValue: minSetpoint,
+                maxValue: maxSetpoint,
                 step: 0.5,
                 size: dialSize,
                 accentType: _getDialAccentColor(),
