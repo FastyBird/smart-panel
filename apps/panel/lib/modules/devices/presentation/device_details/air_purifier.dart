@@ -559,8 +559,8 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       return const SizedBox.shrink();
     }
 
-    // Use current mode or fall back to first available mode
-    final selectedMode = _mode ?? availableModes.first;
+    // selectedMode can be null if device is reset or sends invalid value
+    final selectedMode = _mode;
 
     return ModeSelector<FanModeValue>(
       modes: _getFanModeOptions(localizations),
@@ -767,7 +767,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
                 AppSpacings.spacingXlHorizontal,
                 ModeSelector<FanModeValue>(
                   modes: _getFanModeOptions(localizations),
-                  selectedValue: _mode ?? _device.fanChannel.availableModes.first,
+                  selectedValue: _mode,
                   onChanged: (mode) => _setPropertyValue(
                     _device.fanChannel.modeProp,
                     mode.value,

@@ -1169,7 +1169,8 @@ class _AirConditionerDeviceDetailState
   ) {
     final fanChannel = _device.fanChannel;
     final availableModes = fanChannel.availableModes;
-    final selectedMode = fanChannel.mode ?? availableModes.first;
+    // selectedMode can be null if device is reset or sends invalid value
+    final selectedMode = fanChannel.mode;
 
     if (useCompactLayout) {
       final options = availableModes.map((mode) {

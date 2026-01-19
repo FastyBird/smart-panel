@@ -936,8 +936,8 @@ class _AirDehumidifierDeviceDetailState
     final availableModes = fanChannel.availableModes;
     if (availableModes.length <= 1) return const SizedBox.shrink();
 
+    // currentMode can be null if device is reset or sends invalid value
     final currentMode = fanChannel.mode;
-    if (currentMode == null) return const SizedBox.shrink();
 
     if (useCompactLayout) {
       final options = availableModes

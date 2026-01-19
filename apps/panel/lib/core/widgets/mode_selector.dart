@@ -75,8 +75,8 @@ class ModeSelector<T> extends StatelessWidget {
   /// List of mode options to display
   final List<ModeOption<T>> modes;
 
-  /// Currently selected value
-  final T selectedValue;
+  /// Currently selected value (null means no selection)
+  final T? selectedValue;
 
   /// Callback when a mode is selected
   final ValueChanged<T> onChanged;

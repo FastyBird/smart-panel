@@ -410,7 +410,8 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
       return const SizedBox.shrink();
     }
 
-    final selectedMode = fanChannel.mode ?? availableModes.first;
+    // selectedMode can be null if device is reset or sends invalid value
+    final selectedMode = fanChannel.mode;
 
     return ModeSelector<FanModeValue>(
       modes: _getFanModeOptions(localizations),
@@ -584,8 +585,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
                 AppSpacings.spacingXlHorizontal,
                 ModeSelector<FanModeValue>(
                   modes: _getFanModeOptions(localizations),
-                  selectedValue:
-                      _device.fanChannel.mode ?? _device.fanChannel.availableModes.first,
+                  selectedValue: _device.fanChannel.mode,
                   onChanged: (mode) => _setPropertyValue(
                     _device.fanChannel.modeProp,
                     mode.value,
