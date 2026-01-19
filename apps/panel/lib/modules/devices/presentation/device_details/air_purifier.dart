@@ -919,9 +919,55 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         (_screenService.isSmallScreen || _screenService.isMediumScreen);
 
     // Build info tiles dynamically based on available channels
+    // Ordered by priority: safety-critical > primary air quality > secondary gases > maintenance > environmental
     final infoTiles = <Widget>[];
 
-    // PM tile - show density if available, otherwise detected status
+    // ═══════════════════════════════════════════════════════════════════════
+    // PRIORITY 1: SAFETY-CRITICAL (life-threatening)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // CO tile - carbon monoxide (can be lethal, highest priority)
+    final coChannel = _device.carbonMonoxideChannel;
+    if (coChannel != null) {
+      if (coChannel.hasDensity) {
+        infoTiles.add(InfoTile(
+          label: localizations.device_co,
+          value: NumberFormatUtils.defaultFormat.formatDecimal(coChannel.density, decimalPlaces: 1),
+          unit: 'ppm',
+          valueColor: airColor,
+          isWarning: coChannel.density > 35, // Warn if CO exceeds 35 ppm (EPA 1-hour limit)
+        ));
+      } else if (coChannel.hasDetected) {
+        final isDetected = coChannel.detected;
+        infoTiles.add(InfoTile(
+          label: localizations.device_co,
+          value: isDetected
+              ? localizations.gas_detected
+              : localizations.gas_clear,
+          valueColor: airColor,
+          isWarning: isDetected,
+        ));
+      }
+    }
+
+    // Leak sensor tile - water damage prevention
+    final leakChannel = _device.leakChannel;
+    if (leakChannel != null) {
+      final isLeaking = leakChannel.detected;
+      infoTiles.add(InfoTile(
+        label: localizations.leak_sensor_water,
+        value: isLeaking
+            ? localizations.leak_sensor_detected
+            : localizations.leak_sensor_dry,
+        isWarning: isLeaking,
+      ));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PRIORITY 2: PRIMARY AIR QUALITY INDICATORS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // PM tile - particulate matter (main AQI component)
     final pmChannel = _device.airParticulateChannel;
     if (pmChannel != null) {
       final pmMode = pmChannel.hasMode ? pmChannel.mode : AirParticulateModeValue.pm25;
@@ -945,7 +991,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       }
     }
 
-    // VOC tile - prioritize: level > density > detected
+    // VOC tile - volatile organic compounds
     final vocChannel = _device.volatileOrganicCompoundsChannel;
     if (vocChannel != null) {
       if (vocChannel.hasLevel && vocChannel.level != null) {
@@ -973,53 +1019,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       }
     }
 
-    // Filter tile - show life remaining or status
-    final filterChannel = _device.filterChannel;
-    if (filterChannel != null) {
-      if (filterChannel.hasLifeRemaining) {
-        // Show life remaining percentage
-        infoTiles.add(InfoTile(
-          label: localizations.device_filter_life,
-          value: '${(_filterLife * 100).toInt()}',
-          unit: '%',
-          isWarning: _filterLife < 0.3 || _device.isFilterNeedsReplacement,
-        ));
-      } else if (filterChannel.hasStatus) {
-        // Show status if no life remaining property
-        infoTiles.add(InfoTile(
-          label: localizations.device_filter_status,
-          value: FilterUtils.getStatusLabel(localizations, filterChannel.status),
-          isWarning: _device.isFilterNeedsReplacement,
-        ));
-      }
-    }
-
-    // Temperature tile - only show if temperature channel exists
-    final tempChannel = _device.temperatureChannel;
-    if (tempChannel != null && tempChannel.hasTemperature) {
-      infoTiles.add(InfoTile(
-        label: localizations.device_temperature,
-        value: NumberFormatUtils.defaultFormat.formatDecimal(
-          tempChannel.temperature,
-          decimalPlaces: 1,
-        ),
-        unit: '°C',
-        valueColor: airColor,
-      ));
-    }
-
-    // Humidity tile - only show if humidity channel exists
-    final humidityChannel = _device.humidityChannel;
-    if (humidityChannel != null) {
-      infoTiles.add(InfoTile(
-        label: localizations.device_humidity,
-        value: NumberFormatUtils.defaultFormat.formatInteger(humidityChannel.humidity),
-        unit: '%',
-        valueColor: airColor,
-      ));
-    }
-
-    // CO₂ tile - only show if carbon dioxide channel exists and has density
+    // CO₂ tile - carbon dioxide (indoor air quality indicator)
     final co2Channel = _device.carbonDioxideChannel;
     if (co2Channel != null && co2Channel.hasDensity) {
       infoTiles.add(InfoTile(
@@ -1031,21 +1031,31 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       ));
     }
 
-    // CO tile - carbon monoxide (safety-critical)
-    final coChannel = _device.carbonMonoxideChannel;
-    if (coChannel != null) {
-      if (coChannel.hasDensity) {
+    // ═══════════════════════════════════════════════════════════════════════
+    // PRIORITY 3: SECONDARY GASES / POLLUTANTS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // O₃ tile - ozone
+    final o3Channel = _device.ozoneChannel;
+    if (o3Channel != null) {
+      if (o3Channel.hasLevel && o3Channel.level != null) {
         infoTiles.add(InfoTile(
-          label: localizations.device_co,
-          value: NumberFormatUtils.defaultFormat.formatDecimal(coChannel.density, decimalPlaces: 1),
-          unit: 'ppm',
+          label: localizations.device_o3,
+          value: AirQualityUtils.getOzoneLevelLabel(localizations, o3Channel.level),
           valueColor: airColor,
-          isWarning: coChannel.density > 35, // Warn if CO exceeds 35 ppm (EPA 1-hour limit)
         ));
-      } else if (coChannel.hasDetected) {
-        final isDetected = coChannel.detected;
+      } else if (o3Channel.hasDensity) {
         infoTiles.add(InfoTile(
-          label: localizations.device_co,
+          label: localizations.device_o3,
+          value: NumberFormatUtils.defaultFormat.formatInteger(o3Channel.density.toInt()),
+          unit: 'µg/m³',
+          valueColor: airColor,
+          isWarning: o3Channel.density > 100, // Warn if exceeds WHO 8-hour limit
+        ));
+      } else if (o3Channel.hasDetected) {
+        final isDetected = o3Channel.detected;
+        infoTiles.add(InfoTile(
+          label: localizations.device_o3,
           value: isDetected
               ? localizations.gas_detected
               : localizations.gas_clear,
@@ -1070,36 +1080,6 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         final isDetected = no2Channel.detected;
         infoTiles.add(InfoTile(
           label: localizations.device_no2,
-          value: isDetected
-              ? localizations.gas_detected
-              : localizations.gas_clear,
-          valueColor: airColor,
-          isWarning: isDetected,
-        ));
-      }
-    }
-
-    // O₃ tile - ozone
-    final o3Channel = _device.ozoneChannel;
-    if (o3Channel != null) {
-      if (o3Channel.hasLevel && o3Channel.level != null) {
-        infoTiles.add(InfoTile(
-          label: localizations.device_o3,
-          value: AirQualityUtils.getOzoneLevelLabel(localizations, o3Channel.level),
-          valueColor: airColor,
-        ));
-      } else if (o3Channel.hasDensity) {
-        infoTiles.add(InfoTile(
-          label: localizations.device_o3,
-          value: NumberFormatUtils.defaultFormat.formatInteger(o3Channel.density.toInt()),
-          unit: 'µg/m³',
-          valueColor: airColor,
-          isWarning: o3Channel.density > 100, // Warn if exceeds WHO 8-hour limit
-        ));
-      } else if (o3Channel.hasDetected) {
-        final isDetected = o3Channel.detected;
-        infoTiles.add(InfoTile(
-          label: localizations.device_o3,
           value: isDetected
               ? localizations.gas_detected
               : localizations.gas_clear,
@@ -1139,6 +1119,58 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       }
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // PRIORITY 4: MAINTENANCE
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // Filter tile - maintenance indicator
+    final filterChannel = _device.filterChannel;
+    if (filterChannel != null) {
+      if (filterChannel.hasLifeRemaining) {
+        infoTiles.add(InfoTile(
+          label: localizations.device_filter_life,
+          value: '${(_filterLife * 100).toInt()}',
+          unit: '%',
+          isWarning: _filterLife < 0.3 || _device.isFilterNeedsReplacement,
+        ));
+      } else if (filterChannel.hasStatus) {
+        infoTiles.add(InfoTile(
+          label: localizations.device_filter_status,
+          value: FilterUtils.getStatusLabel(localizations, filterChannel.status),
+          isWarning: _device.isFilterNeedsReplacement,
+        ));
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PRIORITY 5: ENVIRONMENTAL
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // Temperature tile
+    final tempChannel = _device.temperatureChannel;
+    if (tempChannel != null && tempChannel.hasTemperature) {
+      infoTiles.add(InfoTile(
+        label: localizations.device_temperature,
+        value: NumberFormatUtils.defaultFormat.formatDecimal(
+          tempChannel.temperature,
+          decimalPlaces: 1,
+        ),
+        unit: '°C',
+        valueColor: airColor,
+      ));
+    }
+
+    // Humidity tile
+    final humidityChannel = _device.humidityChannel;
+    if (humidityChannel != null) {
+      infoTiles.add(InfoTile(
+        label: localizations.device_humidity,
+        value: NumberFormatUtils.defaultFormat.formatInteger(humidityChannel.humidity),
+        unit: '%',
+        valueColor: airColor,
+      ));
+    }
+
     // Pressure tile - atmospheric pressure
     final pressureChannel = _device.pressureChannel;
     if (pressureChannel != null) {
@@ -1147,19 +1179,6 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         value: NumberFormatUtils.defaultFormat.formatDecimal(pressureChannel.measured, decimalPlaces: 1),
         unit: 'kPa',
         valueColor: airColor,
-      ));
-    }
-
-    // Leak sensor tile
-    final leakChannel = _device.leakChannel;
-    if (leakChannel != null) {
-      final isLeaking = leakChannel.detected;
-      infoTiles.add(InfoTile(
-        label: localizations.leak_sensor_water,
-        value: isLeaking
-            ? localizations.leak_sensor_detected
-            : localizations.leak_sensor_dry,
-        isWarning: isLeaking,
       ));
     }
 
