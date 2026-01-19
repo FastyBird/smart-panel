@@ -2272,6 +2272,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cameras'**
   String get entry_cameras;
+
+  /// Section header for other media devices in media domain view
+  ///
+  /// In en, this message translates to:
+  /// **'Other Devices'**
+  String get media_other_devices;
+
+  /// Section header for upcoming tracks in media queue
+  ///
+  /// In en, this message translates to:
+  /// **'Up Next'**
+  String get media_up_next;
+
+  /// Label for volume control
+  ///
+  /// In en, this message translates to:
+  /// **'Volume'**
+  String get media_volume;
+
+  /// Status when media device is playing
+  ///
+  /// In en, this message translates to:
+  /// **'Playing'**
+  String get media_playing;
+
+  /// Status when media device is idle
+  ///
+  /// In en, this message translates to:
+  /// **'Idle'**
+  String get media_idle;
+
+  /// Status when media device is in standby
+  ///
+  /// In en, this message translates to:
+  /// **'Standby'**
+  String get media_standby;
+
+  /// Label for media source selection
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get media_source;
+
+  /// Label for media queue
+  ///
+  /// In en, this message translates to:
+  /// **'Queue'**
+  String get media_queue;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

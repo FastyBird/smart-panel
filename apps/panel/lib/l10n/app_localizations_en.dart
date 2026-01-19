@@ -1112,4 +1112,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get entry_cameras => 'Cameras';
+
+  @override
+  String get media_other_devices => 'Other Devices';
+
+  @override
+  String get media_up_next => 'Up Next';
+
+  @override
+  String get media_volume => 'Volume';
+
+  @override
+  String get media_playing => 'Playing';
+
+  @override
+  String get media_idle => 'Idle';
+
+  @override
+  String get media_standby => 'Standby';
+
+  @override
+  String get media_source => 'Source';
+
+  @override
+  String get media_queue => 'Queue';
 }

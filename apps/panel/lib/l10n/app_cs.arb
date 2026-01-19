@@ -365,5 +365,14 @@
   "entry_no_security_devices": "Žádná bezpečnostní zařízení nejsou nakonfigurována",
   "entry_locks": "Zámky",
   "entry_alarm": "Alarm",
-  "entry_cameras": "Kamery"
+  "entry_cameras": "Kamery",
+
+  "media_other_devices": "Ostatní zařízení",
+  "media_up_next": "Další v pořadí",
+  "media_volume": "Hlasitost",
+  "media_playing": "Přehrává",
+  "media_idle": "Nečinné",
+  "media_standby": "Pohotovost",
+  "media_source": "Zdroj",
+  "media_queue": "Fronta"
 }

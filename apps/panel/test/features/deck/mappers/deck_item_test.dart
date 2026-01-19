@@ -49,7 +49,7 @@ void main() {
         expect((widget as DomainViewPage).viewItem, domainViewItem);
       });
 
-      test('should route media domain to DomainViewPage placeholder', () {
+      test('should route media domain to MediaDomainViewPage', () {
         final domainViewItem = DomainViewItem(
           id: 'domain-media-room123',
           domainType: DomainType.media,
@@ -60,8 +60,8 @@ void main() {
 
         final widget = buildDeckItemWidget(domainViewItem);
 
-        expect(widget, isA<DomainViewPage>());
-        expect((widget as DomainViewPage).viewItem, domainViewItem);
+        expect(widget, isA<MediaDomainViewPage>());
+        expect((widget as MediaDomainViewPage).viewItem, domainViewItem);
       });
     });
 

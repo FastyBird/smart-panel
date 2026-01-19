@@ -1113,4 +1113,28 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get entry_cameras => 'Kamery';
+
+  @override
+  String get media_other_devices => 'Ostatní zařízení';
+
+  @override
+  String get media_up_next => 'Další v pořadí';
+
+  @override
+  String get media_volume => 'Hlasitost';
+
+  @override
+  String get media_playing => 'Přehrává';
+
+  @override
+  String get media_idle => 'Nečinné';
+
+  @override
+  String get media_standby => 'Pohotovost';
+
+  @override
+  String get media_source => 'Zdroj';
+
+  @override
+  String get media_queue => 'Fronta';
 }
