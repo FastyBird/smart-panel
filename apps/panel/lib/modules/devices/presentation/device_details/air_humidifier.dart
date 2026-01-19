@@ -11,6 +11,7 @@ import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/core/widgets/info_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -1106,100 +1107,33 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
           ],
         );
       } else {
-        // For SpeedSlider, build a custom container that includes both slider and mode
-        final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
-        final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
-        final textColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
-        final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-        final mutedColor = isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled;
-        final trackColor = isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
-        final thumbFillColor = isDark ? AppFillColorDark.darker : AppColors.white;
-
-        final displayLabel = _device.isOn
-            ? localizations.device_fan_speed
-            : localizations.on_state_off;
-        final displayValue = _device.isOn
-            ? '${(_normalizedFanSpeed * 100).toInt()}%'
-            : '';
-
-        return Container(
-          padding: AppSpacings.paddingLg,
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(AppBorderRadius.round),
-            border: Border.all(color: borderColor, width: _scale(1)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header row
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    displayLabel,
-                    style: TextStyle(
-                      color: secondaryColor,
-                      fontSize: AppFontSize.small,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Text(
-                    displayValue,
-                    style: TextStyle(
-                      color: _device.isOn ? textColor : mutedColor,
-                      fontSize: AppFontSize.small,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-              AppSpacings.spacingMdVertical,
-              // Slider
-              SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  activeTrackColor: _device.isOn ? humidityColor : mutedColor,
-                  inactiveTrackColor: trackColor,
-                  thumbColor: _device.isOn ? humidityColor : mutedColor,
-                  overlayColor: humidityColor.withValues(alpha: 0.2),
-                  trackHeight: _scale(6),
-                  thumbShape: _CircularThumbWithBorder(
-                    thumbRadius: _scale(12),
-                    borderWidth: _scale(3),
-                    borderColor: thumbFillColor,
-                  ),
-                ),
-                child: Slider(
-                  value: _normalizedFanSpeed,
-                  onChanged: _device.isOn ? _setFanSpeed : null,
-                ),
-              ),
-              // Step labels
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  localizations.fan_speed_off,
-                  localizations.fan_speed_low,
-                  localizations.fan_speed_medium,
-                  localizations.fan_speed_high,
-                ].map((label) {
-                  return Text(
-                    label,
-                    style: TextStyle(
-                      color: _device.isOn ? secondaryColor : mutedColor,
-                      fontSize: AppFontSize.extraSmall,
-                    ),
-                  );
-                }).toList(),
-              ),
-              // Fan mode selector if available
-              if (hasMode) ...[
-                AppSpacings.spacingLgVertical,
-                Center(child: _buildFanModeControl(localizations, humidityColor, false)),
-              ],
-            ],
-          ),
+        // Use SpeedSlider widget for landscape layout
+        final speedSlider = SpeedSlider(
+          value: _normalizedFanSpeed,
+          activeColor: humidityColor,
+          enabled: _device.isOn,
+          steps: [
+            localizations.fan_speed_off,
+            localizations.fan_speed_low,
+            localizations.fan_speed_medium,
+            localizations.fan_speed_high,
+          ],
+          onChanged: _setFanSpeed,
         );
+
+        // If fan has mode, add mode selector below
+        if (hasMode) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              speedSlider,
+              AppSpacings.spacingMdVertical,
+              _buildFanModeControl(localizations, humidityColor, false),
+            ],
+          );
+        }
+
+        return speedSlider;
       }
     }
   }
@@ -1453,53 +1387,5 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     }
 
     return options;
-  }
-}
-
-/// Custom thumb shape with a border around it for the slider
-class _CircularThumbWithBorder extends SliderComponentShape {
-  final double thumbRadius;
-  final double borderWidth;
-  final Color borderColor;
-
-  const _CircularThumbWithBorder({
-    required this.thumbRadius,
-    required this.borderWidth,
-    required this.borderColor,
-  });
-
-  @override
-  Size getPreferredSize(bool isEnabled, bool isDiscrete) {
-    return Size.fromRadius(thumbRadius);
-  }
-
-  @override
-  void paint(
-    PaintingContext context,
-    Offset center, {
-    required Animation<double> activationAnimation,
-    required Animation<double> enableAnimation,
-    required bool isDiscrete,
-    required TextPainter labelPainter,
-    required RenderBox parentBox,
-    required SliderThemeData sliderTheme,
-    required TextDirection textDirection,
-    required double value,
-    required double textScaleFactor,
-    required Size sizeWithOverflow,
-  }) {
-    final Canvas canvas = context.canvas;
-
-    // Draw border circle
-    final borderPaint = Paint()
-      ..color = borderColor
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(center, thumbRadius, borderPaint);
-
-    // Draw inner colored circle
-    final thumbPaint = Paint()
-      ..color = sliderTheme.thumbColor ?? Colors.blue
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(center, thumbRadius - borderWidth, thumbPaint);
   }
 }
