@@ -11,7 +11,6 @@ import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/core/widgets/info_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
-import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -624,12 +623,9 @@ class _AirDehumidifierDeviceDetailState
             _buildInfoTilesRow(infoTiles),
           AppSpacings.spacingMdVertical,
         ],
-        // Fan speed control if available
+        // Fan speed control if available (includes fan mode if present)
         if (fanChannel != null && fanChannel.hasSpeed)
-          _buildFanSpeedControl(localizations, humidityColor, useVerticalLayout),
-        // Fan mode selector if available
-        if (fanChannel != null && fanChannel.hasMode)
-          _buildFanModeControl(localizations, humidityColor, useVerticalLayout),
+          _buildFanSpeedControl(localizations, isDark, humidityColor, useVerticalLayout),
         // Oscillation / Swing tile - only show if fan has swing property
         if (fanChannel != null && fanChannel.hasSwing) ...[
           UniversalTile(
@@ -755,11 +751,14 @@ class _AirDehumidifierDeviceDetailState
 
   Widget _buildFanSpeedControl(
     AppLocalizations localizations,
+    bool isDark,
     Color humidityColor,
     bool useVerticalLayout,
   ) {
     final fanChannel = _device.fanChannel;
     if (fanChannel == null || !fanChannel.hasSpeed) return const SizedBox.shrink();
+
+    final hasMode = fanChannel.hasMode && fanChannel.availableModes.length > 1;
 
     if (fanChannel.isSpeedEnum) {
       // Enum-based speed (off, low, medium, high, etc.)
@@ -773,32 +772,46 @@ class _AirDehumidifierDeviceDetailState
               ))
           .toList();
 
+      final speedWidget = ValueSelectorRow<FanSpeedLevelValue>(
+        currentValue: fanChannel.speedLevel,
+        label: localizations.device_fan_speed,
+        icon: Icons.speed,
+        sheetTitle: localizations.device_fan_speed,
+        activeColor: humidityColor,
+        options: options,
+        displayFormatter: (level) => level != null
+            ? FanUtils.getSpeedLevelLabel(localizations, level)
+            : localizations.fan_speed_off,
+        isActiveValue: (level) =>
+            level != null && level != FanSpeedLevelValue.off,
+        columns: availableLevels.length > 4 ? 3 : availableLevels.length,
+        layout: useVerticalLayout
+            ? ValueSelectorRowLayout.compact
+            : ValueSelectorRowLayout.horizontal,
+        onChanged: _device.isOn
+            ? (level) {
+                if (level != null) {
+                  _setPropertyValue(fanChannel.speedProp, level.value);
+                }
+              }
+            : null,
+      );
+
+      // If fan has mode, add mode selector below
+      if (hasMode) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            speedWidget,
+            AppSpacings.spacingMdVertical,
+            _buildFanModeControl(localizations, humidityColor, useVerticalLayout),
+          ],
+        );
+      }
+
       return Column(
         children: [
-          ValueSelectorRow<FanSpeedLevelValue>(
-            currentValue: fanChannel.speedLevel,
-            label: localizations.device_fan_speed,
-            icon: Icons.speed,
-            sheetTitle: localizations.device_fan_speed,
-            activeColor: humidityColor,
-            options: options,
-            displayFormatter: (level) => level != null
-                ? FanUtils.getSpeedLevelLabel(localizations, level)
-                : localizations.fan_speed_off,
-            isActiveValue: (level) =>
-                level != null && level != FanSpeedLevelValue.off,
-            columns: availableLevels.length > 4 ? 3 : availableLevels.length,
-            layout: useVerticalLayout
-                ? ValueSelectorRowLayout.compact
-                : ValueSelectorRowLayout.horizontal,
-            onChanged: _device.isOn
-                ? (level) {
-                    if (level != null) {
-                      _setPropertyValue(fanChannel.speedProp, level.value);
-                    }
-                  }
-                : null,
-          ),
+          speedWidget,
           AppSpacings.spacingSmVertical,
         ],
       );
@@ -810,36 +823,114 @@ class _AirDehumidifierDeviceDetailState
       if (range <= 0) return const SizedBox.shrink();
 
       if (useVerticalLayout) {
+        final speedWidget = ValueSelectorRow<double>(
+          currentValue: _normalizedFanSpeed,
+          label: localizations.device_fan_speed,
+          icon: Icons.speed,
+          sheetTitle: localizations.device_fan_speed,
+          activeColor: humidityColor,
+          options: _getFanSpeedOptions(localizations),
+          displayFormatter: (v) => _formatFanSpeed(localizations, v),
+          isActiveValue: (v) => v != null && v > 0,
+          columns: 4,
+          layout: ValueSelectorRowLayout.compact,
+          onChanged: _device.isOn ? (v) => _setFanSpeed(v ?? 0) : null,
+        );
+
+        // If fan has mode, add mode selector below
+        if (hasMode) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              speedWidget,
+              AppSpacings.spacingMdVertical,
+              _buildFanModeControl(localizations, humidityColor, useVerticalLayout),
+            ],
+          );
+        }
+
         return Column(
           children: [
-            ValueSelectorRow<double>(
-              currentValue: _normalizedFanSpeed,
-              label: localizations.device_fan_speed,
-              icon: Icons.speed,
-              sheetTitle: localizations.device_fan_speed,
-              activeColor: humidityColor,
-              options: _getFanSpeedOptions(localizations),
-              displayFormatter: (v) => _formatFanSpeed(localizations, v),
-              isActiveValue: (v) => v != null && v > 0,
-              columns: 4,
-              layout: ValueSelectorRowLayout.compact,
-              onChanged: _device.isOn ? (v) => _setFanSpeed(v ?? 0) : null,
-            ),
+            speedWidget,
             AppSpacings.spacingSmVertical,
           ],
         );
       } else {
-        return SpeedSlider(
-          value: _normalizedFanSpeed,
-          activeColor: humidityColor,
-          enabled: _device.isOn,
-          steps: [
-            localizations.fan_speed_off,
-            localizations.fan_speed_low,
-            localizations.fan_speed_medium,
-            localizations.fan_speed_high,
-          ],
-          onChanged: _setFanSpeed,
+        // For SpeedSlider, build a custom container that includes both slider and mode
+        final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
+        final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+        final textColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
+        final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+        final mutedColor = isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled;
+        final trackColor = isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
+        final thumbFillColor = isDark ? AppFillColorDark.darker : AppColors.white;
+
+        final displayLabel = _device.isOn
+            ? localizations.device_fan_speed
+            : localizations.on_state_off;
+        final displayValue = _device.isOn
+            ? '${(_normalizedFanSpeed * 100).toInt()}%'
+            : '';
+
+        return Container(
+          padding: AppSpacings.paddingLg,
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(AppBorderRadius.round),
+            border: Border.all(color: borderColor, width: _scale(1)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    displayLabel,
+                    style: TextStyle(
+                      color: secondaryColor,
+                      fontSize: AppFontSize.small,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    displayValue,
+                    style: TextStyle(
+                      color: _device.isOn ? textColor : mutedColor,
+                      fontSize: AppFontSize.small,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              AppSpacings.spacingMdVertical,
+              // Slider
+              SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  activeTrackColor: humidityColor,
+                  inactiveTrackColor: trackColor,
+                  thumbColor: humidityColor,
+                  overlayColor: humidityColor.withValues(alpha: 0.2),
+                  trackHeight: _scale(6),
+                  thumbShape: _CircularThumbWithBorder(
+                    thumbRadius: _scale(12),
+                    borderWidth: _scale(3),
+                    borderColor: thumbFillColor,
+                  ),
+                ),
+                child: Slider(
+                  value: _normalizedFanSpeed,
+                  onChanged: _device.isOn ? _setFanSpeed : null,
+                ),
+              ),
+              // Fan mode selector if available
+              if (hasMode) ...[
+                AppSpacings.spacingLgVertical,
+                Center(child: _buildFanModeControl(localizations, humidityColor, false)),
+              ],
+            ],
+          ),
         );
       }
     }
@@ -859,40 +950,51 @@ class _AirDehumidifierDeviceDetailState
     final currentMode = fanChannel.mode;
     if (currentMode == null) return const SizedBox.shrink();
 
-    final options = availableModes
-        .map((mode) => ValueOption(
-              value: mode,
-              label: FanUtils.getModeLabel(localizations, mode),
-            ))
-        .toList();
+    if (useCompactLayout) {
+      final options = availableModes
+          .map((mode) => ValueOption(
+                value: mode,
+                label: FanUtils.getModeLabel(localizations, mode),
+              ))
+          .toList();
 
-    return Column(
-      children: [
-        ValueSelectorRow<FanModeValue>(
-          currentValue: currentMode,
-          label: localizations.device_fan_mode,
-          icon: Icons.tune,
-          sheetTitle: localizations.device_fan_mode,
-          activeColor: humidityColor,
-          options: options,
-          displayFormatter: (mode) => mode != null
-              ? FanUtils.getModeLabel(localizations, mode)
-              : '-',
-          isActiveValue: (mode) => mode != null,
-          columns: availableModes.length > 4 ? 3 : availableModes.length,
-          layout: useCompactLayout
-              ? ValueSelectorRowLayout.compact
-              : ValueSelectorRowLayout.horizontal,
-          onChanged: _device.isOn
-              ? (mode) {
-                  if (mode != null) {
-                    _setPropertyValue(fanChannel.modeProp, mode.value);
-                  }
+      return ValueSelectorRow<FanModeValue>(
+        currentValue: currentMode,
+        label: localizations.device_fan_mode,
+        icon: Icons.tune,
+        sheetTitle: localizations.device_fan_mode,
+        activeColor: humidityColor,
+        options: options,
+        displayFormatter: (mode) => mode != null
+            ? FanUtils.getModeLabel(localizations, mode)
+            : '-',
+        isActiveValue: (mode) => mode != null,
+        columns: availableModes.length > 4 ? 3 : availableModes.length,
+        layout: ValueSelectorRowLayout.compact,
+        onChanged: _device.isOn
+            ? (mode) {
+                if (mode != null) {
+                  _setPropertyValue(fanChannel.modeProp, mode.value);
                 }
-              : null,
-        ),
-        AppSpacings.spacingSmVertical,
-      ],
+              }
+            : null,
+      );
+    }
+
+    return ModeSelector<FanModeValue>(
+      modes: availableModes
+          .map((mode) => ModeOption(
+                value: mode,
+                icon: FanUtils.getModeIcon(mode),
+                label: FanUtils.getModeLabel(localizations, mode),
+              ))
+          .toList(),
+      selectedValue: currentMode,
+      onChanged: (mode) => _setPropertyValue(fanChannel.modeProp, mode.value),
+      orientation: ModeSelectorOrientation.horizontal,
+      iconPlacement: ModeSelectorIconPlacement.left,
+      color: ModeSelectorColor.teal,
+      scrollable: true,
     );
   }
 
@@ -1083,5 +1185,53 @@ class _AirDehumidifierDeviceDetailState
     }
 
     return options;
+  }
+}
+
+/// Custom thumb shape with a border around it for the slider
+class _CircularThumbWithBorder extends SliderComponentShape {
+  final double thumbRadius;
+  final double borderWidth;
+  final Color borderColor;
+
+  const _CircularThumbWithBorder({
+    required this.thumbRadius,
+    required this.borderWidth,
+    required this.borderColor,
+  });
+
+  @override
+  Size getPreferredSize(bool isEnabled, bool isDiscrete) {
+    return Size.fromRadius(thumbRadius);
+  }
+
+  @override
+  void paint(
+    PaintingContext context,
+    Offset center, {
+    required Animation<double> activationAnimation,
+    required Animation<double> enableAnimation,
+    required bool isDiscrete,
+    required TextPainter labelPainter,
+    required RenderBox parentBox,
+    required SliderThemeData sliderTheme,
+    required TextDirection textDirection,
+    required double value,
+    required double textScaleFactor,
+    required Size sizeWithOverflow,
+  }) {
+    final Canvas canvas = context.canvas;
+
+    // Draw border circle
+    final borderPaint = Paint()
+      ..color = borderColor
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, thumbRadius, borderPaint);
+
+    // Draw inner colored circle
+    final thumbPaint = Paint()
+      ..color = sliderTheme.thumbColor ?? Colors.blue
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, thumbRadius - borderWidth, thumbPaint);
   }
 }
