@@ -104,6 +104,15 @@ void main() {
       });
     });
 
+    group('SHADING domain', () {
+      test('should classify windowCovering to shading domain', () {
+        expect(
+          classifyDeviceToDomain(DevicesModuleDeviceCategory.windowCovering),
+          DomainType.shading,
+        );
+      });
+    });
+
     group('unclassified categories', () {
       test('should return null for generic', () {
         expect(classifyDeviceToDomain(DevicesModuleDeviceCategory.generic), isNull);
@@ -132,10 +141,6 @@ void main() {
       test('should return null for switcher', () {
         expect(classifyDeviceToDomain(DevicesModuleDeviceCategory.switcher), isNull);
       });
-
-      test('should return null for windowCovering', () {
-        expect(classifyDeviceToDomain(DevicesModuleDeviceCategory.windowCovering), isNull);
-      });
     });
   });
 
@@ -145,6 +150,7 @@ void main() {
 
       expect(counts.lights, 0);
       expect(counts.climate, 0);
+      expect(counts.shading, 0);
       expect(counts.media, 0);
       expect(counts.sensors, 0);
       expect(counts.total, 0);
@@ -154,12 +160,14 @@ void main() {
       const counts = DomainCounts(
         lights: 3,
         climate: 2,
+        shading: 5,
         media: 1,
         sensors: 4,
       );
 
       expect(counts.getCount(DomainType.lights), 3);
       expect(counts.getCount(DomainType.climate), 2);
+      expect(counts.getCount(DomainType.shading), 5);
       expect(counts.getCount(DomainType.media), 1);
       expect(counts.getCount(DomainType.sensors), 4);
     });
@@ -200,28 +208,31 @@ void main() {
       const counts = DomainCounts(
         lights: 1,
         climate: 1,
+        shading: 1,
         media: 1,
         sensors: 1,
       );
 
       final present = counts.presentDomains;
 
-      // Should be in order: lights (0), climate (1), media (2), sensors (3)
+      // Should be in order: lights (0), climate (1), shading (2), media (3), sensors (4)
       expect(present[0], DomainType.lights);
       expect(present[1], DomainType.climate);
-      expect(present[2], DomainType.media);
-      expect(present[3], DomainType.sensors);
+      expect(present[2], DomainType.shading);
+      expect(present[3], DomainType.media);
+      expect(present[4], DomainType.sensors);
     });
 
     test('total should sum all counts', () {
       const counts = DomainCounts(
         lights: 3,
         climate: 2,
+        shading: 5,
         media: 1,
         sensors: 4,
       );
 
-      expect(counts.total, 10);
+      expect(counts.total, 15);
     });
   });
 
@@ -231,6 +242,7 @@ void main() {
 
       expect(counts.lights, 0);
       expect(counts.climate, 0);
+      expect(counts.shading, 0);
       expect(counts.media, 0);
       expect(counts.sensors, 0);
     });
@@ -246,6 +258,7 @@ void main() {
 
       expect(counts.lights, 3);
       expect(counts.climate, 0);
+      expect(counts.shading, 0);
       expect(counts.media, 0);
       expect(counts.sensors, 0);
     });
@@ -261,6 +274,22 @@ void main() {
 
       expect(counts.lights, 0);
       expect(counts.climate, 3);
+      expect(counts.shading, 0);
+      expect(counts.media, 0);
+      expect(counts.sensors, 0);
+    });
+
+    test('should count shading devices', () {
+      final categories = [
+        DevicesModuleDeviceCategory.windowCovering,
+        DevicesModuleDeviceCategory.windowCovering,
+      ];
+
+      final counts = buildDomainCounts(categories);
+
+      expect(counts.lights, 0);
+      expect(counts.climate, 0);
+      expect(counts.shading, 2);
       expect(counts.media, 0);
       expect(counts.sensors, 0);
     });
@@ -274,15 +303,17 @@ void main() {
         DevicesModuleDeviceCategory.lighting,
         DevicesModuleDeviceCategory.outlet, // Not classified
         DevicesModuleDeviceCategory.camera,
+        DevicesModuleDeviceCategory.windowCovering,
       ];
 
       final counts = buildDomainCounts(categories);
 
       expect(counts.lights, 2);
       expect(counts.climate, 1);
+      expect(counts.shading, 1);
       expect(counts.media, 1);
       expect(counts.sensors, 2);
-      expect(counts.total, 6); // outlet not counted
+      expect(counts.total, 7); // outlet not counted
     });
 
     test('should ignore unclassified categories', () {
