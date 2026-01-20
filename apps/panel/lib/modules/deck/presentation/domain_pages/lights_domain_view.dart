@@ -21,6 +21,11 @@ import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/light.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
+import 'package:fastybird_smart_panel/modules/devices/export.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/intent_overlay_service.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
+import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/modules/scenes/service.dart';
 import 'package:fastybird_smart_panel/modules/scenes/views/scenes/view.dart';
@@ -221,6 +226,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   DeckService? _deckService;
   EventBus? _eventBus;
   IntentsRepository? _intentsRepository;
+  IntentOverlayService? _intentOverlayService;
+  DeviceControlStateService? _deviceControlStateService;
   bool _isLoading = true;
 
   // Control state service for optimistic UI (mode control)
@@ -459,6 +466,18 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       _intentsRepository?.addListener(_onIntentChanged);
     } catch (e) {
       if (kDebugMode) debugPrint('[LightsDomainView] Failed to get IntentsRepository: $e');
+    }
+
+    try {
+      _intentOverlayService = locator<IntentOverlayService>();
+    } catch (e) {
+      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get IntentOverlayService: $e');
+    }
+
+    try {
+      _deviceControlStateService = locator<DeviceControlStateService>();
+    } catch (e) {
+      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get DeviceControlStateService: $e');
     }
 
     // Fetch light targets for this space
@@ -860,10 +879,40 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         orElse: () => device.lightChannels.first,
       );
 
+      // Use DeviceControlStateService first for optimistic UI (most reliable)
+      // Fall back to IntentOverlayService, then actual device state
+      bool isOn = channel.on;
+      final controlStateService = _deviceControlStateService;
+      final onProp = channel.onProp;
+
+      if (controlStateService != null &&
+          controlStateService.isLocked(target.deviceId, target.channelId, onProp.id)) {
+        // Use desired value from control state service (immediate, no listener delay)
+        final desiredValue = controlStateService.getDesiredValue(
+          target.deviceId,
+          target.channelId,
+          onProp.id,
+        );
+        if (desiredValue is bool) {
+          isOn = desiredValue;
+        }
+      } else if (_intentOverlayService != null &&
+          _intentOverlayService!.isLocked(target.deviceId, target.channelId, onProp.id)) {
+        // Fall back to intent overlay service
+        final overlayValue = _intentOverlayService!.getOverlayValue(
+          target.deviceId,
+          target.channelId,
+          onProp.id,
+        );
+        if (overlayValue is bool) {
+          isOn = overlayValue;
+        }
+      }
+
       LightState state;
       if (!device.isOnline) {
         state = LightState.offline;
-      } else if (channel.on) {
+      } else if (isOn) {
         state = LightState.on;
       } else {
         state = LightState.off;
@@ -874,7 +923,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         channelId: channel.id,
         name: stripRoomNameFromDevice(target.channelName, roomName),
         state: state,
-        brightness: channel.hasBrightness && channel.on ? channel.brightness : null,
+        brightness: channel.hasBrightness && isOn ? channel.brightness : null,
       ));
     }
 
@@ -1722,7 +1771,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   /// Toggle a single light
   Future<void> _toggleLight(LightDeviceData light) async {
-    final device = _devicesService?.getDevice(light.deviceId);
+    final devicesService = _devicesService;
+    if (devicesService == null) return;
+
+    final device = devicesService.getDevice(light.deviceId);
     if (device is! LightingDeviceView) return;
 
     final channel = device.lightChannels.firstWhere(
@@ -1730,9 +1782,62 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       orElse: () => device.lightChannels.first,
     );
 
-    final targetState = !channel.on;
-    final onPropId = channel.onProp.id;
-    await _devicesService?.setPropertyValue(onPropId, targetState);
+    // Use overlay value if exists (for rapid taps), otherwise use actual state
+    final currentOverlay = _intentOverlayService?.getOverlayValue(
+      light.deviceId,
+      light.channelId,
+      channel.onProp.id,
+    );
+    final currentState = currentOverlay is bool ? currentOverlay : channel.on;
+    final newState = !currentState;
+
+    final displayRepository = locator<DisplayRepository>();
+    final displayId = displayRepository.display?.id;
+
+    final commandContext = PropertyCommandContext(
+      origin: 'panel.system.room',
+      displayId: displayId,
+      spaceId: _roomId,
+    );
+
+    // Set pending state for immediate optimistic UI (DeviceControlStateService)
+    _deviceControlStateService?.setPending(
+      light.deviceId,
+      light.channelId,
+      channel.onProp.id,
+      newState,
+    );
+
+    // Create overlay for optimistic UI (IntentOverlayService - backup/settling)
+    _intentOverlayService?.createLocalOverlay(
+      deviceId: light.deviceId,
+      channelId: light.channelId,
+      propertyId: channel.onProp.id,
+      value: newState,
+      ttlMs: 5000,
+    );
+
+    // Force immediate UI update
+    if (mounted) setState(() {});
+
+    await devicesService.setMultiplePropertyValues(
+      properties: [
+        PropertyCommandItem(
+          deviceId: light.deviceId,
+          channelId: light.channelId,
+          propertyId: channel.onProp.id,
+          value: newState,
+        ),
+      ],
+      context: commandContext,
+    );
+
+    // Transition to settling state after command is sent
+    _deviceControlStateService?.setSettling(
+      light.deviceId,
+      light.channelId,
+      channel.onProp.id,
+    );
   }
 
   // --------------------------------------------------------------------------
