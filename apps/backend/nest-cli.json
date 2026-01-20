@@ -24,6 +24,14 @@
       {
         "include": "plugins/devices-home-assistant/mappings/definitions/**/*.yaml",
         "outDir": "dist"
+      },
+      {
+        "include": "plugins/devices-shelly-ng/mappings/schema/**/*.json",
+        "outDir": "dist"
+      },
+      {
+        "include": "plugins/devices-shelly-ng/mappings/definitions/**/*.yaml",
+        "outDir": "dist"
       }
     ]
   }
