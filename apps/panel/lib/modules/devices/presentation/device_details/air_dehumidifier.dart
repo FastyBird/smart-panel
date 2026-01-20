@@ -131,11 +131,11 @@ class _AirDehumidifierDeviceDetailState
   DehumidifierChannelView? get _dehumidifierChannel =>
       _device.dehumidifierChannel;
 
-  Future<void> _setPropertyValue(
+  Future<bool> _setPropertyValue(
     ChannelPropertyView? property,
     dynamic value,
   ) async {
-    if (property == null) return;
+    if (property == null) return false;
 
     final localizations = AppLocalizations.of(context);
 
@@ -145,11 +145,12 @@ class _AirDehumidifierDeviceDetailState
       if (!res && mounted && localizations != null) {
         AlertBar.showError(context, message: localizations.action_failed);
       }
+      return res;
     } catch (e) {
-      if (!mounted) return;
-      if (localizations != null) {
+      if (mounted && localizations != null) {
         AlertBar.showError(context, message: localizations.action_failed);
       }
+      return false;
     }
   }
 
@@ -284,7 +285,7 @@ class _AirDehumidifierDeviceDetailState
     setState(() {});
   }
 
-  void _setFanNaturalBreeze(bool value) {
+  void _setFanNaturalBreeze(bool value) async {
     final fanChannel = _device.fanChannel;
     final naturalBreezeProp = fanChannel?.naturalBreezeProp;
     if (fanChannel == null || !fanChannel.hasNaturalBreeze || naturalBreezeProp == null) return;
@@ -297,18 +298,26 @@ class _AirDehumidifierDeviceDetailState
     );
     setState(() {});
 
-    _setPropertyValue(naturalBreezeProp, value).then((_) {
-      if (mounted) {
+    final success = await _setPropertyValue(naturalBreezeProp, value);
+    if (mounted) {
+      if (success) {
         _deviceControlStateService?.setSettling(
           _device.id,
           fanChannel.id,
           naturalBreezeProp.id,
         );
+      } else {
+        _deviceControlStateService?.clear(
+          _device.id,
+          fanChannel.id,
+          naturalBreezeProp.id,
+        );
+        setState(() {});
       }
-    });
+    }
   }
 
-  void _setDehumidifierLocked(bool value) {
+  void _setDehumidifierLocked(bool value) async {
     final channel = _dehumidifierChannel;
     final lockedProp = channel?.lockedProp;
     if (channel == null || !channel.hasLocked || lockedProp == null) return;
@@ -321,18 +330,26 @@ class _AirDehumidifierDeviceDetailState
     );
     setState(() {});
 
-    _setPropertyValue(lockedProp, value).then((_) {
-      if (mounted) {
+    final success = await _setPropertyValue(lockedProp, value);
+    if (mounted) {
+      if (success) {
         _deviceControlStateService?.setSettling(
           _device.id,
           channel.id,
           lockedProp.id,
         );
+      } else {
+        _deviceControlStateService?.clear(
+          _device.id,
+          channel.id,
+          lockedProp.id,
+        );
+        setState(() {});
       }
-    });
+    }
   }
 
-  void _setFanSpeedLevel(FanSpeedLevelValue level) {
+  void _setFanSpeedLevel(FanSpeedLevelValue level) async {
     final fanChannel = _device.fanChannel;
     final speedProp = fanChannel?.speedProp;
     if (fanChannel == null || !fanChannel.hasSpeed || !fanChannel.isSpeedEnum || speedProp == null) return;
@@ -345,18 +362,26 @@ class _AirDehumidifierDeviceDetailState
     );
     setState(() {});
 
-    _setPropertyValue(speedProp, level.value).then((_) {
-      if (mounted) {
+    final success = await _setPropertyValue(speedProp, level.value);
+    if (mounted) {
+      if (success) {
         _deviceControlStateService?.setSettling(
           _device.id,
           fanChannel.id,
           speedProp.id,
         );
+      } else {
+        _deviceControlStateService?.clear(
+          _device.id,
+          fanChannel.id,
+          speedProp.id,
+        );
+        setState(() {});
       }
-    });
+    }
   }
 
-  void _setFanMode(FanModeValue mode) {
+  void _setFanMode(FanModeValue mode) async {
     final fanChannel = _device.fanChannel;
     final modeProp = fanChannel?.modeProp;
     if (fanChannel == null || !fanChannel.hasMode || modeProp == null) return;
@@ -369,18 +394,26 @@ class _AirDehumidifierDeviceDetailState
     );
     setState(() {});
 
-    _setPropertyValue(modeProp, mode.value).then((_) {
-      if (mounted) {
+    final success = await _setPropertyValue(modeProp, mode.value);
+    if (mounted) {
+      if (success) {
         _deviceControlStateService?.setSettling(
           _device.id,
           fanChannel.id,
           modeProp.id,
         );
+      } else {
+        _deviceControlStateService?.clear(
+          _device.id,
+          fanChannel.id,
+          modeProp.id,
+        );
+        setState(() {});
       }
-    });
+    }
   }
 
-  void _setDehumidifierTimerPreset(DehumidifierTimerPresetValue preset) {
+  void _setDehumidifierTimerPreset(DehumidifierTimerPresetValue preset) async {
     final channel = _dehumidifierChannel;
     final timerProp = channel?.timerProp;
     if (channel == null || !channel.hasTimer || timerProp == null) return;
@@ -393,18 +426,26 @@ class _AirDehumidifierDeviceDetailState
     );
     setState(() {});
 
-    _setPropertyValue(timerProp, preset.value).then((_) {
-      if (mounted) {
+    final success = await _setPropertyValue(timerProp, preset.value);
+    if (mounted) {
+      if (success) {
         _deviceControlStateService?.setSettling(
           _device.id,
           channel.id,
           timerProp.id,
         );
+      } else {
+        _deviceControlStateService?.clear(
+          _device.id,
+          channel.id,
+          timerProp.id,
+        );
+        setState(() {});
       }
-    });
+    }
   }
 
-  void _setDehumidifierTimerNumeric(int seconds) {
+  void _setDehumidifierTimerNumeric(int seconds) async {
     final channel = _dehumidifierChannel;
     final timerProp = channel?.timerProp;
     if (channel == null || !channel.hasTimer || timerProp == null) return;
@@ -417,15 +458,23 @@ class _AirDehumidifierDeviceDetailState
     );
     setState(() {});
 
-    _setPropertyValue(timerProp, seconds).then((_) {
-      if (mounted) {
+    final success = await _setPropertyValue(timerProp, seconds);
+    if (mounted) {
+      if (success) {
         _deviceControlStateService?.setSettling(
           _device.id,
           channel.id,
           timerProp.id,
         );
+      } else {
+        _deviceControlStateService?.clear(
+          _device.id,
+          channel.id,
+          timerProp.id,
+        );
+        setState(() {});
       }
-    });
+    }
   }
 
   @override

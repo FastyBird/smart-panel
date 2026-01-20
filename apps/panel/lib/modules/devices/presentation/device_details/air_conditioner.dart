@@ -154,11 +154,11 @@ class _AirConditionerDeviceDetailState
   double _scale(double value) =>
       _screenService.scale(value, density: _visualDensityService.density);
 
-  Future<void> _setPropertyValue(
+  Future<bool> _setPropertyValue(
     ChannelPropertyView? property,
     dynamic value,
   ) async {
-    if (property == null) return;
+    if (property == null) return false;
 
     final localizations = AppLocalizations.of(context);
 
@@ -168,11 +168,12 @@ class _AirConditionerDeviceDetailState
       if (!res && mounted && localizations != null) {
         AlertBar.showError(context, message: localizations.action_failed);
       }
+      return res;
     } catch (e) {
-      if (!mounted) return;
-      if (localizations != null) {
+      if (mounted && localizations != null) {
         AlertBar.showError(context, message: localizations.action_failed);
       }
+      return false;
     }
   }
 
@@ -559,18 +560,27 @@ class _AirConditionerDeviceDetailState
     _speedDebounceTimer?.cancel();
     _speedDebounceTimer = Timer(_speedDebounceDuration, () async {
       if (!mounted) return;
-      _setPropertyValue(speedProp, actualSpeed);
+      final success = await _setPropertyValue(speedProp, actualSpeed);
       if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          speedProp.id,
-        );
+        if (success) {
+          _deviceControlStateService?.setSettling(
+            _device.id,
+            fanChannel.id,
+            speedProp.id,
+          );
+        } else {
+          _deviceControlStateService?.clear(
+            _device.id,
+            fanChannel.id,
+            speedProp.id,
+          );
+          setState(() {});
+        }
       }
     });
   }
 
-  void _setFanSpeedLevel(FanSpeedLevelValue level) {
+  void _setFanSpeedLevel(FanSpeedLevelValue level) async {
     final fanChannel = _device.fanChannel;
     final speedProp = fanChannel.speedProp;
     if (!fanChannel.hasSpeed || !fanChannel.isSpeedEnum || speedProp == null) return;
@@ -584,18 +594,26 @@ class _AirConditionerDeviceDetailState
     );
     setState(() {});
 
-    _setPropertyValue(speedProp, level.value).then((_) {
-      if (mounted) {
+    final success = await _setPropertyValue(speedProp, level.value);
+    if (mounted) {
+      if (success) {
         _deviceControlStateService?.setSettling(
           _device.id,
           fanChannel.id,
           speedProp.id,
         );
+      } else {
+        _deviceControlStateService?.clear(
+          _device.id,
+          fanChannel.id,
+          speedProp.id,
+        );
+        setState(() {});
       }
-    });
+    }
   }
 
-  void _setFanMode(FanModeValue mode) {
+  void _setFanMode(FanModeValue mode) async {
     final fanChannel = _device.fanChannel;
     final modeProp = fanChannel.modeProp;
     if (!fanChannel.hasMode || modeProp == null) return;
@@ -609,18 +627,26 @@ class _AirConditionerDeviceDetailState
     );
     setState(() {});
 
-    _setPropertyValue(modeProp, mode.value).then((_) {
-      if (mounted) {
+    final success = await _setPropertyValue(modeProp, mode.value);
+    if (mounted) {
+      if (success) {
         _deviceControlStateService?.setSettling(
           _device.id,
           fanChannel.id,
           modeProp.id,
         );
+      } else {
+        _deviceControlStateService?.clear(
+          _device.id,
+          fanChannel.id,
+          modeProp.id,
+        );
+        setState(() {});
       }
-    });
+    }
   }
 
-  void _setFanSwing(bool value) {
+  void _setFanSwing(bool value) async {
     final fanChannel = _device.fanChannel;
     final swingProp = fanChannel.swingProp;
     if (!fanChannel.hasSwing || swingProp == null) return;
@@ -633,18 +659,26 @@ class _AirConditionerDeviceDetailState
     );
     setState(() {});
 
-    _setPropertyValue(swingProp, value).then((_) {
-      if (mounted) {
+    final success = await _setPropertyValue(swingProp, value);
+    if (mounted) {
+      if (success) {
         _deviceControlStateService?.setSettling(
           _device.id,
           fanChannel.id,
           swingProp.id,
         );
+      } else {
+        _deviceControlStateService?.clear(
+          _device.id,
+          fanChannel.id,
+          swingProp.id,
+        );
+        setState(() {});
       }
-    });
+    }
   }
 
-  void _setFanDirection(FanDirectionValue direction) {
+  void _setFanDirection(FanDirectionValue direction) async {
     final fanChannel = _device.fanChannel;
     final directionProp = fanChannel.directionProp;
     if (!fanChannel.hasDirection || directionProp == null) return;
@@ -657,18 +691,26 @@ class _AirConditionerDeviceDetailState
     );
     setState(() {});
 
-    _setPropertyValue(directionProp, direction.value).then((_) {
-      if (mounted) {
+    final success = await _setPropertyValue(directionProp, direction.value);
+    if (mounted) {
+      if (success) {
         _deviceControlStateService?.setSettling(
           _device.id,
           fanChannel.id,
           directionProp.id,
         );
+      } else {
+        _deviceControlStateService?.clear(
+          _device.id,
+          fanChannel.id,
+          directionProp.id,
+        );
+        setState(() {});
       }
-    });
+    }
   }
 
-  void _setFanNaturalBreeze(bool value) {
+  void _setFanNaturalBreeze(bool value) async {
     final fanChannel = _device.fanChannel;
     final naturalBreezeProp = fanChannel.naturalBreezeProp;
     if (!fanChannel.hasNaturalBreeze || naturalBreezeProp == null) return;
@@ -681,18 +723,26 @@ class _AirConditionerDeviceDetailState
     );
     setState(() {});
 
-    _setPropertyValue(naturalBreezeProp, value).then((_) {
-      if (mounted) {
+    final success = await _setPropertyValue(naturalBreezeProp, value);
+    if (mounted) {
+      if (success) {
         _deviceControlStateService?.setSettling(
           _device.id,
           fanChannel.id,
           naturalBreezeProp.id,
         );
+      } else {
+        _deviceControlStateService?.clear(
+          _device.id,
+          fanChannel.id,
+          naturalBreezeProp.id,
+        );
+        setState(() {});
       }
-    });
+    }
   }
 
-  void _setFanLocked(bool value) {
+  void _setFanLocked(bool value) async {
     final fanChannel = _device.fanChannel;
     final lockedProp = fanChannel.lockedProp;
     if (!fanChannel.hasLocked || lockedProp == null) return;
@@ -705,18 +755,26 @@ class _AirConditionerDeviceDetailState
     );
     setState(() {});
 
-    _setPropertyValue(lockedProp, value).then((_) {
-      if (mounted) {
+    final success = await _setPropertyValue(lockedProp, value);
+    if (mounted) {
+      if (success) {
         _deviceControlStateService?.setSettling(
           _device.id,
           fanChannel.id,
           lockedProp.id,
         );
+      } else {
+        _deviceControlStateService?.clear(
+          _device.id,
+          fanChannel.id,
+          lockedProp.id,
+        );
+        setState(() {});
       }
-    });
+    }
   }
 
-  void _setFanTimerPreset(FanTimerPresetValue preset) {
+  void _setFanTimerPreset(FanTimerPresetValue preset) async {
     final fanChannel = _device.fanChannel;
     final timerProp = fanChannel.timerProp;
     if (!fanChannel.hasTimer || timerProp == null) return;
@@ -729,18 +787,26 @@ class _AirConditionerDeviceDetailState
     );
     setState(() {});
 
-    _setPropertyValue(timerProp, preset.value).then((_) {
-      if (mounted) {
+    final success = await _setPropertyValue(timerProp, preset.value);
+    if (mounted) {
+      if (success) {
         _deviceControlStateService?.setSettling(
           _device.id,
           fanChannel.id,
           timerProp.id,
         );
+      } else {
+        _deviceControlStateService?.clear(
+          _device.id,
+          fanChannel.id,
+          timerProp.id,
+        );
+        setState(() {});
       }
-    });
+    }
   }
 
-  void _setFanTimerNumeric(int minutes) {
+  void _setFanTimerNumeric(int minutes) async {
     final fanChannel = _device.fanChannel;
     final timerProp = fanChannel.timerProp;
     if (!fanChannel.hasTimer || timerProp == null) return;
@@ -753,15 +819,23 @@ class _AirConditionerDeviceDetailState
     );
     setState(() {});
 
-    _setPropertyValue(timerProp, minutes).then((_) {
-      if (mounted) {
+    final success = await _setPropertyValue(timerProp, minutes);
+    if (mounted) {
+      if (success) {
         _deviceControlStateService?.setSettling(
           _device.id,
           fanChannel.id,
           timerProp.id,
         );
+      } else {
+        _deviceControlStateService?.clear(
+          _device.id,
+          fanChannel.id,
+          timerProp.id,
+        );
+        setState(() {});
       }
-    });
+    }
   }
 
   // --------------------------------------------------------------------------
