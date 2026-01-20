@@ -38,6 +38,9 @@ import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climat
     as spaces_climate;
 import 'package:fastybird_smart_panel/modules/spaces/service.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/climate_targets/view.dart';
+import 'package:fastybird_smart_panel/modules/devices/export.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
+import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -292,6 +295,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   DeckService? _deckService;
   EventBus? _eventBus;
   IntentsRepository? _intentsRepository;
+  IntentOverlayService? _intentOverlayService;
+  DeviceControlStateService? _deviceControlStateService;
 
   ClimateRoomState _state = const ClimateRoomState(roomName: '');
   bool _isLoading = true;
@@ -373,6 +378,24 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       if (kDebugMode) {
         debugPrint(
             '[ClimateDomainViewPage] Failed to get IntentsRepository: $e');
+      }
+    }
+
+    try {
+      _intentOverlayService = locator<IntentOverlayService>();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+            '[ClimateDomainViewPage] Failed to get IntentOverlayService: $e');
+      }
+    }
+
+    try {
+      _deviceControlStateService = locator<DeviceControlStateService>();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+            '[ClimateDomainViewPage] Failed to get DeviceControlStateService: $e');
       }
     }
 
@@ -861,37 +884,161 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     // Wrap in try-catch to handle devices with missing required channels
     // Some devices may not have all expected channels configured
     try {
+      String? channelId;
+      String? propertyId;
+      bool isActive = false;
+
       if (device is FanDeviceView) {
+        final channel = device.fanChannel;
+        channelId = channel.id;
+        final onProp = channel.onProp;
+        propertyId = onProp.id;
+
+        // Use DeviceControlStateService first for optimistic UI (most reliable)
+        // Fall back to IntentOverlayService, then actual device state
+        isActive = channel.on;
+        if (_deviceControlStateService != null &&
+            _deviceControlStateService!.isLocked(device.id, channelId, propertyId)) {
+          final desiredValue = _deviceControlStateService!.getDesiredValue(
+            device.id,
+            channelId,
+            propertyId,
+          );
+          if (desiredValue is bool) {
+            isActive = desiredValue;
+          }
+        } else if (_intentOverlayService != null &&
+            _intentOverlayService!.isLocked(device.id, channelId, propertyId)) {
+          final overlayValue = _intentOverlayService!.getOverlayValue(
+            device.id,
+            channelId,
+            propertyId,
+          );
+          if (overlayValue is bool) {
+            isActive = overlayValue;
+          }
+        }
+
         auxiliaryDevices.add(AuxiliaryDevice(
           id: device.id,
           name: stripRoomNameFromDevice(device.name, roomName),
           type: AuxiliaryType.fan,
-          isActive: device.isOn,
-          status: device.isOn ? 'On' : 'Off',
+          isActive: isActive,
+          status: isActive ? 'On' : 'Off',
         ));
       } else if (device is AirPurifierDeviceView) {
+        final channel = device.fanChannel;
+        channelId = channel.id;
+        final onProp = channel.onProp;
+        propertyId = onProp.id;
+
+        // Use DeviceControlStateService first for optimistic UI (most reliable)
+        // Fall back to IntentOverlayService, then actual device state
+        isActive = channel.on;
+        if (_deviceControlStateService != null &&
+            _deviceControlStateService!.isLocked(device.id, channelId, propertyId)) {
+          final desiredValue = _deviceControlStateService!.getDesiredValue(
+            device.id,
+            channelId,
+            propertyId,
+          );
+          if (desiredValue is bool) {
+            isActive = desiredValue;
+          }
+        } else if (_intentOverlayService != null &&
+            _intentOverlayService!.isLocked(device.id, channelId, propertyId)) {
+          final overlayValue = _intentOverlayService!.getOverlayValue(
+            device.id,
+            channelId,
+            propertyId,
+          );
+          if (overlayValue is bool) {
+            isActive = overlayValue;
+          }
+        }
+
         auxiliaryDevices.add(AuxiliaryDevice(
           id: device.id,
           name: stripRoomNameFromDevice(device.name, roomName),
           type: AuxiliaryType.purifier,
-          isActive: device.isOn,
-          status: device.isOn ? 'On' : 'Off',
+          isActive: isActive,
+          status: isActive ? 'On' : 'Off',
         ));
       } else if (device is AirHumidifierDeviceView) {
+        final channel = device.humidifierChannel;
+        channelId = channel.id;
+        final onProp = channel.onProp;
+        propertyId = onProp.id;
+
+        // Use DeviceControlStateService first for optimistic UI (most reliable)
+        // Fall back to IntentOverlayService, then actual device state
+        isActive = channel.on;
+        if (_deviceControlStateService != null &&
+            _deviceControlStateService!.isLocked(device.id, channelId, propertyId)) {
+          final desiredValue = _deviceControlStateService!.getDesiredValue(
+            device.id,
+            channelId,
+            propertyId,
+          );
+          if (desiredValue is bool) {
+            isActive = desiredValue;
+          }
+        } else if (_intentOverlayService != null &&
+            _intentOverlayService!.isLocked(device.id, channelId, propertyId)) {
+          final overlayValue = _intentOverlayService!.getOverlayValue(
+            device.id,
+            channelId,
+            propertyId,
+          );
+          if (overlayValue is bool) {
+            isActive = overlayValue;
+          }
+        }
+
         auxiliaryDevices.add(AuxiliaryDevice(
           id: device.id,
           name: stripRoomNameFromDevice(device.name, roomName),
           type: AuxiliaryType.humidifier,
-          isActive: device.isOn,
-          status: device.isOn ? 'On' : 'Off',
+          isActive: isActive,
+          status: isActive ? 'On' : 'Off',
         ));
       } else if (device is AirDehumidifierDeviceView) {
+        final channel = device.dehumidifierChannel;
+        channelId = channel.id;
+        final onProp = channel.onProp;
+        propertyId = onProp.id;
+
+        // Use DeviceControlStateService first for optimistic UI (most reliable)
+        // Fall back to IntentOverlayService, then actual device state
+        isActive = channel.on;
+        if (_deviceControlStateService != null &&
+            _deviceControlStateService!.isLocked(device.id, channelId, propertyId)) {
+          final desiredValue = _deviceControlStateService!.getDesiredValue(
+            device.id,
+            channelId,
+            propertyId,
+          );
+          if (desiredValue is bool) {
+            isActive = desiredValue;
+          }
+        } else if (_intentOverlayService != null &&
+            _intentOverlayService!.isLocked(device.id, channelId, propertyId)) {
+          final overlayValue = _intentOverlayService!.getOverlayValue(
+            device.id,
+            channelId,
+            propertyId,
+          );
+          if (overlayValue is bool) {
+            isActive = overlayValue;
+          }
+        }
+
         auxiliaryDevices.add(AuxiliaryDevice(
           id: device.id,
           name: stripRoomNameFromDevice(device.name, roomName),
           type: AuxiliaryType.dehumidifier,
-          isActive: device.isOn,
-          status: device.isOn ? 'On' : 'Off',
+          isActive: isActive,
+          status: isActive ? 'On' : 'Off',
         ));
       }
     } catch (e) {
@@ -2199,41 +2346,119 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   }
 
   /// Toggles the on/off state of an auxiliary device
-  void _toggleAuxiliaryDevice(AuxiliaryDevice auxiliaryDevice) {
+  Future<void> _toggleAuxiliaryDevice(AuxiliaryDevice auxiliaryDevice) async {
     final devicesService = _devicesService;
     if (devicesService == null) return;
 
     final deviceView = devicesService.getDevice(auxiliaryDevice.id);
     if (deviceView == null) return;
 
+    String? channelId;
     String? propertyId;
 
     switch (auxiliaryDevice.type) {
       case AuxiliaryType.fan:
         if (deviceView is FanDeviceView) {
-          propertyId = deviceView.fanChannel.onProp.id;
+          final channel = deviceView.fanChannel;
+          channelId = channel.id;
+          propertyId = channel.onProp.id;
         }
         break;
       case AuxiliaryType.purifier:
         if (deviceView is AirPurifierDeviceView) {
-          propertyId = deviceView.fanChannel.onProp.id;
+          final channel = deviceView.fanChannel;
+          channelId = channel.id;
+          propertyId = channel.onProp.id;
         }
         break;
       case AuxiliaryType.humidifier:
         if (deviceView is AirHumidifierDeviceView) {
-          propertyId = deviceView.humidifierChannel.onProp.id;
+          final channel = deviceView.humidifierChannel;
+          channelId = channel.id;
+          propertyId = channel.onProp.id;
         }
         break;
       case AuxiliaryType.dehumidifier:
         if (deviceView is AirDehumidifierDeviceView) {
-          propertyId = deviceView.dehumidifierChannel.onProp.id;
+          final channel = deviceView.dehumidifierChannel;
+          channelId = channel.id;
+          propertyId = channel.onProp.id;
         }
         break;
     }
 
-    if (propertyId != null) {
-      devicesService.setPropertyValue(propertyId, !auxiliaryDevice.isActive);
+    if (propertyId == null || channelId == null) return;
+
+    // Use overlay value if exists (for rapid taps), otherwise use actual device state
+    final currentOverlay = _intentOverlayService?.getOverlayValue(
+      auxiliaryDevice.id,
+      channelId,
+      propertyId,
+    );
+    bool currentState;
+    if (currentOverlay is bool) {
+      currentState = currentOverlay;
+    } else if (deviceView is FanDeviceView && auxiliaryDevice.type == AuxiliaryType.fan) {
+      currentState = deviceView.isOn;
+    } else if (deviceView is AirPurifierDeviceView && auxiliaryDevice.type == AuxiliaryType.purifier) {
+      currentState = deviceView.isOn;
+    } else if (deviceView is AirHumidifierDeviceView && auxiliaryDevice.type == AuxiliaryType.humidifier) {
+      currentState = deviceView.isOn;
+    } else if (deviceView is AirDehumidifierDeviceView && auxiliaryDevice.type == AuxiliaryType.dehumidifier) {
+      currentState = deviceView.isOn;
+    } else {
+      // Fallback to stored state if we can't determine from device view
+      currentState = auxiliaryDevice.isActive;
     }
+    final newState = !currentState;
+
+    final displayRepository = locator<DisplayRepository>();
+    final displayId = displayRepository.display?.id;
+
+    final commandContext = PropertyCommandContext(
+      origin: 'panel.system.room',
+      displayId: displayId,
+      spaceId: _roomId,
+    );
+
+    // Set pending state for immediate optimistic UI (DeviceControlStateService)
+    _deviceControlStateService?.setPending(
+      auxiliaryDevice.id,
+      channelId,
+      propertyId,
+      newState,
+    );
+
+    // Create overlay for optimistic UI (IntentOverlayService - backup/settling)
+    _intentOverlayService?.createLocalOverlay(
+      deviceId: auxiliaryDevice.id,
+      channelId: channelId,
+      propertyId: propertyId,
+      value: newState,
+      ttlMs: 5000,
+    );
+
+    // Force immediate UI update
+    if (mounted) setState(() {});
+
+    await devicesService.setMultiplePropertyValues(
+      properties: [
+        PropertyCommandItem(
+          deviceId: auxiliaryDevice.id,
+          channelId: channelId,
+          propertyId: propertyId,
+          value: newState,
+        ),
+      ],
+      context: commandContext,
+    );
+
+    // Transition to settling state after command is sent
+    _deviceControlStateService?.setSettling(
+      auxiliaryDevice.id,
+      channelId,
+      propertyId,
+    );
   }
 
   /// Opens the detail page for an auxiliary device
