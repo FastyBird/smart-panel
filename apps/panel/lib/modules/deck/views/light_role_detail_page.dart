@@ -426,6 +426,13 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     if (mounted) {
       final targets = _getTargets();
 
+      // Load cached values if devices are mixed and we haven't loaded them yet
+      // or if they became mixed after initial load
+      final roleMixedState = _getRoleMixedState(targets);
+      if (roleMixedState.isMixed) {
+        _loadCachedValuesIfNeeded(targets, roleMixedState);
+      }
+
       // Check convergence for all channels - the service handles state transitions
       _controlStateService.checkConvergence(
         LightingConstants.brightnessChannelId,
@@ -467,10 +474,99 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     if (_cacheLoaded) return;
     _cacheLoaded = true;
 
-    // Cache is loaded by RoleControlStateRepository and used for display
-    // when devices are in a mixed state. The display values are resolved
-    // in the build method using _getCachedValue or similar.
-    // No need to set state here - just mark as loaded.
+    final targets = _getTargets();
+    if (targets.isEmpty) return;
+
+    final roleMixedState = _getRoleMixedState(targets);
+    _loadCachedValuesIfNeeded(targets, roleMixedState);
+  }
+
+  /// Load cached values when devices are in a mixed state.
+  /// This can be called multiple times - it only sets values if they're not already set.
+  void _loadCachedValuesIfNeeded(List<LightTargetView> targets, RoleMixedState roleMixedState) {
+    if (!roleMixedState.isMixed) return;
+
+    // Load cached values from repository
+    final cached = _roleControlStateRepository?.get(_cacheKey);
+    if (cached == null) return;
+
+    // Get initial values from devices as fallback
+    double? initialBrightness;
+    double? initialHue;
+    double? initialTemperature;
+    double? initialWhite;
+
+    for (final target in targets) {
+      final device = _devicesService?.getDevice(target.deviceId);
+      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+        final channel = device.lightChannels.firstWhere(
+          (c) => c.id == target.channelId,
+          orElse: () => device.lightChannels.first,
+        );
+
+        if (initialBrightness == null && channel.hasBrightness) {
+          initialBrightness = channel.brightness.toDouble();
+        }
+        if (initialHue == null && channel.hasColor) {
+          initialHue = _getChannelHue(channel);
+        }
+        if (initialTemperature == null && channel.hasTemperature) {
+          final tempProp = channel.temperatureProp;
+          if (tempProp?.value is NumberValueType) {
+            initialTemperature = (tempProp!.value as NumberValueType).value.toDouble();
+          }
+        }
+        if (initialWhite == null && channel.hasColorWhite) {
+          initialWhite = channel.colorWhite.toDouble();
+        }
+
+        if (initialBrightness != null && initialHue != null &&
+            initialTemperature != null && initialWhite != null) {
+          break;
+        }
+      }
+    }
+
+    if (!mounted) return;
+
+    // Set cached values (or initial values as fallback) in control state service
+    // This ensures they're displayed when devices are in a mixed state
+    // Only set if not already set (don't overwrite user actions)
+    final brightness = cached.brightness ?? initialBrightness;
+    if (brightness != null &&
+        _controlStateService.getDesiredValue(LightingConstants.brightnessChannelId) == null) {
+      _controlStateService.setMixed(
+        LightingConstants.brightnessChannelId,
+        brightness,
+      );
+    }
+
+    final hue = cached.hue ?? initialHue;
+    if (hue != null &&
+        _controlStateService.getDesiredValue(LightingConstants.hueChannelId) == null) {
+      _controlStateService.setMixed(
+        LightingConstants.hueChannelId,
+        hue,
+      );
+    }
+
+    final temperature = cached.temperature ?? initialTemperature;
+    if (temperature != null &&
+        _controlStateService.getDesiredValue(LightingConstants.temperatureChannelId) == null) {
+      _controlStateService.setMixed(
+        LightingConstants.temperatureChannelId,
+        temperature,
+      );
+    }
+
+    final white = cached.white ?? initialWhite;
+    if (white != null &&
+        _controlStateService.getDesiredValue(LightingConstants.whiteChannelId) == null) {
+      _controlStateService.setMixed(
+        LightingConstants.whiteChannelId,
+        white,
+      );
+    }
   }
 
   void _saveToCache({
