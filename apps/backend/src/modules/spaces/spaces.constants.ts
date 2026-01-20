@@ -476,6 +476,14 @@ export const DEFAULT_MAX_SETPOINT = 35;
 export const ABSOLUTE_MIN_SETPOINT = -10;
 export const ABSOLUTE_MAX_SETPOINT = 50;
 
+// Setpoint precision for rounding (degrees Celsius)
+// All setpoints are rounded to this precision (e.g., 21.3 -> 21.5)
+export const SETPOINT_PRECISION = 0.5;
+
+// Setpoint consensus tolerance (degrees Celsius)
+// When checking if multiple devices have "matching" setpoints, values within this tolerance are considered equal
+export const SETPOINT_CONSENSUS_TOLERANCE = 0.5;
+
 // Lighting Roles - classify lights within a space for intent-based control
 export enum LightingRole {
 	MAIN = 'main', // Primary/main lights (e.g., ceiling lights)

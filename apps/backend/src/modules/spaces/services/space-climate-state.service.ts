@@ -10,6 +10,8 @@ import {
 	ClimateRole,
 	DEFAULT_MAX_SETPOINT,
 	DEFAULT_MIN_SETPOINT,
+	SETPOINT_CONSENSUS_TOLERANCE,
+	SETPOINT_PRECISION,
 	SPACES_MODULE_NAME,
 	TEMPERATURE_AVERAGING_STRATEGY,
 	TemperatureAveragingStrategy,
@@ -288,8 +290,14 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 			mode: detectedMode,
 			currentTemperature: currentTemperature !== null ? Math.round(currentTemperature * 10) / 10 : null,
 			currentHumidity: currentHumidity !== null ? Math.round(currentHumidity) : null,
-			heatingSetpoint: heatingSetpoint !== null ? Math.round(heatingSetpoint * 2) / 2 : null,
-			coolingSetpoint: coolingSetpoint !== null ? Math.round(coolingSetpoint * 2) / 2 : null,
+			heatingSetpoint:
+				heatingSetpoint !== null
+					? Math.round(heatingSetpoint / SETPOINT_PRECISION) * SETPOINT_PRECISION
+					: null,
+			coolingSetpoint:
+				coolingSetpoint !== null
+					? Math.round(coolingSetpoint / SETPOINT_PRECISION) * SETPOINT_PRECISION
+					: null,
 			minSetpoint,
 			maxSetpoint,
 			supportsHeating,
@@ -421,7 +429,7 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 
 	/**
 	 * Get consensus value from an array of numbers.
-	 * Returns the value if all values are within 0.5°C tolerance, otherwise null.
+	 * Returns the value if all values are within configured tolerance, otherwise null.
 	 */
 	private getConsensusValue(values: number[]): number | null {
 		if (values.length === 0) {
@@ -434,8 +442,8 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 		const min = Math.min(...values);
 		const max = Math.max(...values);
 
-		// All values must be within 0.5°C tolerance
-		if (max - min <= 0.5) {
+		// All values must be within configured tolerance
+		if (max - min <= SETPOINT_CONSENSUS_TOLERANCE) {
 			// Return the first value (or could use average, but first is simpler)
 			return values[0];
 		}
@@ -448,7 +456,7 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 	 * Detect if devices are out of sync (mixed state).
 	 *
 	 * isMixed = true when:
-	 * 1. setpoint has value AND any device differs by >0.5°C
+	 * 1. setpoint has value AND any device differs by more than tolerance
 	 * 2. setpoint is null because devices have different values (no consensus)
 	 */
 	private detectMixedState(
@@ -462,7 +470,7 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 			if (heatingSetpoint !== null) {
 				// Check if any device differs from the setpoint
 				for (const value of heatingDeviceValues) {
-					if (Math.abs(value - heatingSetpoint) > 0.5) {
+					if (Math.abs(value - heatingSetpoint) > SETPOINT_CONSENSUS_TOLERANCE) {
 						return true;
 					}
 				}
@@ -471,7 +479,7 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 				if (heatingDeviceValues.length > 1) {
 					const min = Math.min(...heatingDeviceValues);
 					const max = Math.max(...heatingDeviceValues);
-					if (max - min > 0.5) {
+					if (max - min > SETPOINT_CONSENSUS_TOLERANCE) {
 						return true;
 					}
 				}
@@ -483,7 +491,7 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 			if (coolingSetpoint !== null) {
 				// Check if any device differs from the setpoint
 				for (const value of coolingDeviceValues) {
-					if (Math.abs(value - coolingSetpoint) > 0.5) {
+					if (Math.abs(value - coolingSetpoint) > SETPOINT_CONSENSUS_TOLERANCE) {
 						return true;
 					}
 				}
@@ -492,7 +500,7 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 				if (coolingDeviceValues.length > 1) {
 					const min = Math.min(...coolingDeviceValues);
 					const max = Math.max(...coolingDeviceValues);
-					if (max - min > 0.5) {
+					if (max - min > SETPOINT_CONSENSUS_TOLERANCE) {
 						return true;
 					}
 				}

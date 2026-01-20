@@ -17,6 +17,7 @@ import {
 	ClimateRole,
 	EventType,
 	SETPOINT_DELTA_STEPS,
+	SETPOINT_PRECISION,
 	SPACES_MODULE_NAME,
 } from '../spaces.constants';
 import { IntentSpecLoaderService } from '../spec';
@@ -885,8 +886,8 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 	private clampSetpoint(value: number, min: number, max: number): number {
 		// Clamp to min/max
 		let clamped = Math.max(min, Math.min(max, value));
-		// Round to 0.5 degree precision
-		clamped = Math.round(clamped * 2) / 2;
+		// Round to configured precision (e.g., 0.5 degrees)
+		clamped = Math.round(clamped / SETPOINT_PRECISION) * SETPOINT_PRECISION;
 		// Re-clamp after rounding
 		return Math.max(min, Math.min(max, clamped));
 	}
