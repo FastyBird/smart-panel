@@ -13,10 +13,10 @@ import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
+import 'package:fastybird_smart_panel/modules/devices/controllers/devices/heating_unit.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/heating_unit.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -45,6 +45,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
       locator<VisualDensityService>();
   final DevicesService _devicesService = locator<DevicesService>();
   DeviceControlStateService? _deviceControlStateService;
+  HeatingUnitDeviceController? _controller;
 
   // Debounce timer for setpoint changes to avoid flooding backend
   Timer? _setpointDebounceTimer;
@@ -69,6 +70,35 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
             '[HeatingUnitDeviceDetail] Failed to get DeviceControlStateService: $e');
       }
     }
+
+    _initController();
+  }
+
+  void _initController() {
+    final controlState = _deviceControlStateService;
+    if (controlState != null) {
+      _controller = HeatingUnitDeviceController(
+        device: _device,
+        controlState: controlState,
+        devicesService: _devicesService,
+        onError: _onControllerError,
+      );
+    }
+  }
+
+  void _onControllerError(String propertyId, Object error) {
+    if (kDebugMode) {
+      debugPrint('[HeatingUnitDeviceDetail] Controller error for $propertyId: $error');
+    }
+
+    final localizations = AppLocalizations.of(context);
+    if (mounted && localizations != null) {
+      AlertBar.showError(context, message: localizations.action_failed);
+    }
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -81,8 +111,41 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
 
   void _onDeviceChanged() {
     if (mounted) {
+      _checkConvergence();
+      _initController();
       setState(() {});
     }
+  }
+
+  /// Check convergence for all controllable properties.
+  ///
+  /// When device data updates (from WebSocket), this checks if any properties
+  /// in settling state have converged (or diverged from external changes) and
+  /// clears the optimistic state appropriately.
+  void _checkConvergence() {
+    final controlState = _deviceControlStateService;
+    if (controlState == null) return;
+
+    final deviceId = _device.id;
+    final heaterChannel = _device.heaterChannel;
+    final channelId = heaterChannel.id;
+
+    // Check power property
+    controlState.checkPropertyConvergence(
+      deviceId,
+      channelId,
+      heaterChannel.onProp.id,
+      heaterChannel.on,
+    );
+
+    // Check temperature setpoint property
+    controlState.checkPropertyConvergence(
+      deviceId,
+      channelId,
+      heaterChannel.temperatureProp.id,
+      heaterChannel.temperature,
+      tolerance: 0.5,
+    );
   }
 
   void _onControlStateChanged() {
@@ -107,28 +170,6 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
 
   double _scale(double value) =>
       _screenService.scale(value, density: _visualDensityService.density);
-
-  Future<void> _setPropertyValue(
-    ChannelPropertyView? property,
-    dynamic value,
-  ) async {
-    if (property == null) return;
-
-    final localizations = AppLocalizations.of(context);
-
-    try {
-      bool res = await _devicesService.setPropertyValue(property.id, value);
-
-      if (!res && mounted && localizations != null) {
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      if (localizations != null) {
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
-    }
-  }
 
   // --------------------------------------------------------------------------
   // STATE HELPERS
@@ -173,23 +214,11 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   double get _maxSetpoint => _device.heaterChannel.maxTemperature;
 
   double get _targetSetpoint {
-    final setpointProp = _device.heaterChannel.temperatureProp;
-    final controlState = _deviceControlStateService;
-
-    // Check for pending/optimistic value first
-    if (controlState != null &&
-        controlState.isLocked(
-            _device.id, _device.heaterChannel.id, setpointProp.id)) {
-      final desiredValue = controlState.getDesiredValue(
-        _device.id,
-        _device.heaterChannel.id,
-        setpointProp.id,
-      );
-      if (desiredValue is num) {
-        return desiredValue.toDouble();
-      }
+    // Use controller for optimistic-aware value
+    final controller = _controller;
+    if (controller != null) {
+      return controller.heater.temperature;
     }
-
     return _device.heaterChannel.temperature;
   }
 
@@ -197,20 +226,14 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   // MODE AND SETPOINT HANDLERS
   // --------------------------------------------------------------------------
 
-  void _onModeChanged(HeaterMode mode) async {
+  void _onModeChanged(HeaterMode mode) {
+    final controller = _controller;
+    if (controller == null) return;
+
     // Set grace period to prevent control state listener from causing flickering
     _modeChangeTime = DateTime.now();
 
     final heaterOnProp = _device.heaterChannel.onProp;
-
-    // Set PENDING state immediately for responsive UI
-    _deviceControlStateService?.setPending(
-      _device.id,
-      _device.heaterChannel.id,
-      heaterOnProp.id,
-      mode == HeaterMode.heat,
-    );
-    setState(() {});
 
     // Build batch command list
     final commands = <PropertyCommandItem>[
@@ -222,33 +245,26 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
       ),
     ];
 
-    // Send command
-    final localizations = AppLocalizations.of(context);
-
-    try {
-      bool res = await _devicesService.setMultiplePropertyValues(
-        properties: commands,
-      );
-
-      if (!res && mounted && localizations != null) {
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
-    } catch (e) {
-      if (mounted && localizations != null) {
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
-    }
-
-    // Transition to settling state
-    _deviceControlStateService?.setSettling(
-      _device.id,
-      _device.heaterChannel.id,
-      heaterOnProp.id,
+    // Use controller's batch operation
+    controller.setMultipleProperties(
+      commands,
+      onError: () {
+        if (mounted) {
+          final localizations = AppLocalizations.of(context);
+          if (localizations != null) {
+            AlertBar.showError(context, message: localizations.action_failed);
+          }
+          setState(() {});
+        }
+      },
     );
+    setState(() {});
   }
 
   void _onSetpointChanged(double value) {
+    final controller = _controller;
     final setpointProp = _device.heaterChannel.temperatureProp;
+    if (controller == null) return;
 
     // Round to step value (0.5)
     final steppedValue = (value * 2).round() / 2;
@@ -256,7 +272,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     // Clamp to valid range
     final clampedValue = steppedValue.clamp(_minSetpoint, _maxSetpoint);
 
-    // Set PENDING state immediately for responsive UI
+    // Set PENDING state immediately for responsive UI (for dial visual feedback)
     _deviceControlStateService?.setPending(
       _device.id,
       _device.heaterChannel.id,
@@ -269,18 +285,10 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     _setpointDebounceTimer?.cancel();
 
     // Debounce the API call to avoid flooding backend
-    _setpointDebounceTimer = Timer(_setpointDebounceDuration, () async {
+    _setpointDebounceTimer = Timer(_setpointDebounceDuration, () {
       if (!mounted) return;
 
-      await _setPropertyValue(setpointProp, clampedValue);
-
-      if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          _device.heaterChannel.id,
-          setpointProp.id,
-        );
-      }
+      controller.setTemperature(clampedValue);
     });
   }
 

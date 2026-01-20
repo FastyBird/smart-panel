@@ -2,11 +2,14 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/controllers/channels/light.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/light.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
 import 'package:flutter/foundation.dart';
@@ -40,6 +43,8 @@ class _LightChannelDetailPageState extends State<LightChannelDetailPage> {
       locator<VisualDensityService>();
 
   DevicesService? _devicesService;
+  DeviceControlStateService? _deviceControlStateService;
+  LightChannelController? _controller;
 
   // Store fresh views from service
   LightingDeviceView? _currentDevice;
@@ -52,18 +57,68 @@ class _LightChannelDetailPageState extends State<LightChannelDetailPage> {
     try {
       _devicesService = locator<DevicesService>();
       _devicesService?.addListener(_onDevicesServiceChanged);
-      _updateViewsFromService();
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[LightChannelDetailPage] Failed to get DevicesService: $e');
       }
     }
+
+    try {
+      _deviceControlStateService = locator<DeviceControlStateService>();
+      _deviceControlStateService?.addListener(_onControlStateChanged);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+            '[LightChannelDetailPage] Failed to get DeviceControlStateService: $e');
+      }
+    }
+
+    _updateViewsFromService();
+    _initController();
   }
 
   @override
   void dispose() {
     _devicesService?.removeListener(_onDevicesServiceChanged);
+    _deviceControlStateService?.removeListener(_onControlStateChanged);
     super.dispose();
+  }
+
+  void _initController() {
+    final controlState = _deviceControlStateService;
+    final devicesService = _devicesService;
+    final channel = _getChannel();
+    final device = _getDevice();
+
+    if (controlState != null && devicesService != null) {
+      _controller = LightChannelController(
+        deviceId: device.id,
+        channel: channel,
+        controlState: controlState,
+        devicesService: devicesService,
+        onError: _onControllerError,
+      );
+    }
+  }
+
+  void _onControllerError(String propertyId, Object error) {
+    if (kDebugMode) {
+      debugPrint(
+          '[LightChannelDetailPage] Controller error for $propertyId: $error');
+    }
+
+    final localizations = AppLocalizations.of(context);
+    if (mounted && localizations != null) {
+      AlertBar.showError(context, message: localizations.action_failed);
+    }
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _onControlStateChanged() {
+    if (mounted) setState(() {});
   }
 
   /// Get fresh views from service or fall back to widget values
@@ -101,6 +156,7 @@ class _LightChannelDetailPageState extends State<LightChannelDetailPage> {
   void _onDevicesServiceChanged() {
     if (!mounted) return;
     _updateViewsFromService();
+    _initController();
     setState(() {});
   }
 
@@ -111,26 +167,34 @@ class _LightChannelDetailPageState extends State<LightChannelDetailPage> {
     if (oldWidget.channel.id != widget.channel.id ||
         oldWidget.device.id != widget.device.id) {
       _updateViewsFromService();
+      _initController();
       setState(() {});
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final channel = _getChannel();
     final device = _getDevice();
     final localizations = AppLocalizations.of(context);
+    final controller = _controller;
+
+    // Guard against missing controller
+    if (controller == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       appBar: AppTopBar(
-        title: channel.name,
+        title: controller.channel.name,
         icon: buildDeviceIcon(device.category, device.icon),
         actions: _buildHeaderActions(context, device, localizations),
       ),
       body: SafeArea(
         child: LightSingleChannelControlPanel(
-          device: device,
-          channel: channel,
+          controller: controller,
+          deviceName: device.name,
           showHeader: false,
         ),
       ),

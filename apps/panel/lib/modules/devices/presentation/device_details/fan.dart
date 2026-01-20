@@ -11,13 +11,13 @@ import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/controllers/devices/fan.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_power_button.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/fan_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/fan.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -42,6 +42,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
       locator<VisualDensityService>();
   final DevicesService _devicesService = locator<DevicesService>();
   DeviceControlStateService? _deviceControlStateService;
+  FanDeviceController? _controller;
 
   // Debounce timer for speed slider
   Timer? _speedDebounceTimer;
@@ -55,10 +56,33 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     try {
       _deviceControlStateService = locator<DeviceControlStateService>();
       _deviceControlStateService?.addListener(_onControlStateChanged);
+      _initController();
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[FanDeviceDetail] Failed to get DeviceControlStateService: $e');
       }
+    }
+  }
+
+  void _initController() {
+    final controlState = _deviceControlStateService;
+    if (controlState != null) {
+      _controller = FanDeviceController(
+        device: _device,
+        controlState: controlState,
+        devicesService: _devicesService,
+        onError: _onControllerError,
+      );
+    }
+  }
+
+  void _onControllerError(String propertyId, Object error) {
+    if (kDebugMode) {
+      debugPrint('[FanDeviceDetail] Controller error for $propertyId: $error');
+    }
+    // Trigger rebuild to reflect rollback state
+    if (mounted) {
+      setState(() {});
     }
   }
 
@@ -72,7 +96,99 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
 
   void _onDeviceChanged() {
     if (mounted) {
+      _checkConvergence();
+      _initController(); // Reinitialize controller with updated device
       setState(() {});
+    }
+  }
+
+  /// Check convergence for all controllable properties.
+  ///
+  /// When device data updates (from WebSocket), this checks if any properties
+  /// in settling state have converged (or diverged from external changes) and
+  /// clears the optimistic state appropriately.
+  void _checkConvergence() {
+    final controlState = _deviceControlStateService;
+    if (controlState == null) return;
+
+    final fanChannel = _device.fanChannel;
+    final deviceId = _device.id;
+    final channelId = fanChannel.id;
+
+    // Check power property
+    controlState.checkPropertyConvergence(
+      deviceId,
+      channelId,
+      fanChannel.onProp.id,
+      fanChannel.on,
+    );
+
+    // Check speed property (if available)
+    final speedProp = fanChannel.speedProp;
+    if (speedProp != null) {
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        speedProp.id,
+        fanChannel.speed,
+        tolerance: fanChannel.speedStep > 0 ? fanChannel.speedStep : 1.0,
+      );
+    }
+
+    // Check swing property (if available)
+    final swingProp = fanChannel.swingProp;
+    if (swingProp != null) {
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        swingProp.id,
+        fanChannel.swing,
+      );
+    }
+
+    // Check mode property (if available)
+    final modeProp = fanChannel.modeProp;
+    if (modeProp != null) {
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        modeProp.id,
+        fanChannel.mode?.value,
+      );
+    }
+
+    // Check direction property (if available)
+    final directionProp = fanChannel.directionProp;
+    if (directionProp != null) {
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        directionProp.id,
+        fanChannel.direction?.value,
+      );
+    }
+
+    // Check locked property (if available)
+    final lockedProp = fanChannel.lockedProp;
+    if (lockedProp != null) {
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        lockedProp.id,
+        fanChannel.locked,
+      );
+    }
+
+    // Check timer property (if available)
+    final timerProp = fanChannel.timerProp;
+    if (timerProp != null) {
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        timerProp.id,
+        fanChannel.timer,
+        tolerance: fanChannel.timerStep > 0 ? fanChannel.timerStep.toDouble() : 1.0,
+      );
     }
   }
 
@@ -90,34 +206,14 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     return widget._device;
   }
 
-  void _setPropertyValue(ChannelPropertyView? property, dynamic value) {
-    if (property == null) return;
-
-    _devicesService.setPropertyValue(property.id, value);
-  }
-
+  /// Normalized speed (0-1 range) for slider display.
   double get _speed {
     final fanChannel = _device.fanChannel;
-    final speedProp = fanChannel.speedProp;
+    if (!fanChannel.hasSpeed) return 0.0;
 
-    // Fall back to actual device value if no speed property
-    if (!fanChannel.hasSpeed || speedProp == null) return 0.0;
-
-    // Check for pending optimistic state first
-    final controlState = _deviceControlStateService;
-    double actualSpeed = fanChannel.speed;
-
-    if (controlState != null &&
-        controlState.isLocked(_device.id, fanChannel.id, speedProp.id)) {
-      final desiredValue = controlState.getDesiredValue(
-        _device.id,
-        fanChannel.id,
-        speedProp.id,
-      );
-      if (desiredValue is num) {
-        actualSpeed = desiredValue.toDouble();
-      }
-    }
+    // Use controller for optimistic-aware speed value
+    final controller = _controller;
+    final actualSpeed = controller?.fan.speed ?? fanChannel.speed;
 
     // Normalize to 0-1 range
     final range = fanChannel.maxSpeed - fanChannel.minSpeed;
@@ -127,8 +223,8 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
 
   void _setSpeedValue(double normalizedSpeed) {
     final fanChannel = _device.fanChannel;
-    final speedProp = fanChannel.speedProp;
-    if (!fanChannel.hasSpeed || !fanChannel.isSpeedNumeric || speedProp == null) return;
+    final controller = _controller;
+    if (!fanChannel.hasSpeed || !fanChannel.isSpeedNumeric || controller == null) return;
 
     // Convert normalized (0-1) to actual range
     final range = fanChannel.maxSpeed - fanChannel.minSpeed;
@@ -143,38 +239,92 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     // Clamp to valid range
     final actualSpeed = steppedSpeed.clamp(fanChannel.minSpeed, fanChannel.maxSpeed);
 
-    // Set PENDING state immediately for responsive UI
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      speedProp.id,
-      actualSpeed,
-    );
-    setState(() {});
-
     // Cancel any pending debounce timer
     _speedDebounceTimer?.cancel();
 
     // Debounce the API call to avoid flooding backend
-    _speedDebounceTimer = Timer(_speedDebounceDuration, () async {
+    // Use controller for optimistic UI with error handling
+    _speedDebounceTimer = Timer(_speedDebounceDuration, () {
       if (!mounted) return;
-
-      _setPropertyValue(speedProp, actualSpeed);
-
-      if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          speedProp.id,
-        );
-      }
+      controller.fan.setSpeed(actualSpeed);
+      setState(() {});
     });
+
+    // For immediate visual feedback during drag, set pending state directly
+    final speedProp = fanChannel.speedProp;
+    if (speedProp != null) {
+      _deviceControlStateService?.setPending(
+        _device.id,
+        fanChannel.id,
+        speedProp.id,
+        actualSpeed,
+      );
+      setState(() {});
+    }
   }
 
   void _setSpeedLevel(FanSpeedLevelValue level) {
-    final fanChannel = _device.fanChannel;
-    if (!fanChannel.hasSpeed || !fanChannel.isSpeedEnum) return;
-    _setPropertyValue(fanChannel.speedProp, level.value);
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.fan.setSpeedLevel(level);
+    setState(() {});
+  }
+
+  void _setFanPower(bool value) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.setPower(value);
+    setState(() {});
+  }
+
+  void _setFanMode(FanModeValue mode) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.fan.setMode(mode);
+    setState(() {});
+  }
+
+  void _setFanSwing(bool value) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.fan.setSwing(value);
+    setState(() {});
+  }
+
+  void _setFanDirection(FanDirectionValue direction) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.fan.setDirection(direction);
+    setState(() {});
+  }
+
+  void _setFanLocked(bool value) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.fan.setLocked(value);
+    setState(() {});
+  }
+
+  void _setFanTimerPreset(FanTimerPresetValue preset) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.fan.setTimerPreset(preset);
+    setState(() {});
+  }
+
+  void _setFanTimerNumeric(int minutes) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.fan.setTimer(minutes);
+    setState(() {});
   }
 
   double _scale(double value) =>
@@ -380,10 +530,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
             activeBgColor: DeviceColors.fanLight9(isDark),
             glowColor: DeviceColors.fanLight5(isDark),
             showInfoText: false,
-            onTap: () => _setPropertyValue(
-              _device.fanChannel.onProp,
-              !_device.isOn,
-            ),
+            onTap: () => _setFanPower(!_device.isOn),
           ),
           if (_device.fanChannel.hasMode &&
               _device.fanChannel.availableModes.isNotEmpty) ...[
@@ -416,7 +563,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     return ModeSelector<FanModeValue>(
       modes: _getFanModeOptions(localizations),
       selectedValue: selectedMode,
-      onChanged: (mode) => _setPropertyValue(fanChannel.modeProp, mode.value),
+      onChanged: _setFanMode,
       orientation: ModeSelectorOrientation.horizontal,
       iconPlacement: ModeSelectorIconPlacement.left,
       color: ModeSelectorColor.info,
@@ -575,10 +722,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
                 glowColor: DeviceColors.fanLight5(isDark),
                 showInfoText: false,
                 size: buttonSize,
-                onTap: () => _setPropertyValue(
-                  _device.fanChannel.onProp,
-                  !_device.isOn,
-                ),
+                onTap: () => _setFanPower(!_device.isOn),
               ),
               if (_device.fanChannel.hasMode &&
                   _device.fanChannel.availableModes.isNotEmpty) ...[
@@ -586,10 +730,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
                 ModeSelector<FanModeValue>(
                   modes: _getFanModeOptions(localizations),
                   selectedValue: _device.fanChannel.mode,
-                  onChanged: (mode) => _setPropertyValue(
-                    _device.fanChannel.modeProp,
-                    mode.value,
-                  ),
+                  onChanged: _setFanMode,
                   orientation: ModeSelectorOrientation.vertical,
                   showLabels: false,
                   color: ModeSelectorColor.info,
@@ -623,7 +764,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
             : localizations.on_state_off,
         isActive: fanChannel.swing,
         activeColor: fanColor,
-        onTileTap: () => _setPropertyValue(fanChannel.swingProp, !fanChannel.swing),
+        onTileTap: () => _setFanSwing(!fanChannel.swing),
         showGlow: false,
         showDoubleBorder: false,
         showInactiveBorder: true,
@@ -647,7 +788,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
           final newDirection = isReversed
               ? FanDirectionValue.clockwise
               : FanDirectionValue.counterClockwise;
-          _setPropertyValue(fanChannel.directionProp, newDirection.value);
+          _setFanDirection(newDirection);
         },
         showGlow: false,
         showDoubleBorder: false,
@@ -667,7 +808,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
             : localizations.thermostat_lock_unlocked,
         isActive: fanChannel.locked,
         activeColor: fanColor,
-        onTileTap: () => _setPropertyValue(fanChannel.lockedProp, !fanChannel.locked),
+        onTileTap: () => _setFanLocked(!fanChannel.locked),
         showGlow: false,
         showDoubleBorder: false,
         showInactiveBorder: true,
@@ -722,7 +863,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
             : ValueSelectorRowLayout.horizontal,
         onChanged: (preset) {
           if (preset != null) {
-            _setPropertyValue(fanChannel.timerProp, preset.value);
+            _setFanTimerPreset(preset);
           }
         },
       );
@@ -745,7 +886,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
             : ValueSelectorRowLayout.horizontal,
         onChanged: (minutes) {
           if (minutes != null) {
-            _setPropertyValue(fanChannel.timerProp, minutes);
+            _setFanTimerNumeric(minutes);
           }
         },
       );

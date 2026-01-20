@@ -15,6 +15,7 @@ import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/controllers/devices/air_conditioner.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
@@ -52,6 +53,7 @@ class _AirConditionerDeviceDetailState
       locator<VisualDensityService>();
   final DevicesService _devicesService = locator<DevicesService>();
   DeviceControlStateService? _deviceControlStateService;
+  AirConditionerDeviceController? _controller;
 
   // Debounce timer for setpoint changes to avoid flooding backend
   Timer? _setpointDebounceTimer;
@@ -80,6 +82,35 @@ class _AirConditionerDeviceDetailState
             '[AirConditionerDeviceDetail] Failed to get DeviceControlStateService: $e');
       }
     }
+
+    _initController();
+  }
+
+  void _initController() {
+    final controlState = _deviceControlStateService;
+    if (controlState != null) {
+      _controller = AirConditionerDeviceController(
+        device: _device,
+        controlState: controlState,
+        devicesService: _devicesService,
+        onError: _onControllerError,
+      );
+    }
+  }
+
+  void _onControllerError(String propertyId, Object error) {
+    if (kDebugMode) {
+      debugPrint('[AirConditionerDeviceDetail] Controller error for $propertyId: $error');
+    }
+
+    final localizations = AppLocalizations.of(context);
+    if (mounted && localizations != null) {
+      AlertBar.showError(context, message: localizations.action_failed);
+    }
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -93,7 +124,104 @@ class _AirConditionerDeviceDetailState
 
   void _onDeviceChanged() {
     if (mounted) {
+      _checkConvergence();
+      _initController();
       setState(() {});
+    }
+  }
+
+  /// Check convergence for all controllable properties.
+  ///
+  /// When device data updates (from WebSocket), this checks if any properties
+  /// in settling state have converged (or diverged from external changes) and
+  /// clears the optimistic state appropriately.
+  void _checkConvergence() {
+    final controlState = _deviceControlStateService;
+    if (controlState == null) return;
+
+    final deviceId = _device.id;
+
+    // Check cooler channel properties
+    final coolerChannel = _device.coolerChannel;
+    {
+      final channelId = coolerChannel.id;
+
+      // Check power property
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        coolerChannel.onProp.id,
+        coolerChannel.on,
+      );
+
+      // Check temperature setpoint property
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        coolerChannel.temperatureProp.id,
+        coolerChannel.temperature,
+        tolerance: 0.5,
+      );
+    }
+
+    // Check heater channel properties (if available)
+    final heaterChannel = _device.heaterChannel;
+    if (heaterChannel != null) {
+      final channelId = heaterChannel.id;
+
+      // Check power property
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        heaterChannel.onProp.id,
+        heaterChannel.on,
+      );
+
+      // Check temperature setpoint property
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        heaterChannel.temperatureProp.id,
+        heaterChannel.temperature,
+        tolerance: 0.5,
+      );
+    }
+
+    // Check fan channel properties
+    final fanChannel = _device.fanChannel;
+    {
+      final channelId = fanChannel.id;
+
+      // Check power property
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        fanChannel.onProp.id,
+        fanChannel.on,
+      );
+
+      // Check speed property (if available)
+      final speedProp = fanChannel.speedProp;
+      if (speedProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          speedProp.id,
+          fanChannel.speed,
+          tolerance: fanChannel.speedStep > 0 ? fanChannel.speedStep : 1.0,
+        );
+      }
+
+      // Check swing property (if available)
+      final swingProp = fanChannel.swingProp;
+      if (swingProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          swingProp.id,
+          fanChannel.swing,
+        );
+      }
     }
   }
 
@@ -121,28 +249,6 @@ class _AirConditionerDeviceDetailState
 
   double _scale(double value) =>
       _screenService.scale(value, density: _visualDensityService.density);
-
-  Future<void> _setPropertyValue(
-    ChannelPropertyView? property,
-    dynamic value,
-  ) async {
-    if (property == null) return;
-
-    final localizations = AppLocalizations.of(context);
-
-    try {
-      bool res = await _devicesService.setPropertyValue(property.id, value);
-
-      if (!res && mounted && localizations != null) {
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      if (localizations != null) {
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
-    }
-  }
 
   // --------------------------------------------------------------------------
   // STATE HELPERS
@@ -264,34 +370,21 @@ class _AirConditionerDeviceDetailState
   }
 
   double get _targetSetpoint {
-    final setpointProp = _activeSetpointProp;
-    final channelId = _activeSetpointChannelId;
-    final controlState = _deviceControlStateService;
+    final controller = _controller;
 
-    // Check for pending/optimistic value first
-    if (setpointProp != null &&
-        channelId != null &&
-        controlState != null &&
-        controlState.isLocked(_device.id, channelId, setpointProp.id)) {
-      final desiredValue = controlState.getDesiredValue(
-        _device.id,
-        channelId,
-        setpointProp.id,
-      );
-      if (desiredValue is num) {
-        return desiredValue.toDouble();
-      }
-    }
-
-    // Get setpoint based on current mode
+    // Get setpoint based on current mode, using controller for optimistic-aware values
     switch (_currentMode) {
       case AcMode.heat:
-        return _device.heaterChannel?.temperature ?? 21.0;
+        return controller?.heatingTemperature ??
+            _device.heaterChannel?.temperature ??
+            21.0;
       case AcMode.cool:
-        return _device.coolerChannel.temperature;
+        return controller?.coolingTemperature ??
+            _device.coolerChannel.temperature;
       case AcMode.off:
         // When off, show cooling setpoint as default
-        return _device.coolerChannel.temperature;
+        return controller?.coolingTemperature ??
+            _device.coolerChannel.temperature;
     }
   }
 
@@ -299,7 +392,10 @@ class _AirConditionerDeviceDetailState
   // MODE AND SETPOINT HANDLERS
   // --------------------------------------------------------------------------
 
-  void _onModeChanged(AcMode mode) async {
+  void _onModeChanged(AcMode mode) {
+    final controller = _controller;
+    if (controller == null) return;
+
     // Set grace period to prevent control state listener from causing
     // SpeedSlider flickering during mode transitions
     _modeChangeTime = DateTime.now();
@@ -307,30 +403,6 @@ class _AirConditionerDeviceDetailState
     final coolerOnProp = _device.coolerChannel.onProp;
     final heaterOnProp = _device.heaterChannel?.onProp;
     final fanOnProp = _device.fanChannel.onProp;
-
-    // Set PENDING state immediately for responsive UI
-    _deviceControlStateService?.setPending(
-      _device.id,
-      _device.coolerChannel.id,
-      coolerOnProp.id,
-      mode == AcMode.cool,
-    );
-    if (heaterOnProp != null && _device.heaterChannel != null) {
-      _deviceControlStateService?.setPending(
-        _device.id,
-        _device.heaterChannel!.id,
-        heaterOnProp.id,
-        mode == AcMode.heat,
-      );
-    }
-    // Fan on/off based on mode
-    _deviceControlStateService?.setPending(
-      _device.id,
-      _device.fanChannel.id,
-      fanOnProp.id,
-      mode != AcMode.off,
-    );
-    setState(() {});
 
     // Build batch command list
     final commands = <PropertyCommandItem>[];
@@ -407,49 +479,25 @@ class _AirConditionerDeviceDetailState
         break;
     }
 
-    // Send all commands as a single batch
+    // Send all commands through the controller (handles pending, API call, settling/clear)
     if (commands.isNotEmpty) {
-      final localizations = AppLocalizations.of(context);
-
-      try {
-        bool res = await _devicesService.setMultiplePropertyValues(
-          properties: commands,
-        );
-
-        if (!res && mounted && localizations != null) {
-          AlertBar.showError(context, message: localizations.action_failed);
-        }
-      } catch (e) {
-        if (mounted && localizations != null) {
-          AlertBar.showError(context, message: localizations.action_failed);
-        }
-      }
-    }
-
-    // Transition to settling state
-    _deviceControlStateService?.setSettling(
-      _device.id,
-      _device.coolerChannel.id,
-      coolerOnProp.id,
-    );
-    if (heaterOnProp != null && _device.heaterChannel != null) {
-      _deviceControlStateService?.setSettling(
-        _device.id,
-        _device.heaterChannel!.id,
-        heaterOnProp.id,
+      controller.setMultipleProperties(
+        commands,
+        onError: () {
+          if (mounted) {
+            setState(() {});
+          }
+        },
       );
+      setState(() {});
     }
-    _deviceControlStateService?.setSettling(
-      _device.id,
-      _device.fanChannel.id,
-      fanOnProp.id,
-    );
   }
 
   void _onSetpointChanged(double value) {
+    final controller = _controller;
     final setpointProp = _activeSetpointProp;
     final channelId = _activeSetpointChannelId;
-    if (setpointProp == null || channelId == null) return;
+    if (controller == null || setpointProp == null || channelId == null) return;
 
     // Round to step value (0.5)
     final steppedValue = (value * 2).round() / 2;
@@ -470,17 +518,14 @@ class _AirConditionerDeviceDetailState
     _setpointDebounceTimer?.cancel();
 
     // Debounce the API call to avoid flooding backend
-    _setpointDebounceTimer = Timer(_setpointDebounceDuration, () async {
+    _setpointDebounceTimer = Timer(_setpointDebounceDuration, () {
       if (!mounted) return;
 
-      await _setPropertyValue(setpointProp, clampedValue);
-
-      if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          channelId,
-          setpointProp.id,
-        );
+      // Use appropriate controller method based on current mode
+      if (_currentMode == AcMode.heat) {
+        controller.setHeatingTemperature(clampedValue);
+      } else {
+        controller.setCoolingTemperature(clampedValue);
       }
     });
   }
@@ -517,9 +562,13 @@ class _AirConditionerDeviceDetailState
   }
 
   void _setFanSpeedValue(double normalizedSpeed) {
+    final controller = _controller;
     final fanChannel = _device.fanChannel;
     final speedProp = fanChannel.speedProp;
-    if (!fanChannel.hasSpeed || !fanChannel.isSpeedNumeric || speedProp == null) return;
+    if (controller == null ||
+        !fanChannel.hasSpeed ||
+        !fanChannel.isSpeedNumeric ||
+        speedProp == null) return;
 
     final range = fanChannel.maxSpeed - fanChannel.minSpeed;
     if (range <= 0) return;
@@ -529,6 +578,7 @@ class _AirConditionerDeviceDetailState
     final steppedSpeed = step > 0 ? (rawSpeed / step).round() * step : rawSpeed;
     final actualSpeed = steppedSpeed.clamp(fanChannel.minSpeed, fanChannel.maxSpeed);
 
+    // Set pending state immediately for visual feedback
     _deviceControlStateService?.setPending(
       _device.id,
       fanChannel.id,
@@ -537,24 +587,77 @@ class _AirConditionerDeviceDetailState
     );
     setState(() {});
 
+    // Debounce the API call
     _speedDebounceTimer?.cancel();
-    _speedDebounceTimer = Timer(_speedDebounceDuration, () async {
+    _speedDebounceTimer = Timer(_speedDebounceDuration, () {
       if (!mounted) return;
-      _setPropertyValue(speedProp, actualSpeed);
-      if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          speedProp.id,
-        );
-      }
+      // Controller handles API call, settling, and error handling
+      controller.fan.setSpeed(actualSpeed);
     });
   }
 
   void _setFanSpeedLevel(FanSpeedLevelValue level) {
-    final fanChannel = _device.fanChannel;
-    if (!fanChannel.hasSpeed || !fanChannel.isSpeedEnum) return;
-    _setPropertyValue(fanChannel.speedProp, level.value);
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.fan.setSpeedLevel(level);
+    setState(() {});
+  }
+
+  void _setFanMode(FanModeValue mode) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.fan.setMode(mode);
+    setState(() {});
+  }
+
+  void _setFanSwing(bool value) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.fan.setSwing(value);
+    setState(() {});
+  }
+
+  void _setFanDirection(FanDirectionValue direction) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.fan.setDirection(direction);
+    setState(() {});
+  }
+
+  void _setFanNaturalBreeze(bool value) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.fan.setNaturalBreeze(value);
+    setState(() {});
+  }
+
+  void _setFanLocked(bool value) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.fan.setLocked(value);
+    setState(() {});
+  }
+
+  void _setFanTimerPreset(FanTimerPresetValue preset) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.fan.setTimerPreset(preset);
+    setState(() {});
+  }
+
+  void _setFanTimerNumeric(int minutes) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.fan.setTimer(minutes);
+    setState(() {});
   }
 
   // --------------------------------------------------------------------------
@@ -1186,7 +1289,7 @@ class _AirConditionerDeviceDetailState
         layout: ValueSelectorRowLayout.compact,
         onChanged: (mode) {
           if (mode != null) {
-            _setPropertyValue(fanChannel.modeProp, mode.value);
+            _setFanMode(mode);
           }
         },
       );
@@ -1201,7 +1304,7 @@ class _AirConditionerDeviceDetailState
         );
       }).toList(),
       selectedValue: selectedMode,
-      onChanged: (mode) => _setPropertyValue(fanChannel.modeProp, mode.value),
+      onChanged: _setFanMode,
       orientation: ModeSelectorOrientation.horizontal,
       iconPlacement: ModeSelectorIconPlacement.left,
       color: ModeSelectorColor.info,
@@ -1360,7 +1463,7 @@ class _AirConditionerDeviceDetailState
             : localizations.on_state_off,
         isActive: fanChannel.swing,
         activeColor: modeColor,
-        onTileTap: () => _setPropertyValue(fanChannel.swingProp, !fanChannel.swing),
+        onTileTap: () => _setFanSwing(!fanChannel.swing),
         showGlow: false,
         showDoubleBorder: false,
         showInactiveBorder: true,
@@ -1384,7 +1487,7 @@ class _AirConditionerDeviceDetailState
           final newDirection = isReversed
               ? FanDirectionValue.clockwise
               : FanDirectionValue.counterClockwise;
-          _setPropertyValue(fanChannel.directionProp, newDirection.value);
+          _setFanDirection(newDirection);
         },
         showGlow: false,
         showDoubleBorder: false,
@@ -1404,7 +1507,7 @@ class _AirConditionerDeviceDetailState
             : localizations.on_state_off,
         isActive: fanChannel.naturalBreeze,
         activeColor: modeColor,
-        onTileTap: () => _setPropertyValue(fanChannel.naturalBreezeProp, !fanChannel.naturalBreeze),
+        onTileTap: () => _setFanNaturalBreeze(!fanChannel.naturalBreeze),
         showGlow: false,
         showDoubleBorder: false,
         showInactiveBorder: true,
@@ -1423,7 +1526,7 @@ class _AirConditionerDeviceDetailState
             : localizations.thermostat_lock_unlocked,
         isActive: fanChannel.locked,
         activeColor: modeColor,
-        onTileTap: () => _setPropertyValue(fanChannel.lockedProp, !fanChannel.locked),
+        onTileTap: () => _setFanLocked(!fanChannel.locked),
         showGlow: false,
         showDoubleBorder: false,
         showInactiveBorder: true,
@@ -1471,7 +1574,7 @@ class _AirConditionerDeviceDetailState
             : ValueSelectorRowLayout.horizontal,
         onChanged: (preset) {
           if (preset != null) {
-            _setPropertyValue(fanChannel.timerProp, preset.value);
+            _setFanTimerPreset(preset);
           }
         },
       );
@@ -1494,7 +1597,7 @@ class _AirConditionerDeviceDetailState
             : ValueSelectorRowLayout.horizontal,
         onChanged: (minutes) {
           if (minutes != null) {
-            _setPropertyValue(fanChannel.timerProp, minutes);
+            _setFanTimerNumeric(minutes);
           }
         },
       );

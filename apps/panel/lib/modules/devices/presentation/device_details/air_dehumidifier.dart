@@ -15,6 +15,7 @@ import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/controllers/devices/air_dehumidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
@@ -23,7 +24,6 @@ import 'package:fastybird_smart_panel/modules/devices/utils/dehumidifier_utils.d
 import 'package:fastybird_smart_panel/modules/devices/utils/fan_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/dehumidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_dehumidifier.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -50,6 +50,7 @@ class _AirDehumidifierDeviceDetailState
       locator<VisualDensityService>();
   final DevicesService _devicesService = locator<DevicesService>();
   DeviceControlStateService? _deviceControlStateService;
+  AirDehumidifierDeviceController? _controller;
 
   // Debounce timer for speed slider to avoid flooding backend
   Timer? _speedDebounceTimer;
@@ -63,10 +64,36 @@ class _AirDehumidifierDeviceDetailState
     try {
       _deviceControlStateService = locator<DeviceControlStateService>();
       _deviceControlStateService?.addListener(_onControlStateChanged);
+      _initController();
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[AirDehumidifierDeviceDetail] Failed to get DeviceControlStateService: $e');
       }
+    }
+  }
+
+  void _initController() {
+    final controlState = _deviceControlStateService;
+    if (controlState != null) {
+      _controller = AirDehumidifierDeviceController(
+        device: _device,
+        controlState: controlState,
+        devicesService: _devicesService,
+        onError: _onControllerError,
+      );
+    }
+  }
+
+  void _onControllerError(String propertyId, Object error) {
+    if (kDebugMode) {
+      debugPrint('[AirDehumidifierDeviceDetail] Controller error for $propertyId: $error');
+    }
+    final localizations = AppLocalizations.of(context);
+    if (mounted && localizations != null) {
+      AlertBar.showError(context, message: localizations.action_failed);
+    }
+    if (mounted) {
+      setState(() {});
     }
   }
 
@@ -80,7 +107,115 @@ class _AirDehumidifierDeviceDetailState
 
   void _onDeviceChanged() {
     if (mounted) {
+      _checkConvergence();
+      _initController();
       setState(() {});
+    }
+  }
+
+  /// Check convergence for all controllable properties.
+  ///
+  /// When device data updates (from WebSocket), this checks if any properties
+  /// in settling state have converged (or diverged from external changes) and
+  /// clears the optimistic state appropriately.
+  void _checkConvergence() {
+    final controlState = _deviceControlStateService;
+    if (controlState == null) return;
+
+    final deviceId = _device.id;
+
+    // Check dehumidifier channel properties
+    final dehumidifierChannel = _dehumidifierChannel;
+    if (dehumidifierChannel != null) {
+      final channelId = dehumidifierChannel.id;
+
+      // Check power property
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        dehumidifierChannel.onProp.id,
+        dehumidifierChannel.on,
+      );
+
+      // Check humidity property
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        dehumidifierChannel.humidityProp.id,
+        dehumidifierChannel.humidity,
+        tolerance: 1.0,
+      );
+
+      // Check mode property (if available)
+      final modeProp = dehumidifierChannel.modeProp;
+      if (modeProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          modeProp.id,
+          dehumidifierChannel.mode?.value,
+        );
+      }
+
+      // Check locked property (if available)
+      final lockedProp = dehumidifierChannel.lockedProp;
+      if (lockedProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          lockedProp.id,
+          dehumidifierChannel.locked,
+        );
+      }
+
+      // Check timer property (if available)
+      final timerProp = dehumidifierChannel.timerProp;
+      if (timerProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          timerProp.id,
+          dehumidifierChannel.timer,
+          tolerance: dehumidifierChannel.timerStep.toDouble(),
+        );
+      }
+    }
+
+    // Check fan channel properties (if available)
+    final fanChannel = _device.fanChannel;
+    if (fanChannel != null) {
+      final channelId = fanChannel.id;
+
+      // Check power property
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        fanChannel.onProp.id,
+        fanChannel.on,
+      );
+
+      // Check speed property (if available)
+      final speedProp = fanChannel.speedProp;
+      if (speedProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          speedProp.id,
+          fanChannel.speed,
+          tolerance: fanChannel.speedStep > 0 ? fanChannel.speedStep : 1.0,
+        );
+      }
+
+      // Check swing property (if available)
+      final swingProp = fanChannel.swingProp;
+      if (swingProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          swingProp.id,
+          fanChannel.swing,
+        );
+      }
     }
   }
 
@@ -102,36 +237,13 @@ class _AirDehumidifierDeviceDetailState
   DehumidifierChannelView? get _dehumidifierChannel =>
       _device.dehumidifierChannel;
 
-  Future<void> _setPropertyValue(
-    ChannelPropertyView? property,
-    dynamic value,
-  ) async {
-    if (property == null) return;
-
-    final localizations = AppLocalizations.of(context);
-
-    try {
-      bool res = await _devicesService.setPropertyValue(property.id, value);
-
-      if (!res && mounted && localizations != null) {
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      if (localizations != null) {
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
-    }
-  }
-
   /// Toggle power on/off for dehumidifier and fan together
-  Future<void> _togglePower(bool turnOn) async {
+  void _togglePower(bool turnOn) {
+    final controller = _controller;
     final channel = _dehumidifierChannel;
     final fanChannel = _device.fanChannel;
 
-    if (channel == null) return;
-
-    final localizations = AppLocalizations.of(context);
+    if (controller == null || channel == null) return;
 
     // Build batch command list
     final commands = <PropertyCommandItem>[];
@@ -154,21 +266,100 @@ class _AirDehumidifierDeviceDetailState
       ));
     }
 
-    // Send all commands as a single batch
-    try {
-      bool res = await _devicesService.setMultiplePropertyValues(
-        properties: commands,
-      );
+    // Use controller's batch operation
+    controller.setMultipleProperties(
+      commands,
+      onError: () {
+        if (mounted) {
+          final localizations = AppLocalizations.of(context);
+          if (localizations != null) {
+            AlertBar.showError(context, message: localizations.action_failed);
+          }
+          setState(() {});
+        }
+      },
+    );
+    setState(() {});
+  }
 
-      if (!res && mounted && localizations != null) {
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      if (localizations != null) {
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
-    }
+  void _setHumidity(int humidity) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.dehumidifier.setHumidity(humidity);
+    setState(() {});
+  }
+
+  void _setDehumidifierMode(DehumidifierModeValue mode) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.dehumidifier.setMode(mode);
+    setState(() {});
+  }
+
+  void _setFanSwing(bool value) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.fan?.setSwing(value);
+    setState(() {});
+  }
+
+  void _setFanDirection(FanDirectionValue direction) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.fan?.setDirection(direction);
+    setState(() {});
+  }
+
+  void _setFanNaturalBreeze(bool value) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.fan?.setNaturalBreeze(value);
+    setState(() {});
+  }
+
+  void _setDehumidifierLocked(bool value) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.dehumidifier.setLocked(value);
+    setState(() {});
+  }
+
+  void _setFanSpeedLevel(FanSpeedLevelValue level) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.fan?.setSpeedLevel(level);
+    setState(() {});
+  }
+
+  void _setFanMode(FanModeValue mode) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.fan?.setMode(mode);
+    setState(() {});
+  }
+
+  void _setDehumidifierTimerPreset(DehumidifierTimerPresetValue preset) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.dehumidifier.setTimerPreset(preset);
+    setState(() {});
+  }
+
+  void _setDehumidifierTimerNumeric(int seconds) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.dehumidifier.setTimer(seconds);
+    setState(() {});
   }
 
   @override
@@ -457,7 +648,7 @@ class _AirDehumidifierDeviceDetailState
       majorTickCount: 8,
       onChanged: (v) {
         final newHumidity = (v * 100).round();
-        _setPropertyValue(channel.humidityProp, newHumidity);
+        _setHumidity(newHumidity);
       },
     );
   }
@@ -506,7 +697,6 @@ class _AirDehumidifierDeviceDetailState
     if (availableModes.isEmpty) return const SizedBox.shrink();
 
     final currentMode = channel.mode;
-    if (currentMode == null) return const SizedBox.shrink();
 
     return ModeSelector<DehumidifierModeValue>(
       modes: availableModes
@@ -517,7 +707,7 @@ class _AirDehumidifierDeviceDetailState
               ))
           .toList(),
       selectedValue: currentMode,
-      onChanged: (mode) => _setPropertyValue(channel.modeProp, mode.value),
+      onChanged: _setDehumidifierMode,
       orientation: ModeSelectorOrientation.horizontal,
       iconPlacement: ModeSelectorIconPlacement.left,
       color: ModeSelectorColor.teal,
@@ -534,7 +724,6 @@ class _AirDehumidifierDeviceDetailState
     if (availableModes.isEmpty) return const SizedBox.shrink();
 
     final currentMode = channel.mode;
-    if (currentMode == null) return const SizedBox.shrink();
 
     return ModeSelector<DehumidifierModeValue>(
       modes: availableModes
@@ -545,7 +734,7 @@ class _AirDehumidifierDeviceDetailState
               ))
           .toList(),
       selectedValue: currentMode,
-      onChanged: (mode) => _setPropertyValue(channel.modeProp, mode.value),
+      onChanged: _setDehumidifierMode,
       orientation: ModeSelectorOrientation.vertical,
       showLabels: false,
       color: ModeSelectorColor.teal,
@@ -685,10 +874,7 @@ class _AirDehumidifierDeviceDetailState
                 : localizations.on_state_off,
             isActive: fanChannel.swing,
             activeColor: humidityColor,
-            onTileTap: () => _setPropertyValue(
-              fanChannel.swingProp,
-              !fanChannel.swing,
-            ),
+            onTileTap: () => _setFanSwing(!fanChannel.swing),
             showGlow: false,
             showDoubleBorder: false,
             showInactiveBorder: true,
@@ -712,7 +898,7 @@ class _AirDehumidifierDeviceDetailState
                   fanChannel.direction == FanDirectionValue.clockwise
                       ? FanDirectionValue.counterClockwise
                       : FanDirectionValue.clockwise;
-              _setPropertyValue(fanChannel.directionProp, newDirection.value);
+              _setFanDirection(newDirection);
             },
             showGlow: false,
             showDoubleBorder: false,
@@ -731,10 +917,7 @@ class _AirDehumidifierDeviceDetailState
                 : localizations.on_state_off,
             isActive: fanChannel.naturalBreeze,
             activeColor: humidityColor,
-            onTileTap: () => _setPropertyValue(
-              fanChannel.naturalBreezeProp,
-              !fanChannel.naturalBreeze,
-            ),
+            onTileTap: () => _setFanNaturalBreeze(!fanChannel.naturalBreeze),
             showGlow: false,
             showDoubleBorder: false,
             showInactiveBorder: true,
@@ -752,7 +935,7 @@ class _AirDehumidifierDeviceDetailState
                 : localizations.thermostat_lock_unlocked,
             isActive: channel.locked,
             activeColor: humidityColor,
-            onTileTap: () => _setPropertyValue(channel.lockedProp, !channel.locked),
+            onTileTap: () => _setDehumidifierLocked(!channel.locked),
             showGlow: false,
             showDoubleBorder: false,
             showInactiveBorder: true,
@@ -839,7 +1022,7 @@ class _AirDehumidifierDeviceDetailState
         onChanged: _device.isOn
             ? (level) {
                 if (level != null) {
-                  _setPropertyValue(fanChannel.speedProp, level.value);
+                  _setFanSpeedLevel(level);
                 }
               }
             : null,
@@ -963,7 +1146,7 @@ class _AirDehumidifierDeviceDetailState
         onChanged: _device.isOn
             ? (mode) {
                 if (mode != null) {
-                  _setPropertyValue(fanChannel.modeProp, mode.value);
+                  _setFanMode(mode);
                 }
               }
             : null,
@@ -979,7 +1162,7 @@ class _AirDehumidifierDeviceDetailState
               ))
           .toList(),
       selectedValue: currentMode,
-      onChanged: (mode) => _setPropertyValue(fanChannel.modeProp, mode.value),
+      onChanged: _setFanMode,
       orientation: ModeSelectorOrientation.horizontal,
       iconPlacement: ModeSelectorIconPlacement.left,
       color: ModeSelectorColor.teal,
@@ -1018,9 +1201,10 @@ class _AirDehumidifierDeviceDetailState
   }
 
   void _setFanSpeed(double normalizedSpeed) {
+    final controller = _controller;
     final fanChannel = _device.fanChannel;
     final speedProp = fanChannel?.speedProp;
-    if (fanChannel == null || !fanChannel.hasSpeed || !fanChannel.isSpeedNumeric || speedProp == null) return;
+    if (controller == null || fanChannel == null || !fanChannel.hasSpeed || !fanChannel.isSpeedNumeric || speedProp == null) return;
 
     // Convert normalized 0-1 value to actual device speed range
     final minSpeed = fanChannel.minSpeed;
@@ -1037,7 +1221,7 @@ class _AirDehumidifierDeviceDetailState
     // Clamp to valid range
     final actualSpeed = steppedSpeed.clamp(minSpeed, maxSpeed);
 
-    // Set PENDING state immediately for responsive UI
+    // Set PENDING state immediately for responsive UI (for slider visual feedback)
     _deviceControlStateService?.setPending(
       _device.id,
       fanChannel.id,
@@ -1050,18 +1234,10 @@ class _AirDehumidifierDeviceDetailState
     _speedDebounceTimer?.cancel();
 
     // Debounce the API call to avoid flooding backend
-    _speedDebounceTimer = Timer(_speedDebounceDuration, () async {
+    _speedDebounceTimer = Timer(_speedDebounceDuration, () {
       if (!mounted) return;
 
-      await _setPropertyValue(speedProp, actualSpeed);
-
-      if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          speedProp.id,
-        );
-      }
+      controller.fan?.setSpeed(actualSpeed);
     });
   }
 
@@ -1117,7 +1293,7 @@ class _AirDehumidifierDeviceDetailState
             : ValueSelectorRowLayout.horizontal,
         onChanged: (preset) {
           if (preset != null) {
-            _setPropertyValue(channel.timerProp, preset.value);
+            _setDehumidifierTimerPreset(preset);
           }
         },
       );
@@ -1142,7 +1318,7 @@ class _AirDehumidifierDeviceDetailState
             : ValueSelectorRowLayout.horizontal,
         onChanged: (seconds) {
           if (seconds != null) {
-            _setPropertyValue(channel.timerProp, seconds);
+            _setDehumidifierTimerNumeric(seconds);
           }
         },
       );

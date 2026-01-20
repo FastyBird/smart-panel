@@ -13,6 +13,7 @@ import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/controllers/devices/thermostat.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
@@ -52,6 +53,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
       locator<VisualDensityService>();
   final DevicesService _devicesService = locator<DevicesService>();
   DeviceControlStateService? _deviceControlStateService;
+  ThermostatDeviceController? _controller;
 
   // Debounce timer for setpoint changes to avoid flooding backend
   Timer? _setpointDebounceTimer;
@@ -71,6 +73,35 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
             '[ThermostatDeviceDetail] Failed to get DeviceControlStateService: $e');
       }
     }
+
+    _initController();
+  }
+
+  void _initController() {
+    final controlState = _deviceControlStateService;
+    if (controlState != null) {
+      _controller = ThermostatDeviceController(
+        device: _device,
+        controlState: controlState,
+        devicesService: _devicesService,
+        onError: _onControllerError,
+      );
+    }
+  }
+
+  void _onControllerError(String propertyId, Object error) {
+    if (kDebugMode) {
+      debugPrint('[ThermostatDeviceDetail] Controller error for $propertyId: $error');
+    }
+
+    final localizations = AppLocalizations.of(context);
+    if (mounted && localizations != null) {
+      AlertBar.showError(context, message: localizations.action_failed);
+    }
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -84,8 +115,70 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   void _onDeviceChanged() {
     if (!mounted) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() {});
+      if (mounted) {
+        _checkConvergence();
+        _initController();
+        setState(() {});
+      }
     });
+  }
+
+  /// Check convergence for all controllable properties.
+  ///
+  /// When device data updates (from WebSocket), this checks if any properties
+  /// in settling state have converged (or diverged from external changes) and
+  /// clears the optimistic state appropriately.
+  void _checkConvergence() {
+    final controlState = _deviceControlStateService;
+    if (controlState == null) return;
+
+    final deviceId = _device.id;
+
+    // Check heater channel properties (if available)
+    final heaterChannel = _device.heaterChannel;
+    if (heaterChannel != null) {
+      final channelId = heaterChannel.id;
+
+      // Check power property
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        heaterChannel.onProp.id,
+        heaterChannel.on,
+      );
+
+      // Check temperature setpoint property
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        heaterChannel.temperatureProp.id,
+        heaterChannel.temperature,
+        tolerance: 0.5,
+      );
+    }
+
+    // Check cooler channel properties (if available)
+    final coolerChannel = _device.coolerChannel;
+    if (coolerChannel != null) {
+      final channelId = coolerChannel.id;
+
+      // Check power property
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        coolerChannel.onProp.id,
+        coolerChannel.on,
+      );
+
+      // Check temperature setpoint property
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        coolerChannel.temperatureProp.id,
+        coolerChannel.temperature,
+        tolerance: 0.5,
+      );
+    }
   }
 
   void _onControlStateChanged() {
@@ -102,28 +195,6 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
   double _scale(double value) =>
       _screenService.scale(value, density: _visualDensityService.density);
-
-  Future<void> _setPropertyValue(
-    ChannelPropertyView? property,
-    dynamic value,
-  ) async {
-    if (property == null) return;
-
-    final localizations = AppLocalizations.of(context);
-
-    try {
-      bool res = await _devicesService.setPropertyValue(property.id, value);
-
-      if (!res && mounted && localizations != null) {
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      if (localizations != null) {
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
-    }
-  }
 
   // --------------------------------------------------------------------------
   // STATE HELPERS
@@ -252,35 +323,24 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   }
 
   double get _targetSetpoint {
-    final setpointProp = _activeSetpointProp;
-    final channelId = _activeSetpointChannelId;
-    final controlState = _deviceControlStateService;
+    final controller = _controller;
 
-    // Check for pending/optimistic value first
-    if (setpointProp != null &&
-        channelId != null &&
-        controlState != null &&
-        controlState.isLocked(_device.id, channelId, setpointProp.id)) {
-      final desiredValue = controlState.getDesiredValue(
-        _device.id,
-        channelId,
-        setpointProp.id,
-      );
-      if (desiredValue is num) {
-        return desiredValue.toDouble();
-      }
-    }
-
-    // Get setpoint based on current mode
+    // Get setpoint based on current mode, using controller for optimistic-aware values
     switch (_currentMode) {
       case ThermostatMode.heat:
-        return _device.heaterChannel?.temperature ?? 21.0;
+        return controller?.heatingTemperature ??
+            _device.heaterChannel?.temperature ??
+            21.0;
       case ThermostatMode.cool:
-        return _device.coolerChannel?.temperature ?? 24.0;
+        return controller?.coolingTemperature ??
+            _device.coolerChannel?.temperature ??
+            24.0;
       case ThermostatMode.auto:
       case ThermostatMode.off:
         // Show heater setpoint for display purposes
-        return _device.heaterChannel?.temperature ?? 21.0;
+        return controller?.heatingTemperature ??
+            _device.heaterChannel?.temperature ??
+            21.0;
     }
   }
 
@@ -288,32 +348,14 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   // MODE AND SETPOINT HANDLERS
   // --------------------------------------------------------------------------
 
-  void _onModeChanged(ThermostatMode mode) async {
+  void _onModeChanged(ThermostatMode mode) {
+    final controller = _controller;
     final heaterChannel = _device.heaterChannel;
     final coolerChannel = _device.coolerChannel;
     final heaterOnProp = heaterChannel?.onProp;
     final coolerOnProp = coolerChannel?.onProp;
 
-    // Set PENDING state immediately for responsive UI
-    if (heaterOnProp != null && heaterChannel != null) {
-      final heaterOn = mode == ThermostatMode.heat || mode == ThermostatMode.auto;
-      _deviceControlStateService?.setPending(
-        _device.id,
-        heaterChannel.id,
-        heaterOnProp.id,
-        heaterOn,
-      );
-    }
-    if (coolerOnProp != null && coolerChannel != null) {
-      final coolerOn = mode == ThermostatMode.cool || mode == ThermostatMode.auto;
-      _deviceControlStateService?.setPending(
-        _device.id,
-        coolerChannel.id,
-        coolerOnProp.id,
-        coolerOn,
-      );
-    }
-    setState(() {});
+    if (controller == null) return;
 
     // Build batch command list - mode is controlled via heater.on/cooler.on
     final commands = <PropertyCommandItem>[];
@@ -397,46 +439,29 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         break;
     }
 
-    // Send all commands as a single batch
+    // Use controller's batch operation
     if (commands.isNotEmpty) {
-      final localizations = AppLocalizations.of(context);
-
-      try {
-        bool res = await _devicesService.setMultiplePropertyValues(
-          properties: commands,
-        );
-
-        if (!res && mounted && localizations != null) {
-          AlertBar.showError(context, message: localizations.action_failed);
-        }
-      } catch (e) {
-        if (mounted && localizations != null) {
-          AlertBar.showError(context, message: localizations.action_failed);
-        }
-      }
-    }
-
-    // Transition to settling state
-    if (heaterOnProp != null && heaterChannel != null) {
-      _deviceControlStateService?.setSettling(
-        _device.id,
-        heaterChannel.id,
-        heaterOnProp.id,
+      controller.setMultipleProperties(
+        commands,
+        onError: () {
+          if (mounted) {
+            final localizations = AppLocalizations.of(context);
+            if (localizations != null) {
+              AlertBar.showError(context, message: localizations.action_failed);
+            }
+            setState(() {});
+          }
+        },
       );
-    }
-    if (coolerOnProp != null && coolerChannel != null) {
-      _deviceControlStateService?.setSettling(
-        _device.id,
-        coolerChannel.id,
-        coolerOnProp.id,
-      );
+      setState(() {});
     }
   }
 
   void _onSetpointChanged(double value) {
+    final controller = _controller;
     final setpointProp = _activeSetpointProp;
     final channelId = _activeSetpointChannelId;
-    if (setpointProp == null || channelId == null) return;
+    if (controller == null || setpointProp == null || channelId == null) return;
 
     // Round to step value (0.5)
     final steppedValue = (value * 2).round() / 2;
@@ -444,7 +469,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     // Clamp to valid range
     final clampedValue = steppedValue.clamp(_minSetpoint, _maxSetpoint);
 
-    // Set PENDING state immediately for responsive UI
+    // Set PENDING state immediately for responsive UI (for dial visual feedback)
     _deviceControlStateService?.setPending(
       _device.id,
       channelId,
@@ -457,19 +482,29 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     _setpointDebounceTimer?.cancel();
 
     // Debounce the API call to avoid flooding backend
-    _setpointDebounceTimer = Timer(_setpointDebounceDuration, () async {
+    _setpointDebounceTimer = Timer(_setpointDebounceDuration, () {
       if (!mounted) return;
 
-      await _setPropertyValue(setpointProp, clampedValue);
-
-      if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          channelId,
-          setpointProp.id,
-        );
+      // Use controller method based on current mode
+      switch (_currentMode) {
+        case ThermostatMode.heat:
+          controller.setHeatingTemperature(clampedValue);
+          break;
+        case ThermostatMode.cool:
+          controller.setCoolingTemperature(clampedValue);
+          break;
+        default:
+          break;
       }
     });
+  }
+
+  void _setThermostatLocked(bool value) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.setLocked(value);
+    setState(() {});
   }
 
   // --------------------------------------------------------------------------
@@ -822,10 +857,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
                 : localizations.thermostat_lock_unlocked,
             isActive: _device.isThermostatLocked,
             activeColor: modeColor,
-            onTileTap: () => _setPropertyValue(
-              _device.thermostatChannel.lockedProp,
-              !_device.isThermostatLocked,
-            ),
+            onTileTap: () => _setThermostatLocked(!_device.isThermostatLocked),
             showGlow: false,
             showDoubleBorder: false,
             showInactiveBorder: true,

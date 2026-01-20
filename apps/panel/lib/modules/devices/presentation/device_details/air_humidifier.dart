@@ -15,6 +15,7 @@ import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/controllers/devices/air_humidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
@@ -23,7 +24,6 @@ import 'package:fastybird_smart_panel/modules/devices/utils/fan_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/humidifier_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/humidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_humidifier.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -49,6 +49,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       locator<VisualDensityService>();
   final DevicesService _devicesService = locator<DevicesService>();
   DeviceControlStateService? _deviceControlStateService;
+  AirHumidifierDeviceController? _controller;
 
   // Debounce timer for mist level slider to avoid flooding backend
   Timer? _mistLevelDebounceTimer;
@@ -66,10 +67,36 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     try {
       _deviceControlStateService = locator<DeviceControlStateService>();
       _deviceControlStateService?.addListener(_onControlStateChanged);
+      _initController();
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[AirHumidifierDeviceDetail] Failed to get DeviceControlStateService: $e');
       }
+    }
+  }
+
+  void _initController() {
+    final controlState = _deviceControlStateService;
+    if (controlState != null) {
+      _controller = AirHumidifierDeviceController(
+        device: _device,
+        controlState: controlState,
+        devicesService: _devicesService,
+        onError: _onControllerError,
+      );
+    }
+  }
+
+  void _onControllerError(String propertyId, Object error) {
+    if (kDebugMode) {
+      debugPrint('[AirHumidifierDeviceDetail] Controller error for $propertyId: $error');
+    }
+    final localizations = AppLocalizations.of(context);
+    if (mounted && localizations != null) {
+      AlertBar.showError(context, message: localizations.action_failed);
+    }
+    if (mounted) {
+      setState(() {});
     }
   }
 
@@ -84,7 +111,138 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
 
   void _onDeviceChanged() {
     if (mounted) {
+      _checkConvergence();
+      _initController(); // Reinitialize controller with updated device
       setState(() {});
+    }
+  }
+
+  /// Check convergence for all controllable properties.
+  ///
+  /// When device data updates (from WebSocket), this checks if any properties
+  /// in settling state have converged (or diverged from external changes) and
+  /// clears the optimistic state appropriately.
+  void _checkConvergence() {
+    final controlState = _deviceControlStateService;
+    if (controlState == null) return;
+
+    final deviceId = _device.id;
+
+    // Check humidifier channel properties
+    final humidifierChannel = _humidifierChannel;
+    if (humidifierChannel != null) {
+      final channelId = humidifierChannel.id;
+
+      // Check power property
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        humidifierChannel.onProp.id,
+        humidifierChannel.on,
+      );
+
+      // Check humidity property
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        humidifierChannel.humidityProp.id,
+        humidifierChannel.humidity,
+        tolerance: 1.0,
+      );
+
+      // Check mode property (if available)
+      final modeProp = humidifierChannel.modeProp;
+      if (modeProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          modeProp.id,
+          humidifierChannel.mode?.value,
+        );
+      }
+
+      // Check mistLevel property (if available)
+      final mistLevelProp = humidifierChannel.mistLevelProp;
+      if (mistLevelProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          mistLevelProp.id,
+          humidifierChannel.mistLevel,
+          tolerance: 1.0,
+        );
+      }
+
+      // Check warmMist property (if available)
+      final warmMistProp = humidifierChannel.warmMistProp;
+      if (warmMistProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          warmMistProp.id,
+          humidifierChannel.warmMist,
+        );
+      }
+
+      // Check locked property (if available)
+      final lockedProp = humidifierChannel.lockedProp;
+      if (lockedProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          lockedProp.id,
+          humidifierChannel.locked,
+        );
+      }
+
+      // Check timer property (if available)
+      final timerProp = humidifierChannel.timerProp;
+      if (timerProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          timerProp.id,
+          humidifierChannel.timer,
+          tolerance: humidifierChannel.timerStep.toDouble(),
+        );
+      }
+    }
+
+    // Check fan channel properties (if available)
+    final fanChannel = _device.fanChannel;
+    if (fanChannel != null) {
+      final channelId = fanChannel.id;
+
+      // Check power property
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        fanChannel.onProp.id,
+        fanChannel.on,
+      );
+
+      // Check speed property (if available)
+      final speedProp = fanChannel.speedProp;
+      if (speedProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          speedProp.id,
+          fanChannel.speed,
+          tolerance: fanChannel.speedStep > 0 ? fanChannel.speedStep : 1.0,
+        );
+      }
+
+      // Check swing property (if available)
+      final swingProp = fanChannel.swingProp;
+      if (swingProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          swingProp.id,
+          fanChannel.swing,
+        );
+      }
     }
   }
 
@@ -105,36 +263,13 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
 
   HumidifierChannelView? get _humidifierChannel => _device.humidifierChannel;
 
-  Future<void> _setPropertyValue(
-    ChannelPropertyView? property,
-    dynamic value,
-  ) async {
-    if (property == null) return;
-
-    final localizations = AppLocalizations.of(context);
-
-    try {
-      bool res = await _devicesService.setPropertyValue(property.id, value);
-
-      if (!res && mounted && localizations != null) {
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      if (localizations != null) {
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
-    }
-  }
-
   /// Toggle power on/off for humidifier and fan together
-  Future<void> _togglePower(bool turnOn) async {
+  void _togglePower(bool turnOn) {
+    final controller = _controller;
     final channel = _humidifierChannel;
     final fanChannel = _device.fanChannel;
 
-    if (channel == null) return;
-
-    final localizations = AppLocalizations.of(context);
+    if (controller == null || channel == null) return;
 
     // Build batch command list
     final commands = <PropertyCommandItem>[];
@@ -157,21 +292,112 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       ));
     }
 
-    // Send all commands as a single batch
-    try {
-      bool res = await _devicesService.setMultiplePropertyValues(
-        properties: commands,
-      );
+    // Send all commands through the controller (handles pending, API call, settling/clear)
+    controller.setMultipleProperties(
+      commands,
+      onError: () {
+        if (mounted) {
+          setState(() {});
+        }
+      },
+    );
+    setState(() {});
+  }
 
-      if (!res && mounted && localizations != null) {
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      if (localizations != null) {
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
-    }
+  void _setHumidity(int humidity) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.humidifier.setHumidity(humidity);
+    setState(() {});
+  }
+
+  void _setHumidifierMode(HumidifierModeValue mode) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.humidifier.setMode(mode);
+    setState(() {});
+  }
+
+  void _setFanSwing(bool value) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.fan?.setSwing(value);
+    setState(() {});
+  }
+
+  void _setFanDirection(FanDirectionValue direction) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.fan?.setDirection(direction);
+    setState(() {});
+  }
+
+  void _setFanNaturalBreeze(bool value) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.fan?.setNaturalBreeze(value);
+    setState(() {});
+  }
+
+  void _setWarmMist(bool value) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.humidifier.setWarmMist(value);
+    setState(() {});
+  }
+
+  void _setHumidifierLocked(bool value) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.humidifier.setLocked(value);
+    setState(() {});
+  }
+
+  void _setMistLevelEnum(HumidifierMistLevelLevelValue level) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.humidifier.setMistLevelPreset(level);
+    setState(() {});
+  }
+
+  void _setFanSpeedLevel(FanSpeedLevelValue level) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.fan?.setSpeedLevel(level);
+    setState(() {});
+  }
+
+  void _setFanMode(FanModeValue mode) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.fan?.setMode(mode);
+    setState(() {});
+  }
+
+  void _setHumidifierTimerPreset(HumidifierTimerPresetValue preset) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.humidifier.setTimerPreset(preset);
+    setState(() {});
+  }
+
+  void _setHumidifierTimerNumeric(int seconds) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.humidifier.setTimer(seconds);
+    setState(() {});
   }
 
   @override
@@ -460,7 +686,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       majorTickCount: 8,
       onChanged: (v) {
         final newHumidity = (v * 100).round();
-        _setPropertyValue(channel.humidityProp, newHumidity);
+        _setHumidity(newHumidity);
       },
     );
   }
@@ -509,7 +735,6 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     if (availableModes.isEmpty) return const SizedBox.shrink();
 
     final currentMode = channel.mode;
-    if (currentMode == null) return const SizedBox.shrink();
 
     return ModeSelector<HumidifierModeValue>(
       modes: availableModes
@@ -520,7 +745,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
               ))
           .toList(),
       selectedValue: currentMode,
-      onChanged: (mode) => _setPropertyValue(channel.modeProp, mode.value),
+      onChanged: _setHumidifierMode,
       orientation: ModeSelectorOrientation.horizontal,
       iconPlacement: ModeSelectorIconPlacement.left,
       color: ModeSelectorColor.teal,
@@ -537,7 +762,6 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     if (availableModes.isEmpty) return const SizedBox.shrink();
 
     final currentMode = channel.mode;
-    if (currentMode == null) return const SizedBox.shrink();
 
     return ModeSelector<HumidifierModeValue>(
       modes: availableModes
@@ -548,7 +772,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
               ))
           .toList(),
       selectedValue: currentMode,
-      onChanged: (mode) => _setPropertyValue(channel.modeProp, mode.value),
+      onChanged: _setHumidifierMode,
       orientation: ModeSelectorOrientation.vertical,
       showLabels: false,
       color: ModeSelectorColor.teal,
@@ -700,10 +924,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
                 : localizations.on_state_off,
             isActive: fanChannel.swing,
             activeColor: humidityColor,
-            onTileTap: () => _setPropertyValue(
-              fanChannel.swingProp,
-              !fanChannel.swing,
-            ),
+            onTileTap: () => _setFanSwing(!fanChannel.swing),
             showGlow: false,
             showDoubleBorder: false,
             showInactiveBorder: true,
@@ -727,7 +948,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
                   fanChannel.direction == FanDirectionValue.clockwise
                       ? FanDirectionValue.counterClockwise
                       : FanDirectionValue.clockwise;
-              _setPropertyValue(fanChannel.directionProp, newDirection.value);
+              _setFanDirection(newDirection);
             },
             showGlow: false,
             showDoubleBorder: false,
@@ -746,10 +967,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
                 : localizations.on_state_off,
             isActive: fanChannel.naturalBreeze,
             activeColor: humidityColor,
-            onTileTap: () => _setPropertyValue(
-              fanChannel.naturalBreezeProp,
-              !fanChannel.naturalBreeze,
-            ),
+            onTileTap: () => _setFanNaturalBreeze(!fanChannel.naturalBreeze),
             showGlow: false,
             showDoubleBorder: false,
             showInactiveBorder: true,
@@ -776,7 +994,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
             isActive: channel.warmMist,
             activeColor: humidityColor,
             onTileTap: () =>
-                _setPropertyValue(channel.warmMistProp, !channel.warmMist),
+                _setWarmMist(!channel.warmMist),
             showGlow: false,
             showDoubleBorder: false,
             showInactiveBorder: true,
@@ -795,7 +1013,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
             isActive: channel.locked,
             activeColor: humidityColor,
             onTileTap: () =>
-                _setPropertyValue(channel.lockedProp, !channel.locked),
+                _setHumidifierLocked(!channel.locked),
             showGlow: false,
             showDoubleBorder: false,
             showInactiveBorder: true,
@@ -877,7 +1095,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
           : ValueSelectorRowLayout.horizontal,
       onChanged: (level) {
         if (level != null) {
-          _setPropertyValue(channel.mistLevelProp, level.value);
+          _setMistLevelEnum(level);
         }
       },
     );
@@ -950,9 +1168,14 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
   }
 
   void _setMistLevel(double normalizedLevel) {
+    final controller = _controller;
     final channel = _humidifierChannel;
     final mistLevelProp = channel?.mistLevelProp;
-    if (channel == null || !channel.hasMistLevel || !channel.isMistLevelNumeric || mistLevelProp == null) return;
+    if (controller == null ||
+        channel == null ||
+        !channel.hasMistLevel ||
+        !channel.isMistLevelNumeric ||
+        mistLevelProp == null) return;
 
     // Convert normalized 0-1 value to actual device level range
     final minLevel = channel.minMistLevel;
@@ -978,18 +1201,10 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     _mistLevelDebounceTimer?.cancel();
 
     // Debounce the API call to avoid flooding backend
-    _mistLevelDebounceTimer = Timer(_mistLevelDebounceDuration, () async {
+    _mistLevelDebounceTimer = Timer(_mistLevelDebounceDuration, () {
       if (!mounted) return;
-
-      await _setPropertyValue(mistLevelProp, clampedLevel);
-
-      if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          channel.id,
-          mistLevelProp.id,
-        );
-      }
+      // Controller handles API call, settling, and error handling
+      controller.humidifier.setMistLevel(clampedLevel);
     });
   }
 
@@ -1041,7 +1256,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         onChanged: _device.isOn
             ? (level) {
                 if (level != null) {
-                  _setPropertyValue(fanChannel.speedProp, level.value);
+                  _setFanSpeedLevel(level);
                 }
               }
             : null,
@@ -1165,7 +1380,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         onChanged: _device.isOn
             ? (mode) {
                 if (mode != null) {
-                  _setPropertyValue(fanChannel.modeProp, mode.value);
+                  _setFanMode(mode);
                 }
               }
             : null,
@@ -1181,7 +1396,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
               ))
           .toList(),
       selectedValue: currentMode,
-      onChanged: (mode) => _setPropertyValue(fanChannel.modeProp, mode.value),
+      onChanged: _setFanMode,
       orientation: ModeSelectorOrientation.horizontal,
       iconPlacement: ModeSelectorIconPlacement.left,
       color: ModeSelectorColor.teal,
@@ -1220,9 +1435,14 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
   }
 
   void _setFanSpeed(double normalizedSpeed) {
+    final controller = _controller;
     final fanChannel = _device.fanChannel;
     final speedProp = fanChannel?.speedProp;
-    if (fanChannel == null || !fanChannel.hasSpeed || !fanChannel.isSpeedNumeric || speedProp == null) return;
+    if (controller == null ||
+        fanChannel == null ||
+        !fanChannel.hasSpeed ||
+        !fanChannel.isSpeedNumeric ||
+        speedProp == null) return;
 
     // Convert normalized 0-1 value to actual device speed range
     final minSpeed = fanChannel.minSpeed;
@@ -1252,18 +1472,10 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     _speedDebounceTimer?.cancel();
 
     // Debounce the API call to avoid flooding backend
-    _speedDebounceTimer = Timer(_speedDebounceDuration, () async {
+    _speedDebounceTimer = Timer(_speedDebounceDuration, () {
       if (!mounted) return;
-
-      await _setPropertyValue(speedProp, actualSpeed);
-
-      if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          speedProp.id,
-        );
-      }
+      // Controller handles API call, settling, and error handling
+      controller.fan?.setSpeed(actualSpeed);
     });
   }
 
@@ -1319,7 +1531,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
             : ValueSelectorRowLayout.horizontal,
         onChanged: (preset) {
           if (preset != null) {
-            _setPropertyValue(channel.timerProp, preset.value);
+            _setHumidifierTimerPreset(preset);
           }
         },
       );
@@ -1344,7 +1556,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
             : ValueSelectorRowLayout.horizontal,
         onChanged: (seconds) {
           if (seconds != null) {
-            _setPropertyValue(channel.timerProp, seconds);
+            _setHumidifierTimerNumeric(seconds);
           }
         },
       );

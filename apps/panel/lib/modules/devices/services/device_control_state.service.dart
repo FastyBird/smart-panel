@@ -278,6 +278,88 @@ class DeviceControlStateService extends ChangeNotifier {
     return _states[key]?.isMixed ?? false;
   }
 
+  /// Check for convergence of a single property and clear if converged.
+  ///
+  /// Call this when device data changes to check if optimistic state
+  /// should be cleared. This handles two scenarios:
+  ///
+  /// 1. **Our command succeeded**: actual value matches desired → clear (synced)
+  /// 2. **External update arrived**: actual value differs → clear (show new value)
+  ///
+  /// During settling, we want to show the optimistic value until either:
+  /// - The device confirms our value (convergence)
+  /// - An external change overrides our value (divergence)
+  ///
+  /// In both cases, clearing the state allows the UI to show the actual value.
+  ///
+  /// [actualValue] is the current value from the device/repository.
+  /// [tolerance] is optional numeric tolerance for comparison (default 0.5).
+  void checkPropertyConvergence(
+    String deviceId,
+    String? channelId,
+    String? propertyId,
+    dynamic actualValue, {
+    double tolerance = 0.5,
+  }) {
+    final key = generateKey(deviceId, channelId, propertyId);
+    final currentState = _states[key];
+
+    if (currentState == null) return;
+
+    // Only check during settling or mixed states
+    if (!currentState.isSettling && !currentState.isMixed) return;
+
+    // Get the desired value
+    final desiredValue = currentState.desiredValue;
+
+    // Check if converged (values match within tolerance)
+    final converged = _valuesConverged(desiredValue, actualValue, tolerance);
+
+    if (converged) {
+      // Values match - our command succeeded, clear the state
+      if (kDebugMode) {
+        debugPrint(
+          '[DEVICE_CONTROL_STATE] Convergence detected for $key: desired=$desiredValue, actual=$actualValue',
+        );
+      }
+      _clearState(key);
+    } else {
+      // Values differ - either still waiting or external change occurred
+      // For simplicity, we clear immediately to show the actual value.
+      // This prevents the UI from showing stale optimistic values when
+      // an external change has occurred.
+      if (kDebugMode) {
+        debugPrint(
+          '[DEVICE_CONTROL_STATE] Divergence detected for $key: desired=$desiredValue, actual=$actualValue - clearing',
+        );
+      }
+      _clearState(key);
+    }
+  }
+
+  /// Compare two values for convergence within tolerance.
+  bool _valuesConverged(dynamic desired, dynamic actual, double tolerance) {
+    // Exact match
+    if (desired == actual) return true;
+
+    // Numeric comparison with tolerance
+    if (desired is num && actual is num) {
+      return (desired - actual).abs() <= tolerance;
+    }
+
+    // String comparison (for enums)
+    if (desired is String && actual is String) {
+      return desired == actual;
+    }
+
+    // Boolean comparison
+    if (desired is bool && actual is bool) {
+      return desired == actual;
+    }
+
+    return false;
+  }
+
   // ===========================================================================
   // PROPERTY GROUP API (new)
   // ===========================================================================
