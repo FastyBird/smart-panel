@@ -29,25 +29,29 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 	}
 
 	async afterInsert(event: InsertEvent<ShellyNgDeviceEntity>): Promise<void> {
-		try {
-			await this.deviceManagerService.createOrUpdate(event.entity.id);
+		// Defer work to next tick to avoid transaction savepoint issues
+		// Entity subscribers run within transactions, so heavy DB operations can cause savepoint conflicts
+		setImmediate(async () => {
+			try {
+				await this.deviceManagerService.createOrUpdate(event.entity.id);
 
-			this.shellyNgService.restart().catch((error) => {
+				this.shellyNgService.restart().catch((error) => {
+					const err = error as Error;
+
+					this.logger.error('Failed restart Shelly communication service', {
+						message: err.message,
+						stack: err.stack,
+					});
+				});
+			} catch (error) {
 				const err = error as Error;
 
-				this.logger.error('Failed restart Shelly communication service', {
+				this.logger.error(`Failed to finalize newly created device=${event.entity.id}`, {
 					message: err.message,
 					stack: err.stack,
 				});
-			});
-		} catch (error) {
-			const err = error as Error;
-
-			this.logger.error(`Failed to finalize newly created device=${event.entity.id}`, {
-				message: err.message,
-				stack: err.stack,
-			});
-		}
+			}
+		});
 	}
 
 	async afterUpdate(event: UpdateEvent<ShellyNgDeviceEntity>): Promise<void> {
@@ -65,25 +69,29 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 			return;
 		}
 
-		try {
-			await this.deviceManagerService.createOrUpdate(event.databaseEntity.id);
+		// Defer work to next tick to avoid transaction savepoint issues
+		// Entity subscribers run within transactions, so heavy DB operations can cause savepoint conflicts
+		setImmediate(async () => {
+			try {
+				await this.deviceManagerService.createOrUpdate(event.databaseEntity.id);
 
-			this.shellyNgService.restart().catch((error) => {
+				this.shellyNgService.restart().catch((error) => {
+					const err = error as Error;
+
+					this.logger.error('Failed restart Shelly communication service', {
+						message: err.message,
+						stack: err.stack,
+					});
+				});
+			} catch (error) {
 				const err = error as Error;
 
-				this.logger.error('Failed restart Shelly communication service', {
+				this.logger.error(`Failed to finalize updated device=${event.databaseEntity.id}`, {
 					message: err.message,
 					stack: err.stack,
 				});
-			});
-		} catch (error) {
-			const err = error as Error;
-
-			this.logger.error(`Failed to finalize updated device=${event.databaseEntity.id}`, {
-				message: err.message,
-				stack: err.stack,
-			});
-		}
+			}
+		});
 	}
 
 	afterRemove(): void {

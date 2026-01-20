@@ -191,7 +191,11 @@ export class DelegatesManagerService {
 			);
 
 			if (switcher === null) {
-				throw new DevicesShellyNgNotFoundException('Failed to load switcher channel');
+				this.logger.warn(
+					`Switcher channel not found for device=${device.id} switch=${comp.id}, skipping delegate setup. Channel may not be created yet. Retry after channel creation completes.`,
+					{ resource: device.id },
+				);
+				continue;
 			}
 
 			const switcherOn = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
@@ -201,7 +205,23 @@ export class DelegatesManagerService {
 			);
 
 			if (switcherOn === null) {
-				throw new DevicesShellyNgNotFoundException('Failed to load switcher on channel property');
+				// Check if property exists with 'on' identifier (YAML mappings might use different identifier)
+				const switcherOnAlt = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'identifier',
+					'on',
+					switcher.id,
+				);
+				
+				if (switcherOnAlt === null) {
+					this.logger.warn(
+						`Switcher ON property not found for device=${device.id} switch=${comp.id}, skipping delegate setup. Property may not be created yet.`,
+						{ resource: device.id },
+					);
+					continue;
+				}
+				
+				// Use alternative property if found
+				switcherOn = switcherOnAlt;
 			}
 
 			await this.setDefaultPropertyValue(device.id, switcherOn, comp.output);
@@ -241,26 +261,34 @@ export class DelegatesManagerService {
 				);
 
 				if (electricalEnergy === null) {
-					throw new DevicesShellyNgNotFoundException('Failed to load energy channel');
-				}
-
-				const consumption = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
-					'identifier',
-					'aenergy',
-					electricalEnergy.id,
-				);
-
-				if (consumption === null) {
-					throw new DevicesShellyNgNotFoundException('Failed to load energy consumption channel property');
-				}
-
-				await this.setDefaultPropertyValue(device.id, consumption, toEnergy(comp.aenergy));
-
-				this.changeHandlers.set(`${delegate.id}|${comp.key}|aenergy`, (val: CharacteristicValue): void => {
-					this.handleNumericChange(comp.key, 'aenergy', consumption.id, val, (n) =>
-						this.handleChange(consumption, toEnergy(n), false),
+					this.logger.warn(
+						`Energy channel not found for device=${device.id} switch=${comp.id}, skipping energy monitoring. Channel may not be created yet.`,
+						{ resource: device.id },
 					);
-				});
+					// Continue without energy monitoring rather than failing
+					// Energy channel might not exist if device doesn't support it or wasn't created yet
+				} else {
+					const consumption = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+						'identifier',
+						'aenergy',
+						electricalEnergy.id,
+					);
+
+					if (consumption === null) {
+						this.logger.warn(
+							`Energy consumption property not found for device=${device.id} switch=${comp.id}, skipping energy monitoring.`,
+							{ resource: device.id },
+						);
+					} else {
+						await this.setDefaultPropertyValue(device.id, consumption, toEnergy(comp.aenergy));
+
+						this.changeHandlers.set(`${delegate.id}|${comp.key}|aenergy`, (val: CharacteristicValue): void => {
+							this.handleNumericChange(comp.key, 'aenergy', consumption.id, val, (n) =>
+								this.handleChange(consumption, toEnergy(n), false),
+							);
+						});
+					}
+				}
 			}
 
 			if (typeof comp.apower !== 'undefined') {
@@ -272,59 +300,73 @@ export class DelegatesManagerService {
 				);
 
 				if (electricalPower === null) {
-					throw new DevicesShellyNgNotFoundException('Failed to load electrical power channel');
-				}
+					this.logger.warn(
+						`Electrical power channel not found for device=${device.id} switch=${comp.id}, skipping power monitoring. Channel may not be created yet.`,
+						{ resource: device.id },
+					);
+					// Continue without power monitoring rather than failing
+					// Power channel might not exist if device doesn't support it or wasn't created yet
+				} else {
 
-				const power = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
-					'identifier',
-					'apower',
-					electricalPower.id,
-				);
-
-				if (power === null) {
-					throw new DevicesShellyNgNotFoundException('Failed to load electrical power channel property');
-				}
-
-				await this.setDefaultPropertyValue(device.id, power, comp.apower);
-
-				this.changeHandlers.set(`${delegate.id}|${comp.key}|apower`, (val: CharacteristicValue): void => {
-					this.handleNumericChange(comp.key, 'apower', power.id, val, (n) => this.handleChange(power, n, false));
-				});
-
-				if (typeof comp.voltage !== 'undefined') {
-					const voltage = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					const power = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
 						'identifier',
-						'voltage',
+						'apower',
 						electricalPower.id,
 					);
 
-					if (voltage === null) {
-						throw new DevicesShellyNgNotFoundException('Failed to load electrical power voltage channel property');
+					if (power === null) {
+						this.logger.warn(
+							`Electrical power property not found for device=${device.id} switch=${comp.id}, skipping power monitoring.`,
+							{ resource: device.id },
+						);
+					} else {
+						await this.setDefaultPropertyValue(device.id, power, comp.apower);
+
+						this.changeHandlers.set(`${delegate.id}|${comp.key}|apower`, (val: CharacteristicValue): void => {
+							this.handleNumericChange(comp.key, 'apower', power.id, val, (n) => this.handleChange(power, n, false));
+						});
+
+						if (typeof comp.voltage !== 'undefined') {
+							const voltage = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+								'identifier',
+								'voltage',
+								electricalPower.id,
+							);
+
+							if (voltage === null) {
+								this.logger.warn(
+									`Voltage property not found for device=${device.id} switch=${comp.id}, skipping voltage monitoring.`,
+									{ resource: device.id },
+								);
+							} else {
+								await this.setDefaultPropertyValue(device.id, voltage, comp.voltage);
+
+								this.changeHandlers.set(`${delegate.id}|${comp.key}|voltage`, (val: CharacteristicValue): void => {
+									this.handleNumericChange(comp.key, 'voltage', voltage.id, val, (n) => this.handleChange(voltage, n, false));
+								});
+							}
+						}
+
+					if (typeof comp.current !== 'undefined') {
+						const current = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+							'identifier',
+							'current',
+							electricalPower.id,
+						);
+
+						if (current === null) {
+							this.logger.warn(
+								`Current property not found for device=${device.id} switch=${comp.id}, skipping current monitoring.`,
+								{ resource: device.id },
+							);
+						} else {
+							await this.setDefaultPropertyValue(device.id, current, comp.current);
+
+							this.changeHandlers.set(`${delegate.id}|${comp.key}|current`, (val: CharacteristicValue): void => {
+								this.handleNumericChange(comp.key, 'current', current.id, val, (n) => this.handleChange(current, n, false));
+							});
+						}
 					}
-
-					await this.setDefaultPropertyValue(device.id, voltage, comp.voltage);
-
-					this.changeHandlers.set(`${delegate.id}|${comp.key}|voltage`, (val: CharacteristicValue): void => {
-						this.handleNumericChange(comp.key, 'voltage', voltage.id, val, (n) => this.handleChange(voltage, n, false));
-					});
-				}
-
-				if (typeof comp.current !== 'undefined') {
-					const current = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
-						'identifier',
-						'current',
-						electricalPower.id,
-					);
-
-					if (current === null) {
-						throw new DevicesShellyNgNotFoundException('Failed to load electrical power current channel property');
-					}
-
-					await this.setDefaultPropertyValue(device.id, current, comp.current);
-
-					this.changeHandlers.set(`${delegate.id}|${comp.key}|current`, (val: CharacteristicValue): void => {
-						this.handleNumericChange(comp.key, 'current', current.id, val, (n) => this.handleChange(current, n, false));
-					});
 				}
 			}
 		}
