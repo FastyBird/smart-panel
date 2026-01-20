@@ -265,8 +265,26 @@ export class ClimateEntityMapperService extends EntityMapper {
 		]);
 
 		// Check for AUTO mode first (both heater and cooler ON)
-		const heaterOn = heaterOnProp && values.has(heaterOnProp.id) ? values.get(heaterOnProp.id) === true : false;
-		const coolerOn = coolerOnProp && values.has(coolerOnProp.id) ? values.get(coolerOnProp.id) === true : false;
+		// Use value from `values` map if being set in this call, otherwise use current property value
+		const heaterOn = heaterOnProp
+			? values.has(heaterOnProp.id)
+				? values.get(heaterOnProp.id) === true
+				: heaterOnProp.value === true
+			: false;
+		const coolerOn = coolerOnProp
+			? values.has(coolerOnProp.id)
+				? values.get(coolerOnProp.id) === true
+				: coolerOnProp.value === true
+			: false;
+
+		// Determine if either property is being changed in this call
+		const heaterChanged = heaterOnProp && values.has(heaterOnProp.id);
+		const coolerChanged = coolerOnProp && values.has(coolerOnProp.id);
+
+		// Only send HVAC mode change if at least one ON property is being changed
+		if (!heaterChanged && !coolerChanged) {
+			return null;
+		}
 
 		if (heaterOn && coolerOn) {
 			return {
@@ -275,22 +293,23 @@ export class ClimateEntityMapperService extends EntityMapper {
 			};
 		}
 
-		if (heaterOnProp && values.has(heaterOnProp.id)) {
+		if (heaterOn) {
 			return {
-				state: heaterOn ? 'heat' : 'off',
+				state: 'heat',
 				service: 'set_hvac_mode',
 			};
 		}
 
-		if (coolerOnProp && values.has(coolerOnProp.id)) {
+		if (coolerOn) {
 			return {
-				state: coolerOn ? 'cool' : 'off',
+				state: 'cool',
 				service: 'set_hvac_mode',
 			};
 		}
 
-		this.logger.warn('Could not map any property to Home Assistant climate entity state');
-
-		return null;
+		return {
+			state: 'off',
+			service: 'set_hvac_mode',
+		};
 	}
 }
