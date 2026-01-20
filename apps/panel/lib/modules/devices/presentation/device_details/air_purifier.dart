@@ -124,11 +124,11 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     return widget._device;
   }
 
-  Future<void> _setPropertyValue(
+  Future<bool> _setPropertyValue(
     ChannelPropertyView? property,
     dynamic value,
   ) async {
-    if (property == null) return;
+    if (property == null) return false;
 
     final localizations = AppLocalizations.of(context);
 
@@ -144,14 +144,16 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           message: localizations.action_failed,
         );
       }
+      return res;
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return false;
       if (localizations != null) {
         AlertBar.showError(
           context,
           message: localizations.action_failed,
         );
       }
+      return false;
     }
   }
 
@@ -276,14 +278,23 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     _speedDebounceTimer = Timer(_speedDebounceDuration, () async {
       if (!mounted) return;
 
-      await _setPropertyValue(speedProp, actualSpeed);
+      final success = await _setPropertyValue(speedProp, actualSpeed);
 
       if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          speedProp.id,
-        );
+        if (success) {
+          _deviceControlStateService?.setSettling(
+            _device.id,
+            fanChannel.id,
+            speedProp.id,
+          );
+        } else {
+          _deviceControlStateService?.clear(
+            _device.id,
+            fanChannel.id,
+            speedProp.id,
+          );
+          setState(() {});
+        }
       }
     });
   }
@@ -301,13 +312,22 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     );
     setState(() {});
 
-    _setPropertyValue(speedProp, level.value).then((_) {
+    _setPropertyValue(speedProp, level.value).then((success) {
       if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          speedProp.id,
-        );
+        if (success) {
+          _deviceControlStateService?.setSettling(
+            _device.id,
+            fanChannel.id,
+            speedProp.id,
+          );
+        } else {
+          _deviceControlStateService?.clear(
+            _device.id,
+            fanChannel.id,
+            speedProp.id,
+          );
+          setState(() {});
+        }
       }
     });
   }
@@ -357,13 +377,22 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     );
     setState(() {});
 
-    _setPropertyValue(naturalBreezeProp, value).then((_) {
+    _setPropertyValue(naturalBreezeProp, value).then((success) {
       if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          naturalBreezeProp.id,
-        );
+        if (success) {
+          _deviceControlStateService?.setSettling(
+            _device.id,
+            fanChannel.id,
+            naturalBreezeProp.id,
+          );
+        } else {
+          _deviceControlStateService?.clear(
+            _device.id,
+            fanChannel.id,
+            naturalBreezeProp.id,
+          );
+          setState(() {});
+        }
       }
     });
   }
@@ -381,13 +410,22 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     );
     setState(() {});
 
-    _setPropertyValue(lockedProp, value).then((_) {
+    _setPropertyValue(lockedProp, value).then((success) {
       if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          lockedProp.id,
-        );
+        if (success) {
+          _deviceControlStateService?.setSettling(
+            _device.id,
+            fanChannel.id,
+            lockedProp.id,
+          );
+        } else {
+          _deviceControlStateService?.clear(
+            _device.id,
+            fanChannel.id,
+            lockedProp.id,
+          );
+          setState(() {});
+        }
       }
     });
   }
@@ -405,13 +443,22 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     );
     setState(() {});
 
-    _setPropertyValue(timerProp, preset.value).then((_) {
+    _setPropertyValue(timerProp, preset.value).then((success) {
       if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          timerProp.id,
-        );
+        if (success) {
+          _deviceControlStateService?.setSettling(
+            _device.id,
+            fanChannel.id,
+            timerProp.id,
+          );
+        } else {
+          _deviceControlStateService?.clear(
+            _device.id,
+            fanChannel.id,
+            timerProp.id,
+          );
+          setState(() {});
+        }
       }
     });
   }
@@ -429,13 +476,22 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     );
     setState(() {});
 
-    _setPropertyValue(timerProp, minutes).then((_) {
+    _setPropertyValue(timerProp, minutes).then((success) {
       if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          timerProp.id,
-        );
+        if (success) {
+          _deviceControlStateService?.setSettling(
+            _device.id,
+            fanChannel.id,
+            timerProp.id,
+          );
+        } else {
+          _deviceControlStateService?.clear(
+            _device.id,
+            fanChannel.id,
+            timerProp.id,
+          );
+          setState(() {});
+        }
       }
     });
   }
