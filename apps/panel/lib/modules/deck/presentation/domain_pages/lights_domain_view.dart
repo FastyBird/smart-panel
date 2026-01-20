@@ -549,11 +549,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     return result;
   }
 
-  /// Compute a hash based on target IDs for cache invalidation.
+  /// Compute a hash based on target IDs and roles for cache invalidation.
   int _computeTargetsHash(List<LightTargetView> targets) {
     int hash = targets.length;
     for (final target in targets) {
-      hash = hash ^ target.id.hashCode ^ target.deviceId.hashCode;
+      hash = hash ^ target.id.hashCode ^ target.deviceId.hashCode ^ (target.role?.hashCode ?? 0);
     }
     return hash;
   }
