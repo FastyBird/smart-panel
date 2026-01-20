@@ -260,20 +260,31 @@ export class ClimateEntityMapperService extends EntityMapper {
 			ChannelCategory.HEATER,
 		]);
 
-		if (heaterOnProp && values.has(heaterOnProp.id)) {
-			return {
-				state: values.get(heaterOnProp.id) === true ? 'heat' : 'off',
-				service: 'set_hvac_mode',
-			};
-		}
-
 		const coolerOnProp = await this.getValidProperty(properties, PropertyCategory.ON, ENTITY_MAIN_STATE_ATTRIBUTE, [
 			ChannelCategory.COOLER,
 		]);
 
+		// Check for AUTO mode first (both heater and cooler ON)
+		const heaterOn = heaterOnProp && values.has(heaterOnProp.id) ? values.get(heaterOnProp.id) === true : false;
+		const coolerOn = coolerOnProp && values.has(coolerOnProp.id) ? values.get(coolerOnProp.id) === true : false;
+
+		if (heaterOn && coolerOn) {
+			return {
+				state: 'heat_cool',
+				service: 'set_hvac_mode',
+			};
+		}
+
+		if (heaterOnProp && values.has(heaterOnProp.id)) {
+			return {
+				state: heaterOn ? 'heat' : 'off',
+				service: 'set_hvac_mode',
+			};
+		}
+
 		if (coolerOnProp && values.has(coolerOnProp.id)) {
 			return {
-				state: values.get(coolerOnProp.id) === true ? 'cool' : 'off',
+				state: coolerOn ? 'cool' : 'off',
 				service: 'set_hvac_mode',
 			};
 		}

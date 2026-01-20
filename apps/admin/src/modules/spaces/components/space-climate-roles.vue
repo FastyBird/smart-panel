@@ -54,7 +54,6 @@
 						<div class="flex gap-1">
 							<el-tag v-if="row.hasTemperature" type="warning" size="small">Temp</el-tag>
 							<el-tag v-if="row.hasHumidity" type="info" size="small">Humid</el-tag>
-							<el-tag v-if="row.hasMode" type="success" size="small">Mode</el-tag>
 						</div>
 					</template>
 				</el-table-column>
@@ -112,7 +111,6 @@ interface IClimateTarget {
 	priority: number;
 	hasTemperature: boolean;
 	hasHumidity: boolean;
-	hasMode: boolean;
 }
 
 interface IProps {
@@ -201,7 +199,6 @@ const loadClimateTargets = async (): Promise<void> => {
 			priority: target.priority ?? 0,
 			hasTemperature: target.has_temperature ?? false,
 			hasHumidity: target.has_humidity ?? false,
-			hasMode: target.has_mode ?? false,
 		}));
 	} finally {
 		loading.value = false;

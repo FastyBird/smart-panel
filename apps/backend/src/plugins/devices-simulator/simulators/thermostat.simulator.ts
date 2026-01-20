@@ -34,6 +34,16 @@ export class ThermostatSimulator extends BaseDeviceSimulator {
 			values.push(...this.simulateThermostat());
 		}
 
+		// Heater channel - controls heating mode
+		if (this.hasChannel(device, ChannelCategory.HEATER)) {
+			values.push(...this.simulateHeater(mode, targetTemp, isActive));
+		}
+
+		// Cooler channel - controls cooling mode
+		if (this.hasChannel(device, ChannelCategory.COOLER)) {
+			values.push(...this.simulateCooler(mode, targetTemp, isActive));
+		}
+
 		// Temperature channel (current reading)
 		if (this.hasChannel(device, ChannelCategory.TEMPERATURE)) {
 			values.push(...this.simulateTemperature(context, previousValues, isActive, mode, targetTemp));
@@ -151,6 +161,72 @@ export class ThermostatSimulator extends BaseDeviceSimulator {
 		// Temperature setpoints are managed via heater/cooler channels
 		// Mode/active state is derived from heater/cooler ON states
 		return [];
+	}
+
+	/**
+	 * Simulate heater channel
+	 * Controls heating mode - ON when mode is 'heat' or 'auto'
+	 */
+	private simulateHeater(mode: ThermostatMode, targetTemp: number, isActive: boolean): SimulatedPropertyValue[] {
+		const values: SimulatedPropertyValue[] = [];
+
+		// Heater is ON when mode is heat or auto
+		const heaterOn = mode === 'heat' || mode === 'auto';
+
+		values.push({
+			channelCategory: ChannelCategory.HEATER,
+			propertyCategory: PropertyCategory.ON,
+			value: heaterOn,
+		});
+
+		// Heater status (actively heating)
+		values.push({
+			channelCategory: ChannelCategory.HEATER,
+			propertyCategory: PropertyCategory.STATUS,
+			value: heaterOn && isActive && (mode === 'heat' || mode === 'auto'),
+		});
+
+		// Heating setpoint temperature
+		values.push({
+			channelCategory: ChannelCategory.HEATER,
+			propertyCategory: PropertyCategory.TEMPERATURE,
+			value: mode === 'cool' ? targetTemp - 3 : targetTemp,
+		});
+
+		return values;
+	}
+
+	/**
+	 * Simulate cooler channel
+	 * Controls cooling mode - ON when mode is 'cool' or 'auto'
+	 */
+	private simulateCooler(mode: ThermostatMode, targetTemp: number, isActive: boolean): SimulatedPropertyValue[] {
+		const values: SimulatedPropertyValue[] = [];
+
+		// Cooler is ON when mode is cool or auto
+		const coolerOn = mode === 'cool' || mode === 'auto';
+
+		values.push({
+			channelCategory: ChannelCategory.COOLER,
+			propertyCategory: PropertyCategory.ON,
+			value: coolerOn,
+		});
+
+		// Cooler status (actively cooling)
+		values.push({
+			channelCategory: ChannelCategory.COOLER,
+			propertyCategory: PropertyCategory.STATUS,
+			value: coolerOn && isActive && (mode === 'cool' || mode === 'auto'),
+		});
+
+		// Cooling setpoint temperature
+		values.push({
+			channelCategory: ChannelCategory.COOLER,
+			propertyCategory: PropertyCategory.TEMPERATURE,
+			value: mode === 'heat' ? targetTemp + 3 : targetTemp,
+		});
+
+		return values;
 	}
 
 	/**

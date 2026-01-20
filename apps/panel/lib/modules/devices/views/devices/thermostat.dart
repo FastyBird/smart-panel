@@ -1,4 +1,3 @@
-import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/contact.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/cooler.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/device_information.dart';
@@ -72,15 +71,20 @@ class ThermostatDeviceView extends DeviceView
   ElectricalPowerChannelView? get electricalPowerChannel =>
       channels.whereType<ElectricalPowerChannelView>().firstOrNull;
 
+  /// Whether the thermostat is currently active (heating or cooling)
+  /// Derived from heater/cooler channel ON states
   @override
-  bool get isOn => thermostatChannel.isActive;
+  bool get isOn {
+    final heater = heaterChannel;
+    final cooler = coolerChannel;
+
+    if (heater != null && heater.isOn) return true;
+    if (cooler != null && cooler.isOn) return true;
+
+    return false;
+  }
 
   bool get hasThermostatLock => thermostatChannel.lockedProp != null;
 
   bool get isThermostatLocked => thermostatChannel.isLocked;
-
-  ThermostatModeValue get thermostatMode => thermostatChannel.mode;
-
-  List<ThermostatModeValue> get thermostatAvailableModes =>
-      thermostatChannel.availableModes;
 }
