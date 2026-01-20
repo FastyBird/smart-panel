@@ -168,35 +168,35 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     // OFF: both off, HEAT: heater on only, COOL: cooler on only, AUTO: both on
     switch (mode) {
       case ThermostatModeType.off:
-        if (heater?.onProp != null) {
-          await _valueHelper.setPropertyValue(context, heater!.onProp!, false);
+        if (heater != null) {
+          await _valueHelper.setPropertyValue(context, heater.onProp, false);
         }
-        if (cooler?.onProp != null) {
-          await _valueHelper.setPropertyValue(context, cooler!.onProp!, false);
+        if (cooler != null) {
+          await _valueHelper.setPropertyValue(context, cooler.onProp, false);
         }
         break;
       case ThermostatModeType.heat:
-        if (heater?.onProp != null) {
-          await _valueHelper.setPropertyValue(context, heater!.onProp!, true);
+        if (heater != null) {
+          await _valueHelper.setPropertyValue(context, heater.onProp, true);
         }
-        if (cooler?.onProp != null) {
-          await _valueHelper.setPropertyValue(context, cooler!.onProp!, false);
+        if (cooler != null) {
+          await _valueHelper.setPropertyValue(context, cooler.onProp, false);
         }
         break;
       case ThermostatModeType.cool:
-        if (heater?.onProp != null) {
-          await _valueHelper.setPropertyValue(context, heater!.onProp!, false);
+        if (heater != null) {
+          await _valueHelper.setPropertyValue(context, heater.onProp, false);
         }
-        if (cooler?.onProp != null) {
-          await _valueHelper.setPropertyValue(context, cooler!.onProp!, true);
+        if (cooler != null) {
+          await _valueHelper.setPropertyValue(context, cooler.onProp, true);
         }
         break;
       case ThermostatModeType.auto:
-        if (heater?.onProp != null) {
-          await _valueHelper.setPropertyValue(context, heater!.onProp!, true);
+        if (heater != null) {
+          await _valueHelper.setPropertyValue(context, heater.onProp, true);
         }
-        if (cooler?.onProp != null) {
-          await _valueHelper.setPropertyValue(context, cooler!.onProp!, true);
+        if (cooler != null) {
+          await _valueHelper.setPropertyValue(context, cooler.onProp, true);
         }
         break;
     }

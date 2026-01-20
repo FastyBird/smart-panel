@@ -45,6 +45,25 @@ mappings:
         name: Heater
         category: HEATER
         features:
+          # System mode -> heater ON state (true when mode includes heating)
+          - z2m_feature: system_mode
+            panel:
+              identifier: ON
+              name: Heater On
+              data_type: BOOL
+            transform:
+              type: map
+              read:
+                "off": false
+                "heat": true
+                "cool": false
+                "auto": true
+                "heat_cool": true
+                "fan_only": false
+              write:
+                true: "heat"
+                false: "off"
+
           # Running state -> heater status (true when heating)
           - z2m_feature: running_state
             direction: read_only
@@ -104,6 +123,25 @@ mappings:
         name: Cooler
         category: COOLER
         features:
+          # System mode -> cooler ON state (true when mode includes cooling)
+          - z2m_feature: system_mode
+            panel:
+              identifier: ON
+              name: Cooler On
+              data_type: BOOL
+            transform:
+              type: map
+              read:
+                "off": false
+                "heat": false
+                "cool": true
+                "auto": true
+                "heat_cool": true
+                "fan_only": false
+              write:
+                true: "cool"
+                false: "off"
+
           # Running state -> cooler status (true when cooling)
           - z2m_feature: running_state
             direction: read_only

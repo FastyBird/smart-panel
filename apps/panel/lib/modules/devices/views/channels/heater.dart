@@ -1,4 +1,3 @@
-import 'package:collection/collection.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/mixins.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
@@ -27,15 +26,11 @@ class HeaterChannelView extends ChannelView with ChannelTemperatureMixin {
   StatusChannelPropertyView get statusProp =>
       properties.whereType<StatusChannelPropertyView>().first;
 
-  OnChannelPropertyView? get onProp =>
-      properties.whereType<OnChannelPropertyView>().firstOrNull;
+  OnChannelPropertyView get onProp =>
+      properties.whereType<OnChannelPropertyView>().first;
 
   bool get isOn {
-    final prop = onProp;
-
-    if (prop == null) return false;
-
-    final value = prop.value;
+    final value = onProp.value;
 
     return value is BooleanValueType ? value.value : false;
   }
