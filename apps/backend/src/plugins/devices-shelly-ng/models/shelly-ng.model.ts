@@ -235,3 +235,42 @@ export class ShellyNgDeviceInfoModel {
 	@Type(() => ShellyNgDeviceInfoComponentModel)
 	components: ShellyNgDeviceInfoComponentModel[];
 }
+
+@ApiSchema({ name: 'DevicesShellyNgPluginDataMappingReloadCacheStats' })
+export class ShellyNgMappingReloadCacheStatsModel {
+	@ApiProperty({
+		description: 'Number of cached mapping lookups',
+		example: 42,
+	})
+	@Expose()
+	@IsInt()
+	size: number;
+
+	@ApiProperty({
+		description: 'Number of mappings loaded',
+		example: 15,
+	})
+	@Expose()
+	@IsInt()
+	mappingsLoaded: number;
+}
+
+@ApiSchema({ name: 'DevicesShellyNgPluginDataMappingReload' })
+export class ShellyNgMappingReloadModel {
+	@ApiProperty({
+		description: 'Whether the reload was successful',
+		example: true,
+	})
+	@Expose()
+	@IsBoolean()
+	success: boolean;
+
+	@ApiProperty({
+		description: 'Cache statistics after reload',
+		type: () => ShellyNgMappingReloadCacheStatsModel,
+	})
+	@Expose()
+	@ValidateNested()
+	@Type(() => ShellyNgMappingReloadCacheStatsModel)
+	cacheStats: ShellyNgMappingReloadCacheStatsModel;
+}

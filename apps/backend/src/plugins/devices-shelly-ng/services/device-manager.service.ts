@@ -31,7 +31,17 @@ import {
 	ShellyNgChannelPropertyEntity,
 	ShellyNgDeviceEntity,
 } from '../entities/devices-shelly-ng.entity';
-import { MappingContext, MappingLoaderService } from '../mappings';
+import {
+	MappingContext,
+	MappingLoaderService,
+	PropertyMappingStorageService,
+	ResolvedChannel,
+	ResolvedProperty,
+	TransformerRegistry,
+} from '../mappings';
+import { ITransformer } from '../mappings/transformers/transformer.types';
+import { createInlineTransformer } from '../mappings/transformers/transformers';
+import { AnyDerivation } from '../mappings/mapping.types';
 import { rssiToQuality, toEnergy } from '../utils/transform.utils';
 
 import { ShellyRpcClientService } from './shelly-rpc-client.service';
@@ -55,6 +65,8 @@ export class DeviceManagerService {
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly mappingLoaderService: MappingLoaderService,
+		private readonly transformerRegistry: TransformerRegistry,
+		private readonly propertyMappingStorage: PropertyMappingStorageService,
 	) {}
 
 	async getDeviceInfo(
@@ -255,9 +267,26 @@ export class DeviceManagerService {
 						const mapping = this.mappingLoaderService.findMatchingMapping(mappingContext);
 
 						if (!mapping || mapping.channels.length === 0) {
-							throw new DevicesShellyNgException(
-								`No mapping found for switch component key=${key} device=${device.id} category=${device.category}`,
+							this.logger.warn(
+								`No mapping found for switch component key=${key} device=${device.id} category=${device.category}. Using default SWITCHER channel.`,
+								{
+									resource: device.id,
+									componentKey: key,
+									deviceCategory: device.category,
+								},
 							);
+
+							// Fallback to default switcher channel
+							const chan = await this.ensureChannel(
+								device,
+								'identifier',
+								`switch:${key}`,
+								ChannelCategory.SWITCHER,
+								switchConfig.name ?? `Switch: ${key}`,
+							);
+							channelsIds.push(chan.id);
+							await this.ensureProperty(chan, PropertyCategory.ON, 'identifier', 'output', !!switchStatus.output);
+							return;
 						}
 
 						const channelDef = mapping.channels[0];
@@ -270,7 +299,18 @@ export class DeviceManagerService {
 
 						channelsIds.push(chan.id);
 
-						await this.ensureProperty(chan, PropertyCategory.ON, 'identifier', 'output', !!switchStatus.output);
+						// Apply transformer if defined in mapping
+						const onPropertyMapping = this.findPropertyMapping(channelDef, PropertyCategory.ON);
+						const transformedOutput = this.applyTransformer(onPropertyMapping, switchStatus.output, 'read');
+						await this.ensureProperty(
+							chan,
+							PropertyCategory.ON,
+							'identifier',
+							onPropertyMapping?.shellyProperty ?? 'output',
+							transformedOutput as boolean,
+							undefined,
+							onPropertyMapping,
+						);
 
 						if (cat === ChannelCategory.VALVE) {
 							await this.ensureProperty(chan, PropertyCategory.TYPE, 'identifier', 'output', 'generic', {
@@ -333,27 +373,145 @@ export class DeviceManagerService {
 							throw err;
 						});
 
+						// Use YAML mapping for cover component
+						const coverMappingContext: MappingContext = {
+							componentType: ComponentType.COVER,
+							componentKey: key,
+							deviceCategory: device.category,
+							model: deviceInfo.model,
+							profile: deviceInfo.profile ?? undefined,
+						};
+
+						const coverMapping = this.mappingLoaderService.findMatchingMapping(coverMappingContext);
+
+						if (!coverMapping || coverMapping.channels.length === 0) {
+							this.logger.warn(
+								`No mapping found for cover component key=${key} device=${device.id} category=${device.category}. Using default WINDOW_COVERING channel.`,
+								{
+									resource: device.id,
+									componentKey: key,
+									deviceCategory: device.category,
+								},
+							);
+
+							// Fallback to default window covering channel
+							const chan = await this.ensureChannel(
+								device,
+								'identifier',
+								`cover:${key}`,
+								ChannelCategory.WINDOW_COVERING,
+								coverConfig.name ?? `Cover: ${key}`,
+							);
+							channelsIds.push(chan.id);
+							await this.ensureProperty(chan, PropertyCategory.STATUS, 'identifier', 'state', coverStatus.state);
+							await this.ensureProperty(
+								chan,
+								PropertyCategory.POSITION,
+								'identifier',
+								'current_pos',
+								coverStatus.current_pos,
+							);
+							await this.ensureProperty(chan, PropertyCategory.COMMAND, 'category', PropertyCategory.COMMAND, 'stop');
+							return;
+						}
+
+						const coverChannelDef = coverMapping.channels[0];
+						const coverCat = coverChannelDef.category;
+						const coverChanName =
+							coverConfig.name ??
+							this.mappingLoaderService.interpolateTemplate(coverChannelDef.name ?? `Cover: {key}`, coverMappingContext);
+
 						const chan = await this.ensureChannel(
 							device,
 							'identifier',
 							`cover:${key}`,
-							ChannelCategory.WINDOW_COVERING,
-							coverConfig.name ?? `Cover: ${key}`,
+							coverCat,
+							coverChanName,
 						);
 
 						channelsIds.push(chan.id);
 
-						await this.ensureProperty(chan, PropertyCategory.STATUS, 'identifier', 'state', coverStatus.state);
+						// Apply transformers from mapping
+						const statusPropertyMapping = this.findPropertyMapping(coverChannelDef, PropertyCategory.STATUS);
+						const transformedState = this.applyTransformer(statusPropertyMapping, coverStatus.state, 'read');
+						await this.ensureProperty(
+							chan,
+							PropertyCategory.STATUS,
+							'identifier',
+							statusPropertyMapping?.shellyProperty ?? 'state',
+							transformedState as string,
+							undefined,
+							statusPropertyMapping,
+						);
 
+						const positionPropertyMapping = this.findPropertyMapping(coverChannelDef, PropertyCategory.POSITION);
+						const transformedPosition = this.applyTransformer(
+							positionPropertyMapping,
+							coverStatus.current_pos,
+							'read',
+						);
 						await this.ensureProperty(
 							chan,
 							PropertyCategory.POSITION,
 							'identifier',
-							'current_pos',
-							coverStatus.current_pos,
+							positionPropertyMapping?.shellyProperty ?? 'current_pos',
+							transformedPosition as number,
+							undefined,
+							positionPropertyMapping,
 						);
 
-						await this.ensureProperty(chan, PropertyCategory.COMMAND, 'category', PropertyCategory.COMMAND, 'stop');
+						// Handle static properties
+						if (coverChannelDef.staticProperties) {
+							for (const staticProp of coverChannelDef.staticProperties) {
+								await this.ensureProperty(
+									chan,
+									staticProp.identifier,
+									'category',
+									staticProp.identifier,
+									staticProp.value,
+									{
+										data_type: staticProp.dataType,
+										format: staticProp.format,
+										unit: staticProp.unit ?? null,
+									},
+								);
+							}
+						}
+
+						// Handle derived properties
+						if (coverChannelDef.derivedProperties) {
+							for (const derivedProp of coverChannelDef.derivedProperties) {
+								// Find source property value
+								const sourceProp = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+									'category',
+									derivedProp.sourceProperty,
+									chan.id,
+								);
+
+								if (sourceProp && sourceProp.value !== null && sourceProp.value !== undefined) {
+									// Apply derivation rule
+									const derivedValue = this.applyDerivation(
+										derivedProp.derivationName ? this.mappingLoaderService.getDerivation(derivedProp.derivationName)?.rule : derivedProp.inlineDerivation,
+										sourceProp.value,
+									);
+
+									if (derivedValue !== undefined) {
+										await this.ensureProperty(
+											chan,
+											derivedProp.identifier,
+											'category',
+											derivedProp.identifier,
+											derivedValue as string | number | boolean,
+											{
+												data_type: derivedProp.dataType,
+												format: derivedProp.format,
+												unit: derivedProp.unit ?? null,
+											},
+										);
+									}
+								}
+							}
+						}
 
 						const ee = await this.ensureElectricalEnergy(
 							device,
@@ -414,25 +572,96 @@ export class DeviceManagerService {
 							throw err;
 						});
 
+						// Use YAML mapping for light component
+						const lightMappingContext: MappingContext = {
+							componentType: ComponentType.LIGHT,
+							componentKey: key,
+							deviceCategory: device.category,
+							model: deviceInfo.model,
+							profile: deviceInfo.profile ?? undefined,
+						};
+
+						const lightMapping = this.mappingLoaderService.findMatchingMapping(lightMappingContext);
+
+						if (!lightMapping || lightMapping.channels.length === 0) {
+							this.logger.warn(
+								`No mapping found for light component key=${key} device=${device.id} category=${device.category}. Using default LIGHT channel.`,
+								{
+									resource: device.id,
+									componentKey: key,
+									deviceCategory: device.category,
+								},
+							);
+
+							// Fallback to default light channel
+							const chan = await this.ensureChannel(
+								device,
+								'identifier',
+								`light:${key}`,
+								ChannelCategory.LIGHT,
+								lightConfig.name ?? `Light: ${key}`,
+							);
+							channelsIds.push(chan.id);
+							await this.ensureProperty(chan, PropertyCategory.ON, 'identifier', 'output', lightStatus.output);
+							if (typeof lightStatus.brightness !== 'undefined') {
+								await this.ensureProperty(
+									chan,
+									PropertyCategory.BRIGHTNESS,
+									'identifier',
+									'brightness',
+									lightStatus.brightness,
+								);
+							}
+							return;
+						}
+
+						const lightChannelDef = lightMapping.channels[0];
+						const lightCat = lightChannelDef.category;
+						const lightChanName =
+							lightConfig.name ??
+							this.mappingLoaderService.interpolateTemplate(lightChannelDef.name ?? `Light: {key}`, lightMappingContext);
+
 						const chan = await this.ensureChannel(
 							device,
 							'identifier',
 							`light:${key}`,
-							ChannelCategory.LIGHT,
-							lightConfig.name ?? `Light: ${key}`,
+							lightCat,
+							lightChanName,
 						);
 
 						channelsIds.push(chan.id);
 
-						await this.ensureProperty(chan, PropertyCategory.ON, 'identifier', 'output', lightStatus.output);
+						// Apply transformers from mapping
+						const onPropertyMapping = this.findPropertyMapping(lightChannelDef, PropertyCategory.ON);
+						const transformedOutput = this.applyTransformer(onPropertyMapping, lightStatus.output, 'read');
+						await this.ensureProperty(
+							chan,
+							PropertyCategory.ON,
+							'identifier',
+							onPropertyMapping?.shellyProperty ?? 'output',
+							transformedOutput as boolean,
+							undefined,
+							onPropertyMapping,
+						);
 
 						if (typeof lightStatus.brightness !== 'undefined') {
+							const brightnessPropertyMapping = this.findPropertyMapping(
+								lightChannelDef,
+								PropertyCategory.BRIGHTNESS,
+							);
+							const transformedBrightness = this.applyTransformer(
+								brightnessPropertyMapping,
+								lightStatus.brightness,
+								'read',
+							);
 							await this.ensureProperty(
 								chan,
 								PropertyCategory.BRIGHTNESS,
 								'identifier',
-								'brightness',
-								lightStatus.brightness,
+								brightnessPropertyMapping?.shellyProperty ?? 'brightness',
+								transformedBrightness as number,
+								undefined,
+								brightnessPropertyMapping,
 							);
 						}
 
@@ -495,40 +724,140 @@ export class DeviceManagerService {
 							throw err;
 						});
 
+						// Use YAML mapping for RGB component
+						const rgbMappingContext: MappingContext = {
+							componentType: ComponentType.RGB,
+							componentKey: key,
+							deviceCategory: device.category,
+							model: deviceInfo.model,
+							profile: deviceInfo.profile ?? undefined,
+						};
+
+						const rgbMapping = this.mappingLoaderService.findMatchingMapping(rgbMappingContext);
+
+						if (!rgbMapping || rgbMapping.channels.length === 0) {
+							this.logger.warn(
+								`No mapping found for rgb component key=${key} device=${device.id} category=${device.category}. Using default LIGHT channel.`,
+								{
+									resource: device.id,
+									componentKey: key,
+									deviceCategory: device.category,
+								},
+							);
+
+							// Fallback to default light channel
+							const chan = await this.ensureChannel(
+								device,
+								'identifier',
+								`rgb:${key}`,
+								ChannelCategory.LIGHT,
+								rgbConfig.name ?? `RGB: ${key}`,
+							);
+							channelsIds.push(chan.id);
+							await this.ensureProperty(chan, PropertyCategory.ON, 'identifier', 'output', rgbStatus.output);
+							if (typeof rgbStatus.brightness !== 'undefined') {
+								await this.ensureProperty(
+									chan,
+									PropertyCategory.BRIGHTNESS,
+									'identifier',
+									'brightness',
+									rgbStatus.brightness,
+								);
+							}
+							if (typeof rgbStatus.rgb !== 'undefined' && Array.isArray(rgbStatus.rgb) && rgbStatus.rgb.length === 3) {
+								await this.ensureProperty(chan, PropertyCategory.COLOR_RED, 'identifier', 'rgb:red', rgbStatus.rgb[0]);
+								await this.ensureProperty(chan, PropertyCategory.COLOR_GREEN, 'identifier', 'rgb:green', rgbStatus.rgb[1]);
+								await this.ensureProperty(chan, PropertyCategory.COLOR_BLUE, 'identifier', 'rgb:blue', rgbStatus.rgb[2]);
+							}
+							return;
+						}
+
+						const rgbChannelDef = rgbMapping.channels[0];
+						const rgbCat = rgbChannelDef.category;
+						const rgbChanName =
+							rgbConfig.name ??
+							this.mappingLoaderService.interpolateTemplate(rgbChannelDef.name ?? `RGB: {key}`, rgbMappingContext);
+
 						const chan = await this.ensureChannel(
 							device,
 							'identifier',
 							`rgb:${key}`,
-							ChannelCategory.LIGHT,
-							rgbConfig.name ?? `RGB: ${key}`,
+							rgbCat,
+							rgbChanName,
 						);
 
 						channelsIds.push(chan.id);
 
-						await this.ensureProperty(chan, PropertyCategory.ON, 'identifier', 'output', rgbStatus.output);
+						// Apply transformers from mapping
+						const onPropertyMapping = this.findPropertyMapping(rgbChannelDef, PropertyCategory.ON);
+						const transformedOutput = this.applyTransformer(onPropertyMapping, rgbStatus.output, 'read');
+						await this.ensureProperty(
+							chan,
+							PropertyCategory.ON,
+							'identifier',
+							onPropertyMapping?.shellyProperty ?? 'output',
+							transformedOutput as boolean,
+							undefined,
+							onPropertyMapping,
+						);
 
 						if (typeof rgbStatus.brightness !== 'undefined') {
+							const brightnessPropertyMapping = this.findPropertyMapping(
+								rgbChannelDef,
+								PropertyCategory.BRIGHTNESS,
+							);
+							const transformedBrightness = this.applyTransformer(
+								brightnessPropertyMapping,
+								rgbStatus.brightness,
+								'read',
+							);
 							await this.ensureProperty(
 								chan,
 								PropertyCategory.BRIGHTNESS,
 								'identifier',
-								'brightness',
-								rgbStatus.brightness,
+								brightnessPropertyMapping?.shellyProperty ?? 'brightness',
+								transformedBrightness as number,
+								undefined,
+								brightnessPropertyMapping,
 							);
 						}
 
 						if (typeof rgbStatus.rgb !== 'undefined' && Array.isArray(rgbStatus.rgb) && rgbStatus.rgb.length === 3) {
-							await this.ensureProperty(chan, PropertyCategory.COLOR_RED, 'identifier', 'rgb:red', rgbStatus.rgb[0]);
+							const redPropertyMapping = this.findPropertyMapping(rgbChannelDef, PropertyCategory.COLOR_RED);
+							const transformedRed = this.applyTransformer(redPropertyMapping, rgbStatus.rgb[0], 'read');
+							await this.ensureProperty(
+								chan,
+								PropertyCategory.COLOR_RED,
+								'identifier',
+								redPropertyMapping?.shellyProperty ?? 'rgb:red',
+								transformedRed as number,
+								undefined,
+								redPropertyMapping,
+							);
 
+							const greenPropertyMapping = this.findPropertyMapping(rgbChannelDef, PropertyCategory.COLOR_GREEN);
+							const transformedGreen = this.applyTransformer(greenPropertyMapping, rgbStatus.rgb[1], 'read');
 							await this.ensureProperty(
 								chan,
 								PropertyCategory.COLOR_GREEN,
 								'identifier',
-								'rgb:green',
-								rgbStatus.rgb[1],
+								greenPropertyMapping?.shellyProperty ?? 'rgb:green',
+								transformedGreen as number,
+								undefined,
+								greenPropertyMapping,
 							);
 
-							await this.ensureProperty(chan, PropertyCategory.COLOR_BLUE, 'identifier', 'rgb:blue', rgbStatus.rgb[2]);
+							const bluePropertyMapping = this.findPropertyMapping(rgbChannelDef, PropertyCategory.COLOR_BLUE);
+							const transformedBlue = this.applyTransformer(bluePropertyMapping, rgbStatus.rgb[2], 'read');
+							await this.ensureProperty(
+								chan,
+								PropertyCategory.COLOR_BLUE,
+								'identifier',
+								bluePropertyMapping?.shellyProperty ?? 'rgb:blue',
+								transformedBlue as number,
+								undefined,
+								bluePropertyMapping,
+							);
 						}
 
 						const ee = await this.ensureElectricalEnergy(
@@ -590,44 +919,151 @@ export class DeviceManagerService {
 							throw err;
 						});
 
+						// Use YAML mapping for RGBW component
+						const rgbwMappingContext: MappingContext = {
+							componentType: ComponentType.RGBW,
+							componentKey: key,
+							deviceCategory: device.category,
+							model: deviceInfo.model,
+							profile: deviceInfo.profile ?? undefined,
+						};
+
+						const rgbwMapping = this.mappingLoaderService.findMatchingMapping(rgbwMappingContext);
+
+						if (!rgbwMapping || rgbwMapping.channels.length === 0) {
+							this.logger.warn(
+								`No mapping found for rgbw component key=${key} device=${device.id} category=${device.category}. Using default LIGHT channel.`,
+								{
+									resource: device.id,
+									componentKey: key,
+									deviceCategory: device.category,
+								},
+							);
+
+							// Fallback to default light channel
+							const chan = await this.ensureChannel(
+								device,
+								'identifier',
+								`rgbw:${key}`,
+								ChannelCategory.LIGHT,
+								rgbwConfig.name ?? `RGBW: ${key}`,
+							);
+							channelsIds.push(chan.id);
+							await this.ensureProperty(chan, PropertyCategory.ON, 'identifier', 'output', rgbwStatus.output);
+							if (typeof rgbwStatus.brightness !== 'undefined') {
+								await this.ensureProperty(chan, PropertyCategory.BRIGHTNESS, 'identifier', 'brightness', rgbwStatus.brightness);
+							}
+							if (typeof rgbwStatus.rgb !== 'undefined' && Array.isArray(rgbwStatus.rgb) && rgbwStatus.rgb.length === 3) {
+								await this.ensureProperty(chan, PropertyCategory.COLOR_RED, 'identifier', 'rgb:red', rgbwStatus.rgb[0]);
+								await this.ensureProperty(chan, PropertyCategory.COLOR_GREEN, 'identifier', 'rgb:green', rgbwStatus.rgb[1]);
+								await this.ensureProperty(chan, PropertyCategory.COLOR_BLUE, 'identifier', 'rgb:blue', rgbwStatus.rgb[2]);
+							}
+							if (typeof rgbwStatus.white !== 'undefined') {
+								await this.ensureProperty(chan, PropertyCategory.COLOR_WHITE, 'identifier', 'white', rgbwStatus.white);
+							}
+							return;
+						}
+
+						const rgbwChannelDef = rgbwMapping.channels[0];
+						const rgbwCat = rgbwChannelDef.category;
+						const rgbwChanName =
+							rgbwConfig.name ??
+							this.mappingLoaderService.interpolateTemplate(rgbwChannelDef.name ?? `RGBW: {key}`, rgbwMappingContext);
+
 						const chan = await this.ensureChannel(
 							device,
 							'identifier',
 							`rgbw:${key}`,
-							ChannelCategory.LIGHT,
-							rgbwConfig.name ?? `RGBW: ${key}`,
+							rgbwCat,
+							rgbwChanName,
 						);
 
 						channelsIds.push(chan.id);
 
-						await this.ensureProperty(chan, PropertyCategory.ON, 'identifier', 'output', rgbwStatus.output);
+						// Apply transformers from mapping
+						const onPropertyMapping = this.findPropertyMapping(rgbwChannelDef, PropertyCategory.ON);
+						const transformedOutput = this.applyTransformer(onPropertyMapping, rgbwStatus.output, 'read');
+						await this.ensureProperty(
+							chan,
+							PropertyCategory.ON,
+							'identifier',
+							onPropertyMapping?.shellyProperty ?? 'output',
+							transformedOutput as boolean,
+							undefined,
+							onPropertyMapping,
+						);
 
 						if (typeof rgbwStatus.brightness !== 'undefined') {
+							const brightnessPropertyMapping = this.findPropertyMapping(
+								rgbwChannelDef,
+								PropertyCategory.BRIGHTNESS,
+							);
+							const transformedBrightness = this.applyTransformer(
+								brightnessPropertyMapping,
+								rgbwStatus.brightness,
+								'read',
+							);
 							await this.ensureProperty(
 								chan,
 								PropertyCategory.BRIGHTNESS,
 								'identifier',
-								'brightness',
-								rgbwStatus.brightness,
+								brightnessPropertyMapping?.shellyProperty ?? 'brightness',
+								transformedBrightness as number,
+								undefined,
+								brightnessPropertyMapping,
 							);
 						}
 
 						if (typeof rgbwStatus.rgb !== 'undefined' && Array.isArray(rgbwStatus.rgb) && rgbwStatus.rgb.length === 3) {
-							await this.ensureProperty(chan, PropertyCategory.COLOR_RED, 'identifier', 'rgb:red', rgbwStatus.rgb[0]);
+							const redPropertyMapping = this.findPropertyMapping(rgbwChannelDef, PropertyCategory.COLOR_RED);
+							const transformedRed = this.applyTransformer(redPropertyMapping, rgbwStatus.rgb[0], 'read');
+							await this.ensureProperty(
+								chan,
+								PropertyCategory.COLOR_RED,
+								'identifier',
+								redPropertyMapping?.shellyProperty ?? 'rgb:red',
+								transformedRed as number,
+								undefined,
+								redPropertyMapping,
+							);
 
+							const greenPropertyMapping = this.findPropertyMapping(rgbwChannelDef, PropertyCategory.COLOR_GREEN);
+							const transformedGreen = this.applyTransformer(greenPropertyMapping, rgbwStatus.rgb[1], 'read');
 							await this.ensureProperty(
 								chan,
 								PropertyCategory.COLOR_GREEN,
 								'identifier',
-								'rgb:green',
-								rgbwStatus.rgb[1],
+								greenPropertyMapping?.shellyProperty ?? 'rgb:green',
+								transformedGreen as number,
+								undefined,
+								greenPropertyMapping,
 							);
 
-							await this.ensureProperty(chan, PropertyCategory.COLOR_BLUE, 'identifier', 'rgb:blue', rgbwStatus.rgb[2]);
+							const bluePropertyMapping = this.findPropertyMapping(rgbwChannelDef, PropertyCategory.COLOR_BLUE);
+							const transformedBlue = this.applyTransformer(bluePropertyMapping, rgbwStatus.rgb[2], 'read');
+							await this.ensureProperty(
+								chan,
+								PropertyCategory.COLOR_BLUE,
+								'identifier',
+								bluePropertyMapping?.shellyProperty ?? 'rgb:blue',
+								transformedBlue as number,
+								undefined,
+								bluePropertyMapping,
+							);
 						}
 
 						if (typeof rgbwStatus.white !== 'undefined') {
-							await this.ensureProperty(chan, PropertyCategory.COLOR_WHITE, 'identifier', 'white', rgbwStatus.white);
+							const whitePropertyMapping = this.findPropertyMapping(rgbwChannelDef, PropertyCategory.COLOR_WHITE);
+							const transformedWhite = this.applyTransformer(whitePropertyMapping, rgbwStatus.white, 'read');
+							await this.ensureProperty(
+								chan,
+								PropertyCategory.COLOR_WHITE,
+								'identifier',
+								whitePropertyMapping?.shellyProperty ?? 'white',
+								transformedWhite as number,
+								undefined,
+								whitePropertyMapping,
+							);
 						}
 
 						const ee = await this.ensureElectricalEnergy(
@@ -689,35 +1125,104 @@ export class DeviceManagerService {
 							throw err;
 						});
 
+						// Use YAML mapping for CCT component
+						const cctMappingContext: MappingContext = {
+							componentType: ComponentType.CCT,
+							componentKey: key,
+							deviceCategory: device.category,
+							model: deviceInfo.model,
+							profile: deviceInfo.profile ?? undefined,
+						};
+
+						const cctMapping = this.mappingLoaderService.findMatchingMapping(cctMappingContext);
+
+						if (!cctMapping || cctMapping.channels.length === 0) {
+							this.logger.warn(
+								`No mapping found for cct component key=${key} device=${device.id} category=${device.category}. Using default LIGHT channel.`,
+								{
+									resource: device.id,
+									componentKey: key,
+									deviceCategory: device.category,
+								},
+							);
+
+							// Fallback to default light channel
+							const chan = await this.ensureChannel(
+								device,
+								'identifier',
+								`cct:${key}`,
+								ChannelCategory.LIGHT,
+								cctConfig.name ?? `CCT: ${key}`,
+							);
+							channelsIds.push(chan.id);
+							await this.ensureProperty(chan, PropertyCategory.ON, 'identifier', 'output', cctStatus.output);
+							if (typeof cctStatus.brightness !== 'undefined') {
+								await this.ensureProperty(chan, PropertyCategory.BRIGHTNESS, 'identifier', 'brightness', cctStatus.brightness);
+							}
+							if (typeof cctStatus.ct !== 'undefined') {
+								await this.ensureProperty(chan, PropertyCategory.COLOR_TEMPERATURE, 'identifier', 'temperature', cctStatus.ct);
+							}
+							return;
+						}
+
+						const cctChannelDef = cctMapping.channels[0];
+						const cctCat = cctChannelDef.category;
+						const cctChanName =
+							cctConfig.name ??
+							this.mappingLoaderService.interpolateTemplate(cctChannelDef.name ?? `CCT: {key}`, cctMappingContext);
+
 						const chan = await this.ensureChannel(
 							device,
 							'identifier',
 							`cct:${key}`,
-							ChannelCategory.LIGHT,
-							cctConfig.name ?? `CCT: ${key}`,
+							cctCat,
+							cctChanName,
 						);
 
 						channelsIds.push(chan.id);
 
-						await this.ensureProperty(chan, PropertyCategory.ON, 'identifier', 'output', cctStatus.output);
+						// Apply transformers from mapping
+						const onPropertyMapping = this.findPropertyMapping(cctChannelDef, PropertyCategory.ON);
+						const transformedOutput = this.applyTransformer(onPropertyMapping, cctStatus.output, 'read');
+						await this.ensureProperty(
+							chan,
+							PropertyCategory.ON,
+							'identifier',
+							onPropertyMapping?.shellyProperty ?? 'output',
+							transformedOutput as boolean,
+							undefined,
+							onPropertyMapping,
+						);
 
 						if (typeof cctStatus.brightness !== 'undefined') {
+							const brightnessPropertyMapping = this.findPropertyMapping(cctChannelDef, PropertyCategory.BRIGHTNESS);
+							const transformedBrightness = this.applyTransformer(
+								brightnessPropertyMapping,
+								cctStatus.brightness,
+								'read',
+							);
 							await this.ensureProperty(
 								chan,
 								PropertyCategory.BRIGHTNESS,
 								'identifier',
-								'brightness',
-								cctStatus.brightness,
+								brightnessPropertyMapping?.shellyProperty ?? 'brightness',
+								transformedBrightness as number,
+								undefined,
+								brightnessPropertyMapping,
 							);
 						}
 
 						if (typeof cctStatus.ct !== 'undefined') {
+							const ctPropertyMapping = this.findPropertyMapping(cctChannelDef, PropertyCategory.COLOR_TEMPERATURE);
+							const transformedCt = this.applyTransformer(ctPropertyMapping, cctStatus.ct, 'read');
 							await this.ensureProperty(
 								chan,
 								PropertyCategory.COLOR_TEMPERATURE,
 								'identifier',
-								'temperature',
-								cctStatus.ct,
+								ctPropertyMapping?.shellyProperty ?? 'temperature',
+								transformedCt as number,
+								undefined,
+								ctPropertyMapping,
 							);
 						}
 
@@ -825,22 +1330,107 @@ export class DeviceManagerService {
 					}
 
 					if (typeof devicePowerStatus.battery !== 'undefined') {
+						// Use YAML mapping for device power (battery) component
+						const batteryMappingContext: MappingContext = {
+							componentType: ComponentType.DEVICE_POWER,
+							componentKey: key,
+							deviceCategory: device.category,
+							model: deviceInfo.model,
+							profile: deviceInfo.profile ?? undefined,
+						};
+
+						const batteryMapping = this.mappingLoaderService.findMatchingMapping(batteryMappingContext);
+
+						if (!batteryMapping || batteryMapping.channels.length === 0) {
+							this.logger.warn(
+								`No mapping found for device power component key=${key} device=${device.id} category=${device.category}. Using default BATTERY channel.`,
+								{
+									resource: device.id,
+									componentKey: key,
+									deviceCategory: device.category,
+								},
+							);
+
+							// Fallback to default battery channel
+							const battery = await this.ensureChannel(
+								device,
+								'identifier',
+								`devicePower:${key}`,
+								ChannelCategory.BATTERY,
+								`Device power: ${key}`,
+							);
+							channelsIds.push(battery.id);
+							await this.ensureProperty(battery, PropertyCategory.PERCENTAGE, 'identifier', 'battery', devicePowerStatus.battery.percent);
+							continue;
+						}
+
+						const batteryChannelDef = batteryMapping.channels[0];
+						const batteryCat = batteryChannelDef.category;
+						const batteryChanName =
+							this.mappingLoaderService.interpolateTemplate(batteryChannelDef.name ?? `Battery: {key}`, batteryMappingContext);
+
 						const battery = await this.ensureChannel(
 							device,
 							'identifier',
 							`devicePower:${key}`,
-							ChannelCategory.BATTERY,
-							`Device power: ${key}`,
+							batteryCat,
+							batteryChanName,
 						);
 						channelsIds.push(battery.id);
 
+						// Apply transformers from mapping
+						const percentagePropertyMapping = this.findPropertyMapping(batteryChannelDef, PropertyCategory.PERCENTAGE);
+						const transformedPercentage = this.applyTransformer(
+							percentagePropertyMapping,
+							devicePowerStatus.battery.percent,
+							'read',
+						);
 						await this.ensureProperty(
 							battery,
 							PropertyCategory.PERCENTAGE,
 							'identifier',
-							'battery',
-							devicePowerStatus.battery.percent,
+							percentagePropertyMapping?.shellyProperty ?? 'battery',
+							transformedPercentage as number,
+							undefined,
+							percentagePropertyMapping,
 						);
+
+						// Handle derived properties
+						if (batteryChannelDef.derivedProperties) {
+							for (const derivedProp of batteryChannelDef.derivedProperties) {
+								// Find source property value
+								const sourceProp = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+									'category',
+									derivedProp.sourceProperty,
+									battery.id,
+								);
+
+								if (sourceProp && sourceProp.value !== null && sourceProp.value !== undefined) {
+									// Apply derivation rule
+									const derivedValue = this.applyDerivation(
+										derivedProp.derivationName
+											? this.mappingLoaderService.getDerivation(derivedProp.derivationName)?.rule
+											: derivedProp.inlineDerivation,
+										sourceProp.value,
+									);
+
+									if (derivedValue !== undefined) {
+										await this.ensureProperty(
+											battery,
+											derivedProp.identifier,
+											'category',
+											derivedProp.identifier,
+											derivedValue as string | number | boolean,
+											{
+												data_type: derivedProp.dataType,
+												format: derivedProp.format,
+												unit: derivedProp.unit ?? null,
+											},
+										);
+									}
+								}
+							}
+						}
 					}
 				}
 			} else if (type === String(ComponentType.HUMIDITY)) {
@@ -867,17 +1457,68 @@ export class DeviceManagerService {
 							throw err;
 						});
 
+						// Use YAML mapping for humidity component
+						const humidityMappingContext: MappingContext = {
+							componentType: ComponentType.HUMIDITY,
+							componentKey: key,
+							deviceCategory: device.category,
+							model: deviceInfo.model,
+							profile: deviceInfo.profile ?? undefined,
+						};
+
+						const humidityMapping = this.mappingLoaderService.findMatchingMapping(humidityMappingContext);
+
+						if (!humidityMapping || humidityMapping.channels.length === 0) {
+							this.logger.warn(
+								`No mapping found for humidity component key=${key} device=${device.id} category=${device.category}. Using default HUMIDITY channel.`,
+								{
+									resource: device.id,
+									componentKey: key,
+									deviceCategory: device.category,
+								},
+							);
+
+							// Fallback to default humidity channel
+							const chan = await this.ensureChannel(
+								device,
+								'identifier',
+								`humidity:${key}`,
+								ChannelCategory.HUMIDITY,
+								humidityConfig.name ?? `Humidity: ${key}`,
+							);
+							channelsIds.push(chan.id);
+							await this.ensureProperty(chan, PropertyCategory.HUMIDITY, 'identifier', 'rh', humidityStatus.rh);
+							return;
+						}
+
+						const humidityChannelDef = humidityMapping.channels[0];
+						const humidityCat = humidityChannelDef.category;
+						const humidityChanName =
+							humidityConfig.name ??
+							this.mappingLoaderService.interpolateTemplate(humidityChannelDef.name ?? `Humidity: {key}`, humidityMappingContext);
+
 						const chan = await this.ensureChannel(
 							device,
 							'identifier',
 							`humidity:${key}`,
-							ChannelCategory.HUMIDITY,
-							humidityConfig.name ?? `Humidity: ${key}`,
+							humidityCat,
+							humidityChanName,
 						);
 
 						channelsIds.push(chan.id);
 
-						await this.ensureProperty(chan, PropertyCategory.HUMIDITY, 'identifier', 'rh', humidityStatus.rh);
+						// Apply transformers from mapping
+						const humidityPropertyMapping = this.findPropertyMapping(humidityChannelDef, PropertyCategory.HUMIDITY);
+						const transformedHumidity = this.applyTransformer(humidityPropertyMapping, humidityStatus.rh, 'read');
+						await this.ensureProperty(
+							chan,
+							PropertyCategory.HUMIDITY,
+							'identifier',
+							humidityPropertyMapping?.shellyProperty ?? 'rh',
+							transformedHumidity as number,
+							undefined,
+							humidityPropertyMapping,
+						);
 					}),
 				);
 
@@ -914,17 +1555,68 @@ export class DeviceManagerService {
 							throw err;
 						});
 
+						// Use YAML mapping for temperature component
+						const temperatureMappingContext: MappingContext = {
+							componentType: ComponentType.TEMPERATURE,
+							componentKey: key,
+							deviceCategory: device.category,
+							model: deviceInfo.model,
+							profile: deviceInfo.profile ?? undefined,
+						};
+
+						const temperatureMapping = this.mappingLoaderService.findMatchingMapping(temperatureMappingContext);
+
+						if (!temperatureMapping || temperatureMapping.channels.length === 0) {
+							this.logger.warn(
+								`No mapping found for temperature component key=${key} device=${device.id} category=${device.category}. Using default TEMPERATURE channel.`,
+								{
+									resource: device.id,
+									componentKey: key,
+									deviceCategory: device.category,
+								},
+							);
+
+							// Fallback to default temperature channel
+							const chan = await this.ensureChannel(
+								device,
+								'identifier',
+								`temperature:${key}`,
+								ChannelCategory.TEMPERATURE,
+								temperatureConfig.name ?? `Temperature: ${key}`,
+							);
+							channelsIds.push(chan.id);
+							await this.ensureProperty(chan, PropertyCategory.TEMPERATURE, 'identifier', 'tC', temperatureStatus.tC);
+							return;
+						}
+
+						const temperatureChannelDef = temperatureMapping.channels[0];
+						const temperatureCat = temperatureChannelDef.category;
+						const temperatureChanName =
+							temperatureConfig.name ??
+							this.mappingLoaderService.interpolateTemplate(temperatureChannelDef.name ?? `Temperature: {key}`, temperatureMappingContext);
+
 						const chan = await this.ensureChannel(
 							device,
 							'identifier',
 							`temperature:${key}`,
-							ChannelCategory.TEMPERATURE,
-							temperatureConfig.name ?? `Temperature: ${key}`,
+							temperatureCat,
+							temperatureChanName,
 						);
 
 						channelsIds.push(chan.id);
 
-						await this.ensureProperty(chan, PropertyCategory.TEMPERATURE, 'identifier', 'tC', temperatureStatus.tC);
+						// Apply transformers from mapping
+						const temperaturePropertyMapping = this.findPropertyMapping(temperatureChannelDef, PropertyCategory.TEMPERATURE);
+						const transformedTemperature = this.applyTransformer(temperaturePropertyMapping, temperatureStatus.tC, 'read');
+						await this.ensureProperty(
+							chan,
+							PropertyCategory.TEMPERATURE,
+							'identifier',
+							temperaturePropertyMapping?.shellyProperty ?? 'tC',
+							transformedTemperature as number,
+							undefined,
+							temperaturePropertyMapping,
+						);
 					}),
 				);
 
@@ -1052,6 +1744,118 @@ export class DeviceManagerService {
 		return channel;
 	}
 
+	/**
+	 * Apply transformer to a value if transformer is defined in property mapping
+	 */
+	private applyTransformer(
+		propertyMapping: ResolvedProperty | undefined,
+		shellyValue: unknown,
+		direction: 'read' | 'write' = 'read',
+	): unknown {
+		if (!propertyMapping) {
+			return shellyValue;
+		}
+
+		let transformer: ITransformer | null = null;
+
+		// Get transformer from named reference or inline transform
+		if (propertyMapping.transformerName) {
+			transformer = this.transformerRegistry.get(propertyMapping.transformerName);
+		} else if (propertyMapping.inlineTransform) {
+			transformer = createInlineTransformer(propertyMapping.inlineTransform);
+		}
+
+		if (!transformer) {
+			return shellyValue;
+		}
+
+		// Check if transformer supports the requested direction
+		if (direction === 'read' && !transformer.canRead()) {
+			this.logger.warn(
+				`Transformer does not support read operation for property mapping`,
+			);
+			return shellyValue;
+		}
+
+		if (direction === 'write' && !transformer.canWrite()) {
+			this.logger.warn(
+				`Transformer does not support write operation for property mapping`,
+			);
+			return shellyValue;
+		}
+
+		try {
+			return direction === 'read' ? transformer.read(shellyValue) : transformer.write(shellyValue);
+		} catch (error) {
+			this.logger.warn(`Failed to apply transformer: ${error instanceof Error ? error.message : String(error)}`);
+			return shellyValue;
+		}
+	}
+
+	/**
+	 * Find property mapping by panel property identifier
+	 */
+	private findPropertyMapping(
+		channelDef: ResolvedChannel,
+		propertyIdentifier: PropertyCategory,
+	): ResolvedProperty | undefined {
+		return channelDef.properties?.find((p) => p.panel.identifier === propertyIdentifier);
+	}
+
+	/**
+	 * Apply derivation rule to derive property value from source property
+	 */
+	private applyDerivation(derivation: AnyDerivation | undefined, sourceValue: string | number | boolean): unknown {
+		if (!derivation) {
+			return undefined;
+		}
+
+		try {
+			switch (derivation.type) {
+				case 'threshold': {
+					if (typeof sourceValue !== 'number') {
+						return undefined;
+					}
+					// Find first matching threshold
+					for (const threshold of derivation.thresholds) {
+						const min = threshold.min ?? Number.NEGATIVE_INFINITY;
+						const max = threshold.max ?? Number.POSITIVE_INFINITY;
+						if (sourceValue >= min && sourceValue <= max) {
+							return threshold.value;
+						}
+					}
+					return undefined;
+				}
+
+				case 'boolean_map': {
+					const boolValue = Boolean(sourceValue);
+					return boolValue ? derivation.true_value : derivation.false_value;
+				}
+
+				case 'position_status': {
+					if (typeof sourceValue !== 'number') {
+						return undefined;
+					}
+					if (sourceValue === 0) {
+						return derivation.closed_value;
+					} else if (sourceValue === 100) {
+						return derivation.opened_value;
+					} else {
+						return derivation.partial_value ?? derivation.closed_value;
+					}
+				}
+
+				default:
+					return undefined;
+			}
+		} catch (error) {
+			this.logger.warn(
+				`Failed to apply derivation: ${error instanceof Error ? error.message : String(error)}`,
+			);
+			return undefined;
+		}
+	}
+
 	private async ensureProperty(
 		channel: ShellyNgChannelEntity,
 		category: PropertyCategory,
@@ -1064,6 +1868,7 @@ export class DeviceManagerService {
 			permissions?: PermissionType[];
 			unit?: string | null;
 		},
+		propertyMapping?: ResolvedProperty,
 	): Promise<ShellyNgChannelPropertyEntity> {
 		if (column === 'category') {
 			if ((identifierOrCategory as PropertyCategory) !== category) {

@@ -44,7 +44,7 @@ import {
 	ShellyNgChannelPropertyEntity,
 	ShellyNgDeviceEntity,
 } from './entities/devices-shelly-ng.entity';
-import { MappingLoaderService, TransformerRegistry } from './mappings';
+import { MappingLoaderService, PropertyMappingStorageService, TransformerRegistry } from './mappings';
 import { ShellyNgConfigModel } from './models/config.model';
 import { ShellyNgDevicePlatform } from './platforms/shelly-ng.device.platform';
 import { DatabaseDiscovererService } from './services/database-discoverer.service';
@@ -69,6 +69,7 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 	providers: [
 		TransformerRegistry,
 		MappingLoaderService,
+		PropertyMappingStorageService,
 		ShellyRpcClientService,
 		DatabaseDiscovererService,
 		DelegatesManagerService,

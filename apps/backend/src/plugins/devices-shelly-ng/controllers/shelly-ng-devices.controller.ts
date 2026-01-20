@@ -20,8 +20,10 @@ import {
 } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
 import { DevicesShellyNgPluginReqGetInfo } from '../dto/shelly-ng-get-info.dto';
+import { MappingLoaderService } from '../mappings';
 import {
 	ShellyNgDeviceInfoResponseModel,
+	ShellyNgMappingReloadResponseModel,
 	ShellyNgSupportedDevicesResponseModel,
 } from '../models/shelly-ng-response.model';
 import { ShellyNgDeviceInfoModel, ShellyNgSupportedDeviceModel } from '../models/shelly-ng.model';
@@ -35,7 +37,10 @@ export class ShellyNgDevicesController {
 		'ShellyNgDevicesController',
 	);
 
-	constructor(private readonly deviceManagerService: DeviceManagerService) {}
+	constructor(
+		private readonly deviceManagerService: DeviceManagerService,
+		private readonly mappingLoaderService: MappingLoaderService,
+	) {}
 
 	@ApiOperation({
 		tags: [DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME],
@@ -140,5 +145,45 @@ export class ShellyNgDevicesController {
 		response.data = devices;
 
 		return response;
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME],
+		summary: 'Reload YAML mapping configurations',
+		description:
+			'Reloads all YAML mapping configuration files from built-in and user directories. This is useful after modifying custom mapping files without restarting the application. The cache is cleared before reloading.',
+		operationId: 'post-devices-shelly-ng-plugin-reload-mappings',
+	})
+	@ApiSuccessResponse(
+		ShellyNgMappingReloadResponseModel,
+		'Mapping configurations were successfully reloaded. Returns statistics about loaded mappings and cache status.',
+	)
+	@ApiInternalServerErrorResponse('Internal server error during mapping reload')
+	@Post('mappings/reload')
+	async reloadMappings(): Promise<ShellyNgMappingReloadResponseModel> {
+		try {
+			this.mappingLoaderService.reload();
+			const cacheStats = this.mappingLoaderService.getCacheStats();
+
+			this.logger.log('Mapping configurations reloaded successfully', {
+				mappingsLoaded: cacheStats.mappingsLoaded,
+				cacheSize: cacheStats.size,
+			});
+
+			const response = new ShellyNgMappingReloadResponseModel();
+			response.data = {
+				success: true,
+				cacheStats,
+			};
+
+			return response;
+		} catch (error) {
+			this.logger.error('Failed to reload mapping configurations', {
+				error: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+			});
+
+			throw new UnprocessableEntityException('Failed to reload mapping configurations');
+		}
 	}
 }

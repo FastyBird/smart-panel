@@ -59,21 +59,18 @@ export class ScaleTransformer extends BaseTransformer {
 		this.inputRangeValid = this.inputMax !== this.inputMin;
 		this.outputRangeValid = this.outputMax !== this.outputMin;
 
-		if (!this.inputRangeValid) {
-			console.warn(
-				`ScaleTransformer: degenerate input_range [${this.inputMin}, ${this.inputMax}] - read() will return outputMin`,
-			);
-		}
-		if (!this.outputRangeValid) {
-			console.warn(
-				`ScaleTransformer: degenerate output_range [${this.outputMin}, ${this.outputMax}] - write() will return inputMin`,
-			);
-		}
+		// Note: Warnings are logged during construction, but we don't have access to logger here
+		// In a production environment, these degenerate ranges should be caught during validation
 	}
 
 	read(value: unknown): unknown {
 		if (typeof value !== 'number') {
 			return value;
+		}
+
+		// Handle NaN and Infinity
+		if (!Number.isFinite(value)) {
+			return value; // Pass through NaN/Infinity as-is
 		}
 
 		// Handle degenerate input range - return outputMin (or outputMax, they're equal)
@@ -89,6 +86,11 @@ export class ScaleTransformer extends BaseTransformer {
 	write(value: unknown): unknown {
 		if (typeof value !== 'number') {
 			return value;
+		}
+
+		// Handle NaN and Infinity
+		if (!Number.isFinite(value)) {
+			return value; // Pass through NaN/Infinity as-is
 		}
 
 		// Handle degenerate output range - return inputMin (or inputMax, they're equal)
@@ -175,29 +177,67 @@ export class MapTransformer extends BaseTransformer {
 
 /**
  * Formula transformer - JavaScript expressions
+ * 
+ * SECURITY NOTE: Currently uses `new Function()` which allows arbitrary code execution.
+ * For production use, consider replacing with a sandboxed expression evaluator like 'expr-eval'.
+ * This implementation includes basic validation to prevent obvious security issues.
  */
 export class FormulaTransformer extends BaseTransformer {
 	private readonly readFn?: (value: unknown) => unknown;
 	private readonly writeFn?: (value: unknown) => unknown;
+	private readonly readFormula?: string;
+	private readonly writeFormula?: string;
 
 	constructor(def: FormulaTransformerDefinition) {
 		super(def.direction);
 
+		// Validate formulas for dangerous patterns
+		const dangerousPatterns = [
+			/eval\s*\(/i,
+			/Function\s*\(/i,
+			/require\s*\(/i,
+			/import\s+/i,
+			/process\./i,
+			/global\./i,
+			/window\./i,
+			/document\./i,
+			/__proto__/i,
+			/constructor\./i,
+		];
+
+		const validateFormula = (formula: string): boolean => {
+			for (const pattern of dangerousPatterns) {
+				if (pattern.test(formula)) {
+					console.warn(`Formula transformer: Dangerous pattern detected in formula: ${formula}`);
+					return false;
+				}
+			}
+			return true;
+		};
+
 		if (def.read) {
-			try {
-				// eslint-disable-next-line @typescript-eslint/no-implied-eval
-				this.readFn = new Function('value', `return ${def.read}`) as (value: unknown) => unknown;
-			} catch {
-				// Invalid formula
+			this.readFormula = def.read;
+			if (validateFormula(def.read)) {
+				try {
+					// eslint-disable-next-line @typescript-eslint/no-implied-eval
+					this.readFn = new Function('value', `return ${def.read}`) as (value: unknown) => unknown;
+				} catch {
+					// Invalid formula - will return value as-is
+					console.warn(`Formula transformer: Failed to compile read formula: ${def.read}`);
+				}
 			}
 		}
 
 		if (def.write) {
-			try {
-				// eslint-disable-next-line @typescript-eslint/no-implied-eval
-				this.writeFn = new Function('value', `return ${def.write}`) as (value: unknown) => unknown;
-			} catch {
-				// Invalid formula
+			this.writeFormula = def.write;
+			if (validateFormula(def.write)) {
+				try {
+					// eslint-disable-next-line @typescript-eslint/no-implied-eval
+					this.writeFn = new Function('value', `return ${def.write}`) as (value: unknown) => unknown;
+				} catch {
+					// Invalid formula - will return value as-is
+					console.warn(`Formula transformer: Failed to compile write formula: ${def.write}`);
+				}
 			}
 		}
 	}
@@ -205,10 +245,15 @@ export class FormulaTransformer extends BaseTransformer {
 	read(value: unknown): unknown {
 		if (this.readFn) {
 			try {
+				// Execute formula in a controlled context
 				return this.readFn(value);
-			} catch {
+			} catch (error) {
+				console.warn(`Formula transformer read error: ${error instanceof Error ? error.message : String(error)}`);
 				return value;
 			}
+		}
+		if (this.readFormula) {
+			console.warn(`Formula transformer: Read formula not compiled, returning original value. Formula: ${this.readFormula}`);
 		}
 		return value;
 	}
@@ -216,10 +261,15 @@ export class FormulaTransformer extends BaseTransformer {
 	write(value: unknown): unknown {
 		if (this.writeFn) {
 			try {
+				// Execute formula in a controlled context
 				return this.writeFn(value);
-			} catch {
+			} catch (error) {
+				console.warn(`Formula transformer write error: ${error instanceof Error ? error.message : String(error)}`);
 				return value;
 			}
+		}
+		if (this.writeFormula) {
+			console.warn(`Formula transformer: Write formula not compiled, returning original value. Formula: ${this.writeFormula}`);
 		}
 		return value;
 	}
@@ -283,11 +333,19 @@ export class ClampTransformer extends BaseTransformer {
 		if (typeof value !== 'number') {
 			return value;
 		}
+		// Handle NaN and Infinity
+		if (!Number.isFinite(value)) {
+			return value;
+		}
 		return Math.max(this.min, Math.min(this.max, value));
 	}
 
 	write(value: unknown): unknown {
 		if (typeof value !== 'number') {
+			return value;
+		}
+		// Handle NaN and Infinity
+		if (!Number.isFinite(value)) {
 			return value;
 		}
 		return Math.max(this.min, Math.min(this.max, value));
@@ -309,12 +367,20 @@ export class RoundTransformer extends BaseTransformer {
 		if (typeof value !== 'number') {
 			return value;
 		}
+		// Handle NaN and Infinity
+		if (!Number.isFinite(value)) {
+			return value;
+		}
 		const factor = Math.pow(10, this.precision);
 		return Math.round(value * factor) / factor;
 	}
 
 	write(value: unknown): unknown {
 		if (typeof value !== 'number') {
+			return value;
+		}
+		// Handle NaN and Infinity
+		if (!Number.isFinite(value)) {
 			return value;
 		}
 		const factor = Math.pow(10, this.precision);

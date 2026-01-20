@@ -6,7 +6,7 @@
  */
 import Ajv from 'ajv';
 import { existsSync, readFileSync, readdirSync } from 'fs';
-import { join } from 'path';
+import { join, normalize, resolve } from 'path';
 import { parse as parseYaml } from 'yaml';
 
 import { Injectable, OnModuleInit } from '@nestjs/common';
@@ -91,6 +91,9 @@ export class MappingLoaderService implements OnModuleInit {
 
 	private resolvedMappings: ResolvedMapping[] = [];
 	private loadedSources: MappingLoadResult[] = [];
+	
+	// Cache for resolved mappings by context (keyed by context hash)
+	private readonly mappingCache: Map<string, ResolvedMapping | undefined> = new Map();
 
 	// Default paths for mapping files
 	private readonly builtinMappingsPath = join(__dirname, 'definitions');
@@ -189,11 +192,26 @@ export class MappingLoaderService implements OnModuleInit {
 		// Sort by priority (higher first)
 		this.resolvedMappings.sort((a, b) => b.priority - a.priority);
 
+		// Clear cache when mappings are reloaded
+		this.mappingCache.clear();
+
 		this.logger.log(`Loaded ${this.resolvedMappings.length} mappings from ${this.loadedSources.length} files`);
 	}
 
 	/**
+	 * Validate that a path is within the allowed directory (prevent path traversal)
+	 */
+	private validatePath(allowedBasePath: string, filePath: string): boolean {
+		const normalizedBase = normalize(resolve(allowedBasePath));
+		const normalizedPath = normalize(resolve(filePath));
+		
+		// Ensure the resolved path starts with the base path
+		return normalizedPath.startsWith(normalizedBase);
+	}
+
+	/**
 	 * Discover YAML mapping files in a directory (recursively)
+	 * Includes path traversal protection
 	 */
 	private discoverMappingFiles(
 		dirPath: string,
@@ -207,11 +225,23 @@ export class MappingLoaderService implements OnModuleInit {
 			return files;
 		}
 
+		// Resolve and normalize the base directory path for path traversal protection
+		const baseDirPath = normalize(resolve(dirPath));
+
 		try {
 			const entries = readdirSync(dirPath, { withFileTypes: true });
 
 			for (const entry of entries) {
 				const fullPath = join(dirPath, entry.name);
+
+				// Path traversal protection: ensure resolved path is within base directory
+				if (!this.validatePath(baseDirPath, fullPath)) {
+					this.logger.warn(`Skipping path outside allowed directory: ${fullPath}`, {
+						basePath: baseDirPath,
+						attemptedPath: fullPath,
+					});
+					continue;
+				}
 
 				if (entry.isFile() && (entry.name.endsWith('.yaml') || entry.name.endsWith('.yml'))) {
 					// Skip derivation-rules.yaml - it's loaded separately and has a different schema
@@ -239,11 +269,24 @@ export class MappingLoaderService implements OnModuleInit {
 
 	/**
 	 * Load and validate a single mapping file
+	 * Includes path traversal protection for user mappings
 	 */
 	loadMappingFile(fileInfo: MappingFileInfo): MappingLoadResult {
-		const { path: filePath } = fileInfo;
+		const { path: filePath, source } = fileInfo;
 
 		try {
+			// Path traversal protection for user mappings
+			if (source === 'user' || source === 'custom') {
+				const userMappingsPath = normalize(resolve(this.userMappingsPath));
+				if (!this.validatePath(userMappingsPath, filePath)) {
+					return {
+						success: false,
+						errors: [`Path traversal attempt detected: ${filePath} is outside allowed directory ${userMappingsPath}`],
+						source: filePath,
+					};
+				}
+			}
+
 			// Read file
 			const content = readFileSync(filePath, 'utf-8');
 
@@ -278,6 +321,10 @@ export class MappingLoaderService implements OnModuleInit {
 			for (const mapping of config.mappings) {
 				try {
 					const resolved = this.resolveMapping(mapping, fileInfo.priority);
+					
+					// Validate referenced transformers and derivations
+					this.validateMapping(resolved, warnings);
+					
 					resolvedMappings.push(resolved);
 				} catch (error) {
 					warnings.push(
@@ -286,7 +333,11 @@ export class MappingLoaderService implements OnModuleInit {
 				}
 			}
 
-			this.logger.log(`Loaded ${resolvedMappings.length} mappings from ${filePath}`);
+			this.logger.log(`Loaded ${resolvedMappings.length} mappings from ${filePath}`, {
+			mappingsCount: resolvedMappings.length,
+			source: filePath,
+			warnings: warnings.length > 0 ? warnings.length : undefined,
+		});
 
 			return {
 				success: true,
@@ -520,16 +571,63 @@ export class MappingLoaderService implements OnModuleInit {
 	}
 
 	/**
+	 * Generate cache key from mapping context
+	 */
+	private getCacheKey(context: MappingContext): string {
+		return `${context.componentType}:${context.componentKey}:${context.deviceCategory}:${context.model ?? 'none'}:${context.profile ?? 'none'}`;
+	}
+
+	/**
 	 * Find the best matching mapping for a given context
+	 * Uses caching to improve performance for repeated lookups
 	 */
 	findMatchingMapping(context: MappingContext): ResolvedMapping | undefined {
+		const cacheKey = this.getCacheKey(context);
+		
+		// Check cache first
+		if (this.mappingCache.has(cacheKey)) {
+			const cached = this.mappingCache.get(cacheKey);
+			this.logger.debug(`Mapping cache hit for context: ${cacheKey}`, {
+				mappingName: cached?.name,
+			});
+			return cached;
+		}
+
 		// Mappings are already sorted by priority
+		let result: ResolvedMapping | undefined = undefined;
 		for (const mapping of this.resolvedMappings) {
 			if (this.matchesCondition(mapping.match, context)) {
-				return mapping;
+				result = mapping;
+				this.logger.debug(`Found matching mapping: ${mapping.name}`, {
+					context: {
+						componentType: context.componentType,
+						componentKey: context.componentKey,
+						deviceCategory: context.deviceCategory,
+						model: context.model,
+						profile: context.profile,
+					},
+					mappingPriority: mapping.priority,
+				});
+				break;
 			}
 		}
-		return undefined;
+
+		if (!result) {
+			this.logger.debug(`No mapping found for context: ${cacheKey}`, {
+				context: {
+					componentType: context.componentType,
+					componentKey: context.componentKey,
+					deviceCategory: context.deviceCategory,
+					model: context.model,
+					profile: context.profile,
+				},
+			});
+		}
+
+		// Cache the result (even if undefined - avoids repeated lookups)
+		this.mappingCache.set(cacheKey, result);
+		
+		return result;
 	}
 
 	/**
@@ -639,7 +737,27 @@ export class MappingLoaderService implements OnModuleInit {
 	 */
 	reload(): void {
 		this.logger.log('Reloading mapping configurations...');
+		this.mappingCache.clear(); // Clear cache before reload
 		this.loadAllMappings();
+	}
+
+	/**
+	 * Clear mapping cache
+	 * Useful when mappings need to be re-evaluated
+	 */
+	clearCache(): void {
+		this.mappingCache.clear();
+		this.logger.debug('Mapping cache cleared');
+	}
+
+	/**
+	 * Get cache statistics
+	 */
+	getCacheStats(): { size: number; mappingsLoaded: number } {
+		return {
+			size: this.mappingCache.size,
+			mappingsLoaded: this.resolvedMappings.length,
+		};
 	}
 
 	/**
@@ -676,5 +794,40 @@ export class MappingLoaderService implements OnModuleInit {
 	 */
 	interpolateTemplate(template: string, context: MappingContext): string {
 		return template.replace(/\{key\}/g, String(context.componentKey));
+	}
+
+	/**
+	 * Validate that all referenced transformers and derivations exist
+	 */
+	private validateMapping(mapping: ResolvedMapping, warnings: string[]): void {
+		for (const channel of mapping.channels) {
+			// Validate property transformers
+			if (channel.properties) {
+				for (const prop of channel.properties) {
+					if (prop.transformerName && !this.transformerRegistry.has(prop.transformerName)) {
+						warnings.push(
+							`Mapping '${mapping.name}' channel '${channel.identifier}' property '${prop.panel.identifier}' references unknown transformer '${prop.transformerName}'`,
+						);
+					}
+				}
+			}
+
+			// Validate derived property derivations
+			if (channel.derivedProperties) {
+				for (const derived of channel.derivedProperties) {
+					if (derived.derivationName && !this.derivationRegistry.has(derived.derivationName)) {
+						warnings.push(
+							`Mapping '${mapping.name}' channel '${channel.identifier}' derived property '${derived.identifier}' references unknown derivation '${derived.derivationName}'`,
+						);
+					}
+					
+					if (!derived.inlineDerivation && !derived.derivationName) {
+						warnings.push(
+							`Mapping '${mapping.name}' channel '${channel.identifier}' derived property '${derived.identifier}' has no derivation rule (neither inline nor named reference)`,
+						);
+					}
+				}
+			}
+		}
 	}
 }

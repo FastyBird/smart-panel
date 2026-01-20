@@ -22,6 +22,9 @@ import { ChannelsService } from '../../../modules/devices/services/channels.serv
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { ComponentType, DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
+import { PropertyMappingStorageService, TransformerRegistry } from '../mappings';
+import { ITransformer } from '../mappings/transformers/transformer.types';
+import { createInlineTransformer } from '../mappings/transformers/transformers';
 import {
 	DevicesShellyNgException,
 	DevicesShellyNgNotFoundException,
@@ -79,6 +82,8 @@ export class DelegatesManagerService {
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
+		private readonly propertyMappingStorage: PropertyMappingStorageService,
+		private readonly transformerRegistry: TransformerRegistry,
 	) {}
 
 	get(id: Device['id']): ShellyDeviceDelegate | undefined {
@@ -1581,7 +1586,24 @@ export class DelegatesManagerService {
 			);
 		}
 
-		return handler(updates.map((row): BatchUpdate => ({ property: row.property, val: row.value })));
+		// Apply transformers to all update values
+		const transformedUpdates = updates.map((row): BatchUpdate => {
+			const propertyMapping = this.propertyMappingStorage.get(row.property.id);
+			let transformedValue = row.value;
+
+			if (propertyMapping) {
+				transformedValue = this.applyTransformer(propertyMapping, row.value, 'write') as string | number | boolean;
+				
+				this.logger.debug(
+					`Applied transformer for property=${row.property.id}: ${row.value} -> ${transformedValue}`,
+					{ resource: device.id },
+				);
+			}
+
+			return { property: row.property, val: transformedValue };
+		});
+
+		return handler(transformedUpdates);
 	}
 
 	async setPropertyValue(
@@ -1600,7 +1622,60 @@ export class DelegatesManagerService {
 			return Promise.resolve(false);
 		}
 
-		return handler(value);
+		// Apply transformer if mapping exists
+		const propertyMapping = this.propertyMappingStorage.get(property.id);
+		let transformedValue = value;
+
+		if (propertyMapping) {
+			transformedValue = this.applyTransformer(propertyMapping, value, 'write') as string | number | boolean;
+			
+			this.logger.debug(
+				`Applied transformer for property=${property.id}: ${value} -> ${transformedValue}`,
+				{ resource: device.id },
+			);
+		}
+
+		return handler(transformedValue);
+	}
+
+	/**
+	 * Apply transformer to a value
+	 */
+	private applyTransformer(
+		propertyMapping: import('../mappings/mapping.types').ResolvedProperty,
+		value: unknown,
+		direction: 'read' | 'write' = 'read',
+	): unknown {
+		let transformer: ITransformer | null = null;
+
+		// Get transformer from named reference or inline transform
+		if (propertyMapping.transformerName) {
+			transformer = this.transformerRegistry.get(propertyMapping.transformerName);
+		} else if (propertyMapping.inlineTransform) {
+			transformer = createInlineTransformer(propertyMapping.inlineTransform);
+		}
+
+		if (!transformer) {
+			return value;
+		}
+
+		// Check if transformer supports the requested direction
+		if (direction === 'read' && !transformer.canRead()) {
+			this.logger.warn(`Transformer does not support read operation for property mapping`);
+			return value;
+		}
+
+		if (direction === 'write' && !transformer.canWrite()) {
+			this.logger.warn(`Transformer does not support write operation for property mapping`);
+			return value;
+		}
+
+		try {
+			return direction === 'read' ? transformer.read(value) : transformer.write(value);
+		} catch (error) {
+			this.logger.warn(`Failed to apply transformer: ${error instanceof Error ? error.message : String(error)}`);
+			return value;
+		}
 	}
 
 	private async handleChange(

@@ -45,7 +45,8 @@ const mockMappingLoaderService = {
 					{
 						identifier: `switch:${context.componentKey}`,
 						name: `Switch: ${context.componentKey}`,
-						category: 'switcher', // Maps to ChannelCategory.SWITCHER
+						category: ChannelCategory.SWITCHER,
+						properties: [],
 					},
 				],
 			};
@@ -55,6 +56,7 @@ const mockMappingLoaderService = {
 	interpolateTemplate: jest.fn((template: string, context: any) =>
 		template.replace(/\{key\}/g, String(context.componentKey)),
 	),
+	getDerivation: jest.fn(),
 } as any;
 
 const mockRpc = {
@@ -182,6 +184,16 @@ jest.mock('../devices-shelly-ng.constants', () => ({
 	DESCRIPTORS: {},
 }));
 
+const mockTransformerRegistry = {
+	get: jest.fn().mockReturnValue({
+		read: jest.fn((v) => v),
+		write: jest.fn((v) => v),
+		canRead: jest.fn().mockReturnValue(true),
+		canWrite: jest.fn().mockReturnValue(true),
+	}),
+	has: jest.fn().mockReturnValue(true),
+} as any;
+
 const makeService = () =>
 	new DeviceManagerService(
 		mockRpc as any,
@@ -189,6 +201,7 @@ const makeService = () =>
 		mockChannelsService,
 		mockChannelsPropertiesService,
 		mockMappingLoaderService,
+		mockTransformerRegistry,
 	);
 
 beforeEach(() => {
