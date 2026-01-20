@@ -50,6 +50,9 @@ export interface PrimaryClimateDevice {
 	// Thermostat channel (for child lock only)
 	thermostatChannel: ChannelEntity | null;
 	thermostatLockedProperty: ChannelPropertyEntity | null;
+	// Fan channel (for air conditioners)
+	fanChannel: ChannelEntity | null;
+	fanOnProperty: ChannelPropertyEntity | null;
 	// Capabilities (respecting device role)
 	supportsHeating: boolean;
 	supportsCooling: boolean;
@@ -575,6 +578,10 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 		const thermostatLockedProperty =
 			thermostatChannel?.properties?.find((p) => p.category === PropertyCategory.LOCKED) ?? null;
 
+		// Find fan channel (for air conditioners)
+		const fanChannel = channels.find((ch) => ch.category === ChannelCategory.FAN) ?? null;
+		const fanOnProperty = fanChannel?.properties?.find((p) => p.category === PropertyCategory.ON) ?? null;
+
 		// Determine capabilities based on role and channel presence
 		let supportsHeating = heaterChannel !== null;
 		let supportsCooling = coolerChannel !== null;
@@ -618,6 +625,8 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 			coolerMaxSetpoint: coolerMinMax.max,
 			thermostatChannel,
 			thermostatLockedProperty,
+			fanChannel,
+			fanOnProperty,
 			supportsHeating,
 			supportsCooling,
 		};

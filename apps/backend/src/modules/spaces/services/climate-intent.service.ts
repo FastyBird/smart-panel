@@ -433,6 +433,15 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 						value: true,
 					});
 				}
+				// Turn on fan if present (for air conditioners)
+				if (device.fanOnProperty && device.fanChannel) {
+					commands.push({
+						device: device.device,
+						channel: device.fanChannel,
+						property: device.fanOnProperty,
+						value: true,
+					});
+				}
 				break;
 
 			case ClimateMode.AUTO:
