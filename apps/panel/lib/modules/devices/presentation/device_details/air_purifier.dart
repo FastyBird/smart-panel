@@ -106,8 +106,110 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
 
   void _onDeviceChanged() {
     if (mounted) {
+      _checkConvergence();
       _initController();
       setState(() {});
+    }
+  }
+
+  /// Check convergence for all controllable properties.
+  ///
+  /// When device data updates (from WebSocket), this checks if any properties
+  /// in settling state have converged (or diverged from external changes) and
+  /// clears the optimistic state appropriately.
+  void _checkConvergence() {
+    final controlState = _deviceControlStateService;
+    if (controlState == null) return;
+
+    final fanChannel = _device.fanChannel;
+    final deviceId = _device.id;
+    final channelId = fanChannel.id;
+
+    // Check power property
+    controlState.checkPropertyConvergence(
+      deviceId,
+      channelId,
+      fanChannel.onProp.id,
+      fanChannel.on,
+    );
+
+    // Check speed property (if available)
+    final speedProp = fanChannel.speedProp;
+    if (speedProp != null) {
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        speedProp.id,
+        fanChannel.speed,
+        tolerance: fanChannel.speedStep > 0 ? fanChannel.speedStep : 1.0,
+      );
+    }
+
+    // Check swing property (if available)
+    final swingProp = fanChannel.swingProp;
+    if (swingProp != null) {
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        swingProp.id,
+        fanChannel.swing,
+      );
+    }
+
+    // Check mode property (if available)
+    final modeProp = fanChannel.modeProp;
+    if (modeProp != null) {
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        modeProp.id,
+        fanChannel.mode?.value,
+      );
+    }
+
+    // Check direction property (if available)
+    final directionProp = fanChannel.directionProp;
+    if (directionProp != null) {
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        directionProp.id,
+        fanChannel.direction?.value,
+      );
+    }
+
+    // Check locked property (if available)
+    final lockedProp = fanChannel.lockedProp;
+    if (lockedProp != null) {
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        lockedProp.id,
+        fanChannel.locked,
+      );
+    }
+
+    // Check naturalBreeze property (if available)
+    final naturalBreezeProp = fanChannel.naturalBreezeProp;
+    if (naturalBreezeProp != null) {
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        naturalBreezeProp.id,
+        fanChannel.naturalBreeze,
+      );
+    }
+
+    // Check timer property (if available)
+    final timerProp = fanChannel.timerProp;
+    if (timerProp != null) {
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        timerProp.id,
+        fanChannel.timer,
+        tolerance: fanChannel.timerStep > 0 ? fanChannel.timerStep.toDouble() : 1.0,
+      );
     }
   }
 

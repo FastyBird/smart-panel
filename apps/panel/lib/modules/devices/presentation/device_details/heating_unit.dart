@@ -111,9 +111,41 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
 
   void _onDeviceChanged() {
     if (mounted) {
+      _checkConvergence();
       _initController();
       setState(() {});
     }
+  }
+
+  /// Check convergence for all controllable properties.
+  ///
+  /// When device data updates (from WebSocket), this checks if any properties
+  /// in settling state have converged (or diverged from external changes) and
+  /// clears the optimistic state appropriately.
+  void _checkConvergence() {
+    final controlState = _deviceControlStateService;
+    if (controlState == null) return;
+
+    final deviceId = _device.id;
+    final heaterChannel = _device.heaterChannel;
+    final channelId = heaterChannel.id;
+
+    // Check power property
+    controlState.checkPropertyConvergence(
+      deviceId,
+      channelId,
+      heaterChannel.onProp.id,
+      heaterChannel.on,
+    );
+
+    // Check temperature setpoint property
+    controlState.checkPropertyConvergence(
+      deviceId,
+      channelId,
+      heaterChannel.temperatureProp.id,
+      heaterChannel.temperature,
+      tolerance: 0.5,
+    );
   }
 
   void _onControlStateChanged() {

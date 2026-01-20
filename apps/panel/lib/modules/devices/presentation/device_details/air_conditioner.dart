@@ -124,8 +124,104 @@ class _AirConditionerDeviceDetailState
 
   void _onDeviceChanged() {
     if (mounted) {
+      _checkConvergence();
       _initController();
       setState(() {});
+    }
+  }
+
+  /// Check convergence for all controllable properties.
+  ///
+  /// When device data updates (from WebSocket), this checks if any properties
+  /// in settling state have converged (or diverged from external changes) and
+  /// clears the optimistic state appropriately.
+  void _checkConvergence() {
+    final controlState = _deviceControlStateService;
+    if (controlState == null) return;
+
+    final deviceId = _device.id;
+
+    // Check cooler channel properties
+    final coolerChannel = _device.coolerChannel;
+    {
+      final channelId = coolerChannel.id;
+
+      // Check power property
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        coolerChannel.onProp.id,
+        coolerChannel.on,
+      );
+
+      // Check temperature setpoint property
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        coolerChannel.temperatureProp.id,
+        coolerChannel.temperature,
+        tolerance: 0.5,
+      );
+    }
+
+    // Check heater channel properties (if available)
+    final heaterChannel = _device.heaterChannel;
+    if (heaterChannel != null) {
+      final channelId = heaterChannel.id;
+
+      // Check power property
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        heaterChannel.onProp.id,
+        heaterChannel.on,
+      );
+
+      // Check temperature setpoint property
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        heaterChannel.temperatureProp.id,
+        heaterChannel.temperature,
+        tolerance: 0.5,
+      );
+    }
+
+    // Check fan channel properties
+    final fanChannel = _device.fanChannel;
+    {
+      final channelId = fanChannel.id;
+
+      // Check power property
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        fanChannel.onProp.id,
+        fanChannel.on,
+      );
+
+      // Check speed property (if available)
+      final speedProp = fanChannel.speedProp;
+      if (speedProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          speedProp.id,
+          fanChannel.speed,
+          tolerance: fanChannel.speedStep > 0 ? fanChannel.speedStep : 1.0,
+        );
+      }
+
+      // Check swing property (if available)
+      final swingProp = fanChannel.swingProp;
+      if (swingProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          swingProp.id,
+          fanChannel.swing,
+        );
+      }
     }
   }
 

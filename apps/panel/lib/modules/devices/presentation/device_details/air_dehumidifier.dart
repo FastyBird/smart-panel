@@ -107,8 +107,115 @@ class _AirDehumidifierDeviceDetailState
 
   void _onDeviceChanged() {
     if (mounted) {
+      _checkConvergence();
       _initController();
       setState(() {});
+    }
+  }
+
+  /// Check convergence for all controllable properties.
+  ///
+  /// When device data updates (from WebSocket), this checks if any properties
+  /// in settling state have converged (or diverged from external changes) and
+  /// clears the optimistic state appropriately.
+  void _checkConvergence() {
+    final controlState = _deviceControlStateService;
+    if (controlState == null) return;
+
+    final deviceId = _device.id;
+
+    // Check dehumidifier channel properties
+    final dehumidifierChannel = _dehumidifierChannel;
+    if (dehumidifierChannel != null) {
+      final channelId = dehumidifierChannel.id;
+
+      // Check power property
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        dehumidifierChannel.onProp.id,
+        dehumidifierChannel.on,
+      );
+
+      // Check humidity property
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        dehumidifierChannel.humidityProp.id,
+        dehumidifierChannel.humidity,
+        tolerance: 1.0,
+      );
+
+      // Check mode property (if available)
+      final modeProp = dehumidifierChannel.modeProp;
+      if (modeProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          modeProp.id,
+          dehumidifierChannel.mode?.value,
+        );
+      }
+
+      // Check locked property (if available)
+      final lockedProp = dehumidifierChannel.lockedProp;
+      if (lockedProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          lockedProp.id,
+          dehumidifierChannel.locked,
+        );
+      }
+
+      // Check timer property (if available)
+      final timerProp = dehumidifierChannel.timerProp;
+      if (timerProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          timerProp.id,
+          dehumidifierChannel.timer,
+          tolerance: dehumidifierChannel.timerStep.toDouble(),
+        );
+      }
+    }
+
+    // Check fan channel properties (if available)
+    final fanChannel = _device.fanChannel;
+    if (fanChannel != null) {
+      final channelId = fanChannel.id;
+
+      // Check power property
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        fanChannel.onProp.id,
+        fanChannel.on,
+      );
+
+      // Check speed property (if available)
+      final speedProp = fanChannel.speedProp;
+      if (speedProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          speedProp.id,
+          fanChannel.speed,
+          tolerance: fanChannel.speedStep > 0 ? fanChannel.speedStep : 1.0,
+        );
+      }
+
+      // Check swing property (if available)
+      final swingProp = fanChannel.swingProp;
+      if (swingProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          swingProp.id,
+          fanChannel.swing,
+        );
+      }
     }
   }
 

@@ -111,8 +111,138 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
 
   void _onDeviceChanged() {
     if (mounted) {
+      _checkConvergence();
       _initController(); // Reinitialize controller with updated device
       setState(() {});
+    }
+  }
+
+  /// Check convergence for all controllable properties.
+  ///
+  /// When device data updates (from WebSocket), this checks if any properties
+  /// in settling state have converged (or diverged from external changes) and
+  /// clears the optimistic state appropriately.
+  void _checkConvergence() {
+    final controlState = _deviceControlStateService;
+    if (controlState == null) return;
+
+    final deviceId = _device.id;
+
+    // Check humidifier channel properties
+    final humidifierChannel = _humidifierChannel;
+    if (humidifierChannel != null) {
+      final channelId = humidifierChannel.id;
+
+      // Check power property
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        humidifierChannel.onProp.id,
+        humidifierChannel.on,
+      );
+
+      // Check humidity property
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        humidifierChannel.humidityProp.id,
+        humidifierChannel.humidity,
+        tolerance: 1.0,
+      );
+
+      // Check mode property (if available)
+      final modeProp = humidifierChannel.modeProp;
+      if (modeProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          modeProp.id,
+          humidifierChannel.mode?.value,
+        );
+      }
+
+      // Check mistLevel property (if available)
+      final mistLevelProp = humidifierChannel.mistLevelProp;
+      if (mistLevelProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          mistLevelProp.id,
+          humidifierChannel.mistLevel,
+          tolerance: 1.0,
+        );
+      }
+
+      // Check warmMist property (if available)
+      final warmMistProp = humidifierChannel.warmMistProp;
+      if (warmMistProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          warmMistProp.id,
+          humidifierChannel.warmMist,
+        );
+      }
+
+      // Check locked property (if available)
+      final lockedProp = humidifierChannel.lockedProp;
+      if (lockedProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          lockedProp.id,
+          humidifierChannel.locked,
+        );
+      }
+
+      // Check timer property (if available)
+      final timerProp = humidifierChannel.timerProp;
+      if (timerProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          timerProp.id,
+          humidifierChannel.timer,
+          tolerance: humidifierChannel.timerStep.toDouble(),
+        );
+      }
+    }
+
+    // Check fan channel properties (if available)
+    final fanChannel = _device.fanChannel;
+    if (fanChannel != null) {
+      final channelId = fanChannel.id;
+
+      // Check power property
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        fanChannel.onProp.id,
+        fanChannel.on,
+      );
+
+      // Check speed property (if available)
+      final speedProp = fanChannel.speedProp;
+      if (speedProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          speedProp.id,
+          fanChannel.speed,
+          tolerance: fanChannel.speedStep > 0 ? fanChannel.speedStep : 1.0,
+        );
+      }
+
+      // Check swing property (if available)
+      final swingProp = fanChannel.swingProp;
+      if (swingProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          swingProp.id,
+          fanChannel.swing,
+        );
+      }
     }
   }
 
