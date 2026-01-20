@@ -1001,13 +1001,13 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		const overallSuccess = failedDevices === 0 || affectedDevices > 0;
 
 		// Store climate state to InfluxDB at the end with all values (fire and forget)
-		// Use effective mode (preserves current mode when only setpoints are provided)
+		// Use effective mode and preserve existing setpoints if not provided
 		if (overallSuccess) {
 			void this.intentTimeseriesService.storeClimateModeChange(
 				spaceId,
 				mode,
-				heatingSetpoint,
-				coolingSetpoint,
+				heatingSetpoint ?? climateState.heatingSetpoint, // preserve existing if not provided
+				coolingSetpoint ?? climateState.coolingSetpoint, // preserve existing if not provided
 				devices.length,
 				affectedDevices,
 				failedDevices,
@@ -1143,13 +1143,13 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		const overallSuccess = failedDevices === 0 || affectedDevices > 0;
 
 		// Store climate state to InfluxDB at the end with all values (fire and forget)
-		// Use effective mode (preserves current mode when only setpoints are provided)
+		// Use effective mode and preserve existing setpoints if not provided
 		if (overallSuccess) {
 			void this.intentTimeseriesService.storeClimateModeChange(
 				spaceId,
 				mode,
-				heatingSetpoint,
-				coolingSetpoint,
+				heatingSetpoint ?? climateState.heatingSetpoint, // preserve existing if not provided
+				coolingSetpoint ?? climateState.coolingSetpoint, // preserve existing if not provided
 				devices.length,
 				affectedDevices,
 				failedDevices,
