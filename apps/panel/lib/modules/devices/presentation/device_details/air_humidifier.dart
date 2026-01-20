@@ -375,7 +375,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     });
   }
 
-  void _setMistLevelEnum(HumidifierMistLevelValue level) {
+  void _setMistLevelEnum(HumidifierMistLevelLevelValue level) {
     final channel = _humidifierChannel;
     final mistLevelProp = channel?.mistLevelProp;
     if (channel == null || !channel.hasMistLevel || !channel.isMistLevelEnum || mistLevelProp == null) return;

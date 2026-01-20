@@ -33,6 +33,9 @@ export 'package:fastybird_smart_panel/modules/devices/types/control_ui_state.dar
 export 'package:fastybird_smart_panel/modules/devices/models/control_state.dart';
 export 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 
+// Controllers (optimistic UI wrappers)
+export 'package:fastybird_smart_panel/modules/devices/controllers/export.dart';
+
 // Device details
 export 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_dehumidifier.dart';
 export 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_humidifier.dart';

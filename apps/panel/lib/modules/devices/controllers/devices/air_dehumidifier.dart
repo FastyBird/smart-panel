@@ -1,0 +1,83 @@
+import 'package:fastybird_smart_panel/modules/devices/controllers/channels/dehumidifier.dart';
+import 'package:fastybird_smart_panel/modules/devices/controllers/channels/fan.dart';
+import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/air_dehumidifier.dart';
+
+/// Controller for air dehumidifier device with optimistic UI support.
+///
+/// Composes [DehumidifierChannelController] and optionally [FanChannelController]
+/// and provides device-level operations.
+class AirDehumidifierDeviceController {
+  final AirDehumidifierDeviceView device;
+  final DeviceControlStateService _controlState;
+  final DevicesService _devicesService;
+
+  late final DehumidifierChannelController _dehumidifierController;
+  FanChannelController? _fanController;
+
+  AirDehumidifierDeviceController({
+    required this.device,
+    required DeviceControlStateService controlState,
+    required DevicesService devicesService,
+  })  : _controlState = controlState,
+        _devicesService = devicesService {
+    _dehumidifierController = DehumidifierChannelController(
+      deviceId: device.id,
+      channel: device.dehumidifierChannel,
+      controlState: _controlState,
+      devicesService: _devicesService,
+    );
+
+    final fanChannel = device.fanChannel;
+    if (fanChannel != null) {
+      _fanController = FanChannelController(
+        deviceId: device.id,
+        channel: fanChannel,
+        controlState: _controlState,
+        devicesService: _devicesService,
+      );
+    }
+  }
+
+  // ===========================================================================
+  // CHANNEL CONTROLLER ACCESS
+  // ===========================================================================
+
+  /// Access to the dehumidifier channel controller.
+  DehumidifierChannelController get dehumidifier => _dehumidifierController;
+
+  /// Access to the fan channel controller (if available).
+  FanChannelController? get fan => _fanController;
+
+  // ===========================================================================
+  // DEVICE-LEVEL GETTERS (optimistic-aware)
+  // ===========================================================================
+
+  /// Whether the device is on (optimistic-aware).
+  bool get isOn => _dehumidifierController.isOn;
+
+  /// Target humidity (optimistic-aware).
+  int get humidity => _dehumidifierController.humidity;
+
+  // ===========================================================================
+  // PASSTHROUGH GETTERS
+  // ===========================================================================
+
+  bool get hasFan => _fanController != null;
+  int get minHumidity => _dehumidifierController.minHumidity;
+  int get maxHumidity => _dehumidifierController.maxHumidity;
+
+  // ===========================================================================
+  // DEVICE-LEVEL COMMANDS
+  // ===========================================================================
+
+  /// Set device power state with optimistic UI.
+  void setPower(bool value) => _dehumidifierController.setPower(value);
+
+  /// Toggle device power state with optimistic UI.
+  void togglePower() => _dehumidifierController.togglePower();
+
+  /// Set target humidity with optimistic UI.
+  void setHumidity(int value) => _dehumidifierController.setHumidity(value);
+}
