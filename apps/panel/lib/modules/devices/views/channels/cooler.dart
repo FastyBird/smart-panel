@@ -31,9 +31,6 @@ class CoolerChannelView extends ChannelView
   StatusChannelPropertyView get statusProp =>
       properties.whereType<StatusChannelPropertyView>().first;
 
-  OnChannelPropertyView get onProp =>
-      properties.whereType<OnChannelPropertyView>().first;
-
   bool get isOn {
     final value = onProp.value;
 
