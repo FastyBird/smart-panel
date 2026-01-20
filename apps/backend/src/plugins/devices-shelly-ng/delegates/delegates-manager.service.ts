@@ -198,7 +198,7 @@ export class DelegatesManagerService {
 				continue;
 			}
 
-			const switcherOn = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+			let switcherOn = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
 				'identifier',
 				'output',
 				switcher.id,
@@ -347,24 +347,25 @@ export class DelegatesManagerService {
 							}
 						}
 
-					if (typeof comp.current !== 'undefined') {
-						const current = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
-							'identifier',
-							'current',
-							electricalPower.id,
-						);
-
-						if (current === null) {
-							this.logger.warn(
-								`Current property not found for device=${device.id} switch=${comp.id}, skipping current monitoring.`,
-								{ resource: device.id },
+						if (typeof comp.current !== 'undefined') {
+							const current = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+								'identifier',
+								'current',
+								electricalPower.id,
 							);
-						} else {
-							await this.setDefaultPropertyValue(device.id, current, comp.current);
 
-							this.changeHandlers.set(`${delegate.id}|${comp.key}|current`, (val: CharacteristicValue): void => {
-								this.handleNumericChange(comp.key, 'current', current.id, val, (n) => this.handleChange(current, n, false));
-							});
+							if (current === null) {
+								this.logger.warn(
+									`Current property not found for device=${device.id} switch=${comp.id}, skipping current monitoring.`,
+									{ resource: device.id },
+								);
+							} else {
+								await this.setDefaultPropertyValue(device.id, current, comp.current);
+
+								this.changeHandlers.set(`${delegate.id}|${comp.key}|current`, (val: CharacteristicValue): void => {
+									this.handleNumericChange(comp.key, 'current', current.id, val, (n) => this.handleChange(current, n, false));
+								});
+							}
 						}
 					}
 				}
