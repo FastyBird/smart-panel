@@ -629,7 +629,7 @@ class _AirConditionerDeviceDetailState
     }
   }
 
-  List<ModeOption<AcMode>> _getModeOptions() {
+  List<ModeOption<AcMode>> _getModeOptions(AppLocalizations localizations) {
     final modes = <ModeOption<AcMode>>[];
 
     // Add heat mode only if device has a heater channel
@@ -637,7 +637,7 @@ class _AirConditionerDeviceDetailState
       modes.add(ModeOption(
         value: AcMode.heat,
         icon: MdiIcons.fireCircle,
-        label: 'Heat',
+        label: localizations.thermostat_mode_heat,
         color: ModeSelectorColor.warning,
       ));
     }
@@ -646,7 +646,7 @@ class _AirConditionerDeviceDetailState
     modes.add(ModeOption(
       value: AcMode.cool,
       icon: MdiIcons.snowflake,
-      label: 'Cool',
+      label: localizations.thermostat_mode_cool,
       color: ModeSelectorColor.info,
     ));
 
@@ -654,7 +654,7 @@ class _AirConditionerDeviceDetailState
     modes.add(ModeOption(
       value: AcMode.off,
       icon: MdiIcons.power,
-      label: 'Off',
+      label: localizations.thermostat_mode_off,
       color: ModeSelectorColor.neutral,
     ));
 
@@ -1109,8 +1109,9 @@ class _AirConditionerDeviceDetailState
     ModeSelectorOrientation orientation, {
     bool showLabels = true,
   }) {
+    final localizations = AppLocalizations.of(context)!;
     return ModeSelector<AcMode>(
-      modes: _getModeOptions(),
+      modes: _getModeOptions(localizations),
       selectedValue: _currentMode,
       onChanged: _onModeChanged,
       orientation: orientation,

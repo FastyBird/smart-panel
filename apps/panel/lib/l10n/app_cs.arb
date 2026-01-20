@@ -512,5 +512,9 @@
   "media_source": "Zdroj",
   "media_queue": "Fronta",
   "media_up_next": "Další",
-  "media_other_devices": "Ostatní zařízení"
+  "media_other_devices": "Ostatní zařízení",
+  "device_status_standby": "Pohotovost",
+  "device_status_active": "Aktivní",
+  "device_status_inactive": "Neaktivní",
+  "climate_devices_section": "Klimatizační zařízení"
 }

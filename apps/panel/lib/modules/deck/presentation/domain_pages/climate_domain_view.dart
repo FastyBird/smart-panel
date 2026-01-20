@@ -939,22 +939,43 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       } else if (device is HeatingUnitDeviceView) {
         deviceType = 'heating_unit';
         // Heating unit has a required heater channel
+        final heaterOn = device.heaterChannel.on;
         final isHeating = device.heaterChannel.isHeating;
         isActive = isHeating;
-        status = isHeating ? 'Heating' : 'Standby';
+
+        if (!heaterOn) {
+          status = 'Off';
+        } else if (isHeating) {
+          status = 'Heating';
+        } else {
+          status = 'Standby';
+        }
       } else if (device is WaterHeaterDeviceView) {
         deviceType = 'water_heater';
         // Water heater has a required heater channel
+        final heaterOn = device.heaterChannel.on;
         final isHeating = device.heaterChannel.isHeating;
         isActive = isHeating;
-        status = isHeating ? 'Heating' : 'Standby';
+
+        if (!heaterOn) {
+          status = 'Off';
+        } else if (isHeating) {
+          status = 'Heating';
+        } else {
+          status = 'Standby';
+        }
       } else if (device is AirConditionerDeviceView) {
         deviceType = 'ac';
         // A/C can have both cooler (required) and heater (optional) channels
+        final coolerOn = device.coolerChannel.on;
+        final heaterOn = device.heaterChannel?.on ?? false;
         final isCooling = device.coolerChannel.isCooling;
         final isHeating = device.heaterChannel?.isHeating ?? false;
         isActive = isCooling || isHeating;
-        if (isCooling) {
+
+        if (!coolerOn && !heaterOn) {
+          status = 'Off';
+        } else if (isCooling) {
           status = 'Cooling';
         } else if (isHeating) {
           status = 'Heating';
@@ -1829,8 +1850,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
   /// Vertical column of icon-only mode buttons
   Widget _buildVerticalModeIcons(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     return ModeSelector<ClimateMode>(
-      modes: _getClimateModeOptions(),
+      modes: _getClimateModeOptions(localizations),
       selectedValue: _state.mode,
       onChanged: _setMode,
       orientation: ModeSelectorOrientation.vertical,
@@ -1838,7 +1860,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     );
   }
 
-  List<ModeOption<ClimateMode>> _getClimateModeOptions() {
+  List<ModeOption<ClimateMode>> _getClimateModeOptions(
+      AppLocalizations localizations) {
     final modes = <ModeOption<ClimateMode>>[];
 
     // TODO: Auto mode requires dual setpoint dial (heating + cooling setpoints)
@@ -1847,7 +1870,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     //   modes.add(ModeOption(
     //     value: ClimateMode.auto,
     //     icon: MdiIcons.thermometerAuto,
-    //     label: 'Auto',
+    //     label: localizations.thermostat_mode_auto,
     //     color: ModeSelectorColor.success,
     //   ));
     // }
@@ -1856,7 +1879,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       modes.add(ModeOption(
         value: ClimateMode.heat,
         icon: MdiIcons.fireCircle,
-        label: 'Heat',
+        label: localizations.thermostat_mode_heat,
         color: ModeSelectorColor.warning,
       ));
     }
@@ -1865,14 +1888,14 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       modes.add(ModeOption(
         value: ClimateMode.cool,
         icon: MdiIcons.snowflake,
-        label: 'Cool',
+        label: localizations.thermostat_mode_cool,
         color: ModeSelectorColor.info,
       ));
     }
     modes.add(ModeOption(
       value: ClimateMode.off,
       icon: Icons.power_settings_new,
-      label: 'Off',
+      label: localizations.thermostat_mode_off,
       color: ModeSelectorColor.neutral,
     ));
 
@@ -1958,8 +1981,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   }
 
   Widget _buildModeSelector(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     return ModeSelector<ClimateMode>(
-      modes: _getClimateModeOptions(),
+      modes: _getClimateModeOptions(localizations),
       selectedValue: _state.mode,
       onChanged: _setMode,
       orientation: ModeSelectorOrientation.horizontal,
@@ -2043,6 +2067,19 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     );
   }
 
+  /// Translates sensor label based on type
+  String _translateSensorLabel(
+      AppLocalizations localizations, ClimateSensor sensor) {
+    switch (sensor.type) {
+      case 'temp':
+        return localizations.device_temperature;
+      case 'humidity':
+        return localizations.device_humidity;
+      default:
+        return sensor.label;
+    }
+  }
+
   /// Builds a single sensor tile widget using UniversalTile.
   Widget _buildSensorTile(
     BuildContext context,
@@ -2052,12 +2089,13 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     bool showInactiveBorder = false,
   }) {
     final sensorColor = _getSensorColor(context, sensor.type);
+    final localizations = AppLocalizations.of(context)!;
 
     return UniversalTile(
       layout: layout,
       icon: sensor.icon,
       name: sensor.value,
-      status: sensor.label,
+      status: _translateSensorLabel(localizations, sensor),
       iconAccentColor: sensorColor,
       statusFontSize: statusFontSize,
       showDoubleBorder: false,
@@ -2087,7 +2125,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         useHorizontalLayout ? TileLayout.horizontal : TileLayout.vertical;
 
     final items =
-        _buildAuxiliaryItems(tileLayout, showInactiveBorder: showInactiveBorder);
+        _buildAuxiliaryItems(context, tileLayout, showInactiveBorder: showInactiveBorder);
 
     return GridView.builder(
       shrinkWrap: true,
@@ -2103,10 +2141,37 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     );
   }
 
+  /// Translates device status string to localized version
+  String _translateDeviceStatus(
+      AppLocalizations localizations, String? status, bool isActive) {
+    if (status == null) {
+      return isActive ? localizations.on_state_on : localizations.on_state_off;
+    }
+    switch (status) {
+      case 'Off':
+        return localizations.on_state_off;
+      case 'On':
+        return localizations.on_state_on;
+      case 'Heating':
+        return localizations.thermostat_state_heating;
+      case 'Cooling':
+        return localizations.thermostat_state_cooling;
+      case 'Standby':
+        return localizations.device_status_standby;
+      case 'Active':
+        return localizations.device_status_active;
+      case 'Inactive':
+        return localizations.device_status_inactive;
+      default:
+        return status;
+    }
+  }
+
   /// Builds list of auxiliary tile widgets
-  List<Widget> _buildAuxiliaryItems(TileLayout layout,
+  List<Widget> _buildAuxiliaryItems(BuildContext context, TileLayout layout,
       {bool showInactiveBorder = false}) {
     final items = <Widget>[];
+    final localizations = AppLocalizations.of(context)!;
 
     // Show all auxiliary devices individually
     for (final device in _state.auxiliaryDevices) {
@@ -2114,7 +2179,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         layout: layout,
         icon: device.icon,
         name: device.name,
-        status: device.status ?? (device.isActive ? 'On' : 'Off'),
+        status: _translateDeviceStatus(localizations, device.status, device.isActive),
         isActive: device.isActive,
         showDoubleBorder: false,
         showWarningBadge: false,

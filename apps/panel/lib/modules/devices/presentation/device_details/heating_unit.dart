@@ -1,15 +1,23 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
+import 'package:fastybird_smart_panel/core/widgets/info_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/heating_unit.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -36,31 +44,57 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
   final DevicesService _devicesService = locator<DevicesService>();
+  DeviceControlStateService? _deviceControlStateService;
 
-  // Local state for optimistic UI updates
-  HeaterMode? _pendingMode;
-  double? _pendingSetpoint;
+  // Debounce timer for setpoint changes to avoid flooding backend
+  Timer? _setpointDebounceTimer;
+  static const _setpointDebounceDuration = Duration(milliseconds: 300);
 
-  static const double _minSetpoint = 16.0;
-  static const double _maxSetpoint = 30.0;
+  // Grace period after mode changes to prevent control state listener from
+  // causing flickering
+  DateTime? _modeChangeTime;
+  static const _modeChangeGracePeriod = Duration(milliseconds: 500);
 
   @override
   void initState() {
     super.initState();
     _devicesService.addListener(_onDeviceChanged);
+
+    try {
+      _deviceControlStateService = locator<DeviceControlStateService>();
+      _deviceControlStateService?.addListener(_onControlStateChanged);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+            '[HeatingUnitDeviceDetail] Failed to get DeviceControlStateService: $e');
+      }
+    }
   }
 
   @override
   void dispose() {
+    _setpointDebounceTimer?.cancel();
     _devicesService.removeListener(_onDeviceChanged);
+    _deviceControlStateService?.removeListener(_onControlStateChanged);
     super.dispose();
   }
 
   void _onDeviceChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _onControlStateChanged() {
     if (!mounted) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() {});
-    });
+
+    // Skip rebuilds during grace period after mode changes
+    if (_modeChangeTime != null &&
+        DateTime.now().difference(_modeChangeTime!) < _modeChangeGracePeriod) {
+      return;
+    }
+
+    setState(() {});
   }
 
   HeatingUnitDeviceView get _device {
@@ -74,6 +108,28 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   double _scale(double value) =>
       _screenService.scale(value, density: _visualDensityService.density);
 
+  Future<void> _setPropertyValue(
+    ChannelPropertyView? property,
+    dynamic value,
+  ) async {
+    if (property == null) return;
+
+    final localizations = AppLocalizations.of(context);
+
+    try {
+      bool res = await _devicesService.setPropertyValue(property.id, value);
+
+      if (!res && mounted && localizations != null) {
+        AlertBar.showError(context, message: localizations.action_failed);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      if (localizations != null) {
+        AlertBar.showError(context, message: localizations.action_failed);
+      }
+    }
+  }
+
   // --------------------------------------------------------------------------
   // STATE HELPERS
   // --------------------------------------------------------------------------
@@ -82,12 +138,29 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
 
   bool get _isActive => _isHeating;
 
+  /// Determine current mode from device state
+  /// Mode is derived from heater.on property
   HeaterMode get _currentMode {
-    if (_pendingMode != null) {
-      return _pendingMode!;
+    final heaterOnProp = _device.heaterChannel.onProp;
+    final controlState = _deviceControlStateService;
+
+    // Check for pending heater state
+    bool heaterOn = _device.heaterChannel.on;
+    if (controlState != null &&
+        controlState.isLocked(
+            _device.id, _device.heaterChannel.id, heaterOnProp.id)) {
+      final desiredValue = controlState.getDesiredValue(
+        _device.id,
+        _device.heaterChannel.id,
+        heaterOnProp.id,
+      );
+      if (desiredValue is bool) {
+        heaterOn = desiredValue;
+      }
     }
-    // Determine mode from device state
-    if (_isHeating) {
+
+    // Determine mode from on state
+    if (heaterOn) {
       return HeaterMode.heat;
     }
     return HeaterMode.off;
@@ -95,10 +168,28 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
 
   double get _currentTemperature => _device.temperatureChannel.temperature;
 
+  double get _minSetpoint => _device.heaterChannel.minTemperature;
+
+  double get _maxSetpoint => _device.heaterChannel.maxTemperature;
+
   double get _targetSetpoint {
-    if (_pendingSetpoint != null) {
-      return _pendingSetpoint!;
+    final setpointProp = _device.heaterChannel.temperatureProp;
+    final controlState = _deviceControlStateService;
+
+    // Check for pending/optimistic value first
+    if (controlState != null &&
+        controlState.isLocked(
+            _device.id, _device.heaterChannel.id, setpointProp.id)) {
+      final desiredValue = controlState.getDesiredValue(
+        _device.id,
+        _device.heaterChannel.id,
+        setpointProp.id,
+      );
+      if (desiredValue is num) {
+        return desiredValue.toDouble();
+      }
     }
+
     return _device.heaterChannel.temperature;
   }
 
@@ -106,22 +197,91 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   // MODE AND SETPOINT HANDLERS
   // --------------------------------------------------------------------------
 
-  void _onModeChanged(HeaterMode mode) {
-    setState(() {
-      _pendingMode = mode;
-    });
+  void _onModeChanged(HeaterMode mode) async {
+    // Set grace period to prevent control state listener from causing flickering
+    _modeChangeTime = DateTime.now();
 
-    // TODO: Send mode change command to device
-    // For now, just update local state
+    final heaterOnProp = _device.heaterChannel.onProp;
+
+    // Set PENDING state immediately for responsive UI
+    _deviceControlStateService?.setPending(
+      _device.id,
+      _device.heaterChannel.id,
+      heaterOnProp.id,
+      mode == HeaterMode.heat,
+    );
+    setState(() {});
+
+    // Build batch command list
+    final commands = <PropertyCommandItem>[
+      PropertyCommandItem(
+        deviceId: _device.id,
+        channelId: _device.heaterChannel.id,
+        propertyId: heaterOnProp.id,
+        value: mode == HeaterMode.heat,
+      ),
+    ];
+
+    // Send command
+    final localizations = AppLocalizations.of(context);
+
+    try {
+      bool res = await _devicesService.setMultiplePropertyValues(
+        properties: commands,
+      );
+
+      if (!res && mounted && localizations != null) {
+        AlertBar.showError(context, message: localizations.action_failed);
+      }
+    } catch (e) {
+      if (mounted && localizations != null) {
+        AlertBar.showError(context, message: localizations.action_failed);
+      }
+    }
+
+    // Transition to settling state
+    _deviceControlStateService?.setSettling(
+      _device.id,
+      _device.heaterChannel.id,
+      heaterOnProp.id,
+    );
   }
 
   void _onSetpointChanged(double value) {
-    setState(() {
-      _pendingSetpoint = value;
-    });
+    final setpointProp = _device.heaterChannel.temperatureProp;
 
-    // TODO: Send setpoint change command to device
-    // For now, just update local state
+    // Round to step value (0.5)
+    final steppedValue = (value * 2).round() / 2;
+
+    // Clamp to valid range
+    final clampedValue = steppedValue.clamp(_minSetpoint, _maxSetpoint);
+
+    // Set PENDING state immediately for responsive UI
+    _deviceControlStateService?.setPending(
+      _device.id,
+      _device.heaterChannel.id,
+      setpointProp.id,
+      clampedValue,
+    );
+    setState(() {});
+
+    // Cancel any pending debounce timer
+    _setpointDebounceTimer?.cancel();
+
+    // Debounce the API call to avoid flooding backend
+    _setpointDebounceTimer = Timer(_setpointDebounceDuration, () async {
+      if (!mounted) return;
+
+      await _setPropertyValue(setpointProp, clampedValue);
+
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          _device.heaterChannel.id,
+          setpointProp.id,
+        );
+      }
+    });
   }
 
   // --------------------------------------------------------------------------
@@ -174,18 +334,18 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     }
   }
 
-  List<ModeOption<HeaterMode>> _getModeOptions() {
+  List<ModeOption<HeaterMode>> _getModeOptions(AppLocalizations localizations) {
     return [
       ModeOption(
         value: HeaterMode.heat,
         icon: MdiIcons.fireCircle,
-        label: 'Heat',
+        label: localizations.thermostat_mode_heat,
         color: ModeSelectorColor.warning,
       ),
       ModeOption(
         value: HeaterMode.off,
         icon: MdiIcons.power,
-        label: 'Off',
+        label: localizations.thermostat_mode_off,
         color: ModeSelectorColor.neutral,
       ),
     ];
@@ -268,10 +428,17 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   // --------------------------------------------------------------------------
 
   Widget _buildPortraitLayout(BuildContext context, bool isDark) {
+    final localizations = AppLocalizations.of(context)!;
+    final modeColor = _getModeColor(isDark);
+
     return SingleChildScrollView(
       padding: AppSpacings.paddingLg,
-      child: Center(
-        child: _buildPrimaryControlCard(context, isDark, dialSize: _scale(200)),
+      child: Column(
+        children: [
+          _buildPrimaryControlCard(context, isDark, dialSize: _scale(200)),
+          AppSpacings.spacingMdVertical,
+          _buildStatusSection(localizations, isDark, modeColor),
+        ],
       ),
     );
   }
@@ -281,10 +448,12 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   // --------------------------------------------------------------------------
 
   Widget _buildLandscapeLayout(BuildContext context, bool isDark) {
+    final localizations = AppLocalizations.of(context)!;
     final borderColor =
         isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
     final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.light;
     final isLargeScreen = _screenService.isLargeScreen;
+    final modeColor = _getModeColor(isDark);
 
     // Large screen: equal columns
     if (isLargeScreen) {
@@ -304,16 +473,9 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
             flex: 1,
             child: Container(
               color: cardColor,
-              child: Center(
-                child: Text(
-                  _device.name,
-                  style: TextStyle(
-                    color: isDark
-                        ? AppTextColorDark.secondary
-                        : AppTextColorLight.secondary,
-                    fontSize: AppFontSize.base,
-                  ),
-                ),
+              padding: AppSpacings.paddingLg,
+              child: SingleChildScrollView(
+                child: _buildStatusSection(localizations, isDark, modeColor),
               ),
             ),
           ),
@@ -337,20 +499,110 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
           flex: 1,
           child: Container(
             color: cardColor,
-            child: Center(
-              child: Text(
-                _device.name,
-                style: TextStyle(
-                  color: isDark
-                      ? AppTextColorDark.secondary
-                      : AppTextColorLight.secondary,
-                  fontSize: AppFontSize.base,
-                ),
-              ),
+            padding: AppSpacings.paddingLg,
+            child: SingleChildScrollView(
+              child: _buildStatusSection(localizations, isDark, modeColor),
             ),
           ),
         ),
       ],
+    );
+  }
+
+  // --------------------------------------------------------------------------
+  // STATUS SECTION
+  // --------------------------------------------------------------------------
+
+  Widget _buildStatusSection(
+    AppLocalizations localizations,
+    bool isDark,
+    Color modeColor,
+  ) {
+    final humidityChannel = _device.humidityChannel;
+    final useVerticalLayout = _screenService.isLandscape &&
+        (_screenService.isSmallScreen || _screenService.isMediumScreen);
+
+    // Build info tiles list
+    final infoTiles = <Widget>[];
+
+    // Temperature (always present)
+    infoTiles.add(InfoTile(
+      label: localizations.device_current_temperature,
+      value: NumberFormatUtils.defaultFormat.formatDecimal(
+        _currentTemperature,
+        decimalPlaces: 1,
+      ),
+      unit: '°C',
+      valueColor: modeColor,
+    ));
+
+    // Humidity (optional)
+    if (humidityChannel != null) {
+      infoTiles.add(InfoTile(
+        label: localizations.device_current_humidity,
+        value: NumberFormatUtils.defaultFormat
+            .formatInteger(humidityChannel.humidity),
+        unit: '%',
+      ));
+    }
+
+    if (infoTiles.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (useVerticalLayout)
+          ...infoTiles
+              .expand((tile) => [
+                    SizedBox(width: double.infinity, child: tile),
+                    AppSpacings.spacingSmVertical,
+                  ])
+              .take(infoTiles.length * 2 - 1)
+        else
+          _buildInfoTilesGrid(infoTiles),
+      ],
+    );
+  }
+
+  Widget _buildInfoTilesGrid(List<Widget> tiles) {
+    // Dynamic tiles per row based on total count:
+    // 1 tile: full width, 2 tiles: 2 per row
+    final int tilesPerRow = tiles.length == 1 ? 1 : 2;
+
+    final rows = <Widget>[];
+
+    for (var i = 0; i < tiles.length; i += tilesPerRow) {
+      final rowTiles = tiles.skip(i).take(tilesPerRow).toList();
+
+      // Build row with tiles
+      final rowChildren = <Widget>[];
+      for (var j = 0; j < rowTiles.length; j++) {
+        rowChildren.add(Expanded(child: rowTiles[j]));
+        if (j < rowTiles.length - 1) {
+          rowChildren.add(AppSpacings.spacingSmHorizontal);
+        }
+      }
+
+      // Add empty spacers if row is not full (to maintain consistent sizing)
+      final emptySlots = tilesPerRow - rowTiles.length;
+      for (var j = 0; j < emptySlots; j++) {
+        rowChildren.add(AppSpacings.spacingSmHorizontal);
+        rowChildren.add(const Expanded(child: SizedBox.shrink()));
+      }
+
+      rows.add(Row(children: rowChildren));
+
+      // Add spacing between rows
+      if (i + tilesPerRow < tiles.length) {
+        rows.add(AppSpacings.spacingSmVertical);
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: rows,
     );
   }
 
@@ -367,6 +619,18 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
 
+    // Validate min/max - CircularControlDial asserts maxValue > minValue
+    var minSetpoint = _minSetpoint;
+    var maxSetpoint = _maxSetpoint;
+    if (minSetpoint >= maxSetpoint) {
+      // Use safe defaults if API returns malformed data
+      minSetpoint = 16.0;
+      maxSetpoint = 30.0;
+    }
+
+    // Clamp target to valid range
+    final targetSetpoint = _targetSetpoint.clamp(minSetpoint, maxSetpoint);
+
     return Container(
       padding: AppSpacings.paddingLg,
       decoration: BoxDecoration(
@@ -378,10 +642,10 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
         mainAxisSize: MainAxisSize.min,
         children: [
           CircularControlDial(
-            value: _targetSetpoint,
+            value: targetSetpoint,
             currentValue: _currentTemperature,
-            minValue: _minSetpoint,
-            maxValue: _maxSetpoint,
+            minValue: minSetpoint,
+            maxValue: maxSetpoint,
             step: 0.5,
             size: dialSize,
             accentType: _getDialAccentColor(),
@@ -404,6 +668,18 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
 
+    // Validate min/max - CircularControlDial asserts maxValue > minValue
+    var minSetpoint = _minSetpoint;
+    var maxSetpoint = _maxSetpoint;
+    if (minSetpoint >= maxSetpoint) {
+      // Use safe defaults if API returns malformed data
+      minSetpoint = 16.0;
+      maxSetpoint = 30.0;
+    }
+
+    // Clamp target to valid range
+    final targetSetpoint = _targetSetpoint.clamp(minSetpoint, maxSetpoint);
+
     return Container(
       padding: AppSpacings.paddingLg,
       decoration: BoxDecoration(
@@ -425,10 +701,10 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               CircularControlDial(
-                value: _targetSetpoint,
+                value: targetSetpoint,
                 currentValue: _currentTemperature,
-                minValue: _minSetpoint,
-                maxValue: _maxSetpoint,
+                minValue: minSetpoint,
+                maxValue: maxSetpoint,
                 step: 0.5,
                 size: dialSize,
                 accentType: _getDialAccentColor(),
@@ -453,8 +729,9 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     ModeSelectorOrientation orientation, {
     bool showLabels = true,
   }) {
+    final localizations = AppLocalizations.of(context)!;
     return ModeSelector<HeaterMode>(
-      modes: _getModeOptions(),
+      modes: _getModeOptions(localizations),
       selectedValue: _currentMode,
       onChanged: _onModeChanged,
       orientation: orientation,

@@ -3052,6 +3052,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Other Devices'**
   String get media_other_devices;
+
+  /// Device status - standby (on but not actively working)
+  ///
+  /// In en, this message translates to:
+  /// **'Standby'**
+  String get device_status_standby;
+
+  /// Device status - active
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get device_status_active;
+
+  /// Device status - inactive
+  ///
+  /// In en, this message translates to:
+  /// **'Inactive'**
+  String get device_status_inactive;
+
+  /// Section header for climate devices list
+  ///
+  /// In en, this message translates to:
+  /// **'Climate Devices'**
+  String get climate_devices_section;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

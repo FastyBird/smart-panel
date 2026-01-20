@@ -543,7 +543,8 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     }
   }
 
-  List<ModeOption<ThermostatMode>> _getModeOptions() {
+  List<ModeOption<ThermostatMode>> _getModeOptions(
+      AppLocalizations localizations) {
     final modes = <ModeOption<ThermostatMode>>[];
     final hasHeater = _device.heaterChannel != null;
     final hasCooler = _device.coolerChannel != null;
@@ -552,7 +553,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
       modes.add(ModeOption(
         value: ThermostatMode.heat,
         icon: MdiIcons.fireCircle,
-        label: 'Heat',
+        label: localizations.thermostat_mode_heat,
         color: ModeSelectorColor.warning,
       ));
     }
@@ -561,7 +562,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
       modes.add(ModeOption(
         value: ThermostatMode.cool,
         icon: MdiIcons.snowflake,
-        label: 'Cool',
+        label: localizations.thermostat_mode_cool,
         color: ModeSelectorColor.info,
       ));
     }
@@ -571,7 +572,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     //   modes.add(ModeOption(
     //     value: ThermostatMode.auto,
     //     icon: MdiIcons.autorenew,
-    //     label: 'Auto',
+    //     label: localizations.thermostat_mode_auto,
     //     color: ModeSelectorColor.success,
     //   ));
     // }
@@ -580,7 +581,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     modes.add(ModeOption(
       value: ThermostatMode.off,
       icon: MdiIcons.power,
-      label: 'Off',
+      label: localizations.thermostat_mode_off,
       color: ModeSelectorColor.neutral,
     ));
 
@@ -1006,8 +1007,9 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     ModeSelectorOrientation orientation, {
     bool showLabels = true,
   }) {
+    final localizations = AppLocalizations.of(context)!;
     return ModeSelector<ThermostatMode>(
-      modes: _getModeOptions(),
+      modes: _getModeOptions(localizations),
       selectedValue: _currentMode,
       onChanged: _onModeChanged,
       orientation: orientation,

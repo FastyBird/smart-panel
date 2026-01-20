@@ -476,20 +476,41 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
           }
         } else if (device is HeatingUnitDeviceView) {
           // Heating unit has a required heater channel
+          final heaterOn = device.heaterChannel.on;
           final isHeating = device.heaterChannel.isHeating;
           isActive = isHeating;
-          status = isHeating ? 'Heating' : 'Standby';
+
+          if (!heaterOn) {
+            status = 'Off';
+          } else if (isHeating) {
+            status = 'Heating';
+          } else {
+            status = 'Standby';
+          }
         } else if (device is WaterHeaterDeviceView) {
           // Water heater has a required heater channel
+          final heaterOn = device.heaterChannel.on;
           final isHeating = device.heaterChannel.isHeating;
           isActive = isHeating;
-          status = isHeating ? 'Heating' : 'Standby';
+
+          if (!heaterOn) {
+            status = 'Off';
+          } else if (isHeating) {
+            status = 'Heating';
+          } else {
+            status = 'Standby';
+          }
         } else if (device is AirConditionerDeviceView) {
           // A/C can have both cooler (required) and heater (optional) channels
+          final coolerOn = device.coolerChannel.on;
+          final heaterOn = device.heaterChannel?.on ?? false;
           final isCooling = device.coolerChannel.isCooling;
           final isHeating = device.heaterChannel?.isHeating ?? false;
           isActive = isCooling || isHeating;
-          if (isCooling) {
+
+          if (!coolerOn && !heaterOn) {
+            status = 'Off';
+          } else if (isCooling) {
             status = 'Cooling';
           } else if (isHeating) {
             status = 'Heating';
@@ -854,7 +875,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
       child: Column(
         children: [
           SectionHeader(
-            title: 'Climate Devices',
+            title: AppLocalizations.of(context)!.climate_devices_section,
             icon: MdiIcons.devices,
             count: _state.climateDevices.length,
           ),
@@ -1150,8 +1171,9 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
   }
 
   Widget _buildModeSelector(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     return ModeSelector<ClimateMode>(
-      modes: _getClimateModeOptions(),
+      modes: _getClimateModeOptions(localizations),
       selectedValue: _state.mode,
       onChanged: _setMode,
       orientation: ModeSelectorOrientation.horizontal,
@@ -1159,7 +1181,8 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
     );
   }
 
-  List<ModeOption<ClimateMode>> _getClimateModeOptions() {
+  List<ModeOption<ClimateMode>> _getClimateModeOptions(
+      AppLocalizations localizations) {
     final modes = <ModeOption<ClimateMode>>[];
 
     // TODO: Auto mode requires dual setpoint dial (heating + cooling setpoints)
@@ -1168,7 +1191,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
     //   modes.add(ModeOption(
     //     value: ClimateMode.auto,
     //     icon: MdiIcons.thermometerAuto,
-    //     label: 'Auto',
+    //     label: localizations.thermostat_mode_auto,
     //     color: ModeSelectorColor.success,
     //   ));
     // }
@@ -1177,7 +1200,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
       modes.add(ModeOption(
         value: ClimateMode.heat,
         icon: MdiIcons.fireCircle,
-        label: 'Heat',
+        label: localizations.thermostat_mode_heat,
         color: ModeSelectorColor.warning,
       ));
     }
@@ -1186,14 +1209,14 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
       modes.add(ModeOption(
         value: ClimateMode.cool,
         icon: MdiIcons.snowflake,
-        label: 'Cool',
+        label: localizations.thermostat_mode_cool,
         color: ModeSelectorColor.info,
       ));
     }
     modes.add(ModeOption(
       value: ClimateMode.off,
       icon: Icons.power_settings_new,
-      label: 'Off',
+      label: localizations.thermostat_mode_off,
       color: ModeSelectorColor.neutral,
     ));
 
@@ -1255,8 +1278,9 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
   }
 
   Widget _buildVerticalModeIcons(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     return ModeSelector<ClimateMode>(
-      modes: _getClimateModeOptions(),
+      modes: _getClimateModeOptions(localizations),
       selectedValue: _state.mode,
       onChanged: _setMode,
       orientation: ModeSelectorOrientation.vertical,
@@ -1268,15 +1292,41 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
   // CLIMATE DEVICES
   // --------------------------------------------------------------------------
 
+  String _translateDeviceStatus(
+      AppLocalizations localizations, String? status, bool isActive) {
+    if (status == null) {
+      return isActive
+          ? localizations.device_status_active
+          : localizations.device_status_inactive;
+    }
+    switch (status) {
+      case 'Off':
+        return localizations.on_state_off;
+      case 'Heating':
+        return localizations.thermostat_state_heating;
+      case 'Cooling':
+        return localizations.thermostat_state_cooling;
+      case 'Standby':
+        return localizations.device_status_standby;
+      case 'Active':
+        return localizations.device_status_active;
+      case 'Inactive':
+        return localizations.device_status_inactive;
+      default:
+        return status;
+    }
+  }
+
   Widget _buildDeviceTile(BuildContext context, ClimateDevice device,
       {bool isVertical = true}) {
     final modeColor = _getModeColor(context);
+    final localizations = AppLocalizations.of(context)!;
 
     return UniversalTile(
       layout: isVertical ? TileLayout.vertical : TileLayout.horizontal,
       icon: device.icon,
       name: device.name,
-      status: device.status ?? (device.isActive ? 'Active' : 'Inactive'),
+      status: _translateDeviceStatus(localizations, device.status, device.isActive),
       isActive: device.isActive,
       activeColor: device.isActive ? modeColor : null,
       showDoubleBorder: false,

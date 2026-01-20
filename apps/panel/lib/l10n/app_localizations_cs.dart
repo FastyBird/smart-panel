@@ -1515,4 +1515,16 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get media_other_devices => 'Ostatní zařízení';
+
+  @override
+  String get device_status_standby => 'Pohotovost';
+
+  @override
+  String get device_status_active => 'Aktivní';
+
+  @override
+  String get device_status_inactive => 'Neaktivní';
+
+  @override
+  String get climate_devices_section => 'Klimatizační zařízení';
 }

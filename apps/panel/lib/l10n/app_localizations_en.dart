@@ -1514,4 +1514,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get media_other_devices => 'Other Devices';
+
+  @override
+  String get device_status_standby => 'Standby';
+
+  @override
+  String get device_status_active => 'Active';
+
+  @override
+  String get device_status_inactive => 'Inactive';
+
+  @override
+  String get climate_devices_section => 'Climate Devices';
 }
