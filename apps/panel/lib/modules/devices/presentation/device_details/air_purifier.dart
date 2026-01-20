@@ -261,8 +261,217 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
 
   void _setSpeedLevel(FanSpeedLevelValue level) {
     final fanChannel = _device.fanChannel;
-    if (!fanChannel.hasSpeed || !fanChannel.isSpeedEnum) return;
-    _setPropertyValue(fanChannel.speedProp, level.value);
+    final speedProp = fanChannel.speedProp;
+    if (!fanChannel.hasSpeed || !fanChannel.isSpeedEnum || speedProp == null) return;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      fanChannel.id,
+      speedProp.id,
+      level.value,
+    );
+    setState(() {});
+
+    _setPropertyValue(speedProp, level.value).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          fanChannel.id,
+          speedProp.id,
+        );
+      }
+    });
+  }
+
+  void _setFanPower(bool value) {
+    final fanChannel = _device.fanChannel;
+    final onProp = fanChannel.onProp;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      fanChannel.id,
+      onProp.id,
+      value,
+    );
+    setState(() {});
+
+    _setPropertyValue(onProp, value).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          fanChannel.id,
+          onProp.id,
+        );
+      }
+    });
+  }
+
+  void _setFanMode(FanModeValue mode) {
+    final fanChannel = _device.fanChannel;
+    final modeProp = fanChannel.modeProp;
+    if (!fanChannel.hasMode || modeProp == null) return;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      fanChannel.id,
+      modeProp.id,
+      mode.value,
+    );
+    setState(() {});
+
+    _setPropertyValue(modeProp, mode.value).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          fanChannel.id,
+          modeProp.id,
+        );
+      }
+    });
+  }
+
+  void _setFanSwing(bool value) {
+    final fanChannel = _device.fanChannel;
+    final swingProp = fanChannel.swingProp;
+    if (!fanChannel.hasSwing || swingProp == null) return;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      fanChannel.id,
+      swingProp.id,
+      value,
+    );
+    setState(() {});
+
+    _setPropertyValue(swingProp, value).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          fanChannel.id,
+          swingProp.id,
+        );
+      }
+    });
+  }
+
+  void _setFanDirection(FanDirectionValue direction) {
+    final fanChannel = _device.fanChannel;
+    final directionProp = fanChannel.directionProp;
+    if (!fanChannel.hasDirection || directionProp == null) return;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      fanChannel.id,
+      directionProp.id,
+      direction.value,
+    );
+    setState(() {});
+
+    _setPropertyValue(directionProp, direction.value).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          fanChannel.id,
+          directionProp.id,
+        );
+      }
+    });
+  }
+
+  void _setFanNaturalBreeze(bool value) {
+    final fanChannel = _device.fanChannel;
+    final naturalBreezeProp = fanChannel.naturalBreezeProp;
+    if (!fanChannel.hasNaturalBreeze || naturalBreezeProp == null) return;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      fanChannel.id,
+      naturalBreezeProp.id,
+      value,
+    );
+    setState(() {});
+
+    _setPropertyValue(naturalBreezeProp, value).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          fanChannel.id,
+          naturalBreezeProp.id,
+        );
+      }
+    });
+  }
+
+  void _setFanLocked(bool value) {
+    final fanChannel = _device.fanChannel;
+    final lockedProp = fanChannel.lockedProp;
+    if (!fanChannel.hasLocked || lockedProp == null) return;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      fanChannel.id,
+      lockedProp.id,
+      value,
+    );
+    setState(() {});
+
+    _setPropertyValue(lockedProp, value).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          fanChannel.id,
+          lockedProp.id,
+        );
+      }
+    });
+  }
+
+  void _setFanTimerPreset(FanTimerPresetValue preset) {
+    final fanChannel = _device.fanChannel;
+    final timerProp = fanChannel.timerProp;
+    if (!fanChannel.hasTimer || timerProp == null) return;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      fanChannel.id,
+      timerProp.id,
+      preset.value,
+    );
+    setState(() {});
+
+    _setPropertyValue(timerProp, preset.value).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          fanChannel.id,
+          timerProp.id,
+        );
+      }
+    });
+  }
+
+  void _setFanTimerNumeric(int minutes) {
+    final fanChannel = _device.fanChannel;
+    final timerProp = fanChannel.timerProp;
+    if (!fanChannel.hasTimer || timerProp == null) return;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      fanChannel.id,
+      timerProp.id,
+      minutes,
+    );
+    setState(() {});
+
+    _setPropertyValue(timerProp, minutes).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          fanChannel.id,
+          timerProp.id,
+        );
+      }
+    });
   }
 
   Widget _buildSpeedControl(
@@ -532,10 +741,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             activeBgColor: DeviceColors.airLight9(isDark),
             glowColor: DeviceColors.airLight5(isDark),
             showInfoText: false,
-            onTap: () => _setPropertyValue(
-              _device.fanChannel.onProp,
-              !_device.isOn,
-            ),
+            onTap: () => _setFanPower(!_device.isOn),
           ),
           if (_hasAqiData) ...[
             AppSpacings.spacingMdVertical,
@@ -565,7 +771,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     return ModeSelector<FanModeValue>(
       modes: _getFanModeOptions(localizations),
       selectedValue: selectedMode,
-      onChanged: (mode) => _setPropertyValue(fanChannel.modeProp, mode.value),
+      onChanged: _setFanMode,
       orientation: ModeSelectorOrientation.horizontal,
       iconPlacement: ModeSelectorIconPlacement.left,
       color: ModeSelectorColor.success,
@@ -684,7 +890,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             : ValueSelectorRowLayout.horizontal,
         onChanged: (preset) {
           if (preset != null) {
-            _setPropertyValue(fanChannel.timerProp, preset.value);
+            _setFanTimerPreset(preset);
           }
         },
       );
@@ -708,7 +914,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             : ValueSelectorRowLayout.horizontal,
         onChanged: (minutes) {
           if (minutes != null) {
-            _setPropertyValue(fanChannel.timerProp, minutes);
+            _setFanTimerNumeric(minutes);
           }
         },
       );
@@ -757,10 +963,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
                 glowColor: DeviceColors.airLight5(isDark),
                 showInfoText: false,
                 size: buttonSize,
-                onTap: () => _setPropertyValue(
-                  _device.fanChannel.onProp,
-                  !_device.isOn,
-                ),
+                onTap: () => _setFanPower(!_device.isOn),
               ),
               if (_device.fanChannel.hasMode &&
                   _device.fanChannel.availableModes.isNotEmpty) ...[
@@ -768,10 +971,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
                 ModeSelector<FanModeValue>(
                   modes: _getFanModeOptions(localizations),
                   selectedValue: _mode,
-                  onChanged: (mode) => _setPropertyValue(
-                    _device.fanChannel.modeProp,
-                    mode.value,
-                  ),
+                  onChanged: _setFanMode,
                   orientation: ModeSelectorOrientation.vertical,
                   showLabels: false,
                   color: ModeSelectorColor.success,
@@ -1212,10 +1412,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
                 : localizations.on_state_off,
             isActive: _device.fanChannel.swing,
             activeColor: airColor,
-            onTileTap: () => _setPropertyValue(
-              _device.fanChannel.swingProp,
-              !_device.fanChannel.swing,
-            ),
+            onTileTap: () => _setFanSwing(!_device.fanChannel.swing),
             showGlow: false,
             showDoubleBorder: false,
             showInactiveBorder: true,
@@ -1238,7 +1435,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
               final newDirection = isReversed
                   ? FanDirectionValue.clockwise
                   : FanDirectionValue.counterClockwise;
-              _setPropertyValue(_device.fanChannel.directionProp, newDirection.value);
+              _setFanDirection(newDirection);
             },
             showGlow: false,
             showDoubleBorder: false,
@@ -1257,10 +1454,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
                 : localizations.on_state_off,
             isActive: _device.fanChannel.naturalBreeze,
             activeColor: airColor,
-            onTileTap: () => _setPropertyValue(
-              _device.fanChannel.naturalBreezeProp,
-              !_device.fanChannel.naturalBreeze,
-            ),
+            onTileTap: () => _setFanNaturalBreeze(!_device.fanChannel.naturalBreeze),
             showGlow: false,
             showDoubleBorder: false,
             showInactiveBorder: true,
@@ -1278,10 +1472,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
                 : localizations.thermostat_lock_unlocked,
             isActive: _childLock,
             activeColor: airColor,
-            onTileTap: () => _setPropertyValue(
-              _device.fanChannel.lockedProp,
-              !_childLock,
-            ),
+            onTileTap: () => _setFanLocked(!_childLock),
             showGlow: false,
             showDoubleBorder: false,
             showInactiveBorder: true,

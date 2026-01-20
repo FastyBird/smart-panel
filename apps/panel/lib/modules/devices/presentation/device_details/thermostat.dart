@@ -472,6 +472,29 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     });
   }
 
+  void _setThermostatLocked(bool value) {
+    final lockedProp = _device.thermostatChannel.lockedProp;
+    if (lockedProp == null) return;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      _device.thermostatChannel.id,
+      lockedProp.id,
+      value,
+    );
+    setState(() {});
+
+    _setPropertyValue(lockedProp, value).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          _device.thermostatChannel.id,
+          lockedProp.id,
+        );
+      }
+    });
+  }
+
   // --------------------------------------------------------------------------
   // UI HELPERS
   // --------------------------------------------------------------------------
@@ -822,10 +845,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
                 : localizations.thermostat_lock_unlocked,
             isActive: _device.isThermostatLocked,
             activeColor: modeColor,
-            onTileTap: () => _setPropertyValue(
-              _device.thermostatChannel.lockedProp,
-              !_device.isThermostatLocked,
-            ),
+            onTileTap: () => _setThermostatLocked(!_device.isThermostatLocked),
             showGlow: false,
             showDoubleBorder: false,
             showInactiveBorder: true,

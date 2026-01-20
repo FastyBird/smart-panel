@@ -136,6 +136,23 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
 
     final localizations = AppLocalizations.of(context);
 
+    // Set PENDING state immediately for responsive UI
+    _deviceControlStateService?.setPending(
+      _device.id,
+      channel.id,
+      channel.onProp.id,
+      turnOn,
+    );
+    if (fanChannel != null) {
+      _deviceControlStateService?.setPending(
+        _device.id,
+        fanChannel.id,
+        fanChannel.onProp.id,
+        turnOn,
+      );
+    }
+    setState(() {});
+
     // Build batch command list
     final commands = <PropertyCommandItem>[];
 
@@ -172,6 +189,310 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         AlertBar.showError(context, message: localizations.action_failed);
       }
     }
+
+    // Transition to settling state
+    if (mounted) {
+      _deviceControlStateService?.setSettling(
+        _device.id,
+        channel.id,
+        channel.onProp.id,
+      );
+      if (fanChannel != null) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          fanChannel.id,
+          fanChannel.onProp.id,
+        );
+      }
+    }
+  }
+
+  void _setHumidity(int humidity) {
+    final channel = _humidifierChannel;
+    final humidityProp = channel?.humidityProp;
+    if (channel == null || humidityProp == null) return;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      channel.id,
+      humidityProp.id,
+      humidity,
+    );
+    setState(() {});
+
+    _setPropertyValue(humidityProp, humidity).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          channel.id,
+          humidityProp.id,
+        );
+      }
+    });
+  }
+
+  void _setHumidifierMode(HumidifierModeValue mode) {
+    final channel = _humidifierChannel;
+    final modeProp = channel?.modeProp;
+    if (channel == null || !channel.hasMode || modeProp == null) return;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      channel.id,
+      modeProp.id,
+      mode.value,
+    );
+    setState(() {});
+
+    _setPropertyValue(modeProp, mode.value).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          channel.id,
+          modeProp.id,
+        );
+      }
+    });
+  }
+
+  void _setFanSwing(bool value) {
+    final fanChannel = _device.fanChannel;
+    final swingProp = fanChannel?.swingProp;
+    if (fanChannel == null || !fanChannel.hasSwing || swingProp == null) return;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      fanChannel.id,
+      swingProp.id,
+      value,
+    );
+    setState(() {});
+
+    _setPropertyValue(swingProp, value).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          fanChannel.id,
+          swingProp.id,
+        );
+      }
+    });
+  }
+
+  void _setFanDirection(FanDirectionValue direction) {
+    final fanChannel = _device.fanChannel;
+    final directionProp = fanChannel?.directionProp;
+    if (fanChannel == null || !fanChannel.hasDirection || directionProp == null) return;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      fanChannel.id,
+      directionProp.id,
+      direction.value,
+    );
+    setState(() {});
+
+    _setPropertyValue(directionProp, direction.value).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          fanChannel.id,
+          directionProp.id,
+        );
+      }
+    });
+  }
+
+  void _setFanNaturalBreeze(bool value) {
+    final fanChannel = _device.fanChannel;
+    final naturalBreezeProp = fanChannel?.naturalBreezeProp;
+    if (fanChannel == null || !fanChannel.hasNaturalBreeze || naturalBreezeProp == null) return;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      fanChannel.id,
+      naturalBreezeProp.id,
+      value,
+    );
+    setState(() {});
+
+    _setPropertyValue(naturalBreezeProp, value).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          fanChannel.id,
+          naturalBreezeProp.id,
+        );
+      }
+    });
+  }
+
+  void _setWarmMist(bool value) {
+    final channel = _humidifierChannel;
+    final warmMistProp = channel?.warmMistProp;
+    if (channel == null || !channel.hasWarmMist || warmMistProp == null) return;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      channel.id,
+      warmMistProp.id,
+      value,
+    );
+    setState(() {});
+
+    _setPropertyValue(warmMistProp, value).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          channel.id,
+          warmMistProp.id,
+        );
+      }
+    });
+  }
+
+  void _setHumidifierLocked(bool value) {
+    final channel = _humidifierChannel;
+    final lockedProp = channel?.lockedProp;
+    if (channel == null || !channel.hasLocked || lockedProp == null) return;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      channel.id,
+      lockedProp.id,
+      value,
+    );
+    setState(() {});
+
+    _setPropertyValue(lockedProp, value).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          channel.id,
+          lockedProp.id,
+        );
+      }
+    });
+  }
+
+  void _setMistLevelEnum(HumidifierMistLevelValue level) {
+    final channel = _humidifierChannel;
+    final mistLevelProp = channel?.mistLevelProp;
+    if (channel == null || !channel.hasMistLevel || !channel.isMistLevelEnum || mistLevelProp == null) return;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      channel.id,
+      mistLevelProp.id,
+      level.value,
+    );
+    setState(() {});
+
+    _setPropertyValue(mistLevelProp, level.value).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          channel.id,
+          mistLevelProp.id,
+        );
+      }
+    });
+  }
+
+  void _setFanSpeedLevel(FanSpeedLevelValue level) {
+    final fanChannel = _device.fanChannel;
+    final speedProp = fanChannel?.speedProp;
+    if (fanChannel == null || !fanChannel.hasSpeed || !fanChannel.isSpeedEnum || speedProp == null) return;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      fanChannel.id,
+      speedProp.id,
+      level.value,
+    );
+    setState(() {});
+
+    _setPropertyValue(speedProp, level.value).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          fanChannel.id,
+          speedProp.id,
+        );
+      }
+    });
+  }
+
+  void _setFanMode(FanModeValue mode) {
+    final fanChannel = _device.fanChannel;
+    final modeProp = fanChannel?.modeProp;
+    if (fanChannel == null || !fanChannel.hasMode || modeProp == null) return;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      fanChannel.id,
+      modeProp.id,
+      mode.value,
+    );
+    setState(() {});
+
+    _setPropertyValue(modeProp, mode.value).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          fanChannel.id,
+          modeProp.id,
+        );
+      }
+    });
+  }
+
+  void _setHumidifierTimerPreset(HumidifierTimerPresetValue preset) {
+    final channel = _humidifierChannel;
+    final timerProp = channel?.timerProp;
+    if (channel == null || !channel.hasTimer || timerProp == null) return;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      channel.id,
+      timerProp.id,
+      preset.value,
+    );
+    setState(() {});
+
+    _setPropertyValue(timerProp, preset.value).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          channel.id,
+          timerProp.id,
+        );
+      }
+    });
+  }
+
+  void _setHumidifierTimerNumeric(int seconds) {
+    final channel = _humidifierChannel;
+    final timerProp = channel?.timerProp;
+    if (channel == null || !channel.hasTimer || timerProp == null) return;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      channel.id,
+      timerProp.id,
+      seconds,
+    );
+    setState(() {});
+
+    _setPropertyValue(timerProp, seconds).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          channel.id,
+          timerProp.id,
+        );
+      }
+    });
   }
 
   @override
@@ -460,7 +781,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       majorTickCount: 8,
       onChanged: (v) {
         final newHumidity = (v * 100).round();
-        _setPropertyValue(channel.humidityProp, newHumidity);
+        _setHumidity(newHumidity);
       },
     );
   }
@@ -520,7 +841,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
               ))
           .toList(),
       selectedValue: currentMode,
-      onChanged: (mode) => _setPropertyValue(channel.modeProp, mode.value),
+      onChanged: _setHumidifierMode,
       orientation: ModeSelectorOrientation.horizontal,
       iconPlacement: ModeSelectorIconPlacement.left,
       color: ModeSelectorColor.teal,
@@ -548,7 +869,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
               ))
           .toList(),
       selectedValue: currentMode,
-      onChanged: (mode) => _setPropertyValue(channel.modeProp, mode.value),
+      onChanged: _setHumidifierMode,
       orientation: ModeSelectorOrientation.vertical,
       showLabels: false,
       color: ModeSelectorColor.teal,
@@ -700,10 +1021,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
                 : localizations.on_state_off,
             isActive: fanChannel.swing,
             activeColor: humidityColor,
-            onTileTap: () => _setPropertyValue(
-              fanChannel.swingProp,
-              !fanChannel.swing,
-            ),
+            onTileTap: () => _setFanSwing(!fanChannel.swing),
             showGlow: false,
             showDoubleBorder: false,
             showInactiveBorder: true,
@@ -727,7 +1045,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
                   fanChannel.direction == FanDirectionValue.clockwise
                       ? FanDirectionValue.counterClockwise
                       : FanDirectionValue.clockwise;
-              _setPropertyValue(fanChannel.directionProp, newDirection.value);
+              _setFanDirection(newDirection);
             },
             showGlow: false,
             showDoubleBorder: false,
@@ -746,10 +1064,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
                 : localizations.on_state_off,
             isActive: fanChannel.naturalBreeze,
             activeColor: humidityColor,
-            onTileTap: () => _setPropertyValue(
-              fanChannel.naturalBreezeProp,
-              !fanChannel.naturalBreeze,
-            ),
+            onTileTap: () => _setFanNaturalBreeze(!fanChannel.naturalBreeze),
             showGlow: false,
             showDoubleBorder: false,
             showInactiveBorder: true,
@@ -776,7 +1091,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
             isActive: channel.warmMist,
             activeColor: humidityColor,
             onTileTap: () =>
-                _setPropertyValue(channel.warmMistProp, !channel.warmMist),
+                _setWarmMist(!channel.warmMist),
             showGlow: false,
             showDoubleBorder: false,
             showInactiveBorder: true,
@@ -795,7 +1110,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
             isActive: channel.locked,
             activeColor: humidityColor,
             onTileTap: () =>
-                _setPropertyValue(channel.lockedProp, !channel.locked),
+                _setHumidifierLocked(!channel.locked),
             showGlow: false,
             showDoubleBorder: false,
             showInactiveBorder: true,
@@ -877,7 +1192,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
           : ValueSelectorRowLayout.horizontal,
       onChanged: (level) {
         if (level != null) {
-          _setPropertyValue(channel.mistLevelProp, level.value);
+          _setMistLevelEnum(level);
         }
       },
     );
@@ -1041,7 +1356,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         onChanged: _device.isOn
             ? (level) {
                 if (level != null) {
-                  _setPropertyValue(fanChannel.speedProp, level.value);
+                  _setFanSpeedLevel(level);
                 }
               }
             : null,
@@ -1165,7 +1480,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         onChanged: _device.isOn
             ? (mode) {
                 if (mode != null) {
-                  _setPropertyValue(fanChannel.modeProp, mode.value);
+                  _setFanMode(mode);
                 }
               }
             : null,
@@ -1181,7 +1496,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
               ))
           .toList(),
       selectedValue: currentMode,
-      onChanged: (mode) => _setPropertyValue(fanChannel.modeProp, mode.value),
+      onChanged: _setFanMode,
       orientation: ModeSelectorOrientation.horizontal,
       iconPlacement: ModeSelectorIconPlacement.left,
       color: ModeSelectorColor.teal,
@@ -1319,7 +1634,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
             : ValueSelectorRowLayout.horizontal,
         onChanged: (preset) {
           if (preset != null) {
-            _setPropertyValue(channel.timerProp, preset.value);
+            _setHumidifierTimerPreset(preset);
           }
         },
       );
@@ -1344,7 +1659,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
             : ValueSelectorRowLayout.horizontal,
         onChanged: (seconds) {
           if (seconds != null) {
-            _setPropertyValue(channel.timerProp, seconds);
+            _setHumidifierTimerNumeric(seconds);
           }
         },
       );

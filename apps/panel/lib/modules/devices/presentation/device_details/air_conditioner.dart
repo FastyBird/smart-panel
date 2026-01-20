@@ -553,8 +553,196 @@ class _AirConditionerDeviceDetailState
 
   void _setFanSpeedLevel(FanSpeedLevelValue level) {
     final fanChannel = _device.fanChannel;
-    if (!fanChannel.hasSpeed || !fanChannel.isSpeedEnum) return;
-    _setPropertyValue(fanChannel.speedProp, level.value);
+    final speedProp = fanChannel.speedProp;
+    if (!fanChannel.hasSpeed || !fanChannel.isSpeedEnum || speedProp == null) return;
+
+    // Set PENDING state immediately for responsive UI
+    _deviceControlStateService?.setPending(
+      _device.id,
+      fanChannel.id,
+      speedProp.id,
+      level.value,
+    );
+    setState(() {});
+
+    _setPropertyValue(speedProp, level.value).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          fanChannel.id,
+          speedProp.id,
+        );
+      }
+    });
+  }
+
+  void _setFanMode(FanModeValue mode) {
+    final fanChannel = _device.fanChannel;
+    final modeProp = fanChannel.modeProp;
+    if (!fanChannel.hasMode || modeProp == null) return;
+
+    // Set PENDING state immediately for responsive UI
+    _deviceControlStateService?.setPending(
+      _device.id,
+      fanChannel.id,
+      modeProp.id,
+      mode.value,
+    );
+    setState(() {});
+
+    _setPropertyValue(modeProp, mode.value).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          fanChannel.id,
+          modeProp.id,
+        );
+      }
+    });
+  }
+
+  void _setFanSwing(bool value) {
+    final fanChannel = _device.fanChannel;
+    final swingProp = fanChannel.swingProp;
+    if (!fanChannel.hasSwing || swingProp == null) return;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      fanChannel.id,
+      swingProp.id,
+      value,
+    );
+    setState(() {});
+
+    _setPropertyValue(swingProp, value).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          fanChannel.id,
+          swingProp.id,
+        );
+      }
+    });
+  }
+
+  void _setFanDirection(FanDirectionValue direction) {
+    final fanChannel = _device.fanChannel;
+    final directionProp = fanChannel.directionProp;
+    if (!fanChannel.hasDirection || directionProp == null) return;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      fanChannel.id,
+      directionProp.id,
+      direction.value,
+    );
+    setState(() {});
+
+    _setPropertyValue(directionProp, direction.value).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          fanChannel.id,
+          directionProp.id,
+        );
+      }
+    });
+  }
+
+  void _setFanNaturalBreeze(bool value) {
+    final fanChannel = _device.fanChannel;
+    final naturalBreezeProp = fanChannel.naturalBreezeProp;
+    if (!fanChannel.hasNaturalBreeze || naturalBreezeProp == null) return;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      fanChannel.id,
+      naturalBreezeProp.id,
+      value,
+    );
+    setState(() {});
+
+    _setPropertyValue(naturalBreezeProp, value).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          fanChannel.id,
+          naturalBreezeProp.id,
+        );
+      }
+    });
+  }
+
+  void _setFanLocked(bool value) {
+    final fanChannel = _device.fanChannel;
+    final lockedProp = fanChannel.lockedProp;
+    if (!fanChannel.hasLocked || lockedProp == null) return;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      fanChannel.id,
+      lockedProp.id,
+      value,
+    );
+    setState(() {});
+
+    _setPropertyValue(lockedProp, value).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          fanChannel.id,
+          lockedProp.id,
+        );
+      }
+    });
+  }
+
+  void _setFanTimerPreset(FanTimerPresetValue preset) {
+    final fanChannel = _device.fanChannel;
+    final timerProp = fanChannel.timerProp;
+    if (!fanChannel.hasTimer || timerProp == null) return;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      fanChannel.id,
+      timerProp.id,
+      preset.value,
+    );
+    setState(() {});
+
+    _setPropertyValue(timerProp, preset.value).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          fanChannel.id,
+          timerProp.id,
+        );
+      }
+    });
+  }
+
+  void _setFanTimerNumeric(int minutes) {
+    final fanChannel = _device.fanChannel;
+    final timerProp = fanChannel.timerProp;
+    if (!fanChannel.hasTimer || timerProp == null) return;
+
+    _deviceControlStateService?.setPending(
+      _device.id,
+      fanChannel.id,
+      timerProp.id,
+      minutes,
+    );
+    setState(() {});
+
+    _setPropertyValue(timerProp, minutes).then((_) {
+      if (mounted) {
+        _deviceControlStateService?.setSettling(
+          _device.id,
+          fanChannel.id,
+          timerProp.id,
+        );
+      }
+    });
   }
 
   // --------------------------------------------------------------------------
@@ -1186,7 +1374,7 @@ class _AirConditionerDeviceDetailState
         layout: ValueSelectorRowLayout.compact,
         onChanged: (mode) {
           if (mode != null) {
-            _setPropertyValue(fanChannel.modeProp, mode.value);
+            _setFanMode(mode);
           }
         },
       );
@@ -1201,7 +1389,7 @@ class _AirConditionerDeviceDetailState
         );
       }).toList(),
       selectedValue: selectedMode,
-      onChanged: (mode) => _setPropertyValue(fanChannel.modeProp, mode.value),
+      onChanged: _setFanMode,
       orientation: ModeSelectorOrientation.horizontal,
       iconPlacement: ModeSelectorIconPlacement.left,
       color: ModeSelectorColor.info,
@@ -1360,7 +1548,7 @@ class _AirConditionerDeviceDetailState
             : localizations.on_state_off,
         isActive: fanChannel.swing,
         activeColor: modeColor,
-        onTileTap: () => _setPropertyValue(fanChannel.swingProp, !fanChannel.swing),
+        onTileTap: () => _setFanSwing(!fanChannel.swing),
         showGlow: false,
         showDoubleBorder: false,
         showInactiveBorder: true,
@@ -1384,7 +1572,7 @@ class _AirConditionerDeviceDetailState
           final newDirection = isReversed
               ? FanDirectionValue.clockwise
               : FanDirectionValue.counterClockwise;
-          _setPropertyValue(fanChannel.directionProp, newDirection.value);
+          _setFanDirection(newDirection);
         },
         showGlow: false,
         showDoubleBorder: false,
@@ -1404,7 +1592,7 @@ class _AirConditionerDeviceDetailState
             : localizations.on_state_off,
         isActive: fanChannel.naturalBreeze,
         activeColor: modeColor,
-        onTileTap: () => _setPropertyValue(fanChannel.naturalBreezeProp, !fanChannel.naturalBreeze),
+        onTileTap: () => _setFanNaturalBreeze(!fanChannel.naturalBreeze),
         showGlow: false,
         showDoubleBorder: false,
         showInactiveBorder: true,
@@ -1423,7 +1611,7 @@ class _AirConditionerDeviceDetailState
             : localizations.thermostat_lock_unlocked,
         isActive: fanChannel.locked,
         activeColor: modeColor,
-        onTileTap: () => _setPropertyValue(fanChannel.lockedProp, !fanChannel.locked),
+        onTileTap: () => _setFanLocked(!fanChannel.locked),
         showGlow: false,
         showDoubleBorder: false,
         showInactiveBorder: true,
@@ -1471,7 +1659,7 @@ class _AirConditionerDeviceDetailState
             : ValueSelectorRowLayout.horizontal,
         onChanged: (preset) {
           if (preset != null) {
-            _setPropertyValue(fanChannel.timerProp, preset.value);
+            _setFanTimerPreset(preset);
           }
         },
       );
@@ -1494,7 +1682,7 @@ class _AirConditionerDeviceDetailState
             : ValueSelectorRowLayout.horizontal,
         onChanged: (minutes) {
           if (minutes != null) {
-            _setPropertyValue(fanChannel.timerProp, minutes);
+            _setFanTimerNumeric(minutes);
           }
         },
       );
