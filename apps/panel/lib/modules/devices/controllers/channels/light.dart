@@ -49,8 +49,18 @@ class LightChannelController {
     return channel.on;
   }
 
-  /// Brightness level (optimistic-aware).
+  /// Brightness level (optimistic-aware, supports group API).
   int get brightness {
+    // First check group API (used by setColorHSV)
+    final groupValue = _controlState.getGroupPropertyValue(
+      deviceId,
+      colorGroupId,
+      channel.id,
+      channel.brightnessProp?.id ?? '',
+    );
+    if (groupValue is num) return groupValue.toInt();
+
+    // Then check single property API
     final prop = channel.brightnessProp;
     if (prop != null &&
         _controlState.isLocked(deviceId, channel.id, prop.id)) {

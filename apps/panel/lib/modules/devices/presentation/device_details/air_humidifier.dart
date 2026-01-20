@@ -209,17 +209,36 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         properties: commands,
       );
 
-      if (!res && mounted && localizations != null) {
-        AlertBar.showError(context, message: localizations.action_failed);
+      if (!res) {
+        // API returned failure - clear pending state and show error
+        if (mounted) {
+          _deviceControlStateService?.clear(_device.id, channel.id, channel.onProp.id);
+          if (fanChannel != null) {
+            _deviceControlStateService?.clear(_device.id, fanChannel.id, fanChannel.onProp.id);
+          }
+          if (localizations != null) {
+            AlertBar.showError(context, message: localizations.action_failed);
+          }
+          setState(() {});
+        }
+        return;
       }
     } catch (e) {
-      if (!mounted) return;
-      if (localizations != null) {
-        AlertBar.showError(context, message: localizations.action_failed);
+      // Exception - clear pending state and show error
+      if (mounted) {
+        _deviceControlStateService?.clear(_device.id, channel.id, channel.onProp.id);
+        if (fanChannel != null) {
+          _deviceControlStateService?.clear(_device.id, fanChannel.id, fanChannel.onProp.id);
+        }
+        if (localizations != null) {
+          AlertBar.showError(context, message: localizations.action_failed);
+        }
+        setState(() {});
       }
+      return;
     }
 
-    // Transition to settling state
+    // Transition to settling state on success
     if (mounted) {
       _deviceControlStateService?.setSettling(
         _device.id,
