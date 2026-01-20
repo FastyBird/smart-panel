@@ -24,7 +24,6 @@ import 'package:fastybird_smart_panel/modules/devices/utils/fan_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/humidifier_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/humidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_humidifier.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -606,7 +605,6 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     if (availableModes.isEmpty) return const SizedBox.shrink();
 
     final currentMode = channel.mode;
-    if (currentMode == null) return const SizedBox.shrink();
 
     return ModeSelector<HumidifierModeValue>(
       modes: availableModes
@@ -634,7 +632,6 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     if (availableModes.isEmpty) return const SizedBox.shrink();
 
     final currentMode = channel.mode;
-    if (currentMode == null) return const SizedBox.shrink();
 
     return ModeSelector<HumidifierModeValue>(
       modes: availableModes

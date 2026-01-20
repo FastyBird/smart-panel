@@ -590,7 +590,6 @@ class _AirDehumidifierDeviceDetailState
     if (availableModes.isEmpty) return const SizedBox.shrink();
 
     final currentMode = channel.mode;
-    if (currentMode == null) return const SizedBox.shrink();
 
     return ModeSelector<DehumidifierModeValue>(
       modes: availableModes
@@ -618,7 +617,6 @@ class _AirDehumidifierDeviceDetailState
     if (availableModes.isEmpty) return const SizedBox.shrink();
 
     final currentMode = channel.mode;
-    if (currentMode == null) return const SizedBox.shrink();
 
     return ModeSelector<DehumidifierModeValue>(
       modes: availableModes
