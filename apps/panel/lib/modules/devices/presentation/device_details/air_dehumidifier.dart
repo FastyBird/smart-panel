@@ -15,6 +15,7 @@ import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/controllers/devices/air_dehumidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
@@ -50,6 +51,7 @@ class _AirDehumidifierDeviceDetailState
       locator<VisualDensityService>();
   final DevicesService _devicesService = locator<DevicesService>();
   DeviceControlStateService? _deviceControlStateService;
+  AirDehumidifierDeviceController? _controller;
 
   // Debounce timer for speed slider to avoid flooding backend
   Timer? _speedDebounceTimer;
@@ -63,10 +65,36 @@ class _AirDehumidifierDeviceDetailState
     try {
       _deviceControlStateService = locator<DeviceControlStateService>();
       _deviceControlStateService?.addListener(_onControlStateChanged);
+      _initController();
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[AirDehumidifierDeviceDetail] Failed to get DeviceControlStateService: $e');
       }
+    }
+  }
+
+  void _initController() {
+    final controlState = _deviceControlStateService;
+    if (controlState != null) {
+      _controller = AirDehumidifierDeviceController(
+        device: _device,
+        controlState: controlState,
+        devicesService: _devicesService,
+        onError: _onControllerError,
+      );
+    }
+  }
+
+  void _onControllerError(String propertyId, Object error) {
+    if (kDebugMode) {
+      debugPrint('[AirDehumidifierDeviceDetail] Controller error for $propertyId: $error');
+    }
+    final localizations = AppLocalizations.of(context);
+    if (mounted && localizations != null) {
+      AlertBar.showError(context, message: localizations.action_failed);
+    }
+    if (mounted) {
+      setState(() {});
     }
   }
 
@@ -80,6 +108,7 @@ class _AirDehumidifierDeviceDetailState
 
   void _onDeviceChanged() {
     if (mounted) {
+      _initController();
       setState(() {});
     }
   }

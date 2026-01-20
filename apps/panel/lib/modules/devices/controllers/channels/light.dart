@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:fastybird_smart_panel/core/utils/color.dart';
+import 'package:fastybird_smart_panel/modules/devices/controllers/channels/fan.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/control_state.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
@@ -12,11 +13,13 @@ import 'package:fastybird_smart_panel/modules/devices/views/channels/light.dart'
 /// - Optimistic-aware getters that return desired values when commands are pending
 /// - Command methods that manage the optimistic UI state machine
 /// - Group API for color properties (RGB/HSV)
+/// - Error handling with automatic state rollback
 class LightChannelController {
   final String deviceId;
   final LightChannelView channel;
   final DeviceControlStateService _controlState;
   final DevicesService _devicesService;
+  final ControllerErrorCallback? _onError;
 
   /// Group ID for color properties (RGB or HSV).
   static const String colorGroupId = 'color';
@@ -26,8 +29,10 @@ class LightChannelController {
     required this.channel,
     required DeviceControlStateService controlState,
     required DevicesService devicesService,
+    ControllerErrorCallback? onError,
   })  : _controlState = controlState,
-        _devicesService = devicesService;
+        _devicesService = devicesService,
+        _onError = onError;
 
   // ===========================================================================
   // OPTIMISTIC-AWARE GETTERS
@@ -237,8 +242,16 @@ class LightChannelController {
 
     _controlState.setPending(deviceId, channel.id, prop.id, value);
 
-    _devicesService.setPropertyValue(prop.id, value).then((_) {
-      _controlState.setSettling(deviceId, channel.id, prop.id);
+    _devicesService.setPropertyValue(prop.id, value).then((success) {
+      if (success) {
+        _controlState.setSettling(deviceId, channel.id, prop.id);
+      } else {
+        _controlState.clear(deviceId, channel.id, prop.id);
+        _onError?.call(prop.id, Exception('Failed to set power'));
+      }
+    }).catchError((error) {
+      _controlState.clear(deviceId, channel.id, prop.id);
+      _onError?.call(prop.id, error);
     });
   }
 
@@ -254,8 +267,16 @@ class LightChannelController {
 
     _controlState.setPending(deviceId, channel.id, prop.id, value);
 
-    _devicesService.setPropertyValue(prop.id, value).then((_) {
-      _controlState.setSettling(deviceId, channel.id, prop.id);
+    _devicesService.setPropertyValue(prop.id, value).then((success) {
+      if (success) {
+        _controlState.setSettling(deviceId, channel.id, prop.id);
+      } else {
+        _controlState.clear(deviceId, channel.id, prop.id);
+        _onError?.call(prop.id, Exception('Failed to set brightness'));
+      }
+    }).catchError((error) {
+      _controlState.clear(deviceId, channel.id, prop.id);
+      _onError?.call(prop.id, error);
     });
   }
 
@@ -266,8 +287,16 @@ class LightChannelController {
 
     _controlState.setPending(deviceId, channel.id, prop.id, value);
 
-    _devicesService.setPropertyValue(prop.id, value).then((_) {
-      _controlState.setSettling(deviceId, channel.id, prop.id);
+    _devicesService.setPropertyValue(prop.id, value).then((success) {
+      if (success) {
+        _controlState.setSettling(deviceId, channel.id, prop.id);
+      } else {
+        _controlState.clear(deviceId, channel.id, prop.id);
+        _onError?.call(prop.id, Exception('Failed to set color white'));
+      }
+    }).catchError((error) {
+      _controlState.clear(deviceId, channel.id, prop.id);
+      _onError?.call(prop.id, error);
     });
   }
 
@@ -305,8 +334,16 @@ class LightChannelController {
       _devicesService.setPropertyValue(redProp.id, red),
       _devicesService.setPropertyValue(greenProp.id, green),
       _devicesService.setPropertyValue(blueProp.id, blue),
-    ]).then((_) {
-      _controlState.setGroupSettling(deviceId, colorGroupId);
+    ]).then((results) {
+      if (results.every((success) => success)) {
+        _controlState.setGroupSettling(deviceId, colorGroupId);
+      } else {
+        _controlState.clearGroup(deviceId, colorGroupId);
+        _onError?.call(redProp.id, Exception('Failed to set RGB color'));
+      }
+    }).catchError((error) {
+      _controlState.clearGroup(deviceId, colorGroupId);
+      _onError?.call(redProp.id, error);
     });
   }
 
@@ -318,8 +355,10 @@ class LightChannelController {
 
     final List<PropertyConfig> properties = [];
     final List<Future<bool>> futures = [];
+    String? firstPropId;
 
     if (hueProp != null) {
+      firstPropId ??= hueProp.id;
       properties.add(PropertyConfig(
         channelId: channel.id,
         propertyId: hueProp.id,
@@ -329,6 +368,7 @@ class LightChannelController {
     }
 
     if (satProp != null) {
+      firstPropId ??= satProp.id;
       properties.add(PropertyConfig(
         channelId: channel.id,
         propertyId: satProp.id,
@@ -338,6 +378,7 @@ class LightChannelController {
     }
 
     if (brightProp != null) {
+      firstPropId ??= brightProp.id;
       properties.add(PropertyConfig(
         channelId: channel.id,
         propertyId: brightProp.id,
@@ -350,8 +391,16 @@ class LightChannelController {
 
     _controlState.setGroupPending(deviceId, colorGroupId, properties);
 
-    Future.wait(futures).then((_) {
-      _controlState.setGroupSettling(deviceId, colorGroupId);
+    Future.wait(futures).then((results) {
+      if (results.every((success) => success)) {
+        _controlState.setGroupSettling(deviceId, colorGroupId);
+      } else {
+        _controlState.clearGroup(deviceId, colorGroupId);
+        _onError?.call(firstPropId!, Exception('Failed to set HSV color'));
+      }
+    }).catchError((error) {
+      _controlState.clearGroup(deviceId, colorGroupId);
+      _onError?.call(firstPropId!, error);
     });
   }
 
@@ -360,7 +409,12 @@ class LightChannelController {
     if (channel.hasColorRed &&
         channel.hasColorGreen &&
         channel.hasColorBlue) {
-      setColorRGB(value.r.toInt(), value.g.toInt(), value.b.toInt());
+      // Convert normalized 0.0-1.0 values to 0-255 integers
+      setColorRGB(
+        (value.r * 255).round(),
+        (value.g * 255).round(),
+        (value.b * 255).round(),
+      );
     } else if (channel.hasHue && channel.hasSaturation) {
       final hsv = ColorUtils.toHSV(value);
       setColorHSV(hsv.hue, hsv.saturation.toInt(), hsv.value.toInt());

@@ -3,19 +3,50 @@ import 'package:fastybird_smart_panel/modules/devices/services/device_control_st
 import 'package:fastybird_smart_panel/modules/devices/views/channels/fan.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 
+/// Callback for handling command errors in controllers.
+///
+/// Called when a command fails, allowing the UI to show error feedback.
+/// The [propertyId] identifies which property failed, and [error] contains
+/// the error details (typically an Exception or the original error object).
+///
+/// Example:
+/// ```dart
+/// onError: (propertyId, error) {
+///   ScaffoldMessenger.of(context).showSnackBar(
+///     SnackBar(content: Text('Failed to update device')),
+///   );
+/// }
+/// ```
+typedef ControllerErrorCallback = void Function(String propertyId, Object error);
+
 /// Controller for fan channel with optimistic UI support.
 ///
 /// Wraps [FanChannelView] and provides:
 /// - Optimistic-aware getters that return desired values when commands are pending
 /// - Command methods that manage the optimistic UI state machine
+/// - Error handling with automatic state rollback
 ///
-/// Usage:
+/// ## Optimistic UI Pattern
+///
+/// Controllers implement the following state flow for each command:
+///
+/// 1. **Pending**: Immediately show the desired value in UI
+/// 2. **API Call**: Send the command to the backend
+/// 3. **Success**: Transition to "settling" state, wait for actual value update
+/// 4. **Failure**: Rollback to original value and notify via [onError]
+///
+/// This ensures users see instant feedback while maintaining data consistency.
+///
+/// ## Usage
+///
 /// ```dart
+/// // Create controller with error callback
 /// final controller = FanChannelController(
 ///   deviceId: device.id,
 ///   channel: device.fanChannel,
 ///   controlState: deviceControlStateService,
 ///   devicesService: devicesService,
+///   onError: (propertyId, error) => showError('Failed to update'),
 /// );
 ///
 /// // Read values (returns optimistic value when locked)
@@ -23,20 +54,32 @@ import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.d
 ///
 /// // Execute commands (automatically handles optimistic UI)
 /// controller.setPower(true);
+/// controller.togglePower();
 /// ```
+///
+/// ## Error Handling
+///
+/// When a command fails (API returns false or throws), the controller:
+/// 1. Calls `_controlState.clear()` to rollback the optimistic state
+/// 2. Invokes the [onError] callback if provided
+///
+/// This ensures the UI reflects the actual device state after failures.
 class FanChannelController {
   final String deviceId;
   final FanChannelView channel;
   final DeviceControlStateService _controlState;
   final DevicesService _devicesService;
+  final ControllerErrorCallback? _onError;
 
   FanChannelController({
     required this.deviceId,
     required this.channel,
     required DeviceControlStateService controlState,
     required DevicesService devicesService,
+    ControllerErrorCallback? onError,
   })  : _controlState = controlState,
-        _devicesService = devicesService;
+        _devicesService = devicesService,
+        _onError = onError;
 
   // ===========================================================================
   // OPTIMISTIC-AWARE GETTERS
@@ -206,8 +249,16 @@ class FanChannelController {
 
     _controlState.setPending(deviceId, channel.id, prop.id, value);
 
-    _devicesService.setPropertyValue(prop.id, value).then((_) {
-      _controlState.setSettling(deviceId, channel.id, prop.id);
+    _devicesService.setPropertyValue(prop.id, value).then((success) {
+      if (success) {
+        _controlState.setSettling(deviceId, channel.id, prop.id);
+      } else {
+        _controlState.clear(deviceId, channel.id, prop.id);
+        _onError?.call(prop.id, Exception('Failed to set power'));
+      }
+    }).catchError((error) {
+      _controlState.clear(deviceId, channel.id, prop.id);
+      _onError?.call(prop.id, error);
     });
   }
 
@@ -223,8 +274,16 @@ class FanChannelController {
 
     _controlState.setPending(deviceId, channel.id, prop.id, value);
 
-    _devicesService.setPropertyValue(prop.id, value).then((_) {
-      _controlState.setSettling(deviceId, channel.id, prop.id);
+    _devicesService.setPropertyValue(prop.id, value).then((success) {
+      if (success) {
+        _controlState.setSettling(deviceId, channel.id, prop.id);
+      } else {
+        _controlState.clear(deviceId, channel.id, prop.id);
+        _onError?.call(prop.id, Exception('Failed to set swing'));
+      }
+    }).catchError((error) {
+      _controlState.clear(deviceId, channel.id, prop.id);
+      _onError?.call(prop.id, error);
     });
   }
 
@@ -235,8 +294,16 @@ class FanChannelController {
 
     _controlState.setPending(deviceId, channel.id, prop.id, value);
 
-    _devicesService.setPropertyValue(prop.id, value).then((_) {
-      _controlState.setSettling(deviceId, channel.id, prop.id);
+    _devicesService.setPropertyValue(prop.id, value).then((success) {
+      if (success) {
+        _controlState.setSettling(deviceId, channel.id, prop.id);
+      } else {
+        _controlState.clear(deviceId, channel.id, prop.id);
+        _onError?.call(prop.id, Exception('Failed to set speed'));
+      }
+    }).catchError((error) {
+      _controlState.clear(deviceId, channel.id, prop.id);
+      _onError?.call(prop.id, error);
     });
   }
 
@@ -247,8 +314,16 @@ class FanChannelController {
 
     _controlState.setPending(deviceId, channel.id, prop.id, value.value);
 
-    _devicesService.setPropertyValue(prop.id, value.value).then((_) {
-      _controlState.setSettling(deviceId, channel.id, prop.id);
+    _devicesService.setPropertyValue(prop.id, value.value).then((success) {
+      if (success) {
+        _controlState.setSettling(deviceId, channel.id, prop.id);
+      } else {
+        _controlState.clear(deviceId, channel.id, prop.id);
+        _onError?.call(prop.id, Exception('Failed to set speed level'));
+      }
+    }).catchError((error) {
+      _controlState.clear(deviceId, channel.id, prop.id);
+      _onError?.call(prop.id, error);
     });
   }
 
@@ -259,8 +334,16 @@ class FanChannelController {
 
     _controlState.setPending(deviceId, channel.id, prop.id, value.value);
 
-    _devicesService.setPropertyValue(prop.id, value.value).then((_) {
-      _controlState.setSettling(deviceId, channel.id, prop.id);
+    _devicesService.setPropertyValue(prop.id, value.value).then((success) {
+      if (success) {
+        _controlState.setSettling(deviceId, channel.id, prop.id);
+      } else {
+        _controlState.clear(deviceId, channel.id, prop.id);
+        _onError?.call(prop.id, Exception('Failed to set direction'));
+      }
+    }).catchError((error) {
+      _controlState.clear(deviceId, channel.id, prop.id);
+      _onError?.call(prop.id, error);
     });
   }
 
@@ -271,8 +354,16 @@ class FanChannelController {
 
     _controlState.setPending(deviceId, channel.id, prop.id, value.value);
 
-    _devicesService.setPropertyValue(prop.id, value.value).then((_) {
-      _controlState.setSettling(deviceId, channel.id, prop.id);
+    _devicesService.setPropertyValue(prop.id, value.value).then((success) {
+      if (success) {
+        _controlState.setSettling(deviceId, channel.id, prop.id);
+      } else {
+        _controlState.clear(deviceId, channel.id, prop.id);
+        _onError?.call(prop.id, Exception('Failed to set mode'));
+      }
+    }).catchError((error) {
+      _controlState.clear(deviceId, channel.id, prop.id);
+      _onError?.call(prop.id, error);
     });
   }
 
@@ -283,8 +374,16 @@ class FanChannelController {
 
     _controlState.setPending(deviceId, channel.id, prop.id, value);
 
-    _devicesService.setPropertyValue(prop.id, value).then((_) {
-      _controlState.setSettling(deviceId, channel.id, prop.id);
+    _devicesService.setPropertyValue(prop.id, value).then((success) {
+      if (success) {
+        _controlState.setSettling(deviceId, channel.id, prop.id);
+      } else {
+        _controlState.clear(deviceId, channel.id, prop.id);
+        _onError?.call(prop.id, Exception('Failed to set locked'));
+      }
+    }).catchError((error) {
+      _controlState.clear(deviceId, channel.id, prop.id);
+      _onError?.call(prop.id, error);
     });
   }
 
@@ -295,8 +394,16 @@ class FanChannelController {
 
     _controlState.setPending(deviceId, channel.id, prop.id, value);
 
-    _devicesService.setPropertyValue(prop.id, value).then((_) {
-      _controlState.setSettling(deviceId, channel.id, prop.id);
+    _devicesService.setPropertyValue(prop.id, value).then((success) {
+      if (success) {
+        _controlState.setSettling(deviceId, channel.id, prop.id);
+      } else {
+        _controlState.clear(deviceId, channel.id, prop.id);
+        _onError?.call(prop.id, Exception('Failed to set natural breeze'));
+      }
+    }).catchError((error) {
+      _controlState.clear(deviceId, channel.id, prop.id);
+      _onError?.call(prop.id, error);
     });
   }
 
@@ -307,8 +414,16 @@ class FanChannelController {
 
     _controlState.setPending(deviceId, channel.id, prop.id, value);
 
-    _devicesService.setPropertyValue(prop.id, value).then((_) {
-      _controlState.setSettling(deviceId, channel.id, prop.id);
+    _devicesService.setPropertyValue(prop.id, value).then((success) {
+      if (success) {
+        _controlState.setSettling(deviceId, channel.id, prop.id);
+      } else {
+        _controlState.clear(deviceId, channel.id, prop.id);
+        _onError?.call(prop.id, Exception('Failed to set timer'));
+      }
+    }).catchError((error) {
+      _controlState.clear(deviceId, channel.id, prop.id);
+      _onError?.call(prop.id, error);
     });
   }
 
@@ -319,8 +434,16 @@ class FanChannelController {
 
     _controlState.setPending(deviceId, channel.id, prop.id, value.value);
 
-    _devicesService.setPropertyValue(prop.id, value.value).then((_) {
-      _controlState.setSettling(deviceId, channel.id, prop.id);
+    _devicesService.setPropertyValue(prop.id, value.value).then((success) {
+      if (success) {
+        _controlState.setSettling(deviceId, channel.id, prop.id);
+      } else {
+        _controlState.clear(deviceId, channel.id, prop.id);
+        _onError?.call(prop.id, Exception('Failed to set timer preset'));
+      }
+    }).catchError((error) {
+      _controlState.clear(deviceId, channel.id, prop.id);
+      _onError?.call(prop.id, error);
     });
   }
 }

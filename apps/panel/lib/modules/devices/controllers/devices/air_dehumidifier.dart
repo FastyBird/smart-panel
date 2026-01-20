@@ -12,6 +12,7 @@ class AirDehumidifierDeviceController {
   final AirDehumidifierDeviceView device;
   final DeviceControlStateService _controlState;
   final DevicesService _devicesService;
+  final ControllerErrorCallback? _onError;
 
   late final DehumidifierChannelController _dehumidifierController;
   FanChannelController? _fanController;
@@ -20,13 +21,16 @@ class AirDehumidifierDeviceController {
     required this.device,
     required DeviceControlStateService controlState,
     required DevicesService devicesService,
+    ControllerErrorCallback? onError,
   })  : _controlState = controlState,
-        _devicesService = devicesService {
+        _devicesService = devicesService,
+        _onError = onError {
     _dehumidifierController = DehumidifierChannelController(
       deviceId: device.id,
       channel: device.dehumidifierChannel,
       controlState: _controlState,
       devicesService: _devicesService,
+      onError: _onError,
     );
 
     final fanChannel = device.fanChannel;
@@ -36,6 +40,7 @@ class AirDehumidifierDeviceController {
         channel: fanChannel,
         controlState: _controlState,
         devicesService: _devicesService,
+        onError: _onError,
       );
     }
   }

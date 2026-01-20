@@ -1,4 +1,5 @@
 import 'package:fastybird_smart_panel/modules/devices/controllers/channels/cooler.dart';
+import 'package:fastybird_smart_panel/modules/devices/controllers/channels/fan.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/channels/heater.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/channels/thermostat.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
@@ -13,6 +14,7 @@ class ThermostatDeviceController {
   final ThermostatDeviceView device;
   final DeviceControlStateService _controlState;
   final DevicesService _devicesService;
+  final ControllerErrorCallback? _onError;
 
   late final ThermostatChannelController _thermostatController;
   HeaterChannelController? _heaterController;
@@ -22,13 +24,16 @@ class ThermostatDeviceController {
     required this.device,
     required DeviceControlStateService controlState,
     required DevicesService devicesService,
+    ControllerErrorCallback? onError,
   })  : _controlState = controlState,
-        _devicesService = devicesService {
+        _devicesService = devicesService,
+        _onError = onError {
     _thermostatController = ThermostatChannelController(
       deviceId: device.id,
       channel: device.thermostatChannel,
       controlState: _controlState,
       devicesService: _devicesService,
+      onError: _onError,
     );
 
     final heaterChannel = device.heaterChannel;
@@ -38,6 +43,7 @@ class ThermostatDeviceController {
         channel: heaterChannel,
         controlState: _controlState,
         devicesService: _devicesService,
+        onError: _onError,
       );
     }
 
@@ -48,6 +54,7 @@ class ThermostatDeviceController {
         channel: coolerChannel,
         controlState: _controlState,
         devicesService: _devicesService,
+        onError: _onError,
       );
     }
   }

@@ -5,6 +5,7 @@ import 'package:fastybird_smart_panel/core/utils/color.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/lighting/export.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/controllers/devices/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/light_channel_detail.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
@@ -35,8 +36,10 @@ class LightingDeviceDetail extends StatefulWidget {
 }
 
 class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
+  final DevicesService _devicesService = locator<DevicesService>();
   DeviceControlStateService? _deviceControlStateService;
   IntentOverlayService? _intentOverlayService;
+  LightingDeviceController? _controller;
 
   late List<LightChannelView> _channels;
 
@@ -58,7 +61,35 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       if (kDebugMode) debugPrint('[LightingDeviceDetail] Failed to get IntentOverlayService: $e');
     }
 
+    _initController();
     _initializeWidget();
+  }
+
+  void _initController() {
+    final controlState = _deviceControlStateService;
+    if (controlState != null) {
+      _controller = LightingDeviceController(
+        device: widget._device,
+        controlState: controlState,
+        devicesService: _devicesService,
+        onError: _onControllerError,
+      );
+    }
+  }
+
+  void _onControllerError(String propertyId, Object error) {
+    if (kDebugMode) {
+      debugPrint('[LightingDeviceDetail] Controller error for $propertyId: $error');
+    }
+
+    final localizations = AppLocalizations.of(context);
+    if (mounted && localizations != null) {
+      AlertBar.showError(context, message: localizations.action_failed);
+    }
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -83,6 +114,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
   @override
   void didUpdateWidget(covariant LightingDeviceDetail oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _initController();
     _initializeWidget();
   }
 

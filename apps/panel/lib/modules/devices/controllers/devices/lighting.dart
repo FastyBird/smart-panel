@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/modules/devices/controllers/channels/fan.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/channels/light.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
@@ -11,6 +12,7 @@ class LightingDeviceController {
   final LightingDeviceView device;
   final DeviceControlStateService _controlState;
   final DevicesService _devicesService;
+  final ControllerErrorCallback? _onError;
 
   late final List<LightChannelController> _lightControllers;
 
@@ -18,14 +20,17 @@ class LightingDeviceController {
     required this.device,
     required DeviceControlStateService controlState,
     required DevicesService devicesService,
+    ControllerErrorCallback? onError,
   })  : _controlState = controlState,
-        _devicesService = devicesService {
+        _devicesService = devicesService,
+        _onError = onError {
     _lightControllers = device.lightChannels.map((channel) {
       return LightChannelController(
         deviceId: device.id,
         channel: channel,
         controlState: _controlState,
         devicesService: _devicesService,
+        onError: _onError,
       );
     }).toList();
   }

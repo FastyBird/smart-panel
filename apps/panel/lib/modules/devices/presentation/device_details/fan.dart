@@ -11,13 +11,13 @@ import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/controllers/devices/fan.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_power_button.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/fan_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/fan.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -42,6 +42,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
       locator<VisualDensityService>();
   final DevicesService _devicesService = locator<DevicesService>();
   DeviceControlStateService? _deviceControlStateService;
+  FanDeviceController? _controller;
 
   // Debounce timer for speed slider
   Timer? _speedDebounceTimer;
@@ -55,10 +56,33 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     try {
       _deviceControlStateService = locator<DeviceControlStateService>();
       _deviceControlStateService?.addListener(_onControlStateChanged);
+      _initController();
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[FanDeviceDetail] Failed to get DeviceControlStateService: $e');
       }
+    }
+  }
+
+  void _initController() {
+    final controlState = _deviceControlStateService;
+    if (controlState != null) {
+      _controller = FanDeviceController(
+        device: _device,
+        controlState: controlState,
+        devicesService: _devicesService,
+        onError: _onControllerError,
+      );
+    }
+  }
+
+  void _onControllerError(String propertyId, Object error) {
+    if (kDebugMode) {
+      debugPrint('[FanDeviceDetail] Controller error for $propertyId: $error');
+    }
+    // Trigger rebuild to reflect rollback state
+    if (mounted) {
+      setState(() {});
     }
   }
 
@@ -72,6 +96,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
 
   void _onDeviceChanged() {
     if (mounted) {
+      _initController(); // Reinitialize controller with updated device
       setState(() {});
     }
   }
@@ -90,34 +115,14 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     return widget._device;
   }
 
-  void _setPropertyValue(ChannelPropertyView? property, dynamic value) {
-    if (property == null) return;
-
-    _devicesService.setPropertyValue(property.id, value);
-  }
-
+  /// Normalized speed (0-1 range) for slider display.
   double get _speed {
     final fanChannel = _device.fanChannel;
-    final speedProp = fanChannel.speedProp;
+    if (!fanChannel.hasSpeed) return 0.0;
 
-    // Fall back to actual device value if no speed property
-    if (!fanChannel.hasSpeed || speedProp == null) return 0.0;
-
-    // Check for pending optimistic state first
-    final controlState = _deviceControlStateService;
-    double actualSpeed = fanChannel.speed;
-
-    if (controlState != null &&
-        controlState.isLocked(_device.id, fanChannel.id, speedProp.id)) {
-      final desiredValue = controlState.getDesiredValue(
-        _device.id,
-        fanChannel.id,
-        speedProp.id,
-      );
-      if (desiredValue is num) {
-        actualSpeed = desiredValue.toDouble();
-      }
-    }
+    // Use controller for optimistic-aware speed value
+    final controller = _controller;
+    final actualSpeed = controller?.fan.speed ?? fanChannel.speed;
 
     // Normalize to 0-1 range
     final range = fanChannel.maxSpeed - fanChannel.minSpeed;
@@ -127,8 +132,8 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
 
   void _setSpeedValue(double normalizedSpeed) {
     final fanChannel = _device.fanChannel;
-    final speedProp = fanChannel.speedProp;
-    if (!fanChannel.hasSpeed || !fanChannel.isSpeedNumeric || speedProp == null) return;
+    final controller = _controller;
+    if (!fanChannel.hasSpeed || !fanChannel.isSpeedNumeric || controller == null) return;
 
     // Convert normalized (0-1) to actual range
     final range = fanChannel.maxSpeed - fanChannel.minSpeed;
@@ -143,199 +148,92 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     // Clamp to valid range
     final actualSpeed = steppedSpeed.clamp(fanChannel.minSpeed, fanChannel.maxSpeed);
 
-    // Set PENDING state immediately for responsive UI
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      speedProp.id,
-      actualSpeed,
-    );
-    setState(() {});
-
     // Cancel any pending debounce timer
     _speedDebounceTimer?.cancel();
 
     // Debounce the API call to avoid flooding backend
-    _speedDebounceTimer = Timer(_speedDebounceDuration, () async {
+    // Use controller for optimistic UI with error handling
+    _speedDebounceTimer = Timer(_speedDebounceDuration, () {
       if (!mounted) return;
-
-      _setPropertyValue(speedProp, actualSpeed);
-
-      if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          speedProp.id,
-        );
-      }
+      controller.fan.setSpeed(actualSpeed);
+      setState(() {});
     });
+
+    // For immediate visual feedback during drag, set pending state directly
+    final speedProp = fanChannel.speedProp;
+    if (speedProp != null) {
+      _deviceControlStateService?.setPending(
+        _device.id,
+        fanChannel.id,
+        speedProp.id,
+        actualSpeed,
+      );
+      setState(() {});
+    }
   }
 
   void _setSpeedLevel(FanSpeedLevelValue level) {
-    final fanChannel = _device.fanChannel;
-    final speedProp = fanChannel.speedProp;
-    if (!fanChannel.hasSpeed || !fanChannel.isSpeedEnum || speedProp == null) return;
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      speedProp.id,
-      level.value,
-    );
+    controller.fan.setSpeedLevel(level);
     setState(() {});
-
-    _setPropertyValue(speedProp, level.value);
-    _deviceControlStateService?.setSettling(
-      _device.id,
-      fanChannel.id,
-      speedProp.id,
-    );
   }
 
   void _setFanPower(bool value) {
-    final fanChannel = _device.fanChannel;
-    final onProp = fanChannel.onProp;
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      onProp.id,
-      value,
-    );
+    controller.setPower(value);
     setState(() {});
-
-    _setPropertyValue(onProp, value);
-    _deviceControlStateService?.setSettling(
-      _device.id,
-      fanChannel.id,
-      onProp.id,
-    );
   }
 
   void _setFanMode(FanModeValue mode) {
-    final fanChannel = _device.fanChannel;
-    final modeProp = fanChannel.modeProp;
-    if (!fanChannel.hasMode || modeProp == null) return;
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      modeProp.id,
-      mode.value,
-    );
+    controller.fan.setMode(mode);
     setState(() {});
-
-    _setPropertyValue(modeProp, mode.value);
-    _deviceControlStateService?.setSettling(
-      _device.id,
-      fanChannel.id,
-      modeProp.id,
-    );
   }
 
   void _setFanSwing(bool value) {
-    final fanChannel = _device.fanChannel;
-    final swingProp = fanChannel.swingProp;
-    if (!fanChannel.hasSwing || swingProp == null) return;
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      swingProp.id,
-      value,
-    );
+    controller.fan.setSwing(value);
     setState(() {});
-
-    _setPropertyValue(swingProp, value);
-    _deviceControlStateService?.setSettling(
-      _device.id,
-      fanChannel.id,
-      swingProp.id,
-    );
   }
 
   void _setFanDirection(FanDirectionValue direction) {
-    final fanChannel = _device.fanChannel;
-    final directionProp = fanChannel.directionProp;
-    if (!fanChannel.hasDirection || directionProp == null) return;
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      directionProp.id,
-      direction.value,
-    );
+    controller.fan.setDirection(direction);
     setState(() {});
-
-    _setPropertyValue(directionProp, direction.value);
-    _deviceControlStateService?.setSettling(
-      _device.id,
-      fanChannel.id,
-      directionProp.id,
-    );
   }
 
   void _setFanLocked(bool value) {
-    final fanChannel = _device.fanChannel;
-    final lockedProp = fanChannel.lockedProp;
-    if (!fanChannel.hasLocked || lockedProp == null) return;
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      lockedProp.id,
-      value,
-    );
+    controller.fan.setLocked(value);
     setState(() {});
-
-    _setPropertyValue(lockedProp, value);
-    _deviceControlStateService?.setSettling(
-      _device.id,
-      fanChannel.id,
-      lockedProp.id,
-    );
   }
 
   void _setFanTimerPreset(FanTimerPresetValue preset) {
-    final fanChannel = _device.fanChannel;
-    final timerProp = fanChannel.timerProp;
-    if (!fanChannel.hasTimer || timerProp == null) return;
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      timerProp.id,
-      preset.value,
-    );
+    controller.fan.setTimerPreset(preset);
     setState(() {});
-
-    _setPropertyValue(timerProp, preset.value);
-    _deviceControlStateService?.setSettling(
-      _device.id,
-      fanChannel.id,
-      timerProp.id,
-    );
   }
 
   void _setFanTimerNumeric(int minutes) {
-    final fanChannel = _device.fanChannel;
-    final timerProp = fanChannel.timerProp;
-    if (!fanChannel.hasTimer || timerProp == null) return;
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      timerProp.id,
-      minutes,
-    );
+    controller.fan.setTimer(minutes);
     setState(() {});
-
-    _setPropertyValue(timerProp, minutes);
-    _deviceControlStateService?.setSettling(
-      _device.id,
-      fanChannel.id,
-      timerProp.id,
-    );
   }
 
   double _scale(double value) =>

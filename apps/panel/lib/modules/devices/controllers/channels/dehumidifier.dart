@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/modules/devices/controllers/channels/fan.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/dehumidifier.dart';
@@ -8,19 +9,23 @@ import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.d
 /// Wraps [DehumidifierChannelView] and provides:
 /// - Optimistic-aware getters that return desired values when commands are pending
 /// - Command methods that manage the optimistic UI state machine
+/// - Error handling with automatic state rollback
 class DehumidifierChannelController {
   final String deviceId;
   final DehumidifierChannelView channel;
   final DeviceControlStateService _controlState;
   final DevicesService _devicesService;
+  final ControllerErrorCallback? _onError;
 
   DehumidifierChannelController({
     required this.deviceId,
     required this.channel,
     required DeviceControlStateService controlState,
     required DevicesService devicesService,
+    ControllerErrorCallback? onError,
   })  : _controlState = controlState,
-        _devicesService = devicesService;
+        _devicesService = devicesService,
+        _onError = onError;
 
   // ===========================================================================
   // OPTIMISTIC-AWARE GETTERS
@@ -142,8 +147,16 @@ class DehumidifierChannelController {
 
     _controlState.setPending(deviceId, channel.id, prop.id, value);
 
-    _devicesService.setPropertyValue(prop.id, value).then((_) {
-      _controlState.setSettling(deviceId, channel.id, prop.id);
+    _devicesService.setPropertyValue(prop.id, value).then((success) {
+      if (success) {
+        _controlState.setSettling(deviceId, channel.id, prop.id);
+      } else {
+        _controlState.clear(deviceId, channel.id, prop.id);
+        _onError?.call(prop.id, Exception('Failed to set power'));
+      }
+    }).catchError((error) {
+      _controlState.clear(deviceId, channel.id, prop.id);
+      _onError?.call(prop.id, error);
     });
   }
 
@@ -158,8 +171,16 @@ class DehumidifierChannelController {
 
     _controlState.setPending(deviceId, channel.id, prop.id, value);
 
-    _devicesService.setPropertyValue(prop.id, value).then((_) {
-      _controlState.setSettling(deviceId, channel.id, prop.id);
+    _devicesService.setPropertyValue(prop.id, value).then((success) {
+      if (success) {
+        _controlState.setSettling(deviceId, channel.id, prop.id);
+      } else {
+        _controlState.clear(deviceId, channel.id, prop.id);
+        _onError?.call(prop.id, Exception('Failed to set humidity'));
+      }
+    }).catchError((error) {
+      _controlState.clear(deviceId, channel.id, prop.id);
+      _onError?.call(prop.id, error);
     });
   }
 
@@ -170,8 +191,16 @@ class DehumidifierChannelController {
 
     _controlState.setPending(deviceId, channel.id, prop.id, value.value);
 
-    _devicesService.setPropertyValue(prop.id, value.value).then((_) {
-      _controlState.setSettling(deviceId, channel.id, prop.id);
+    _devicesService.setPropertyValue(prop.id, value.value).then((success) {
+      if (success) {
+        _controlState.setSettling(deviceId, channel.id, prop.id);
+      } else {
+        _controlState.clear(deviceId, channel.id, prop.id);
+        _onError?.call(prop.id, Exception('Failed to set mode'));
+      }
+    }).catchError((error) {
+      _controlState.clear(deviceId, channel.id, prop.id);
+      _onError?.call(prop.id, error);
     });
   }
 
@@ -182,8 +211,16 @@ class DehumidifierChannelController {
 
     _controlState.setPending(deviceId, channel.id, prop.id, value);
 
-    _devicesService.setPropertyValue(prop.id, value).then((_) {
-      _controlState.setSettling(deviceId, channel.id, prop.id);
+    _devicesService.setPropertyValue(prop.id, value).then((success) {
+      if (success) {
+        _controlState.setSettling(deviceId, channel.id, prop.id);
+      } else {
+        _controlState.clear(deviceId, channel.id, prop.id);
+        _onError?.call(prop.id, Exception('Failed to set locked'));
+      }
+    }).catchError((error) {
+      _controlState.clear(deviceId, channel.id, prop.id);
+      _onError?.call(prop.id, error);
     });
   }
 
@@ -194,8 +231,16 @@ class DehumidifierChannelController {
 
     _controlState.setPending(deviceId, channel.id, prop.id, value);
 
-    _devicesService.setPropertyValue(prop.id, value).then((_) {
-      _controlState.setSettling(deviceId, channel.id, prop.id);
+    _devicesService.setPropertyValue(prop.id, value).then((success) {
+      if (success) {
+        _controlState.setSettling(deviceId, channel.id, prop.id);
+      } else {
+        _controlState.clear(deviceId, channel.id, prop.id);
+        _onError?.call(prop.id, Exception('Failed to set timer'));
+      }
+    }).catchError((error) {
+      _controlState.clear(deviceId, channel.id, prop.id);
+      _onError?.call(prop.id, error);
     });
   }
 
@@ -206,8 +251,16 @@ class DehumidifierChannelController {
 
     _controlState.setPending(deviceId, channel.id, prop.id, value.value);
 
-    _devicesService.setPropertyValue(prop.id, value.value).then((_) {
-      _controlState.setSettling(deviceId, channel.id, prop.id);
+    _devicesService.setPropertyValue(prop.id, value.value).then((success) {
+      if (success) {
+        _controlState.setSettling(deviceId, channel.id, prop.id);
+      } else {
+        _controlState.clear(deviceId, channel.id, prop.id);
+        _onError?.call(prop.id, Exception('Failed to set timer preset'));
+      }
+    }).catchError((error) {
+      _controlState.clear(deviceId, channel.id, prop.id);
+      _onError?.call(prop.id, error);
     });
   }
 }

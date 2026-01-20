@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/modules/devices/controllers/channels/fan.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/channels/heater.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
@@ -10,6 +11,7 @@ class HeatingUnitDeviceController {
   final HeatingUnitDeviceView device;
   final DeviceControlStateService _controlState;
   final DevicesService _devicesService;
+  final ControllerErrorCallback? _onError;
 
   late final HeaterChannelController _heaterController;
 
@@ -17,13 +19,16 @@ class HeatingUnitDeviceController {
     required this.device,
     required DeviceControlStateService controlState,
     required DevicesService devicesService,
+    ControllerErrorCallback? onError,
   })  : _controlState = controlState,
-        _devicesService = devicesService {
+        _devicesService = devicesService,
+        _onError = onError {
     _heaterController = HeaterChannelController(
       deviceId: device.id,
       channel: device.heaterChannel,
       controlState: _controlState,
       devicesService: _devicesService,
+      onError: _onError,
     );
   }
 

@@ -14,6 +14,7 @@ import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/controllers/devices/air_purifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_power_button.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
@@ -49,6 +50,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       locator<VisualDensityService>();
   final DevicesService _devicesService = locator<DevicesService>();
   DeviceControlStateService? _deviceControlStateService;
+  AirPurifierDeviceController? _controller;
 
   // Debounce timer for speed slider to avoid flooding backend
   Timer? _speedDebounceTimer;
@@ -62,10 +64,36 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     try {
       _deviceControlStateService = locator<DeviceControlStateService>();
       _deviceControlStateService?.addListener(_onControlStateChanged);
+      _initController();
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[AirPurifierDeviceDetail] Failed to get DeviceControlStateService: $e');
       }
+    }
+  }
+
+  void _initController() {
+    final controlState = _deviceControlStateService;
+    if (controlState != null) {
+      _controller = AirPurifierDeviceController(
+        device: _device,
+        controlState: controlState,
+        devicesService: _devicesService,
+        onError: _onControllerError,
+      );
+    }
+  }
+
+  void _onControllerError(String propertyId, Object error) {
+    if (kDebugMode) {
+      debugPrint('[AirPurifierDeviceDetail] Controller error for $propertyId: $error');
+    }
+    final localizations = AppLocalizations.of(context);
+    if (mounted && localizations != null) {
+      AlertBar.showError(context, message: localizations.action_failed);
+    }
+    if (mounted) {
+      setState(() {});
     }
   }
 
@@ -79,6 +107,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
 
   void _onDeviceChanged() {
     if (mounted) {
+      _initController();
       setState(() {});
     }
   }

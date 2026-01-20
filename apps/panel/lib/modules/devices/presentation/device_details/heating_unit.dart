@@ -13,6 +13,7 @@ import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
+import 'package:fastybird_smart_panel/modules/devices/controllers/devices/heating_unit.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/heating_unit.dart';
@@ -45,6 +46,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
       locator<VisualDensityService>();
   final DevicesService _devicesService = locator<DevicesService>();
   DeviceControlStateService? _deviceControlStateService;
+  HeatingUnitDeviceController? _controller;
 
   // Debounce timer for setpoint changes to avoid flooding backend
   Timer? _setpointDebounceTimer;
@@ -69,6 +71,35 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
             '[HeatingUnitDeviceDetail] Failed to get DeviceControlStateService: $e');
       }
     }
+
+    _initController();
+  }
+
+  void _initController() {
+    final controlState = _deviceControlStateService;
+    if (controlState != null) {
+      _controller = HeatingUnitDeviceController(
+        device: _device,
+        controlState: controlState,
+        devicesService: _devicesService,
+        onError: _onControllerError,
+      );
+    }
+  }
+
+  void _onControllerError(String propertyId, Object error) {
+    if (kDebugMode) {
+      debugPrint('[HeatingUnitDeviceDetail] Controller error for $propertyId: $error');
+    }
+
+    final localizations = AppLocalizations.of(context);
+    if (mounted && localizations != null) {
+      AlertBar.showError(context, message: localizations.action_failed);
+    }
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -81,6 +112,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
 
   void _onDeviceChanged() {
     if (mounted) {
+      _initController();
       setState(() {});
     }
   }

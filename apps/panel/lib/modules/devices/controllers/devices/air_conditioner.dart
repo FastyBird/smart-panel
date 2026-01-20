@@ -13,6 +13,7 @@ class AirConditionerDeviceController {
   final AirConditionerDeviceView device;
   final DeviceControlStateService _controlState;
   final DevicesService _devicesService;
+  final ControllerErrorCallback? _onError;
 
   late final CoolerChannelController _coolerController;
   late final FanChannelController _fanController;
@@ -22,13 +23,16 @@ class AirConditionerDeviceController {
     required this.device,
     required DeviceControlStateService controlState,
     required DevicesService devicesService,
+    ControllerErrorCallback? onError,
   })  : _controlState = controlState,
-        _devicesService = devicesService {
+        _devicesService = devicesService,
+        _onError = onError {
     _coolerController = CoolerChannelController(
       deviceId: device.id,
       channel: device.coolerChannel,
       controlState: _controlState,
       devicesService: _devicesService,
+      onError: _onError,
     );
 
     _fanController = FanChannelController(
@@ -36,6 +40,7 @@ class AirConditionerDeviceController {
       channel: device.fanChannel,
       controlState: _controlState,
       devicesService: _devicesService,
+      onError: _onError,
     );
 
     final heaterChannel = device.heaterChannel;
@@ -45,6 +50,7 @@ class AirConditionerDeviceController {
         channel: heaterChannel,
         controlState: _controlState,
         devicesService: _devicesService,
+        onError: _onError,
       );
     }
   }
