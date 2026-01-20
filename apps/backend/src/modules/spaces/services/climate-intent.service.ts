@@ -373,6 +373,10 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 
 		const commands: IDevicePropertyData[] = [];
 
+		// Track if heater or cooler will be turned on (for fan control)
+		let heaterOn = false;
+		let coolerOn = false;
+
 		switch (mode) {
 			case ClimateMode.OFF:
 				// Turn off heater
@@ -404,6 +408,7 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 						property: device.heaterOnProperty,
 						value: true,
 					});
+					heaterOn = true;
 				}
 				if (device.coolerOnProperty && device.coolerChannel) {
 					commands.push({
@@ -432,15 +437,7 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 						property: device.coolerOnProperty,
 						value: true,
 					});
-				}
-				// Turn on fan if present (for air conditioners)
-				if (device.fanOnProperty && device.fanChannel) {
-					commands.push({
-						device: device.device,
-						channel: device.fanChannel,
-						property: device.fanOnProperty,
-						value: true,
-					});
+					coolerOn = true;
 				}
 				break;
 
@@ -453,6 +450,7 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 						property: device.heaterOnProperty,
 						value: true,
 					});
+					heaterOn = true;
 				}
 				if (device.coolerOnProperty && device.coolerChannel && device.supportsCooling) {
 					commands.push({
@@ -461,8 +459,19 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 						property: device.coolerOnProperty,
 						value: true,
 					});
+					coolerOn = true;
 				}
 				break;
+		}
+
+		// Fan follows heater/cooler state: fan.on = heater.on OR cooler.on
+		if (device.fanOnProperty && device.fanChannel) {
+			commands.push({
+				device: device.device,
+				channel: device.fanChannel,
+				property: device.fanOnProperty,
+				value: heaterOn || coolerOn,
+			});
 		}
 
 		if (commands.length === 0) {
