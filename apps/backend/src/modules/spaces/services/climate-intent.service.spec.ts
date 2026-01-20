@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment */
 import { v4 as uuid } from 'uuid';
 
-import { Test, TestingModule } from '@nestjs/testing';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Test, TestingModule } from '@nestjs/testing';
 
 import { DeviceCategory } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
@@ -30,8 +30,6 @@ describe('ClimateIntentService', () => {
 	let spacesService: jest.Mocked<SpacesService>;
 	let climateStateService: jest.Mocked<SpaceClimateStateService>;
 	let platformRegistryService: jest.Mocked<PlatformRegistryService>;
-	let intentTimeseriesService: jest.Mocked<IntentTimeseriesService>;
-	let eventEmitter: jest.Mocked<EventEmitter2>;
 
 	const mockSpaceId = uuid();
 	const mockIntentId = uuid();
@@ -163,8 +161,6 @@ describe('ClimateIntentService', () => {
 		spacesService = module.get(SpacesService);
 		climateStateService = module.get(SpaceClimateStateService);
 		platformRegistryService = module.get(PlatformRegistryService);
-		intentTimeseriesService = module.get(IntentTimeseriesService);
-		eventEmitter = module.get(EventEmitter2);
 
 		// Reset mock between tests
 		jest.clearAllMocks();
@@ -216,8 +212,8 @@ describe('ClimateIntentService', () => {
 			const result = await service.executeClimateIntent(mockSpaceId, intent);
 
 			expect(result).not.toBeNull();
-			expect(result!.success).toBe(true);
-			expect(result!.affectedDevices).toBe(0);
+			expect(result?.success).toBe(true);
+			expect(result?.affectedDevices).toBe(0);
 		});
 
 		it('should return success with zero affected when space has no climate devices', async () => {
@@ -231,8 +227,8 @@ describe('ClimateIntentService', () => {
 			const result = await service.executeClimateIntent(mockSpaceId, intent);
 
 			expect(result).not.toBeNull();
-			expect(result!.success).toBe(true);
-			expect(result!.affectedDevices).toBe(0);
+			expect(result?.success).toBe(true);
+			expect(result?.affectedDevices).toBe(0);
 		});
 
 		it('should return success with zero affected when no controllable devices', async () => {
@@ -246,8 +242,8 @@ describe('ClimateIntentService', () => {
 			const result = await service.executeClimateIntent(mockSpaceId, intent);
 
 			expect(result).not.toBeNull();
-			expect(result!.success).toBe(true);
-			expect(result!.affectedDevices).toBe(0);
+			expect(result?.success).toBe(true);
+			expect(result?.affectedDevices).toBe(0);
 		});
 
 		describe('SET_MODE intent', () => {
@@ -263,7 +259,7 @@ describe('ClimateIntentService', () => {
 				const result = await service.executeClimateIntent(mockSpaceId, intent);
 
 				expect(result).not.toBeNull();
-				expect(result!.mode).toBe(ClimateMode.HEAT);
+				expect(result?.mode).toBe(ClimateMode.HEAT);
 				// Platform should have been called
 				expect(platformRegistryService.get).toHaveBeenCalledWith(device.device);
 			});
@@ -281,8 +277,8 @@ describe('ClimateIntentService', () => {
 				const result = await service.executeClimateIntent(mockSpaceId, intent);
 
 				expect(result).not.toBeNull();
-				expect(result!.success).toBe(false);
-				expect(result!.failedDevices).toBe(1);
+				expect(result?.success).toBe(false);
+				expect(result?.failedDevices).toBe(1);
 			});
 
 			it('should return correct mode in result', async () => {
@@ -297,7 +293,7 @@ describe('ClimateIntentService', () => {
 				const result = await service.executeClimateIntent(mockSpaceId, intent);
 
 				expect(result).not.toBeNull();
-				expect(result!.mode).toBe(ClimateMode.OFF);
+				expect(result?.mode).toBe(ClimateMode.OFF);
 			});
 		});
 
@@ -315,7 +311,7 @@ describe('ClimateIntentService', () => {
 
 				expect(result).not.toBeNull();
 				// Result should contain the setpoint that was requested
-				expect(result!.heatingSetpoint).toBe(23.5);
+				expect(result?.heatingSetpoint).toBe(23.5);
 			});
 
 			it('should clamp setpoint to device limits', async () => {
@@ -339,7 +335,7 @@ describe('ClimateIntentService', () => {
 				const result = await service.executeClimateIntent(mockSpaceId, intent);
 
 				expect(result).not.toBeNull();
-				expect(result!.heatingSetpoint).toBe(30); // Clamped to max
+				expect(result?.heatingSetpoint).toBe(30); // Clamped to max
 			});
 		});
 
@@ -364,7 +360,7 @@ describe('ClimateIntentService', () => {
 				const result = await service.executeClimateIntent(mockSpaceId, intent);
 
 				expect(result).not.toBeNull();
-				expect(result!.mode).toBe(existingMode);
+				expect(result?.mode).toBe(existingMode);
 			});
 		});
 	});

@@ -216,6 +216,25 @@ Climate mode changes are stored in InfluxDB for historical tracking:
 3. **Property change events** - Errors logged, event processing continues
 4. **InfluxDB writes** - Fire-and-forget with internal error handling
 
+## Performance Optimizations
+
+The climate domain is optimized for low-resource devices:
+
+### Query Optimization
+- **Parallel data fetching** - `getClimateState()` fetches devices, role map, and InfluxDB state in parallel using `Promise.all()`
+- **Data reuse** - Internal methods reuse already-fetched devices and role maps to avoid redundant database queries
+- **Early exits** - Returns early when space has no devices or no climate capabilities
+
+### Event Debouncing
+- **SpaceClimateStateListener** debounces `CLIMATE_STATE_CHANGED` events (100ms delay)
+- Prevents WebSocket flooding when devices update multiple properties simultaneously
+- Single state recalculation per debounce window regardless of property change count
+
+### Code Design
+- **Synchronous extraction** - `extractPrimaryClimateDevices()` and `extractSensorTemperatures()` are synchronous when data is already fetched
+- **Fire-and-forget InfluxDB writes** - Non-blocking storage of mode changes
+- **Minimal allocations** - Reuses data structures where possible
+
 ## Testing
 
 Unit tests cover all critical services:

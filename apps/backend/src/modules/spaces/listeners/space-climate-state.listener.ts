@@ -1,6 +1,6 @@
 import { Repository } from 'typeorm';
 
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -12,6 +12,12 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../device
 import { ClimateStateDataModel } from '../models/spaces-response.model';
 import { SpaceClimateStateService } from '../services/space-climate-state.service';
 import { EventType, SPACES_MODULE_NAME } from '../spaces.constants';
+
+/**
+ * Debounce delay in milliseconds for climate state change events.
+ * This prevents flooding WebSocket with events when multiple property changes happen quickly.
+ */
+const CLIMATE_STATE_DEBOUNCE_MS = 100;
 
 // Climate-relevant channel categories
 const CLIMATE_CHANNEL_CATEGORIES: ChannelCategory[] = [
@@ -32,8 +38,14 @@ const CLIMATE_PROPERTY_CATEGORIES: PropertyCategory[] = [
 ];
 
 @Injectable()
-export class SpaceClimateStateListener implements OnModuleInit {
+export class SpaceClimateStateListener implements OnModuleInit, OnModuleDestroy {
 	private readonly logger = createExtensionLogger(SPACES_MODULE_NAME, 'SpaceClimateStateListener');
+
+	/**
+	 * Debounce timers per room to prevent flooding WebSocket with events.
+	 * Key: roomId, Value: NodeJS.Timeout
+	 */
+	private readonly debounceTimers = new Map<string, NodeJS.Timeout>();
 
 	constructor(
 		@InjectRepository(ChannelEntity)
@@ -44,6 +56,14 @@ export class SpaceClimateStateListener implements OnModuleInit {
 
 	onModuleInit() {
 		this.logger.debug('Space climate state listener initialized');
+	}
+
+	onModuleDestroy() {
+		// Clean up all pending debounce timers
+		for (const timer of this.debounceTimers.values()) {
+			clearTimeout(timer);
+		}
+		this.debounceTimers.clear();
 	}
 
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_VALUE_SET)
@@ -94,23 +114,59 @@ export class SpaceClimateStateListener implements OnModuleInit {
 			return;
 		}
 
-		// 5. Recalculate climate state for the room
-		const state = await this.climateStateService.getClimateState(roomId);
+		// 5. Schedule debounced state recalculation and event emission
+		this.scheduleClimateStateEmit(roomId);
+	}
 
-		// 6. Only emit event if state is valid (space exists and has climate devices)
-		if (!state || !state.hasClimate) {
-			this.logger.debug(`No valid climate state for room=${roomId}, skipping event emission`);
-			return;
+	/**
+	 * Schedule a debounced climate state recalculation and event emission for a room.
+	 * If multiple property changes happen within the debounce window, only one
+	 * state recalculation and event emission will occur.
+	 *
+	 * Performance optimization: Prevents flooding WebSocket with events when
+	 * devices update multiple properties at once (e.g., temperature + humidity).
+	 */
+	private scheduleClimateStateEmit(roomId: string): void {
+		// Cancel any existing timer for this room
+		const existingTimer = this.debounceTimers.get(roomId);
+		if (existingTimer) {
+			clearTimeout(existingTimer);
 		}
 
-		// 7. Convert to data model and emit event
-		const stateModel = toInstance(ClimateStateDataModel, state);
+		// Schedule new emission after debounce delay
+		const timer = setTimeout(() => {
+			this.debounceTimers.delete(roomId);
+			void this.emitClimateStateChange(roomId);
+		}, CLIMATE_STATE_DEBOUNCE_MS);
 
-		this.eventEmitter.emit(EventType.CLIMATE_STATE_CHANGED, {
-			space_id: roomId,
-			state: stateModel,
-		});
+		this.debounceTimers.set(roomId, timer);
+	}
 
-		this.logger.debug(`Emitted CLIMATE_STATE_CHANGED for room=${roomId} due to property change`);
+	/**
+	 * Recalculate climate state and emit event for a room.
+	 */
+	private async emitClimateStateChange(roomId: string): Promise<void> {
+		try {
+			const state = await this.climateStateService.getClimateState(roomId);
+
+			// Only emit event if state is valid (space exists and has climate devices)
+			if (!state || !state.hasClimate) {
+				this.logger.debug(`No valid climate state for room=${roomId}, skipping event emission`);
+				return;
+			}
+
+			// Convert to data model and emit event
+			const stateModel = toInstance(ClimateStateDataModel, state);
+
+			this.eventEmitter.emit(EventType.CLIMATE_STATE_CHANGED, {
+				space_id: roomId,
+				state: stateModel,
+			});
+
+			this.logger.debug(`Emitted CLIMATE_STATE_CHANGED for room=${roomId} due to property change`);
+		} catch (error) {
+			const err = error as Error;
+			this.logger.warn(`Failed to emit climate state change for room=${roomId}: ${err.message}`);
+		}
 	}
 }

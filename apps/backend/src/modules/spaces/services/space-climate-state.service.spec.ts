@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment */
 import { v4 as uuid } from 'uuid';
 
 import { Test, TestingModule } from '@nestjs/testing';
@@ -7,6 +6,7 @@ import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { IntentStatus } from '../../intents/intents.constants';
 import { IntentTimeseriesService, LastAppliedClimateState } from '../../intents/services/intent-timeseries.service';
+import { SpaceClimateRoleEntity } from '../entities/space-climate-role.entity';
 import {
 	ClimateMode,
 	ClimateRole,
@@ -14,10 +14,9 @@ import {
 	DEFAULT_MIN_SETPOINT,
 	SETPOINT_CONSENSUS_TOLERANCE,
 } from '../spaces.constants';
-import { SpaceClimateRoleEntity } from '../entities/space-climate-role.entity';
 
 import { SpaceClimateRoleService } from './space-climate-role.service';
-import { ClimateState, SpaceClimateStateService } from './space-climate-state.service';
+import { SpaceClimateStateService } from './space-climate-state.service';
 import { SpacesService } from './spaces.service';
 
 describe('SpaceClimateStateService', () => {
@@ -140,7 +139,9 @@ describe('SpaceClimateStateService', () => {
 	};
 
 	// Helper to create role map
-	const createRoleMap = (entries: Array<{ deviceId: string; role: ClimateRole }>): Map<string, SpaceClimateRoleEntity> => {
+	const createRoleMap = (
+		entries: Array<{ deviceId: string; role: ClimateRole }>,
+	): Map<string, SpaceClimateRoleEntity> => {
 		const map = new Map<string, SpaceClimateRoleEntity>();
 		for (const entry of entries) {
 			map.set(entry.deviceId, {
@@ -207,13 +208,13 @@ describe('SpaceClimateStateService', () => {
 			const result = await service.getClimateState(mockSpaceId);
 
 			expect(result).not.toBeNull();
-			expect(result!.hasClimate).toBe(false);
-			expect(result!.mode).toBe(ClimateMode.OFF);
-			expect(result!.currentTemperature).toBeNull();
-			expect(result!.heatingSetpoint).toBeNull();
-			expect(result!.coolingSetpoint).toBeNull();
-			expect(result!.minSetpoint).toBe(DEFAULT_MIN_SETPOINT);
-			expect(result!.maxSetpoint).toBe(DEFAULT_MAX_SETPOINT);
+			expect(result.hasClimate).toBe(false);
+			expect(result.mode).toBe(ClimateMode.OFF);
+			expect(result.currentTemperature).toBeNull();
+			expect(result.heatingSetpoint).toBeNull();
+			expect(result.coolingSetpoint).toBeNull();
+			expect(result.minSetpoint).toBe(DEFAULT_MIN_SETPOINT);
+			expect(result.maxSetpoint).toBe(DEFAULT_MAX_SETPOINT);
 		});
 
 		it('should detect HEAT mode when heater is on', async () => {
@@ -229,10 +230,10 @@ describe('SpaceClimateStateService', () => {
 			const result = await service.getClimateState(mockSpaceId);
 
 			expect(result).not.toBeNull();
-			expect(result!.hasClimate).toBe(true);
-			expect(result!.mode).toBe(ClimateMode.HEAT);
-			expect(result!.supportsHeating).toBe(true);
-			expect(result!.isHeating).toBe(true);
+			expect(result.hasClimate).toBe(true);
+			expect(result.mode).toBe(ClimateMode.HEAT);
+			expect(result.supportsHeating).toBe(true);
+			expect(result.isHeating).toBe(true);
 		});
 
 		it('should detect COOL mode when cooler is on', async () => {
@@ -248,10 +249,10 @@ describe('SpaceClimateStateService', () => {
 			const result = await service.getClimateState(mockSpaceId);
 
 			expect(result).not.toBeNull();
-			expect(result!.hasClimate).toBe(true);
-			expect(result!.mode).toBe(ClimateMode.COOL);
-			expect(result!.supportsCooling).toBe(true);
-			expect(result!.isCooling).toBe(true);
+			expect(result.hasClimate).toBe(true);
+			expect(result.mode).toBe(ClimateMode.COOL);
+			expect(result.supportsCooling).toBe(true);
+			expect(result.isCooling).toBe(true);
 		});
 
 		it('should detect AUTO mode when both heater and cooler are on', async () => {
@@ -270,10 +271,10 @@ describe('SpaceClimateStateService', () => {
 			const result = await service.getClimateState(mockSpaceId);
 
 			expect(result).not.toBeNull();
-			expect(result!.hasClimate).toBe(true);
-			expect(result!.mode).toBe(ClimateMode.AUTO);
-			expect(result!.supportsHeating).toBe(true);
-			expect(result!.supportsCooling).toBe(true);
+			expect(result.hasClimate).toBe(true);
+			expect(result.mode).toBe(ClimateMode.AUTO);
+			expect(result.supportsHeating).toBe(true);
+			expect(result.supportsCooling).toBe(true);
 		});
 
 		it('should detect OFF mode when no heater or cooler is on', async () => {
@@ -289,8 +290,8 @@ describe('SpaceClimateStateService', () => {
 			const result = await service.getClimateState(mockSpaceId);
 
 			expect(result).not.toBeNull();
-			expect(result!.mode).toBe(ClimateMode.OFF);
-			expect(result!.isHeating).toBe(false);
+			expect(result.mode).toBe(ClimateMode.OFF);
+			expect(result.isHeating).toBe(false);
 		});
 
 		it('should use lastAppliedMode from InfluxDB when available', async () => {
@@ -316,8 +317,8 @@ describe('SpaceClimateStateService', () => {
 			const result = await service.getClimateState(mockSpaceId);
 
 			expect(result).not.toBeNull();
-			expect(result!.lastAppliedMode).toBe(ClimateMode.HEAT);
-			expect(result!.lastAppliedAt).toEqual(lastApplied.appliedAt);
+			expect(result.lastAppliedMode).toBe(ClimateMode.HEAT);
+			expect(result.lastAppliedAt).toEqual(lastApplied.appliedAt);
 		});
 
 		it('should calculate average temperature from multiple devices', async () => {
@@ -338,7 +339,7 @@ describe('SpaceClimateStateService', () => {
 			const result = await service.getClimateState(mockSpaceId);
 
 			expect(result).not.toBeNull();
-			expect(result!.currentTemperature).toBe(21.0); // Average of 20 and 22
+			expect(result.currentTemperature).toBe(21.0); // Average of 20 and 22
 		});
 
 		it('should filter out HIDDEN role devices', async () => {
@@ -367,7 +368,7 @@ describe('SpaceClimateStateService', () => {
 			const result = await service.getClimateState(mockSpaceId);
 
 			expect(result).not.toBeNull();
-			expect(result!.devicesCount).toBe(1);
+			expect(result.devicesCount).toBe(1);
 		});
 
 		it('should detect mixed state when devices have different setpoints', async () => {
@@ -388,7 +389,7 @@ describe('SpaceClimateStateService', () => {
 			const result = await service.getClimateState(mockSpaceId);
 
 			expect(result).not.toBeNull();
-			expect(result!.isMixed).toBe(true);
+			expect(result.isMixed).toBe(true);
 		});
 
 		it('should not detect mixed state when setpoints are within tolerance', async () => {
@@ -409,7 +410,7 @@ describe('SpaceClimateStateService', () => {
 			const result = await service.getClimateState(mockSpaceId);
 
 			expect(result).not.toBeNull();
-			expect(result!.isMixed).toBe(false);
+			expect(result.isMixed).toBe(false);
 		});
 
 		it('should calculate min/max setpoint range from device limits', async () => {
@@ -425,8 +426,8 @@ describe('SpaceClimateStateService', () => {
 
 			expect(result).not.toBeNull();
 			// Device has minValue: 15, maxValue: 30 on heater setpoint
-			expect(result!.minSetpoint).toBe(15);
-			expect(result!.maxSetpoint).toBe(30);
+			expect(result.minSetpoint).toBe(15);
+			expect(result.maxSetpoint).toBe(30);
 		});
 	});
 

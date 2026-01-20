@@ -2,16 +2,19 @@
 import { Repository, SelectQueryBuilder } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { Test, TestingModule } from '@nestjs/testing';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { ChannelCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
-import { ClimateMode, EventType } from '../spaces.constants';
 import { ClimateState, SpaceClimateStateService } from '../services/space-climate-state.service';
+import { ClimateMode, EventType } from '../spaces.constants';
 
 import { SpaceClimateStateListener } from './space-climate-state.listener';
+
+// Debounce delay matches the constant in the listener (100ms)
+const DEBOUNCE_DELAY = 100;
 
 describe('SpaceClimateStateListener', () => {
 	let listener: SpaceClimateStateListener;
@@ -56,6 +59,9 @@ describe('SpaceClimateStateListener', () => {
 	};
 
 	beforeEach(async () => {
+		// Use fake timers for debounce testing
+		jest.useFakeTimers();
+
 		const mockChannelQueryBuilder = {
 			innerJoinAndSelect: jest.fn().mockReturnThis(),
 			where: jest.fn().mockReturnThis(),
@@ -95,7 +101,23 @@ describe('SpaceClimateStateListener', () => {
 
 	afterEach(() => {
 		jest.clearAllMocks();
+		jest.useRealTimers();
 	});
+
+	/**
+	 * Helper to advance timers and flush pending promises.
+	 * This is needed because the debounced function is async.
+	 */
+	const flushDebounce = async (): Promise<void> => {
+		// Advance timers to trigger the debounced callback
+		jest.advanceTimersByTime(DEBOUNCE_DELAY + 10);
+		// Run all pending timers
+		jest.runAllTimers();
+		// Allow any pending promises to resolve (multiple ticks for nested promises)
+		await Promise.resolve();
+		await Promise.resolve();
+		await Promise.resolve();
+	};
 
 	describe('handlePropertyChanged', () => {
 		it('should emit CLIMATE_STATE_CHANGED when climate-relevant property changes', async () => {
@@ -108,6 +130,10 @@ describe('SpaceClimateStateListener', () => {
 			await listener.handlePropertyChanged(property as ChannelPropertyEntity);
 
 			expect(channelRepository.createQueryBuilder).toHaveBeenCalled();
+
+			// Flush debounce timer to trigger the event emission
+			await flushDebounce();
+
 			expect(climateStateService.getClimateState).toHaveBeenCalledWith(mockRoomId);
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CLIMATE_STATE_CHANGED,
@@ -169,6 +195,9 @@ describe('SpaceClimateStateListener', () => {
 
 			await listener.handlePropertyChanged(property as ChannelPropertyEntity);
 
+			// Flush debounce timer
+			await flushDebounce();
+
 			expect(climateStateService.getClimateState).toHaveBeenCalled();
 			expect(eventEmitter.emit).not.toHaveBeenCalled();
 		});
@@ -187,6 +216,9 @@ describe('SpaceClimateStateListener', () => {
 			};
 
 			await listener.handlePropertyChanged(property as ChannelPropertyEntity);
+
+			// Flush debounce timer
+			await flushDebounce();
 
 			expect(climateStateService.getClimateState).toHaveBeenCalled();
 			expect(eventEmitter.emit).not.toHaveBeenCalled();
@@ -300,6 +332,9 @@ describe('SpaceClimateStateListener', () => {
 
 			await listener.handlePropertyChanged(property as ChannelPropertyEntity);
 
+			// Flush debounce timer
+			await flushDebounce();
+
 			expect(climateStateService.getClimateState).toHaveBeenCalled();
 			expect(eventEmitter.emit).toHaveBeenCalled();
 		});
@@ -312,6 +347,9 @@ describe('SpaceClimateStateListener', () => {
 			};
 
 			await listener.handlePropertyChanged(property as ChannelPropertyEntity);
+
+			// Flush debounce timer
+			await flushDebounce();
 
 			expect(climateStateService.getClimateState).toHaveBeenCalled();
 			expect(eventEmitter.emit).toHaveBeenCalled();
@@ -326,6 +364,9 @@ describe('SpaceClimateStateListener', () => {
 
 			await listener.handlePropertyChanged(property as ChannelPropertyEntity);
 
+			// Flush debounce timer
+			await flushDebounce();
+
 			expect(climateStateService.getClimateState).toHaveBeenCalled();
 			expect(eventEmitter.emit).toHaveBeenCalled();
 		});
@@ -338,6 +379,9 @@ describe('SpaceClimateStateListener', () => {
 			};
 
 			await listener.handlePropertyChanged(property as ChannelPropertyEntity);
+
+			// Flush debounce timer
+			await flushDebounce();
 
 			expect(climateStateService.getClimateState).toHaveBeenCalled();
 			expect(eventEmitter.emit).toHaveBeenCalled();

@@ -106,6 +106,10 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 	 * Get the current climate state for a space using multi-device climate roles.
 	 * Aggregates temperature/humidity from all primary devices, detects mode from device states,
 	 * and calculates intersection of setpoint ranges.
+	 *
+	 * Performance optimizations:
+	 * - Parallel execution of independent async calls
+	 * - Reuses fetched devices and role map to avoid redundant queries
 	 */
 	async getClimateState(spaceId: string): Promise<ClimateState | null> {
 		const defaultState: ClimateState = {
@@ -127,21 +131,29 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 			lastAppliedAt: null,
 		};
 
-		// Verify space exists
-		const space = await this.spacesService.findOne(spaceId);
+		// Fetch devices and role map in parallel (performance optimization)
+		const [devices, roleMap] = await Promise.all([
+			this.spacesService.findDevicesBySpace(spaceId),
+			this.climateRoleService.getRoleMap(spaceId),
+		]);
 
-		if (!space) {
-			this.logger.warn(`Space not found id=${spaceId}`);
-
-			return null;
+		// Early return if no devices (space doesn't exist or has no devices)
+		if (!devices || devices.length === 0) {
+			// Verify space exists only if we need to return null vs default state
+			const space = await this.spacesService.findOne(spaceId);
+			if (!space) {
+				this.logger.warn(`Space not found id=${spaceId}`);
+				return null;
+			}
+			this.logger.debug(`No devices found in space id=${spaceId}`);
+			return defaultState;
 		}
 
-		// Get all primary climate devices (excluding HIDDEN)
-		const primaryDevices = await this.getPrimaryClimateDevicesInSpace(spaceId);
+		// Get all primary climate devices (excluding HIDDEN) - reuse fetched data
+		const primaryDevices = this.extractPrimaryClimateDevices(devices, roleMap);
 
 		if (primaryDevices.length === 0) {
 			this.logger.debug(`No primary climate devices found in space id=${spaceId}`);
-
 			return defaultState;
 		}
 
@@ -166,9 +178,9 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 			}
 		}
 
-		// If including sensors, also get temperature from SENSOR role devices
+		// If including sensors, also get temperature from SENSOR role devices (reuse fetched data)
 		if (includeSensors) {
-			const sensorTemperatures = await this.getSensorTemperatures(spaceId);
+			const sensorTemperatures = this.extractSensorTemperatures(devices, roleMap);
 			temperatures.push(...sensorTemperatures);
 		}
 
@@ -256,6 +268,7 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 		const { mode: detectedMode, isHeating, isCooling } = this.detectClimateModeAndActivity(primaryDevices);
 
 		// Get last applied climate state from InfluxDB (user's intent, includes mode and setpoints)
+		// Note: This is an async call but it's unavoidable - InfluxDB query must happen after we know there are devices
 		const lastApplied = await this.intentTimeseriesService.getLastClimateState(spaceId);
 		const lastAppliedMode = lastApplied?.mode
 			? Object.values(ClimateMode).includes(lastApplied.mode as ClimateMode)
@@ -291,13 +304,9 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 			currentTemperature: currentTemperature !== null ? Math.round(currentTemperature * 10) / 10 : null,
 			currentHumidity: currentHumidity !== null ? Math.round(currentHumidity) : null,
 			heatingSetpoint:
-				heatingSetpoint !== null
-					? Math.round(heatingSetpoint / SETPOINT_PRECISION) * SETPOINT_PRECISION
-					: null,
+				heatingSetpoint !== null ? Math.round(heatingSetpoint / SETPOINT_PRECISION) * SETPOINT_PRECISION : null,
 			coolingSetpoint:
-				coolingSetpoint !== null
-					? Math.round(coolingSetpoint / SETPOINT_PRECISION) * SETPOINT_PRECISION
-					: null,
+				coolingSetpoint !== null ? Math.round(coolingSetpoint / SETPOINT_PRECISION) * SETPOINT_PRECISION : null,
 			minSetpoint,
 			maxSetpoint,
 			supportsHeating,
@@ -315,10 +324,30 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 	 * Get all primary climate devices in the space.
 	 * Primary devices are: thermostat, heating_unit, air_conditioner
 	 * Excludes devices with HIDDEN role.
+	 *
+	 * Performance note: This method fetches devices and role map. If you already have
+	 * this data, use extractPrimaryClimateDevices() instead to avoid redundant queries.
 	 */
 	async getPrimaryClimateDevicesInSpace(spaceId: string): Promise<PrimaryClimateDevice[]> {
-		const devices = await this.spacesService.findDevicesBySpace(spaceId);
-		const roleMap = await this.climateRoleService.getRoleMap(spaceId);
+		// Fetch devices and role map in parallel (performance optimization)
+		const [devices, roleMap] = await Promise.all([
+			this.spacesService.findDevicesBySpace(spaceId),
+			this.climateRoleService.getRoleMap(spaceId),
+		]);
+
+		return this.extractPrimaryClimateDevices(devices, roleMap);
+	}
+
+	/**
+	 * Extract primary climate devices from already-fetched device list and role map.
+	 * This is the internal implementation that avoids redundant database queries.
+	 *
+	 * @internal Use getPrimaryClimateDevicesInSpace() for public API
+	 */
+	private extractPrimaryClimateDevices(
+		devices: DeviceEntity[],
+		roleMap: Map<string, { role: ClimateRole }>,
+	): PrimaryClimateDevice[] {
 		const primaryDevices: PrimaryClimateDevice[] = [];
 
 		// Sort devices by name for deterministic selection
@@ -511,12 +540,13 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 	}
 
 	/**
-	 * Get temperature readings from SENSOR role devices.
+	 * Extract temperature readings from SENSOR role devices using already-fetched data.
+	 * This avoids redundant database queries when devices and roleMap are already available.
+	 *
+	 * @internal Use this when you already have devices and roleMap from other operations
 	 */
-	private async getSensorTemperatures(spaceId: string): Promise<number[]> {
+	private extractSensorTemperatures(devices: DeviceEntity[], roleMap: Map<string, { role: ClimateRole }>): number[] {
 		const temperatures: number[] = [];
-		const roleMap = await this.climateRoleService.getRoleMap(spaceId);
-		const devices = await this.spacesService.findDevicesBySpace(spaceId);
 
 		for (const device of devices) {
 			if (device.category !== DeviceCategory.SENSOR) {
