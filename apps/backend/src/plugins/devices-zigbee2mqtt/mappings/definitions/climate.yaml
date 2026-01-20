@@ -124,6 +124,9 @@ mappings:
         category: COOLER
         features:
           # System mode -> cooler ON state (true when mode includes cooling)
+          # Note: Write only handles true→"heat_cool" to enable AUTO mode.
+          # Cooler false does not write to avoid overwriting heater's mode.
+          # COOL-only mode will set "heat_cool" (both enabled) as a limitation.
           - z2m_feature: system_mode
             panel:
               identifier: ON
@@ -139,8 +142,7 @@ mappings:
                 "heat_cool": true
                 "fan_only": false
               write:
-                true: "cool"
-                false: "off"
+                true: "heat_cool"
 
           # Running state -> cooler status (true when cooling)
           - z2m_feature: running_state
