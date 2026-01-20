@@ -5,6 +5,7 @@ import 'package:fastybird_smart_panel/modules/devices/controllers/channels/fan.d
 import 'package:fastybird_smart_panel/modules/devices/models/control_state.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/light.dart';
 
 /// Controller for light channel with optimistic UI support.
@@ -193,6 +194,23 @@ class LightChannelController {
     return channel.saturation;
   }
 
+  /// Color temperature in Kelvin (optimistic-aware).
+  int get colorTemperature {
+    final prop = channel.temperatureProp;
+    if (prop != null &&
+        _controlState.isLocked(deviceId, channel.id, prop.id)) {
+      final value =
+          _controlState.getDesiredValue(deviceId, channel.id, prop.id);
+      if (value is num) return value.toInt();
+    }
+    // Get from property value
+    final propValue = prop?.value;
+    if (propValue is NumberValueType) {
+      return propValue.value.toInt();
+    }
+    return 4000; // Default neutral white
+  }
+
   /// Current color (optimistic-aware, supports both RGB and HSV).
   Color get color {
     if (_controlState.isGroupLocked(deviceId, colorGroupId) ||
@@ -303,6 +321,26 @@ class LightChannelController {
       } else {
         _controlState.clear(deviceId, channel.id, prop.id);
         _onError?.call(prop.id, Exception('Failed to set color white'));
+      }
+    }).catchError((error) {
+      _controlState.clear(deviceId, channel.id, prop.id);
+      _onError?.call(prop.id, error);
+    });
+  }
+
+  /// Set color temperature in Kelvin with optimistic UI.
+  void setColorTemperature(int value) {
+    final prop = channel.temperatureProp;
+    if (prop == null) return;
+
+    _controlState.setPending(deviceId, channel.id, prop.id, value);
+
+    _devicesService.setPropertyValue(prop.id, value).then((success) {
+      if (success) {
+        _controlState.setSettling(deviceId, channel.id, prop.id);
+      } else {
+        _controlState.clear(deviceId, channel.id, prop.id);
+        _onError?.call(prop.id, Exception('Failed to set color temperature'));
       }
     }).catchError((error) {
       _controlState.clear(deviceId, channel.id, prop.id);
