@@ -2179,7 +2179,8 @@ class _LightTile extends StatelessWidget {
       isActive: light.isOn,
       isOffline: light.isOffline,
       onTileTap: onTap,
-      onIconTap: onIconTap,
+      // Disable icon tap (toggle) when device is offline
+      onIconTap: light.isOffline ? null : onIconTap,
     );
   }
 }

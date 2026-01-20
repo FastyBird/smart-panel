@@ -2175,16 +2175,22 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
     // Show all auxiliary devices individually
     for (final device in _state.auxiliaryDevices) {
+      // Check if device is online
+      final deviceView = _devicesService?.getDevice(device.id);
+      final isOffline = deviceView != null && !deviceView.isOnline;
+
       items.add(UniversalTile(
         layout: layout,
         icon: device.icon,
         name: device.name,
         status: _translateDeviceStatus(localizations, device.status, device.isActive),
         isActive: device.isActive,
+        isOffline: isOffline,
         showDoubleBorder: false,
-        showWarningBadge: false,
+        showWarningBadge: true, // Show warning badge for offline devices
         showInactiveBorder: showInactiveBorder,
-        onIconTap: () => _toggleAuxiliaryDevice(device),
+        // Disable icon tap (toggle) when device is offline
+        onIconTap: isOffline ? null : () => _toggleAuxiliaryDevice(device),
         onTileTap: () => _openAuxiliaryDeviceDetail(device),
       ));
     }
