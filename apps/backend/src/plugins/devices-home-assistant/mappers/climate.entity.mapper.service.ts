@@ -145,58 +145,26 @@ export class ClimateEntityMapperService extends EntityMapper {
 			}
 		}
 
-		let thermostatState: boolean = false;
 		let heaterOnState: boolean = false;
 		let coolerOnState: boolean = false;
-		let thermostatMode: string | null = null;
 
 		switch (state.state.toLowerCase()) {
 			case 'off':
-				thermostatState = false;
-				thermostatMode = 'auto';
 				break;
 
 			case 'heat':
-				thermostatState = true;
 				heaterOnState = true;
-				thermostatMode = 'heat';
 				break;
 
 			case 'cool':
-				thermostatState = true;
 				coolerOnState = true;
-				thermostatMode = 'cool';
 				break;
 
 			case 'heat_cool':
 			case 'auto':
-				thermostatState = true;
 				heaterOnState = true;
 				coolerOnState = true;
-				thermostatMode = 'auto';
 				break;
-		}
-
-		const thermostatStateProp = await this.getValidProperty(
-			properties,
-			PropertyCategory.ACTIVE,
-			ENTITY_MAIN_STATE_ATTRIBUTE,
-			[ChannelCategory.THERMOSTAT],
-		);
-
-		if (thermostatStateProp) {
-			mapped.set(thermostatStateProp.id, thermostatState);
-		}
-
-		const thermostatModeProp = await this.getValidProperty(
-			properties,
-			PropertyCategory.MODE,
-			ENTITY_MAIN_STATE_ATTRIBUTE,
-			[ChannelCategory.THERMOSTAT],
-		);
-
-		if (thermostatModeProp) {
-			mapped.set(thermostatModeProp.id, thermostatMode);
 		}
 
 		const heaterOnProp = await this.getValidProperty(properties, PropertyCategory.ON, ENTITY_MAIN_STATE_ATTRIBUTE, [
@@ -288,58 +256,69 @@ export class ClimateEntityMapperService extends EntityMapper {
 			};
 		}
 
-		const thermostatActiveProp = await this.getValidProperty(
-			properties,
-			PropertyCategory.ACTIVE,
-			ENTITY_MAIN_STATE_ATTRIBUTE,
-			[ChannelCategory.THERMOSTAT],
-		);
-
-		if (thermostatActiveProp && values.has(thermostatActiveProp.id)) {
-			return {
-				state: values.get(thermostatActiveProp.id) === true ? 'auto' : 'off',
-				service: values.get(thermostatActiveProp.id) === true ? 'turn_on' : 'turn_off',
-			};
-		}
-
-		const thermostatModeProp = await this.getValidProperty(
-			properties,
-			PropertyCategory.MODE,
-			ENTITY_MAIN_STATE_ATTRIBUTE,
-			[ChannelCategory.THERMOSTAT],
-		);
-
-		if (thermostatModeProp && values.has(thermostatModeProp.id)) {
-			return {
-				state: values.get(thermostatModeProp.id).toString(),
-				service: 'set_hvac_mode',
-			};
-		}
-
 		const heaterOnProp = await this.getValidProperty(properties, PropertyCategory.ON, ENTITY_MAIN_STATE_ATTRIBUTE, [
 			ChannelCategory.HEATER,
 		]);
-
-		if (heaterOnProp && values.has(heaterOnProp.id)) {
-			return {
-				state: values.get(heaterOnProp.id) === true ? 'heat' : 'off',
-				service: 'set_hvac_mode',
-			};
-		}
 
 		const coolerOnProp = await this.getValidProperty(properties, PropertyCategory.ON, ENTITY_MAIN_STATE_ATTRIBUTE, [
 			ChannelCategory.COOLER,
 		]);
 
-		if (coolerOnProp && values.has(coolerOnProp.id)) {
+		// Determine if either property is being changed in this call
+		const heaterChanged = heaterOnProp && values.has(heaterOnProp.id);
+		const coolerChanged = coolerOnProp && values.has(coolerOnProp.id);
+
+		// Only send HVAC mode change if at least one ON property is being changed
+		if (!heaterChanged && !coolerChanged) {
+			return null;
+		}
+
+		// Compute combined HVAC mode from heater and cooler ON states.
+		// Use value from `values` map if being set in this call, otherwise use current property value.
+		//
+		// IMPORTANT: This logic assumes the property's `value` field reflects the persisted state.
+		// Flutter sends heater/cooler changes sequentially with await, so the first request should
+		// complete (including DB persistence) before the second request arrives. If there's a race
+		// condition where the property value hasn't been updated yet, the wrong mode may be computed.
+		//
+		// Write order strategy (Flutter):
+		// - HEAT/OFF modes: cooler writes first, heater writes last → heater determines final mode
+		// - COOL/AUTO modes: heater writes first, cooler writes last → cooler determines final mode
+		const heaterOn = heaterOnProp
+			? values.has(heaterOnProp.id)
+				? values.get(heaterOnProp.id) === true
+				: heaterOnProp.value === true
+			: false;
+		const coolerOn = coolerOnProp
+			? values.has(coolerOnProp.id)
+				? values.get(coolerOnProp.id) === true
+				: coolerOnProp.value === true
+			: false;
+
+		if (heaterOn && coolerOn) {
 			return {
-				state: values.get(coolerOnProp.id) === true ? 'cool' : 'off',
+				state: 'heat_cool',
 				service: 'set_hvac_mode',
 			};
 		}
 
-		this.logger.warn('Could not map any property to Home Assistant climate entity state');
+		if (heaterOn) {
+			return {
+				state: 'heat',
+				service: 'set_hvac_mode',
+			};
+		}
 
-		return null;
+		if (coolerOn) {
+			return {
+				state: 'cool',
+				service: 'set_hvac_mode',
+			};
+		}
+
+		return {
+			state: 'off',
+			service: 'set_hvac_mode',
+		};
 	}
 }

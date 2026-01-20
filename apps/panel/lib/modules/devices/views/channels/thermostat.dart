@@ -1,15 +1,12 @@
 import 'package:collection/collection.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
-import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/channels/mixins.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/active.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/locked.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/mode.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/units.dart';
 
-class ThermostatChannelView extends ChannelView with ChannelActiveMixin {
+/// Thermostat channel view
+/// Note: The thermostat channel now only has the "locked" property.
+/// Mode/active state is derived from heater/cooler channels instead.
+class ThermostatChannelView extends ChannelView {
   ThermostatChannelView({
     required super.id,
     required super.type,
@@ -23,65 +20,8 @@ class ThermostatChannelView extends ChannelView with ChannelActiveMixin {
     super.validationIssues,
   });
 
-  @override
-  ActiveChannelPropertyView get activeProp =>
-      properties.whereType<ActiveChannelPropertyView>().first;
-
-  ModeChannelPropertyView get modeProp =>
-      properties.whereType<ModeChannelPropertyView>().first;
-
   LockedChannelPropertyView? get lockedProp =>
       properties.whereType<LockedChannelPropertyView>().firstOrNull;
-
-  UnitsChannelPropertyView? get unitsProp =>
-      properties.whereType<UnitsChannelPropertyView>().firstOrNull;
-
-  ThermostatModeValue get mode {
-    final ValueType? value = modeProp.value;
-
-    if (value is StringValueType && ThermostatModeValue.contains(value.value)) {
-      ThermostatModeValue? mode = ThermostatModeValue.fromValue(value.value);
-
-      if (mode != null) {
-        return mode;
-      }
-    }
-
-    return ThermostatModeValue.auto;
-  }
-
-  List<ThermostatModeValue> get availableModes {
-    final FormatType? format = modeProp.format;
-
-    if (format is StringListFormatType) {
-      return format.value
-          .map((item) => ThermostatModeValue.fromValue(item))
-          .whereType<ThermostatModeValue>()
-          .toList();
-    }
-
-    return [ThermostatModeValue.auto];
-  }
-
-  bool get showInCelsius {
-    final ValueType? value = unitsProp?.value;
-
-    if (value is StringValueType) {
-      return value.value == 'celsius';
-    }
-
-    return false;
-  }
-
-  bool get showInFahrenheit {
-    final ValueType? value = unitsProp?.value;
-
-    if (value is StringValueType) {
-      return value.value == 'fahrenheit';
-    }
-
-    return false;
-  }
 
   bool get isLocked {
     final LockedChannelPropertyView? prop = lockedProp;

@@ -247,15 +247,6 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 						value: false,
 					});
 				}
-				// Turn off thermostat
-				if (device.thermostatActiveProperty && device.thermostatChannel) {
-					commands.push({
-						device: device.device,
-						channel: device.thermostatChannel,
-						property: device.thermostatActiveProperty,
-						value: false,
-					});
-				}
 				break;
 
 			case ClimateMode.HEAT:
@@ -274,15 +265,6 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 						channel: device.coolerChannel,
 						property: device.coolerOnProperty,
 						value: false,
-					});
-				}
-				// Set thermostat mode if available
-				if (device.thermostatModeProperty && device.thermostatChannel) {
-					commands.push({
-						device: device.device,
-						channel: device.thermostatChannel,
-						property: device.thermostatModeProperty,
-						value: 'heat',
 					});
 				}
 				break;
@@ -305,15 +287,6 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 						value: true,
 					});
 				}
-				// Set thermostat mode if available
-				if (device.thermostatModeProperty && device.thermostatChannel) {
-					commands.push({
-						device: device.device,
-						channel: device.thermostatChannel,
-						property: device.thermostatModeProperty,
-						value: 'cool',
-					});
-				}
 				break;
 
 			case ClimateMode.AUTO:
@@ -332,15 +305,6 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 						channel: device.coolerChannel,
 						property: device.coolerOnProperty,
 						value: true,
-					});
-				}
-				// Set thermostat mode if available
-				if (device.thermostatModeProperty && device.thermostatChannel) {
-					commands.push({
-						device: device.device,
-						channel: device.thermostatChannel,
-						property: device.thermostatModeProperty,
-						value: 'auto',
 					});
 				}
 				break;

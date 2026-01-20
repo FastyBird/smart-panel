@@ -12,7 +12,6 @@ import 'package:fastybird_smart_panel/core/widgets/rounded_slider.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
-import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/cooler.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/heater.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
@@ -42,33 +41,50 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   void initState() {
     super.initState();
 
+    // Always have OFF mode
     _thermostatModes.add(ThermostatModeType.off);
 
-    if (widget._device.thermostatAvailableModes
-        .contains(getValueFromMode(ThermostatModeType.heat))) {
+    // Derive available modes from heater/cooler channel presence
+    final bool hasHeater = widget._device.hasHeater;
+    final bool hasCooler = widget._device.hasCooler;
+
+    if (hasHeater) {
       _thermostatModes.add(ThermostatModeType.heat);
     }
 
-    if (widget._device.thermostatAvailableModes
-        .contains(getValueFromMode(ThermostatModeType.cool))) {
+    if (hasCooler) {
       _thermostatModes.add(ThermostatModeType.cool);
     }
 
-    if (widget._device.thermostatAvailableModes
-        .contains(getValueFromMode(ThermostatModeType.auto))) {
+    if (hasHeater && hasCooler) {
       _thermostatModes.add(ThermostatModeType.auto);
     }
 
-    if (widget._device.isOn == false) {
+    // Derive current mode from heater/cooler ON states
+    _currentModeIndex = _thermostatModes.indexWhere(
+      (mode) => mode == _getCurrentMode(),
+    );
+    if (_currentModeIndex < 0) {
       _currentModeIndex = 0;
+    }
+  }
+
+  /// Derives the current thermostat mode from heater/cooler ON states
+  ThermostatModeType _getCurrentMode() {
+    final heater = widget._device.heaterChannel;
+    final cooler = widget._device.coolerChannel;
+
+    final bool heaterOn = heater?.isOn ?? false;
+    final bool coolerOn = cooler?.isOn ?? false;
+
+    if (heaterOn && coolerOn) {
+      return ThermostatModeType.auto;
+    } else if (heaterOn) {
+      return ThermostatModeType.heat;
+    } else if (coolerOn) {
+      return ThermostatModeType.cool;
     } else {
-      _currentModeIndex = _thermostatModes.indexWhere(
-        (mode) =>
-            mode ==
-            getModeFromValue(
-              widget._device.thermostatMode,
-            ),
-      );
+      return ThermostatModeType.off;
     }
   }
 
@@ -144,13 +160,52 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
       _currentModeIndex = index;
     });
 
-    // Set mode property - ACTIVE property is read-only (derived from hvac_action)
-    // and will be updated automatically by the backend based on the HVAC state
-    _valueHelper.setPropertyValue(
-      context,
-      widget._device.thermostatChannel.modeProp,
-      getValueFromMode(_thermostatModes[index])?.value,
-    );
+    final mode = _thermostatModes[index];
+    final heater = widget._device.heaterChannel;
+    final cooler = widget._device.coolerChannel;
+
+    // Strategic write order: The property that determines the final mode writes LAST.
+    // This ensures "last write wins" produces the correct result for each mode.
+    // - HEAT/OFF: heater writes last (determines heat/off)
+    // - COOL/AUTO: cooler writes last (determines cool/heat_cool)
+    switch (mode) {
+      case ThermostatModeType.off:
+        // Cooler first, heater last → heater's "off" is final
+        if (cooler != null) {
+          await _valueHelper.setPropertyValue(context, cooler.onProp, false);
+        }
+        if (heater != null) {
+          await _valueHelper.setPropertyValue(context, heater.onProp, false);
+        }
+        break;
+      case ThermostatModeType.heat:
+        // Cooler first, heater last → heater's "heat" is final
+        if (cooler != null) {
+          await _valueHelper.setPropertyValue(context, cooler.onProp, false);
+        }
+        if (heater != null) {
+          await _valueHelper.setPropertyValue(context, heater.onProp, true);
+        }
+        break;
+      case ThermostatModeType.cool:
+        // Heater first, cooler last → cooler's "cool" is final
+        if (heater != null) {
+          await _valueHelper.setPropertyValue(context, heater.onProp, false);
+        }
+        if (cooler != null) {
+          await _valueHelper.setPropertyValue(context, cooler.onProp, true);
+        }
+        break;
+      case ThermostatModeType.auto:
+        // Heater first, cooler last → cooler's "heat_cool" is final
+        if (heater != null) {
+          await _valueHelper.setPropertyValue(context, heater.onProp, true);
+        }
+        if (cooler != null) {
+          await _valueHelper.setPropertyValue(context, cooler.onProp, true);
+        }
+        break;
+    }
   }
 }
 
@@ -281,9 +336,7 @@ class _ThermostatBarState extends State<ThermostatBar> {
             ),
             RichText(
               text: TextSpan(
-                text: widget._device.thermostatChannel.showInFahrenheit
-                    ? '°F'
-                    : '°C',
+                text: '°C',
                 style: TextStyle(
                   color: Theme.of(context).brightness == Brightness.light
                       ? AppTextColorLight.regular
@@ -363,9 +416,7 @@ class _ThermostatBarState extends State<ThermostatBar> {
                   ),
                   RichText(
                     text: TextSpan(
-                      text: widget._device.thermostatChannel.showInFahrenheit
-                          ? '°F'
-                          : '°C',
+                      text: '°C',
                       style: TextStyle(
                         color: Theme.of(context).brightness == Brightness.light
                             ? AppTextColorLight.secondary
@@ -1011,7 +1062,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                widget._device.thermostatChannel.showInFahrenheit ? '°F' : '°C',
+                '°C',
                 style: TextStyle(
                   fontFamily: 'DIN1451',
                   color: Theme.of(context).brightness == Brightness.light
@@ -1074,7 +1125,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
           ),
         ),
         Text(
-          widget._device.thermostatChannel.showInFahrenheit ? '°F' : '°C',
+          '°C',
           style: TextStyle(
             color: Theme.of(context).brightness == Brightness.light
                 ? AppTextColorLight.secondary
@@ -1361,27 +1412,6 @@ enum ThermostatModeType {
   static bool contains(String value) => utils.contains(value);
 }
 
-final Map<ThermostatModeValue, ThermostatModeType> modeValueMapping = {
-  ThermostatModeValue.off: ThermostatModeType.off,
-  ThermostatModeValue.heat: ThermostatModeType.heat,
-  ThermostatModeValue.cool: ThermostatModeType.cool,
-  ThermostatModeValue.auto: ThermostatModeType.auto,
-};
-
-ThermostatModeType? getModeFromValue(ThermostatModeValue type) {
-  return modeValueMapping[type];
-}
-
-final Map<ThermostatModeType, ThermostatModeValue> valueModeMapping = {
-  ThermostatModeType.off: ThermostatModeValue.off,
-  ThermostatModeType.heat: ThermostatModeValue.heat,
-  ThermostatModeType.cool: ThermostatModeValue.cool,
-  ThermostatModeType.auto: ThermostatModeValue.auto,
-};
-
-ThermostatModeValue? getValueFromMode(ThermostatModeType type) {
-  return valueModeMapping[type];
-}
 
 class PropertyValueHelper {
   final DevicesService _service = locator<DevicesService>();

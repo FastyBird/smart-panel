@@ -3,25 +3,12 @@
 #
 # Thermostat device structure (from spec):
 # - temperature channel (required): current temperature reading
-# - thermostat channel (required): mode control
+# - thermostat channel (required): locked state
 # - heater channel (optional): heating setpoint and status
 # - cooler channel (optional): cooling setpoint and status
 # - humidity channel (optional): humidity reading
 
 version: "1.0"
-
-transformers:
-  # HVAC mode normalization: Z2M -> Panel thermostat mode
-  # Panel modes: off, heat, cool, auto, manual
-  hvac_mode:
-    type: map
-    bidirectional:
-      "off": "off"
-      "heat": "heat"
-      "cool": "cool"
-      "auto": "auto"
-      "fan_only": "manual"
-      "dry": "manual"
 
 mappings:
   # Zigbee thermostat/climate device
@@ -46,25 +33,37 @@ mappings:
               unit: "°C"
               settable: false
 
-      # Thermostat channel - mode control (required)
+      # Thermostat channel - locked state (required)
+      # Note: mode/active properties have been removed from thermostat channel
       - identifier: thermostat
         name: Thermostat
         category: THERMOSTAT
-        features:
-          # System mode (off, heat, cool, auto, etc.)
-          - z2m_feature: system_mode
-            panel:
-              identifier: MODE
-              name: Mode
-              data_type: ENUM
-              format: ["off", "heat", "cool", "auto", "manual"]
-            transformer: hvac_mode
+        features: []
 
       # Heater channel - heating setpoint and valve control (optional)
       - identifier: heater
         name: Heater
         category: HEATER
         features:
+          # System mode -> heater ON state (true when mode includes heating)
+          - z2m_feature: system_mode
+            panel:
+              identifier: ON
+              name: Heater On
+              data_type: BOOL
+            transform:
+              type: map
+              read:
+                "off": false
+                "heat": true
+                "cool": false
+                "auto": true
+                "heat_cool": true
+                "fan_only": false
+              write:
+                true: "heat"
+                false: "off"
+
           # Running state -> heater status (true when heating)
           - z2m_feature: running_state
             direction: read_only
@@ -124,6 +123,30 @@ mappings:
         name: Cooler
         category: COOLER
         features:
+          # System mode -> cooler ON state (true when mode includes cooling)
+          # Write order strategy: Flutter writes heater first, cooler last for COOL/AUTO modes.
+          # This ensures cooler's write is the final mode sent to Z2M.
+          # - COOL mode: heater→"off", cooler→"cool" → final "cool" ✓
+          # - AUTO mode: heater→"heat", cooler→"cool" → final "cool" (limitation: no true heat_cool)
+          # Trade-off: COOL mode works correctly, AUTO mode enables cooling only.
+          # For true heat_cool support, users should configure via Z2M interface directly.
+          - z2m_feature: system_mode
+            panel:
+              identifier: ON
+              name: Cooler On
+              data_type: BOOL
+            transform:
+              type: map
+              read:
+                "off": false
+                "heat": false
+                "cool": true
+                "auto": true
+                "heat_cool": true
+                "fan_only": false
+              write:
+                true: "cool"
+
           # Running state -> cooler status (true when cooling)
           - z2m_feature: running_state
             direction: read_only
