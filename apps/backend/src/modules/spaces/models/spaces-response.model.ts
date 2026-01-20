@@ -839,15 +839,6 @@ export class ClimateTargetDataModel {
 	})
 	@Expose({ name: 'has_humidity' })
 	hasHumidity: boolean;
-
-	@ApiProperty({
-		name: 'has_mode',
-		description: 'Whether this device supports HVAC mode control',
-		type: 'boolean',
-		example: true,
-	})
-	@Expose({ name: 'has_mode' })
-	hasMode: boolean;
 }
 
 /**

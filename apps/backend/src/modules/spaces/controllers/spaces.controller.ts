@@ -937,7 +937,6 @@ export class SpacesController {
 			model.priority = t.priority;
 			model.hasTemperature = t.hasTemperature;
 			model.hasHumidity = t.hasHumidity;
-			model.hasMode = t.hasMode;
 			return model;
 		});
 
