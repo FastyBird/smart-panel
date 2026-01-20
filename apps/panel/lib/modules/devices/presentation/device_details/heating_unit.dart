@@ -205,23 +205,11 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   double get _maxSetpoint => _device.heaterChannel.maxTemperature;
 
   double get _targetSetpoint {
-    final setpointProp = _device.heaterChannel.temperatureProp;
-    final controlState = _deviceControlStateService;
-
-    // Check for pending/optimistic value first
-    if (controlState != null &&
-        controlState.isLocked(
-            _device.id, _device.heaterChannel.id, setpointProp.id)) {
-      final desiredValue = controlState.getDesiredValue(
-        _device.id,
-        _device.heaterChannel.id,
-        setpointProp.id,
-      );
-      if (desiredValue is num) {
-        return desiredValue.toDouble();
-      }
+    // Use controller for optimistic-aware value
+    final controller = _controller;
+    if (controller != null) {
+      return controller.heater.temperature;
     }
-
     return _device.heaterChannel.temperature;
   }
 

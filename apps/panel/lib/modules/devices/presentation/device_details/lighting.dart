@@ -122,7 +122,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     _channels = widget._device.lightChannels;
   }
 
-  bool get _isSimple => widget._device.isSimpleLight;
+  bool get _isSimple => _controller?.isSimpleLight ?? widget._device.isSimpleLight;
   bool get _isMultiChannel => _channels.length > 1;
 
   @override

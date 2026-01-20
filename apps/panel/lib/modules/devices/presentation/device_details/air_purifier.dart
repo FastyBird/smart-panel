@@ -313,98 +313,35 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
   }
 
   void _setFanPower(bool value) {
-    final fanChannel = _device.fanChannel;
-    final onProp = fanChannel.onProp;
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      onProp.id,
-      value,
-    );
+    controller.setPower(value);
     setState(() {});
-
-    _setPropertyValue(onProp, value).then((_) {
-      if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          onProp.id,
-        );
-      }
-    });
   }
 
   void _setFanMode(FanModeValue mode) {
-    final fanChannel = _device.fanChannel;
-    final modeProp = fanChannel.modeProp;
-    if (!fanChannel.hasMode || modeProp == null) return;
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      modeProp.id,
-      mode.value,
-    );
+    controller.fan.setMode(mode);
     setState(() {});
-
-    _setPropertyValue(modeProp, mode.value).then((_) {
-      if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          modeProp.id,
-        );
-      }
-    });
   }
 
   void _setFanSwing(bool value) {
-    final fanChannel = _device.fanChannel;
-    final swingProp = fanChannel.swingProp;
-    if (!fanChannel.hasSwing || swingProp == null) return;
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      swingProp.id,
-      value,
-    );
+    controller.fan.setSwing(value);
     setState(() {});
-
-    _setPropertyValue(swingProp, value).then((_) {
-      if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          swingProp.id,
-        );
-      }
-    });
   }
 
   void _setFanDirection(FanDirectionValue direction) {
-    final fanChannel = _device.fanChannel;
-    final directionProp = fanChannel.directionProp;
-    if (!fanChannel.hasDirection || directionProp == null) return;
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      directionProp.id,
-      direction.value,
-    );
+    controller.fan.setDirection(direction);
     setState(() {});
-
-    _setPropertyValue(directionProp, direction.value).then((_) {
-      if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          directionProp.id,
-        );
-      }
-    });
   }
 
   void _setFanNaturalBreeze(bool value) {

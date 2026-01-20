@@ -237,99 +237,35 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
   }
 
   void _setHumidity(int humidity) {
-    final channel = _humidifierChannel;
-    final humidityProp = channel?.humidityProp;
-    if (channel == null || humidityProp == null) return;
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      channel.id,
-      humidityProp.id,
-      humidity,
-    );
+    controller.humidifier.setHumidity(humidity);
     setState(() {});
-
-    _setPropertyValue(humidityProp, humidity).then((_) {
-      if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          channel.id,
-          humidityProp.id,
-        );
-      }
-    });
   }
 
   void _setHumidifierMode(HumidifierModeValue mode) {
-    final channel = _humidifierChannel;
-    final modeProp = channel?.modeProp;
-    if (channel == null || !channel.hasMode || modeProp == null) return;
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      channel.id,
-      modeProp.id,
-      mode.value,
-    );
+    controller.humidifier.setMode(mode);
     setState(() {});
-
-    _setPropertyValue(modeProp, mode.value).then((_) {
-      if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          channel.id,
-          modeProp.id,
-        );
-      }
-    });
   }
 
   void _setFanSwing(bool value) {
-    final fanChannel = _device.fanChannel;
-    final swingProp = fanChannel?.swingProp;
-    if (fanChannel == null || !fanChannel.hasSwing || swingProp == null) return;
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      swingProp.id,
-      value,
-    );
+    controller.fan?.setSwing(value);
     setState(() {});
-
-    _setPropertyValue(swingProp, value).then((_) {
-      if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          swingProp.id,
-        );
-      }
-    });
   }
 
   void _setFanDirection(FanDirectionValue direction) {
-    final fanChannel = _device.fanChannel;
-    final directionProp = fanChannel?.directionProp;
-    if (fanChannel == null || !fanChannel.hasDirection || directionProp == null) return;
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      directionProp.id,
-      direction.value,
-    );
+    controller.fan?.setDirection(direction);
     setState(() {});
-
-    _setPropertyValue(directionProp, direction.value).then((_) {
-      if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          directionProp.id,
-        );
-      }
-    });
   }
 
   void _setFanNaturalBreeze(bool value) {

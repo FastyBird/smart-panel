@@ -286,35 +286,24 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   }
 
   double get _targetSetpoint {
-    final setpointProp = _activeSetpointProp;
-    final channelId = _activeSetpointChannelId;
-    final controlState = _deviceControlStateService;
+    final controller = _controller;
 
-    // Check for pending/optimistic value first
-    if (setpointProp != null &&
-        channelId != null &&
-        controlState != null &&
-        controlState.isLocked(_device.id, channelId, setpointProp.id)) {
-      final desiredValue = controlState.getDesiredValue(
-        _device.id,
-        channelId,
-        setpointProp.id,
-      );
-      if (desiredValue is num) {
-        return desiredValue.toDouble();
-      }
-    }
-
-    // Get setpoint based on current mode
+    // Get setpoint based on current mode, using controller for optimistic-aware values
     switch (_currentMode) {
       case ThermostatMode.heat:
-        return _device.heaterChannel?.temperature ?? 21.0;
+        return controller?.heatingTemperature ??
+            _device.heaterChannel?.temperature ??
+            21.0;
       case ThermostatMode.cool:
-        return _device.coolerChannel?.temperature ?? 24.0;
+        return controller?.coolingTemperature ??
+            _device.coolerChannel?.temperature ??
+            24.0;
       case ThermostatMode.auto:
       case ThermostatMode.off:
         // Show heater setpoint for display purposes
-        return _device.heaterChannel?.temperature ?? 21.0;
+        return controller?.heatingTemperature ??
+            _device.heaterChannel?.temperature ??
+            21.0;
     }
   }
 
