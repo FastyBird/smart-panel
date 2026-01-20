@@ -233,6 +233,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   /// Used to detect when an intent unlocks (completes) to trigger settling.
   bool _modeWasLocked = false;
 
+  /// Tracks if the space intent was locked in the previous update (for role toggles).
+  /// Used to detect when role toggle intents unlock (complete) to trigger settling.
+  bool _spaceWasLocked = false;
+
   /// Cached grouped targets by role for performance optimization.
   /// Invalidated when light targets change (based on content hash).
   Map<LightTargetRole, List<LightTargetView>>? _cachedRoleGroups;
@@ -574,6 +578,21 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         ? [lightingState]
         : <LightingStateModel>[];
 
+    // Get light targets for role channel completion checks
+    final lightTargets = _spacesService?.getLightTargetsForSpace(_roomId);
+    final roleGroups = lightTargets != null && lightTargets.isNotEmpty
+        ? _groupTargetsByRole(lightTargets)
+        : <LightTargetRole, List<LightTargetView>>{};
+
+    // Track which role channels are currently locked
+    final roleChannelsNowLocked = <String>{};
+    for (final entry in roleGroups.entries) {
+      final channelId = LightingConstants.getRoleChannelId(entry.key);
+      if (_roleControlStateService.isLocked(channelId)) {
+        roleChannelsNowLocked.add(channelId);
+      }
+    }
+
     // Detect mode intent unlock
     if (_modeWasLocked && !isNowLocked) {
       if (kDebugMode) {
@@ -588,20 +607,40 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       // This prevents incorrectly completing role toggles that weren't
       // triggered by the current intent (e.g., role toggles have their own
       // separate intents from mode changes).
-      final lightTargets = _spacesService?.getLightTargetsForSpace(_roomId);
-      if (lightTargets != null && lightTargets.isNotEmpty) {
-        final roleGroups = _groupTargetsByRole(lightTargets);
-        for (final entry in roleGroups.entries) {
-          final channelId = LightingConstants.getRoleChannelId(entry.key);
-          // Only complete if this specific role channel is actually pending
-          if (_roleControlStateService.isLocked(channelId)) {
-            _roleControlStateService.onIntentCompleted(channelId, entry.value);
-          }
+      for (final entry in roleGroups.entries) {
+        final channelId = LightingConstants.getRoleChannelId(entry.key);
+        // Only complete if this specific role channel is actually pending
+        if (_roleControlStateService.isLocked(channelId)) {
+          _roleControlStateService.onIntentCompleted(channelId, entry.value);
         }
       }
     }
 
-    _modeWasLocked = isNowLocked;
+    // Detect role toggle intent unlocks (independent of mode changes)
+    // When space intent unlocks and it wasn't a mode change, check for locked role channels
+    // If a role channel is locked, it means it was part of the intent that just completed
+    if (_spaceWasLocked && !isNowLocked && !_modeWasLocked && roleChannelsNowLocked.isNotEmpty) {
+      // Space was locked and is now unlocked, and it wasn't a mode change, so it must have been a role toggle
+      // Complete all currently locked role channels (they were part of the completed intent)
+      for (final entry in roleGroups.entries) {
+        final channelId = LightingConstants.getRoleChannelId(entry.key);
+        if (roleChannelsNowLocked.contains(channelId)) {
+          if (kDebugMode) {
+            debugPrint('[LightsDomainView] Role intent unlocked - triggering settling for ${entry.key.name}');
+          }
+          _roleControlStateService.onIntentCompleted(channelId, entry.value);
+        }
+      }
+    }
+
+    // Update tracking state for next iteration
+    // Only update _modeWasLocked if a mode change was in progress (it was already true)
+    // This prevents incorrectly setting it to true when other intents (like role toggles) lock the space
+    if (_modeWasLocked) {
+      _modeWasLocked = isNowLocked;
+    }
+    // Always update _spaceWasLocked to track space lock state
+    _spaceWasLocked = isNowLocked;
   }
 
   double _scale(double size) =>
