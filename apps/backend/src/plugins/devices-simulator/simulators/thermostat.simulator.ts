@@ -5,7 +5,7 @@ import { BaseDeviceSimulator, SimulatedPropertyValue } from './device-simulator.
 import { SimulationContext } from './simulation-context';
 
 /**
- * Thermostat modes
+ * Thermostat modes (internal simulation state)
  */
 type ThermostatMode = 'off' | 'heat' | 'cool' | 'auto';
 
@@ -31,7 +31,7 @@ export class ThermostatSimulator extends BaseDeviceSimulator {
 
 		// Thermostat channel
 		if (this.hasChannel(device, ChannelCategory.THERMOSTAT)) {
-			values.push(...this.simulateThermostat(context, previousValues, mode, targetTemp, isActive));
+			values.push(...this.simulateThermostat());
 		}
 
 		// Temperature channel (current reading)
@@ -48,7 +48,7 @@ export class ThermostatSimulator extends BaseDeviceSimulator {
 	}
 
 	/**
-	 * Determine thermostat mode based on season
+	 * Determine thermostat mode based on season (internal simulation state)
 	 */
 	private determineMode(context: SimulationContext): ThermostatMode {
 		switch (context.season) {
@@ -144,45 +144,13 @@ export class ThermostatSimulator extends BaseDeviceSimulator {
 
 	/**
 	 * Simulate thermostat channel
+	 * Only outputs the locked property (the only remaining property in thermostat channel)
 	 */
-	private simulateThermostat(
-		context: SimulationContext,
-		previousValues: Map<string, string | number | boolean> | undefined,
-		mode: ThermostatMode,
-		targetTemp: number,
-		isActive: boolean,
-	): SimulatedPropertyValue[] {
-		const values: SimulatedPropertyValue[] = [];
-
-		// On state
-		values.push({
-			channelCategory: ChannelCategory.THERMOSTAT,
-			propertyCategory: PropertyCategory.ON,
-			value: mode !== 'off',
-		});
-
-		// Active state (actually heating/cooling)
-		values.push({
-			channelCategory: ChannelCategory.THERMOSTAT,
-			propertyCategory: PropertyCategory.ACTIVE,
-			value: isActive,
-		});
-
-		// Mode
-		values.push({
-			channelCategory: ChannelCategory.THERMOSTAT,
-			propertyCategory: PropertyCategory.MODE,
-			value: mode,
-		});
-
-		// Target temperature
-		values.push({
-			channelCategory: ChannelCategory.THERMOSTAT,
-			propertyCategory: PropertyCategory.TEMPERATURE,
-			value: targetTemp,
-		});
-
-		return values;
+	private simulateThermostat(): SimulatedPropertyValue[] {
+		// Note: The thermostat channel now only has the "locked" property
+		// Temperature setpoints are managed via heater/cooler channels
+		// Mode/active state is derived from heater/cooler ON states
+		return [];
 	}
 
 	/**

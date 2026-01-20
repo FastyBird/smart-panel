@@ -3,25 +3,12 @@
 #
 # Thermostat device structure (from spec):
 # - temperature channel (required): current temperature reading
-# - thermostat channel (required): mode control
+# - thermostat channel (required): locked state
 # - heater channel (optional): heating setpoint and status
 # - cooler channel (optional): cooling setpoint and status
 # - humidity channel (optional): humidity reading
 
 version: "1.0"
-
-transformers:
-  # HVAC mode normalization: Z2M -> Panel thermostat mode
-  # Panel modes: off, heat, cool, auto, manual
-  hvac_mode:
-    type: map
-    bidirectional:
-      "off": "off"
-      "heat": "heat"
-      "cool": "cool"
-      "auto": "auto"
-      "fan_only": "manual"
-      "dry": "manual"
 
 mappings:
   # Zigbee thermostat/climate device
@@ -46,19 +33,12 @@ mappings:
               unit: "°C"
               settable: false
 
-      # Thermostat channel - mode control (required)
+      # Thermostat channel - locked state (required)
+      # Note: mode/active properties have been removed from thermostat channel
       - identifier: thermostat
         name: Thermostat
         category: THERMOSTAT
-        features:
-          # System mode (off, heat, cool, auto, etc.)
-          - z2m_feature: system_mode
-            panel:
-              identifier: MODE
-              name: Mode
-              data_type: ENUM
-              format: ["off", "heat", "cool", "auto", "manual"]
-            transformer: hvac_mode
+        features: []
 
       # Heater channel - heating setpoint and valve control (optional)
       - identifier: heater

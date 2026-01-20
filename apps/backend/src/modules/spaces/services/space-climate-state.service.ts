@@ -47,8 +47,6 @@ export interface PrimaryClimateDevice {
 	coolerMaxSetpoint: number;
 	// Thermostat channel (for devices with unified thermostat control)
 	thermostatChannel: ChannelEntity | null;
-	thermostatActiveProperty: ChannelPropertyEntity | null;
-	thermostatModeProperty: ChannelPropertyEntity | null;
 	// Capabilities
 	supportsHeating: boolean;
 	supportsCooling: boolean;
@@ -373,23 +371,6 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 					anyCoolerOn = true;
 				}
 			}
-
-			// Check thermostat mode property for AUTO detection
-			if (device.thermostatModeProperty) {
-				const modeValue = device.thermostatModeProperty.value;
-				if (typeof modeValue === 'string') {
-					const modeLower = modeValue.toLowerCase();
-					if (modeLower === 'auto' || modeLower === 'heat_cool') {
-						return ClimateMode.AUTO;
-					}
-					if (modeLower === 'heat') {
-						anyHeaterOn = true;
-					}
-					if (modeLower === 'cool') {
-						anyCoolerOn = true;
-					}
-				}
-			}
 		}
 
 		if (anyHeaterOn && anyCoolerOn) {
@@ -502,10 +483,6 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 
 		// Find thermostat channel (for unified control)
 		const thermostatChannel = channels.find((ch) => ch.category === ChannelCategory.THERMOSTAT) ?? null;
-		const thermostatActiveProperty =
-			thermostatChannel?.properties?.find((p) => p.category === PropertyCategory.ACTIVE) ?? null;
-		const thermostatModeProperty =
-			thermostatChannel?.properties?.find((p) => p.category === PropertyCategory.MODE) ?? null;
 
 		// Determine capabilities based on role and channel presence
 		let supportsHeating = heaterChannel !== null;
@@ -547,8 +524,6 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 			coolerMinSetpoint: coolerMinMax.min,
 			coolerMaxSetpoint: coolerMinMax.max,
 			thermostatChannel,
-			thermostatActiveProperty,
-			thermostatModeProperty,
 			supportsHeating,
 			supportsCooling,
 		};

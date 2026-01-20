@@ -4001,41 +4001,6 @@
   "thermostat": {
     "category": "thermostat",
     "properties": {
-      "active": {
-        "category": "active",
-        "required": true,
-        "description": {
-          "en": ""
-        },
-        "permissions": [
-          "ro"
-        ],
-        "data_type": "bool",
-        "unit": null,
-        "format": null,
-        "invalid": null,
-        "step": null
-      },
-      "mode": {
-        "category": "mode",
-        "required": true,
-        "description": {
-          "en": ""
-        },
-        "permissions": [
-          "rw"
-        ],
-        "data_type": "enum",
-        "unit": null,
-        "format": [
-          "off",
-          "heat",
-          "cool",
-          "auto"
-        ],
-        "invalid": null,
-        "step": null
-      },
       "locked": {
         "category": "locked",
         "required": false,

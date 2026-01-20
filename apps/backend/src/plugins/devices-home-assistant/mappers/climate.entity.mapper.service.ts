@@ -145,58 +145,26 @@ export class ClimateEntityMapperService extends EntityMapper {
 			}
 		}
 
-		let thermostatState: boolean = false;
 		let heaterOnState: boolean = false;
 		let coolerOnState: boolean = false;
-		let thermostatMode: string | null = null;
 
 		switch (state.state.toLowerCase()) {
 			case 'off':
-				thermostatState = false;
-				thermostatMode = 'auto';
 				break;
 
 			case 'heat':
-				thermostatState = true;
 				heaterOnState = true;
-				thermostatMode = 'heat';
 				break;
 
 			case 'cool':
-				thermostatState = true;
 				coolerOnState = true;
-				thermostatMode = 'cool';
 				break;
 
 			case 'heat_cool':
 			case 'auto':
-				thermostatState = true;
 				heaterOnState = true;
 				coolerOnState = true;
-				thermostatMode = 'auto';
 				break;
-		}
-
-		const thermostatStateProp = await this.getValidProperty(
-			properties,
-			PropertyCategory.ACTIVE,
-			ENTITY_MAIN_STATE_ATTRIBUTE,
-			[ChannelCategory.THERMOSTAT],
-		);
-
-		if (thermostatStateProp) {
-			mapped.set(thermostatStateProp.id, thermostatState);
-		}
-
-		const thermostatModeProp = await this.getValidProperty(
-			properties,
-			PropertyCategory.MODE,
-			ENTITY_MAIN_STATE_ATTRIBUTE,
-			[ChannelCategory.THERMOSTAT],
-		);
-
-		if (thermostatModeProp) {
-			mapped.set(thermostatModeProp.id, thermostatMode);
 		}
 
 		const heaterOnProp = await this.getValidProperty(properties, PropertyCategory.ON, ENTITY_MAIN_STATE_ATTRIBUTE, [
@@ -285,34 +253,6 @@ export class ClimateEntityMapperService extends EntityMapper {
 				state: values.get(coolerTargetTemperatureHighProp.id).toString(),
 				service: 'set_temperature',
 				attributes,
-			};
-		}
-
-		const thermostatActiveProp = await this.getValidProperty(
-			properties,
-			PropertyCategory.ACTIVE,
-			ENTITY_MAIN_STATE_ATTRIBUTE,
-			[ChannelCategory.THERMOSTAT],
-		);
-
-		if (thermostatActiveProp && values.has(thermostatActiveProp.id)) {
-			return {
-				state: values.get(thermostatActiveProp.id) === true ? 'auto' : 'off',
-				service: values.get(thermostatActiveProp.id) === true ? 'turn_on' : 'turn_off',
-			};
-		}
-
-		const thermostatModeProp = await this.getValidProperty(
-			properties,
-			PropertyCategory.MODE,
-			ENTITY_MAIN_STATE_ATTRIBUTE,
-			[ChannelCategory.THERMOSTAT],
-		);
-
-		if (thermostatModeProp && values.has(thermostatModeProp.id)) {
-			return {
-				state: values.get(thermostatModeProp.id).toString(),
-				service: 'set_hvac_mode',
 			};
 		}
 

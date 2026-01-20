@@ -63,7 +63,6 @@ export interface ClimateTargetInfo {
 	priority: number;
 	hasTemperature: boolean;
 	hasHumidity: boolean;
-	hasMode: boolean;
 }
 
 /**
@@ -105,7 +104,6 @@ export interface ClimateTargetEventPayload {
 	priority: number;
 	has_temperature: boolean;
 	has_humidity: boolean;
-	has_mode: boolean;
 }
 
 @Injectable()
@@ -426,14 +424,12 @@ export class SpaceClimateRoleService {
 						priority: existingRole?.priority ?? 0,
 						hasTemperature,
 						hasHumidity,
-						hasMode: false, // Sensors don't have mode
 					});
 				}
 			} else {
 				// For actuators, create a device-level target
 				let hasTemperature = false;
 				let hasHumidity = false;
-				let hasMode = false;
 
 				for (const channel of device.channels ?? []) {
 					const properties = channel.properties ?? [];
@@ -442,9 +438,6 @@ export class SpaceClimateRoleService {
 					}
 					if (properties.some((p) => p.category === PropertyCategory.HUMIDITY)) {
 						hasHumidity = true;
-					}
-					if (properties.some((p) => p.category === PropertyCategory.MODE)) {
-						hasMode = true;
 					}
 				}
 
@@ -461,7 +454,6 @@ export class SpaceClimateRoleService {
 					priority: existingRole?.priority ?? 0,
 					hasTemperature,
 					hasHumidity,
-					hasMode,
 				});
 			}
 		}
@@ -574,7 +566,6 @@ export class SpaceClimateRoleService {
 		// For actuators, aggregate from all channels
 		let hasTemperature = false;
 		let hasHumidity = false;
-		let hasMode = false;
 		let channelName: string | null = null;
 		let channelCategory: ChannelCategory | null = null;
 
@@ -598,9 +589,6 @@ export class SpaceClimateRoleService {
 				if (properties.some((p) => p.category === PropertyCategory.HUMIDITY)) {
 					hasHumidity = true;
 				}
-				if (properties.some((p) => p.category === PropertyCategory.MODE)) {
-					hasMode = true;
-				}
 			}
 		}
 
@@ -620,7 +608,6 @@ export class SpaceClimateRoleService {
 			priority,
 			has_temperature: hasTemperature,
 			has_humidity: hasHumidity,
-			has_mode: hasMode,
 		};
 	}
 }
