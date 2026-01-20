@@ -586,14 +586,14 @@ export class SpacesController {
 		stateData.mode = state.mode;
 		stateData.currentTemperature = state.currentTemperature;
 		stateData.currentHumidity = state.currentHumidity;
-		stateData.targetTemperature = state.targetTemperature;
 		stateData.heatingSetpoint = state.heatingSetpoint;
 		stateData.coolingSetpoint = state.coolingSetpoint;
 		stateData.minSetpoint = state.minSetpoint;
 		stateData.maxSetpoint = state.maxSetpoint;
-		stateData.canSetSetpoint = state.canSetSetpoint;
 		stateData.supportsHeating = state.supportsHeating;
 		stateData.supportsCooling = state.supportsCooling;
+		stateData.isHeating = state.isHeating;
+		stateData.isCooling = state.isCooling;
 		stateData.isMixed = state.isMixed;
 		stateData.devicesCount = state.devicesCount;
 
@@ -621,7 +621,11 @@ export class SpacesController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() body: ReqClimateIntentDto,
 	): Promise<ClimateIntentResponseModel> {
-		this.logger.debug(`Executing climate intent for space with id=${id}`);
+		this.logger.debug(
+			`Executing climate intent for space with id=${id}, ` +
+				`type=${body.data.type}, mode=${body.data.mode}, ` +
+				`heatingSetpoint=${body.data.heatingSetpoint}, coolingSetpoint=${body.data.coolingSetpoint}`,
+		);
 
 		const result = await this.spaceIntentService.executeClimateIntent(id, body.data);
 
@@ -634,7 +638,6 @@ export class SpacesController {
 		resultData.affectedDevices = result.affectedDevices;
 		resultData.failedDevices = result.failedDevices;
 		resultData.mode = result.mode;
-		resultData.newSetpoint = result.newSetpoint;
 		resultData.heatingSetpoint = result.heatingSetpoint;
 		resultData.coolingSetpoint = result.coolingSetpoint;
 
@@ -937,6 +940,12 @@ export class SpacesController {
 			model.priority = t.priority;
 			model.hasTemperature = t.hasTemperature;
 			model.hasHumidity = t.hasHumidity;
+			model.hasAirQuality = t.hasAirQuality;
+			model.hasAirParticulate = t.hasAirParticulate;
+			model.hasCarbonDioxide = t.hasCarbonDioxide;
+			model.hasVolatileOrganicCompounds = t.hasVolatileOrganicCompounds;
+			model.hasPressure = t.hasPressure;
+			model.hasMode = t.hasMode;
 			return model;
 		});
 
@@ -1478,14 +1487,14 @@ export class SpacesController {
 		climateState.mode = snapshot.climate.mode;
 		climateState.currentTemperature = snapshot.climate.currentTemperature;
 		climateState.currentHumidity = snapshot.climate.currentHumidity;
-		climateState.targetTemperature = snapshot.climate.targetTemperature;
 		climateState.heatingSetpoint = snapshot.climate.heatingSetpoint;
 		climateState.coolingSetpoint = snapshot.climate.coolingSetpoint;
 		climateState.minSetpoint = snapshot.climate.minSetpoint;
 		climateState.maxSetpoint = snapshot.climate.maxSetpoint;
-		climateState.canSetSetpoint = snapshot.climate.canSetSetpoint;
 		climateState.supportsHeating = snapshot.climate.supportsHeating;
 		climateState.supportsCooling = snapshot.climate.supportsCooling;
+		climateState.isHeating = snapshot.climate.isHeating;
+		climateState.isCooling = snapshot.climate.isCooling;
 		climateState.isMixed = snapshot.climate.isMixed;
 		climateState.devicesCount = snapshot.climate.devicesCount;
 

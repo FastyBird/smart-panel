@@ -4,6 +4,7 @@ import 'package:fastybird_smart_panel/api/models/spaces_module_climate_intent_de
 import 'package:fastybird_smart_panel/api/models/spaces_module_climate_intent_type.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_climate_intent.dart';
 import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/climate_targets/climate_target.dart';
 import 'package:flutter/foundation.dart';
 
@@ -252,14 +253,33 @@ class ClimateTargetsRepository extends ChangeNotifier {
   Future<bool> executeSetpointSet({
     required String spaceId,
     required double value,
+    required ClimateMode mode,
   }) async {
     try {
+      num? heatingSetpoint;
+      num? coolingSetpoint;
+
+      switch (mode) {
+        case ClimateMode.heat:
+        case ClimateMode.off:
+          heatingSetpoint = value;
+          break;
+        case ClimateMode.cool:
+          coolingSetpoint = value;
+          break;
+        case ClimateMode.auto:
+          heatingSetpoint = value;
+          coolingSetpoint = value;
+          break;
+      }
+
       final response = await _apiClient.createSpacesModuleSpaceClimateIntent(
         id: spaceId,
         body: SpacesModuleReqClimateIntent(
           data: SpacesModuleClimateIntent(
             type: SpacesModuleClimateIntentType.setpointSet,
-            value: value,
+            heatingSetpoint: heatingSetpoint,
+            coolingSetpoint: coolingSetpoint,
           ),
         ),
       );

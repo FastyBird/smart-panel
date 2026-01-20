@@ -6,6 +6,29 @@ import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 /// This is a pure function module with no state.
 /// All functions are deterministic - same input always produces same output.
 
+/// Climate actuator device categories - devices that can actively control temperature.
+/// These are the primary climate devices that determine if the climate domain is visible.
+/// Matches backend's CLIMATE_PRIMARY_DEVICE_CATEGORIES in spaces.constants.ts
+const climateActuatorCategories = {
+  DevicesModuleDeviceCategory.thermostat,
+  DevicesModuleDeviceCategory.heatingUnit,
+  DevicesModuleDeviceCategory.airConditioner,
+};
+
+/// Climate auxiliary device categories - devices that support climate but don't control temperature.
+/// These devices are shown in the climate domain only when actuators are present.
+const climateAuxiliaryCategories = {
+  DevicesModuleDeviceCategory.fan,
+  DevicesModuleDeviceCategory.airHumidifier,
+  DevicesModuleDeviceCategory.airDehumidifier,
+  DevicesModuleDeviceCategory.airPurifier,
+};
+
+/// Returns true if the category is a climate actuator (can control temperature).
+bool isClimateActuator(DevicesModuleDeviceCategory category) {
+  return climateActuatorCategories.contains(category);
+}
+
 /// Classifies a device category into a domain.
 ///
 /// Returns null if the device category doesn't belong to any domain.
@@ -62,6 +85,7 @@ DomainType? classifyDeviceToDomain(DevicesModuleDeviceCategory category) {
 class DomainCounts {
   final int lights;
   final int climate;
+  final int climateActuators;
   final int shading;
   final int media;
   final int sensors;
@@ -69,6 +93,7 @@ class DomainCounts {
   const DomainCounts({
     this.lights = 0,
     this.climate = 0,
+    this.climateActuators = 0,
     this.shading = 0,
     this.media = 0,
     this.sensors = 0,
@@ -90,8 +115,15 @@ class DomainCounts {
     }
   }
 
-  /// Returns true if a domain has any devices.
-  bool hasDomain(DomainType domain) => getCount(domain) > 0;
+  /// Returns true if a domain has any devices that make it visible.
+  /// For climate domain, requires at least one actuator device (thermostat, heater, AC).
+  bool hasDomain(DomainType domain) {
+    if (domain == DomainType.climate) {
+      // Climate domain is only visible when there are actuators
+      return climateActuators > 0;
+    }
+    return getCount(domain) > 0;
+  }
 
   /// Returns all domains that have at least one device, sorted by display order.
   List<DomainType> get presentDomains {
@@ -101,16 +133,17 @@ class DomainCounts {
       ..sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
   }
 
-  /// Returns true if any domain has devices.
+  /// Returns true if any domain has devices that make it visible.
+  /// Uses hasDomain logic, so climate requires actuators.
   bool get hasAnyDomain =>
-      lights > 0 || climate > 0 || shading > 0 || media > 0 || sensors > 0;
+      lights > 0 || climateActuators > 0 || shading > 0 || media > 0 || sensors > 0;
 
   /// Total device count across all domains.
   int get total => lights + climate + shading + media + sensors;
 
   @override
   String toString() {
-    return 'DomainCounts(lights: $lights, climate: $climate, shading: $shading, media: $media, sensors: $sensors)';
+    return 'DomainCounts(lights: $lights, climate: $climate, climateActuators: $climateActuators, shading: $shading, media: $media, sensors: $sensors)';
   }
 }
 
@@ -118,9 +151,11 @@ class DomainCounts {
 ///
 /// Each device is classified into at most one domain.
 /// Devices that don't classify into any domain are not counted.
+/// For climate domain, also tracks actuators separately to determine visibility.
 DomainCounts buildDomainCounts(List<DevicesModuleDeviceCategory> deviceCategories) {
   int lights = 0;
   int climate = 0;
+  int climateActuators = 0;
   int shading = 0;
   int media = 0;
   int sensors = 0;
@@ -135,6 +170,10 @@ DomainCounts buildDomainCounts(List<DevicesModuleDeviceCategory> deviceCategorie
         break;
       case DomainType.climate:
         climate++;
+        // Track actuators separately for visibility check
+        if (isClimateActuator(category)) {
+          climateActuators++;
+        }
         break;
       case DomainType.shading:
         shading++;
@@ -151,6 +190,7 @@ DomainCounts buildDomainCounts(List<DevicesModuleDeviceCategory> deviceCategorie
   return DomainCounts(
     lights: lights,
     climate: climate,
+    climateActuators: climateActuators,
     shading: shading,
     media: media,
     sensors: sensors,

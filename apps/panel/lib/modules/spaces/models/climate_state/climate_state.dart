@@ -44,14 +44,24 @@ class ClimateStateModel {
   final ClimateMode? mode;
   final double? currentTemperature;
   final double? currentHumidity;
-  final double? targetTemperature;
+
+  /// Heating setpoint - target temperature for heating (used in HEAT and AUTO modes)
   final double? heatingSetpoint;
+
+  /// Cooling setpoint - target temperature for cooling (used in COOL and AUTO modes)
   final double? coolingSetpoint;
   final double minSetpoint;
   final double maxSetpoint;
-  final bool canSetSetpoint;
   final bool supportsHeating;
   final bool supportsCooling;
+
+  /// Whether any heater device is actively heating (heater.on=true AND heater.status=true)
+  final bool isHeating;
+
+  /// Whether any cooler device is actively cooling (cooler.on=true AND cooler.status=true)
+  final bool isCooling;
+
+  /// Whether devices have different setpoints or modes (out of sync)
   final bool isMixed;
   final int devicesCount;
   final ClimateMode? lastAppliedMode;
@@ -63,25 +73,25 @@ class ClimateStateModel {
     this.mode,
     this.currentTemperature,
     this.currentHumidity,
-    this.targetTemperature,
     this.heatingSetpoint,
     this.coolingSetpoint,
     required this.minSetpoint,
     required this.maxSetpoint,
-    required this.canSetSetpoint,
     required this.supportsHeating,
     required this.supportsCooling,
+    required this.isHeating,
+    required this.isCooling,
     required this.isMixed,
     required this.devicesCount,
     this.lastAppliedMode,
     this.lastAppliedAt,
   });
 
-  /// Check if in heating mode
-  bool get isHeating => mode == ClimateMode.heat;
+  /// Check if in heating mode (mode selection, not actual device activity)
+  bool get isInHeatingMode => mode == ClimateMode.heat;
 
-  /// Check if in cooling mode
-  bool get isCooling => mode == ClimateMode.cool;
+  /// Check if in cooling mode (mode selection, not actual device activity)
+  bool get isInCoolingMode => mode == ClimateMode.cool;
 
   /// Check if in auto mode
   bool get isAuto => mode == ClimateMode.auto;
@@ -90,17 +100,25 @@ class ClimateStateModel {
   bool get isOff => mode == ClimateMode.off;
 
   /// Check if temperature can be adjusted
-  bool get canAdjustTemperature => hasClimate && canSetSetpoint;
+  bool get canAdjustTemperature => hasClimate && (supportsHeating || supportsCooling);
 
   /// Get the effective target temperature based on mode
   double? get effectiveTargetTemperature {
-    if (mode == ClimateMode.auto) {
-      // For auto mode, return midpoint between heating and cooling setpoints
-      if (heatingSetpoint != null && coolingSetpoint != null) {
-        return (heatingSetpoint! + coolingSetpoint!) / 2;
-      }
+    switch (mode) {
+      case ClimateMode.heat:
+        return heatingSetpoint;
+      case ClimateMode.cool:
+        return coolingSetpoint;
+      case ClimateMode.auto:
+        // For auto mode, return midpoint between heating and cooling setpoints
+        if (heatingSetpoint != null && coolingSetpoint != null) {
+          return (heatingSetpoint! + coolingSetpoint!) / 2;
+        }
+        return heatingSetpoint ?? coolingSetpoint;
+      case ClimateMode.off:
+      case null:
+        return heatingSetpoint ?? coolingSetpoint;
     }
-    return targetTemperature;
   }
 
   factory ClimateStateModel.fromJson(
@@ -113,14 +131,14 @@ class ClimateStateModel {
       mode: parseClimateMode(json['mode'] as String?),
       currentTemperature: (json['current_temperature'] as num?)?.toDouble(),
       currentHumidity: (json['current_humidity'] as num?)?.toDouble(),
-      targetTemperature: (json['target_temperature'] as num?)?.toDouble(),
       heatingSetpoint: (json['heating_setpoint'] as num?)?.toDouble(),
       coolingSetpoint: (json['cooling_setpoint'] as num?)?.toDouble(),
       minSetpoint: (json['min_setpoint'] as num?)?.toDouble() ?? 5.0,
       maxSetpoint: (json['max_setpoint'] as num?)?.toDouble() ?? 35.0,
-      canSetSetpoint: json['can_set_setpoint'] as bool? ?? false,
       supportsHeating: json['supports_heating'] as bool? ?? false,
       supportsCooling: json['supports_cooling'] as bool? ?? false,
+      isHeating: json['is_heating'] as bool? ?? false,
+      isCooling: json['is_cooling'] as bool? ?? false,
       isMixed: json['is_mixed'] as bool? ?? false,
       devicesCount: json['devices_count'] as int? ?? 0,
       lastAppliedMode: parseClimateMode(json['last_applied_mode'] as String?),
@@ -137,9 +155,10 @@ class ClimateStateModel {
       hasClimate: false,
       minSetpoint: 5.0,
       maxSetpoint: 35.0,
-      canSetSetpoint: false,
       supportsHeating: false,
       supportsCooling: false,
+      isHeating: false,
+      isCooling: false,
       isMixed: false,
       devicesCount: 0,
     );

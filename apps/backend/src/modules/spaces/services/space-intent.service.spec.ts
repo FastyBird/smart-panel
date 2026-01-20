@@ -153,14 +153,14 @@ describe('SpaceIntentService', () => {
 				mode: ClimateMode.HEAT,
 				currentTemperature: 22.5,
 				currentHumidity: 45,
-				targetTemperature: 23.0,
 				heatingSetpoint: 23.0,
 				coolingSetpoint: null,
 				minSetpoint: 15,
 				maxSetpoint: 30,
-				canSetSetpoint: true,
 				supportsHeating: true,
 				supportsCooling: false,
+				isHeating: true,
+				isCooling: false,
 				isMixed: false,
 				devicesCount: 1,
 				lastAppliedMode: null,
@@ -180,14 +180,14 @@ describe('SpaceIntentService', () => {
 				mode: ClimateMode.OFF,
 				currentTemperature: null,
 				currentHumidity: null,
-				targetTemperature: null,
 				heatingSetpoint: null,
 				coolingSetpoint: null,
 				minSetpoint: DEFAULT_MIN_SETPOINT,
 				maxSetpoint: DEFAULT_MAX_SETPOINT,
-				canSetSetpoint: false,
 				supportsHeating: false,
 				supportsCooling: false,
+				isHeating: false,
+				isCooling: false,
 				isMixed: false,
 				devicesCount: 0,
 				lastAppliedMode: null,
@@ -198,7 +198,6 @@ describe('SpaceIntentService', () => {
 			const result = await service.getClimateState(mockSpaceId);
 
 			expect(result.hasClimate).toBe(false);
-			expect(result.canSetSetpoint).toBe(false);
 		});
 	});
 
@@ -214,7 +213,6 @@ describe('SpaceIntentService', () => {
 				affectedDevices: 1,
 				failedDevices: 0,
 				mode: ClimateMode.HEAT,
-				newSetpoint: 22.5,
 				heatingSetpoint: 22.5,
 				coolingSetpoint: null,
 			};
@@ -229,14 +227,13 @@ describe('SpaceIntentService', () => {
 		it('should handle set setpoint intent', async () => {
 			const intent: ClimateIntentDto = {
 				type: ClimateIntentType.SETPOINT_SET,
-				value: 25.0,
+				heatingSetpoint: 25.0,
 			};
 			const expectedResult: ClimateIntentResult = {
 				success: true,
 				affectedDevices: 1,
 				failedDevices: 0,
 				mode: ClimateMode.HEAT,
-				newSetpoint: 25.0,
 				heatingSetpoint: 25.0,
 				coolingSetpoint: null,
 			};
@@ -245,7 +242,7 @@ describe('SpaceIntentService', () => {
 			const result = await service.executeClimateIntent(mockSpaceId, intent);
 
 			expect(mockClimateIntentService.executeClimateIntent).toHaveBeenCalledWith(mockSpaceId, intent);
-			expect(result.newSetpoint).toBe(25.0);
+			expect(result.heatingSetpoint).toBe(25.0);
 		});
 	});
 

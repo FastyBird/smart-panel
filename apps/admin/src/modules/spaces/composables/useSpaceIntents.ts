@@ -85,11 +85,9 @@ export interface IClimateIntentRequest {
 	delta?: SetpointDelta;
 	/** Direction of adjustment (true = increase, false = decrease) */
 	increase?: boolean;
-	/** Target setpoint value in Celsius */
-	value?: number;
-	/** Heating setpoint for auto mode (lower bound) */
+	/** Heating setpoint (used in HEAT mode or as lower bound in AUTO mode) */
 	heatingSetpoint?: number;
-	/** Cooling setpoint for auto mode (upper bound) */
+	/** Cooling setpoint (used in COOL mode or as upper bound in AUTO mode) */
 	coolingSetpoint?: number;
 	/** Target climate mode */
 	mode?: ClimateMode;
@@ -107,11 +105,9 @@ export interface IClimateIntentResult {
 	failedDevices: number;
 	/** New climate mode after intent execution */
 	mode?: string;
-	/** New setpoint value after intent execution */
-	newSetpoint?: number;
-	/** New heating setpoint for auto mode */
+	/** New heating setpoint (used in HEAT and AUTO modes) */
 	heatingSetpoint?: number;
-	/** New cooling setpoint for auto mode */
+	/** New cooling setpoint (used in COOL and AUTO modes) */
 	coolingSetpoint?: number;
 }
 
@@ -147,7 +143,7 @@ export interface IUseSpaceIntents {
 	// Climate intents
 	executeClimateIntent: (request: IClimateIntentRequest) => Promise<IClimateIntentResult | null>;
 	adjustSetpoint: (delta: SetpointDelta, increase: boolean) => Promise<IClimateIntentResult | null>;
-	setSetpoint: (value: number) => Promise<IClimateIntentResult | null>;
+	setSetpoint: (value: number, mode?: ClimateMode) => Promise<IClimateIntentResult | null>;
 	setClimateMode: (mode: ClimateMode) => Promise<IClimateIntentResult | null>;
 }
 
@@ -287,7 +283,6 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 				type: request.type as SpacesModuleClimateIntentType,
 				delta: request.delta as SpacesModuleLightingIntentDelta | undefined,
 				increase: request.increase,
-				value: request.value,
 				heating_setpoint: request.heatingSetpoint,
 				cooling_setpoint: request.coolingSetpoint,
 				mode: request.mode as SpacesModuleClimateIntentMode | undefined,
@@ -315,7 +310,6 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 				affectedDevices: data.data.affected_devices ?? 0,
 				failedDevices: data.data.failed_devices ?? 0,
 				mode: data.data.mode ?? undefined,
-				newSetpoint: data.data.new_setpoint ?? undefined,
 				heatingSetpoint: data.data.heating_setpoint ?? undefined,
 				coolingSetpoint: data.data.cooling_setpoint ?? undefined,
 			};
@@ -339,7 +333,13 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 
 	const adjustSetpoint = (delta: SetpointDelta, increase: boolean) =>
 		executeClimateIntent({ type: 'setpoint_delta', delta, increase });
-	const setSetpoint = (value: number) => executeClimateIntent({ type: 'setpoint_set', value });
+	const setSetpoint = (value: number, mode?: ClimateMode) => {
+		// Use coolingSetpoint for COOL mode, heatingSetpoint for all other modes
+		if (mode === 'cool') {
+			return executeClimateIntent({ type: 'setpoint_set', coolingSetpoint: value });
+		}
+		return executeClimateIntent({ type: 'setpoint_set', heatingSetpoint: value });
+	};
 	const setClimateMode = (mode: ClimateMode) => executeClimateIntent({ type: 'set_mode', mode });
 
 	// Clear state when space changes to prevent stale data from appearing in new space

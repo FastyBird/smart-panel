@@ -400,6 +400,30 @@
   "@thermostat_openings_state_description": {
     "description": "Displays that the thermostat is disabled due to an open window"
   },
+  "contact_sensor_window": "Window",
+  "@contact_sensor_window": {
+    "description": "Label for window contact sensor"
+  },
+  "contact_sensor_open": "Open",
+  "@contact_sensor_open": {
+    "description": "Contact sensor state when window/door is open"
+  },
+  "contact_sensor_closed": "Closed",
+  "@contact_sensor_closed": {
+    "description": "Contact sensor state when window/door is closed"
+  },
+  "leak_sensor_water": "Water Leak",
+  "@leak_sensor_water": {
+    "description": "Label for water leak sensor"
+  },
+  "leak_sensor_detected": "Detected",
+  "@leak_sensor_detected": {
+    "description": "Leak sensor state when water is detected"
+  },
+  "leak_sensor_dry": "Dry",
+  "@leak_sensor_dry": {
+    "description": "Leak sensor state when no water is detected"
+  },
   "thermostat_lock_locked": "Locked",
   "@thermostat_lock_locked": {
     "description": "Indicates the child lock is active"
@@ -444,13 +468,43 @@
   "@thermostat_state_heating": {
     "description": "Indicates the thermostat is actively heating the space"
   },
+  "thermostat_state_heating_to": "Heating to {temperature}",
+  "@thermostat_state_heating_to": {
+    "description": "Indicates the thermostat is actively heating to a target temperature",
+    "placeholders": {
+      "temperature": {
+        "type": "String",
+        "example": "22°C"
+      }
+    }
+  },
   "thermostat_state_cooling": "Cooling",
   "@thermostat_state_cooling": {
     "description": "Indicates the thermostat is actively cooling the space"
   },
+  "thermostat_state_cooling_to": "Cooling to {temperature}",
+  "@thermostat_state_cooling_to": {
+    "description": "Indicates the thermostat is actively cooling to a target temperature",
+    "placeholders": {
+      "temperature": {
+        "type": "String",
+        "example": "24°C"
+      }
+    }
+  },
   "thermostat_state_idling": "Idling",
   "@thermostat_state_idling": {
     "description": "Indicates the thermostat is in idle state"
+  },
+  "thermostat_state_idle_at": "Idle at {temperature}",
+  "@thermostat_state_idle_at": {
+    "description": "Indicates the thermostat is idle at a target temperature",
+    "placeholders": {
+      "temperature": {
+        "type": "String",
+        "example": "22°C"
+      }
+    }
   },
   "thermostat_with_invalid_configuration": "This thermostat device is wrongly configured.",
   "@thermostat_with_invalid_configuration": {
@@ -1486,36 +1540,542 @@
     "description": "Label for cameras in security section"
   },
 
-  "media_other_devices": "Other Devices",
-  "@media_other_devices": {
-    "description": "Section title for other media devices in media domain view"
+  "air_quality_level_excellent": "Excellent",
+  "@air_quality_level_excellent": {
+    "description": "Air quality level - excellent"
   },
-  "media_up_next": "Up Next",
-  "@media_up_next": {
-    "description": "Section title for upcoming tracks in media playback queue"
+  "air_quality_level_good": "Good",
+  "@air_quality_level_good": {
+    "description": "Air quality level - good"
   },
-  "media_volume": "Volume",
-  "@media_volume": {
-    "description": "Section title for volume control"
+  "air_quality_level_fair": "Fair",
+  "@air_quality_level_fair": {
+    "description": "Air quality level - fair"
   },
+  "air_quality_level_inferior": "Inferior",
+  "@air_quality_level_inferior": {
+    "description": "Air quality level - inferior"
+  },
+  "air_quality_level_poor": "Poor",
+  "@air_quality_level_poor": {
+    "description": "Air quality level - poor"
+  },
+  "air_quality_level_unknown": "Unknown",
+  "@air_quality_level_unknown": {
+    "description": "Air quality level - unknown"
+  },
+
+  "aqi_label_good": "Good",
+  "@aqi_label_good": {
+    "description": "AQI label for good air quality (0-50)"
+  },
+  "aqi_label_moderate": "Moderate",
+  "@aqi_label_moderate": {
+    "description": "AQI label for moderate air quality (51-100)"
+  },
+  "aqi_label_unhealthy_sensitive": "Unhealthy (Sensitive)",
+  "@aqi_label_unhealthy_sensitive": {
+    "description": "AQI label for unhealthy for sensitive groups (101-150)"
+  },
+  "aqi_label_unhealthy": "Unhealthy",
+  "@aqi_label_unhealthy": {
+    "description": "AQI label for unhealthy air quality (151-200)"
+  },
+  "aqi_label_very_unhealthy": "Very Unhealthy",
+  "@aqi_label_very_unhealthy": {
+    "description": "AQI label for very unhealthy air quality (201-300)"
+  },
+  "aqi_label_hazardous": "Hazardous",
+  "@aqi_label_hazardous": {
+    "description": "AQI label for hazardous air quality (301+)"
+  },
+
+  "particulate_label_pm1": "PM1",
+  "@particulate_label_pm1": {
+    "description": "Label for PM1 particulate matter"
+  },
+  "particulate_label_pm25": "PM2.5",
+  "@particulate_label_pm25": {
+    "description": "Label for PM2.5 particulate matter"
+  },
+  "particulate_label_pm10": "PM10",
+  "@particulate_label_pm10": {
+    "description": "Label for PM10 particulate matter"
+  },
+
+  "voc_level_good": "Good",
+  "@voc_level_good": {
+    "description": "VOC level - good/low"
+  },
+  "voc_level_moderate": "Moderate",
+  "@voc_level_moderate": {
+    "description": "VOC level - moderate/medium"
+  },
+  "voc_level_poor": "Poor",
+  "@voc_level_poor": {
+    "description": "VOC level - poor/high"
+  },
+
+  "fan_mode_auto": "Auto",
+  "@fan_mode_auto": {
+    "description": "Fan mode - automatic"
+  },
+  "fan_mode_manual": "Manual",
+  "@fan_mode_manual": {
+    "description": "Fan mode - manual"
+  },
+  "fan_mode_eco": "Eco",
+  "@fan_mode_eco": {
+    "description": "Fan mode - eco/energy saving"
+  },
+  "fan_mode_sleep": "Sleep",
+  "@fan_mode_sleep": {
+    "description": "Fan mode - sleep/quiet"
+  },
+  "fan_mode_natural": "Natural",
+  "@fan_mode_natural": {
+    "description": "Fan mode - natural breeze"
+  },
+  "fan_mode_turbo": "Turbo",
+  "@fan_mode_turbo": {
+    "description": "Fan mode - turbo/high power"
+  },
+
+  "fan_speed_off": "Off",
+  "@fan_speed_off": {
+    "description": "Fan speed level - off"
+  },
+  "fan_speed_low": "Low",
+  "@fan_speed_low": {
+    "description": "Fan speed level - low"
+  },
+  "fan_speed_medium": "Med",
+  "@fan_speed_medium": {
+    "description": "Fan speed level - medium"
+  },
+  "fan_speed_high": "High",
+  "@fan_speed_high": {
+    "description": "Fan speed level - high"
+  },
+  "fan_speed_turbo": "Turbo",
+  "@fan_speed_turbo": {
+    "description": "Fan speed level - turbo"
+  },
+  "fan_speed_auto": "Auto",
+  "@fan_speed_auto": {
+    "description": "Fan speed level - auto"
+  },
+
+  "fan_timer_off": "Off",
+  "@fan_timer_off": {
+    "description": "Fan timer - off"
+  },
+  "fan_timer_30m": "30m",
+  "@fan_timer_30m": {
+    "description": "Fan timer - 30 minutes"
+  },
+  "fan_timer_1h": "1h",
+  "@fan_timer_1h": {
+    "description": "Fan timer - 1 hour"
+  },
+  "fan_timer_2h": "2h",
+  "@fan_timer_2h": {
+    "description": "Fan timer - 2 hours"
+  },
+  "fan_timer_4h": "4h",
+  "@fan_timer_4h": {
+    "description": "Fan timer - 4 hours"
+  },
+  "fan_timer_8h": "8h",
+  "@fan_timer_8h": {
+    "description": "Fan timer - 8 hours"
+  },
+  "fan_timer_12h": "12h",
+  "@fan_timer_12h": {
+    "description": "Fan timer - 12 hours"
+  },
+
+  "fan_direction_clockwise": "Clockwise",
+  "@fan_direction_clockwise": {
+    "description": "Fan direction - clockwise"
+  },
+  "fan_direction_counter_clockwise": "Counter-Clockwise",
+  "@fan_direction_counter_clockwise": {
+    "description": "Fan direction - counter-clockwise"
+  },
+
+  "filter_status_good": "Good",
+  "@filter_status_good": {
+    "description": "Filter status - good condition"
+  },
+  "filter_status_replace_soon": "Due Soon",
+  "@filter_status_replace_soon": {
+    "description": "Filter status - needs replacement soon"
+  },
+  "filter_status_replace_now": "Replace",
+  "@filter_status_replace_now": {
+    "description": "Filter status - needs immediate replacement"
+  },
+  "filter_status_unknown": "Unknown",
+  "@filter_status_unknown": {
+    "description": "Filter status - unknown or unavailable"
+  },
+
+  "dehumidifier_mode_auto": "Auto",
+  "@dehumidifier_mode_auto": {
+    "description": "Dehumidifier mode - automatic"
+  },
+  "dehumidifier_mode_manual": "Manual",
+  "@dehumidifier_mode_manual": {
+    "description": "Dehumidifier mode - manual"
+  },
+  "dehumidifier_mode_continuous": "Continuous",
+  "@dehumidifier_mode_continuous": {
+    "description": "Dehumidifier mode - continuous operation"
+  },
+  "dehumidifier_mode_laundry": "Laundry",
+  "@dehumidifier_mode_laundry": {
+    "description": "Dehumidifier mode - laundry drying"
+  },
+  "dehumidifier_mode_quiet": "Quiet",
+  "@dehumidifier_mode_quiet": {
+    "description": "Dehumidifier mode - quiet/silent operation"
+  },
+
+  "dehumidifier_status_idle": "Idle",
+  "@dehumidifier_status_idle": {
+    "description": "Dehumidifier status - idle"
+  },
+  "dehumidifier_status_dehumidifying": "Dehumidifying",
+  "@dehumidifier_status_dehumidifying": {
+    "description": "Dehumidifier status - actively dehumidifying"
+  },
+  "dehumidifier_status_defrosting": "Defrosting",
+  "@dehumidifier_status_defrosting": {
+    "description": "Dehumidifier status - defrost cycle active"
+  },
+
+  "dehumidifier_timer_off": "Off",
+  "@dehumidifier_timer_off": {
+    "description": "Dehumidifier timer - off"
+  },
+  "dehumidifier_timer_30m": "30 min",
+  "@dehumidifier_timer_30m": {
+    "description": "Dehumidifier timer - 30 minutes"
+  },
+  "dehumidifier_timer_1h": "1 hour",
+  "@dehumidifier_timer_1h": {
+    "description": "Dehumidifier timer - 1 hour"
+  },
+  "dehumidifier_timer_2h": "2 hours",
+  "@dehumidifier_timer_2h": {
+    "description": "Dehumidifier timer - 2 hours"
+  },
+  "dehumidifier_timer_4h": "4 hours",
+  "@dehumidifier_timer_4h": {
+    "description": "Dehumidifier timer - 4 hours"
+  },
+  "dehumidifier_timer_8h": "8 hours",
+  "@dehumidifier_timer_8h": {
+    "description": "Dehumidifier timer - 8 hours"
+  },
+  "dehumidifier_timer_12h": "12 hours",
+  "@dehumidifier_timer_12h": {
+    "description": "Dehumidifier timer - 12 hours"
+  },
+
+  "dehumidifier_water_tank": "Water Tank",
+  "@dehumidifier_water_tank": {
+    "description": "Dehumidifier water tank label"
+  },
+  "dehumidifier_defrost": "Defrost",
+  "@dehumidifier_defrost": {
+    "description": "Dehumidifier defrost cycle label"
+  },
+  "dehumidifier_defrost_active": "Defrosting",
+  "@dehumidifier_defrost_active": {
+    "description": "Dehumidifier defrost cycle is active"
+  },
+
+  "humidifier_mode_auto": "Auto",
+  "@humidifier_mode_auto": {
+    "description": "Humidifier mode - automatic"
+  },
+  "humidifier_mode_manual": "Manual",
+  "@humidifier_mode_manual": {
+    "description": "Humidifier mode - manual"
+  },
+  "humidifier_mode_sleep": "Sleep",
+  "@humidifier_mode_sleep": {
+    "description": "Humidifier mode - sleep mode"
+  },
+  "humidifier_mode_baby": "Baby",
+  "@humidifier_mode_baby": {
+    "description": "Humidifier mode - baby safe mode"
+  },
+
+  "humidifier_status_idle": "Idle",
+  "@humidifier_status_idle": {
+    "description": "Humidifier status - idle"
+  },
+  "humidifier_status_humidifying": "Humidifying",
+  "@humidifier_status_humidifying": {
+    "description": "Humidifier status - actively humidifying"
+  },
+
+  "humidifier_mist_level": "Mist Level",
+  "@humidifier_mist_level": {
+    "description": "Mist level control label"
+  },
+  "humidifier_mist_level_off": "Off",
+  "@humidifier_mist_level_off": {
+    "description": "Humidifier mist level - off"
+  },
+  "humidifier_mist_level_low": "Low",
+  "@humidifier_mist_level_low": {
+    "description": "Humidifier mist level - low"
+  },
+  "humidifier_mist_level_medium": "Medium",
+  "@humidifier_mist_level_medium": {
+    "description": "Humidifier mist level - medium"
+  },
+  "humidifier_mist_level_high": "High",
+  "@humidifier_mist_level_high": {
+    "description": "Humidifier mist level - high"
+  },
+
+  "humidifier_timer_off": "Off",
+  "@humidifier_timer_off": {
+    "description": "Humidifier timer - off"
+  },
+  "humidifier_timer_30m": "30 min",
+  "@humidifier_timer_30m": {
+    "description": "Humidifier timer - 30 minutes"
+  },
+  "humidifier_timer_1h": "1 hour",
+  "@humidifier_timer_1h": {
+    "description": "Humidifier timer - 1 hour"
+  },
+  "humidifier_timer_2h": "2 hours",
+  "@humidifier_timer_2h": {
+    "description": "Humidifier timer - 2 hours"
+  },
+  "humidifier_timer_4h": "4 hours",
+  "@humidifier_timer_4h": {
+    "description": "Humidifier timer - 4 hours"
+  },
+  "humidifier_timer_8h": "8 hours",
+  "@humidifier_timer_8h": {
+    "description": "Humidifier timer - 8 hours"
+  },
+  "humidifier_timer_12h": "12 hours",
+  "@humidifier_timer_12h": {
+    "description": "Humidifier timer - 12 hours"
+  },
+
+  "humidifier_water_tank": "Water Tank",
+  "@humidifier_water_tank": {
+    "description": "Humidifier water tank label"
+  },
+  "humidifier_warm_mist": "Warm Mist",
+  "@humidifier_warm_mist": {
+    "description": "Humidifier warm mist feature label"
+  },
+
+  "device_current_humidity": "Current",
+  "@device_current_humidity": {
+    "description": "Current humidity label"
+  },
+  "device_current_temperature": "Temperature",
+  "@device_current_temperature": {
+    "description": "Current temperature label"
+  },
+  "device_fan_speed": "Fan Speed",
+  "@device_fan_speed": {
+    "description": "Fan speed label"
+  },
+  "device_fan_mode": "Fan Mode",
+  "@device_fan_mode": {
+    "description": "Fan mode label"
+  },
+  "device_timer": "Timer",
+  "@device_timer": {
+    "description": "Timer label"
+  },
+  "device_child_lock": "Child Lock",
+  "@device_child_lock": {
+    "description": "Child lock label"
+  },
+  "device_oscillation": "Oscillation",
+  "@device_oscillation": {
+    "description": "Fan oscillation/swing label"
+  },
+  "device_direction": "Direction",
+  "@device_direction": {
+    "description": "Fan direction label"
+  },
+  "device_natural_breeze": "Natural Breeze",
+  "@device_natural_breeze": {
+    "description": "Natural breeze mode label"
+  },
+  "device_auto_off_timer": "Auto-Off Timer",
+  "@device_auto_off_timer": {
+    "description": "Auto-off timer sheet title"
+  },
+  "device_filter_life": "Filter Life",
+  "@device_filter_life": {
+    "description": "Filter life remaining label"
+  },
+  "device_filter_status": "Filter",
+  "@device_filter_status": {
+    "description": "Filter status label"
+  },
+  "device_voc": "VOC",
+  "@device_voc": {
+    "description": "Volatile organic compounds label"
+  },
+  "device_co2": "CO₂",
+  "@device_co2": {
+    "description": "Carbon dioxide label"
+  },
+  "device_co": "CO",
+  "@device_co": {
+    "description": "Carbon monoxide label"
+  },
+  "device_no2": "NO₂",
+  "@device_no2": {
+    "description": "Nitrogen dioxide label"
+  },
+  "device_o3": "O₃",
+  "@device_o3": {
+    "description": "Ozone label"
+  },
+  "device_so2": "SO₂",
+  "@device_so2": {
+    "description": "Sulphur dioxide label"
+  },
+  "device_pressure": "Pressure",
+  "@device_pressure": {
+    "description": "Atmospheric pressure label"
+  },
+  "air_quality_healthy": "Healthy",
+  "@air_quality_healthy": {
+    "description": "Air quality status when healthy"
+  },
+  "air_quality_unhealthy": "Unhealthy",
+  "@air_quality_unhealthy": {
+    "description": "Air quality status when unhealthy"
+  },
+  "gas_detected": "Detected",
+  "@gas_detected": {
+    "description": "Gas detected status"
+  },
+  "gas_clear": "Clear",
+  "@gas_clear": {
+    "description": "No gas detected status"
+  },
+  "gas_level_low": "Low",
+  "@gas_level_low": {
+    "description": "Low gas level"
+  },
+  "gas_level_medium": "Medium",
+  "@gas_level_medium": {
+    "description": "Medium gas level"
+  },
+  "gas_level_high": "High",
+  "@gas_level_high": {
+    "description": "High gas level"
+  },
+  "device_humidity": "Humidity",
+  "@device_humidity": {
+    "description": "Humidity short label"
+  },
+  "device_air_quality_index": "Air Quality Index",
+  "@device_air_quality_index": {
+    "description": "Air quality index label"
+  },
+  "device_temperature": "Temp",
+  "@device_temperature": {
+    "description": "Temperature short label"
+  },
+
+  "duration_format_hours_minutes": "{hours}h {minutes}m",
+  "@duration_format_hours_minutes": {
+    "description": "Duration format with hours and minutes",
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "duration_format_hours": "{hours}h",
+  "@duration_format_hours": {
+    "description": "Duration format with hours only",
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "duration_format_minutes": "{minutes}m",
+  "@duration_format_minutes": {
+    "description": "Duration format with minutes only",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+
   "media_playing": "Playing",
   "@media_playing": {
-    "description": "Status text when media device is playing"
+    "description": "Media player status - playing"
   },
   "media_idle": "Idle",
   "@media_idle": {
-    "description": "Status text when media device is idle"
+    "description": "Media player status - idle"
   },
   "media_standby": "Standby",
   "@media_standby": {
-    "description": "Status text when media device is in standby"
+    "description": "Media player status - standby"
+  },
+  "media_volume": "Volume",
+  "@media_volume": {
+    "description": "Media player volume label"
   },
   "media_source": "Source",
   "@media_source": {
-    "description": "Section title for media source selection"
+    "description": "Media player source label"
   },
   "media_queue": "Queue",
   "@media_queue": {
-    "description": "Section title for media playback queue"
+    "description": "Media player queue label"
+  },
+  "media_up_next": "Up Next",
+  "@media_up_next": {
+    "description": "Media player up next section label"
+  },
+  "media_other_devices": "Other Devices",
+  "@media_other_devices": {
+    "description": "Media player other devices section label"
+  },
+  "device_status_standby": "Standby",
+  "@device_status_standby": {
+    "description": "Device status - standby (on but not actively working)"
+  },
+  "device_status_active": "Active",
+  "@device_status_active": {
+    "description": "Device status - active"
+  },
+  "device_status_inactive": "Inactive",
+  "@device_status_inactive": {
+    "description": "Device status - inactive"
+  },
+  "climate_devices_section": "Climate Devices",
+  "@climate_devices_section": {
+    "description": "Section header for climate devices list"
   }
 }

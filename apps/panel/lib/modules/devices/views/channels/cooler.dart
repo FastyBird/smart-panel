@@ -5,7 +5,8 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/on.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/status.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/temperature.dart';
 
-class CoolerChannelView extends ChannelView with ChannelTemperatureMixin {
+class CoolerChannelView extends ChannelView
+    with ChannelTemperatureMixin, ChannelOnMixin {
   CoolerChannelView({
     required super.id,
     required super.type,
@@ -23,11 +24,12 @@ class CoolerChannelView extends ChannelView with ChannelTemperatureMixin {
   TemperatureChannelPropertyView get temperatureProp =>
       properties.whereType<TemperatureChannelPropertyView>().first;
 
-  StatusChannelPropertyView get statusProp =>
-      properties.whereType<StatusChannelPropertyView>().first;
-
+  @override
   OnChannelPropertyView get onProp =>
       properties.whereType<OnChannelPropertyView>().first;
+
+  StatusChannelPropertyView get statusProp =>
+      properties.whereType<StatusChannelPropertyView>().first;
 
   bool get isOn {
     final value = onProp.value;

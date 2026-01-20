@@ -4,6 +4,7 @@ import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
@@ -13,6 +14,7 @@ import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
+import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_dehumidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_humidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_purifier.dart';
@@ -20,19 +22,67 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail
 import 'package:fastybird_smart_panel/modules/deck/views/climate_role_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/air_conditioner.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/air_dehumidifier.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/air_humidifier.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/air_purifier.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/fan.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/heating_unit.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/water_heater.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/sensor.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';
+import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
+import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart'
+    as spaces_climate;
 import 'package:fastybird_smart_panel/modules/spaces/service.dart';
+import 'package:fastybird_smart_panel/modules/spaces/views/climate_targets/view.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
 
 // ============================================================================
+// CLIMATE CONTROL CONSTANTS
+// ============================================================================
+
+class _ClimateControlConstants {
+  /// Settling window for mode changes (ms)
+  static const int modeSettlingWindowMs = 3000;
+
+  /// Settling window for setpoint changes (ms)
+  static const int setpointSettlingWindowMs = 2500;
+
+  /// Tolerance for setpoint convergence (degrees)
+  static const double setpointTolerance = 0.5;
+
+  /// Control channel IDs
+  static const String modeChannelId = 'mode';
+  static const String setpointChannelId = 'setpoint';
+}
+
+// ============================================================================
 // DATA MODELS
 // ============================================================================
 
-enum ClimateMode { off, heat, cool }
+enum ClimateMode { off, heat, cool, auto }
 
-enum RoomCapability { heaterOnly, coolerOnly, heaterAndCooler }
+/// Convert local ClimateMode to the one used by the spaces service
+spaces_climate.ClimateMode _toServiceClimateMode(ClimateMode mode) {
+  switch (mode) {
+    case ClimateMode.off:
+      return spaces_climate.ClimateMode.off;
+    case ClimateMode.heat:
+      return spaces_climate.ClimateMode.heat;
+    case ClimateMode.cool:
+      return spaces_climate.ClimateMode.cool;
+    case ClimateMode.auto:
+      return spaces_climate.ClimateMode.auto;
+  }
+}
+
+enum RoomCapability { none, heaterOnly, coolerOnly, heaterAndCooler }
 
 class ClimateDevice {
   final String id;
@@ -122,8 +172,16 @@ class ClimateSensor {
         return MdiIcons.thermometer;
       case 'humidity':
         return MdiIcons.waterPercent;
-      case 'air':
+      case 'aqi':
         return MdiIcons.airFilter;
+      case 'pm':
+        return MdiIcons.blur;
+      case 'co2':
+        return MdiIcons.moleculeCo2;
+      case 'voc':
+        return MdiIcons.molecule;
+      case 'pressure':
+        return MdiIcons.gauge;
       default:
         return MdiIcons.eyeSettings;
     }
@@ -138,6 +196,8 @@ class ClimateRoomState {
   final double currentTemp;
   final double? targetHumidity;
   final double? currentHumidity;
+  final double minSetpoint;
+  final double maxSetpoint;
   final List<ClimateDevice> climateDevices;
   final List<AuxiliaryDevice> auxiliaryDevices;
   final List<ClimateSensor> sensors;
@@ -150,6 +210,8 @@ class ClimateRoomState {
     this.currentTemp = 21.0,
     this.targetHumidity,
     this.currentHumidity,
+    this.minSetpoint = 16.0,
+    this.maxSetpoint = 30.0,
     this.climateDevices = const [],
     this.auxiliaryDevices = const [],
     this.sensors = const [],
@@ -163,6 +225,8 @@ class ClimateRoomState {
     double? currentTemp,
     double? targetHumidity,
     double? currentHumidity,
+    double? minSetpoint,
+    double? maxSetpoint,
     List<ClimateDevice>? climateDevices,
     List<AuxiliaryDevice>? auxiliaryDevices,
     List<ClimateSensor>? sensors,
@@ -175,6 +239,8 @@ class ClimateRoomState {
       currentTemp: currentTemp ?? this.currentTemp,
       targetHumidity: targetHumidity ?? this.targetHumidity,
       currentHumidity: currentHumidity ?? this.currentHumidity,
+      minSetpoint: minSetpoint ?? this.minSetpoint,
+      maxSetpoint: maxSetpoint ?? this.maxSetpoint,
       climateDevices: climateDevices ?? this.climateDevices,
       auxiliaryDevices: auxiliaryDevices ?? this.auxiliaryDevices,
       sensors: sensors ?? this.sensors,
@@ -189,6 +255,8 @@ class ClimateRoomState {
         return 'Heating';
       case ClimateMode.cool:
         return 'Cooling';
+      case ClimateMode.auto:
+        return 'Auto';
     }
   }
 
@@ -223,15 +291,46 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   DevicesService? _devicesService;
   DeckService? _deckService;
   EventBus? _eventBus;
+  IntentsRepository? _intentsRepository;
 
-  late ClimateRoomState _state;
+  ClimateRoomState _state = const ClimateRoomState(roomName: '');
   bool _isLoading = true;
+
+  // Control state service for optimistic UI
+  late DomainControlStateService<spaces_climate.ClimateStateModel>
+      _controlStateService;
+
+  // Track which space intent we're waiting for
+  bool _modeWasLocked = false;
+  bool _setpointWasLocked = false;
 
   String get _roomId => widget.viewItem.roomId;
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize the control state service with climate-specific config
+    _controlStateService = DomainControlStateService<
+        spaces_climate.ClimateStateModel>(
+      channelConfigs: {
+        _ClimateControlConstants.modeChannelId: ControlChannelConfig(
+          id: _ClimateControlConstants.modeChannelId,
+          convergenceChecker: _checkModeConvergence,
+          intentLockChecker: _isModeLocked,
+          settlingWindowMs: _ClimateControlConstants.modeSettlingWindowMs,
+          tolerance: 0.0, // Mode is exact match
+        ),
+        _ClimateControlConstants.setpointChannelId: ControlChannelConfig(
+          id: _ClimateControlConstants.setpointChannelId,
+          convergenceChecker: _checkSetpointConvergence,
+          intentLockChecker: _isSetpointLocked,
+          settlingWindowMs: _ClimateControlConstants.setpointSettlingWindowMs,
+          tolerance: _ClimateControlConstants.setpointTolerance,
+        ),
+      },
+    );
+    _controlStateService.addListener(_onControlStateChanged);
 
     try {
       _spacesService = locator<SpacesService>();
@@ -267,58 +366,660 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       }
     }
 
-    _initializeState();
+    try {
+      _intentsRepository = locator<IntentsRepository>();
+      _intentsRepository?.addListener(_onIntentChanged);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+            '[ClimateDomainViewPage] Failed to get IntentsRepository: $e');
+      }
+    }
+
+    _fetchClimateData();
   }
 
-  void _initializeState() {
-    final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
+  Future<void> _fetchClimateData() async {
+    try {
+      await Future.wait([
+        _spacesService?.fetchClimateTargetsForSpace(_roomId) ?? Future.value(),
+        _spacesService?.fetchClimateState(_roomId) ?? Future.value(),
+      ]);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[ClimateDomainViewPage] Failed to fetch climate data: $e');
+      }
+    } finally {
+      _buildState();
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
-    // TODO: Build real state from devices/climate targets
+  void _buildState() {
+    final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
+    final climateState = _spacesService?.getClimateState(_roomId);
+    final climateTargets =
+        _spacesService?.getClimateTargetsForSpace(_roomId) ?? [];
+    final devicesService = _devicesService;
+
+    // Check if controls are locked by the state machine
+    final modeIsLocked =
+        _controlStateService.isLocked(_ClimateControlConstants.modeChannelId);
+    final setpointIsLocked =
+        _controlStateService.isLocked(_ClimateControlConstants.setpointChannelId);
+
+    // Determine mode from climate state
+    // If mode is locked by state machine, use the desired mode
+    // If setpoint is locked (but not mode), preserve current UI mode to avoid glitches
+    ClimateMode mode = ClimateMode.off;
+    if (modeIsLocked) {
+      // Use the desired mode from the state machine
+      final desiredModeIndex = _controlStateService
+          .getDesiredValue(_ClimateControlConstants.modeChannelId)
+          ?.toInt();
+      if (desiredModeIndex != null &&
+          desiredModeIndex < spaces_climate.ClimateMode.values.length) {
+        final desiredMode = spaces_climate.ClimateMode.values[desiredModeIndex];
+        switch (desiredMode) {
+          case spaces_climate.ClimateMode.heat:
+            mode = ClimateMode.heat;
+            break;
+          case spaces_climate.ClimateMode.cool:
+            mode = ClimateMode.cool;
+            break;
+          case spaces_climate.ClimateMode.auto:
+            mode = ClimateMode.auto;
+            break;
+          case spaces_climate.ClimateMode.off:
+            mode = ClimateMode.off;
+            break;
+        }
+      }
+    } else if (setpointIsLocked && _state.mode != ClimateMode.off) {
+      // Preserve current mode when setpoint is locked to avoid mode switching
+      // during setpoint changes
+      mode = _state.mode;
+    } else if (climateState != null) {
+      // Normal case: Use detected mode from device state
+      // Note: lastAppliedMode is the last mode explicitly set by the user, but it
+      // can be stale (from hours/days ago). The 'mode' field reflects the actual
+      // current state which is more reliable for display purposes.
+      switch (climateState.mode) {
+        case spaces_climate.ClimateMode.heat:
+          mode = ClimateMode.heat;
+          break;
+        case spaces_climate.ClimateMode.cool:
+          mode = ClimateMode.cool;
+          break;
+        case spaces_climate.ClimateMode.auto:
+          mode = ClimateMode.auto;
+          break;
+        case spaces_climate.ClimateMode.off:
+        case null:
+          mode = ClimateMode.off;
+          break;
+      }
+    }
+
+    // Determine capability from climate state
+    // Capability is based on device hardware (heater/cooler channels), not mode.
+    // Once established, it should remain stable to avoid UI glitches during
+    // mode changes when stale data might temporarily show no capabilities.
+    RoomCapability newCapability = RoomCapability.none;
+    if (climateState != null) {
+      if (climateState.supportsHeating && climateState.supportsCooling) {
+        newCapability = RoomCapability.heaterAndCooler;
+      } else if (climateState.supportsHeating) {
+        newCapability = RoomCapability.heaterOnly;
+      } else if (climateState.supportsCooling) {
+        newCapability = RoomCapability.coolerOnly;
+      } else {
+        newCapability = RoomCapability.none;
+      }
+    }
+
+    // Preserve previous valid capability if new capability is none
+    // This prevents UI glitches when stale data arrives during mode changes
+    RoomCapability capability;
+    if (newCapability != RoomCapability.none) {
+      capability = newCapability;
+    } else if (_isLoading) {
+      // Initial load - use whatever we get
+      capability = newCapability;
+    } else {
+      // Preserve previous capability if we had one
+      capability = _state.capability != RoomCapability.none
+          ? _state.capability
+          : newCapability;
+      if (capability != newCapability && kDebugMode) {
+        debugPrint(
+            '[ClimateDomainViewPage] Preserving previous capability: $capability (API returned: $newCapability)');
+      }
+    }
+
+    // Validate mode is consistent with capability - fall back to off if not supported
+    if (mode == ClimateMode.heat &&
+        capability != RoomCapability.heaterOnly &&
+        capability != RoomCapability.heaterAndCooler) {
+      mode = ClimateMode.off;
+    } else if (mode == ClimateMode.cool &&
+        capability != RoomCapability.coolerOnly &&
+        capability != RoomCapability.heaterAndCooler) {
+      mode = ClimateMode.off;
+    } else if (mode == ClimateMode.auto &&
+        capability != RoomCapability.heaterAndCooler) {
+      mode = ClimateMode.off;
+    }
+
+    // Get temperature values from climate state
+    final rawMinSetpoint = climateState?.minSetpoint ?? 16.0;
+    final rawMaxSetpoint = climateState?.maxSetpoint ?? 30.0;
+    // Ensure min < max to prevent clamp() ArgumentError and satisfy
+    // CircularControlDial assertion (maxValue > minValue requires strict inequality)
+    var minSetpoint = math.min(rawMinSetpoint, rawMaxSetpoint);
+    var maxSetpoint = math.max(rawMinSetpoint, rawMaxSetpoint);
+    if (maxSetpoint <= minSetpoint) {
+      maxSetpoint = minSetpoint + 1.0;
+    }
+
+    // Get the appropriate target temperature based on mode
+    // When mode is locked (user just changed it), use the setpoint for the NEW mode
+    // Otherwise, use effectiveTargetTemperature which is based on backend mode
+    double rawTargetTemp;
+    if (modeIsLocked && climateState != null) {
+      // Use setpoint for the desired mode
+      switch (mode) {
+        case ClimateMode.heat:
+          rawTargetTemp = climateState.heatingSetpoint ?? 22.0;
+          break;
+        case ClimateMode.cool:
+          rawTargetTemp = climateState.coolingSetpoint ?? 22.0;
+          break;
+        case ClimateMode.auto:
+          // For auto, use midpoint or heating setpoint
+          if (climateState.heatingSetpoint != null &&
+              climateState.coolingSetpoint != null) {
+            rawTargetTemp =
+                (climateState.heatingSetpoint! + climateState.coolingSetpoint!) / 2;
+          } else {
+            rawTargetTemp =
+                climateState.heatingSetpoint ?? climateState.coolingSetpoint ?? 22.0;
+          }
+          break;
+        case ClimateMode.off:
+          rawTargetTemp = climateState.effectiveTargetTemperature ?? 22.0;
+          break;
+      }
+    } else {
+      rawTargetTemp = climateState?.effectiveTargetTemperature ?? 22.0;
+    }
+
+    // Use desired setpoint if setpoint state is locked (user changed setpoint)
+    double targetTemp;
+    if (setpointIsLocked) {
+      final desiredSetpoint = _controlStateService.getDesiredValue(
+        _ClimateControlConstants.setpointChannelId,
+      );
+      targetTemp = desiredSetpoint ?? rawTargetTemp;
+    } else {
+      targetTemp = rawTargetTemp;
+    }
+    // Clamp target temp to valid setpoint range to avoid UI inconsistencies
+    targetTemp = targetTemp.clamp(minSetpoint, maxSetpoint);
+    final currentTemp = climateState?.currentTemperature ?? 21.0;
+    final currentHumidity = climateState?.currentHumidity;
+
+    // Build sensors list from sensor targets and device data
+    final sensors = <ClimateSensor>[];
+    final auxiliaryDevices = <AuxiliaryDevice>[];
+    final climateDevices = <ClimateDevice>[];
+
+    // Track processed IDs per category to avoid duplicates within each list
+    // but allow the same device to appear in multiple categories (e.g., as sensor AND actuator)
+    // For sensors: use target.id (deviceId:channelId) since each channel is a separate sensor
+    // For actuators: use deviceId since there's one actuator per device
+    final processedSensorTargetIds = <String>{};
+    final processedAuxiliaryDeviceIds = <String>{};
+    final processedClimateDeviceIds = <String>{};
+
+    for (final target in climateTargets) {
+      final device = devicesService?.getDevice(target.deviceId);
+      if (device == null) continue;
+
+      final role = target.role;
+
+      if (role == ClimateTargetRole.sensor) {
+        // Skip if already processed as sensor (use target.id which includes channelId)
+        if (processedSensorTargetIds.contains(target.id)) continue;
+        // Build sensors from sensor role targets
+        _buildSensorsFromDevice(device, target, sensors);
+        processedSensorTargetIds.add(target.id);
+      } else if (role == ClimateTargetRole.auxiliary) {
+        // Skip if already processed as auxiliary
+        if (processedAuxiliaryDeviceIds.contains(target.deviceId)) continue;
+        // Build auxiliary devices
+        _buildAuxiliaryFromDevice(device, auxiliaryDevices, roomName);
+        processedAuxiliaryDeviceIds.add(target.deviceId);
+      } else if (role == ClimateTargetRole.heatingOnly ||
+          role == ClimateTargetRole.coolingOnly ||
+          role == ClimateTargetRole.auto) {
+        // Skip if already processed as climate device
+        if (processedClimateDeviceIds.contains(target.deviceId)) continue;
+        // Build climate devices (actuators)
+        _buildClimateDeviceFromTarget(
+            device, target, climateDevices, mode, roomName);
+        processedClimateDeviceIds.add(target.deviceId);
+      }
+    }
+
+    // Add temperature sensor from climate state if not already present
+    if (climateState?.currentTemperature != null &&
+        !sensors.any((s) => s.type == 'temp')) {
+      sensors.insert(
+        0,
+        ClimateSensor(
+          id: 'state_temp',
+          label: 'Temperature',
+          value:
+              '${NumberFormatUtils.defaultFormat.formatDecimal(climateState!.currentTemperature!, decimalPlaces: 1)}°C',
+          type: 'temp',
+        ),
+      );
+    }
+
+    // Add humidity sensor from climate state if not already present
+    if (climateState?.currentHumidity != null &&
+        !sensors.any((s) => s.type == 'humidity')) {
+      sensors.add(
+        ClimateSensor(
+          id: 'state_humidity',
+          label: 'Humidity',
+          value:
+              '${NumberFormatUtils.defaultFormat.formatInteger(climateState!.currentHumidity!.toInt())}%',
+          type: 'humidity',
+        ),
+      );
+    }
+
+    // Sort sensors by type priority
+    sensors.sort((a, b) => _sensorTypePriority(a.type).compareTo(_sensorTypePriority(b.type)));
+
     _state = ClimateRoomState(
       roomName: roomName,
-      mode: ClimateMode.heat,
-      capability: RoomCapability.heaterAndCooler,
-      targetTemp: 22,
-      currentTemp: 20.3,
-      targetHumidity: 45,
-      currentHumidity: 52,
-      sensors: const [
-        ClimateSensor(
-            id: 't1', label: 'Temperature', value: '20.3°C', type: 'temp'),
-        ClimateSensor(
-            id: 'h1', label: 'Humidity', value: '52%', type: 'humidity'),
-        ClimateSensor(id: 'a1', label: 'Air Quality', value: 'Good', type: 'air'),
-      ],
-      auxiliaryDevices: const [
-        AuxiliaryDevice(
-            id: 'hum1',
-            name: 'Humidifier',
-            type: AuxiliaryType.humidifier,
-            isActive: false),
-        AuxiliaryDevice(
-            id: 'dehum1',
-            name: 'Dehumidifier',
-            type: AuxiliaryType.dehumidifier,
-            isActive: true,
-            status: 'Running'),
-        AuxiliaryDevice(
-            id: 'fan1',
-            name: 'Ceiling Fan',
-            type: AuxiliaryType.fan,
-            isActive: false),
-        AuxiliaryDevice(
-            id: 'pur1',
-            name: 'Air Purifier',
-            type: AuxiliaryType.purifier,
-            isActive: true,
-            status: 'Auto'),
-      ],
+      mode: mode,
+      capability: capability,
+      targetTemp: targetTemp,
+      currentTemp: currentTemp,
+      targetHumidity: null,
+      currentHumidity: currentHumidity,
+      minSetpoint: minSetpoint,
+      maxSetpoint: maxSetpoint,
+      sensors: sensors,
+      auxiliaryDevices: auxiliaryDevices,
+      climateDevices: climateDevices,
     );
+  }
 
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
+  void _buildSensorsFromDevice(
+    DeviceView device,
+    ClimateTargetView target,
+    List<ClimateSensor> sensors,
+  ) {
+    // Wrap in try-catch to handle devices with missing required channels
+    try {
+      // Check if device has temperature
+      if (target.hasTemperature) {
+        double? tempValue;
+        if (device is ThermostatDeviceView) {
+          tempValue = device.temperatureChannel.temperature;
+        } else if (device is HeatingUnitDeviceView) {
+          tempValue = device.temperatureChannel.temperature;
+        } else if (device is WaterHeaterDeviceView) {
+          tempValue = device.temperatureChannel.temperature;
+        } else if (device is AirConditionerDeviceView) {
+          tempValue = device.temperatureChannel.temperature;
+        } else if (device is SensorDeviceView) {
+          tempValue = device.temperatureChannel?.temperature;
+        }
+
+        if (tempValue != null) {
+          sensors.add(ClimateSensor(
+            id: '${target.id}_temp',
+            label: target.displayName,
+            value:
+                '${NumberFormatUtils.defaultFormat.formatDecimal(tempValue, decimalPlaces: 1)}°C',
+            type: 'temp',
+          ));
+        }
+      }
+
+      // Check if device has humidity
+      if (target.hasHumidity) {
+        double? humidityValue;
+        if (device is ThermostatDeviceView) {
+          humidityValue = device.humidityChannel?.humidity.toDouble();
+        } else if (device is HeatingUnitDeviceView) {
+          humidityValue = device.humidityChannel?.humidity.toDouble();
+        } else if (device is WaterHeaterDeviceView) {
+          humidityValue = device.humidityChannel?.humidity.toDouble();
+        } else if (device is AirConditionerDeviceView) {
+          humidityValue = device.humidityChannel?.humidity.toDouble();
+        } else if (device is SensorDeviceView) {
+          humidityValue = device.humidityChannel?.humidity.toDouble();
+        }
+
+        if (humidityValue != null) {
+          sensors.add(ClimateSensor(
+            id: '${target.id}_humidity',
+            label: target.displayName,
+            value:
+                '${NumberFormatUtils.defaultFormat.formatInteger(humidityValue.toInt())}%',
+            type: 'humidity',
+          ));
+        }
+      }
+
+      // Additional climate sensors using backend flags
+      _buildAdditionalSensors(device, target, sensors);
+    } catch (e) {
+      // Device may be missing required channels - skip it
+      if (kDebugMode) {
+        debugPrint(
+            '[ClimateDomainViewPage] Failed to build sensor from device ${device.id}: $e');
+      }
+    }
+  }
+
+  /// Builds additional climate sensors (AQI, PM, CO2, VOC, Pressure)
+  /// using backend flags to determine which sensor type this target represents.
+  void _buildAdditionalSensors(
+    DeviceView device,
+    ClimateTargetView target,
+    List<ClimateSensor> sensors,
+  ) {
+    final formatter = NumberFormatUtils.defaultFormat;
+
+    // Air Quality Index (AQI)
+    if (target.hasAirQuality) {
+      if (device is AirPurifierDeviceView &&
+          device.airQualityChannel != null &&
+          device.airQualityChannel!.hasAqi) {
+        sensors.add(ClimateSensor(
+          id: '${target.id}_aqi',
+          label: target.displayName,
+          value: formatter.formatInteger(device.airQualityChannel!.aqi),
+          type: 'aqi',
+        ));
+      }
+    }
+
+    // Air Particulate (PM2.5/PM10)
+    if (target.hasAirParticulate) {
+      if (device is SensorDeviceView && device.airParticulateChannel != null) {
+        final pmChannel = device.airParticulateChannel!;
+        if (pmChannel.hasDensity) {
+          sensors.add(ClimateSensor(
+            id: '${target.id}_pm',
+            label: target.displayName,
+            value:
+                '${formatter.formatInteger(pmChannel.density.toInt())} µg/m³',
+            type: 'pm',
+          ));
+        }
+      } else if (device is AirPurifierDeviceView &&
+          device.airParticulateChannel != null) {
+        final pmChannel = device.airParticulateChannel!;
+        if (pmChannel.hasDensity) {
+          sensors.add(ClimateSensor(
+            id: '${target.id}_pm',
+            label: target.displayName,
+            value:
+                '${formatter.formatInteger(pmChannel.density.toInt())} µg/m³',
+            type: 'pm',
+          ));
+        }
+      }
+    }
+
+    // Carbon Dioxide (CO2)
+    if (target.hasCarbonDioxide) {
+      if (device is SensorDeviceView && device.carbonDioxideChannel != null) {
+        final co2Channel = device.carbonDioxideChannel!;
+        if (co2Channel.hasDensity) {
+          sensors.add(ClimateSensor(
+            id: '${target.id}_co2',
+            label: target.displayName,
+            value: '${formatter.formatInteger(co2Channel.density.toInt())} ppm',
+            type: 'co2',
+          ));
+        }
+      } else if (device is AirPurifierDeviceView &&
+          device.carbonDioxideChannel != null) {
+        final co2Channel = device.carbonDioxideChannel!;
+        if (co2Channel.hasDensity) {
+          sensors.add(ClimateSensor(
+            id: '${target.id}_co2',
+            label: target.displayName,
+            value: '${formatter.formatInteger(co2Channel.density.toInt())} ppm',
+            type: 'co2',
+          ));
+        }
+      }
+    }
+
+    // Volatile Organic Compounds (VOC)
+    if (target.hasVolatileOrganicCompounds) {
+      if (device is SensorDeviceView &&
+          device.volatileOrganicCompoundsChannel != null) {
+        final vocChannel = device.volatileOrganicCompoundsChannel!;
+        if (vocChannel.hasDensity) {
+          sensors.add(ClimateSensor(
+            id: '${target.id}_voc',
+            label: target.displayName,
+            value: '${formatter.formatInteger(vocChannel.density.toInt())} ppb',
+            type: 'voc',
+          ));
+        }
+      } else if (device is AirPurifierDeviceView &&
+          device.volatileOrganicCompoundsChannel != null) {
+        final vocChannel = device.volatileOrganicCompoundsChannel!;
+        if (vocChannel.hasDensity) {
+          sensors.add(ClimateSensor(
+            id: '${target.id}_voc',
+            label: target.displayName,
+            value: '${formatter.formatInteger(vocChannel.density.toInt())} ppb',
+            type: 'voc',
+          ));
+        }
+      }
+    }
+
+    // Atmospheric Pressure
+    if (target.hasPressure) {
+      if (device is SensorDeviceView && device.pressureChannel != null) {
+        final pressureChannel = device.pressureChannel!;
+        sensors.add(ClimateSensor(
+          id: '${target.id}_pressure',
+          label: target.displayName,
+          value:
+              '${formatter.formatInteger(pressureChannel.measured.toInt())} hPa',
+          type: 'pressure',
+        ));
+      }
+    }
+  }
+
+  void _buildAuxiliaryFromDevice(
+    DeviceView device,
+    List<AuxiliaryDevice> auxiliaryDevices,
+    String roomName,
+  ) {
+    // Wrap in try-catch to handle devices with missing required channels
+    // Some devices may not have all expected channels configured
+    try {
+      if (device is FanDeviceView) {
+        auxiliaryDevices.add(AuxiliaryDevice(
+          id: device.id,
+          name: stripRoomNameFromDevice(device.name, roomName),
+          type: AuxiliaryType.fan,
+          isActive: device.isOn,
+          status: device.isOn ? 'On' : 'Off',
+        ));
+      } else if (device is AirPurifierDeviceView) {
+        auxiliaryDevices.add(AuxiliaryDevice(
+          id: device.id,
+          name: stripRoomNameFromDevice(device.name, roomName),
+          type: AuxiliaryType.purifier,
+          isActive: device.isOn,
+          status: device.isOn ? 'On' : 'Off',
+        ));
+      } else if (device is AirHumidifierDeviceView) {
+        auxiliaryDevices.add(AuxiliaryDevice(
+          id: device.id,
+          name: stripRoomNameFromDevice(device.name, roomName),
+          type: AuxiliaryType.humidifier,
+          isActive: device.isOn,
+          status: device.isOn ? 'On' : 'Off',
+        ));
+      } else if (device is AirDehumidifierDeviceView) {
+        auxiliaryDevices.add(AuxiliaryDevice(
+          id: device.id,
+          name: stripRoomNameFromDevice(device.name, roomName),
+          type: AuxiliaryType.dehumidifier,
+          isActive: device.isOn,
+          status: device.isOn ? 'On' : 'Off',
+        ));
+      }
+    } catch (e) {
+      // Device may be missing required channels - skip it
+      if (kDebugMode) {
+        debugPrint(
+            '[ClimateDomainViewPage] Failed to build auxiliary device ${device.id}: $e');
+      }
+    }
+  }
+
+  void _buildClimateDeviceFromTarget(
+    DeviceView device,
+    ClimateTargetView target,
+    List<ClimateDevice> climateDevices,
+    ClimateMode currentMode,
+    String roomName,
+  ) {
+    // Wrap in try-catch to handle devices with missing required channels
+    try {
+      String deviceType = 'thermostat';
+      bool isActive = false;
+      String? status;
+
+      if (device is ThermostatDeviceView) {
+        deviceType = 'thermostat';
+        // Thermostat has optional heater and cooler channels
+        final heaterOn = device.heaterChannel?.on ?? false;
+        final coolerOn = device.coolerChannel?.on ?? false;
+        final isHeating = device.heaterChannel?.isHeating ?? false;
+        final isCooling = device.coolerChannel?.isCooling ?? false;
+
+        // isActive based on actual heating/cooling status (like air_conditioner)
+        isActive = isHeating || isCooling;
+
+        if (!heaterOn && !coolerOn) {
+          status = 'Off';
+        } else if (isHeating) {
+          status = 'Heating';
+        } else if (isCooling) {
+          status = 'Cooling';
+        } else {
+          status = 'Standby';
+        }
+      } else if (device is HeatingUnitDeviceView) {
+        deviceType = 'heating_unit';
+        // Heating unit has a required heater channel
+        final heaterOn = device.heaterChannel.on;
+        final isHeating = device.heaterChannel.isHeating;
+        isActive = isHeating;
+
+        if (!heaterOn) {
+          status = 'Off';
+        } else if (isHeating) {
+          status = 'Heating';
+        } else {
+          status = 'Standby';
+        }
+      } else if (device is WaterHeaterDeviceView) {
+        deviceType = 'water_heater';
+        // Water heater has a required heater channel
+        final heaterOn = device.heaterChannel.on;
+        final isHeating = device.heaterChannel.isHeating;
+        isActive = isHeating;
+
+        if (!heaterOn) {
+          status = 'Off';
+        } else if (isHeating) {
+          status = 'Heating';
+        } else {
+          status = 'Standby';
+        }
+      } else if (device is AirConditionerDeviceView) {
+        deviceType = 'ac';
+        // A/C can have both cooler (required) and heater (optional) channels
+        final coolerOn = device.coolerChannel.on;
+        final heaterOn = device.heaterChannel?.on ?? false;
+        final isCooling = device.coolerChannel.isCooling;
+        final isHeating = device.heaterChannel?.isHeating ?? false;
+        isActive = isCooling || isHeating;
+
+        if (!coolerOn && !heaterOn) {
+          status = 'Off';
+        } else if (isCooling) {
+          status = 'Cooling';
+        } else if (isHeating) {
+          status = 'Heating';
+        } else {
+          status = 'Standby';
+        }
+      }
+
+      climateDevices.add(ClimateDevice(
+        id: target.deviceId,
+        name: stripRoomNameFromDevice(target.displayName, roomName),
+        type: deviceType,
+        isActive: isActive,
+        status: status,
+        isPrimary: target.priority == 0,
+      ));
+    } catch (e) {
+      // Device may be missing required channels - skip it
+      if (kDebugMode) {
+        debugPrint(
+            '[ClimateDomainViewPage] Failed to build climate device ${device.id}: $e');
+      }
+    }
+  }
+
+  /// Returns sort priority for sensor types (lower = higher priority)
+  int _sensorTypePriority(String type) {
+    switch (type) {
+      case 'temp':
+        return 0;
+      case 'humidity':
+        return 1;
+      case 'aqi':
+        return 2;
+      case 'pm':
+        return 3;
+      case 'co2':
+        return 4;
+      case 'voc':
+        return 5;
+      case 'pressure':
+        return 6;
+      default:
+        return 99;
     }
   }
 
@@ -326,14 +1027,113 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   void dispose() {
     _spacesService?.removeListener(_onDataChanged);
     _devicesService?.removeListener(_onDataChanged);
+    _intentsRepository?.removeListener(_onIntentChanged);
+    _controlStateService.removeListener(_onControlStateChanged);
+    _controlStateService.dispose();
     super.dispose();
+  }
+
+  // ============================================================================
+  // CONTROL STATE SERVICE CALLBACKS
+  // ============================================================================
+
+  /// Check if climate mode has converged to desired value.
+  bool _checkModeConvergence(
+    List<spaces_climate.ClimateStateModel> targets,
+    double desiredValue,
+    double tolerance,
+  ) {
+    if (targets.isEmpty) return true;
+    final actual = targets.first;
+    // desiredValue is the mode enum index
+    final desiredMode = spaces_climate.ClimateMode.values[desiredValue.toInt()];
+    return actual.mode == desiredMode;
+  }
+
+  /// Check if setpoint has converged to desired value.
+  bool _checkSetpointConvergence(
+    List<spaces_climate.ClimateStateModel> targets,
+    double desiredValue,
+    double tolerance,
+  ) {
+    if (targets.isEmpty) return true;
+    final actual = targets.first;
+    final actualTemp = actual.effectiveTargetTemperature;
+    if (actualTemp == null) return false;
+    return (actualTemp - desiredValue).abs() <= tolerance;
+  }
+
+  /// Check if any climate mode intent is active for this space.
+  bool _isModeLocked(List<spaces_climate.ClimateStateModel> targets) {
+    return _intentsRepository?.isSpaceLocked(_roomId) ?? false;
+  }
+
+  /// Check if any setpoint intent is active for this space.
+  bool _isSetpointLocked(List<spaces_climate.ClimateStateModel> targets) {
+    return _intentsRepository?.isSpaceLocked(_roomId) ?? false;
+  }
+
+  void _onControlStateChanged() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  void _onIntentChanged() {
+    if (!mounted) return;
+
+    // Check if space intent was unlocked (completed)
+    final isNowLocked = _intentsRepository?.isSpaceLocked(_roomId) ?? false;
+
+    final climateState = _spacesService?.getClimateState(_roomId);
+    final targets =
+        climateState != null ? [climateState] : <spaces_climate.ClimateStateModel>[];
+
+    // Detect mode intent unlock
+    if (_modeWasLocked && !isNowLocked) {
+      _controlStateService.onIntentCompleted(
+        _ClimateControlConstants.modeChannelId,
+        targets,
+      );
+    }
+
+    // Detect setpoint intent unlock
+    if (_setpointWasLocked && !isNowLocked) {
+      _controlStateService.onIntentCompleted(
+        _ClimateControlConstants.setpointChannelId,
+        targets,
+      );
+    }
+
+    _modeWasLocked = isNowLocked;
+    _setpointWasLocked = isNowLocked;
   }
 
   void _onDataChanged() {
     if (!mounted) return;
-    // Defer setState to avoid calling during build phase
+    // Rebuild state and update UI
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() {});
+      if (mounted) {
+        // Build state FIRST with current lock status
+        // This ensures UI shows locked (desired) values during pending/settling
+        _buildState();
+        setState(() {});
+
+        // Check convergence AFTER build
+        // This way unlocking only affects the NEXT update, preventing flicker
+        // from stale WebSocket events that arrive out of order
+        final climateState = _spacesService?.getClimateState(_roomId);
+        if (climateState != null) {
+          final targets = [climateState];
+          _controlStateService.checkConvergence(
+            _ClimateControlConstants.modeChannelId,
+            targets,
+          );
+          _controlStateService.checkConvergence(
+            _ClimateControlConstants.setpointChannelId,
+            targets,
+          );
+        }
+      }
     });
   }
 
@@ -355,12 +1155,119 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   }
 
   void _setMode(ClimateMode mode) {
-    setState(() => _state = _state.copyWith(mode: mode));
+    // Convert to API mode
+    spaces_climate.ClimateMode apiMode;
+    switch (mode) {
+      case ClimateMode.heat:
+        apiMode = spaces_climate.ClimateMode.heat;
+        break;
+      case ClimateMode.cool:
+        apiMode = spaces_climate.ClimateMode.cool;
+        break;
+      case ClimateMode.auto:
+        apiMode = spaces_climate.ClimateMode.auto;
+        break;
+      case ClimateMode.off:
+        apiMode = spaces_climate.ClimateMode.off;
+        break;
+    }
+
+    // Set pending state in control service (will lock UI to show desired value)
+    _controlStateService.setPending(
+      _ClimateControlConstants.modeChannelId,
+      apiMode.index.toDouble(),
+    );
+
+    // Track that we're waiting for an intent
+    _modeWasLocked = true;
+
+    // Get the target temperature for the new mode (optimistic update)
+    // Each mode has its own setpoint, so we show it immediately
+    final climateState = _spacesService?.getClimateState(_roomId);
+    double? newTargetTemp;
+    if (climateState != null) {
+      switch (mode) {
+        case ClimateMode.heat:
+          newTargetTemp = climateState.heatingSetpoint;
+          break;
+        case ClimateMode.cool:
+          newTargetTemp = climateState.coolingSetpoint;
+          break;
+        case ClimateMode.auto:
+          if (climateState.heatingSetpoint != null &&
+              climateState.coolingSetpoint != null) {
+            newTargetTemp =
+                (climateState.heatingSetpoint! + climateState.coolingSetpoint!) / 2;
+          } else {
+            newTargetTemp =
+                climateState.heatingSetpoint ?? climateState.coolingSetpoint;
+          }
+          break;
+        case ClimateMode.off:
+          // Keep current target temp when turning off
+          break;
+      }
+    }
+
+    // Optimistic UI update - update both mode and target temperature
+    setState(() {
+      _state = _state.copyWith(
+        mode: mode,
+        targetTemp: newTargetTemp ?? _state.targetTemp,
+      );
+    });
+
+    // Call API to set the mode
+    _spacesService?.setClimateMode(_roomId, apiMode);
   }
 
   void _setTargetTemp(double temp) {
-    setState(
-        () => _state = _state.copyWith(targetTemp: temp.clamp(16.0, 30.0)));
+    if (kDebugMode) {
+      debugPrint('[ClimateDomainViewPage] _setTargetTemp called with temp=$temp');
+    }
+
+    final climateState = _spacesService?.getClimateState(_roomId);
+    final rawMinSetpoint = climateState?.minSetpoint ?? 16.0;
+    final rawMaxSetpoint = climateState?.maxSetpoint ?? 30.0;
+    // Ensure min < max to prevent clamp() ArgumentError from malformed API data
+    var minSetpoint = math.min(rawMinSetpoint, rawMaxSetpoint);
+    var maxSetpoint = math.max(rawMinSetpoint, rawMaxSetpoint);
+    if (maxSetpoint <= minSetpoint) {
+      maxSetpoint = minSetpoint + 1.0;
+    }
+    final clampedTemp = temp.clamp(minSetpoint, maxSetpoint);
+
+    if (kDebugMode) {
+      debugPrint(
+          '[ClimateDomainViewPage] _setTargetTemp: clampedTemp=$clampedTemp, roomId=$_roomId, spacesService=${_spacesService != null}');
+    }
+
+    // Set pending state in control service (will lock UI to show desired value)
+    _controlStateService.setPending(
+      _ClimateControlConstants.setpointChannelId,
+      clampedTemp,
+    );
+
+    // Track that we're waiting for an intent
+    _setpointWasLocked = true;
+
+    // Optimistic UI update
+    setState(() => _state = _state.copyWith(targetTemp: clampedTemp));
+
+    // Call API to set the setpoint with current mode
+    _spacesService
+        ?.setSetpoint(_roomId, clampedTemp,
+            mode: _toServiceClimateMode(_state.mode))
+        .then((result) {
+      if (kDebugMode) {
+        debugPrint(
+            '[ClimateDomainViewPage] setSetpoint result: affected=${result?.affectedDevices}, failed=${result?.failedDevices}');
+      }
+    }).catchError((e) {
+      if (kDebugMode) {
+        debugPrint('[ClimateDomainViewPage] setSetpoint error: $e');
+      }
+    });
   }
 
   void _navigateToDetail() {
@@ -368,10 +1275,15 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       context,
       MaterialPageRoute(
         builder: (context) => ClimateRoleDetailPage(
+          roomId: _roomId,
           roomName: _state.roomName,
           initialMode: _state.mode,
+          initialCapability: _state.capability,
           initialTargetTemp: _state.targetTemp,
           currentTemp: _state.currentTemp,
+          minSetpoint: _state.minSetpoint,
+          maxSetpoint: _state.maxSetpoint,
+          climateDevices: _state.climateDevices,
         ),
       ),
     );
@@ -387,6 +1299,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         return isDark ? AppColorsDark.warning : AppColorsLight.warning;
       case ClimateMode.cool:
         return isDark ? AppColorsDark.info : AppColorsLight.info;
+      case ClimateMode.auto:
+        return isDark ? AppColorsDark.success : AppColorsLight.success;
     }
   }
 
@@ -401,6 +1315,10 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             : AppColorsLight.warningLight5;
       case ClimateMode.cool:
         return isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight5;
+      case ClimateMode.auto:
+        return isDark
+            ? AppColorsDark.successLight5
+            : AppColorsLight.successLight5;
     }
   }
 
@@ -411,8 +1329,14 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         return isDark ? AppColorsDark.info : AppColorsLight.info;
       case 'humidity':
         return isDark ? AppColorsDark.success : AppColorsLight.success;
-      case 'air':
-        return isDark ? AppColorsDark.success : AppColorsLight.success;
+      case 'aqi':
+      case 'pm':
+      case 'voc':
+        return isDark ? AppColorsDark.warning : AppColorsLight.warning;
+      case 'co2':
+        return isDark ? AppColorsDark.error : AppColorsLight.error;
+      case 'pressure':
+        return isDark ? AppColorsDark.info : AppColorsLight.info;
       default:
         return isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
     }
@@ -426,15 +1350,33 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         return DialAccentColor.warning;
       case ClimateMode.cool:
         return DialAccentColor.info;
+      case ClimateMode.auto:
+        return DialAccentColor.success;
     }
   }
 
   bool _isDialActive() {
-    if (_state.mode == ClimateMode.off) return false;
-    if (_state.mode == ClimateMode.heat) {
-      return _state.currentTemp < _state.targetTemp;
+    final climateState = _spacesService?.getClimateState(_roomId);
+    if (climateState == null) return false;
+    // Use actual device activity status from backend
+    return climateState.isHeating || climateState.isCooling;
+  }
+
+  String _getStatusLabel(AppLocalizations localizations) {
+    if (_state.mode == ClimateMode.off) {
+      return localizations.thermostat_state_off;
     }
-    return _state.currentTemp > _state.targetTemp;
+
+    final climateState = _spacesService?.getClimateState(_roomId);
+    final tempStr = '${_state.targetTemp.toStringAsFixed(0)}°C';
+
+    if (climateState?.isCooling ?? false) {
+      return localizations.thermostat_state_cooling_to(tempStr);
+    }
+    if (climateState?.isHeating ?? false) {
+      return localizations.thermostat_state_heating_to(tempStr);
+    }
+    return localizations.thermostat_state_idle_at(tempStr);
   }
 
   @override
@@ -480,14 +1422,14 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   Widget _buildHeader(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final modeColor = _getModeColor(context);
+    final secondaryColor =
+        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
     final localizations = AppLocalizations.of(context)!;
 
     return PageHeader(
       title: localizations.domain_climate,
-      subtitle: _state.mode == ClimateMode.off
-          ? 'Off'
-          : '${_state.modeLabel} to ${_state.targetTemp.toInt()}°',
-      subtitleColor: modeColor,
+      subtitle: _getStatusLabel(localizations),
+      subtitleColor: _isDialActive() ? modeColor : secondaryColor,
       backgroundColor: AppColors.blank,
       leading: HeaderDeviceIcon(
         icon: MdiIcons.thermostat,
@@ -519,7 +1461,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                 ),
                 AppSpacings.spacingXsHorizontal,
                 Text(
-                  '${_state.currentTemp.toStringAsFixed(1)}°',
+                  '${NumberFormatUtils.defaultFormat.formatDecimal(_state.currentTemp, decimalPlaces: 1)}°C',
                   style: TextStyle(
                     color: isDark
                         ? AppTextColorDark.primary
@@ -814,14 +1756,17 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
 
+    // Only show "tap for details" when there are multiple climate devices
+    final showDetailHint = _state.climateDevices.length > 1;
+
     // Use less bottom padding on small/medium to fit hint text
-    final cardPadding = _screenService.isLargeScreen
+    final cardPadding = _screenService.isLargeScreen || !showDetailHint
         ? AppSpacings.paddingLg
         : EdgeInsets.fromLTRB(
             AppSpacings.pLg, AppSpacings.pLg, AppSpacings.pLg, AppSpacings.pSm);
 
     return GestureDetector(
-      onTap: _navigateToDetail,
+      onTap: showDetailHint ? _navigateToDetail : null,
       child: Container(
         padding: cardPadding,
         decoration: BoxDecoration(
@@ -836,7 +1781,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             final availableForDial =
                 constraints.maxWidth - modeIconsWidth - spacing;
             // Reserve space for hint text + spacing on small/medium devices
-            final hintHeight = _screenService.isLargeScreen
+            final hintHeight = _screenService.isLargeScreen || !showDetailHint
                 ? 0.0
                 : _scale(16) + AppSpacings.pXs;
             final maxDialHeight = constraints.maxHeight - hintHeight;
@@ -855,8 +1800,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                     CircularControlDial(
                       value: _state.targetTemp,
                       currentValue: _state.currentTemp,
-                      minValue: 16.0,
-                      maxValue: 30.0,
+                      minValue: _state.minSetpoint,
+                      maxValue: _state.maxSetpoint,
                       step: 0.5,
                       size: dialSize,
                       accentType: _getDialAccentType(),
@@ -870,29 +1815,31 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                     _buildVerticalModeIcons(context),
                   ],
                 ),
-                SizedBox(height: hintSpacing),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Tap for details',
-                      style: TextStyle(
+                if (showDetailHint) ...[
+                  SizedBox(height: hintSpacing),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Tap for details',
+                        style: TextStyle(
+                          color: isDark
+                              ? AppTextColorDark.secondary
+                              : AppTextColorLight.secondary,
+                          fontSize: AppFontSize.extraSmall,
+                        ),
+                      ),
+                      AppSpacings.spacingXsHorizontal,
+                      Icon(
+                        Icons.chevron_right,
                         color: isDark
                             ? AppTextColorDark.secondary
                             : AppTextColorLight.secondary,
-                        fontSize: AppFontSize.extraSmall,
+                        size: _scale(14),
                       ),
-                    ),
-                    AppSpacings.spacingXsHorizontal,
-                    Icon(
-                      Icons.chevron_right,
-                      color: isDark
-                          ? AppTextColorDark.secondary
-                          : AppTextColorLight.secondary,
-                      size: _scale(14),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ],
             );
           },
@@ -903,8 +1850,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
   /// Vertical column of icon-only mode buttons
   Widget _buildVerticalModeIcons(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     return ModeSelector<ClimateMode>(
-      modes: _getClimateModeOptions(),
+      modes: _getClimateModeOptions(localizations),
       selectedValue: _state.mode,
       onChanged: _setMode,
       orientation: ModeSelectorOrientation.vertical,
@@ -912,15 +1860,26 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     );
   }
 
-  List<ModeOption<ClimateMode>> _getClimateModeOptions() {
+  List<ModeOption<ClimateMode>> _getClimateModeOptions(
+      AppLocalizations localizations) {
     final modes = <ModeOption<ClimateMode>>[];
 
+    // TODO: Auto mode requires dual setpoint dial (heating + cooling setpoints)
+    // Will be implemented in a future release
+    // if (_state.capability == RoomCapability.heaterAndCooler) {
+    //   modes.add(ModeOption(
+    //     value: ClimateMode.auto,
+    //     icon: MdiIcons.thermometerAuto,
+    //     label: localizations.thermostat_mode_auto,
+    //     color: ModeSelectorColor.success,
+    //   ));
+    // }
     if (_state.capability == RoomCapability.heaterOnly ||
         _state.capability == RoomCapability.heaterAndCooler) {
       modes.add(ModeOption(
         value: ClimateMode.heat,
         icon: MdiIcons.fireCircle,
-        label: 'Heat',
+        label: localizations.thermostat_mode_heat,
         color: ModeSelectorColor.warning,
       ));
     }
@@ -929,14 +1888,14 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       modes.add(ModeOption(
         value: ClimateMode.cool,
         icon: MdiIcons.snowflake,
-        label: 'Cool',
+        label: localizations.thermostat_mode_cool,
         color: ModeSelectorColor.info,
       ));
     }
     modes.add(ModeOption(
       value: ClimateMode.off,
       icon: Icons.power_settings_new,
-      label: 'Off',
+      label: localizations.thermostat_mode_off,
       color: ModeSelectorColor.neutral,
     ));
 
@@ -960,8 +1919,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
 
+    // Only show "tap for details" when there are multiple climate devices
+    final showDetailHint = _state.climateDevices.length > 1;
+
     return GestureDetector(
-      onTap: _navigateToDetail,
+      onTap: showDetailHint ? _navigateToDetail : null,
       child: Container(
         padding: AppSpacings.paddingLg,
         decoration: BoxDecoration(
@@ -974,8 +1936,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             CircularControlDial(
               value: _state.targetTemp,
               currentValue: _state.currentTemp,
-              minValue: 16.0,
-              maxValue: 30.0,
+              minValue: _state.minSetpoint,
+              maxValue: _state.maxSetpoint,
               step: 0.5,
               size: dialSize,
               accentType: _getDialAccentType(),
@@ -987,29 +1949,31 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             ),
             AppSpacings.spacingMdVertical,
             _buildModeSelector(context),
-            AppSpacings.spacingSmVertical,
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Tap for details',
-                  style: TextStyle(
+            if (showDetailHint) ...[
+              AppSpacings.spacingSmVertical,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Tap for details',
+                    style: TextStyle(
+                      color: isDark
+                          ? AppTextColorDark.secondary
+                          : AppTextColorLight.secondary,
+                      fontSize: AppFontSize.extraSmall,
+                    ),
+                  ),
+                  AppSpacings.spacingXsHorizontal,
+                  Icon(
+                    Icons.chevron_right,
                     color: isDark
                         ? AppTextColorDark.secondary
                         : AppTextColorLight.secondary,
-                    fontSize: AppFontSize.extraSmall,
+                    size: _scale(14),
                   ),
-                ),
-                AppSpacings.spacingXsHorizontal,
-                Icon(
-                  Icons.chevron_right,
-                  color: isDark
-                      ? AppTextColorDark.secondary
-                      : AppTextColorLight.secondary,
-                  size: _scale(14),
-                ),
-              ],
-            ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -1017,8 +1981,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   }
 
   Widget _buildModeSelector(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     return ModeSelector<ClimateMode>(
-      modes: _getClimateModeOptions(),
+      modes: _getClimateModeOptions(localizations),
       selectedValue: _state.mode,
       onChanged: _setMode,
       orientation: ModeSelectorOrientation.horizontal,
@@ -1102,6 +2067,19 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     );
   }
 
+  /// Translates sensor label based on type
+  String _translateSensorLabel(
+      AppLocalizations localizations, ClimateSensor sensor) {
+    switch (sensor.type) {
+      case 'temp':
+        return localizations.device_temperature;
+      case 'humidity':
+        return localizations.device_humidity;
+      default:
+        return sensor.label;
+    }
+  }
+
   /// Builds a single sensor tile widget using UniversalTile.
   Widget _buildSensorTile(
     BuildContext context,
@@ -1111,12 +2089,13 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     bool showInactiveBorder = false,
   }) {
     final sensorColor = _getSensorColor(context, sensor.type);
+    final localizations = AppLocalizations.of(context)!;
 
     return UniversalTile(
       layout: layout,
       icon: sensor.icon,
       name: sensor.value,
-      status: sensor.label,
+      status: _translateSensorLabel(localizations, sensor),
       iconAccentColor: sensorColor,
       statusFontSize: statusFontSize,
       showDoubleBorder: false,
@@ -1146,7 +2125,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         useHorizontalLayout ? TileLayout.horizontal : TileLayout.vertical;
 
     final items =
-        _buildAuxiliaryItems(tileLayout, showInactiveBorder: showInactiveBorder);
+        _buildAuxiliaryItems(context, tileLayout, showInactiveBorder: showInactiveBorder);
 
     return GridView.builder(
       shrinkWrap: true,
@@ -1162,10 +2141,37 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     );
   }
 
+  /// Translates device status string to localized version
+  String _translateDeviceStatus(
+      AppLocalizations localizations, String? status, bool isActive) {
+    if (status == null) {
+      return isActive ? localizations.on_state_on : localizations.on_state_off;
+    }
+    switch (status) {
+      case 'Off':
+        return localizations.on_state_off;
+      case 'On':
+        return localizations.on_state_on;
+      case 'Heating':
+        return localizations.thermostat_state_heating;
+      case 'Cooling':
+        return localizations.thermostat_state_cooling;
+      case 'Standby':
+        return localizations.device_status_standby;
+      case 'Active':
+        return localizations.device_status_active;
+      case 'Inactive':
+        return localizations.device_status_inactive;
+      default:
+        return status;
+    }
+  }
+
   /// Builds list of auxiliary tile widgets
-  List<Widget> _buildAuxiliaryItems(TileLayout layout,
+  List<Widget> _buildAuxiliaryItems(BuildContext context, TileLayout layout,
       {bool showInactiveBorder = false}) {
     final items = <Widget>[];
+    final localizations = AppLocalizations.of(context)!;
 
     // Show all auxiliary devices individually
     for (final device in _state.auxiliaryDevices) {
@@ -1173,14 +2179,12 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         layout: layout,
         icon: device.icon,
         name: device.name,
-        status: device.status ?? (device.isActive ? 'On' : 'Off'),
+        status: _translateDeviceStatus(localizations, device.status, device.isActive),
         isActive: device.isActive,
         showDoubleBorder: false,
         showWarningBadge: false,
         showInactiveBorder: showInactiveBorder,
-        onIconTap: () {
-          // TODO: Toggle device state
-        },
+        onIconTap: () => _toggleAuxiliaryDevice(device),
         onTileTap: () => _openAuxiliaryDeviceDetail(device),
       ));
     }
@@ -1188,46 +2192,90 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     return items;
   }
 
-  /// Opens the detail page for an auxiliary device
-  void _openAuxiliaryDeviceDetail(AuxiliaryDevice device) {
-    Widget detailPage;
+  /// Toggles the on/off state of an auxiliary device
+  void _toggleAuxiliaryDevice(AuxiliaryDevice auxiliaryDevice) {
+    final devicesService = _devicesService;
+    if (devicesService == null) return;
 
-    switch (device.type) {
+    final deviceView = devicesService.getDevice(auxiliaryDevice.id);
+    if (deviceView == null) return;
+
+    String? propertyId;
+
+    switch (auxiliaryDevice.type) {
       case AuxiliaryType.fan:
-        detailPage = FanDeviceDetail(
-          name: device.name,
-          initialState: FanDeviceState(
-            isOn: device.isActive,
-            speed: device.isActive ? 0.6 : 0.0,
-          ),
-          onBack: () => Navigator.of(context).pop(),
-        );
+        if (deviceView is FanDeviceView) {
+          propertyId = deviceView.fanChannel.onProp.id;
+        }
         break;
       case AuxiliaryType.purifier:
-        detailPage = AirPurifierDeviceDetail(
-          name: device.name,
-          initialState: PurifierDeviceState(isOn: device.isActive),
-          onBack: () => Navigator.of(context).pop(),
-        );
+        if (deviceView is AirPurifierDeviceView) {
+          propertyId = deviceView.fanChannel.onProp.id;
+        }
         break;
       case AuxiliaryType.humidifier:
-        detailPage = AirHumidifierDeviceDetail(
-          name: device.name,
-          initialState: HumidifierDeviceState(isOn: device.isActive),
-          onBack: () => Navigator.of(context).pop(),
-        );
+        if (deviceView is AirHumidifierDeviceView) {
+          propertyId = deviceView.humidifierChannel.onProp.id;
+        }
         break;
       case AuxiliaryType.dehumidifier:
-        detailPage = AirDehumidifierDeviceDetail(
-          name: device.name,
-          initialState: DehumidifierDeviceState(isOn: device.isActive),
-          onBack: () => Navigator.of(context).pop(),
-        );
+        if (deviceView is AirDehumidifierDeviceView) {
+          propertyId = deviceView.dehumidifierChannel.onProp.id;
+        }
         break;
     }
 
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => detailPage),
-    );
+    if (propertyId != null) {
+      devicesService.setPropertyValue(propertyId, !auxiliaryDevice.isActive);
+    }
+  }
+
+  /// Opens the detail page for an auxiliary device
+  void _openAuxiliaryDeviceDetail(AuxiliaryDevice auxiliaryDevice) {
+    final devicesService = locator<DevicesService>();
+    final deviceView = devicesService.getDevice(auxiliaryDevice.id);
+
+    Widget? detailPage;
+
+    switch (auxiliaryDevice.type) {
+      case AuxiliaryType.fan:
+        if (deviceView is FanDeviceView) {
+          detailPage = FanDeviceDetail(
+            device: deviceView,
+            onBack: () => Navigator.of(context).pop(),
+          );
+        }
+        break;
+      case AuxiliaryType.purifier:
+        if (deviceView is AirPurifierDeviceView) {
+          detailPage = AirPurifierDeviceDetail(
+            device: deviceView,
+            onBack: () => Navigator.of(context).pop(),
+          );
+        }
+        break;
+      case AuxiliaryType.humidifier:
+        if (deviceView is AirHumidifierDeviceView) {
+          detailPage = AirHumidifierDeviceDetail(
+            device: deviceView,
+            onBack: () => Navigator.of(context).pop(),
+          );
+        }
+        break;
+      case AuxiliaryType.dehumidifier:
+        if (deviceView is AirDehumidifierDeviceView) {
+          detailPage = AirDehumidifierDeviceDetail(
+            device: deviceView,
+            onBack: () => Navigator.of(context).pop(),
+          );
+        }
+        break;
+    }
+
+    if (detailPage != null) {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => detailPage!),
+      );
+    }
   }
 }

@@ -1,8 +1,10 @@
+import 'package:fastybird_smart_panel/modules/devices/views/channels/contact.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/cooler.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/device_information.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_energy.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_power.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/fan.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/filter.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/heater.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/humidity.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/leak.dart';
@@ -12,9 +14,11 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';
 
 class AirConditionerDeviceView extends DeviceView
     with
+        DeviceContactMixin,
         DeviceCoolerMixin,
         DeviceDeviceInformationMixin,
         DeviceFanMixin,
+        DeviceFilterMixin,
         DeviceTemperatureMixin,
         DeviceElectricalEnergyMixin,
         DeviceElectricalPowerMixin,
@@ -71,6 +75,14 @@ class AirConditionerDeviceView extends DeviceView
   @override
   LeakChannelView? get leakChannel =>
       channels.whereType<LeakChannelView>().firstOrNull;
+
+  @override
+  ContactChannelView? get contactChannel =>
+      channels.whereType<ContactChannelView>().firstOrNull;
+
+  @override
+  FilterChannelView? get filterChannel =>
+      channels.whereType<FilterChannelView>().firstOrNull;
 
   @override
   bool get isOn => coolerChannel.isCooling;

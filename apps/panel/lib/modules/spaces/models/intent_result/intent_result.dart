@@ -27,8 +27,9 @@ class ClimateIntentResult {
   final int affectedDevices;
   final int failedDevices;
   final ClimateMode? mode;
-  final double? newSetpoint;
+  /// Heating setpoint (used in HEAT and AUTO modes)
   final double? heatingSetpoint;
+  /// Cooling setpoint (used in COOL and AUTO modes)
   final double? coolingSetpoint;
 
   ClimateIntentResult({
@@ -36,7 +37,6 @@ class ClimateIntentResult {
     required this.affectedDevices,
     required this.failedDevices,
     this.mode,
-    this.newSetpoint,
     this.heatingSetpoint,
     this.coolingSetpoint,
   });
@@ -47,7 +47,6 @@ class ClimateIntentResult {
       affectedDevices: json['affected_devices'] as int? ?? 0,
       failedDevices: json['failed_devices'] as int? ?? 0,
       mode: parseClimateMode(json['mode'] as String?),
-      newSetpoint: (json['new_setpoint'] as num?)?.toDouble(),
       heatingSetpoint: (json['heating_setpoint'] as num?)?.toDouble(),
       coolingSetpoint: (json['cooling_setpoint'] as num?)?.toDouble(),
     );

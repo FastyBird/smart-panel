@@ -1,15 +1,5 @@
-import { Expose, Type } from 'class-transformer';
-import {
-	IsBoolean,
-	IsDefined,
-	IsEnum,
-	IsNumber,
-	IsOptional,
-	Max,
-	Min,
-	ValidateIf,
-	ValidateNested,
-} from 'class-validator';
+import { Expose, Transform, Type } from 'class-transformer';
+import { IsBoolean, IsDefined, IsEnum, IsNumber, Max, Min, ValidateIf, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -20,6 +10,7 @@ import {
 	ClimateMode,
 	SetpointDelta,
 } from '../spaces.constants';
+import { AtLeastOneSetpointRequired } from '../validators/at-least-one-setpoint.validator';
 import { IsValidSetpointOrder } from '../validators/setpoint-order-constraint.validator';
 
 @ApiSchema({ name: 'SpacesModuleClimateIntent' })
@@ -31,6 +22,7 @@ export class ClimateIntentDto {
 	})
 	@Expose()
 	@IsEnum(ClimateIntentType, { message: '[{"field":"type","reason":"Type must be a valid climate intent type."}]' })
+	@AtLeastOneSetpointRequired()
 	type: ClimateIntentType;
 
 	@ApiPropertyOptional({
@@ -39,6 +31,7 @@ export class ClimateIntentDto {
 		example: SetpointDelta.MEDIUM,
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@ValidateIf((o: ClimateIntentDto) => o.type === ClimateIntentType.SETPOINT_DELTA)
 	@IsDefined({ message: '[{"field":"delta","reason":"Delta is required when type is SETPOINT_DELTA."}]' })
 	@IsEnum(SetpointDelta, { message: '[{"field":"delta","reason":"Delta must be a valid setpoint delta."}]' })
@@ -51,6 +44,7 @@ export class ClimateIntentDto {
 		example: true,
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@ValidateIf((o: ClimateIntentDto) => o.type === ClimateIntentType.SETPOINT_DELTA)
 	@IsDefined({ message: '[{"field":"increase","reason":"Increase direction is required for setpoint delta."}]' })
 	@IsBoolean({ message: '[{"field":"increase","reason":"Increase must be a boolean value."}]' })
@@ -58,42 +52,21 @@ export class ClimateIntentDto {
 
 	@ApiPropertyOptional({
 		description:
-			'Target setpoint value in degrees Celsius. ' +
-			'For HEAT/COOL modes: sets the single setpoint. ' +
-			'For AUTO mode: optional, if provided sets both heating and cooling setpoints. ' +
-			'The value will be clamped to the device-specific min/max range.',
-		type: 'number',
-		example: 21.5,
-	})
-	@Expose()
-	@ValidateIf(
-		(o: ClimateIntentDto) =>
-			o.type === ClimateIntentType.SETPOINT_SET && o.heatingSetpoint === undefined && o.coolingSetpoint === undefined,
-	)
-	@IsDefined({
-		message:
-			'[{"field":"value","reason":"Value is required when type is SETPOINT_SET (unless heatingSetpoint/coolingSetpoint are provided for AUTO mode)."}]',
-	})
-	@IsNumber({}, { message: '[{"field":"value","reason":"Value must be a number."}]' })
-	@Min(ABSOLUTE_MIN_SETPOINT, {
-		message: `[{"field":"value","reason":"Value must be at least ${ABSOLUTE_MIN_SETPOINT} degrees."}]`,
-	})
-	@Max(ABSOLUTE_MAX_SETPOINT, {
-		message: `[{"field":"value","reason":"Value must be at most ${ABSOLUTE_MAX_SETPOINT} degrees."}]`,
-	})
-	value?: number;
-
-	@ApiPropertyOptional({
-		description:
-			'Heating setpoint (lower bound) for AUTO mode. ' +
+			'Heating setpoint for HEAT mode or lower bound for AUTO mode. ' +
+			'Required when type is SETPOINT_SET and mode is HEAT or AUTO. ' +
 			'When heating is needed, devices will heat to this temperature. ' +
-			'Must be less than cooling_setpoint.',
+			'Must be less than cooling_setpoint when both are provided.',
 		type: 'number',
 		example: 20.0,
 		name: 'heating_setpoint',
 	})
 	@Expose({ name: 'heating_setpoint' })
-	@IsOptional()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@ValidateIf(
+		(o: ClimateIntentDto) =>
+			o.heatingSetpoint !== undefined &&
+			(o.type === ClimateIntentType.SETPOINT_SET || o.type === ClimateIntentType.CLIMATE_SET),
+	)
 	@IsNumber({}, { message: '[{"field":"heating_setpoint","reason":"Heating setpoint must be a number."}]' })
 	@Min(ABSOLUTE_MIN_SETPOINT, {
 		message: `[{"field":"heating_setpoint","reason":"Heating setpoint must be at least ${ABSOLUTE_MIN_SETPOINT} degrees."}]`,
@@ -109,15 +82,21 @@ export class ClimateIntentDto {
 
 	@ApiPropertyOptional({
 		description:
-			'Cooling setpoint (upper bound) for AUTO mode. ' +
+			'Cooling setpoint for COOL mode or upper bound for AUTO mode. ' +
+			'Required when type is SETPOINT_SET and mode is COOL or AUTO. ' +
 			'When cooling is needed, devices will cool to this temperature. ' +
-			'Must be greater than heating_setpoint.',
+			'Must be greater than heating_setpoint when both are provided.',
 		type: 'number',
 		example: 24.0,
 		name: 'cooling_setpoint',
 	})
 	@Expose({ name: 'cooling_setpoint' })
-	@IsOptional()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@ValidateIf(
+		(o: ClimateIntentDto) =>
+			o.coolingSetpoint !== undefined &&
+			(o.type === ClimateIntentType.SETPOINT_SET || o.type === ClimateIntentType.CLIMATE_SET),
+	)
 	@IsNumber({}, { message: '[{"field":"cooling_setpoint","reason":"Cooling setpoint must be a number."}]' })
 	@Min(ABSOLUTE_MIN_SETPOINT, {
 		message: `[{"field":"cooling_setpoint","reason":"Cooling setpoint must be at least ${ABSOLUTE_MIN_SETPOINT} degrees."}]`,
@@ -133,10 +112,13 @@ export class ClimateIntentDto {
 		example: ClimateMode.HEAT,
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@ValidateIf((o: ClimateIntentDto) => o.type === ClimateIntentType.SET_MODE)
 	@IsDefined({ message: '[{"field":"mode","reason":"Mode is required when type is SET_MODE."}]' })
-	@ValidateIf((o: ClimateIntentDto) => o.type === ClimateIntentType.CLIMATE_SET && o.mode !== undefined)
-	@IsOptional()
+	@ValidateIf(
+		(o: ClimateIntentDto) =>
+			o.type === ClimateIntentType.SET_MODE || (o.type === ClimateIntentType.CLIMATE_SET && o.mode !== undefined),
+	)
 	@IsEnum(ClimateMode, { message: '[{"field":"mode","reason":"Mode must be a valid climate mode."}]' })
 	mode?: ClimateMode;
 }

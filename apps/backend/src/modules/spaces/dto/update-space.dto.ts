@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
 	IsBoolean,
 	IsEnum,
@@ -25,6 +25,7 @@ export class UpdateSpaceDto {
 		example: 'Living Room',
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsString({ message: '[{"field":"name","reason":"Name must be a string."}]' })
 	name?: string;
@@ -47,6 +48,7 @@ export class UpdateSpaceDto {
 		example: SpaceType.ROOM,
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsEnum(SpaceType, { message: '[{"field":"type","reason":"Type must be a valid space type."}]' })
 	type?: SpaceType;
@@ -99,6 +101,7 @@ export class UpdateSpaceDto {
 		example: 0,
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsInt({ message: '[{"field":"display_order","reason":"Display order must be an integer."}]' })
 	@Min(0, { message: '[{"field":"display_order","reason":"Display order must be at least 0."}]' })
@@ -111,6 +114,7 @@ export class UpdateSpaceDto {
 		example: true,
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"suggestions_enabled","reason":"Suggestions enabled must be a boolean."}]' })
 	suggestions_enabled?: boolean;

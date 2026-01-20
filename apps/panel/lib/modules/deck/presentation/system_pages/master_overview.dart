@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_catego
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
@@ -766,7 +767,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
             ),
             if (room.temperature != null) ...[
               Text(
-                '${room.temperature!.toStringAsFixed(1)}°',
+                '${NumberFormatUtils.defaultFormat.formatDecimal(room.temperature!, decimalPlaces: 1)}°',
                 style: TextStyle(
                   fontSize: AppFontSize.base,
                   fontWeight: FontWeight.w500,

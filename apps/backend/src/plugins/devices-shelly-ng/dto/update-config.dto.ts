@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import { ArrayNotEmpty, IsArray, IsBoolean, IsInt, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
@@ -13,6 +13,7 @@ export class ShellyNgUpdatePluginConfigMdnsDto {
 		example: true,
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"enabled","reason":"MDNS enabled attribute must be a boolean."}]' })
 	enabled?: boolean;
@@ -37,6 +38,7 @@ export class ShellyNgUpdatePluginConfigWebsocketsDto {
 		name: 'request_timeout',
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsInt({ message: '[{"field":"request_timeout","reason":"Websockets request timeout must be a whole number."}]' })
 	@Min(1, {
@@ -52,6 +54,7 @@ export class ShellyNgUpdatePluginConfigWebsocketsDto {
 		name: 'ping_interval',
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsInt({ message: '[{"field":"ping_interval","reason":"Websockets ping interval must be a whole number."}]' })
 	@Min(0, {
@@ -67,6 +70,7 @@ export class ShellyNgUpdatePluginConfigWebsocketsDto {
 		name: 'reconnect_interval',
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsArray({ message: '[{"field":"reconnect_interval","reason":"Websockets reconnect interval must an array."}]' })
 	@ArrayNotEmpty({
@@ -100,6 +104,7 @@ export class ShellyNgUpdatePluginConfigDto extends UpdatePluginConfigDto {
 		type: () => ShellyNgUpdatePluginConfigMdnsDto,
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@ValidateNested()
 	@Type(() => ShellyNgUpdatePluginConfigMdnsDto)
@@ -110,6 +115,7 @@ export class ShellyNgUpdatePluginConfigDto extends UpdatePluginConfigDto {
 		type: () => ShellyNgUpdatePluginConfigWebsocketsDto,
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@ValidateNested()
 	@Type(() => ShellyNgUpdatePluginConfigWebsocketsDto)

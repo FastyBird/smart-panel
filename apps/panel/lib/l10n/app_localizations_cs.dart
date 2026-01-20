@@ -309,6 +309,24 @@ class AppLocalizationsCs extends AppLocalizations {
   String get thermostat_openings_state_description => 'Termostat je vypnutý.';
 
   @override
+  String get contact_sensor_window => 'Okno';
+
+  @override
+  String get contact_sensor_open => 'Otevřeno';
+
+  @override
+  String get contact_sensor_closed => 'Zavřeno';
+
+  @override
+  String get leak_sensor_water => 'Únik vody';
+
+  @override
+  String get leak_sensor_detected => 'Detekován';
+
+  @override
+  String get leak_sensor_dry => 'Sucho';
+
+  @override
   String get thermostat_lock_locked => 'Uzamčeno';
 
   @override
@@ -342,10 +360,25 @@ class AppLocalizationsCs extends AppLocalizations {
   String get thermostat_state_heating => 'Topení';
 
   @override
+  String thermostat_state_heating_to(String temperature) {
+    return 'Topení na $temperature';
+  }
+
+  @override
   String get thermostat_state_cooling => 'Chlazení';
 
   @override
+  String thermostat_state_cooling_to(String temperature) {
+    return 'Chlazení na $temperature';
+  }
+
+  @override
   String get thermostat_state_idling => 'V klidu';
+
+  @override
+  String thermostat_state_idle_at(String temperature) {
+    return 'V klidu na $temperature';
+  }
 
   @override
   String get thermostat_with_invalid_configuration => 'Zařízení termostatu je nesprávně nakonfigurováno.';
@@ -1115,26 +1148,383 @@ class AppLocalizationsCs extends AppLocalizations {
   String get entry_cameras => 'Kamery';
 
   @override
-  String get media_other_devices => 'Ostatní zařízení';
+  String get air_quality_level_excellent => 'Vynikající';
 
   @override
-  String get media_up_next => 'Další v pořadí';
+  String get air_quality_level_good => 'Dobrá';
 
   @override
-  String get media_volume => 'Hlasitost';
+  String get air_quality_level_fair => 'Přijatelná';
+
+  @override
+  String get air_quality_level_inferior => 'Horší';
+
+  @override
+  String get air_quality_level_poor => 'Špatná';
+
+  @override
+  String get air_quality_level_unknown => 'Neznámá';
+
+  @override
+  String get aqi_label_good => 'Dobrá';
+
+  @override
+  String get aqi_label_moderate => 'Střední';
+
+  @override
+  String get aqi_label_unhealthy_sensitive => 'Nezdravá (citliví)';
+
+  @override
+  String get aqi_label_unhealthy => 'Nezdravá';
+
+  @override
+  String get aqi_label_very_unhealthy => 'Velmi nezdravá';
+
+  @override
+  String get aqi_label_hazardous => 'Nebezpečná';
+
+  @override
+  String get particulate_label_pm1 => 'PM1';
+
+  @override
+  String get particulate_label_pm25 => 'PM2.5';
+
+  @override
+  String get particulate_label_pm10 => 'PM10';
+
+  @override
+  String get voc_level_good => 'Dobrá';
+
+  @override
+  String get voc_level_moderate => 'Střední';
+
+  @override
+  String get voc_level_poor => 'Špatná';
+
+  @override
+  String get fan_mode_auto => 'Automatický';
+
+  @override
+  String get fan_mode_manual => 'Ruční';
+
+  @override
+  String get fan_mode_eco => 'Eko';
+
+  @override
+  String get fan_mode_sleep => 'Spánek';
+
+  @override
+  String get fan_mode_natural => 'Přirozený';
+
+  @override
+  String get fan_mode_turbo => 'Turbo';
+
+  @override
+  String get fan_speed_off => 'Vypnuto';
+
+  @override
+  String get fan_speed_low => 'Nízké';
+
+  @override
+  String get fan_speed_medium => 'Střední';
+
+  @override
+  String get fan_speed_high => 'Vysoké';
+
+  @override
+  String get fan_speed_turbo => 'Turbo';
+
+  @override
+  String get fan_speed_auto => 'Automaticky';
+
+  @override
+  String get fan_timer_off => 'Vypnuto';
+
+  @override
+  String get fan_timer_30m => '30m';
+
+  @override
+  String get fan_timer_1h => '1h';
+
+  @override
+  String get fan_timer_2h => '2h';
+
+  @override
+  String get fan_timer_4h => '4h';
+
+  @override
+  String get fan_timer_8h => '8h';
+
+  @override
+  String get fan_timer_12h => '12h';
+
+  @override
+  String get fan_direction_clockwise => 'Po směru';
+
+  @override
+  String get fan_direction_counter_clockwise => 'Proti směru';
+
+  @override
+  String get filter_status_good => 'Dobrý';
+
+  @override
+  String get filter_status_replace_soon => 'Brzy';
+
+  @override
+  String get filter_status_replace_now => 'Vyměnit';
+
+  @override
+  String get filter_status_unknown => 'Neznámý';
+
+  @override
+  String get dehumidifier_mode_auto => 'Automatický';
+
+  @override
+  String get dehumidifier_mode_manual => 'Ruční';
+
+  @override
+  String get dehumidifier_mode_continuous => 'Kontinuální';
+
+  @override
+  String get dehumidifier_mode_laundry => 'Sušení prádla';
+
+  @override
+  String get dehumidifier_mode_quiet => 'Tichý';
+
+  @override
+  String get dehumidifier_status_idle => 'Nečinný';
+
+  @override
+  String get dehumidifier_status_dehumidifying => 'Odvlhčuje';
+
+  @override
+  String get dehumidifier_status_defrosting => 'Odmrazuje';
+
+  @override
+  String get dehumidifier_timer_off => 'Vypnuto';
+
+  @override
+  String get dehumidifier_timer_30m => '30 min';
+
+  @override
+  String get dehumidifier_timer_1h => '1 hodina';
+
+  @override
+  String get dehumidifier_timer_2h => '2 hodiny';
+
+  @override
+  String get dehumidifier_timer_4h => '4 hodiny';
+
+  @override
+  String get dehumidifier_timer_8h => '8 hodin';
+
+  @override
+  String get dehumidifier_timer_12h => '12 hodin';
+
+  @override
+  String get dehumidifier_water_tank => 'Nádržka';
+
+  @override
+  String get dehumidifier_defrost => 'Odmrazování';
+
+  @override
+  String get dehumidifier_defrost_active => 'Odmrazuje';
+
+  @override
+  String get humidifier_mode_auto => 'Automatický';
+
+  @override
+  String get humidifier_mode_manual => 'Ruční';
+
+  @override
+  String get humidifier_mode_sleep => 'Spánek';
+
+  @override
+  String get humidifier_mode_baby => 'Dětský';
+
+  @override
+  String get humidifier_status_idle => 'Nečinný';
+
+  @override
+  String get humidifier_status_humidifying => 'Zvlhčuje';
+
+  @override
+  String get humidifier_mist_level => 'Úroveň mlhy';
+
+  @override
+  String get humidifier_mist_level_off => 'Vypnuto';
+
+  @override
+  String get humidifier_mist_level_low => 'Nízká';
+
+  @override
+  String get humidifier_mist_level_medium => 'Střední';
+
+  @override
+  String get humidifier_mist_level_high => 'Vysoká';
+
+  @override
+  String get humidifier_timer_off => 'Vypnuto';
+
+  @override
+  String get humidifier_timer_30m => '30 min';
+
+  @override
+  String get humidifier_timer_1h => '1 hodina';
+
+  @override
+  String get humidifier_timer_2h => '2 hodiny';
+
+  @override
+  String get humidifier_timer_4h => '4 hodiny';
+
+  @override
+  String get humidifier_timer_8h => '8 hodin';
+
+  @override
+  String get humidifier_timer_12h => '12 hodin';
+
+  @override
+  String get humidifier_water_tank => 'Nádržka';
+
+  @override
+  String get humidifier_warm_mist => 'Teplá pára';
+
+  @override
+  String get device_current_humidity => 'Aktuální';
+
+  @override
+  String get device_current_temperature => 'Teplota';
+
+  @override
+  String get device_fan_speed => 'Rychlost';
+
+  @override
+  String get device_fan_mode => 'Režim ventilátoru';
+
+  @override
+  String get device_timer => 'Časovač';
+
+  @override
+  String get device_child_lock => 'Dětský zámek';
+
+  @override
+  String get device_oscillation => 'Oscilace';
+
+  @override
+  String get device_direction => 'Směr';
+
+  @override
+  String get device_natural_breeze => 'Přírodní vánek';
+
+  @override
+  String get device_auto_off_timer => 'Automatické vypnutí';
+
+  @override
+  String get device_filter_life => 'Životnost filtru';
+
+  @override
+  String get device_filter_status => 'Filtr';
+
+  @override
+  String get device_voc => 'VOC';
+
+  @override
+  String get device_co2 => 'CO₂';
+
+  @override
+  String get device_co => 'CO';
+
+  @override
+  String get device_no2 => 'NO₂';
+
+  @override
+  String get device_o3 => 'O₃';
+
+  @override
+  String get device_so2 => 'SO₂';
+
+  @override
+  String get device_pressure => 'Tlak';
+
+  @override
+  String get air_quality_healthy => 'Zdravý';
+
+  @override
+  String get air_quality_unhealthy => 'Nezdravý';
+
+  @override
+  String get gas_detected => 'Detekováno';
+
+  @override
+  String get gas_clear => 'Čistý';
+
+  @override
+  String get gas_level_low => 'Nízký';
+
+  @override
+  String get gas_level_medium => 'Střední';
+
+  @override
+  String get gas_level_high => 'Vysoký';
+
+  @override
+  String get device_humidity => 'Vlhkost';
+
+  @override
+  String get device_air_quality_index => 'Index kvality vzduchu';
+
+  @override
+  String get device_temperature => 'Teplota';
+
+  @override
+  String duration_format_hours_minutes(int hours, int minutes) {
+    return '${hours}h ${minutes}m';
+  }
+
+  @override
+  String duration_format_hours(int hours) {
+    return '${hours}h';
+  }
+
+  @override
+  String duration_format_minutes(int minutes) {
+    return '${minutes}m';
+  }
 
   @override
   String get media_playing => 'Přehrává';
 
   @override
-  String get media_idle => 'Nečinné';
+  String get media_idle => 'Nečinný';
 
   @override
   String get media_standby => 'Pohotovost';
+
+  @override
+  String get media_volume => 'Hlasitost';
 
   @override
   String get media_source => 'Zdroj';
 
   @override
   String get media_queue => 'Fronta';
+
+  @override
+  String get media_up_next => 'Další';
+
+  @override
+  String get media_other_devices => 'Ostatní zařízení';
+
+  @override
+  String get device_status_standby => 'Pohotovost';
+
+  @override
+  String get device_status_active => 'Aktivní';
+
+  @override
+  String get device_status_inactive => 'Neaktivní';
+
+  @override
+  String get climate_devices_section => 'Klimatizační zařízení';
 }

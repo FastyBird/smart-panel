@@ -3,9 +3,8 @@ import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/locked.dart';
 
-/// Thermostat channel view
-/// Note: The thermostat channel now only has the "locked" property.
-/// Mode/active state is derived from heater/cooler channels instead.
+/// Thermostat channel view - simplified to only contain locked property.
+/// Mode and active state are now derived from heater/cooler channels.
 class ThermostatChannelView extends ChannelView {
   ThermostatChannelView({
     required super.id,

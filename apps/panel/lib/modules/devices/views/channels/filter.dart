@@ -22,35 +22,61 @@ class FilterChannelView extends ChannelView with ChannelFaultMixin {
     super.validationIssues,
   });
 
-  /// Life remaining property
-  LifeRemainingChannelPropertyView get lifeRemainingProp =>
-      properties.whereType<LifeRemainingChannelPropertyView>().first;
+  /// Life remaining property (optional - may not be present on all devices)
+  LifeRemainingChannelPropertyView? get lifeRemainingProp =>
+      properties.whereType<LifeRemainingChannelPropertyView>().firstOrNull;
 
-  StatusChannelPropertyView get statusProp =>
-      properties.whereType<StatusChannelPropertyView>().first;
+  /// Status property (optional - may not be present on all devices)
+  StatusChannelPropertyView? get statusProp =>
+      properties.whereType<StatusChannelPropertyView>().firstOrNull;
+
+  bool get hasLifeRemaining => lifeRemainingProp != null;
+
+  bool get hasStatus => statusProp != null;
 
   @override
   FaultChannelPropertyView? get faultProp =>
       properties.whereType<FaultChannelPropertyView>().firstOrNull;
 
   int get lifeRemaining {
-    final ValueType? value = lifeRemainingProp.value;
+    final prop = lifeRemainingProp;
+    if (prop == null) return 100;
+
+    final ValueType? value = prop.value;
 
     if (value is NumberValueType) {
       return value.value.toInt();
     }
 
-    final ValueType? defaultValue = lifeRemainingProp.defaultValue;
+    // Handle string values (backend may return numbers as strings)
+    if (value is StringValueType) {
+      final parsed = int.tryParse(value.value);
+      if (parsed != null) {
+        return parsed;
+      }
+    }
+
+    final ValueType? defaultValue = prop.defaultValue;
 
     if (defaultValue is NumberValueType) {
       return defaultValue.value.toInt();
+    }
+
+    if (defaultValue is StringValueType) {
+      final parsed = int.tryParse(defaultValue.value);
+      if (parsed != null) {
+        return parsed;
+      }
     }
 
     return 100;
   }
 
   int get minLifeRemaining {
-    final FormatType? format = lifeRemainingProp.format;
+    final prop = lifeRemainingProp;
+    if (prop == null) return 0;
+
+    final FormatType? format = prop.format;
 
     if (format is NumberListFormatType && format.value.length == 2) {
       return (format.value[0] as num).toInt();
@@ -60,7 +86,10 @@ class FilterChannelView extends ChannelView with ChannelFaultMixin {
   }
 
   int get maxLifeRemaining {
-    final FormatType? format = lifeRemainingProp.format;
+    final prop = lifeRemainingProp;
+    if (prop == null) return 100;
+
+    final FormatType? format = prop.format;
 
     if (format is NumberListFormatType && format.value.length == 2) {
       return (format.value[1] as num).toInt();
@@ -70,13 +99,16 @@ class FilterChannelView extends ChannelView with ChannelFaultMixin {
   }
 
   FilterStatusValue? get status {
-    final ValueType? value = statusProp.value;
+    final prop = statusProp;
+    if (prop == null) return null;
+
+    final ValueType? value = prop.value;
 
     if (value is StringValueType && FilterStatusValue.contains(value.value)) {
       return FilterStatusValue.fromValue(value.value);
     }
 
-    final ValueType? defaultValue = statusProp.defaultValue;
+    final ValueType? defaultValue = prop.defaultValue;
 
     if (defaultValue is StringValueType &&
         FilterStatusValue.contains(defaultValue.value)) {

@@ -41,4 +41,30 @@ class DeviceColors {
 
   static Color fanLight5(bool isDark) =>
       isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight5;
+
+  /// Heating color (primary/red-orange) for heater devices
+  static Color heating(bool isDark) =>
+      isDark ? AppColorsDark.primary : AppColorsLight.primary;
+
+  static Color heatingLight9(bool isDark) =>
+      isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9;
+
+  static Color heatingLight7(bool isDark) =>
+      isDark ? AppColorsDark.primaryLight7 : AppColorsLight.primaryLight7;
+
+  static Color heatingLight5(bool isDark) =>
+      isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight5;
+
+  /// Cooling color (flutter/blue-purple) for A/C and cooler devices
+  static Color cooling(bool isDark) =>
+      isDark ? AppColorsDark.flutter : AppColorsLight.flutter;
+
+  static Color coolingLight9(bool isDark) =>
+      isDark ? AppColorsDark.flutterLight9 : AppColorsLight.flutterLight9;
+
+  static Color coolingLight7(bool isDark) =>
+      isDark ? AppColorsDark.flutterLight7 : AppColorsLight.flutterLight7;
+
+  static Color coolingLight5(bool isDark) =>
+      isDark ? AppColorsDark.flutterLight5 : AppColorsLight.flutterLight5;
 }

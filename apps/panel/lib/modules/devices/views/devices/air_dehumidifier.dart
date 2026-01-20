@@ -1,4 +1,5 @@
-import 'package:fastybird_smart_panel/modules/devices/views/channels/cooler.dart';
+import 'package:collection/collection.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/dehumidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/device_information.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_energy.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_power.dart';
@@ -11,7 +12,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';
 
 class AirDehumidifierDeviceView extends DeviceView
     with
-        DeviceCoolerMixin,
+        DeviceDehumidifierMixin,
         DeviceDeviceInformationMixin,
         DeviceHumidityMixin,
         DeviceElectricalEnergyMixin,
@@ -35,14 +36,16 @@ class AirDehumidifierDeviceView extends DeviceView
     super.validationIssues,
   });
 
+  /// Dehumidifier channel (required per spec)
   @override
-  CoolerChannelView get coolerChannel =>
-      channels.whereType<CoolerChannelView>().first;
+  DehumidifierChannelView get dehumidifierChannel =>
+      channels.whereType<DehumidifierChannelView>().first;
 
   @override
   DeviceInformationChannelView get deviceInformationChannel =>
       channels.whereType<DeviceInformationChannelView>().first;
 
+  /// Humidity channel (required per spec)
   @override
   HumidityChannelView get humidityChannel =>
       channels.whereType<HumidityChannelView>().first;
@@ -68,5 +71,8 @@ class AirDehumidifierDeviceView extends DeviceView
       channels.whereType<TemperatureChannelView>().firstOrNull;
 
   @override
-  bool get isOn => coolerChannel.isCooling;
+  bool get isOn {
+    // Use dehumidifier channel's on property (always available per spec)
+    return dehumidifierChannel.on;
+  }
 }

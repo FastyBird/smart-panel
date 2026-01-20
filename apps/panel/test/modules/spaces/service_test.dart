@@ -146,12 +146,13 @@ void main() {
           hasClimate: true,
           mode: ClimateMode.heat,
           currentTemperature: 21.5,
-          targetTemperature: 22.0,
+          heatingSetpoint: 22.0,
           minSetpoint: 15.0,
           maxSetpoint: 30.0,
-          canSetSetpoint: true,
-          supportsHeating: true,
+                    supportsHeating: true,
           supportsCooling: false,
+          isHeating: true,
+          isCooling: false,
           isMixed: false,
           devicesCount: 1,
         );
@@ -245,12 +246,13 @@ void main() {
           hasClimate: true,
           mode: ClimateMode.cool,
           currentTemperature: 26.0,
-          targetTemperature: 24.0,
+          coolingSetpoint: 24.0,
           minSetpoint: 18.0,
           maxSetpoint: 28.0,
-          canSetSetpoint: true,
-          supportsHeating: false,
+                    supportsHeating: false,
           supportsCooling: true,
+          isHeating: false,
+          isCooling: true,
           isMixed: false,
           devicesCount: 1,
         );
@@ -462,13 +464,14 @@ void main() {
       test('delegates to SpaceStateRepository', () async {
         const spaceId = 'space-123';
         const value = 22.5;
+        const mode = ClimateMode.heat;
 
-        when(() => mockSpaceStateRepository.setSetpoint(spaceId, value))
+        when(() => mockSpaceStateRepository.setSetpoint(spaceId, value, mode: mode))
             .thenAnswer((_) async => null);
 
-        await service.setSetpoint(spaceId, value);
+        await service.setSetpoint(spaceId, value, mode: mode);
 
-        verify(() => mockSpaceStateRepository.setSetpoint(spaceId, value)).called(1);
+        verify(() => mockSpaceStateRepository.setSetpoint(spaceId, value, mode: mode)).called(1);
       });
     });
   });

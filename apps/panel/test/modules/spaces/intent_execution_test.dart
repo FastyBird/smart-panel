@@ -6,6 +6,8 @@ import 'package:fastybird_smart_panel/api/models/spaces_module_res_undo_state.da
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_lighting_intent.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_climate_intent.dart';
 import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
+import 'package:fastybird_smart_panel/modules/intents/models/intents/intent.dart';
+import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/intent_types.dart';
@@ -16,6 +18,36 @@ import 'package:retrofit/retrofit.dart';
 
 // Mock classes
 class MockSpacesModuleClient extends Mock implements SpacesModuleClient {}
+
+/// Fake IntentsRepository that provides minimal implementation for testing
+class FakeIntentsRepository extends Fake implements IntentsRepository {
+  int _counter = 0;
+
+  @override
+  IntentModel createLocalSpaceIntent({
+    required String spaceId,
+    required IntentType type,
+    required dynamic value,
+    int ttlMs = 5000,
+  }) {
+    _counter++;
+    // Generate a valid UUID-like ID for testing
+    final fakeId =
+        '00000000-0000-4000-8000-${_counter.toString().padLeft(12, '0')}';
+    return IntentModel(
+      id: fakeId,
+      type: type,
+      // Don't pass spaceId to context since test IDs aren't valid UUIDs
+      context: IntentContext(origin: IntentOrigin.panelSpaces),
+      targets: [],
+      value: {'space:$spaceId': value},
+      status: IntentStatus.pending,
+      ttlMs: ttlMs,
+      createdAt: DateTime.now(),
+      expiresAt: DateTime.now().add(Duration(milliseconds: ttlMs)),
+    );
+  }
+}
 
 class FakeSpacesModuleReqLightingIntent extends Fake
     implements SpacesModuleReqLightingIntent {}
@@ -51,6 +83,7 @@ HttpResponse<T> createMockHttpResponse<T>(
 
 void main() {
   late MockSpacesModuleClient mockClient;
+  late FakeIntentsRepository fakeIntentsRepository;
   late SpaceStateRepository repository;
 
   setUpAll(() {
@@ -60,11 +93,17 @@ void main() {
 
   setUp(() {
     mockClient = MockSpacesModuleClient();
-    repository = SpaceStateRepository(apiClient: mockClient);
+    fakeIntentsRepository = FakeIntentsRepository();
+
+    repository = SpaceStateRepository(
+      apiClient: mockClient,
+      intentsRepository: fakeIntentsRepository,
+    );
   });
 
   tearDown(() {
     repository.dispose();
+    reset(mockClient);
   });
 
   group('Lighting Intent Execution E2E Tests', () {
@@ -451,7 +490,7 @@ void main() {
             'success': true,
             'affected_devices': 2,
             'failed_devices': 0,
-            'new_setpoint': 22.5,
+            'heating_setpoint': 22.5,
           },
         };
 
@@ -479,7 +518,7 @@ void main() {
 
         expect(result, isNotNull);
         expect(result!.success, isTrue);
-        expect(result.newSetpoint, equals(22.5));
+        expect(result.heatingSetpoint, equals(22.5));
       });
 
       test('successfully decreases temperature with medium delta', () async {
@@ -489,7 +528,7 @@ void main() {
             'success': true,
             'affected_devices': 1,
             'failed_devices': 0,
-            'new_setpoint': 21.0,
+            'heating_setpoint': 21.0,
           },
         };
 
@@ -528,7 +567,7 @@ void main() {
             'success': true,
             'affected_devices': 2,
             'failed_devices': 0,
-            'new_setpoint': 23.0,
+            'heating_setpoint': 23.0,
           },
         };
 
@@ -548,11 +587,15 @@ void main() {
                   200,
                 ));
 
-        final result = await repository.setSetpoint(spaceId, 23.0);
+        final result = await repository.setSetpoint(
+          spaceId,
+          23.0,
+          mode: ClimateMode.heat,
+        );
 
         expect(result, isNotNull);
         expect(result!.success, isTrue);
-        expect(result.newSetpoint, equals(23.0));
+        expect(result.heatingSetpoint, equals(23.0));
       });
 
       test('returns null on API error', () async {
@@ -563,7 +606,11 @@ void main() {
               body: any(named: 'body'),
             )).thenThrow(DioException(requestOptions: RequestOptions(path: '')));
 
-        final result = await repository.setSetpoint(spaceId, 23.0);
+        final result = await repository.setSetpoint(
+          spaceId,
+          23.0,
+          mode: ClimateMode.heat,
+        );
 
         expect(result, isNull);
       });

@@ -2,12 +2,17 @@ import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { toInstance } from '../../../common/utils/transform.utils';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
+import { DEFAULT_TTL_SPACE_COMMAND, IntentTargetStatus, IntentType } from '../../intents/intents.constants';
+import { IntentTarget, IntentTargetResult } from '../../intents/models/intent.model';
 import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
+import { IntentsService } from '../../intents/services/intents.service';
 import { LightingIntentDto } from '../dto/lighting-intent.dto';
+import { LightingStateDataModel } from '../models/spaces-response.model';
 import {
 	BrightnessDelta,
 	EventType,
@@ -152,6 +157,8 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		@Inject(forwardRef(() => SpaceLightingStateService))
 		private readonly lightingStateService: SpaceLightingStateService,
 		private readonly intentSpecLoaderService: IntentSpecLoaderService,
+		@Inject(forwardRef(() => IntentsService))
+		private readonly intentsService: IntentsService,
 	) {
 		super();
 	}
@@ -181,17 +188,34 @@ export class LightingIntentService extends SpaceIntentBaseService {
 
 		this.logger.debug(`Found ${lights.length} lights in space id=${spaceId}`);
 
+		// Build targets for intent (all lights that will be affected)
+		const targets = this.buildLightingTargets(lights, intent);
+
+		// Create intent before executing (emits Intent.Created event)
+		const intentRecord = this.intentsService.createIntent({
+			type: this.mapLightingIntentType(intent.type),
+			context: {
+				origin: 'panel.spaces',
+				spaceId,
+				roleKey: intent.role ?? undefined,
+			},
+			targets,
+			value: this.buildLightingIntentValue(intent),
+			ttlMs: DEFAULT_TTL_SPACE_COMMAND,
+		});
+
 		// Capture snapshot for undo BEFORE executing the intent
 		await this.captureUndoSnapshot(spaceId, intent);
 
 		let result: IntentExecutionResult;
+		const targetResults: IntentTargetResult[] = [];
 
 		// For SET_MODE, use role-based orchestration
 		if (intent.type === LightingIntentType.SET_MODE && intent.mode) {
-			result = await this.executeModeIntent(spaceId, lights, intent.mode);
+			result = await this.executeModeIntentWithResults(spaceId, lights, intent.mode, targetResults);
 		} else if (this.isRoleSpecificIntent(intent.type)) {
 			// For role-specific intents, only affect lights with the specified role
-			result = await this.executeRoleIntent(spaceId, lights, intent);
+			result = await this.executeRoleIntentWithResults(spaceId, lights, intent, targetResults);
 		} else {
 			// For other intents (ON, OFF, BRIGHTNESS_DELTA), apply to all lights
 			let affectedDevices = 0;
@@ -199,6 +223,12 @@ export class LightingIntentService extends SpaceIntentBaseService {
 
 			for (const light of lights) {
 				const success = await this.executeIntentForLight(light, intent);
+
+				targetResults.push({
+					deviceId: light.device.id,
+					channelId: light.lightChannel.id,
+					status: success ? IntentTargetStatus.SUCCESS : IntentTargetStatus.FAILED,
+				});
 
 				if (success) {
 					affectedDevices++;
@@ -216,12 +246,91 @@ export class LightingIntentService extends SpaceIntentBaseService {
 			result = { success: overallSuccess, affectedDevices, failedDevices };
 		}
 
+		// Complete intent with results (emits Intent.Completed event)
+		this.intentsService.completeIntent(intentRecord.id, targetResults);
+
 		// Emit state change event for WebSocket clients (fire and forget)
 		if (result.success) {
 			void this.emitLightingStateChange(spaceId);
 		}
 
 		return result;
+	}
+
+	/**
+	 * Build intent targets from lights.
+	 */
+	private buildLightingTargets(lights: LightDevice[], intent: LightingIntentDto): IntentTarget[] {
+		// For role-specific intents, filter by role
+		if (this.isRoleSpecificIntent(intent.type) && intent.role) {
+			const roleLights = lights.filter((light) => {
+				if (intent.role === LightingRole.OTHER) {
+					return light.role === LightingRole.OTHER || light.role === null;
+				}
+				return light.role === intent.role;
+			});
+
+			return roleLights.map((light) => ({
+				deviceId: light.device.id,
+				channelId: light.lightChannel.id,
+			}));
+		}
+
+		return lights.map((light) => ({
+			deviceId: light.device.id,
+			channelId: light.lightChannel.id,
+		}));
+	}
+
+	/**
+	 * Map LightingIntentType to IntentType.
+	 */
+	private mapLightingIntentType(type: LightingIntentType): IntentType {
+		switch (type) {
+			case LightingIntentType.ON:
+				return IntentType.SPACE_LIGHTING_ON;
+			case LightingIntentType.OFF:
+				return IntentType.SPACE_LIGHTING_OFF;
+			case LightingIntentType.SET_MODE:
+				return IntentType.SPACE_LIGHTING_SET_MODE;
+			case LightingIntentType.BRIGHTNESS_DELTA:
+				return IntentType.SPACE_LIGHTING_BRIGHTNESS_DELTA;
+			case LightingIntentType.ROLE_ON:
+				return IntentType.SPACE_LIGHTING_ROLE_ON;
+			case LightingIntentType.ROLE_OFF:
+				return IntentType.SPACE_LIGHTING_ROLE_OFF;
+			case LightingIntentType.ROLE_BRIGHTNESS:
+				return IntentType.SPACE_LIGHTING_ROLE_BRIGHTNESS;
+			case LightingIntentType.ROLE_COLOR:
+				return IntentType.SPACE_LIGHTING_ROLE_COLOR;
+			case LightingIntentType.ROLE_COLOR_TEMP:
+				return IntentType.SPACE_LIGHTING_ROLE_COLOR_TEMP;
+			case LightingIntentType.ROLE_WHITE:
+				return IntentType.SPACE_LIGHTING_ROLE_WHITE;
+			case LightingIntentType.ROLE_SET:
+				return IntentType.SPACE_LIGHTING_ROLE_SET;
+			default:
+				return IntentType.SPACE_LIGHTING_ON;
+		}
+	}
+
+	/**
+	 * Build intent value from LightingIntentDto.
+	 */
+	private buildLightingIntentValue(intent: LightingIntentDto): unknown {
+		const value: Record<string, unknown> = {};
+
+		if (intent.mode !== undefined) value.mode = intent.mode;
+		if (intent.delta !== undefined) value.delta = intent.delta;
+		if (intent.increase !== undefined) value.increase = intent.increase;
+		if (intent.role !== undefined) value.role = intent.role;
+		if (intent.on !== undefined) value.on = intent.on;
+		if (intent.brightness !== undefined) value.brightness = intent.brightness;
+		if (intent.color !== undefined) value.color = intent.color;
+		if (intent.colorTemperature !== undefined) value.colorTemperature = intent.colorTemperature;
+		if (intent.white !== undefined) value.white = intent.white;
+
+		return Object.keys(value).length > 0 ? value : null;
 	}
 
 	/**
@@ -233,9 +342,12 @@ export class LightingIntentService extends SpaceIntentBaseService {
 			const state = await this.lightingStateService.getLightingState(spaceId);
 
 			if (state) {
+				// Convert to LightingStateDataModel for proper snake_case serialization via WebSocket
+				const stateModel = toInstance(LightingStateDataModel, state);
+
 				this.eventEmitter.emit(EventType.LIGHTING_STATE_CHANGED, {
 					space_id: spaceId,
-					state,
+					state: stateModel,
 				});
 
 				this.logger.debug(`Emitted lighting state change event spaceId=${spaceId}`);
@@ -284,6 +396,79 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		// Execute commands for each light based on its selection
 		for (const selection of selections) {
 			const success = await this.executeRuleForLight(selection.light, selection.rule);
+
+			if (success) {
+				affectedDevices++;
+			} else {
+				failedDevices++;
+			}
+		}
+
+		const overallSuccess = failedDevices === 0 || affectedDevices > 0;
+
+		this.logger.debug(
+			`Mode intent completed spaceId=${spaceId} mode=${mode} affected=${affectedDevices} failed=${failedDevices}`,
+		);
+
+		// Store mode change to InfluxDB for historical tracking (fire and forget)
+		if (overallSuccess) {
+			void this.intentTimeseriesService.storeLightingModeChange(
+				spaceId,
+				mode,
+				selections.length,
+				affectedDevices,
+				failedDevices,
+			);
+		}
+
+		return { success: overallSuccess, affectedDevices, failedDevices };
+	}
+
+	/**
+	 * Execute a mode-based lighting intent with per-target results tracking.
+	 */
+	private async executeModeIntentWithResults(
+		spaceId: string,
+		lights: LightDevice[],
+		mode: LightingMode,
+		targetResults: IntentTargetResult[],
+	): Promise<IntentExecutionResult> {
+		// Get mode orchestration config from YAML spec
+		const modeConfig = this.intentSpecLoaderService.getLightingModeOrchestration(mode);
+
+		if (!modeConfig) {
+			this.logger.warn(`No orchestration config found for mode=${mode}, using defaults`);
+
+			return { success: false, affectedDevices: 0, failedDevices: 0 };
+		}
+
+		// Use the pure function to determine what to do with each light
+		const selections = selectLightsForMode(lights, mode, modeConfig);
+
+		// Log telemetry for role-based selection
+		const onLights = selections.filter((s) => s.rule.on);
+		const offLights = selections.filter((s) => !s.rule.on);
+		const hasRoles = lights.some((l) => l.role !== null);
+		const usingFallback = selections.some((s) => s.isFallback);
+
+		this.logger.log(
+			`Mode intent spaceId=${spaceId} mode=${mode} ` +
+				`totalLights=${lights.length} onCount=${onLights.length} offCount=${offLights.length} ` +
+				`hasRoles=${hasRoles} usingFallback=${usingFallback}`,
+		);
+
+		let affectedDevices = 0;
+		let failedDevices = 0;
+
+		// Execute commands for each light based on its selection
+		for (const selection of selections) {
+			const success = await this.executeRuleForLight(selection.light, selection.rule);
+
+			targetResults.push({
+				deviceId: selection.light.device.id,
+				channelId: selection.light.lightChannel.id,
+				status: success ? IntentTargetStatus.SUCCESS : IntentTargetStatus.FAILED,
+			});
 
 			if (success) {
 				affectedDevices++;
@@ -705,6 +890,64 @@ export class LightingIntentService extends SpaceIntentBaseService {
 
 		for (const light of roleLights) {
 			const success = await this.executeRoleIntentForLight(light, intent);
+
+			if (success) {
+				affectedDevices++;
+			} else {
+				failedDevices++;
+			}
+		}
+
+		const overallSuccess = failedDevices === 0 || affectedDevices > 0;
+
+		this.logger.debug(
+			`Role intent completed spaceId=${spaceId} role=${intent.role} affected=${affectedDevices} failed=${failedDevices}`,
+		);
+
+		return { success: overallSuccess, affectedDevices, failedDevices };
+	}
+
+	/**
+	 * Execute a role-specific intent with per-target results tracking.
+	 */
+	private async executeRoleIntentWithResults(
+		spaceId: string,
+		allLights: LightDevice[],
+		intent: LightingIntentDto,
+		targetResults: IntentTargetResult[],
+	): Promise<IntentExecutionResult> {
+		if (!intent.role) {
+			this.logger.warn('Role-specific intent missing role parameter');
+			return { success: false, affectedDevices: 0, failedDevices: 0 };
+		}
+
+		// Filter lights to only those with the specified role
+		// Special case: OTHER role also matches unassigned lights (role = null)
+		const roleLights = allLights.filter((light) => {
+			if (intent.role === LightingRole.OTHER) {
+				return light.role === LightingRole.OTHER || light.role === null;
+			}
+			return light.role === intent.role;
+		});
+
+		if (roleLights.length === 0) {
+			this.logger.debug(`No lights found with role=${intent.role} in space id=${spaceId}`);
+			return { success: true, affectedDevices: 0, failedDevices: 0 };
+		}
+
+		this.logger.debug(`Executing role intent type=${intent.type} role=${intent.role} lightsCount=${roleLights.length}`);
+
+		let affectedDevices = 0;
+		let failedDevices = 0;
+
+		for (const light of roleLights) {
+			const success = await this.executeRoleIntentForLight(light, intent);
+
+			targetResults.push({
+				deviceId: light.device.id,
+				channelId: light.lightChannel.id,
+				status: success ? IntentTargetStatus.SUCCESS : IntentTargetStatus.FAILED,
+			});
 
 			if (success) {
 				affectedDevices++;

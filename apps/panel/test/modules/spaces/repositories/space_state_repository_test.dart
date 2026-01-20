@@ -4,6 +4,8 @@ import 'package:fastybird_smart_panel/api/models/spaces_module_res_lighting_stat
 import 'package:fastybird_smart_panel/api/models/spaces_module_res_suggestion.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_res_undo_state.dart';
 import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
+import 'package:fastybird_smart_panel/modules/intents/models/intents/intent.dart';
+import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/suggestion/suggestion.dart';
@@ -15,6 +17,36 @@ import 'package:retrofit/retrofit.dart';
 
 // Mock classes
 class MockSpacesModuleClient extends Mock implements SpacesModuleClient {}
+
+/// Fake IntentsRepository that provides minimal implementation for testing
+class FakeIntentsRepository extends Fake implements IntentsRepository {
+  int _counter = 0;
+
+  @override
+  IntentModel createLocalSpaceIntent({
+    required String spaceId,
+    required IntentType type,
+    required dynamic value,
+    int ttlMs = 5000,
+  }) {
+    _counter++;
+    // Generate a valid UUID-like ID for testing
+    final fakeId =
+        '00000000-0000-4000-8000-${_counter.toString().padLeft(12, '0')}';
+    return IntentModel(
+      id: fakeId,
+      type: type,
+      // Don't pass spaceId to context since test IDs aren't valid UUIDs
+      context: IntentContext(origin: IntentOrigin.panelSpaces),
+      targets: [],
+      value: {'space:$spaceId': value},
+      status: IntentStatus.pending,
+      ttlMs: ttlMs,
+      createdAt: DateTime.now(),
+      expiresAt: DateTime.now().add(Duration(milliseconds: ttlMs)),
+    );
+  }
+}
 
 class FakeSpacesModuleResLightingState extends Fake
     implements SpacesModuleResLightingState {}
@@ -47,15 +79,22 @@ HttpResponse<T> createMockHttpResponse<T>(
 
 void main() {
   late MockSpacesModuleClient mockClient;
+  late FakeIntentsRepository fakeIntentsRepository;
   late SpaceStateRepository repository;
 
   setUp(() {
     mockClient = MockSpacesModuleClient();
-    repository = SpaceStateRepository(apiClient: mockClient);
+    fakeIntentsRepository = FakeIntentsRepository();
+
+    repository = SpaceStateRepository(
+      apiClient: mockClient,
+      intentsRepository: fakeIntentsRepository,
+    );
   });
 
   tearDown(() {
     repository.dispose();
+    reset(mockClient);
   });
 
   group('SpaceStateRepository', () {
@@ -173,13 +212,11 @@ void main() {
             'mode': 'heat',
             'current_temperature': 21.5,
             'current_humidity': 45.0,
-            'target_temperature': 22.0,
-            'heating_setpoint': 20.0,
+            'heating_setpoint': 22.0,
             'cooling_setpoint': 24.0,
             'min_setpoint': 15.0,
             'max_setpoint': 30.0,
-            'can_set_setpoint': true,
-            'supports_heating': true,
+                        'supports_heating': true,
             'supports_cooling': true,
             'is_mixed': false,
             'devices_count': 2,
@@ -202,7 +239,7 @@ void main() {
         expect(result.hasClimate, isTrue);
         expect(result.mode, equals(ClimateMode.heat));
         expect(result.currentTemperature, equals(21.5));
-        expect(result.targetTemperature, equals(22.0));
+        expect(result.heatingSetpoint, equals(22.0));
         verify(() => mockClient.getSpacesModuleSpaceClimate(id: spaceId))
             .called(1);
       });
@@ -399,9 +436,8 @@ void main() {
           'has_climate': true,
           'mode': 'cool',
           'current_temperature': 26.0,
-          'target_temperature': 24.0,
-          'can_set_setpoint': true,
-          'supports_heating': false,
+          'cooling_setpoint': 24.0,
+                    'supports_heating': false,
           'supports_cooling': true,
           'is_mixed': false,
           'devices_count': 1,
@@ -415,7 +451,7 @@ void main() {
         expect(cached, isNotNull);
         expect(cached!.mode, equals(ClimateMode.cool));
         expect(cached.currentTemperature, equals(26.0));
-        expect(cached.targetTemperature, equals(24.0));
+        expect(cached.coolingSetpoint, equals(24.0));
       });
     });
 

@@ -28,9 +28,13 @@ export class UpdateLocalSceneActionDto extends UpdateSceneActionDto {
 	@Expose({ name: 'device_id' })
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"device_id","reason":"Device ID must be a valid UUID (version 4)."}]' })
-	@Transform(({ obj }: { obj: { device_id?: string; deviceId?: string } }) => obj.device_id ?? obj.deviceId, {
-		toClassOnly: true,
-	})
+	@Transform(
+		({ obj }: { obj: { device_id?: string | null; deviceId?: string | null } }) => {
+			const value = obj.device_id ?? obj.deviceId;
+			return value === null ? undefined : value;
+		},
+		{ toClassOnly: true },
+	)
 	device_id?: string;
 
 	@ApiPropertyOptional({
@@ -59,9 +63,13 @@ export class UpdateLocalSceneActionDto extends UpdateSceneActionDto {
 	@Expose({ name: 'property_id' })
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"property_id","reason":"Property ID must be a valid UUID (version 4)."}]' })
-	@Transform(({ obj }: { obj: { property_id?: string; propertyId?: string } }) => obj.property_id ?? obj.propertyId, {
-		toClassOnly: true,
-	})
+	@Transform(
+		({ obj }: { obj: { property_id?: string | null; propertyId?: string | null } }) => {
+			const value = obj.property_id ?? obj.propertyId;
+			return value === null ? undefined : value;
+		},
+		{ toClassOnly: true },
+	)
 	property_id?: string;
 
 	@ApiPropertyOptional({
@@ -72,7 +80,7 @@ export class UpdateLocalSceneActionDto extends UpdateSceneActionDto {
 	@Expose()
 	@IsOptional()
 	@Transform(({ value }: { value: unknown }) => {
-		if (value === undefined) return undefined;
+		if (value === undefined || value === null) return undefined;
 		if (typeof value === 'boolean' || typeof value === 'number' || typeof value === 'string') {
 			return value;
 		}

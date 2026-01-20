@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
@@ -15,6 +15,7 @@ export abstract class UpdateTileDto {
 
 	@ApiPropertyOptional({ description: 'Grid row position', type: 'integer', minimum: 1, example: 1 })
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsNumber(
 		{ allowNaN: false, allowInfinity: false },
@@ -25,6 +26,7 @@ export abstract class UpdateTileDto {
 
 	@ApiPropertyOptional({ description: 'Grid column position', type: 'integer', minimum: 1, example: 1 })
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsNumber(
 		{ allowNaN: false, allowInfinity: false },
@@ -40,6 +42,7 @@ export abstract class UpdateTileDto {
 		example: 1,
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsNumber(
 		{ allowNaN: false, allowInfinity: false },
@@ -55,6 +58,7 @@ export abstract class UpdateTileDto {
 		example: 1,
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsNumber(
 		{ allowNaN: false, allowInfinity: false },
@@ -65,6 +69,7 @@ export abstract class UpdateTileDto {
 
 	@ApiPropertyOptional({ description: 'Whether tile is hidden', type: 'boolean', example: false })
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"hidden","reason":"Hidden attribute must be a valid true or false."}]' })
 	hidden?: boolean;

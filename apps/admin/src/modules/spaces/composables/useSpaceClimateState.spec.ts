@@ -25,12 +25,10 @@ describe('useSpaceClimateState', () => {
 				mode: 'heat',
 				current_temperature: 21.5,
 				current_humidity: 45,
-				target_temperature: 22.0,
 				heating_setpoint: 22.0,
 				cooling_setpoint: 25.0,
 				min_setpoint: 5.0,
 				max_setpoint: 35.0,
-				can_set_setpoint: true,
 				supports_heating: true,
 				supports_cooling: true,
 				is_mixed: false,
@@ -92,7 +90,7 @@ describe('useSpaceClimateState', () => {
 			expect(result).not.toBeNull();
 			expect(result?.currentTemperature).toBe(21.5);
 			expect(result?.mode).toBe('heat');
-			expect(result?.targetTemperature).toBe(22.0);
+			expect(result?.heatingSetpoint).toBe(22.0);
 			expect(result?.hasClimate).toBe(true);
 			expect(climateState.value).toEqual(result);
 		});
@@ -162,7 +160,7 @@ describe('useSpaceClimateState', () => {
 		});
 
 		it('should compute canAdjustTemperature correctly', async () => {
-			mockGet.mockResolvedValueOnce(createMockClimateStateResponse({ has_climate: true, can_set_setpoint: true }));
+			mockGet.mockResolvedValueOnce(createMockClimateStateResponse({ has_climate: true, supports_heating: true }));
 
 			const spaceId = ref<string | undefined>('space-123');
 			const { fetchClimateState, canAdjustTemperature } = useSpaceClimateState(spaceId);

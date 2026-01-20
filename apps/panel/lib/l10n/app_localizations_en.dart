@@ -309,6 +309,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get thermostat_openings_state_description => 'Thermostat is disabled';
 
   @override
+  String get contact_sensor_window => 'Window';
+
+  @override
+  String get contact_sensor_open => 'Open';
+
+  @override
+  String get contact_sensor_closed => 'Closed';
+
+  @override
+  String get leak_sensor_water => 'Water Leak';
+
+  @override
+  String get leak_sensor_detected => 'Detected';
+
+  @override
+  String get leak_sensor_dry => 'Dry';
+
+  @override
   String get thermostat_lock_locked => 'Locked';
 
   @override
@@ -342,10 +360,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get thermostat_state_heating => 'Heating';
 
   @override
+  String thermostat_state_heating_to(String temperature) {
+    return 'Heating to $temperature';
+  }
+
+  @override
   String get thermostat_state_cooling => 'Cooling';
 
   @override
+  String thermostat_state_cooling_to(String temperature) {
+    return 'Cooling to $temperature';
+  }
+
+  @override
   String get thermostat_state_idling => 'Idling';
+
+  @override
+  String thermostat_state_idle_at(String temperature) {
+    return 'Idle at $temperature';
+  }
 
   @override
   String get thermostat_with_invalid_configuration => 'This thermostat device is wrongly configured.';
@@ -1114,13 +1147,349 @@ class AppLocalizationsEn extends AppLocalizations {
   String get entry_cameras => 'Cameras';
 
   @override
-  String get media_other_devices => 'Other Devices';
+  String get air_quality_level_excellent => 'Excellent';
 
   @override
-  String get media_up_next => 'Up Next';
+  String get air_quality_level_good => 'Good';
 
   @override
-  String get media_volume => 'Volume';
+  String get air_quality_level_fair => 'Fair';
+
+  @override
+  String get air_quality_level_inferior => 'Inferior';
+
+  @override
+  String get air_quality_level_poor => 'Poor';
+
+  @override
+  String get air_quality_level_unknown => 'Unknown';
+
+  @override
+  String get aqi_label_good => 'Good';
+
+  @override
+  String get aqi_label_moderate => 'Moderate';
+
+  @override
+  String get aqi_label_unhealthy_sensitive => 'Unhealthy (Sensitive)';
+
+  @override
+  String get aqi_label_unhealthy => 'Unhealthy';
+
+  @override
+  String get aqi_label_very_unhealthy => 'Very Unhealthy';
+
+  @override
+  String get aqi_label_hazardous => 'Hazardous';
+
+  @override
+  String get particulate_label_pm1 => 'PM1';
+
+  @override
+  String get particulate_label_pm25 => 'PM2.5';
+
+  @override
+  String get particulate_label_pm10 => 'PM10';
+
+  @override
+  String get voc_level_good => 'Good';
+
+  @override
+  String get voc_level_moderate => 'Moderate';
+
+  @override
+  String get voc_level_poor => 'Poor';
+
+  @override
+  String get fan_mode_auto => 'Auto';
+
+  @override
+  String get fan_mode_manual => 'Manual';
+
+  @override
+  String get fan_mode_eco => 'Eco';
+
+  @override
+  String get fan_mode_sleep => 'Sleep';
+
+  @override
+  String get fan_mode_natural => 'Natural';
+
+  @override
+  String get fan_mode_turbo => 'Turbo';
+
+  @override
+  String get fan_speed_off => 'Off';
+
+  @override
+  String get fan_speed_low => 'Low';
+
+  @override
+  String get fan_speed_medium => 'Med';
+
+  @override
+  String get fan_speed_high => 'High';
+
+  @override
+  String get fan_speed_turbo => 'Turbo';
+
+  @override
+  String get fan_speed_auto => 'Auto';
+
+  @override
+  String get fan_timer_off => 'Off';
+
+  @override
+  String get fan_timer_30m => '30m';
+
+  @override
+  String get fan_timer_1h => '1h';
+
+  @override
+  String get fan_timer_2h => '2h';
+
+  @override
+  String get fan_timer_4h => '4h';
+
+  @override
+  String get fan_timer_8h => '8h';
+
+  @override
+  String get fan_timer_12h => '12h';
+
+  @override
+  String get fan_direction_clockwise => 'Clockwise';
+
+  @override
+  String get fan_direction_counter_clockwise => 'Counter-Clockwise';
+
+  @override
+  String get filter_status_good => 'Good';
+
+  @override
+  String get filter_status_replace_soon => 'Due Soon';
+
+  @override
+  String get filter_status_replace_now => 'Replace';
+
+  @override
+  String get filter_status_unknown => 'Unknown';
+
+  @override
+  String get dehumidifier_mode_auto => 'Auto';
+
+  @override
+  String get dehumidifier_mode_manual => 'Manual';
+
+  @override
+  String get dehumidifier_mode_continuous => 'Continuous';
+
+  @override
+  String get dehumidifier_mode_laundry => 'Laundry';
+
+  @override
+  String get dehumidifier_mode_quiet => 'Quiet';
+
+  @override
+  String get dehumidifier_status_idle => 'Idle';
+
+  @override
+  String get dehumidifier_status_dehumidifying => 'Dehumidifying';
+
+  @override
+  String get dehumidifier_status_defrosting => 'Defrosting';
+
+  @override
+  String get dehumidifier_timer_off => 'Off';
+
+  @override
+  String get dehumidifier_timer_30m => '30 min';
+
+  @override
+  String get dehumidifier_timer_1h => '1 hour';
+
+  @override
+  String get dehumidifier_timer_2h => '2 hours';
+
+  @override
+  String get dehumidifier_timer_4h => '4 hours';
+
+  @override
+  String get dehumidifier_timer_8h => '8 hours';
+
+  @override
+  String get dehumidifier_timer_12h => '12 hours';
+
+  @override
+  String get dehumidifier_water_tank => 'Water Tank';
+
+  @override
+  String get dehumidifier_defrost => 'Defrost';
+
+  @override
+  String get dehumidifier_defrost_active => 'Defrosting';
+
+  @override
+  String get humidifier_mode_auto => 'Auto';
+
+  @override
+  String get humidifier_mode_manual => 'Manual';
+
+  @override
+  String get humidifier_mode_sleep => 'Sleep';
+
+  @override
+  String get humidifier_mode_baby => 'Baby';
+
+  @override
+  String get humidifier_status_idle => 'Idle';
+
+  @override
+  String get humidifier_status_humidifying => 'Humidifying';
+
+  @override
+  String get humidifier_mist_level => 'Mist Level';
+
+  @override
+  String get humidifier_mist_level_off => 'Off';
+
+  @override
+  String get humidifier_mist_level_low => 'Low';
+
+  @override
+  String get humidifier_mist_level_medium => 'Medium';
+
+  @override
+  String get humidifier_mist_level_high => 'High';
+
+  @override
+  String get humidifier_timer_off => 'Off';
+
+  @override
+  String get humidifier_timer_30m => '30 min';
+
+  @override
+  String get humidifier_timer_1h => '1 hour';
+
+  @override
+  String get humidifier_timer_2h => '2 hours';
+
+  @override
+  String get humidifier_timer_4h => '4 hours';
+
+  @override
+  String get humidifier_timer_8h => '8 hours';
+
+  @override
+  String get humidifier_timer_12h => '12 hours';
+
+  @override
+  String get humidifier_water_tank => 'Water Tank';
+
+  @override
+  String get humidifier_warm_mist => 'Warm Mist';
+
+  @override
+  String get device_current_humidity => 'Current';
+
+  @override
+  String get device_current_temperature => 'Temperature';
+
+  @override
+  String get device_fan_speed => 'Fan Speed';
+
+  @override
+  String get device_fan_mode => 'Fan Mode';
+
+  @override
+  String get device_timer => 'Timer';
+
+  @override
+  String get device_child_lock => 'Child Lock';
+
+  @override
+  String get device_oscillation => 'Oscillation';
+
+  @override
+  String get device_direction => 'Direction';
+
+  @override
+  String get device_natural_breeze => 'Natural Breeze';
+
+  @override
+  String get device_auto_off_timer => 'Auto-Off Timer';
+
+  @override
+  String get device_filter_life => 'Filter Life';
+
+  @override
+  String get device_filter_status => 'Filter';
+
+  @override
+  String get device_voc => 'VOC';
+
+  @override
+  String get device_co2 => 'CO₂';
+
+  @override
+  String get device_co => 'CO';
+
+  @override
+  String get device_no2 => 'NO₂';
+
+  @override
+  String get device_o3 => 'O₃';
+
+  @override
+  String get device_so2 => 'SO₂';
+
+  @override
+  String get device_pressure => 'Pressure';
+
+  @override
+  String get air_quality_healthy => 'Healthy';
+
+  @override
+  String get air_quality_unhealthy => 'Unhealthy';
+
+  @override
+  String get gas_detected => 'Detected';
+
+  @override
+  String get gas_clear => 'Clear';
+
+  @override
+  String get gas_level_low => 'Low';
+
+  @override
+  String get gas_level_medium => 'Medium';
+
+  @override
+  String get gas_level_high => 'High';
+
+  @override
+  String get device_humidity => 'Humidity';
+
+  @override
+  String get device_air_quality_index => 'Air Quality Index';
+
+  @override
+  String get device_temperature => 'Temp';
+
+  @override
+  String duration_format_hours_minutes(int hours, int minutes) {
+    return '${hours}h ${minutes}m';
+  }
+
+  @override
+  String duration_format_hours(int hours) {
+    return '${hours}h';
+  }
+
+  @override
+  String duration_format_minutes(int minutes) {
+    return '${minutes}m';
+  }
 
   @override
   String get media_playing => 'Playing';
@@ -1132,8 +1501,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get media_standby => 'Standby';
 
   @override
+  String get media_volume => 'Volume';
+
+  @override
   String get media_source => 'Source';
 
   @override
   String get media_queue => 'Queue';
+
+  @override
+  String get media_up_next => 'Up Next';
+
+  @override
+  String get media_other_devices => 'Other Devices';
+
+  @override
+  String get device_status_standby => 'Standby';
+
+  @override
+  String get device_status_active => 'Active';
+
+  @override
+  String get device_status_inactive => 'Inactive';
+
+  @override
+  String get climate_devices_section => 'Climate Devices';
 }

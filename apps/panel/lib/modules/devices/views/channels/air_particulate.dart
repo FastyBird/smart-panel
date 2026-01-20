@@ -83,9 +83,7 @@ class AirParticulateChannelView extends ChannelView
       }
     }
 
-    throw Exception(
-      'Channel is missing required value for property: ${modeProp?.category.json}',
-    );
+    return AirParticulateModeValue.pm25;
   }
 
   List<AirParticulateModeValue> get availableModes {

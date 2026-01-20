@@ -208,6 +208,7 @@ void main() {
       const counts = DomainCounts(
         lights: 1,
         climate: 1,
+        climateActuators: 1,
         shading: 1,
         media: 1,
         sensors: 1,

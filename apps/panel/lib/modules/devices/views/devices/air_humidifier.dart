@@ -1,19 +1,20 @@
+import 'package:collection/collection.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/device_information.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_energy.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_power.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/fan.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/humidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/humidity.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/leak.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/channels/switcher.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/temperature.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/mixins.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';
 
 class AirHumidifierDeviceView extends DeviceView
     with
+        DeviceHumidifierMixin,
         DeviceDeviceInformationMixin,
         DeviceHumidityMixin,
-        DeviceSwitcherMixin,
         DeviceElectricalEnergyMixin,
         DeviceElectricalPowerMixin,
         DeviceFanMixin,
@@ -39,13 +40,15 @@ class AirHumidifierDeviceView extends DeviceView
   DeviceInformationChannelView get deviceInformationChannel =>
       channels.whereType<DeviceInformationChannelView>().first;
 
+  /// Humidifier channel (required per spec)
+  @override
+  HumidifierChannelView get humidifierChannel =>
+      channels.whereType<HumidifierChannelView>().first;
+
+  /// Humidity channel (required per spec)
   @override
   HumidityChannelView get humidityChannel =>
       channels.whereType<HumidityChannelView>().first;
-
-  @override
-  SwitcherChannelView get switcherChannel =>
-      channels.whereType<SwitcherChannelView>().first;
 
   @override
   ElectricalEnergyChannelView? get electricalEnergyChannel =>
@@ -68,5 +71,8 @@ class AirHumidifierDeviceView extends DeviceView
       channels.whereType<TemperatureChannelView>().firstOrNull;
 
   @override
-  bool get isOn => switcherChannel.on;
+  bool get isOn {
+    // Use humidifier channel's on property (always available per spec)
+    return humidifierChannel.on;
+  }
 }

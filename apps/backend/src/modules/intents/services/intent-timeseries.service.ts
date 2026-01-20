@@ -32,6 +32,18 @@ export interface LastAppliedMode {
 }
 
 /**
+ * Last applied climate state for a space (mode + setpoints)
+ */
+export interface LastAppliedClimateState {
+	mode: string | null;
+	heatingSetpoint: number | null;
+	coolingSetpoint: number | null;
+	intentId: string;
+	appliedAt: Date;
+	status: IntentStatus;
+}
+
+/**
  * UUID v4 regex pattern for validation.
  * Matches standard UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
  */
@@ -149,6 +161,71 @@ export class IntentTimeseriesService {
 	 */
 	async getLastClimateMode(spaceId: string): Promise<LastAppliedMode | null> {
 		return this.getLastAppliedModeByType(spaceId, 'climate.setMode');
+	}
+
+	/**
+	 * Query the last applied climate state (mode + setpoints) for a space.
+	 */
+	async getLastClimateState(spaceId: string): Promise<LastAppliedClimateState | null> {
+		if (!this.influxDbService.isConnected()) {
+			this.logger.debug(`InfluxDB not connected - cannot query last climate state for spaceId=${spaceId}`);
+			return null;
+		}
+
+		// Defense-in-depth: Validate spaceId format even though controllers should validate
+		if (!isValidUuid(spaceId)) {
+			this.logger.warn(`Invalid spaceId format rejected spaceId=${spaceId}`);
+			return null;
+		}
+
+		// Sanitize values to prevent InfluxQL injection
+		const safeSpaceId = sanitizeInfluxString(spaceId);
+
+		const query = `
+			SELECT intentId, mode, heatingSetpoint, coolingSetpoint, status
+			FROM space_intent
+			WHERE spaceId = '${safeSpaceId}'
+			AND intentType = 'climate.setMode'
+			AND (status = '${IntentStatus.COMPLETED_SUCCESS}' OR status = '${IntentStatus.COMPLETED_PARTIAL}')
+			ORDER BY time DESC
+			LIMIT 1
+		`
+			.trim()
+			.replace(/\s+/g, ' ');
+
+		try {
+			const result = await this.influxDbService.query<{
+				time: { _nanoISO: string };
+				intentId: string;
+				mode: string;
+				heatingSetpoint: number;
+				coolingSetpoint: number;
+				status: IntentStatus;
+			}>(query);
+
+			if (!result.length) {
+				this.logger.debug(`No last climate state found for spaceId=${spaceId}`);
+				return null;
+			}
+
+			const row = result[0];
+
+			return {
+				mode: row.mode || null,
+				heatingSetpoint: row.heatingSetpoint !== undefined && row.heatingSetpoint !== null ? row.heatingSetpoint : null,
+				coolingSetpoint: row.coolingSetpoint !== undefined && row.coolingSetpoint !== null ? row.coolingSetpoint : null,
+				intentId: row.intentId || '',
+				appliedAt: new Date(row.time._nanoISO),
+				status: row.status,
+			};
+		} catch (error) {
+			const err = error as Error;
+			this.logger.error(
+				`Failed to query last climate state from InfluxDB spaceId=${spaceId} error=${err.message}`,
+				err.stack,
+			);
+			return null;
+		}
 	}
 
 	/**
@@ -351,23 +428,43 @@ export class IntentTimeseriesService {
 	 */
 	async storeClimateModeChange(
 		spaceId: string,
-		mode: string,
+		mode: string | null,
+		heatingSetpoint: number | null,
+		coolingSetpoint: number | null,
 		targetsCount: number,
 		successCount: number,
 		failedCount: number,
 	): Promise<void> {
 		if (!this.influxDbService.isConnected()) {
-			this.logger.warn(`InfluxDB not connected - climate mode not persisted spaceId=${spaceId}`);
+			this.logger.warn(`InfluxDB not connected - climate state not persisted spaceId=${spaceId}`);
 			return;
 		}
 
 		// Only store if at least some targets succeeded
 		if (successCount === 0) {
-			this.logger.debug(`Skipping climate mode storage - no successful targets spaceId=${spaceId}`);
+			this.logger.debug(`Skipping climate state storage - no successful targets spaceId=${spaceId}`);
 			return;
 		}
 
 		const status = failedCount === 0 ? IntentStatus.COMPLETED_SUCCESS : IntentStatus.COMPLETED_PARTIAL;
+
+		// Build fields object - only include non-null values
+		const fields: Record<string, string | number> = {
+			intentId: '', // No intent ID for direct storage
+			targetsCount,
+			successCount,
+			failedCount,
+		};
+
+		if (mode !== null) {
+			fields.mode = mode;
+		}
+		if (heatingSetpoint !== null) {
+			fields.heatingSetpoint = heatingSetpoint;
+		}
+		if (coolingSetpoint !== null) {
+			fields.coolingSetpoint = coolingSetpoint;
+		}
 
 		try {
 			await this.influxDbService.writePoints([
@@ -378,21 +475,19 @@ export class IntentTimeseriesService {
 						intentType: 'climate.setMode',
 						status,
 					},
-					fields: {
-						intentId: '', // No intent ID for direct storage
-						mode,
-						targetsCount,
-						successCount,
-						failedCount,
-					},
+					fields,
 					timestamp: new Date(),
 				},
 			]);
 
-			this.logger.debug(`Climate mode stored spaceId=${spaceId} mode=${mode} success=${successCount}/${targetsCount}`);
+			this.logger.debug(
+				`Climate state stored spaceId=${spaceId} mode=${mode ?? 'unchanged'} ` +
+					`heatingSetpoint=${heatingSetpoint ?? 'unchanged'} coolingSetpoint=${coolingSetpoint ?? 'unchanged'} ` +
+					`success=${successCount}/${targetsCount}`,
+			);
 		} catch (error) {
 			const err = error as Error;
-			this.logger.error(`Failed to store climate mode to InfluxDB spaceId=${spaceId} error=${err.message}`, err.stack);
+			this.logger.error(`Failed to store climate state to InfluxDB spaceId=${spaceId} error=${err.message}`, err.stack);
 		}
 	}
 

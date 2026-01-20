@@ -243,10 +243,12 @@ class SpacesService extends ChangeNotifier {
   Future<bool> executeClimateSetpointSet({
     required String spaceId,
     required double value,
+    required ClimateMode mode,
   }) {
     return _climateTargetsRepository.executeSetpointSet(
       spaceId: spaceId,
       value: value,
+      mode: mode,
     );
   }
 
@@ -391,9 +393,13 @@ class SpacesService extends ChangeNotifier {
     );
   }
 
-  /// Set exact setpoint value
-  Future<ClimateIntentResult?> setSetpoint(String spaceId, double value) {
-    return _spaceStateRepository.setSetpoint(spaceId, value);
+  /// Set exact setpoint value based on mode
+  Future<ClimateIntentResult?> setSetpoint(
+    String spaceId,
+    double value, {
+    required ClimateMode mode,
+  }) {
+    return _spaceStateRepository.setSetpoint(spaceId, value, mode: mode);
   }
 
   /// Set climate mode

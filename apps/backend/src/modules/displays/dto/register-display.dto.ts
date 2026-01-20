@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
 	IsBoolean,
 	IsInt,
@@ -41,6 +41,7 @@ export class RegisterDisplayDto {
 		example: '42',
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsString({ message: '[{"field":"build","reason":"Build must be a string."}]' })
 	build?: string;
@@ -52,6 +53,7 @@ export class RegisterDisplayDto {
 		example: 1920,
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsInt({ message: '[{"field":"screen_width","reason":"Screen width must be an integer."}]' })
 	screen_width?: number;
@@ -63,6 +65,7 @@ export class RegisterDisplayDto {
 		example: 1080,
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsInt({ message: '[{"field":"screen_height","reason":"Screen height must be an integer."}]' })
 	screen_height?: number;
@@ -74,6 +77,7 @@ export class RegisterDisplayDto {
 		example: 1.5,
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsNumber({}, { message: '[{"field":"pixel_ratio","reason":"Pixel ratio must be a number."}]' })
 	pixel_ratio?: number;
@@ -85,6 +89,7 @@ export class RegisterDisplayDto {
 		example: 8,
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsNumber({}, { message: '[{"field":"unit_size","reason":"Unit size must be a number."}]' })
 	unit_size?: number;
@@ -95,6 +100,7 @@ export class RegisterDisplayDto {
 		example: 12,
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsInt({ message: '[{"field":"rows","reason":"Rows must be an integer."}]' })
 	rows?: number;
@@ -105,6 +111,7 @@ export class RegisterDisplayDto {
 		example: 24,
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsInt({ message: '[{"field":"cols","reason":"Cols must be an integer."}]' })
 	cols?: number;
@@ -116,6 +123,7 @@ export class RegisterDisplayDto {
 		example: true,
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"audio_output_supported","reason":"Audio output supported must be a boolean."}]' })
 	audio_output_supported?: boolean;
@@ -127,6 +135,7 @@ export class RegisterDisplayDto {
 		example: false,
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"audio_input_supported","reason":"Audio input supported must be a boolean."}]' })
 	audio_input_supported?: boolean;

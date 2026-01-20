@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import { IsBoolean, IsInt, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
@@ -23,6 +23,7 @@ export class Z2mUpdateMqttDto {
 		example: 'localhost',
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsString({ message: '[{"field":"host","reason":"Host must be a valid string."}]' })
 	host?: string;
@@ -33,6 +34,7 @@ export class Z2mUpdateMqttDto {
 		minimum: 1,
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsInt({ message: '[{"field":"port","reason":"Port must be a whole number."}]' })
 	@Min(1, { message: '[{"field":"port","reason":"Port minimum value must be at least 1."}]' })
@@ -64,6 +66,7 @@ export class Z2mUpdateMqttDto {
 		name: 'base_topic',
 	})
 	@Expose({ name: 'base_topic' })
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsString({ message: '[{"field":"base_topic","reason":"Base topic must be a valid string."}]' })
 	baseTopic?: string;
@@ -85,6 +88,7 @@ export class Z2mUpdateMqttDto {
 		name: 'clean_session',
 	})
 	@Expose({ name: 'clean_session' })
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"clean_session","reason":"Clean session must be a boolean value."}]' })
 	cleanSession?: boolean;
@@ -95,6 +99,7 @@ export class Z2mUpdateMqttDto {
 		minimum: 10,
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsInt({ message: '[{"field":"keepalive","reason":"Keepalive must be a whole number."}]' })
 	@Min(10, { message: '[{"field":"keepalive","reason":"Keepalive minimum value must be at least 10."}]' })
@@ -107,6 +112,7 @@ export class Z2mUpdateMqttDto {
 		name: 'connect_timeout',
 	})
 	@Expose({ name: 'connect_timeout' })
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsInt({ message: '[{"field":"connect_timeout","reason":"Connect timeout must be a whole number."}]' })
 	@Min(1000, {
@@ -121,6 +127,7 @@ export class Z2mUpdateMqttDto {
 		name: 'reconnect_interval',
 	})
 	@Expose({ name: 'reconnect_interval' })
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsInt({ message: '[{"field":"reconnect_interval","reason":"Reconnect interval must be a whole number."}]' })
 	@Min(1000, {
@@ -139,6 +146,7 @@ export class Z2mUpdateTlsDto {
 		example: false,
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled must be a boolean value."}]' })
 	enabled?: boolean;
@@ -149,6 +157,7 @@ export class Z2mUpdateTlsDto {
 		name: 'reject_unauthorized',
 	})
 	@Expose({ name: 'reject_unauthorized' })
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"reject_unauthorized","reason":"Reject unauthorized must be a boolean value."}]' })
 	rejectUnauthorized?: boolean;
@@ -195,6 +204,7 @@ export class Z2mUpdateDiscoveryDto {
 		name: 'auto_add',
 	})
 	@Expose({ name: 'auto_add' })
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"auto_add","reason":"Auto add must be a boolean value."}]' })
 	autoAdd?: boolean;
@@ -205,6 +215,7 @@ export class Z2mUpdateDiscoveryDto {
 		name: 'sync_on_startup',
 	})
 	@Expose({ name: 'sync_on_startup' })
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"sync_on_startup","reason":"Sync on startup must be a boolean value."}]' })
 	syncOnStartup?: boolean;
@@ -228,6 +239,7 @@ export class Zigbee2mqttUpdatePluginConfigDto extends UpdatePluginConfigDto {
 		type: () => Z2mUpdateMqttDto,
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@ValidateNested()
 	@Type(() => Z2mUpdateMqttDto)
@@ -238,6 +250,7 @@ export class Zigbee2mqttUpdatePluginConfigDto extends UpdatePluginConfigDto {
 		type: () => Z2mUpdateTlsDto,
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@ValidateNested()
 	@Type(() => Z2mUpdateTlsDto)
@@ -248,6 +261,7 @@ export class Zigbee2mqttUpdatePluginConfigDto extends UpdatePluginConfigDto {
 		type: () => Z2mUpdateDiscoveryDto,
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@ValidateNested()
 	@Type(() => Z2mUpdateDiscoveryDto)

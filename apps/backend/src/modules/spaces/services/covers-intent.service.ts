@@ -2,10 +2,15 @@ import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { toInstance } from '../../../common/utils/transform.utils';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
+import { DEFAULT_TTL_SPACE_COMMAND, IntentTargetStatus, IntentType } from '../../intents/intents.constants';
+import { IntentTarget, IntentTargetResult } from '../../intents/models/intent.model';
 import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
+import { IntentsService } from '../../intents/services/intents.service';
 import { CoversIntentDto } from '../dto/covers-intent.dto';
+import { CoversStateDataModel } from '../models/spaces-response.model';
 import {
 	COVERS_MODE_ORCHESTRATION,
 	CoversIntentType,
@@ -114,6 +119,8 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		private readonly undoHistoryService: SpaceUndoHistoryService,
 		@Inject(forwardRef(() => IntentTimeseriesService))
 		private readonly intentTimeseriesService: IntentTimeseriesService,
+		@Inject(forwardRef(() => IntentsService))
+		private readonly intentsService: IntentsService,
 	) {
 		super();
 	}
@@ -149,40 +156,66 @@ export class CoversIntentService extends SpaceIntentBaseService {
 
 		this.logger.debug(`Found ${covers.length} covers in space id=${spaceId}`);
 
+		// Build targets for intent (all covers that will be affected)
+		const targets = this.buildCoversTargets(covers, intent);
+
+		// Create intent before executing (emits Intent.Created event)
+		const intentRecord = this.intentsService.createIntent({
+			type: this.mapCoversIntentType(intent.type),
+			context: {
+				origin: 'panel.spaces',
+				spaceId,
+				roleKey: intent.role ?? undefined,
+			},
+			targets,
+			value: this.buildCoversIntentValue(intent),
+			ttlMs: DEFAULT_TTL_SPACE_COMMAND,
+		});
+
 		// Capture snapshot for undo BEFORE executing the intent
 		await this.captureUndoSnapshot(spaceId, intent);
 
 		let result: CoversIntentResult;
+		const targetResults: IntentTargetResult[] = [];
 
 		switch (intent.type) {
 			case CoversIntentType.OPEN:
-				result = await this.executePositionIntent(covers, 100);
+				result = await this.executePositionIntentWithResults(covers, 100, targetResults);
 				break;
 
 			case CoversIntentType.CLOSE:
-				result = await this.executePositionIntent(covers, 0);
+				result = await this.executePositionIntentWithResults(covers, 0, targetResults);
 				break;
 
 			case CoversIntentType.SET_POSITION:
-				result = await this.executePositionIntent(covers, intent.position ?? 0);
+				result = await this.executePositionIntentWithResults(covers, intent.position ?? 0, targetResults);
 				break;
 
 			case CoversIntentType.POSITION_DELTA:
-				result = await this.executePositionDeltaIntent(covers, intent.delta, intent.increase);
+				result = await this.executePositionDeltaIntentWithResults(covers, intent.delta, intent.increase, targetResults);
 				break;
 
 			case CoversIntentType.ROLE_POSITION:
-				result = await this.executeRolePositionIntent(covers, intent.role, intent.position ?? 0);
+				result = await this.executeRolePositionIntentWithResults(
+					covers,
+					intent.role,
+					intent.position ?? 0,
+					targetResults,
+				);
 				break;
 
 			case CoversIntentType.SET_MODE:
-				result = await this.executeModeIntent(spaceId, covers, intent.mode);
+				result = await this.executeModeIntentWithResults(spaceId, covers, intent.mode, targetResults);
 				break;
 
 			default:
 				this.logger.warn(`Unknown covers intent type: ${String(intent.type)}`);
+				this.intentsService.completeIntent(intentRecord.id, []);
 				return { success: false, affectedDevices: 0, failedDevices: 0, newPosition: null };
 		}
+
+		// Complete intent with results (emits Intent.Completed event)
+		this.intentsService.completeIntent(intentRecord.id, targetResults);
 
 		// Emit state change event for WebSocket clients (fire and forget)
 		if (result.success) {
@@ -190,6 +223,63 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		}
 
 		return result;
+	}
+
+	/**
+	 * Build intent targets from covers.
+	 */
+	private buildCoversTargets(covers: CoverDevice[], intent: CoversIntentDto): IntentTarget[] {
+		// For role-specific intents, filter by role
+		if (intent.type === CoversIntentType.ROLE_POSITION && intent.role) {
+			const roleCovers = covers.filter((cover) => cover.role === intent.role);
+
+			return roleCovers.map((cover) => ({
+				deviceId: cover.device.id,
+				channelId: cover.coverChannel.id,
+			}));
+		}
+
+		return covers.map((cover) => ({
+			deviceId: cover.device.id,
+			channelId: cover.coverChannel.id,
+		}));
+	}
+
+	/**
+	 * Map CoversIntentType to IntentType.
+	 */
+	private mapCoversIntentType(type: CoversIntentType): IntentType {
+		switch (type) {
+			case CoversIntentType.OPEN:
+				return IntentType.SPACE_COVERS_OPEN;
+			case CoversIntentType.CLOSE:
+				return IntentType.SPACE_COVERS_CLOSE;
+			case CoversIntentType.SET_POSITION:
+				return IntentType.SPACE_COVERS_SET_POSITION;
+			case CoversIntentType.POSITION_DELTA:
+				return IntentType.SPACE_COVERS_POSITION_DELTA;
+			case CoversIntentType.ROLE_POSITION:
+				return IntentType.SPACE_COVERS_ROLE_POSITION;
+			case CoversIntentType.SET_MODE:
+				return IntentType.SPACE_COVERS_SET_MODE;
+			default:
+				return IntentType.SPACE_COVERS_SET_POSITION;
+		}
+	}
+
+	/**
+	 * Build intent value from CoversIntentDto.
+	 */
+	private buildCoversIntentValue(intent: CoversIntentDto): unknown {
+		const value: Record<string, unknown> = {};
+
+		if (intent.position !== undefined) value.position = intent.position;
+		if (intent.delta !== undefined) value.delta = intent.delta;
+		if (intent.increase !== undefined) value.increase = intent.increase;
+		if (intent.role !== undefined) value.role = intent.role;
+		if (intent.mode !== undefined) value.mode = intent.mode;
+
+		return Object.keys(value).length > 0 ? value : null;
 	}
 
 	// =====================
@@ -205,6 +295,42 @@ export class CoversIntentService extends SpaceIntentBaseService {
 
 		for (const cover of covers) {
 			const success = await this.setCoverPosition(cover, position);
+
+			if (success) {
+				affectedDevices++;
+			} else {
+				failedDevices++;
+			}
+		}
+
+		const overallSuccess = failedDevices === 0 || affectedDevices > 0;
+
+		this.logger.debug(
+			`Position intent completed position=${position} affected=${affectedDevices} failed=${failedDevices}`,
+		);
+
+		return { success: overallSuccess, affectedDevices, failedDevices, newPosition: position };
+	}
+
+	/**
+	 * Execute a position intent with per-target results tracking.
+	 */
+	private async executePositionIntentWithResults(
+		covers: CoverDevice[],
+		position: number,
+		targetResults: IntentTargetResult[],
+	): Promise<CoversIntentResult> {
+		let affectedDevices = 0;
+		let failedDevices = 0;
+
+		for (const cover of covers) {
+			const success = await this.setCoverPosition(cover, position);
+
+			targetResults.push({
+				deviceId: cover.device.id,
+				channelId: cover.coverChannel.id,
+				status: success ? IntentTargetStatus.SUCCESS : IntentTargetStatus.FAILED,
+			});
 
 			if (success) {
 				affectedDevices++;
@@ -267,6 +393,54 @@ export class CoversIntentService extends SpaceIntentBaseService {
 	}
 
 	/**
+	 * Execute a position delta intent with per-target results tracking.
+	 */
+	private async executePositionDeltaIntentWithResults(
+		covers: CoverDevice[],
+		delta: PositionDelta | undefined,
+		increase: boolean | undefined,
+		targetResults: IntentTargetResult[],
+	): Promise<CoversIntentResult> {
+		const deltaValue = POSITION_DELTA_STEPS[delta ?? PositionDelta.MEDIUM] ?? 25;
+		const shouldIncrease = increase ?? true;
+		let affectedDevices = 0;
+		let failedDevices = 0;
+		let totalNewPosition = 0;
+		let positionCount = 0;
+
+		for (const cover of covers) {
+			const currentPosition = this.getPropertyNumericValue(cover.positionProperty) ?? 50;
+			let newPosition = shouldIncrease ? currentPosition + deltaValue : currentPosition - deltaValue;
+			newPosition = this.clampValue(newPosition, 0, 100);
+
+			const success = await this.setCoverPosition(cover, newPosition);
+
+			targetResults.push({
+				deviceId: cover.device.id,
+				channelId: cover.coverChannel.id,
+				status: success ? IntentTargetStatus.SUCCESS : IntentTargetStatus.FAILED,
+			});
+
+			if (success) {
+				affectedDevices++;
+				totalNewPosition += newPosition;
+				positionCount++;
+			} else {
+				failedDevices++;
+			}
+		}
+
+		const overallSuccess = failedDevices === 0 || affectedDevices > 0;
+		const averagePosition = positionCount > 0 ? Math.round(totalNewPosition / positionCount) : null;
+
+		this.logger.debug(
+			`Position delta intent completed delta=${String(delta)} increase=${String(shouldIncrease)} affected=${affectedDevices} failed=${failedDevices}`,
+		);
+
+		return { success: overallSuccess, affectedDevices, failedDevices, newPosition: averagePosition };
+	}
+
+	/**
 	 * Execute a role-specific position intent.
 	 */
 	private async executeRolePositionIntent(
@@ -289,6 +463,51 @@ export class CoversIntentService extends SpaceIntentBaseService {
 
 		for (const cover of roleCovers) {
 			const success = await this.setCoverPosition(cover, position);
+
+			if (success) {
+				affectedDevices++;
+			} else {
+				failedDevices++;
+			}
+		}
+
+		const overallSuccess = failedDevices === 0 || affectedDevices > 0;
+
+		this.logger.debug(
+			`Role position intent completed role=${role} position=${position} affected=${affectedDevices} failed=${failedDevices}`,
+		);
+
+		return { success: overallSuccess, affectedDevices, failedDevices, newPosition: position };
+	}
+
+	/**
+	 * Execute a role-specific position intent with per-target results tracking.
+	 */
+	private async executeRolePositionIntentWithResults(
+		allCovers: CoverDevice[],
+		role: CoversRole | undefined,
+		position: number,
+		targetResults: IntentTargetResult[],
+	): Promise<CoversIntentResult> {
+		const targetRole = role ?? CoversRole.PRIMARY;
+		const roleCovers = allCovers.filter((cover) => cover.role === targetRole);
+
+		if (roleCovers.length === 0) {
+			this.logger.debug(`No covers found with role=${String(targetRole)}`);
+			return { success: true, affectedDevices: 0, failedDevices: 0, newPosition: position };
+		}
+
+		let affectedDevices = 0;
+		let failedDevices = 0;
+
+		for (const cover of roleCovers) {
+			const success = await this.setCoverPosition(cover, position);
+
+			targetResults.push({
+				deviceId: cover.device.id,
+				channelId: cover.coverChannel.id,
+				status: success ? IntentTargetStatus.SUCCESS : IntentTargetStatus.FAILED,
+			});
 
 			if (success) {
 				affectedDevices++;
@@ -348,6 +567,62 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		this.logger.debug(`Mode intent completed mode=${mode} affected=${affectedDevices} failed=${failedDevices}`);
 
 		// Store mode change to InfluxDB for historical tracking (fire and forget)
+		if (overallSuccess) {
+			void this.intentTimeseriesService.storeCoversPositionChange(
+				spaceId,
+				targetMode,
+				selections.length,
+				affectedDevices,
+				failedDevices,
+			);
+		}
+
+		return { success: overallSuccess, affectedDevices, failedDevices, newPosition: averagePosition };
+	}
+
+	/**
+	 * Execute a mode-based covers intent with per-target results tracking.
+	 */
+	private async executeModeIntentWithResults(
+		spaceId: string,
+		covers: CoverDevice[],
+		mode: CoversMode | undefined,
+		targetResults: IntentTargetResult[],
+	): Promise<CoversIntentResult> {
+		const targetMode = mode ?? CoversMode.OPEN;
+		const selections = selectCoversForMode(covers, targetMode);
+		const hasRoles = covers.some((c) => c.role !== null);
+
+		this.logger.log(`Mode intent mode=${targetMode} totalCovers=${covers.length} hasRoles=${hasRoles}`);
+
+		let affectedDevices = 0;
+		let failedDevices = 0;
+		let totalPosition = 0;
+		let positionCount = 0;
+
+		for (const selection of selections) {
+			const success = await this.setCoverPosition(selection.cover, selection.rule.position);
+
+			targetResults.push({
+				deviceId: selection.cover.device.id,
+				channelId: selection.cover.coverChannel.id,
+				status: success ? IntentTargetStatus.SUCCESS : IntentTargetStatus.FAILED,
+			});
+
+			if (success) {
+				affectedDevices++;
+				totalPosition += selection.rule.position;
+				positionCount++;
+			} else {
+				failedDevices++;
+			}
+		}
+
+		const overallSuccess = failedDevices === 0 || affectedDevices > 0;
+		const averagePosition = positionCount > 0 ? Math.round(totalPosition / positionCount) : null;
+
+		this.logger.debug(`Mode intent completed mode=${mode} affected=${affectedDevices} failed=${failedDevices}`);
+
 		if (overallSuccess) {
 			void this.intentTimeseriesService.storeCoversPositionChange(
 				spaceId,
@@ -473,9 +748,12 @@ export class CoversIntentService extends SpaceIntentBaseService {
 			const state = await this.coversStateService.getCoversState(spaceId);
 
 			if (state) {
+				// Convert to CoversStateDataModel for proper snake_case serialization via WebSocket
+				const stateModel = toInstance(CoversStateDataModel, state);
+
 				this.eventEmitter.emit(EventType.COVERS_STATE_CHANGED, {
 					space_id: spaceId,
-					state,
+					state: stateModel,
 				});
 
 				this.logger.debug(`Emitted covers state change event spaceId=${spaceId}`);

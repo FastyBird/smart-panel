@@ -1,4 +1,4 @@
-import { Expose } from 'class-transformer';
+import { Expose, Transform } from 'class-transformer';
 import { IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
@@ -26,6 +26,7 @@ export class UpdateDeviceChannelDataSourceDto extends UpdateSingleDataSourceDto 
 		example: '123e4567-e89b-12d3-a456-426614174000',
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"device","reason":"Device must be a valid UUID (version 4)."}]' })
 	@ValidateDeviceExists({ message: '[{"field":"device","reason":"The specified device does not exist."}]' })
@@ -38,6 +39,7 @@ export class UpdateDeviceChannelDataSourceDto extends UpdateSingleDataSourceDto 
 		example: '123e4567-e89b-12d3-a456-426614174000',
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"channel","reason":"Channel must be a valid UUID (version 4)."}]' })
 	@ValidateChannelExists({ message: '[{"field":"channel","reason":"The specified channel does not exist."}]' })
@@ -50,6 +52,7 @@ export class UpdateDeviceChannelDataSourceDto extends UpdateSingleDataSourceDto 
 		example: '123e4567-e89b-12d3-a456-426614174000',
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"property","reason":"Property must be a valid UUID (version 4)."}]' })
 	@ValidateChannelPropertyExists({

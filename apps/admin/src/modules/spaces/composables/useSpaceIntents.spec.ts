@@ -37,7 +37,6 @@ describe('useSpaceIntents', () => {
 				affected_devices: 2,
 				failed_devices: 0,
 				mode: 'heat',
-				new_setpoint: 22.5,
 				heating_setpoint: 22.5,
 				cooling_setpoint: 25.0,
 				...overrides,
@@ -192,11 +191,11 @@ describe('useSpaceIntents', () => {
 			const spaceId = ref<string | undefined>('space-123');
 			const { executeClimateIntent, lastResult } = useSpaceIntents(spaceId);
 
-			const result = await executeClimateIntent({ type: 'setpoint_set', value: 22.5 });
+			const result = await executeClimateIntent({ type: 'setpoint_set', heatingSetpoint: 22.5 });
 
 			expect(result).not.toBeNull();
 			expect(result?.success).toBe(true);
-			expect(result?.newSetpoint).toBe(22.5);
+			expect(result?.heatingSetpoint).toBe(22.5);
 			expect(lastResult.value).toEqual(result);
 		});
 	});
@@ -225,7 +224,7 @@ describe('useSpaceIntents', () => {
 			);
 		});
 
-		it('should set exact setpoint', async () => {
+		it('should set exact setpoint with heating mode by default', async () => {
 			mockPost.mockResolvedValueOnce(createMockClimateIntentResponse());
 
 			const spaceId = ref<string | undefined>('space-123');
@@ -240,7 +239,29 @@ describe('useSpaceIntents', () => {
 					body: expect.objectContaining({
 						data: expect.objectContaining({
 							type: 'setpoint_set',
-							value: 21.0,
+							heating_setpoint: 21.0,
+						}),
+					}),
+				})
+			);
+		});
+
+		it('should set cooling setpoint when mode is cool', async () => {
+			mockPost.mockResolvedValueOnce(createMockClimateIntentResponse());
+
+			const spaceId = ref<string | undefined>('space-123');
+			const { setSetpoint } = useSpaceIntents(spaceId);
+
+			const result = await setSetpoint(24.0, 'cool');
+
+			expect(result?.success).toBe(true);
+			expect(mockPost).toHaveBeenCalledWith(
+				expect.stringContaining('/intents/climate'),
+				expect.objectContaining({
+					body: expect.objectContaining({
+						data: expect.objectContaining({
+							type: 'setpoint_set',
+							cooling_setpoint: 24.0,
 						}),
 					}),
 				})
@@ -332,7 +353,7 @@ describe('useSpaceIntents', () => {
 			const exec1 = executeLightingIntent({ type: 'off' });
 			expect(isExecuting.value).toBe(true);
 
-			const exec2 = executeClimateIntent({ type: 'setpoint_set', value: 22 });
+			const exec2 = executeClimateIntent({ type: 'setpoint_set', heatingSetpoint: 22 });
 			expect(isExecuting.value).toBe(true);
 
 			resolveFirst!(createMockLightingIntentResponse());

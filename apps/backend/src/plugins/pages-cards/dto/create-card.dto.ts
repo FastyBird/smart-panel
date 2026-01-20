@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
 	IsArray,
 	IsNotEmpty,
@@ -26,6 +26,7 @@ export class CreateCardDto {
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"id","reason":"ID must be a valid UUID (version 4)."}]' })
 	readonly id?: string;
@@ -71,6 +72,7 @@ export class CreateCardDto {
 		items: { $ref: getSchemaPath(CreateTileDto) },
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsArray({ message: '[{"field":"tiles","reason":"Tiles must be a valid array."}]' })
 	@ValidateNested({ each: true })
@@ -85,6 +87,7 @@ export class CreateCardDto {
 		items: { $ref: getSchemaPath(CreateDataSourceDto) },
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsArray({ message: '[{"field":"data_source","reason":"Data source must be an array."}]' })
 	@ValidateNested({ each: true })

@@ -275,18 +275,8 @@ export class ClimateStateDataModel {
 	currentHumidity: number | null;
 
 	@ApiProperty({
-		name: 'target_temperature',
-		description: 'Current target/setpoint temperature (for HEAT/COOL modes)',
-		type: 'number',
-		nullable: true,
-		example: 21.0,
-	})
-	@Expose({ name: 'target_temperature' })
-	targetTemperature: number | null;
-
-	@ApiProperty({
 		name: 'heating_setpoint',
-		description: 'Heating setpoint (lower bound, for AUTO mode)',
+		description: 'Heating setpoint - target temperature for heating (used in HEAT and AUTO modes)',
 		type: 'number',
 		nullable: true,
 		example: 20.0,
@@ -296,7 +286,7 @@ export class ClimateStateDataModel {
 
 	@ApiProperty({
 		name: 'cooling_setpoint',
-		description: 'Cooling setpoint (upper bound, for AUTO mode)',
+		description: 'Cooling setpoint - target temperature for cooling (used in COOL and AUTO modes)',
 		type: 'number',
 		nullable: true,
 		example: 24.0,
@@ -323,15 +313,6 @@ export class ClimateStateDataModel {
 	maxSetpoint: number;
 
 	@ApiProperty({
-		name: 'can_set_setpoint',
-		description: 'Whether the space has devices that can adjust setpoint',
-		type: 'boolean',
-		example: true,
-	})
-	@Expose({ name: 'can_set_setpoint' })
-	canSetSetpoint: boolean;
-
-	@ApiProperty({
 		name: 'supports_heating',
 		description: 'Whether any device in the space supports heating',
 		type: 'boolean',
@@ -348,6 +329,24 @@ export class ClimateStateDataModel {
 	})
 	@Expose({ name: 'supports_cooling' })
 	supportsCooling: boolean;
+
+	@ApiProperty({
+		name: 'is_heating',
+		description: 'Whether any heater device is currently active (ON)',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'is_heating' })
+	isHeating: boolean;
+
+	@ApiProperty({
+		name: 'is_cooling',
+		description: 'Whether any cooler device is currently active (ON)',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'is_cooling' })
+	isCooling: boolean;
 
 	@ApiProperty({
 		name: 'is_mixed',
@@ -443,18 +442,8 @@ export class ClimateIntentResultDataModel {
 	mode: string;
 
 	@ApiProperty({
-		name: 'new_setpoint',
-		description: 'The new setpoint value (for HEAT/COOL modes)',
-		type: 'number',
-		nullable: true,
-		example: 21.5,
-	})
-	@Expose({ name: 'new_setpoint' })
-	newSetpoint: number | null;
-
-	@ApiProperty({
 		name: 'heating_setpoint',
-		description: 'The new heating setpoint (for AUTO mode)',
+		description: 'The new heating setpoint (used in HEAT and AUTO modes)',
 		type: 'number',
 		nullable: true,
 		example: 20.0,
@@ -464,7 +453,7 @@ export class ClimateIntentResultDataModel {
 
 	@ApiProperty({
 		name: 'cooling_setpoint',
-		description: 'The new cooling setpoint (for AUTO mode)',
+		description: 'The new cooling setpoint (used in COOL and AUTO modes)',
 		type: 'number',
 		nullable: true,
 		example: 24.0,
@@ -824,7 +813,7 @@ export class ClimateTargetDataModel {
 
 	@ApiProperty({
 		name: 'has_temperature',
-		description: 'Whether this device supports temperature control',
+		description: 'Whether this target is a temperature sensor channel',
 		type: 'boolean',
 		example: true,
 	})
@@ -833,12 +822,66 @@ export class ClimateTargetDataModel {
 
 	@ApiProperty({
 		name: 'has_humidity',
-		description: 'Whether this device supports humidity control',
+		description: 'Whether this target is a humidity sensor channel',
 		type: 'boolean',
 		example: false,
 	})
 	@Expose({ name: 'has_humidity' })
 	hasHumidity: boolean;
+
+	@ApiProperty({
+		name: 'has_air_quality',
+		description: 'Whether this target is an air quality sensor channel',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'has_air_quality' })
+	hasAirQuality: boolean;
+
+	@ApiProperty({
+		name: 'has_air_particulate',
+		description: 'Whether this target is an air particulate (PM2.5/PM10) sensor channel',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'has_air_particulate' })
+	hasAirParticulate: boolean;
+
+	@ApiProperty({
+		name: 'has_carbon_dioxide',
+		description: 'Whether this target is a carbon dioxide (CO2) sensor channel',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'has_carbon_dioxide' })
+	hasCarbonDioxide: boolean;
+
+	@ApiProperty({
+		name: 'has_volatile_organic_compounds',
+		description: 'Whether this target is a volatile organic compounds (VOC) sensor channel',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'has_volatile_organic_compounds' })
+	hasVolatileOrganicCompounds: boolean;
+
+	@ApiProperty({
+		name: 'has_pressure',
+		description: 'Whether this target is an atmospheric pressure sensor channel',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'has_pressure' })
+	hasPressure: boolean;
+
+	@ApiProperty({
+		name: 'has_mode',
+		description: 'Whether this device supports HVAC mode control',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'has_mode' })
+	hasMode: boolean;
 }
 
 /**

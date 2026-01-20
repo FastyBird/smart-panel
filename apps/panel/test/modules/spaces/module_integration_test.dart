@@ -1,6 +1,7 @@
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
+import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/modules/spaces/constants.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart';
@@ -17,6 +18,8 @@ class MockApiClient extends Mock implements ApiClient {}
 class MockSpacesModuleClient extends Mock implements SpacesModuleClient {}
 
 class MockSocketService extends Mock implements SocketService {}
+
+class MockIntentsRepository extends Mock implements IntentsRepository {}
 
 /// Test harness for testing WebSocket event handling
 ///
@@ -91,6 +94,7 @@ class SpacesModuleEventHandler {
 
 void main() {
   late MockSpacesModuleClient mockApiClient;
+  late MockIntentsRepository mockIntentsRepository;
   late SpacesRepository spacesRepository;
   late LightTargetsRepository lightTargetsRepository;
   late ClimateTargetsRepository climateTargetsRepository;
@@ -99,10 +103,14 @@ void main() {
 
   setUp(() {
     mockApiClient = MockSpacesModuleClient();
+    mockIntentsRepository = MockIntentsRepository();
     spacesRepository = SpacesRepository(apiClient: mockApiClient);
     lightTargetsRepository = LightTargetsRepository(apiClient: mockApiClient);
     climateTargetsRepository = ClimateTargetsRepository(apiClient: mockApiClient);
-    spaceStateRepository = SpaceStateRepository(apiClient: mockApiClient);
+    spaceStateRepository = SpaceStateRepository(
+      apiClient: mockApiClient,
+      intentsRepository: mockIntentsRepository,
+    );
 
     eventHandler = SpacesModuleEventHandler(
       spacesRepository: spacesRepository,
@@ -398,13 +406,11 @@ void main() {
             'mode': 'heat',
             'current_temperature': 21.5,
             'current_humidity': 45.0,
-            'target_temperature': 22.0,
-            'heating_setpoint': 20.0,
+            'heating_setpoint': 22.0,
             'cooling_setpoint': 24.0,
             'min_setpoint': 15.0,
             'max_setpoint': 30.0,
-            'can_set_setpoint': true,
-            'supports_heating': true,
+                        'supports_heating': true,
             'supports_cooling': true,
             'is_mixed': false,
             'devices_count': 2,
@@ -421,7 +427,7 @@ void main() {
         expect(state!.hasClimate, isTrue);
         expect(state.mode, equals(ClimateMode.heat));
         expect(state.currentTemperature, equals(21.5));
-        expect(state.targetTemperature, equals(22.0));
+        expect(state.heatingSetpoint, equals(22.0));
         expect(state.supportsHeating, isTrue);
         expect(state.supportsCooling, isTrue);
       });
@@ -434,11 +440,10 @@ void main() {
               'has_climate': true,
               'mode': mode,
               'current_temperature': 21.5,
-              'target_temperature': 22.0,
+              'heating_setpoint': 22.0,
               'min_setpoint': 15.0,
               'max_setpoint': 30.0,
-              'can_set_setpoint': true,
-              'supports_heating': true,
+                            'supports_heating': true,
               'supports_cooling': true,
               'is_mixed': false,
               'devices_count': 1,
@@ -468,8 +473,7 @@ void main() {
             'current_temperature': 21.5,
             'min_setpoint': 15.0,
             'max_setpoint': 30.0,
-            'can_set_setpoint': true,
-            'supports_heating': true,
+                        'supports_heating': true,
             'supports_cooling': true,
             'is_mixed': false,
             'devices_count': 1,

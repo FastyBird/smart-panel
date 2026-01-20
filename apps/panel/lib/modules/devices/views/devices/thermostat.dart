@@ -71,17 +71,12 @@ class ThermostatDeviceView extends DeviceView
   ElectricalPowerChannelView? get electricalPowerChannel =>
       channels.whereType<ElectricalPowerChannelView>().firstOrNull;
 
-  /// Whether the thermostat is currently active (heating or cooling)
-  /// Derived from heater/cooler channel ON states
+  /// Device is ON if heater or cooler is commanded on
   @override
   bool get isOn {
-    final heater = heaterChannel;
-    final cooler = coolerChannel;
-
-    if (heater != null && heater.isOn) return true;
-    if (cooler != null && cooler.isOn) return true;
-
-    return false;
+    final heaterOn = heaterChannel?.on ?? false;
+    final coolerOn = coolerChannel?.on ?? false;
+    return heaterOn || coolerOn;
   }
 
   bool get hasThermostatLock => thermostatChannel.lockedProp != null;

@@ -1159,6 +1159,21 @@
           }
         ]
       },
+      "locked": {
+        "category": "locked",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
       "fault": {
         "category": "fault",
         "required": false,
@@ -1754,6 +1769,21 @@
             }
           }
         ]
+      },
+      "locked": {
+        "category": "locked",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
       }
     }
   },
@@ -1762,7 +1792,7 @@
     "properties": {
       "life_remaining": {
         "category": "life_remaining",
-        "required": true,
+        "required": false,
         "description": {
           "en": "Remaining filter life as percentage"
         },
@@ -1778,7 +1808,7 @@
       },
       "status": {
         "category": "status",
-        "required": true,
+        "required": false,
         "description": {
           "en": "Current filter status"
         },
@@ -2343,6 +2373,21 @@
           }
         ]
       },
+      "locked": {
+        "category": "locked",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
       "fault": {
         "category": "fault",
         "required": false,
@@ -2467,10 +2512,9 @@
         "data_type": "enum",
         "unit": null,
         "format": [
-          "bright",
-          "moderate",
-          "dusky",
-          "dark"
+          "low",
+          "medium",
+          "high"
         ],
         "invalid": null,
         "step": null

@@ -711,6 +711,11 @@ class StartupManagerService {
       apiClient: _apiClient,
       socketService: _socketClient,
     );
+    // IntentsModuleService must be created before DevicesModuleService and SpacesModuleService
+    // because they depend on IntentsRepository for intent-based optimistic UI
+    var intentsModuleService = IntentsModuleService(
+      socketService: _socketClient,
+    );
     var devicesModuleService = DevicesModuleService(
       apiClient: _apiClient,
       socketService: _socketClient,
@@ -719,15 +724,12 @@ class StartupManagerService {
       apiClient: _apiClient,
       socketService: _socketClient,
     );
-    var spacesModuleService = SpacesModuleService(
-      apiClient: _apiClient,
-      socketService: _socketClient,
-    );
     var scenesModuleService = ScenesModuleService(
       apiClient: _apiClient,
       socketService: _socketClient,
     );
-    var intentsModuleService = IntentsModuleService(
+    var spacesModuleService = SpacesModuleService(
+      apiClient: _apiClient,
       socketService: _socketClient,
     );
 
@@ -737,9 +739,9 @@ class StartupManagerService {
     locator.registerSingleton(weatherModuleService);
     locator.registerSingleton(devicesModuleService);
     locator.registerSingleton(dashboardModuleService);
-    locator.registerSingleton(spacesModuleService);
     locator.registerSingleton(scenesModuleService);
     locator.registerSingleton(intentsModuleService);
+    locator.registerSingleton(spacesModuleService);
 
     // Property timeseries service
     var propertyTimeseriesService = PropertyTimeseriesService(dio: _apiIoService);

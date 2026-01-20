@@ -1,4 +1,4 @@
-import { Expose } from 'class-transformer';
+import { Expose, Transform } from 'class-transformer';
 import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
@@ -25,6 +25,7 @@ export class UpdateShellyNgChannelPropertyDto extends UpdateChannelPropertyDto {
 		example: PropertyCategory.GENERIC,
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsNotEmpty({
 		message: '[{"field":"category","reason":"Category must be a valid property category."}]',
