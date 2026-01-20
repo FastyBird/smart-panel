@@ -1526,7 +1526,28 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         }
       }
 
-      if (!success && mounted) {
+      if (success && mounted) {
+        // If intents repository is not available, manually trigger completion
+        // to start the settling process. Otherwise, rely on _onIntentChanged
+        // to detect intent unlock and call onIntentCompleted.
+        if (_intentsRepository == null) {
+          if (kDebugMode) {
+            debugPrint(
+              '[LightsDomainView] IntentsRepository unavailable, manually triggering completion for mode',
+            );
+          }
+          final lightingState = _lightingState;
+          final modeTargets = lightingState != null
+              ? [lightingState]
+              : <LightingStateModel>[];
+          _modeControlStateService.onIntentCompleted(
+            LightingConstants.modeChannelId,
+            modeTargets,
+          );
+          _modeWasLocked = false; // Reset since we're handling completion manually
+        }
+        // If intents repository is available, _onIntentChanged will handle completion
+      } else if (!success && mounted) {
         AlertBar.showError(context, message: localizations.action_failed);
         _modeControlStateService.setIdle(LightingConstants.modeChannelId);
         _modeWasLocked = false; // Reset to prevent inconsistent state
@@ -1604,7 +1625,24 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         success = result != null;
       }
 
-      if (!success && mounted) {
+      if (success && mounted) {
+        // If intents repository is not available, manually trigger completion
+        // to start the settling process. Otherwise, rely on _onIntentChanged
+        // to detect intent unlock and call onIntentCompleted.
+        if (_intentsRepository == null) {
+          if (kDebugMode) {
+            debugPrint(
+              '[LightsDomainView] IntentsRepository unavailable, manually triggering completion for role ${roleData.role.name}',
+            );
+          }
+          final lightTargets = _spacesService?.getLightTargetsForSpace(_roomId);
+          final roleTargets = lightTargets != null && lightTargets.isNotEmpty
+              ? _groupTargetsByRole(lightTargets)[roleData.role] ?? []
+              : <LightTargetView>[];
+          _roleControlStateService.onIntentCompleted(roleChannelId, roleTargets);
+        }
+        // If intents repository is available, _onIntentChanged will handle completion
+      } else if (!success && mounted) {
         AlertBar.showError(
           context,
           message: localizations?.action_failed ?? 'Failed to toggle lights',
