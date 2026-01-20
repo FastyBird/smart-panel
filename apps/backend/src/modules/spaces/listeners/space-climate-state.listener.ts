@@ -97,7 +97,13 @@ export class SpaceClimateStateListener implements OnModuleInit {
 		// 5. Recalculate climate state for the room
 		const state = await this.climateStateService.getClimateState(roomId);
 
-		// 6. Convert to data model and emit event
+		// 6. Only emit event if state is valid (space exists and has climate devices)
+		if (!state || !state.hasClimate) {
+			this.logger.debug(`No valid climate state for room=${roomId}, skipping event emission`);
+			return;
+		}
+
+		// 7. Convert to data model and emit event
 		const stateModel = toInstance(ClimateStateDataModel, state);
 
 		this.eventEmitter.emit(EventType.CLIMATE_STATE_CHANGED, {

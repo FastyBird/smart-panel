@@ -139,12 +139,11 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     bool heaterOn = heaterChannel?.on ?? false;
     if (controlState != null &&
         heaterChannel != null &&
-        heaterChannel.onProp != null &&
-        controlState.isLocked(_device.id, heaterChannel.id, heaterChannel.onProp!.id)) {
+        controlState.isLocked(_device.id, heaterChannel.id, heaterChannel.onProp.id)) {
       final desiredValue = controlState.getDesiredValue(
         _device.id,
         heaterChannel.id,
-        heaterChannel.onProp!.id,
+        heaterChannel.onProp.id,
       );
       if (desiredValue is bool) {
         heaterOn = desiredValue;
@@ -155,12 +154,11 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     bool coolerOn = coolerChannel?.on ?? false;
     if (controlState != null &&
         coolerChannel != null &&
-        coolerChannel.onProp != null &&
-        controlState.isLocked(_device.id, coolerChannel.id, coolerChannel.onProp!.id)) {
+        controlState.isLocked(_device.id, coolerChannel.id, coolerChannel.onProp.id)) {
       final desiredValue = controlState.getDesiredValue(
         _device.id,
         coolerChannel.id,
-        coolerChannel.onProp!.id,
+        coolerChannel.onProp.id,
       );
       if (desiredValue is bool) {
         coolerOn = desiredValue;
@@ -825,7 +823,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
             isActive: _device.isThermostatLocked,
             activeColor: modeColor,
             onTileTap: () => _setPropertyValue(
-              _device.thermostatChannel?.lockedProp,
+              _device.thermostatChannel.lockedProp,
               !_device.isThermostatLocked,
             ),
             showGlow: false,

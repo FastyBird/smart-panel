@@ -164,7 +164,6 @@ class _AirConditionerDeviceDetailState
     // Check for pending cooler state
     bool coolerOn = _device.coolerChannel.on;
     if (controlState != null &&
-        coolerOnProp != null &&
         controlState.isLocked(
             _device.id, _device.coolerChannel.id, coolerOnProp.id)) {
       final desiredValue = controlState.getDesiredValue(
@@ -310,14 +309,12 @@ class _AirConditionerDeviceDetailState
     final fanOnProp = _device.fanChannel.onProp;
 
     // Set PENDING state immediately for responsive UI
-    if (coolerOnProp != null) {
-      _deviceControlStateService?.setPending(
-        _device.id,
-        _device.coolerChannel.id,
-        coolerOnProp.id,
-        mode == AcMode.cool,
-      );
-    }
+    _deviceControlStateService?.setPending(
+      _device.id,
+      _device.coolerChannel.id,
+      coolerOnProp.id,
+      mode == AcMode.cool,
+    );
     if (heaterOnProp != null && _device.heaterChannel != null) {
       _deviceControlStateService?.setPending(
         _device.id,
@@ -349,14 +346,12 @@ class _AirConditionerDeviceDetailState
             value: true,
           ));
         }
-        if (coolerOnProp != null) {
-          commands.add(PropertyCommandItem(
-            deviceId: _device.id,
-            channelId: _device.coolerChannel.id,
-            propertyId: coolerOnProp.id,
-            value: false,
-          ));
-        }
+        commands.add(PropertyCommandItem(
+          deviceId: _device.id,
+          channelId: _device.coolerChannel.id,
+          propertyId: coolerOnProp.id,
+          value: false,
+        ));
         commands.add(PropertyCommandItem(
           deviceId: _device.id,
           channelId: _device.fanChannel.id,
@@ -366,14 +361,12 @@ class _AirConditionerDeviceDetailState
         break;
       case AcMode.cool:
         // Turn on cooler, turn off heater, turn on fan
-        if (coolerOnProp != null) {
-          commands.add(PropertyCommandItem(
-            deviceId: _device.id,
-            channelId: _device.coolerChannel.id,
-            propertyId: coolerOnProp.id,
-            value: true,
-          ));
-        }
+        commands.add(PropertyCommandItem(
+          deviceId: _device.id,
+          channelId: _device.coolerChannel.id,
+          propertyId: coolerOnProp.id,
+          value: true,
+        ));
         if (heaterOnProp != null) {
           commands.add(PropertyCommandItem(
             deviceId: _device.id,
@@ -391,14 +384,12 @@ class _AirConditionerDeviceDetailState
         break;
       case AcMode.off:
         // Turn off cooler, heater, and fan
-        if (coolerOnProp != null) {
-          commands.add(PropertyCommandItem(
-            deviceId: _device.id,
-            channelId: _device.coolerChannel.id,
-            propertyId: coolerOnProp.id,
-            value: false,
-          ));
-        }
+        commands.add(PropertyCommandItem(
+          deviceId: _device.id,
+          channelId: _device.coolerChannel.id,
+          propertyId: coolerOnProp.id,
+          value: false,
+        ));
         if (heaterOnProp != null) {
           commands.add(PropertyCommandItem(
             deviceId: _device.id,
@@ -436,13 +427,11 @@ class _AirConditionerDeviceDetailState
     }
 
     // Transition to settling state
-    if (coolerOnProp != null) {
-      _deviceControlStateService?.setSettling(
-        _device.id,
-        _device.coolerChannel.id,
-        coolerOnProp.id,
-      );
-    }
+    _deviceControlStateService?.setSettling(
+      _device.id,
+      _device.coolerChannel.id,
+      coolerOnProp.id,
+    );
     if (heaterOnProp != null && _device.heaterChannel != null) {
       _deviceControlStateService?.setSettling(
         _device.id,

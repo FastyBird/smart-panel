@@ -901,26 +901,20 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		intent: ClimateIntentDto,
 		climateState: ClimateState,
 	): Promise<ClimateIntentResult> {
-		// Track mode and setpoint changes separately
-		let modeAffected = 0;
-		let modeFailed = 0;
-		let setpointAffected = 0;
-		let setpointFailed = 0;
 		// Use intent.mode if provided, otherwise use lastAppliedMode (user's intent) if available,
 		// as detected mode may be stale immediately after a mode change
 		const mode = intent.mode ?? climateState.lastAppliedMode ?? climateState.mode;
 		let heatingSetpoint: number | null = null;
 		let coolingSetpoint: number | null = null;
 
+		// Track per-device results: true = all operations succeeded, false = at least one failed
+		const deviceResults = new Map<string, boolean>();
+
 		// Step 1: Set mode if provided
 		if (intent.mode !== undefined) {
 			for (const device of devices) {
 				const success = await this.setDeviceMode(device, intent.mode);
-				if (success) {
-					modeAffected++;
-				} else {
-					modeFailed++;
-				}
+				deviceResults.set(device.device.id, success);
 			}
 		}
 
@@ -983,37 +977,47 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 					shouldSetCooling ? coolingSetpoint : null,
 				);
 
-				if (success) {
-					setpointAffected++;
+				// Combine with mode result: device succeeds only if both operations succeed
+				const previousResult = deviceResults.get(device.device.id);
+				if (previousResult === undefined) {
+					deviceResults.set(device.device.id, success);
 				} else {
-					setpointFailed++;
+					deviceResults.set(device.device.id, previousResult && success);
 				}
 			}
 		}
 
-		// Combine mode and setpoint counts for the response
-		// This ensures the response accurately reflects all changes made
-		const totalAffected = modeAffected + setpointAffected;
-		const totalFailed = modeFailed + setpointFailed;
-		const overallSuccess = totalFailed === 0 || totalAffected > 0;
+		// Count unique affected/failed devices (not operations)
+		let affectedDevices = 0;
+		let failedDevices = 0;
+		for (const success of deviceResults.values()) {
+			if (success) {
+				affectedDevices++;
+			} else {
+				failedDevices++;
+			}
+		}
+
+		const overallSuccess = failedDevices === 0 || affectedDevices > 0;
 
 		// Store climate state to InfluxDB at the end with all values (fire and forget)
+		// Use effective mode (preserves current mode when only setpoints are provided)
 		if (overallSuccess) {
 			void this.intentTimeseriesService.storeClimateModeChange(
 				spaceId,
-				intent.mode ?? null,
+				mode,
 				heatingSetpoint,
 				coolingSetpoint,
 				devices.length,
-				totalAffected,
-				totalFailed,
+				affectedDevices,
+				failedDevices,
 			);
 		}
 
 		return {
 			success: overallSuccess,
-			affectedDevices: totalAffected,
-			failedDevices: totalFailed,
+			affectedDevices,
+			failedDevices,
 			mode,
 			heatingSetpoint,
 			coolingSetpoint,
@@ -1030,10 +1034,6 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		climateState: ClimateState,
 		targetResults: IntentTargetResult[],
 	): Promise<ClimateIntentResult> {
-		let modeAffected = 0;
-		let modeFailed = 0;
-		let setpointAffected = 0;
-		let setpointFailed = 0;
 		const mode = intent.mode ?? climateState.lastAppliedMode ?? climateState.mode;
 		let heatingSetpoint: number | null = null;
 		let coolingSetpoint: number | null = null;
@@ -1048,12 +1048,6 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 
 				// Track mode result for this device
 				deviceResults.set(device.device.id, success);
-
-				if (success) {
-					modeAffected++;
-				} else {
-					modeFailed++;
-				}
 			}
 		}
 
@@ -1126,49 +1120,46 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 					// Device was in mode step, combine results (both must succeed)
 					deviceResults.set(device.device.id, previousResult && success);
 				}
-
-				if (success) {
-					setpointAffected++;
-				} else {
-					setpointFailed++;
-				}
 			}
 		}
 
-		// Build target results from combined device results
+		// Build target results from combined device results and count unique affected/failed devices
+		let affectedDevices = 0;
+		let failedDevices = 0;
 		for (const [deviceId, result] of deviceResults) {
 			let status: IntentTargetStatus;
 			if (result === null) {
 				status = IntentTargetStatus.SKIPPED;
 			} else if (result) {
 				status = IntentTargetStatus.SUCCESS;
+				affectedDevices++;
 			} else {
 				status = IntentTargetStatus.FAILED;
+				failedDevices++;
 			}
 			targetResults.push({ deviceId, status });
 		}
 
-		const totalAffected = modeAffected + setpointAffected;
-		const totalFailed = modeFailed + setpointFailed;
-		const overallSuccess = totalFailed === 0 || totalAffected > 0;
+		const overallSuccess = failedDevices === 0 || affectedDevices > 0;
 
 		// Store climate state to InfluxDB at the end with all values (fire and forget)
+		// Use effective mode (preserves current mode when only setpoints are provided)
 		if (overallSuccess) {
 			void this.intentTimeseriesService.storeClimateModeChange(
 				spaceId,
-				intent.mode ?? null,
+				mode,
 				heatingSetpoint,
 				coolingSetpoint,
 				devices.length,
-				totalAffected,
-				totalFailed,
+				affectedDevices,
+				failedDevices,
 			);
 		}
 
 		return {
 			success: overallSuccess,
-			affectedDevices: totalAffected,
-			failedDevices: totalFailed,
+			affectedDevices,
+			failedDevices,
 			mode,
 			heatingSetpoint,
 			coolingSetpoint,
