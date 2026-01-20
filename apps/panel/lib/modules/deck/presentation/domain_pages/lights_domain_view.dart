@@ -486,11 +486,18 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   Future<void> _fetchLightTargets() async {
     try {
-      // Fetch light targets and lighting state in parallel
-      await Future.wait([
-        _spacesService?.fetchLightTargetsForSpace(_roomId) ?? Future.value(),
-        _spacesService?.fetchLightingState(_roomId) ?? Future.value(),
-      ]);
+      // Check if data is already available (cached) before fetching
+      final existingTargets = _spacesService?.getLightTargetsForSpace(_roomId) ?? [];
+      final existingState = _spacesService?.getLightingState(_roomId);
+
+      // Only fetch if data is not already available
+      if (existingTargets.isEmpty || existingState == null) {
+        // Fetch light targets and lighting state in parallel
+        await Future.wait([
+          _spacesService?.fetchLightTargetsForSpace(_roomId) ?? Future.value(),
+          _spacesService?.fetchLightingState(_roomId) ?? Future.value(),
+        ]);
+      }
     } finally {
       if (mounted) {
         setState(() {

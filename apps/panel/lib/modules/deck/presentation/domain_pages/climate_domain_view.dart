@@ -404,10 +404,17 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
   Future<void> _fetchClimateData() async {
     try {
-      await Future.wait([
-        _spacesService?.fetchClimateTargetsForSpace(_roomId) ?? Future.value(),
-        _spacesService?.fetchClimateState(_roomId) ?? Future.value(),
-      ]);
+      // Check if data is already available (cached) before fetching
+      final existingTargets = _spacesService?.getClimateTargetsForSpace(_roomId) ?? [];
+      final existingState = _spacesService?.getClimateState(_roomId);
+
+      // Only fetch if data is not already available
+      if (existingTargets.isEmpty || existingState == null) {
+        await Future.wait([
+          _spacesService?.fetchClimateTargetsForSpace(_roomId) ?? Future.value(),
+          _spacesService?.fetchClimateState(_roomId) ?? Future.value(),
+        ]);
+      }
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[ClimateDomainViewPage] Failed to fetch climate data: $e');
