@@ -13,6 +13,7 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/constants.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
+import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
 import 'package:fastybird_smart_panel/modules/deck/views/light_role_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
@@ -20,6 +21,12 @@ import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/light.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
+import 'package:fastybird_smart_panel/modules/devices/export.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/intent_overlay_service.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
+import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
+import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/modules/scenes/service.dart';
 import 'package:fastybird_smart_panel/modules/scenes/views/scenes/view.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
@@ -159,6 +166,46 @@ class LightDeviceData {
 // LIGHTS DOMAIN VIEW PAGE
 // ============================================================================
 
+/// Domain view page for controlling lighting in a space.
+///
+/// ## Optimistic UI State Flow
+///
+/// This page uses [DomainControlStateService] for optimistic UI updates. The
+/// state machine handles two types of controls:
+///
+/// ### Mode Control Flow
+/// ```
+/// User taps mode (e.g., "Work") →
+///   _setLightingMode() called →
+///   setPending('mode', modeIndex) → UI shows "Work" immediately →
+///   Backend intent sent →
+///   _onIntentChanged() detects unlock →
+///   onIntentCompleted() → starts settling timer →
+///   _onDataChanged() checks convergence →
+///   If converged: setIdle() → UI shows actual state
+///   If timeout: setMixed() → UI shows actual state (may differ from requested)
+/// ```
+///
+/// ### Role Toggle Flow
+/// ```
+/// User taps role tile (e.g., "Ambient") →
+///   _toggleRoleViaIntent() called →
+///   setPending('role_ambient', newState) → UI shows toggle immediately →
+///   Backend intent sent →
+///   _onIntentChanged() checks isLocked(channelId) →
+///   Only completes if this specific role was pending →
+///   Settling and convergence same as mode flow
+/// ```
+///
+/// ### Mode Change → Role Toggle Interaction
+/// Mode changes block role toggles because:
+/// - Mode changes affect all roles (e.g., "Work" turns on main+task)
+/// - Concurrent role toggles could conflict with mode intent
+/// - User should wait for mode to settle before fine-tuning roles
+///
+/// Role toggles do NOT block mode changes because:
+/// - Individual role toggles are superseded by mode changes
+/// - Mode change intent will override any pending role state
 class LightsDomainViewPage extends StatefulWidget {
   final DomainViewItem viewItem;
 
@@ -178,15 +225,29 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   ScenesService? _scenesService;
   DeckService? _deckService;
   EventBus? _eventBus;
+  IntentsRepository? _intentsRepository;
+  IntentOverlayService? _intentOverlayService;
+  DeviceControlStateService? _deviceControlStateService;
   bool _isLoading = true;
-  bool _isExecutingIntent = false;
 
-  // Current lighting mode for optimistic UI
-  LightingModeUI? _pendingMode;
+  // Control state service for optimistic UI (mode control)
+  late DomainControlStateService<LightingStateModel> _modeControlStateService;
 
-  // Debounce protection for rapid mode selection
-  DateTime? _lastModeChangeTime;
-  static const _modeChangeDebounce = Duration(milliseconds: 300);
+  // Control state service for optimistic UI (role toggles)
+  late DomainControlStateService<LightTargetView> _roleControlStateService;
+
+  /// Tracks if the space intent was locked in the previous update.
+  /// Used to detect when an intent unlocks (completes) to trigger settling.
+  bool _modeWasLocked = false;
+
+  /// Tracks if the space intent was locked in the previous update (for role toggles).
+  /// Used to detect when role toggle intents unlock (complete) to trigger settling.
+  bool _spaceWasLocked = false;
+
+  /// Cached grouped targets by role for performance optimization.
+  /// Invalidated when light targets change (based on content hash).
+  Map<LightTargetRole, List<LightTargetView>>? _cachedRoleGroups;
+  int _cachedTargetsHash = 0;
 
   String get _roomId => widget.viewItem.roomId;
 
@@ -196,7 +257,17 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   /// Determine current UI mode from backend state or pending state
   LightingModeUI get _currentMode {
-    if (_pendingMode != null) return _pendingMode!;
+    // Check if mode is locked by state machine (optimistic UI)
+    if (_modeControlStateService.isLocked(LightingConstants.modeChannelId)) {
+      final desiredModeIndex = _modeControlStateService
+          .getDesiredValue(LightingConstants.modeChannelId)
+          ?.toInt();
+      if (desiredModeIndex != null &&
+          desiredModeIndex >= 0 &&
+          desiredModeIndex < LightingModeUI.values.length) {
+        return LightingModeUI.values[desiredModeIndex];
+      }
+    }
 
     final state = _lightingState;
     if (state == null) return LightingModeUI.off;
@@ -207,9 +278,155 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
   }
 
+  /// Check if mode has converged to desired value.
+  bool _checkModeConvergence(
+    List<LightingStateModel> targets,
+    double desiredValue,
+    double tolerance,
+  ) {
+    if (targets.isEmpty) return true;
+    final state = targets.first;
+    final desiredModeIndex = desiredValue.toInt();
+    if (desiredModeIndex < 0 || desiredModeIndex >= LightingModeUI.values.length) {
+      return true; // Invalid index, consider converged to avoid stuck state
+    }
+    final desiredMode = LightingModeUI.values[desiredModeIndex];
+
+    // For 'off' mode, check if all lights are off
+    if (desiredMode == LightingModeUI.off) {
+      return !state.anyOn;
+    }
+
+    // For other modes, check detectedMode matches
+    final backendMode = state.detectedMode ?? state.lastAppliedMode;
+    if (backendMode == null) {
+      // No mode info available yet, consider not converged
+      return false;
+    }
+    final actualMode = LightingModeUIExtension.fromBackendMode(
+      backendMode,
+      state.anyOn,
+    );
+    return actualMode == desiredMode;
+  }
+
+  /// Check if space has an active intent lock.
+  ///
+  /// Used by both mode and role control channels since all lighting intents
+  /// operate at the space level. The [targets] parameter is required by the
+  /// [IntentLockChecker] callback signature but is not used here.
+  bool _isSpaceIntentLocked<T>(List<T> targets) {
+    return _intentsRepository?.isSpaceLocked(_roomId) ?? false;
+  }
+
+  /// Check if role has converged to desired on/off state.
+  bool _checkRoleConvergence(
+    List<LightTargetView> targets,
+    double desiredValue,
+    double tolerance,
+  ) {
+    if (targets.isEmpty) return true;
+    final targetOn = desiredValue > LightingConstants.onOffThreshold;
+
+    for (final target in targets) {
+      final device = _devicesService?.getDevice(target.deviceId);
+      if (device is LightingDeviceView) {
+        final channel = device.lightChannels
+            .cast<LightChannelView?>()
+            .firstWhere(
+              (c) => c?.id == target.channelId,
+              orElse: () => device.lightChannels.isNotEmpty
+                  ? device.lightChannels.first
+                  : null,
+            );
+        if (channel != null && channel.on != targetOn) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+
+  /// Get the optimistic on/off state for a role.
+  /// Returns null if no pending state (use actual device state).
+  bool? _getRolePendingState(LightTargetRole role) {
+    final channelId = LightingConstants.getRoleChannelId(role);
+    if (_roleControlStateService.isLocked(channelId)) {
+      final desiredValue = _roleControlStateService.getDesiredValue(channelId);
+      if (desiredValue != null) {
+        return desiredValue > LightingConstants.onOffThreshold;
+      }
+    }
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
+
+    // Initialize the control state service with lighting mode config
+    _modeControlStateService = DomainControlStateService<LightingStateModel>(
+      channelConfigs: {
+        LightingConstants.modeChannelId: ControlChannelConfig(
+          id: LightingConstants.modeChannelId,
+          convergenceChecker: _checkModeConvergence,
+          intentLockChecker: _isSpaceIntentLocked,
+          settlingWindowMs: LightingConstants.modeSettlingWindowMs,
+          tolerance: 0.0, // Mode is exact match
+        ),
+      },
+    );
+    _modeControlStateService.addListener(_onControlStateChanged);
+
+    // Initialize the role control state service for role toggles
+    _roleControlStateService = DomainControlStateService<LightTargetView>(
+      channelConfigs: {
+        LightingConstants.roleMainChannelId: ControlChannelConfig(
+          id: LightingConstants.roleMainChannelId,
+          convergenceChecker: _checkRoleConvergence,
+          intentLockChecker: _isSpaceIntentLocked,
+          settlingWindowMs: LightingConstants.roleToggleSettlingWindowMs,
+          tolerance: 0.0,
+        ),
+        LightingConstants.roleTaskChannelId: ControlChannelConfig(
+          id: LightingConstants.roleTaskChannelId,
+          convergenceChecker: _checkRoleConvergence,
+          intentLockChecker: _isSpaceIntentLocked,
+          settlingWindowMs: LightingConstants.roleToggleSettlingWindowMs,
+          tolerance: 0.0,
+        ),
+        LightingConstants.roleAmbientChannelId: ControlChannelConfig(
+          id: LightingConstants.roleAmbientChannelId,
+          convergenceChecker: _checkRoleConvergence,
+          intentLockChecker: _isSpaceIntentLocked,
+          settlingWindowMs: LightingConstants.roleToggleSettlingWindowMs,
+          tolerance: 0.0,
+        ),
+        LightingConstants.roleAccentChannelId: ControlChannelConfig(
+          id: LightingConstants.roleAccentChannelId,
+          convergenceChecker: _checkRoleConvergence,
+          intentLockChecker: _isSpaceIntentLocked,
+          settlingWindowMs: LightingConstants.roleToggleSettlingWindowMs,
+          tolerance: 0.0,
+        ),
+        LightingConstants.roleNightChannelId: ControlChannelConfig(
+          id: LightingConstants.roleNightChannelId,
+          convergenceChecker: _checkRoleConvergence,
+          intentLockChecker: _isSpaceIntentLocked,
+          settlingWindowMs: LightingConstants.roleToggleSettlingWindowMs,
+          tolerance: 0.0,
+        ),
+        LightingConstants.roleOtherChannelId: ControlChannelConfig(
+          id: LightingConstants.roleOtherChannelId,
+          convergenceChecker: _checkRoleConvergence,
+          intentLockChecker: _isSpaceIntentLocked,
+          settlingWindowMs: LightingConstants.roleToggleSettlingWindowMs,
+          tolerance: 0.0,
+        ),
+      },
+    );
+    _roleControlStateService.addListener(_onControlStateChanged);
 
     try {
       _spacesService = locator<SpacesService>();
@@ -244,17 +461,43 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       if (kDebugMode) debugPrint('[LightsDomainView] Failed to get EventBus: $e');
     }
 
+    try {
+      _intentsRepository = locator<IntentsRepository>();
+      _intentsRepository?.addListener(_onIntentChanged);
+    } catch (e) {
+      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get IntentsRepository: $e');
+    }
+
+    try {
+      _intentOverlayService = locator<IntentOverlayService>();
+    } catch (e) {
+      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get IntentOverlayService: $e');
+    }
+
+    try {
+      _deviceControlStateService = locator<DeviceControlStateService>();
+    } catch (e) {
+      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get DeviceControlStateService: $e');
+    }
+
     // Fetch light targets for this space
     _fetchLightTargets();
   }
 
   Future<void> _fetchLightTargets() async {
     try {
-      // Fetch light targets and lighting state in parallel
-      await Future.wait([
-        _spacesService?.fetchLightTargetsForSpace(_roomId) ?? Future.value(),
-        _spacesService?.fetchLightingState(_roomId) ?? Future.value(),
-      ]);
+      // Check if data is already available (cached) before fetching
+      final existingTargets = _spacesService?.getLightTargetsForSpace(_roomId) ?? [];
+      final existingState = _spacesService?.getLightingState(_roomId);
+
+      // Only fetch if data is not already available
+      if (existingTargets.isEmpty || existingState == null) {
+        // Fetch light targets and lighting state in parallel
+        await Future.wait([
+          _spacesService?.fetchLightTargetsForSpace(_roomId) ?? Future.value(),
+          _spacesService?.fetchLightingState(_roomId) ?? Future.value(),
+        ]);
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -269,6 +512,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     _spacesService?.removeListener(_onDataChanged);
     _devicesService?.removeListener(_onDataChanged);
     _scenesService?.removeListener(_onDataChanged);
+    _intentsRepository?.removeListener(_onIntentChanged);
+    _modeControlStateService.removeListener(_onControlStateChanged);
+    _modeControlStateService.dispose();
+    _roleControlStateService.removeListener(_onControlStateChanged);
+    _roleControlStateService.dispose();
     super.dispose();
   }
 
@@ -276,8 +524,149 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     if (!mounted) return;
     // Use addPostFrameCallback to avoid "setState during build" errors
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() {});
+      if (mounted) {
+        // Check convergence for mode channel
+        final lightingState = _lightingState;
+        if (lightingState != null) {
+          _modeControlStateService.checkConvergence(
+            LightingConstants.modeChannelId,
+            [lightingState],
+          );
+        }
+
+        // Check convergence for role channels
+        final lightTargets = _spacesService?.getLightTargetsForSpace(_roomId);
+        if (lightTargets != null && lightTargets.isNotEmpty) {
+          final roleGroups = _groupTargetsByRole(lightTargets);
+          for (final entry in roleGroups.entries) {
+            final channelId = LightingConstants.getRoleChannelId(entry.key);
+            _roleControlStateService.checkConvergence(channelId, entry.value);
+          }
+        }
+
+        setState(() {});
+      }
     });
+  }
+
+  /// Group light targets by their role.
+  /// Uses caching to avoid recomputation when targets haven't changed.
+  Map<LightTargetRole, List<LightTargetView>> _groupTargetsByRole(
+    List<LightTargetView> targets,
+  ) {
+    // Compute content-based hash using target IDs
+    final currentHash = _computeTargetsHash(targets);
+
+    // Return cached result if targets haven't changed
+    if (_cachedRoleGroups != null && currentHash == _cachedTargetsHash) {
+      return _cachedRoleGroups!;
+    }
+
+    final result = <LightTargetRole, List<LightTargetView>>{};
+    for (final target in targets) {
+      final role = target.role ?? LightTargetRole.other;
+      if (role == LightTargetRole.hidden) continue;
+      result.putIfAbsent(role, () => []).add(target);
+    }
+
+    // Cache the result with content hash
+    _cachedRoleGroups = result;
+    _cachedTargetsHash = currentHash;
+    return result;
+  }
+
+  /// Compute a hash based on target IDs and roles for cache invalidation.
+  int _computeTargetsHash(List<LightTargetView> targets) {
+    int hash = targets.length;
+    for (final target in targets) {
+      hash = hash ^ target.id.hashCode ^ target.deviceId.hashCode ^ (target.role?.hashCode ?? 0);
+    }
+    return hash;
+  }
+
+  void _onControlStateChanged() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  void _onIntentChanged() {
+    if (!mounted) return;
+
+    // Early return if intents repository is not available
+    final intentsRepo = _intentsRepository;
+    if (intentsRepo == null) return;
+
+    // Check if space intent was unlocked (completed)
+    final isNowLocked = intentsRepo.isSpaceLocked(_roomId);
+
+    final lightingState = _lightingState;
+    final modeTargets = lightingState != null
+        ? [lightingState]
+        : <LightingStateModel>[];
+
+    // Get light targets for role channel completion checks
+    final lightTargets = _spacesService?.getLightTargetsForSpace(_roomId);
+    final roleGroups = lightTargets != null && lightTargets.isNotEmpty
+        ? _groupTargetsByRole(lightTargets)
+        : <LightTargetRole, List<LightTargetView>>{};
+
+    // Track which role channels are currently locked
+    final roleChannelsNowLocked = <String>{};
+    for (final entry in roleGroups.entries) {
+      final channelId = LightingConstants.getRoleChannelId(entry.key);
+      if (_roleControlStateService.isLocked(channelId)) {
+        roleChannelsNowLocked.add(channelId);
+      }
+    }
+
+    // Detect mode intent unlock
+    if (_modeWasLocked && !isNowLocked) {
+      if (kDebugMode) {
+        debugPrint('[LightsDomainView] Intent unlocked - triggering settling for mode');
+      }
+      _modeControlStateService.onIntentCompleted(
+        LightingConstants.modeChannelId,
+        modeTargets,
+      );
+
+      // Only trigger completion for role toggles that are actually pending.
+      // This prevents incorrectly completing role toggles that weren't
+      // triggered by the current intent (e.g., role toggles have their own
+      // separate intents from mode changes).
+      for (final entry in roleGroups.entries) {
+        final channelId = LightingConstants.getRoleChannelId(entry.key);
+        // Only complete if this specific role channel is actually pending
+        if (_roleControlStateService.isLocked(channelId)) {
+          _roleControlStateService.onIntentCompleted(channelId, entry.value);
+        }
+      }
+    }
+
+    // Detect role toggle intent unlocks (independent of mode changes)
+    // When space intent unlocks and it wasn't a mode change, check for locked role channels
+    // If a role channel is locked, it means it was part of the intent that just completed
+    if (_spaceWasLocked && !isNowLocked && !_modeWasLocked && roleChannelsNowLocked.isNotEmpty) {
+      // Space was locked and is now unlocked, and it wasn't a mode change, so it must have been a role toggle
+      // Complete all currently locked role channels (they were part of the completed intent)
+      for (final entry in roleGroups.entries) {
+        final channelId = LightingConstants.getRoleChannelId(entry.key);
+        if (roleChannelsNowLocked.contains(channelId)) {
+          if (kDebugMode) {
+            debugPrint('[LightsDomainView] Role intent unlocked - triggering settling for ${entry.key.name}');
+          }
+          _roleControlStateService.onIntentCompleted(channelId, entry.value);
+        }
+      }
+    }
+
+    // Update tracking state for next iteration
+    // Only update _modeWasLocked if a mode change was in progress (it was already true)
+    // This prevents incorrectly setting it to true when other intents (like role toggles) lock the space
+    if (_modeWasLocked) {
+      _modeWasLocked = isNowLocked;
+    }
+    // Always update _spaceWasLocked to track space lock state
+    _spaceWasLocked = isNowLocked;
   }
 
   double _scale(double size) =>
@@ -497,10 +886,40 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         orElse: () => device.lightChannels.first,
       );
 
+      // Use DeviceControlStateService first for optimistic UI (most reliable)
+      // Fall back to IntentOverlayService, then actual device state
+      bool isOn = channel.on;
+      final controlStateService = _deviceControlStateService;
+      final onProp = channel.onProp;
+
+      if (controlStateService != null &&
+          controlStateService.isLocked(target.deviceId, target.channelId, onProp.id)) {
+        // Use desired value from control state service (immediate, no listener delay)
+        final desiredValue = controlStateService.getDesiredValue(
+          target.deviceId,
+          target.channelId,
+          onProp.id,
+        );
+        if (desiredValue is bool) {
+          isOn = desiredValue;
+        }
+      } else if (_intentOverlayService != null &&
+          _intentOverlayService!.isLocked(target.deviceId, target.channelId, onProp.id)) {
+        // Fall back to intent overlay service
+        final overlayValue = _intentOverlayService!.getOverlayValue(
+          target.deviceId,
+          target.channelId,
+          onProp.id,
+        );
+        if (overlayValue is bool) {
+          isOn = overlayValue;
+        }
+      }
+
       LightState state;
       if (!device.isOnline) {
         state = LightState.offline;
-      } else if (channel.on) {
+      } else if (isOn) {
         state = LightState.on;
       } else {
         state = LightState.off;
@@ -511,7 +930,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         channelId: channel.id,
         name: stripRoomNameFromDevice(target.channelName, roomName),
         state: state,
-        brightness: channel.hasBrightness && channel.on ? channel.brightness : null,
+        brightness: channel.hasBrightness && isOn ? channel.brightness : null,
       ));
     }
 
@@ -748,14 +1167,15 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   /// Build the mode selector widget for portrait/horizontal layout.
   ///
   /// Uses the shared [ModeSelector] core widget wrapped with lighting-specific
-  /// styling. The mode change logic (debouncing, backend intents) remains in
+  /// styling. The mode change logic (optimistic UI, backend intents) remains in
   /// this view because it's tightly coupled to the page's state lifecycle
-  /// (`_pendingMode`, `_isExecutingIntent`). The shared widget handles the
+  /// (`_modeControlStateService`). The shared widget handles the
   /// generic mode selection UI, while this view handles the domain logic.
   Widget _buildModeSelector(BuildContext context, AppLocalizations localizations) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final mode = _currentMode;
     final modeColor = _getModeColor(context, mode);
+    final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
 
     return Container(
       padding: AppSpacings.paddingMd,
@@ -770,7 +1190,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         ),
       ),
       child: IgnorePointer(
-        ignoring: _isExecutingIntent,
+        ignoring: isModeLocked,
         child: ModeSelector<LightingModeUI>(
           modes: _getLightingModeOptions(localizations),
           selectedValue: mode,
@@ -933,9 +1353,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     bool showLabels = false,
   }) {
     final mode = _currentMode;
+    final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
 
     return IgnorePointer(
-      ignoring: _isExecutingIntent,
+      ignoring: isModeLocked,
       child: ModeSelector<LightingModeUI>(
         modes: _getLightingModeOptions(localizations),
         selectedValue: mode,
@@ -954,6 +1375,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     DevicesService devicesService, {
     required int tilesPerRow,
   }) {
+    final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
+
     return LayoutBuilder(
       builder: (context, constraints) {
         // Calculate tile width to fit exactly tilesPerRow tiles
@@ -971,7 +1394,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                 role: roles[index],
                 onTap: () => _openRoleDetail(context, roles[index]),
                 onIconTap: () => _toggleRoleViaIntent(roles[index]),
-                isLoading: _isExecutingIntent,
+                isLoading: isModeLocked,
+                pendingState: _getRolePendingState(roles[index].role),
               ),
             );
           },
@@ -1120,24 +1544,27 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   /// Set lighting mode via backend intent
   Future<void> _setLightingMode(LightingModeUI mode) async {
-    // Guard against concurrent execution
-    if (_isExecutingIntent) return;
-
-    // Debounce rapid taps
-    final now = DateTime.now();
-    if (_lastModeChangeTime != null &&
-        now.difference(_lastModeChangeTime!) < _modeChangeDebounce) {
-      return;
-    }
-    _lastModeChangeTime = now;
+    // Guard against concurrent execution - check if mode is already pending
+    if (_modeControlStateService.isLocked(LightingConstants.modeChannelId)) return;
 
     // Get localizations early (should always be available in widget context)
     final localizations = AppLocalizations.of(context)!;
 
-    setState(() {
-      _isExecutingIntent = true;
-      _pendingMode = mode;
-    });
+    // Set pending state in control service (will lock UI to show desired value)
+    _modeControlStateService.setPending(
+      LightingConstants.modeChannelId,
+      mode.index.toDouble(),
+    );
+
+    if (kDebugMode) {
+      debugPrint('[LightsDomainView] Mode change: ${mode.name} (pending)');
+    }
+
+    // Track that we're waiting for an intent
+    _modeWasLocked = true;
+
+    // Optimistic UI update (now driven by control service)
+    setState(() {});
 
     try {
       bool success = false;
@@ -1155,29 +1582,31 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         }
       }
 
-      if (success) {
-        // Fetch updated lighting state to ensure UI reflects actual state.
-        // Wrapped in try-catch because state refresh failure shouldn't show
-        // an error to users - the mode change already succeeded.
-        try {
-          await _spacesService?.fetchLightingState(_roomId);
-        } catch (e) {
+      if (success && mounted) {
+        // If intents repository is not available, manually trigger completion
+        // to start the settling process. Otherwise, rely on _onIntentChanged
+        // to detect intent unlock and call onIntentCompleted.
+        if (_intentsRepository == null) {
           if (kDebugMode) {
-            debugPrint('[LightsDomainView] Failed to refresh lighting state: $e');
+            debugPrint(
+              '[LightsDomainView] IntentsRepository unavailable, manually triggering completion for mode',
+            );
           }
-          // Silently ignore - state will eventually sync via polling/websocket
+          final lightingState = _lightingState;
+          final modeTargets = lightingState != null
+              ? [lightingState]
+              : <LightingStateModel>[];
+          _modeControlStateService.onIntentCompleted(
+            LightingConstants.modeChannelId,
+            modeTargets,
+          );
+          _modeWasLocked = false; // Reset since we're handling completion manually
         }
-        // Clear pending mode now that we have the actual state
-        if (mounted) {
-          setState(() {
-            _pendingMode = null;
-          });
-        }
-      } else if (mounted) {
+        // If intents repository is available, _onIntentChanged will handle completion
+      } else if (!success && mounted) {
         AlertBar.showError(context, message: localizations.action_failed);
-        setState(() {
-          _pendingMode = null;
-        });
+        _modeControlStateService.setIdle(LightingConstants.modeChannelId);
+        _modeWasLocked = false; // Reset to prevent inconsistent state
       }
     } catch (e) {
       // Only show error if the mode change intent itself failed
@@ -1186,15 +1615,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       }
       if (mounted) {
         AlertBar.showError(context, message: localizations.action_failed);
-        setState(() {
-          _pendingMode = null;
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isExecutingIntent = false;
-        });
+        _modeControlStateService.setIdle(LightingConstants.modeChannelId);
+        _modeWasLocked = false; // Reset to prevent inconsistent state
       }
     }
   }
@@ -1206,7 +1628,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   /// - The role cannot be mapped to a [LightingStateRole]
   /// - [SpacesService] is not available
   Future<void> _toggleRoleViaIntent(LightingRoleData roleData) async {
-    if (_isExecutingIntent) return;
+    // Guard against concurrent execution:
+    // - Block if mode change is pending (mode changes affect all roles)
+    // - Block if this specific role toggle is already pending
+    // This prevents conflicting intents and ensures UI consistency.
+    final roleChannelId = LightingConstants.getRoleChannelId(roleData.role);
+    if (_modeControlStateService.isLocked(LightingConstants.modeChannelId)) return;
+    if (_roleControlStateService.isLocked(roleChannelId)) return;
 
     // Check feature flag - fallback to direct device control if disabled
     if (!LightingConstants.useBackendIntents) {
@@ -1218,7 +1646,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final spacesService = _spacesService;
 
     // Map LightTargetRole to LightingStateRole for backend
-    final stateRole = _mapTargetRoleToStateRole(roleData.role);
+    final stateRole = mapTargetRoleToStateRole(roleData.role);
 
     // Fallback to direct device control when:
     // - SpacesService is not available
@@ -1228,12 +1656,21 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       return;
     }
 
-    setState(() {
-      _isExecutingIntent = true;
-    });
+    // Determine the new state (toggle)
+    final anyOn = roleData.hasLightsOn;
+    final newState = !anyOn;
+
+    // Set optimistic UI state
+    _roleControlStateService.setPending(
+      roleChannelId,
+      newState ? LightingConstants.onValue : LightingConstants.offValue,
+    );
+
+    if (kDebugMode) {
+      debugPrint('[LightsDomainView] Role toggle: ${roleData.role.name} -> ${newState ? "on" : "off"} (pending)');
+    }
 
     try {
-      final anyOn = roleData.hasLightsOn;
       bool success = false;
 
       if (anyOn) {
@@ -1244,23 +1681,30 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         success = result != null;
       }
 
-      if (success) {
-        // Fetch updated lighting state to ensure header mode display reflects actual state.
-        // Wrapped in try-catch because state refresh failure shouldn't show
-        // an error to users - the toggle action already succeeded.
-        try {
-          await spacesService.fetchLightingState(_roomId);
-        } catch (e) {
+      if (success && mounted) {
+        // If intents repository is not available, manually trigger completion
+        // to start the settling process. Otherwise, rely on _onIntentChanged
+        // to detect intent unlock and call onIntentCompleted.
+        if (_intentsRepository == null) {
           if (kDebugMode) {
-            debugPrint('[LightsDomainView] Failed to refresh lighting state: $e');
+            debugPrint(
+              '[LightsDomainView] IntentsRepository unavailable, manually triggering completion for role ${roleData.role.name}',
+            );
           }
-          // Silently ignore - state will eventually sync via polling/websocket
+          final lightTargets = _spacesService?.getLightTargetsForSpace(_roomId);
+          final roleTargets = lightTargets != null && lightTargets.isNotEmpty
+              ? _groupTargetsByRole(lightTargets)[roleData.role] ?? []
+              : <LightTargetView>[];
+          _roleControlStateService.onIntentCompleted(roleChannelId, roleTargets);
         }
-      } else if (mounted) {
+        // If intents repository is available, _onIntentChanged will handle completion
+      } else if (!success && mounted) {
         AlertBar.showError(
           context,
           message: localizations?.action_failed ?? 'Failed to toggle lights',
         );
+        // Reset on error
+        _roleControlStateService.setIdle(roleChannelId);
       }
     } catch (e) {
       // Only show error if the toggle intent itself failed
@@ -1272,33 +1716,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           context,
           message: localizations?.action_failed ?? 'Failed to toggle lights',
         );
+        // Reset on error
+        _roleControlStateService.setIdle(roleChannelId);
       }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isExecutingIntent = false;
-        });
-      }
-    }
-  }
-
-  /// Map LightTargetRole to LightingStateRole
-  LightingStateRole? _mapTargetRoleToStateRole(LightTargetRole role) {
-    switch (role) {
-      case LightTargetRole.main:
-        return LightingStateRole.main;
-      case LightTargetRole.task:
-        return LightingStateRole.task;
-      case LightTargetRole.ambient:
-        return LightingStateRole.ambient;
-      case LightTargetRole.accent:
-        return LightingStateRole.accent;
-      case LightTargetRole.night:
-        return LightingStateRole.night;
-      case LightTargetRole.other:
-        return LightingStateRole.other;
-      case LightTargetRole.hidden:
-        return null; // Hidden shouldn't be controlled
     }
   }
 
@@ -1358,7 +1778,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   /// Toggle a single light
   Future<void> _toggleLight(LightDeviceData light) async {
-    final device = _devicesService?.getDevice(light.deviceId);
+    final devicesService = _devicesService;
+    if (devicesService == null) return;
+
+    final device = devicesService.getDevice(light.deviceId);
     if (device is! LightingDeviceView) return;
 
     final channel = device.lightChannels.firstWhere(
@@ -1366,9 +1789,62 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       orElse: () => device.lightChannels.first,
     );
 
-    final targetState = !channel.on;
-    final onPropId = channel.onProp.id;
-    await _devicesService?.setPropertyValue(onPropId, targetState);
+    // Use overlay value if exists (for rapid taps), otherwise use actual state
+    final currentOverlay = _intentOverlayService?.getOverlayValue(
+      light.deviceId,
+      light.channelId,
+      channel.onProp.id,
+    );
+    final currentState = currentOverlay is bool ? currentOverlay : channel.on;
+    final newState = !currentState;
+
+    final displayRepository = locator<DisplayRepository>();
+    final displayId = displayRepository.display?.id;
+
+    final commandContext = PropertyCommandContext(
+      origin: 'panel.system.room',
+      displayId: displayId,
+      spaceId: _roomId,
+    );
+
+    // Set pending state for immediate optimistic UI (DeviceControlStateService)
+    _deviceControlStateService?.setPending(
+      light.deviceId,
+      light.channelId,
+      channel.onProp.id,
+      newState,
+    );
+
+    // Create overlay for optimistic UI (IntentOverlayService - backup/settling)
+    _intentOverlayService?.createLocalOverlay(
+      deviceId: light.deviceId,
+      channelId: light.channelId,
+      propertyId: channel.onProp.id,
+      value: newState,
+      ttlMs: 5000,
+    );
+
+    // Force immediate UI update
+    if (mounted) setState(() {});
+
+    await devicesService.setMultiplePropertyValues(
+      properties: [
+        PropertyCommandItem(
+          deviceId: light.deviceId,
+          channelId: light.channelId,
+          propertyId: channel.onProp.id,
+          value: newState,
+        ),
+      ],
+      context: commandContext,
+    );
+
+    // Transition to settling state after command is sent
+    _deviceControlStateService?.setSettling(
+      light.deviceId,
+      light.channelId,
+      channel.onProp.id,
+    );
   }
 
   // --------------------------------------------------------------------------
@@ -1382,6 +1858,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     required int crossAxisCount,
     double aspectRatio = 0.9,
   }) {
+    final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
+
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -1397,7 +1875,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           role: roles[index],
           onTap: () => _openRoleDetail(context, roles[index]),
           onIconTap: () => _toggleRoleViaIntent(roles[index]),
-          isLoading: _isExecutingIntent,
+          isLoading: isModeLocked,
+          pendingState: _getRolePendingState(roles[index].role),
         );
       },
     );
@@ -1636,22 +2115,27 @@ class _RoleCard extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onIconTap;
   final bool isLoading;
+  final bool? pendingState; // Optimistic UI override
 
   const _RoleCard({
     required this.role,
     this.onTap,
     this.onIconTap,
     this.isLoading = false,
+    this.pendingState,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Use pending state if available, otherwise use actual state
+    final isActive = pendingState ?? role.hasLightsOn;
+
     return UniversalTile(
       layout: TileLayout.vertical,
       icon: role.icon,
       name: role.name,
       status: role.statusText,
-      isActive: role.hasLightsOn,
+      isActive: isActive,
       onTileTap: onTap,
       onIconTap: isLoading ? null : onIconTap,
       showWarningBadge: false,
@@ -1702,7 +2186,8 @@ class _LightTile extends StatelessWidget {
       isActive: light.isOn,
       isOffline: light.isOffline,
       onTileTap: onTap,
-      onIconTap: onIconTap,
+      // Disable icon tap (toggle) when device is offline
+      onIconTap: light.isOffline ? null : onIconTap,
     );
   }
 }

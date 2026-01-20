@@ -702,7 +702,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
                   if (j > 0) AppSpacings.spacingMdHorizontal,
                   Expanded(
                     child: j < rowChannels.length
-                        ? UniversalTile(
+                        ?                           UniversalTile(
                             layout: tileLayout,
                             icon: Icons.lightbulb_outline,
                             activeIcon: Icons.lightbulb,
@@ -713,8 +713,10 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
                             isSelected: rowChannels[j].isSelected,
                             onTileTap: () => widget.onChannelTileTap
                                 ?.call(rowChannels[j]),
-                            onIconTap: () => widget.onChannelIconTap
-                                ?.call(rowChannels[j]),
+                            // Disable icon tap (toggle) when device is offline
+                            onIconTap: rowChannels[j].isOnline
+                                ? () => widget.onChannelIconTap?.call(rowChannels[j])
+                                : null,
                             showSelectionIndicator: true,
                           )
                         : const SizedBox.shrink(),
@@ -797,7 +799,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
                       padding: EdgeInsets.only(right: AppSpacings.pMd),
                       child: SizedBox(
                         width: tileWidth,
-                        child: UniversalTile(
+                        child:                         UniversalTile(
                           layout: TileLayout.vertical,
                           icon: Icons.lightbulb_outline,
                           activeIcon: Icons.lightbulb,
@@ -809,8 +811,10 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
                           isSelected: widget.channels[index].isSelected,
                           onTileTap: () =>
                               widget.onChannelTileTap?.call(widget.channels[index]),
-                          onIconTap: () =>
-                              widget.onChannelIconTap?.call(widget.channels[index]),
+                          // Disable icon tap (toggle) when device is offline
+                          onIconTap: widget.channels[index].isOnline
+                              ? () => widget.onChannelIconTap?.call(widget.channels[index])
+                              : null,
                           showSelectionIndicator: true,
                         ),
                       ),

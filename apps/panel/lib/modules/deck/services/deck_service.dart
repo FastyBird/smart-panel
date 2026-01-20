@@ -1,8 +1,10 @@
+import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
+import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -100,7 +102,7 @@ class DeckService extends ChangeNotifier {
     // Listen for dashboard changes
     _dashboardService.addListener(_onDashboardChanged);
 
-    // For ROOM role, fetch device categories asynchronously
+    // For ROOM role, fetch device categories and prefetch domain data asynchronously
     if (display.role == DisplayRole.room && display.roomId != null) {
       if (kDebugMode) {
         debugPrint(
@@ -108,6 +110,7 @@ class DeckService extends ChangeNotifier {
         );
       }
       _fetchDeviceCategoriesAsync(display.roomId!, context);
+      _prefetchDomainData(display.roomId!);
     } else if (kDebugMode) {
       debugPrint(
         '[DECK SERVICE] NOT fetching devices. '
@@ -252,6 +255,7 @@ class DeckService extends ChangeNotifier {
         _deviceCategories = [];
         _buildDeck(context);
         _fetchDeviceCategoriesAsync(display.roomId!, context);
+        _prefetchDomainData(display.roomId!);
       } else {
         _buildDeck(context);
       }
@@ -285,6 +289,85 @@ class DeckService extends ChangeNotifier {
   int indexOfItem(String id) {
     final items = _deck?.items ?? [];
     return items.indexWhere((item) => item.id == id);
+  }
+
+  /// Prefetches domain data (lighting and climate) for a room.
+  ///
+  /// This is called on app start to ensure domain views load instantly
+  /// when navigated to, without waiting for data fetches.
+  Future<void> _prefetchDomainData(String roomId) async {
+    try {
+      // Try to get SpacesService from locator
+      if (!locator.isRegistered<SpacesService>()) {
+        if (kDebugMode) {
+          debugPrint(
+            '[DECK SERVICE] SpacesService not available yet, '
+            'skipping domain data prefetch',
+          );
+        }
+        return;
+      }
+
+      final spacesService = locator<SpacesService>();
+
+      if (kDebugMode) {
+        debugPrint(
+          '[DECK SERVICE] Prefetching domain data for roomId: $roomId',
+        );
+      }
+
+      // Prefetch lighting and climate data in parallel (non-blocking)
+      // This ensures data is ready when domain views are opened
+      Future.wait([
+        // Prefetch lighting data
+        spacesService.fetchLightTargetsForSpace(roomId).catchError((e) {
+          if (kDebugMode) {
+            debugPrint(
+              '[DECK SERVICE] Failed to prefetch light targets: $e',
+            );
+          }
+          return;
+        }),
+        spacesService.fetchLightingState(roomId).catchError((e) {
+          if (kDebugMode) {
+            debugPrint(
+              '[DECK SERVICE] Failed to prefetch lighting state: $e',
+            );
+          }
+          return null;
+        }),
+        // Prefetch climate data
+        spacesService.fetchClimateTargetsForSpace(roomId).catchError((e) {
+          if (kDebugMode) {
+            debugPrint(
+              '[DECK SERVICE] Failed to prefetch climate targets: $e',
+            );
+          }
+          return;
+        }),
+        spacesService.fetchClimateState(roomId).catchError((e) {
+          if (kDebugMode) {
+            debugPrint(
+              '[DECK SERVICE] Failed to prefetch climate state: $e',
+            );
+          }
+          return null;
+        }),
+      ]).then((_) {
+        if (kDebugMode) {
+          debugPrint(
+            '[DECK SERVICE] Domain data prefetch complete for roomId: $roomId',
+          );
+        }
+      });
+    } catch (e) {
+      // Silently fail - prefetching is optional
+      if (kDebugMode) {
+        debugPrint(
+          '[DECK SERVICE] Domain data prefetch failed: $e',
+        );
+      }
+    }
   }
 
   @override

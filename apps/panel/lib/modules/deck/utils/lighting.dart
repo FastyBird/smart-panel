@@ -96,3 +96,26 @@ IconData getLightRoleIcon(LightTargetRole role) {
       return MdiIcons.eyeOff;
   }
 }
+
+/// Map [LightTargetRole] to [LightingStateRole] for backend intents.
+///
+/// Returns null for [LightTargetRole.hidden] since hidden lights
+/// should not be controlled via intents.
+LightingStateRole? mapTargetRoleToStateRole(LightTargetRole role) {
+  switch (role) {
+    case LightTargetRole.main:
+      return LightingStateRole.main;
+    case LightTargetRole.task:
+      return LightingStateRole.task;
+    case LightTargetRole.ambient:
+      return LightingStateRole.ambient;
+    case LightTargetRole.accent:
+      return LightingStateRole.accent;
+    case LightTargetRole.night:
+      return LightingStateRole.night;
+    case LightTargetRole.other:
+      return LightingStateRole.other;
+    case LightTargetRole.hidden:
+      return null;
+  }
+}

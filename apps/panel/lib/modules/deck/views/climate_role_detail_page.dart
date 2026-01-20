@@ -1322,18 +1322,26 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
     final modeColor = _getModeColor(context);
     final localizations = AppLocalizations.of(context)!;
 
+    // Check if device is online
+    final deviceView = _devicesService?.getDevice(device.id);
+    final isOffline = deviceView != null && !deviceView.isOnline;
+
     return UniversalTile(
       layout: isVertical ? TileLayout.vertical : TileLayout.horizontal,
       icon: device.icon,
       name: device.name,
       status: _translateDeviceStatus(localizations, device.status, device.isActive),
       isActive: device.isActive,
+      isOffline: isOffline,
       activeColor: device.isActive ? modeColor : null,
       showDoubleBorder: false,
-      showWarningBadge: false,
-      onIconTap: () {
-        // TODO: Toggle device
-      },
+      showWarningBadge: true, // Show warning badge for offline devices
+      // Disable icon tap (toggle) when device is offline
+      onIconTap: isOffline
+          ? null
+          : () {
+              // TODO: Toggle device
+            },
       onTileTap: () => _openClimateDeviceDetail(device),
     );
   }

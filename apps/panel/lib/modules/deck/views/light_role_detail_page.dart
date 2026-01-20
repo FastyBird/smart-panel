@@ -6,6 +6,8 @@ import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/lighting/export.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
+import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
+import 'package:fastybird_smart_panel/modules/deck/types/control_ui_state.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart'
     hide IntentOverlayService;
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
@@ -44,8 +46,8 @@ import 'package:flutter/material.dart';
 ///
 /// ## State Machine
 ///
-/// Uses [RoleControlState] to track pending/settling/mixed states for each
-/// control type (brightness, hue, temperature, white). This provides:
+/// Uses [DomainControlStateService] to track pending/settling/mixed states for each
+/// control channel (brightness, hue, temperature, white, onOff). This provides:
 /// - Optimistic UI updates during command execution
 /// - Convergence detection when devices sync to target values
 /// - Mixed state indication when devices fail to converge
@@ -70,12 +72,8 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
   RoleControlStateRepository? _roleControlStateRepository;
   DeviceControlStateService? _deviceControlStateService;
 
-  // Role control states for each control type
-  RoleControlState _brightnessState = const RoleControlState();
-  RoleControlState _hueState = const RoleControlState();
-  RoleControlState _temperatureState = const RoleControlState();
-  RoleControlState _whiteState = const RoleControlState();
-  RoleControlState _onOffState = const RoleControlState();
+  // Domain control state service for optimistic UI (role-level)
+  late DomainControlStateService<LightTargetView> _controlStateService;
 
   // Pending on/off state for optimistic UI
   bool? _pendingOnState;
@@ -97,12 +95,6 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
   Timer? _temperatureDebounceTimer;
   Timer? _whiteDebounceTimer;
 
-  // Track which control types had active intents
-  bool _brightnessWasLocked = false;
-  bool _colorWasLocked = false;
-  bool _temperatureWasLocked = false;
-  bool _whiteWasLocked = false;
-
   // Memoization cache for mixed state
   RoleMixedState? _cachedMixedState;
   String? _mixedStateCacheKey;
@@ -110,6 +102,48 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
   @override
   void initState() {
     super.initState();
+
+    // Initialize the control state service with lighting-specific config
+    _controlStateService = DomainControlStateService<LightTargetView>(
+      channelConfigs: {
+        LightingConstants.brightnessChannelId: ControlChannelConfig(
+          id: LightingConstants.brightnessChannelId,
+          convergenceChecker: _checkBrightnessConvergence,
+          intentLockChecker: _anyBrightnessLocked,
+          settlingWindowMs: LightingConstants.settlingWindowMs,
+          tolerance: LightingConstants.brightnessTolerance,
+        ),
+        LightingConstants.hueChannelId: ControlChannelConfig(
+          id: LightingConstants.hueChannelId,
+          convergenceChecker: _checkHueConvergence,
+          intentLockChecker: _anyColorLocked,
+          settlingWindowMs: LightingConstants.settlingWindowMs,
+          tolerance: LightingConstants.hueTolerance,
+        ),
+        LightingConstants.temperatureChannelId: ControlChannelConfig(
+          id: LightingConstants.temperatureChannelId,
+          convergenceChecker: _checkTemperatureConvergence,
+          intentLockChecker: _anyTemperatureLocked,
+          settlingWindowMs: LightingConstants.settlingWindowMs,
+          tolerance: LightingConstants.temperatureTolerance,
+        ),
+        LightingConstants.whiteChannelId: ControlChannelConfig(
+          id: LightingConstants.whiteChannelId,
+          convergenceChecker: _checkWhiteConvergence,
+          intentLockChecker: _anyWhiteLocked,
+          settlingWindowMs: LightingConstants.settlingWindowMs,
+          tolerance: LightingConstants.whiteTolerance,
+        ),
+        LightingConstants.onOffChannelId: ControlChannelConfig(
+          id: LightingConstants.onOffChannelId,
+          convergenceChecker: _checkOnOffConvergence,
+          intentLockChecker: _anyOnOffLocked,
+          settlingWindowMs: LightingConstants.onOffSettlingWindowMs,
+          tolerance: 0.0, // On/off is exact match
+        ),
+      },
+    );
+    _controlStateService.addListener(_onRoleControlStateChanged);
 
     try {
       _spacesService = locator<SpacesService>();
@@ -128,7 +162,6 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     try {
       _intentOverlayService = locator<IntentOverlayService>();
       _intentOverlayService?.addListener(_onIntentChanged);
-      _updateLockTrackingState();
     } catch (e) {
       if (kDebugMode) debugPrint('[LightRoleDetail] Failed to get IntentOverlayService: $e');
     }
@@ -159,15 +192,12 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     _temperatureDebounceTimer?.cancel();
     _whiteDebounceTimer?.cancel();
     _pendingOnStateClearTimer?.cancel();
-    _brightnessState.cancelTimer();
-    _hueState.cancelTimer();
-    _temperatureState.cancelTimer();
-    _whiteState.cancelTimer();
-    _onOffState.cancelTimer();
     _spacesService?.removeListener(_onSpacesDataChanged);
     _devicesService?.removeListener(_onDevicesDataChanged);
     _intentOverlayService?.removeListener(_onIntentChanged);
     _deviceControlStateService?.removeListener(_onControlStateChanged);
+    _controlStateService.removeListener(_onRoleControlStateChanged);
+    _controlStateService.dispose();
     super.dispose();
   }
 
@@ -178,80 +208,90 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     }
   }
 
-  // ============================================================================
-  // State Machine Helpers
-  // ============================================================================
-
-  void _startSettlingState(
-    RoleControlState currentState,
-    void Function(RoleControlState) updateState,
-    List<LightTargetView> targets,
-    bool Function(List<LightTargetView>, double, double) convergenceCheck,
-    double tolerance,
-  ) {
-    if (currentState.state != RoleUIState.pending) return;
-    if (currentState.desiredValue == null) return;
-
-    currentState.cancelTimer();
-
-    if (convergenceCheck(targets, currentState.desiredValue!, tolerance)) {
-      updateState(const RoleControlState(state: RoleUIState.idle));
-      return;
-    }
-
-    final timer = Timer(const Duration(milliseconds: LightingConstants.settlingWindowMs), () {
-      if (!mounted) return;
-      _onSettlingTimeout(currentState, updateState, targets, convergenceCheck, tolerance);
-    });
-
-    updateState(currentState.copyWith(
-      state: RoleUIState.settling,
-      settlingTimer: timer,
-      settlingStartedAt: DateTime.now(),
-    ));
-  }
-
-  void _onSettlingTimeout(
-    RoleControlState currentState,
-    void Function(RoleControlState) updateState,
-    List<LightTargetView> targets,
-    bool Function(List<LightTargetView>, double, double) convergenceCheck,
-    double tolerance,
-  ) {
-    if (!mounted) return;
-    if (currentState.desiredValue == null) return;
-
-    if (convergenceCheck(targets, currentState.desiredValue!, tolerance)) {
-      if (!mounted) return;
-      setState(() {
-        updateState(const RoleControlState(state: RoleUIState.idle));
-      });
-    } else {
-      if (!mounted) return;
-      setState(() {
-        updateState(currentState.copyWith(
-          state: RoleUIState.mixed,
-          clearSettlingTimer: true,
-          clearSettlingStartedAt: true,
-        ));
-      });
+  void _onRoleControlStateChanged() {
+    // Role control state changed - rebuild to reflect optimistic UI state
+    if (mounted) {
+      setState(() {});
     }
   }
 
-  void _checkConvergenceDuringSettling(
-    RoleControlState currentState,
-    void Function(RoleControlState) updateState,
+  // ============================================================================
+  // DomainControlStateService Convergence Checkers
+  // ============================================================================
+
+  /// Wrapper for brightness convergence check (adapts _allBrightnessMatch signature).
+  bool _checkBrightnessConvergence(
     List<LightTargetView> targets,
-    bool Function(List<LightTargetView>, double, double) convergenceCheck,
+    double desiredValue,
     double tolerance,
   ) {
-    if (currentState.state != RoleUIState.settling) return;
-    if (currentState.desiredValue == null) return;
+    return _allBrightnessMatch(targets, desiredValue, tolerance);
+  }
 
-    if (convergenceCheck(targets, currentState.desiredValue!, tolerance)) {
-      currentState.cancelTimer();
-      updateState(const RoleControlState(state: RoleUIState.idle));
+  /// Wrapper for hue convergence check (adapts _allHueMatch signature).
+  bool _checkHueConvergence(
+    List<LightTargetView> targets,
+    double desiredValue,
+    double tolerance,
+  ) {
+    return _allHueMatch(targets, desiredValue, tolerance);
+  }
+
+  /// Wrapper for temperature convergence check (adapts _allTemperatureMatch signature).
+  bool _checkTemperatureConvergence(
+    List<LightTargetView> targets,
+    double desiredValue,
+    double tolerance,
+  ) {
+    return _allTemperatureMatch(targets, desiredValue, tolerance);
+  }
+
+  /// Wrapper for white convergence check (adapts _allWhiteMatch signature).
+  bool _checkWhiteConvergence(
+    List<LightTargetView> targets,
+    double desiredValue,
+    double tolerance,
+  ) {
+    return _allWhiteMatch(targets, desiredValue, tolerance);
+  }
+
+  /// Check if on/off state has converged to desired value.
+  bool _checkOnOffConvergence(
+    List<LightTargetView> targets,
+    double desiredValue,
+    double tolerance,
+  ) {
+    final targetOn = desiredValue > LightingConstants.onOffThreshold;
+    for (final target in targets) {
+      final device = _devicesService?.getDevice(target.deviceId);
+      if (device is LightingDeviceView) {
+        final channel = findLightChannel(device, target.channelId);
+        if (channel != null && channel.on != targetOn) {
+          return false;
+        }
+      }
     }
+    return true;
+  }
+
+  /// Check if any on/off property is locked by an intent.
+  bool _anyOnOffLocked(List<LightTargetView> targets) {
+    final service = _intentOverlayService;
+    final devicesService = _devicesService;
+    if (service == null || devicesService == null) return false;
+
+    for (final target in targets) {
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is LightingDeviceView) {
+        final channel = findLightChannel(device, target.channelId);
+        if (channel == null) continue;
+        final onProp = channel.onProp;
+        if (service.isPropertyLocked(target.deviceId, target.channelId, onProp.id)) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   // ============================================================================
@@ -349,14 +389,6 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     return false;
   }
 
-  void _updateLockTrackingState() {
-    final targets = _getTargets();
-    _brightnessWasLocked = _anyBrightnessLocked(targets);
-    _colorWasLocked = _anyColorLocked(targets);
-    _temperatureWasLocked = _anyTemperatureLocked(targets);
-    _whiteWasLocked = _anyWhiteLocked(targets);
-  }
-
   // ============================================================================
   // Data Listeners
   // ============================================================================
@@ -366,121 +398,65 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
 
     final targets = _getTargets();
 
-    final brightnessNowLocked = _anyBrightnessLocked(targets);
-    final hueNowLocked = _anyColorLocked(targets);
-    final temperatureNowLocked = _anyTemperatureLocked(targets);
-    final whiteNowLocked = _anyWhiteLocked(targets);
-
-    setState(() {
-      if (_brightnessWasLocked && !brightnessNowLocked &&
-          _brightnessState.state == RoleUIState.pending) {
-        _startSettlingState(
-          _brightnessState,
-          (s) => _brightnessState = s,
-          targets,
-          _allBrightnessMatch,
-          LightingConstants.brightnessTolerance,
-        );
-      }
-
-      if (_colorWasLocked && !hueNowLocked &&
-          _hueState.state == RoleUIState.pending) {
-        _startSettlingState(
-          _hueState,
-          (s) => _hueState = s,
-          targets,
-          _allHueMatch,
-          LightingConstants.hueTolerance,
-        );
-      }
-
-      if (_temperatureWasLocked && !temperatureNowLocked &&
-          _temperatureState.state == RoleUIState.pending) {
-        _startSettlingState(
-          _temperatureState,
-          (s) => _temperatureState = s,
-          targets,
-          _allTemperatureMatch,
-          LightingConstants.temperatureTolerance,
-        );
-      }
-
-      if (_whiteWasLocked && !whiteNowLocked &&
-          _whiteState.state == RoleUIState.pending) {
-        _startSettlingState(
-          _whiteState,
-          (s) => _whiteState = s,
-          targets,
-          _allWhiteMatch,
-          LightingConstants.whiteTolerance,
-        );
-      }
-    });
-
-    _brightnessWasLocked = brightnessNowLocked;
-    _colorWasLocked = hueNowLocked;
-    _temperatureWasLocked = temperatureNowLocked;
-    _whiteWasLocked = whiteNowLocked;
+    // Update intent lock status for all channels - this automatically
+    // detects unlocks and triggers settling via the control state service
+    _controlStateService.updateIntentLockStatus(
+      LightingConstants.brightnessChannelId,
+      targets,
+    );
+    _controlStateService.updateIntentLockStatus(
+      LightingConstants.hueChannelId,
+      targets,
+    );
+    _controlStateService.updateIntentLockStatus(
+      LightingConstants.temperatureChannelId,
+      targets,
+    );
+    _controlStateService.updateIntentLockStatus(
+      LightingConstants.whiteChannelId,
+      targets,
+    );
+    _controlStateService.updateIntentLockStatus(
+      LightingConstants.onOffChannelId,
+      targets,
+    );
   }
 
   void _onSpacesDataChanged() {
     if (mounted) {
       final targets = _getTargets();
 
-      setState(() {
-        _checkConvergenceDuringSettling(
-          _brightnessState,
-          (s) => _brightnessState = s,
-          targets,
-          _allBrightnessMatch,
-          LightingConstants.brightnessTolerance,
-        );
-        _checkConvergenceDuringSettling(
-          _hueState,
-          (s) => _hueState = s,
-          targets,
-          _allHueMatch,
-          LightingConstants.hueTolerance,
-        );
-        _checkConvergenceDuringSettling(
-          _temperatureState,
-          (s) => _temperatureState = s,
-          targets,
-          _allTemperatureMatch,
-          LightingConstants.temperatureTolerance,
-        );
-        _checkConvergenceDuringSettling(
-          _whiteState,
-          (s) => _whiteState = s,
-          targets,
-          _allWhiteMatch,
-          LightingConstants.whiteTolerance,
-        );
+      // Load cached values if devices are mixed and we haven't loaded them yet
+      // or if they became mixed after initial load
+      final roleMixedState = _getRoleMixedState(targets);
+      if (roleMixedState.isMixed) {
+        _loadCachedValuesIfNeeded(targets, roleMixedState);
+      }
 
-        // Clear MIXED state if devices converge
-        if (_brightnessState.state == RoleUIState.mixed &&
-            _brightnessState.desiredValue != null &&
-            _allBrightnessMatch(targets, _brightnessState.desiredValue!, LightingConstants.brightnessTolerance)) {
-          _brightnessState = const RoleControlState(state: RoleUIState.idle);
-        }
-        if (_hueState.state == RoleUIState.mixed &&
-            _hueState.desiredValue != null &&
-            _allHueMatch(targets, _hueState.desiredValue!, LightingConstants.hueTolerance)) {
-          _hueState = const RoleControlState(state: RoleUIState.idle);
-        }
-        if (_temperatureState.state == RoleUIState.mixed &&
-            _temperatureState.desiredValue != null &&
-            _allTemperatureMatch(targets, _temperatureState.desiredValue!, LightingConstants.temperatureTolerance)) {
-          _temperatureState = const RoleControlState(state: RoleUIState.idle);
-        }
-        if (_whiteState.state == RoleUIState.mixed &&
-            _whiteState.desiredValue != null &&
-            _allWhiteMatch(targets, _whiteState.desiredValue!, LightingConstants.whiteTolerance)) {
-          _whiteState = const RoleControlState(state: RoleUIState.idle);
-        }
+      // Check convergence for all channels - the service handles state transitions
+      _controlStateService.checkConvergence(
+        LightingConstants.brightnessChannelId,
+        targets,
+      );
+      _controlStateService.checkConvergence(
+        LightingConstants.hueChannelId,
+        targets,
+      );
+      _controlStateService.checkConvergence(
+        LightingConstants.temperatureChannelId,
+        targets,
+      );
+      _controlStateService.checkConvergence(
+        LightingConstants.whiteChannelId,
+        targets,
+      );
+      _controlStateService.checkConvergence(
+        LightingConstants.onOffChannelId,
+        targets,
+      );
 
-        _updateCacheIfSynced(targets);
-      });
+      _updateCacheIfSynced(targets);
+      setState(() {});
     }
   }
 
@@ -502,10 +478,19 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     if (targets.isEmpty) return;
 
     final roleMixedState = _getRoleMixedState(targets);
+    _loadCachedValuesIfNeeded(targets, roleMixedState);
+  }
+
+  /// Load cached values when devices are in a mixed state.
+  /// This can be called multiple times - it only sets values if they're not already set.
+  void _loadCachedValuesIfNeeded(List<LightTargetView> targets, RoleMixedState roleMixedState) {
     if (!roleMixedState.isMixed) return;
 
+    // Load cached values from repository
     final cached = _roleControlStateRepository?.get(_cacheKey);
+    if (cached == null) return;
 
+    // Get initial values from devices as fallback
     double? initialBrightness;
     double? initialHue;
     double? initialTemperature;
@@ -544,39 +529,44 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
 
     if (!mounted) return;
 
-    setState(() {
-      final brightness = cached?.brightness ?? initialBrightness;
-      if (brightness != null) {
-        _brightnessState = RoleControlState(
-          state: RoleUIState.idle,
-          desiredValue: brightness,
-        );
-      }
+    // Set cached values (or initial values as fallback) in control state service
+    // This ensures they're displayed when devices are in a mixed state
+    // Only set if not already set (don't overwrite user actions)
+    final brightness = cached.brightness ?? initialBrightness;
+    if (brightness != null &&
+        _controlStateService.getDesiredValue(LightingConstants.brightnessChannelId) == null) {
+      _controlStateService.setMixed(
+        LightingConstants.brightnessChannelId,
+        brightness,
+      );
+    }
 
-      final hue = cached?.hue ?? initialHue;
-      if (hue != null) {
-        _hueState = RoleControlState(
-          state: RoleUIState.idle,
-          desiredValue: hue,
-        );
-      }
+    final hue = cached.hue ?? initialHue;
+    if (hue != null &&
+        _controlStateService.getDesiredValue(LightingConstants.hueChannelId) == null) {
+      _controlStateService.setMixed(
+        LightingConstants.hueChannelId,
+        hue,
+      );
+    }
 
-      final temperature = cached?.temperature ?? initialTemperature;
-      if (temperature != null) {
-        _temperatureState = RoleControlState(
-          state: RoleUIState.idle,
-          desiredValue: temperature,
-        );
-      }
+    final temperature = cached.temperature ?? initialTemperature;
+    if (temperature != null &&
+        _controlStateService.getDesiredValue(LightingConstants.temperatureChannelId) == null) {
+      _controlStateService.setMixed(
+        LightingConstants.temperatureChannelId,
+        temperature,
+      );
+    }
 
-      final white = cached?.white ?? initialWhite;
-      if (white != null) {
-        _whiteState = RoleControlState(
-          state: RoleUIState.idle,
-          desiredValue: white,
-        );
-      }
-    });
+    final white = cached.white ?? initialWhite;
+    if (white != null &&
+        _controlStateService.getDesiredValue(LightingConstants.whiteChannelId) == null) {
+      _controlStateService.setMixed(
+        LightingConstants.whiteChannelId,
+        white,
+      );
+    }
   }
 
   void _saveToCache({
@@ -936,26 +926,6 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     }
   }
 
-  /// Map LightTargetRole to LightingStateRole for backend intents
-  LightingStateRole? _mapTargetRoleToStateRole(LightTargetRole role) {
-    switch (role) {
-      case LightTargetRole.main:
-        return LightingStateRole.main;
-      case LightTargetRole.task:
-        return LightingStateRole.task;
-      case LightTargetRole.ambient:
-        return LightingStateRole.ambient;
-      case LightTargetRole.accent:
-        return LightingStateRole.accent;
-      case LightTargetRole.night:
-        return LightingStateRole.night;
-      case LightTargetRole.other:
-        return LightingStateRole.other;
-      case LightTargetRole.hidden:
-        return null; // Hidden shouldn't be controlled
-    }
-  }
-
   String _getLightStateSubtitle(RoleMixedState mixedState) {
     final total = mixedState.onCount + mixedState.offCount;
 
@@ -992,7 +962,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     if (devicesService == null) return;
 
     final localizations = AppLocalizations.of(context)!;
-    final stateRole = _mapTargetRoleToStateRole(widget.role);
+    final stateRole = mapTargetRoleToStateRole(widget.role);
 
     try {
       bool anyOn = false;
@@ -1011,14 +981,15 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
 
       _pendingOnStateClearTimer?.cancel();
       _pendingOnStateClearTimer = null;
-      _onOffState.cancelTimer();
+
+      // Set pending state using control state service
+      _controlStateService.setPending(
+        LightingConstants.onOffChannelId,
+        newState ? LightingConstants.onValue : LightingConstants.offValue,
+      );
 
       setState(() {
         _pendingOnState = newState;
-        _onOffState = RoleControlState(
-          state: RoleUIState.pending,
-          desiredValue: newState ? 1.0 : 0.0,
-        );
       });
 
       // Set optimistic UI state for all devices
@@ -1111,6 +1082,24 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
           context,
           message: localizations.action_failed,
         );
+        // Reset on error
+        _controlStateService.setIdle(LightingConstants.onOffChannelId);
+        setState(() {
+          _pendingOnState = null;
+        });
+      } else {
+        // Start settling via the control state service
+        // The intent changed listener will handle the transition
+        _pendingOnStateClearTimer = Timer(
+          const Duration(milliseconds: LightingConstants.onOffSettlingWindowMs),
+          () {
+            if (mounted) {
+              setState(() {
+                _pendingOnState = null;
+              });
+            }
+          },
+        );
       }
     } catch (e) {
       if (!mounted) return;
@@ -1118,45 +1107,10 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
         context,
         message: localizations.action_failed,
       );
-    } finally {
-      if (mounted) {
-        _onOffState.cancelTimer();
-
-        final settlingTimer = Timer(const Duration(milliseconds: LightingConstants.onOffSettlingWindowMs), () {
-          if (!mounted) {
-            _pendingOnState = null;
-            _onOffState = const RoleControlState();
-            return;
-          }
-
-          final targets = _getTargets();
-          final roleMixedState = _getRoleMixedState(targets);
-
-          setState(() {
-            _pendingOnState = null;
-            if (roleMixedState.onStateMixed) {
-              _onOffState = RoleControlState(
-                state: RoleUIState.mixed,
-                desiredValue: _onOffState.desiredValue,
-              );
-            } else {
-              _onOffState = const RoleControlState();
-            }
-          });
-        });
-
-        setState(() {
-          _onOffState = RoleControlState(
-            state: RoleUIState.settling,
-            desiredValue: _onOffState.desiredValue,
-            settlingTimer: settlingTimer,
-            settlingStartedAt: DateTime.now(),
-          );
-        });
-      } else {
+      _controlStateService.setIdle(LightingConstants.onOffChannelId);
+      setState(() {
         _pendingOnState = null;
-        _onOffState = const RoleControlState();
-      }
+      });
     }
   }
 
@@ -1265,7 +1219,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     if (devicesService == null) return;
 
     final localizations = AppLocalizations.of(context)!;
-    final stateRole = _mapTargetRoleToStateRole(widget.role);
+    final stateRole = mapTargetRoleToStateRole(widget.role);
 
     try {
       // Use backend intent if available
@@ -1392,7 +1346,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     if (devicesService == null) return;
 
     final localizations = AppLocalizations.of(context)!;
-    final stateRole = _mapTargetRoleToStateRole(widget.role);
+    final stateRole = mapTargetRoleToStateRole(widget.role);
 
     try {
       // Convert hue to hex color for backend intent
@@ -1759,20 +1713,31 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     // Determine state based on device values and state machine
     final roleMixedState = _getRoleMixedState(targets);
 
+    // Helper to check channel state from control state service
+    bool isChannelSettling(String channelId) {
+      final state = _controlStateService.getState(channelId);
+      return state?.state == ControlUIState.settling;
+    }
+
+    bool isChannelMixed(String channelId) {
+      final state = _controlStateService.getState(channelId);
+      return state?.state == ControlUIState.mixed;
+    }
+
     // Check if we're actively settling (waiting for device sync)
-    final isSettling = _brightnessState.isSettling ||
-        _hueState.isSettling ||
-        _temperatureState.isSettling ||
-        _whiteState.isSettling ||
-        _onOffState.isSettling;
+    final isSettling = isChannelSettling(LightingConstants.brightnessChannelId) ||
+        isChannelSettling(LightingConstants.hueChannelId) ||
+        isChannelSettling(LightingConstants.temperatureChannelId) ||
+        isChannelSettling(LightingConstants.whiteChannelId) ||
+        isChannelSettling(LightingConstants.onOffChannelId);
 
     // Check if any role control state shows a sync error
     // (settling timer expired without convergence - only happens after user made a role command)
-    final hasSyncError = _brightnessState.isMixed ||
-        _hueState.isMixed ||
-        _temperatureState.isMixed ||
-        _whiteState.isMixed ||
-        _onOffState.isMixed;
+    final hasSyncError = isChannelMixed(LightingConstants.brightnessChannelId) ||
+        isChannelMixed(LightingConstants.hueChannelId) ||
+        isChannelMixed(LightingConstants.temperatureChannelId) ||
+        isChannelMixed(LightingConstants.whiteChannelId) ||
+        isChannelMixed(LightingConstants.onOffChannelId);
 
     // Device values are mixed (some lights have different values)
     final devicesMixed = roleMixedState.isMixed;
@@ -1793,14 +1758,14 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     }
 
     // Determine displayed values (use state machine values if locked)
-    final displayBrightness = _brightnessState.isLocked
-        ? (_brightnessState.desiredValue?.round() ?? baseBrightness)
+    final displayBrightness = _controlStateService.isLocked(LightingConstants.brightnessChannelId)
+        ? (_controlStateService.getDesiredValue(LightingConstants.brightnessChannelId)?.round() ?? baseBrightness)
         : baseBrightness;
-    final displayColorTemp = _temperatureState.isLocked
-        ? (_temperatureState.desiredValue?.round() ?? baseColorTemp)
+    final displayColorTemp = _controlStateService.isLocked(LightingConstants.temperatureChannelId)
+        ? (_controlStateService.getDesiredValue(LightingConstants.temperatureChannelId)?.round() ?? baseColorTemp)
         : baseColorTemp;
-    final displayWhite = _whiteState.isLocked
-        ? (_whiteState.desiredValue?.round() ?? baseWhite)
+    final displayWhite = _controlStateService.isLocked(LightingConstants.whiteChannelId)
+        ? (_controlStateService.getDesiredValue(LightingConstants.whiteChannelId)?.round() ?? baseWhite)
         : baseWhite;
 
     // Determine on/off state (use pending state if available)
@@ -1809,8 +1774,9 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     // Get hue and convert to color if needed
     Color? displayColor = baseColor;
     double saturation = 1.0;
-    if (_hueState.isLocked && _hueState.desiredValue != null) {
-      displayColor = HSVColor.fromAHSV(1.0, _hueState.desiredValue!, 1.0, 1.0).toColor();
+    final hueDesiredValue = _controlStateService.getDesiredValue(LightingConstants.hueChannelId);
+    if (_controlStateService.isLocked(LightingConstants.hueChannelId) && hueDesiredValue != null) {
+      displayColor = HSVColor.fromAHSV(1.0, hueDesiredValue, 1.0, 1.0).toColor();
     }
 
     return LightingControlPanel(
@@ -1837,13 +1803,10 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       // Callbacks
       onPowerToggle: () => _toggleAllLights(targets),
       onBrightnessChanged: (value) {
-        setState(() {
-          _brightnessState.cancelTimer();
-          _brightnessState = RoleControlState(
-            state: RoleUIState.pending,
-            desiredValue: value.toDouble(),
-          );
-        });
+        _controlStateService.setPending(
+          LightingConstants.brightnessChannelId,
+          value.toDouble(),
+        );
         _saveToCache(brightness: value.toDouble());
         _brightnessDebounceTimer?.cancel();
         _brightnessDebounceTimer = Timer(
@@ -1859,13 +1822,10 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
         );
       },
       onColorTempChanged: (value) {
-        setState(() {
-          _temperatureState.cancelTimer();
-          _temperatureState = RoleControlState(
-            state: RoleUIState.pending,
-            desiredValue: value.toDouble(),
-          );
-        });
+        _controlStateService.setPending(
+          LightingConstants.temperatureChannelId,
+          value.toDouble(),
+        );
         _saveToCache(temperature: value.toDouble());
         _temperatureDebounceTimer?.cancel();
         _temperatureDebounceTimer = Timer(
@@ -1882,13 +1842,10 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       },
       onColorChanged: (color, saturation) {
         final hue = HSVColor.fromColor(color).hue;
-        setState(() {
-          _hueState.cancelTimer();
-          _hueState = RoleControlState(
-            state: RoleUIState.pending,
-            desiredValue: hue,
-          );
-        });
+        _controlStateService.setPending(
+          LightingConstants.hueChannelId,
+          hue,
+        );
         _saveToCache(hue: hue);
         _hueDebounceTimer?.cancel();
         _hueDebounceTimer = Timer(
@@ -1900,13 +1857,10 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
         );
       },
       onWhiteChannelChanged: (value) {
-        setState(() {
-          _whiteState.cancelTimer();
-          _whiteState = RoleControlState(
-            state: RoleUIState.pending,
-            desiredValue: value.toDouble(),
-          );
-        });
+        _controlStateService.setPending(
+          LightingConstants.whiteChannelId,
+          value.toDouble(),
+        );
         _saveToCache(white: value.toDouble());
         _whiteDebounceTimer?.cancel();
         _whiteDebounceTimer = Timer(
@@ -1949,7 +1903,8 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
           );
         }
         if (allCapabilities.contains(LightCapability.color) && baseColor != null) {
-          final hue = _hueState.desiredValue ?? HSVColor.fromColor(baseColor).hue;
+          final hue = _controlStateService.getDesiredValue(LightingConstants.hueChannelId) ??
+              HSVColor.fromColor(baseColor).hue;
           _setHueForAll(targets, hue);
         }
         if (allCapabilities.contains(LightCapability.white)) {

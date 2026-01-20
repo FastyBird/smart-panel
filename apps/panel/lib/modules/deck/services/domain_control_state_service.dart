@@ -225,6 +225,28 @@ class DomainControlStateService<T> extends ChangeNotifier {
     _transitionToIdle(channelId);
   }
 
+  /// Set a control channel to MIXED state with a desired value.
+  ///
+  /// Use this when restoring cached values for display when devices are in a mixed state.
+  /// The desired value will be shown in the UI instead of device values.
+  void setMixed(String channelId, double desiredValue) {
+    final currentState = _states[channelId];
+    currentState?.cancelTimer();
+
+    _states[channelId] = ControlState(
+      state: ControlUIState.mixed,
+      desiredValue: desiredValue,
+    );
+
+    if (kDebugMode) {
+      debugPrint(
+        '[DOMAIN_CONTROL_STATE] Set MIXED: $channelId = $desiredValue',
+      );
+    }
+
+    _notifyIfNotDisposed();
+  }
+
   /// Clear state for a specific channel.
   void clear(String channelId) {
     final state = _states.remove(channelId);
