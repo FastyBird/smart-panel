@@ -23,7 +23,6 @@ import 'package:fastybird_smart_panel/modules/devices/utils/air_quality_utils.da
 import 'package:fastybird_smart_panel/modules/devices/utils/fan_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/filter_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_purifier.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -124,39 +123,6 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     return widget._device;
   }
 
-  Future<bool> _setPropertyValue(
-    ChannelPropertyView? property,
-    dynamic value,
-  ) async {
-    if (property == null) return false;
-
-    final localizations = AppLocalizations.of(context);
-
-    try {
-      bool res = await _devicesService.setPropertyValue(
-        property.id,
-        value,
-      );
-
-      if (!res && mounted && localizations != null) {
-        AlertBar.showError(
-          context,
-          message: localizations.action_failed,
-        );
-      }
-      return res;
-    } catch (e) {
-      if (!mounted) return false;
-      if (localizations != null) {
-        AlertBar.showError(
-          context,
-          message: localizations.action_failed,
-        );
-      }
-      return false;
-    }
-  }
-
   // Computed getters for device state
 
   FanModeValue? get _mode {
@@ -246,9 +212,10 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
   }
 
   void _setSpeedValue(double normalizedSpeed) {
+    final controller = _controller;
     final fanChannel = _device.fanChannel;
     final speedProp = fanChannel.speedProp;
-    if (!fanChannel.hasSpeed || !fanChannel.isSpeedNumeric || speedProp == null) return;
+    if (controller == null || !fanChannel.hasSpeed || !fanChannel.isSpeedNumeric || speedProp == null) return;
 
     // Convert normalized 0-1 value to actual device speed range
     final range = fanChannel.maxSpeed - fanChannel.minSpeed;
@@ -262,7 +229,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     // Clamp to valid range
     final actualSpeed = steppedSpeed.clamp(fanChannel.minSpeed, fanChannel.maxSpeed);
 
-    // Set PENDING state immediately for responsive UI
+    // Set PENDING state immediately for responsive UI (for slider visual feedback)
     _deviceControlStateService?.setPending(
       _device.id,
       fanChannel.id,
@@ -275,61 +242,19 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     _speedDebounceTimer?.cancel();
 
     // Debounce the API call to avoid flooding backend
-    _speedDebounceTimer = Timer(_speedDebounceDuration, () async {
+    _speedDebounceTimer = Timer(_speedDebounceDuration, () {
       if (!mounted) return;
 
-      final success = await _setPropertyValue(speedProp, actualSpeed);
-
-      if (mounted) {
-        if (success) {
-          _deviceControlStateService?.setSettling(
-            _device.id,
-            fanChannel.id,
-            speedProp.id,
-          );
-        } else {
-          _deviceControlStateService?.clear(
-            _device.id,
-            fanChannel.id,
-            speedProp.id,
-          );
-          setState(() {});
-        }
-      }
+      controller.fan.setSpeed(actualSpeed);
     });
   }
 
   void _setSpeedLevel(FanSpeedLevelValue level) {
-    final fanChannel = _device.fanChannel;
-    final speedProp = fanChannel.speedProp;
-    if (!fanChannel.hasSpeed || !fanChannel.isSpeedEnum || speedProp == null) return;
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      speedProp.id,
-      level.value,
-    );
+    controller.fan.setSpeedLevel(level);
     setState(() {});
-
-    _setPropertyValue(speedProp, level.value).then((success) {
-      if (mounted) {
-        if (success) {
-          _deviceControlStateService?.setSettling(
-            _device.id,
-            fanChannel.id,
-            speedProp.id,
-          );
-        } else {
-          _deviceControlStateService?.clear(
-            _device.id,
-            fanChannel.id,
-            speedProp.id,
-          );
-          setState(() {});
-        }
-      }
-    });
   }
 
   void _setFanPower(bool value) {
@@ -365,135 +290,35 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
   }
 
   void _setFanNaturalBreeze(bool value) {
-    final fanChannel = _device.fanChannel;
-    final naturalBreezeProp = fanChannel.naturalBreezeProp;
-    if (!fanChannel.hasNaturalBreeze || naturalBreezeProp == null) return;
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      naturalBreezeProp.id,
-      value,
-    );
+    controller.fan.setNaturalBreeze(value);
     setState(() {});
-
-    _setPropertyValue(naturalBreezeProp, value).then((success) {
-      if (mounted) {
-        if (success) {
-          _deviceControlStateService?.setSettling(
-            _device.id,
-            fanChannel.id,
-            naturalBreezeProp.id,
-          );
-        } else {
-          _deviceControlStateService?.clear(
-            _device.id,
-            fanChannel.id,
-            naturalBreezeProp.id,
-          );
-          setState(() {});
-        }
-      }
-    });
   }
 
   void _setFanLocked(bool value) {
-    final fanChannel = _device.fanChannel;
-    final lockedProp = fanChannel.lockedProp;
-    if (!fanChannel.hasLocked || lockedProp == null) return;
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      lockedProp.id,
-      value,
-    );
+    controller.fan.setLocked(value);
     setState(() {});
-
-    _setPropertyValue(lockedProp, value).then((success) {
-      if (mounted) {
-        if (success) {
-          _deviceControlStateService?.setSettling(
-            _device.id,
-            fanChannel.id,
-            lockedProp.id,
-          );
-        } else {
-          _deviceControlStateService?.clear(
-            _device.id,
-            fanChannel.id,
-            lockedProp.id,
-          );
-          setState(() {});
-        }
-      }
-    });
   }
 
   void _setFanTimerPreset(FanTimerPresetValue preset) {
-    final fanChannel = _device.fanChannel;
-    final timerProp = fanChannel.timerProp;
-    if (!fanChannel.hasTimer || timerProp == null) return;
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      timerProp.id,
-      preset.value,
-    );
+    controller.fan.setTimerPreset(preset);
     setState(() {});
-
-    _setPropertyValue(timerProp, preset.value).then((success) {
-      if (mounted) {
-        if (success) {
-          _deviceControlStateService?.setSettling(
-            _device.id,
-            fanChannel.id,
-            timerProp.id,
-          );
-        } else {
-          _deviceControlStateService?.clear(
-            _device.id,
-            fanChannel.id,
-            timerProp.id,
-          );
-          setState(() {});
-        }
-      }
-    });
   }
 
   void _setFanTimerNumeric(int minutes) {
-    final fanChannel = _device.fanChannel;
-    final timerProp = fanChannel.timerProp;
-    if (!fanChannel.hasTimer || timerProp == null) return;
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      timerProp.id,
-      minutes,
-    );
+    controller.fan.setTimer(minutes);
     setState(() {});
-
-    _setPropertyValue(timerProp, minutes).then((success) {
-      if (mounted) {
-        if (success) {
-          _deviceControlStateService?.setSettling(
-            _device.id,
-            fanChannel.id,
-            timerProp.id,
-          );
-        } else {
-          _deviceControlStateService?.clear(
-            _device.id,
-            fanChannel.id,
-            timerProp.id,
-          );
-          setState(() {});
-        }
-      }
-    });
   }
 
   Widget _buildSpeedControl(

@@ -134,54 +134,13 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
 
   HumidifierChannelView? get _humidifierChannel => _device.humidifierChannel;
 
-  Future<bool> _setPropertyValue(
-    ChannelPropertyView? property,
-    dynamic value,
-  ) async {
-    if (property == null) return false;
-
-    final localizations = AppLocalizations.of(context);
-
-    try {
-      bool res = await _devicesService.setPropertyValue(property.id, value);
-
-      if (!res && mounted && localizations != null) {
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
-      return res;
-    } catch (e) {
-      if (mounted && localizations != null) {
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
-      return false;
-    }
-  }
-
   /// Toggle power on/off for humidifier and fan together
-  Future<void> _togglePower(bool turnOn) async {
+  void _togglePower(bool turnOn) {
+    final controller = _controller;
     final channel = _humidifierChannel;
     final fanChannel = _device.fanChannel;
 
-    if (channel == null) return;
-
-    final localizations = AppLocalizations.of(context);
-
-    // Set PENDING state immediately for responsive UI
-    _deviceControlStateService?.setPending(
-      _device.id,
-      channel.id,
-      channel.onProp.id,
-      turnOn,
-    );
-    if (fanChannel != null) {
-      _deviceControlStateService?.setPending(
-        _device.id,
-        fanChannel.id,
-        fanChannel.onProp.id,
-        turnOn,
-      );
-    }
-    setState(() {});
+    if (controller == null || channel == null) return;
 
     // Build batch command list
     final commands = <PropertyCommandItem>[];
@@ -204,56 +163,16 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       ));
     }
 
-    // Send all commands as a single batch
-    try {
-      bool res = await _devicesService.setMultiplePropertyValues(
-        properties: commands,
-      );
-
-      if (!res) {
-        // API returned failure - clear pending state and show error
+    // Send all commands through the controller (handles pending, API call, settling/clear)
+    controller.setMultipleProperties(
+      commands,
+      onError: () {
         if (mounted) {
-          _deviceControlStateService?.clear(_device.id, channel.id, channel.onProp.id);
-          if (fanChannel != null) {
-            _deviceControlStateService?.clear(_device.id, fanChannel.id, fanChannel.onProp.id);
-          }
-          if (localizations != null) {
-            AlertBar.showError(context, message: localizations.action_failed);
-          }
           setState(() {});
         }
-        return;
-      }
-    } catch (e) {
-      // Exception - clear pending state and show error
-      if (mounted) {
-        _deviceControlStateService?.clear(_device.id, channel.id, channel.onProp.id);
-        if (fanChannel != null) {
-          _deviceControlStateService?.clear(_device.id, fanChannel.id, fanChannel.onProp.id);
-        }
-        if (localizations != null) {
-          AlertBar.showError(context, message: localizations.action_failed);
-        }
-        setState(() {});
-      }
-      return;
-    }
-
-    // Transition to settling state on success
-    if (mounted) {
-      _deviceControlStateService?.setSettling(
-        _device.id,
-        channel.id,
-        channel.onProp.id,
-      );
-      if (fanChannel != null) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          fanChannel.onProp.id,
-        );
-      }
-    }
+      },
+    );
+    setState(() {});
   }
 
   void _setHumidity(int humidity) {
@@ -288,260 +207,68 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     setState(() {});
   }
 
-  void _setFanNaturalBreeze(bool value) async {
-    final fanChannel = _device.fanChannel;
-    final naturalBreezeProp = fanChannel?.naturalBreezeProp;
-    if (fanChannel == null || !fanChannel.hasNaturalBreeze || naturalBreezeProp == null) return;
+  void _setFanNaturalBreeze(bool value) {
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      naturalBreezeProp.id,
-      value,
-    );
+    controller.fan?.setNaturalBreeze(value);
     setState(() {});
-
-    final success = await _setPropertyValue(naturalBreezeProp, value);
-    if (mounted) {
-      if (success) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          naturalBreezeProp.id,
-        );
-      } else {
-        _deviceControlStateService?.clear(
-          _device.id,
-          fanChannel.id,
-          naturalBreezeProp.id,
-        );
-        setState(() {});
-      }
-    }
   }
 
-  void _setWarmMist(bool value) async {
-    final channel = _humidifierChannel;
-    final warmMistProp = channel?.warmMistProp;
-    if (channel == null || !channel.hasWarmMist || warmMistProp == null) return;
+  void _setWarmMist(bool value) {
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      channel.id,
-      warmMistProp.id,
-      value,
-    );
+    controller.humidifier.setWarmMist(value);
     setState(() {});
-
-    final success = await _setPropertyValue(warmMistProp, value);
-    if (mounted) {
-      if (success) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          channel.id,
-          warmMistProp.id,
-        );
-      } else {
-        _deviceControlStateService?.clear(
-          _device.id,
-          channel.id,
-          warmMistProp.id,
-        );
-        setState(() {});
-      }
-    }
   }
 
-  void _setHumidifierLocked(bool value) async {
-    final channel = _humidifierChannel;
-    final lockedProp = channel?.lockedProp;
-    if (channel == null || !channel.hasLocked || lockedProp == null) return;
+  void _setHumidifierLocked(bool value) {
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      channel.id,
-      lockedProp.id,
-      value,
-    );
+    controller.humidifier.setLocked(value);
     setState(() {});
-
-    final success = await _setPropertyValue(lockedProp, value);
-    if (mounted) {
-      if (success) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          channel.id,
-          lockedProp.id,
-        );
-      } else {
-        _deviceControlStateService?.clear(
-          _device.id,
-          channel.id,
-          lockedProp.id,
-        );
-        setState(() {});
-      }
-    }
   }
 
-  void _setMistLevelEnum(HumidifierMistLevelLevelValue level) async {
-    final channel = _humidifierChannel;
-    final mistLevelProp = channel?.mistLevelProp;
-    if (channel == null || !channel.hasMistLevel || !channel.isMistLevelEnum || mistLevelProp == null) return;
+  void _setMistLevelEnum(HumidifierMistLevelLevelValue level) {
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      channel.id,
-      mistLevelProp.id,
-      level.value,
-    );
+    controller.humidifier.setMistLevelPreset(level);
     setState(() {});
-
-    final success = await _setPropertyValue(mistLevelProp, level.value);
-    if (mounted) {
-      if (success) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          channel.id,
-          mistLevelProp.id,
-        );
-      } else {
-        _deviceControlStateService?.clear(
-          _device.id,
-          channel.id,
-          mistLevelProp.id,
-        );
-        setState(() {});
-      }
-    }
   }
 
-  void _setFanSpeedLevel(FanSpeedLevelValue level) async {
-    final fanChannel = _device.fanChannel;
-    final speedProp = fanChannel?.speedProp;
-    if (fanChannel == null || !fanChannel.hasSpeed || !fanChannel.isSpeedEnum || speedProp == null) return;
+  void _setFanSpeedLevel(FanSpeedLevelValue level) {
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      speedProp.id,
-      level.value,
-    );
+    controller.fan?.setSpeedLevel(level);
     setState(() {});
-
-    final success = await _setPropertyValue(speedProp, level.value);
-    if (mounted) {
-      if (success) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          speedProp.id,
-        );
-      } else {
-        _deviceControlStateService?.clear(
-          _device.id,
-          fanChannel.id,
-          speedProp.id,
-        );
-        setState(() {});
-      }
-    }
   }
 
-  void _setFanMode(FanModeValue mode) async {
-    final fanChannel = _device.fanChannel;
-    final modeProp = fanChannel?.modeProp;
-    if (fanChannel == null || !fanChannel.hasMode || modeProp == null) return;
+  void _setFanMode(FanModeValue mode) {
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      modeProp.id,
-      mode.value,
-    );
+    controller.fan?.setMode(mode);
     setState(() {});
-
-    final success = await _setPropertyValue(modeProp, mode.value);
-    if (mounted) {
-      if (success) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          modeProp.id,
-        );
-      } else {
-        _deviceControlStateService?.clear(
-          _device.id,
-          fanChannel.id,
-          modeProp.id,
-        );
-        setState(() {});
-      }
-    }
   }
 
-  void _setHumidifierTimerPreset(HumidifierTimerPresetValue preset) async {
-    final channel = _humidifierChannel;
-    final timerProp = channel?.timerProp;
-    if (channel == null || !channel.hasTimer || timerProp == null) return;
+  void _setHumidifierTimerPreset(HumidifierTimerPresetValue preset) {
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      channel.id,
-      timerProp.id,
-      preset.value,
-    );
+    controller.humidifier.setTimerPreset(preset);
     setState(() {});
-
-    final success = await _setPropertyValue(timerProp, preset.value);
-    if (mounted) {
-      if (success) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          channel.id,
-          timerProp.id,
-        );
-      } else {
-        _deviceControlStateService?.clear(
-          _device.id,
-          channel.id,
-          timerProp.id,
-        );
-        setState(() {});
-      }
-    }
   }
 
-  void _setHumidifierTimerNumeric(int seconds) async {
-    final channel = _humidifierChannel;
-    final timerProp = channel?.timerProp;
-    if (channel == null || !channel.hasTimer || timerProp == null) return;
+  void _setHumidifierTimerNumeric(int seconds) {
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      channel.id,
-      timerProp.id,
-      seconds,
-    );
+    controller.humidifier.setTimer(seconds);
     setState(() {});
-
-    final success = await _setPropertyValue(timerProp, seconds);
-    if (mounted) {
-      if (success) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          channel.id,
-          timerProp.id,
-        );
-      } else {
-        _deviceControlStateService?.clear(
-          _device.id,
-          channel.id,
-          timerProp.id,
-        );
-        setState(() {});
-      }
-    }
   }
 
   @override
@@ -1314,9 +1041,14 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
   }
 
   void _setMistLevel(double normalizedLevel) {
+    final controller = _controller;
     final channel = _humidifierChannel;
     final mistLevelProp = channel?.mistLevelProp;
-    if (channel == null || !channel.hasMistLevel || !channel.isMistLevelNumeric || mistLevelProp == null) return;
+    if (controller == null ||
+        channel == null ||
+        !channel.hasMistLevel ||
+        !channel.isMistLevelNumeric ||
+        mistLevelProp == null) return;
 
     // Convert normalized 0-1 value to actual device level range
     final minLevel = channel.minMistLevel;
@@ -1342,18 +1074,10 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     _mistLevelDebounceTimer?.cancel();
 
     // Debounce the API call to avoid flooding backend
-    _mistLevelDebounceTimer = Timer(_mistLevelDebounceDuration, () async {
+    _mistLevelDebounceTimer = Timer(_mistLevelDebounceDuration, () {
       if (!mounted) return;
-
-      await _setPropertyValue(mistLevelProp, clampedLevel);
-
-      if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          channel.id,
-          mistLevelProp.id,
-        );
-      }
+      // Controller handles API call, settling, and error handling
+      controller.humidifier.setMistLevel(clampedLevel);
     });
   }
 
@@ -1584,9 +1308,14 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
   }
 
   void _setFanSpeed(double normalizedSpeed) {
+    final controller = _controller;
     final fanChannel = _device.fanChannel;
     final speedProp = fanChannel?.speedProp;
-    if (fanChannel == null || !fanChannel.hasSpeed || !fanChannel.isSpeedNumeric || speedProp == null) return;
+    if (controller == null ||
+        fanChannel == null ||
+        !fanChannel.hasSpeed ||
+        !fanChannel.isSpeedNumeric ||
+        speedProp == null) return;
 
     // Convert normalized 0-1 value to actual device speed range
     final minSpeed = fanChannel.minSpeed;
@@ -1616,18 +1345,10 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     _speedDebounceTimer?.cancel();
 
     // Debounce the API call to avoid flooding backend
-    _speedDebounceTimer = Timer(_speedDebounceDuration, () async {
+    _speedDebounceTimer = Timer(_speedDebounceDuration, () {
       if (!mounted) return;
-
-      await _setPropertyValue(speedProp, actualSpeed);
-
-      if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          speedProp.id,
-        );
-      }
+      // Controller handles API call, settling, and error handling
+      controller.fan?.setSpeed(actualSpeed);
     });
   }
 

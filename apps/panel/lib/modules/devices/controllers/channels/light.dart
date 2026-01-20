@@ -364,7 +364,6 @@ class LightChannelController {
     final brightProp = channel.brightnessProp;
 
     final List<PropertyConfig> properties = [];
-    final List<Future<bool>> futures = [];
     String? firstPropId;
 
     if (hueProp != null) {
@@ -374,7 +373,6 @@ class LightChannelController {
         propertyId: hueProp.id,
         desiredValue: hue,
       ));
-      futures.add(_devicesService.setPropertyValue(hueProp.id, hue));
     }
 
     if (satProp != null) {
@@ -384,7 +382,6 @@ class LightChannelController {
         propertyId: satProp.id,
         desiredValue: saturation,
       ));
-      futures.add(_devicesService.setPropertyValue(satProp.id, saturation));
     }
 
     if (brightProp != null) {
@@ -394,12 +391,24 @@ class LightChannelController {
         propertyId: brightProp.id,
         desiredValue: brightness,
       ));
-      futures.add(_devicesService.setPropertyValue(brightProp.id, brightness));
     }
 
     if (properties.isEmpty) return;
 
+    // 1. Set pending state FIRST (before starting API calls)
     _controlState.setGroupPending(deviceId, colorGroupId, properties);
+
+    // 2. Start API calls AFTER pending state is set
+    final futures = <Future<bool>>[];
+    if (hueProp != null) {
+      futures.add(_devicesService.setPropertyValue(hueProp.id, hue));
+    }
+    if (satProp != null) {
+      futures.add(_devicesService.setPropertyValue(satProp.id, saturation));
+    }
+    if (brightProp != null) {
+      futures.add(_devicesService.setPropertyValue(brightProp.id, brightness));
+    }
 
     Future.wait(futures).then((results) {
       if (results.every((success) => success)) {

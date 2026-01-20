@@ -154,29 +154,6 @@ class _AirConditionerDeviceDetailState
   double _scale(double value) =>
       _screenService.scale(value, density: _visualDensityService.density);
 
-  Future<bool> _setPropertyValue(
-    ChannelPropertyView? property,
-    dynamic value,
-  ) async {
-    if (property == null) return false;
-
-    final localizations = AppLocalizations.of(context);
-
-    try {
-      bool res = await _devicesService.setPropertyValue(property.id, value);
-
-      if (!res && mounted && localizations != null) {
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
-      return res;
-    } catch (e) {
-      if (mounted && localizations != null) {
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
-      return false;
-    }
-  }
-
   // --------------------------------------------------------------------------
   // STATE HELPERS
   // --------------------------------------------------------------------------
@@ -319,7 +296,10 @@ class _AirConditionerDeviceDetailState
   // MODE AND SETPOINT HANDLERS
   // --------------------------------------------------------------------------
 
-  void _onModeChanged(AcMode mode) async {
+  void _onModeChanged(AcMode mode) {
+    final controller = _controller;
+    if (controller == null) return;
+
     // Set grace period to prevent control state listener from causing
     // SpeedSlider flickering during mode transitions
     _modeChangeTime = DateTime.now();
@@ -327,30 +307,6 @@ class _AirConditionerDeviceDetailState
     final coolerOnProp = _device.coolerChannel.onProp;
     final heaterOnProp = _device.heaterChannel?.onProp;
     final fanOnProp = _device.fanChannel.onProp;
-
-    // Set PENDING state immediately for responsive UI
-    _deviceControlStateService?.setPending(
-      _device.id,
-      _device.coolerChannel.id,
-      coolerOnProp.id,
-      mode == AcMode.cool,
-    );
-    if (heaterOnProp != null && _device.heaterChannel != null) {
-      _deviceControlStateService?.setPending(
-        _device.id,
-        _device.heaterChannel!.id,
-        heaterOnProp.id,
-        mode == AcMode.heat,
-      );
-    }
-    // Fan on/off based on mode
-    _deviceControlStateService?.setPending(
-      _device.id,
-      _device.fanChannel.id,
-      fanOnProp.id,
-      mode != AcMode.off,
-    );
-    setState(() {});
 
     // Build batch command list
     final commands = <PropertyCommandItem>[];
@@ -427,49 +383,25 @@ class _AirConditionerDeviceDetailState
         break;
     }
 
-    // Send all commands as a single batch
+    // Send all commands through the controller (handles pending, API call, settling/clear)
     if (commands.isNotEmpty) {
-      final localizations = AppLocalizations.of(context);
-
-      try {
-        bool res = await _devicesService.setMultiplePropertyValues(
-          properties: commands,
-        );
-
-        if (!res && mounted && localizations != null) {
-          AlertBar.showError(context, message: localizations.action_failed);
-        }
-      } catch (e) {
-        if (mounted && localizations != null) {
-          AlertBar.showError(context, message: localizations.action_failed);
-        }
-      }
-    }
-
-    // Transition to settling state
-    _deviceControlStateService?.setSettling(
-      _device.id,
-      _device.coolerChannel.id,
-      coolerOnProp.id,
-    );
-    if (heaterOnProp != null && _device.heaterChannel != null) {
-      _deviceControlStateService?.setSettling(
-        _device.id,
-        _device.heaterChannel!.id,
-        heaterOnProp.id,
+      controller.setMultipleProperties(
+        commands,
+        onError: () {
+          if (mounted) {
+            setState(() {});
+          }
+        },
       );
+      setState(() {});
     }
-    _deviceControlStateService?.setSettling(
-      _device.id,
-      _device.fanChannel.id,
-      fanOnProp.id,
-    );
   }
 
   void _onSetpointChanged(double value) {
+    final controller = _controller;
     final setpointProp = _activeSetpointProp;
     final channelId = _activeSetpointChannelId;
-    if (setpointProp == null || channelId == null) return;
+    if (controller == null || setpointProp == null || channelId == null) return;
 
     // Round to step value (0.5)
     final steppedValue = (value * 2).round() / 2;
@@ -490,17 +422,14 @@ class _AirConditionerDeviceDetailState
     _setpointDebounceTimer?.cancel();
 
     // Debounce the API call to avoid flooding backend
-    _setpointDebounceTimer = Timer(_setpointDebounceDuration, () async {
+    _setpointDebounceTimer = Timer(_setpointDebounceDuration, () {
       if (!mounted) return;
 
-      await _setPropertyValue(setpointProp, clampedValue);
-
-      if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          channelId,
-          setpointProp.id,
-        );
+      // Use appropriate controller method based on current mode
+      if (_currentMode == AcMode.heat) {
+        controller.setHeatingTemperature(clampedValue);
+      } else {
+        controller.setCoolingTemperature(clampedValue);
       }
     });
   }
@@ -537,9 +466,13 @@ class _AirConditionerDeviceDetailState
   }
 
   void _setFanSpeedValue(double normalizedSpeed) {
+    final controller = _controller;
     final fanChannel = _device.fanChannel;
     final speedProp = fanChannel.speedProp;
-    if (!fanChannel.hasSpeed || !fanChannel.isSpeedNumeric || speedProp == null) return;
+    if (controller == null ||
+        !fanChannel.hasSpeed ||
+        !fanChannel.isSpeedNumeric ||
+        speedProp == null) return;
 
     final range = fanChannel.maxSpeed - fanChannel.minSpeed;
     if (range <= 0) return;
@@ -549,6 +482,7 @@ class _AirConditionerDeviceDetailState
     final steppedSpeed = step > 0 ? (rawSpeed / step).round() * step : rawSpeed;
     final actualSpeed = steppedSpeed.clamp(fanChannel.minSpeed, fanChannel.maxSpeed);
 
+    // Set pending state immediately for visual feedback
     _deviceControlStateService?.setPending(
       _device.id,
       fanChannel.id,
@@ -557,285 +491,77 @@ class _AirConditionerDeviceDetailState
     );
     setState(() {});
 
+    // Debounce the API call
     _speedDebounceTimer?.cancel();
-    _speedDebounceTimer = Timer(_speedDebounceDuration, () async {
+    _speedDebounceTimer = Timer(_speedDebounceDuration, () {
       if (!mounted) return;
-      final success = await _setPropertyValue(speedProp, actualSpeed);
-      if (mounted) {
-        if (success) {
-          _deviceControlStateService?.setSettling(
-            _device.id,
-            fanChannel.id,
-            speedProp.id,
-          );
-        } else {
-          _deviceControlStateService?.clear(
-            _device.id,
-            fanChannel.id,
-            speedProp.id,
-          );
-          setState(() {});
-        }
-      }
+      // Controller handles API call, settling, and error handling
+      controller.fan.setSpeed(actualSpeed);
     });
   }
 
-  void _setFanSpeedLevel(FanSpeedLevelValue level) async {
-    final fanChannel = _device.fanChannel;
-    final speedProp = fanChannel.speedProp;
-    if (!fanChannel.hasSpeed || !fanChannel.isSpeedEnum || speedProp == null) return;
+  void _setFanSpeedLevel(FanSpeedLevelValue level) {
+    final controller = _controller;
+    if (controller == null) return;
 
-    // Set PENDING state immediately for responsive UI
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      speedProp.id,
-      level.value,
-    );
+    controller.fan.setSpeedLevel(level);
     setState(() {});
-
-    final success = await _setPropertyValue(speedProp, level.value);
-    if (mounted) {
-      if (success) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          speedProp.id,
-        );
-      } else {
-        _deviceControlStateService?.clear(
-          _device.id,
-          fanChannel.id,
-          speedProp.id,
-        );
-        setState(() {});
-      }
-    }
   }
 
-  void _setFanMode(FanModeValue mode) async {
-    final fanChannel = _device.fanChannel;
-    final modeProp = fanChannel.modeProp;
-    if (!fanChannel.hasMode || modeProp == null) return;
+  void _setFanMode(FanModeValue mode) {
+    final controller = _controller;
+    if (controller == null) return;
 
-    // Set PENDING state immediately for responsive UI
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      modeProp.id,
-      mode.value,
-    );
+    controller.fan.setMode(mode);
     setState(() {});
-
-    final success = await _setPropertyValue(modeProp, mode.value);
-    if (mounted) {
-      if (success) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          modeProp.id,
-        );
-      } else {
-        _deviceControlStateService?.clear(
-          _device.id,
-          fanChannel.id,
-          modeProp.id,
-        );
-        setState(() {});
-      }
-    }
   }
 
-  void _setFanSwing(bool value) async {
-    final fanChannel = _device.fanChannel;
-    final swingProp = fanChannel.swingProp;
-    if (!fanChannel.hasSwing || swingProp == null) return;
+  void _setFanSwing(bool value) {
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      swingProp.id,
-      value,
-    );
+    controller.fan.setSwing(value);
     setState(() {});
-
-    final success = await _setPropertyValue(swingProp, value);
-    if (mounted) {
-      if (success) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          swingProp.id,
-        );
-      } else {
-        _deviceControlStateService?.clear(
-          _device.id,
-          fanChannel.id,
-          swingProp.id,
-        );
-        setState(() {});
-      }
-    }
   }
 
-  void _setFanDirection(FanDirectionValue direction) async {
-    final fanChannel = _device.fanChannel;
-    final directionProp = fanChannel.directionProp;
-    if (!fanChannel.hasDirection || directionProp == null) return;
+  void _setFanDirection(FanDirectionValue direction) {
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      directionProp.id,
-      direction.value,
-    );
+    controller.fan.setDirection(direction);
     setState(() {});
-
-    final success = await _setPropertyValue(directionProp, direction.value);
-    if (mounted) {
-      if (success) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          directionProp.id,
-        );
-      } else {
-        _deviceControlStateService?.clear(
-          _device.id,
-          fanChannel.id,
-          directionProp.id,
-        );
-        setState(() {});
-      }
-    }
   }
 
-  void _setFanNaturalBreeze(bool value) async {
-    final fanChannel = _device.fanChannel;
-    final naturalBreezeProp = fanChannel.naturalBreezeProp;
-    if (!fanChannel.hasNaturalBreeze || naturalBreezeProp == null) return;
+  void _setFanNaturalBreeze(bool value) {
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      naturalBreezeProp.id,
-      value,
-    );
+    controller.fan.setNaturalBreeze(value);
     setState(() {});
-
-    final success = await _setPropertyValue(naturalBreezeProp, value);
-    if (mounted) {
-      if (success) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          naturalBreezeProp.id,
-        );
-      } else {
-        _deviceControlStateService?.clear(
-          _device.id,
-          fanChannel.id,
-          naturalBreezeProp.id,
-        );
-        setState(() {});
-      }
-    }
   }
 
-  void _setFanLocked(bool value) async {
-    final fanChannel = _device.fanChannel;
-    final lockedProp = fanChannel.lockedProp;
-    if (!fanChannel.hasLocked || lockedProp == null) return;
+  void _setFanLocked(bool value) {
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      lockedProp.id,
-      value,
-    );
+    controller.fan.setLocked(value);
     setState(() {});
-
-    final success = await _setPropertyValue(lockedProp, value);
-    if (mounted) {
-      if (success) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          lockedProp.id,
-        );
-      } else {
-        _deviceControlStateService?.clear(
-          _device.id,
-          fanChannel.id,
-          lockedProp.id,
-        );
-        setState(() {});
-      }
-    }
   }
 
-  void _setFanTimerPreset(FanTimerPresetValue preset) async {
-    final fanChannel = _device.fanChannel;
-    final timerProp = fanChannel.timerProp;
-    if (!fanChannel.hasTimer || timerProp == null) return;
+  void _setFanTimerPreset(FanTimerPresetValue preset) {
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      timerProp.id,
-      preset.value,
-    );
+    controller.fan.setTimerPreset(preset);
     setState(() {});
-
-    final success = await _setPropertyValue(timerProp, preset.value);
-    if (mounted) {
-      if (success) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          timerProp.id,
-        );
-      } else {
-        _deviceControlStateService?.clear(
-          _device.id,
-          fanChannel.id,
-          timerProp.id,
-        );
-        setState(() {});
-      }
-    }
   }
 
-  void _setFanTimerNumeric(int minutes) async {
-    final fanChannel = _device.fanChannel;
-    final timerProp = fanChannel.timerProp;
-    if (!fanChannel.hasTimer || timerProp == null) return;
+  void _setFanTimerNumeric(int minutes) {
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      fanChannel.id,
-      timerProp.id,
-      minutes,
-    );
+    controller.fan.setTimer(minutes);
     setState(() {});
-
-    final success = await _setPropertyValue(timerProp, minutes);
-    if (mounted) {
-      if (success) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          fanChannel.id,
-          timerProp.id,
-        );
-      } else {
-        _deviceControlStateService?.clear(
-          _device.id,
-          fanChannel.id,
-          timerProp.id,
-        );
-        setState(() {});
-      }
-    }
   }
 
   // --------------------------------------------------------------------------

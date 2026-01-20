@@ -137,28 +137,6 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   double _scale(double value) =>
       _screenService.scale(value, density: _visualDensityService.density);
 
-  Future<void> _setPropertyValue(
-    ChannelPropertyView? property,
-    dynamic value,
-  ) async {
-    if (property == null) return;
-
-    final localizations = AppLocalizations.of(context);
-
-    try {
-      bool res = await _devicesService.setPropertyValue(property.id, value);
-
-      if (!res && mounted && localizations != null) {
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      if (localizations != null) {
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
-    }
-  }
-
   // --------------------------------------------------------------------------
   // STATE HELPERS
   // --------------------------------------------------------------------------
@@ -311,32 +289,14 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   // MODE AND SETPOINT HANDLERS
   // --------------------------------------------------------------------------
 
-  void _onModeChanged(ThermostatMode mode) async {
+  void _onModeChanged(ThermostatMode mode) {
+    final controller = _controller;
     final heaterChannel = _device.heaterChannel;
     final coolerChannel = _device.coolerChannel;
     final heaterOnProp = heaterChannel?.onProp;
     final coolerOnProp = coolerChannel?.onProp;
 
-    // Set PENDING state immediately for responsive UI
-    if (heaterOnProp != null && heaterChannel != null) {
-      final heaterOn = mode == ThermostatMode.heat || mode == ThermostatMode.auto;
-      _deviceControlStateService?.setPending(
-        _device.id,
-        heaterChannel.id,
-        heaterOnProp.id,
-        heaterOn,
-      );
-    }
-    if (coolerOnProp != null && coolerChannel != null) {
-      final coolerOn = mode == ThermostatMode.cool || mode == ThermostatMode.auto;
-      _deviceControlStateService?.setPending(
-        _device.id,
-        coolerChannel.id,
-        coolerOnProp.id,
-        coolerOn,
-      );
-    }
-    setState(() {});
+    if (controller == null) return;
 
     // Build batch command list - mode is controlled via heater.on/cooler.on
     final commands = <PropertyCommandItem>[];
@@ -420,46 +380,29 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         break;
     }
 
-    // Send all commands as a single batch
+    // Use controller's batch operation
     if (commands.isNotEmpty) {
-      final localizations = AppLocalizations.of(context);
-
-      try {
-        bool res = await _devicesService.setMultiplePropertyValues(
-          properties: commands,
-        );
-
-        if (!res && mounted && localizations != null) {
-          AlertBar.showError(context, message: localizations.action_failed);
-        }
-      } catch (e) {
-        if (mounted && localizations != null) {
-          AlertBar.showError(context, message: localizations.action_failed);
-        }
-      }
-    }
-
-    // Transition to settling state
-    if (heaterOnProp != null && heaterChannel != null) {
-      _deviceControlStateService?.setSettling(
-        _device.id,
-        heaterChannel.id,
-        heaterOnProp.id,
+      controller.setMultipleProperties(
+        commands,
+        onError: () {
+          if (mounted) {
+            final localizations = AppLocalizations.of(context);
+            if (localizations != null) {
+              AlertBar.showError(context, message: localizations.action_failed);
+            }
+            setState(() {});
+          }
+        },
       );
-    }
-    if (coolerOnProp != null && coolerChannel != null) {
-      _deviceControlStateService?.setSettling(
-        _device.id,
-        coolerChannel.id,
-        coolerOnProp.id,
-      );
+      setState(() {});
     }
   }
 
   void _onSetpointChanged(double value) {
+    final controller = _controller;
     final setpointProp = _activeSetpointProp;
     final channelId = _activeSetpointChannelId;
-    if (setpointProp == null || channelId == null) return;
+    if (controller == null || setpointProp == null || channelId == null) return;
 
     // Round to step value (0.5)
     final steppedValue = (value * 2).round() / 2;
@@ -467,7 +410,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     // Clamp to valid range
     final clampedValue = steppedValue.clamp(_minSetpoint, _maxSetpoint);
 
-    // Set PENDING state immediately for responsive UI
+    // Set PENDING state immediately for responsive UI (for dial visual feedback)
     _deviceControlStateService?.setPending(
       _device.id,
       channelId,
@@ -480,42 +423,29 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     _setpointDebounceTimer?.cancel();
 
     // Debounce the API call to avoid flooding backend
-    _setpointDebounceTimer = Timer(_setpointDebounceDuration, () async {
+    _setpointDebounceTimer = Timer(_setpointDebounceDuration, () {
       if (!mounted) return;
 
-      await _setPropertyValue(setpointProp, clampedValue);
-
-      if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          channelId,
-          setpointProp.id,
-        );
+      // Use controller method based on current mode
+      switch (_currentMode) {
+        case ThermostatMode.heat:
+          controller.setHeatingTemperature(clampedValue);
+          break;
+        case ThermostatMode.cool:
+          controller.setCoolingTemperature(clampedValue);
+          break;
+        default:
+          break;
       }
     });
   }
 
   void _setThermostatLocked(bool value) {
-    final lockedProp = _device.thermostatChannel.lockedProp;
-    if (lockedProp == null) return;
+    final controller = _controller;
+    if (controller == null) return;
 
-    _deviceControlStateService?.setPending(
-      _device.id,
-      _device.thermostatChannel.id,
-      lockedProp.id,
-      value,
-    );
+    controller.setLocked(value);
     setState(() {});
-
-    _setPropertyValue(lockedProp, value).then((_) {
-      if (mounted) {
-        _deviceControlStateService?.setSettling(
-          _device.id,
-          _device.thermostatChannel.id,
-          lockedProp.id,
-        );
-      }
-    });
   }
 
   // --------------------------------------------------------------------------
