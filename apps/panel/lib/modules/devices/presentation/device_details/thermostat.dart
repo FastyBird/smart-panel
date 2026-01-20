@@ -164,26 +164,31 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     final heater = widget._device.heaterChannel;
     final cooler = widget._device.coolerChannel;
 
-    // Set heater/cooler ON properties based on selected mode
-    // OFF: both off, HEAT: heater on only, COOL: cooler on only, AUTO: both on
+    // Strategic write order: The property that determines the final mode writes LAST.
+    // This ensures "last write wins" produces the correct result for each mode.
+    // - HEAT/OFF: heater writes last (determines heat/off)
+    // - COOL/AUTO: cooler writes last (determines cool/heat_cool)
     switch (mode) {
       case ThermostatModeType.off:
+        // Cooler first, heater last → heater's "off" is final
+        if (cooler != null) {
+          await _valueHelper.setPropertyValue(context, cooler.onProp, false);
+        }
         if (heater != null) {
           await _valueHelper.setPropertyValue(context, heater.onProp, false);
         }
+        break;
+      case ThermostatModeType.heat:
+        // Cooler first, heater last → heater's "heat" is final
         if (cooler != null) {
           await _valueHelper.setPropertyValue(context, cooler.onProp, false);
         }
-        break;
-      case ThermostatModeType.heat:
         if (heater != null) {
           await _valueHelper.setPropertyValue(context, heater.onProp, true);
         }
-        if (cooler != null) {
-          await _valueHelper.setPropertyValue(context, cooler.onProp, false);
-        }
         break;
       case ThermostatModeType.cool:
+        // Heater first, cooler last → cooler's "cool" is final
         if (heater != null) {
           await _valueHelper.setPropertyValue(context, heater.onProp, false);
         }
@@ -192,6 +197,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         }
         break;
       case ThermostatModeType.auto:
+        // Heater first, cooler last → cooler's "heat_cool" is final
         if (heater != null) {
           await _valueHelper.setPropertyValue(context, heater.onProp, true);
         }

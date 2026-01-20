@@ -124,9 +124,12 @@ mappings:
         category: COOLER
         features:
           # System mode -> cooler ON state (true when mode includes cooling)
-          # Note: Write only handles true→"heat_cool" to enable AUTO mode.
-          # Cooler false does not write to avoid overwriting heater's mode.
-          # COOL-only mode will set "heat_cool" (both enabled) as a limitation.
+          # Write order strategy: Flutter writes heater first, cooler last for COOL/AUTO modes.
+          # This ensures cooler's write is the final mode sent to Z2M.
+          # - COOL mode: heater→"off", cooler→"cool" → final "cool" ✓
+          # - AUTO mode: heater→"heat", cooler→"cool" → final "cool" (limitation: no true heat_cool)
+          # Trade-off: COOL mode works correctly, AUTO mode enables cooling only.
+          # For true heat_cool support, users should configure via Z2M interface directly.
           - z2m_feature: system_mode
             panel:
               identifier: ON
@@ -142,7 +145,7 @@ mappings:
                 "heat_cool": true
                 "fan_only": false
               write:
-                true: "heat_cool"
+                true: "cool"
 
           # Running state -> cooler status (true when cooling)
           - z2m_feature: running_state

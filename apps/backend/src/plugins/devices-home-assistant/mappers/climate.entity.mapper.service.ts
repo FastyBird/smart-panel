@@ -264,8 +264,26 @@ export class ClimateEntityMapperService extends EntityMapper {
 			ChannelCategory.COOLER,
 		]);
 
-		// Check for AUTO mode first (both heater and cooler ON)
-		// Use value from `values` map if being set in this call, otherwise use current property value
+		// Determine if either property is being changed in this call
+		const heaterChanged = heaterOnProp && values.has(heaterOnProp.id);
+		const coolerChanged = coolerOnProp && values.has(coolerOnProp.id);
+
+		// Only send HVAC mode change if at least one ON property is being changed
+		if (!heaterChanged && !coolerChanged) {
+			return null;
+		}
+
+		// Compute combined HVAC mode from heater and cooler ON states.
+		// Use value from `values` map if being set in this call, otherwise use current property value.
+		//
+		// IMPORTANT: This logic assumes the property's `value` field reflects the persisted state.
+		// Flutter sends heater/cooler changes sequentially with await, so the first request should
+		// complete (including DB persistence) before the second request arrives. If there's a race
+		// condition where the property value hasn't been updated yet, the wrong mode may be computed.
+		//
+		// Write order strategy (Flutter):
+		// - HEAT/OFF modes: cooler writes first, heater writes last → heater determines final mode
+		// - COOL/AUTO modes: heater writes first, cooler writes last → cooler determines final mode
 		const heaterOn = heaterOnProp
 			? values.has(heaterOnProp.id)
 				? values.get(heaterOnProp.id) === true
@@ -276,15 +294,6 @@ export class ClimateEntityMapperService extends EntityMapper {
 				? values.get(coolerOnProp.id) === true
 				: coolerOnProp.value === true
 			: false;
-
-		// Determine if either property is being changed in this call
-		const heaterChanged = heaterOnProp && values.has(heaterOnProp.id);
-		const coolerChanged = coolerOnProp && values.has(coolerOnProp.id);
-
-		// Only send HVAC mode change if at least one ON property is being changed
-		if (!heaterChanged && !coolerChanged) {
-			return null;
-		}
 
 		if (heaterOn && coolerOn) {
 			return {
