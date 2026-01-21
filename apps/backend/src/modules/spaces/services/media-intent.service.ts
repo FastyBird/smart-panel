@@ -641,6 +641,10 @@ export class MediaIntentService extends SpaceIntentBaseService {
 
 		switch (intent.type) {
 			case MediaIntentType.POWER_OFF:
+				if (!device.onProperty) {
+					this.logger.debug(`Device does not support power control deviceId=${device.device.id}`);
+					return true; // Not a failure, device just doesn't support this
+				}
 				commands.push({
 					device: device.device,
 					channel: device.mediaChannel,
@@ -650,6 +654,10 @@ export class MediaIntentService extends SpaceIntentBaseService {
 				break;
 
 			case MediaIntentType.POWER_ON:
+				if (!device.onProperty) {
+					this.logger.debug(`Device does not support power control deviceId=${device.device.id}`);
+					return true; // Not a failure, device just doesn't support this
+				}
 				commands.push({
 					device: device.device,
 					channel: device.mediaChannel,
@@ -921,6 +929,10 @@ export class MediaIntentService extends SpaceIntentBaseService {
 				if (intent.on === undefined) {
 					this.logger.warn('ROLE_POWER intent missing on parameter');
 					return false;
+				}
+				if (!device.onProperty) {
+					this.logger.debug(`Device does not support power control deviceId=${device.device.id}`);
+					return true; // Not a failure, device just doesn't support this
 				}
 				commands.push({
 					device: device.device,
