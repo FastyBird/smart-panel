@@ -34,4 +34,6 @@ class SpacesModuleConstants {
       'SpacesModule.Space.ClimateStateChanged';
   static const String coversStateChangedEvent =
       'SpacesModule.Space.CoversStateChanged';
+  static const String sensorStateChangedEvent =
+      'SpacesModule.Space.SensorStateChanged';
 }

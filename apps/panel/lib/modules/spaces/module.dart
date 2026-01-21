@@ -193,6 +193,14 @@ class SpacesModuleService {
       if (spaceId != null && stateData != null) {
         _spaceStateRepository.updateCoversState(spaceId, stateData);
       }
+
+      /// Sensor State CHANGED
+    } else if (event == SpacesModuleConstants.sensorStateChangedEvent) {
+      final spaceId = payload['space_id'] as String?;
+      final stateData = payload['state'] as Map<String, dynamic>?;
+      if (spaceId != null && stateData != null) {
+        _spaceStateRepository.updateSensorState(spaceId, stateData);
+      }
     }
   }
 

@@ -15,6 +15,7 @@ import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climat
 import 'package:fastybird_smart_panel/modules/spaces/models/covers_state/covers_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/intent_result/intent_result.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/sensor_state/sensor_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/suggestion/suggestion.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/undo/undo_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/intent_types.dart';
@@ -62,6 +63,9 @@ class SpaceStateRepository extends ChangeNotifier {
 
   /// Cached covers states by space ID
   final Map<String, CoversStateModel> _coversStates = {};
+
+  /// Cached sensor states by space ID
+  final Map<String, SensorStateModel> _sensorStates = {};
 
   /// Cached suggestions by space ID (null means no suggestion available)
   final Map<String, SuggestionModel?> _suggestions = {};
@@ -257,6 +261,67 @@ class SpaceStateRepository extends ChangeNotifier {
       if (kDebugMode) {
         debugPrint(
           '[SPACES MODULE][STATE] Error fetching covers state for $spaceId: $e',
+        );
+      }
+    }
+    return null;
+  }
+
+  // ============================================
+  // SENSOR STATE
+  // ============================================
+
+  /// Get cached sensor state for a space
+  SensorStateModel? getSensorState(String spaceId) {
+    return _sensorStates[spaceId];
+  }
+
+  /// Update sensor state from WebSocket event
+  void updateSensorState(String spaceId, Map<String, dynamic> json) {
+    try {
+      final state = SensorStateModel.fromJson(json, spaceId: spaceId);
+      _sensorStates[spaceId] = state;
+
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][STATE] Updated sensor state for space: $spaceId',
+        );
+      }
+      notifyListeners();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][STATE] Failed to parse sensor state: $e',
+        );
+      }
+    }
+  }
+
+  /// Fetch sensor state from API
+  Future<SensorStateModel?> fetchSensorState(String spaceId) async {
+    try {
+      final response = await _apiClient.getSpacesModuleSpaceSensors(
+        id: spaceId,
+      );
+
+      if (response.response.statusCode == 200) {
+        // Prefer typed response data and convert to JSON for existing model
+        final apiData = response.data.data;
+        final state = SensorStateModel.fromJson(apiData.toJson(), spaceId: spaceId);
+        _sensorStates[spaceId] = state;
+        notifyListeners();
+        return state;
+      }
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][STATE] API error fetching sensor state for $spaceId: ${e.response?.statusCode}',
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][STATE] Error fetching sensor state for $spaceId: $e',
         );
       }
     }
@@ -1067,6 +1132,7 @@ class SpaceStateRepository extends ChangeNotifier {
         fetchLightingState(spaceId),
         fetchClimateState(spaceId),
         fetchCoversState(spaceId),
+        fetchSensorState(spaceId),
         fetchSuggestion(spaceId),
         fetchUndoState(spaceId),
       ]);
@@ -1084,6 +1150,7 @@ class SpaceStateRepository extends ChangeNotifier {
     _lightingStates.clear();
     _climateStates.clear();
     _coversStates.clear();
+    _sensorStates.clear();
     _suggestions.clear();
     _undoStates.clear();
     _loadingCount = 0;
@@ -1095,6 +1162,7 @@ class SpaceStateRepository extends ChangeNotifier {
     _lightingStates.remove(spaceId);
     _climateStates.remove(spaceId);
     _coversStates.remove(spaceId);
+    _sensorStates.remove(spaceId);
     _suggestions.remove(spaceId);
     _undoStates.remove(spaceId);
     notifyListeners();
