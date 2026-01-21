@@ -71,6 +71,12 @@
 				:space="space"
 				@edit="showClimateRolesDialog = true"
 			/>
+			<!-- Media roles summary -->
+			<space-media-roles-summary
+				ref="mediaRolesSummaryRef"
+				:space="space"
+				@edit="showMediaRolesDialog = true"
+			/>
 			<!-- Covers roles summary -->
 			<space-covers-roles-summary
 				ref="coversRolesSummaryRef"
@@ -161,6 +167,13 @@
 		@roles-changed="onClimateRolesChanged"
 	/>
 
+	<!-- Media roles dialog -->
+	<space-media-roles-dialog
+		v-model:visible="showMediaRolesDialog"
+		:space="space"
+		@roles-changed="onMediaRolesChanged"
+	/>
+
 	<!-- Covers roles dialog -->
 	<space-covers-roles-dialog
 		v-model:visible="showCoversRolesDialog"
@@ -192,6 +205,8 @@ import SpaceClimateRolesDialog from './space-climate-roles-dialog.vue';
 import SpaceClimateRolesSummary from './space-climate-roles-summary.vue';
 import SpaceCoversRolesDialog from './space-covers-roles-dialog.vue';
 import SpaceCoversRolesSummary from './space-covers-roles-summary.vue';
+import SpaceMediaRolesDialog from './space-media-roles-dialog.vue';
+import SpaceMediaRolesSummary from './space-media-roles-summary.vue';
 import SpaceLightingRolesDialog from './space-lighting-roles-dialog.vue';
 import SpaceLightingRolesSummary from './space-lighting-roles-summary.vue';
 import SpaceSensorRolesDialog from './space-sensor-roles-dialog.vue';
@@ -214,10 +229,12 @@ const { editSpace } = useSpace(computed(() => props.space?.id));
 // Role dialog state
 const showLightingRolesDialog = ref(false);
 const showClimateRolesDialog = ref(false);
+const showMediaRolesDialog = ref(false);
 const showCoversRolesDialog = ref(false);
 const showSensorRolesDialog = ref(false);
 const lightingRolesSummaryRef = ref<InstanceType<typeof SpaceLightingRolesSummary> | null>(null);
 const climateRolesSummaryRef = ref<InstanceType<typeof SpaceClimateRolesSummary> | null>(null);
+const mediaRolesSummaryRef = ref<InstanceType<typeof SpaceMediaRolesSummary> | null>(null);
 const coversRolesSummaryRef = ref<InstanceType<typeof SpaceCoversRolesSummary> | null>(null);
 const sensorRolesSummaryRef = ref<InstanceType<typeof SpaceSensorRolesSummary> | null>(null);
 
@@ -347,6 +364,10 @@ const onLightingRolesChanged = (): void => {
 
 const onClimateRolesChanged = (): void => {
 	climateRolesSummaryRef.value?.reload();
+};
+
+const onMediaRolesChanged = (): void => {
+	mediaRolesSummaryRef.value?.reload();
 };
 
 const onCoversRolesChanged = (): void => {

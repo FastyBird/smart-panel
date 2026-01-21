@@ -11,10 +11,12 @@ export const spacesStoreKey: StoreInjectionKey<string, ISpacesStoreState, object
 export interface ISpacesRefreshSignals {
 	climate: Ref<number>;
 	lighting: Ref<number>;
+	media: Ref<number>;
 	covers: Ref<number>;
 	sensor: Ref<number>;
 	climateState: Ref<number>;
 	lightingState: Ref<number>;
+	mediaState: Ref<number>;
 	coversState: Ref<number>;
 	sensorState: Ref<number>;
 }

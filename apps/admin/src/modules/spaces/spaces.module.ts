@@ -35,14 +35,16 @@ export default {
 		app.provide(spacesStoreKey, spacesStore);
 		storesManager.addStore(spacesStoreKey, spacesStore);
 
-		// Create refresh signals for climate, lighting, covers, and sensor targets and state
+		// Create refresh signals for climate, lighting, media, covers, and sensor targets and state
 		const refreshSignals = {
 			climate: ref(0),
 			lighting: ref(0),
+			media: ref(0),
 			covers: ref(0),
 			sensor: ref(0),
 			climateState: ref(0),
 			lightingState: ref(0),
+			mediaState: ref(0),
 			coversState: ref(0),
 			sensorState: ref(0),
 		};
@@ -89,6 +91,11 @@ export default {
 				return;
 			}
 
+			if (data.event === EventType.MEDIA_STATE_CHANGED && 'space_id' in data.payload) {
+				refreshSignals.mediaState.value++;
+				return;
+			}
+
 			if (data.event === EventType.COVERS_STATE_CHANGED && 'space_id' in data.payload) {
 				refreshSignals.coversState.value++;
 				return;
@@ -129,6 +136,12 @@ export default {
 				case EventType.LIGHT_TARGET_UPDATED:
 				case EventType.LIGHT_TARGET_DELETED:
 					refreshSignals.lighting.value++;
+					break;
+
+				case EventType.MEDIA_TARGET_CREATED:
+				case EventType.MEDIA_TARGET_UPDATED:
+				case EventType.MEDIA_TARGET_DELETED:
+					refreshSignals.media.value++;
 					break;
 
 				case EventType.COVERS_TARGET_CREATED:

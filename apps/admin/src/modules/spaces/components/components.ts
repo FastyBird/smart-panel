@@ -13,10 +13,13 @@ export { default as SpaceCoversRoles } from './space-covers-roles.vue';
 export { default as SpaceCoversRolesSummary } from './space-covers-roles-summary.vue';
 export { default as SpaceSensorRoles } from './space-sensor-roles.vue';
 export { default as SpaceSensorRolesSummary } from './space-sensor-roles-summary.vue';
+export { default as SpaceMediaRoles } from './space-media-roles.vue';
+export { default as SpaceMediaRolesSummary } from './space-media-roles-summary.vue';
 export { default as SpaceLightingRolesDialog } from './space-lighting-roles-dialog.vue';
 export { default as SpaceClimateRolesDialog } from './space-climate-roles-dialog.vue';
 export { default as SpaceCoversRolesDialog } from './space-covers-roles-dialog.vue';
 export { default as SpaceSensorRolesDialog } from './space-sensor-roles-dialog.vue';
+export { default as SpaceMediaRolesDialog } from './space-media-roles-dialog.vue';
 
 // Space detail sections
 export { default as SpaceDetail } from './space-detail.vue';
