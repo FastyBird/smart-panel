@@ -109,6 +109,52 @@ describe('MapTransformer', () => {
 
 		expect(transformer.read('unknown')).toBe('unknown');
 	});
+
+	test('write_formula applies formula when value not in map', () => {
+		const transformer = new MapTransformer({
+			type: 'map',
+			write: { 0: 'off', 1: 'on' },
+			write_formula: 'value * 2',
+		});
+
+		expect(transformer.write(0)).toBe('off');
+		expect(transformer.write(1)).toBe('on');
+		expect(transformer.write(5)).toBe(10); // Uses formula
+		expect(transformer.write(10)).toBe(20); // Uses formula
+	});
+
+	test('write_formula rejects dangerous patterns', () => {
+		const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+		const transformer = new MapTransformer({
+			type: 'map',
+			write_formula: 'eval("malicious code")',
+		});
+
+		// Formula should not be compiled due to dangerous pattern
+		expect(transformer.write(5)).toBe(5); // Returns original value
+		expect(consoleSpy).toHaveBeenCalledWith(
+			expect.stringContaining('Map transformer: Write formula rejected due to dangerous patterns'),
+		);
+
+		consoleSpy.mockRestore();
+	});
+
+	test('write_formula rejects require() calls', () => {
+		const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+		const transformer = new MapTransformer({
+			type: 'map',
+			write_formula: 'require("child_process").exec("rm -rf /")',
+		});
+
+		expect(transformer.write(5)).toBe(5);
+		expect(consoleSpy).toHaveBeenCalledWith(
+			expect.stringContaining('Map transformer: Write formula rejected due to dangerous patterns'),
+		);
+
+		consoleSpy.mockRestore();
+	});
 });
 
 describe('BooleanTransformer', () => {

@@ -40,6 +40,33 @@ abstract class BaseTransformer implements ITransformer {
 }
 
 /**
+ * Validate formula for dangerous patterns
+ * This prevents code injection attacks when using new Function()
+ */
+function validateFormula(formula: string): boolean {
+	const dangerousPatterns = [
+		/eval\s*\(/i,
+		/Function\s*\(/i,
+		/require\s*\(/i,
+		/import\s+/i,
+		/process\./i,
+		/global\./i,
+		/window\./i,
+		/document\./i,
+		/__proto__/i,
+		/constructor\./i,
+	];
+
+	for (const pattern of dangerousPatterns) {
+		if (pattern.test(formula)) {
+			console.warn(`Formula transformer: Dangerous pattern detected in formula: ${formula}`);
+			return false;
+		}
+	}
+	return true;
+}
+
+/**
  * Scale transformer - linear interpolation between ranges
  */
 export class ScaleTransformer extends BaseTransformer {
@@ -111,6 +138,7 @@ export class ScaleTransformer extends BaseTransformer {
 export class MapTransformer extends BaseTransformer {
 	private readonly readMap: Map<string, unknown>;
 	private readonly writeMap: Map<string, unknown>;
+	private readonly writeFn?: (value: number) => unknown;
 	private readonly writeFormula?: string;
 
 	constructor(def: MapTransformerDefinition) {
@@ -145,6 +173,21 @@ export class MapTransformer extends BaseTransformer {
 				this.writeMap.set(valueKey, key);
 			}
 		}
+
+		// Validate and compile write formula if provided
+		if (def.write_formula) {
+			if (validateFormula(def.write_formula)) {
+				try {
+					// eslint-disable-next-line @typescript-eslint/no-implied-eval
+					this.writeFn = new Function('value', `return ${def.write_formula}`) as (v: number) => unknown;
+				} catch {
+					// Invalid formula - will return value as-is
+					console.warn(`Map transformer: Failed to compile write formula: ${def.write_formula}`);
+				}
+			} else {
+				console.warn(`Map transformer: Write formula rejected due to dangerous patterns: ${def.write_formula}`);
+			}
+		}
 	}
 
 	read(value: unknown): unknown {
@@ -161,15 +204,21 @@ export class MapTransformer extends BaseTransformer {
 			return this.writeMap.get(key);
 		}
 
-		// Try formula if available
-		if (this.writeFormula && typeof value === 'number') {
+		// Try compiled formula if available
+		if (this.writeFn && typeof value === 'number') {
 			try {
-				// eslint-disable-next-line @typescript-eslint/no-implied-eval
-				const fn = new Function('value', `return ${this.writeFormula}`) as (v: number) => unknown;
-				return fn(value);
-			} catch {
+				return this.writeFn(value);
+			} catch (error) {
+				console.warn(`Map transformer write error: ${error instanceof Error ? error.message : String(error)}`);
 				return value;
 			}
+		}
+
+		// If formula was provided but not compiled (validation failed), warn and return original value
+		if (this.writeFormula && typeof value === 'number') {
+			console.warn(
+				`Map transformer: Write formula not compiled, returning original value. Formula: ${this.writeFormula}`,
+			);
 		}
 
 		return value;
@@ -191,30 +240,6 @@ export class FormulaTransformer extends BaseTransformer {
 
 	constructor(def: FormulaTransformerDefinition) {
 		super(def.direction);
-
-		// Validate formulas for dangerous patterns
-		const dangerousPatterns = [
-			/eval\s*\(/i,
-			/Function\s*\(/i,
-			/require\s*\(/i,
-			/import\s+/i,
-			/process\./i,
-			/global\./i,
-			/window\./i,
-			/document\./i,
-			/__proto__/i,
-			/constructor\./i,
-		];
-
-		const validateFormula = (formula: string): boolean => {
-			for (const pattern of dangerousPatterns) {
-				if (pattern.test(formula)) {
-					console.warn(`Formula transformer: Dangerous pattern detected in formula: ${formula}`);
-					return false;
-				}
-			}
-			return true;
-		};
 
 		if (def.read) {
 			this.readFormula = def.read;
