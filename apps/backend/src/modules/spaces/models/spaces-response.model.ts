@@ -3276,15 +3276,16 @@ export class BulkMediaRoleResultItemModel {
 	@Expose({ name: 'device_id' })
 	deviceId: string;
 
-	@ApiProperty({
+	@ApiPropertyOptional({
 		name: 'channel_id',
-		description: 'ID of the media channel',
+		description: 'ID of the media channel (null for device-level roles)',
 		type: 'string',
 		format: 'uuid',
-		example: 'c3d29eb4-632f-5e8c-c4af-ded8b9e6c0f8',
+		nullable: true,
+		example: null,
 	})
 	@Expose({ name: 'channel_id' })
-	channelId: string;
+	channelId: string | null;
 
 	@ApiProperty({
 		description: 'Whether the role was set successfully',
