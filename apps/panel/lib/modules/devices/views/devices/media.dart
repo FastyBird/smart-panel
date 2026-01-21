@@ -34,8 +34,8 @@ class MediaDeviceView extends DeviceView
       channels.whereType<DeviceInformationChannelView>().first;
 
   @override
-  MediaInputChannelView get mediaInputChannel =>
-      channels.whereType<MediaInputChannelView>().first;
+  MediaInputChannelView? get mediaInputChannel =>
+      channels.whereType<MediaInputChannelView>().firstOrNull;
 
   @override
   MediaPlaybackChannelView get mediaPlaybackChannel =>
