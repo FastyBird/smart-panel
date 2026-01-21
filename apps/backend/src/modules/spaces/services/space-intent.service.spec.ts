@@ -28,6 +28,7 @@ import { LightingIntentService } from './lighting-intent.service';
 import { MediaIntentService } from './media-intent.service';
 import { IntentExecutionResult } from './space-intent-base.service';
 import { SpaceIntentService, selectLightsForMode } from './space-intent.service';
+import { SpaceMediaStateService } from './space-media-state.service';
 
 // Mock mode orchestration configs matching YAML structure
 const mockModeConfigs: Record<LightingMode, ResolvedModeOrchestration> = {
@@ -82,6 +83,8 @@ describe('SpaceIntentService', () => {
 	let mockLightingIntentService: jest.Mocked<LightingIntentService>;
 	let mockClimateIntentService: jest.Mocked<ClimateIntentService>;
 	let mockCoversIntentService: jest.Mocked<CoversIntentService>;
+	let mockMediaIntentService: jest.Mocked<MediaIntentService>;
+	let mockMediaStateService: jest.Mocked<SpaceMediaStateService>;
 
 	const mockSpaceId = 'space-123';
 
@@ -101,16 +104,21 @@ describe('SpaceIntentService', () => {
 			executeCoversIntent: jest.fn(),
 		} as unknown as jest.Mocked<CoversIntentService>;
 
-		const mockMediaIntentService = {
+		mockMediaIntentService = {
 			getMediaState: jest.fn(),
 			executeMediaIntent: jest.fn(),
 		} as unknown as jest.Mocked<MediaIntentService>;
+
+		mockMediaStateService = {
+			getMediaState: jest.fn(),
+		} as unknown as jest.Mocked<SpaceMediaStateService>;
 
 		service = new SpaceIntentService(
 			mockLightingIntentService,
 			mockClimateIntentService,
 			mockCoversIntentService,
 			mockMediaIntentService,
+			mockMediaStateService,
 		);
 	});
 

@@ -933,9 +933,17 @@
       "en": "The Media device represents a multimedia system capable of playing, recording, or managing audio and video content."
     },
     "channels": {
+      "switcher": {
+        "category": "switcher",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Optional power control for media devices (hard power / standby) when supported by the integration."
+        }
+      },
       "media_input": {
         "category": "media_input",
-        "required": true,
+        "required": false,
         "multiple": false,
         "description": {
           "en": "Manages the input sources of multimedia devices like TVs, projectors, or audio receivers."
@@ -1325,6 +1333,14 @@
       "en": "The Speaker device represents an audio output system capable of producing sound and potentially supporting media playback and input functionality."
     },
     "channels": {
+      "switcher": {
+        "category": "switcher",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Optional power control for speakers/soundbars when supported (hard power / standby)."
+        }
+      },
       "speaker": {
         "category": "speaker",
         "required": true,
@@ -1535,6 +1551,22 @@
         "description": {
           "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
         }
+      },
+      "media_playback": {
+        "category": "media_playback",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Optional playback controls when the TV exposes media player capabilities (smart TV apps)."
+        }
+      },
+      "media_input": {
+        "category": "media_input",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Optional input/source management when exposed as separate channel."
+        }
       }
     }
   },
@@ -1734,6 +1766,206 @@
         "multiple": false,
         "description": {
           "en": "Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics."
+        }
+      }
+    }
+  },
+  "projector": {
+    "category": "projector",
+    "description": {
+      "en": "The Projector device represents a video projection display that can be powered on/off and switched between input sources."
+    },
+    "channels": {
+      "television": {
+        "category": "television",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Controls display power, input source, and remote/navigation keys for the projector."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "speaker": {
+        "category": "speaker",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Optional audio output control if the projector exposes speaker/volume control."
+        }
+      }
+    }
+  },
+  "av_receiver": {
+    "category": "av_receiver",
+    "description": {
+      "en": "The AV Receiver device represents a home theater receiver/amplifier with input switching and speaker output control."
+    },
+    "channels": {
+      "switcher": {
+        "category": "switcher",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Optional power control for AV receivers (hard power / standby) when supported by the integration."
+        }
+      },
+      "speaker": {
+        "category": "speaker",
+        "required": true,
+        "multiple": true,
+        "description": {
+          "en": "Controls audio output (zones), including volume, mute, and sound modes."
+        }
+      },
+      "media_input": {
+        "category": "media_input",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Manages input sources such as HDMI ports, optical, or network sources."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "media_playback": {
+        "category": "media_playback",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Optional playback controls when the receiver includes built-in network playback (e.g., Spotify Connect, DLNA)."
+        }
+      },
+      "electrical_power": {
+        "category": "electrical_power",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics."
+        }
+      },
+      "electrical_energy": {
+        "category": "electrical_energy",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh)."
+        }
+      }
+    }
+  },
+  "set_top_box": {
+    "category": "set_top_box",
+    "description": {
+      "en": "The Set-top Box device represents a TV-connected media device (streaming box, IPTV box, or HDMI stick) providing playback control and optional source selection."
+    },
+    "channels": {
+      "switcher": {
+        "category": "switcher",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Optional power control for set-top boxes (hard power / standby) when supported by the integration."
+        }
+      },
+      "media_playback": {
+        "category": "media_playback",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Provides playback controls and metadata for the set-top box."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "media_input": {
+        "category": "media_input",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Optional source selection when exposed by the device (apps/inputs)."
+        }
+      },
+      "speaker": {
+        "category": "speaker",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Optional volume control if the device exposes audio output controls."
+        }
+      }
+    }
+  },
+  "game_console": {
+    "category": "game_console",
+    "description": {
+      "en": "The Game Console device represents a gaming console that can be controlled for basic power/activity state and media playback where supported."
+    },
+    "channels": {
+      "switcher": {
+        "category": "switcher",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Optional power control for game consoles (hard power / standby) when supported by the integration."
+        }
+      },
+      "media_playback": {
+        "category": "media_playback",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Represents activity/playback state and basic media controls exposed by the console integration."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      }
+    }
+  },
+  "streaming_service": {
+    "category": "streaming_service",
+    "description": {
+      "en": "The Streaming Service device represents a cloud-based media player (e.g., Spotify) that provides playback control and metadata without a physical power state."
+    },
+    "channels": {
+      "media_playback": {
+        "category": "media_playback",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Playback controls and metadata for the streaming service."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Service metadata, account/endpoint details, and operational statuses."
         }
       }
     }

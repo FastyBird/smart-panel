@@ -1608,15 +1608,28 @@ export enum MediaRole {
  * Media Intent Types - space-level intents for media device control
  */
 export enum MediaIntentType {
-	POWER_ON = 'power_on', // Turn on all media devices
-	POWER_OFF = 'power_off', // Turn off all media devices
-	VOLUME_SET = 'volume_set', // Set all devices to a specific volume
-	VOLUME_DELTA = 'volume_delta', // Adjust volume by a delta
-	MUTE = 'mute', // Mute all devices
-	UNMUTE = 'unmute', // Unmute all devices
-	ROLE_POWER = 'role_power', // Set power for a specific role
-	ROLE_VOLUME = 'role_volume', // Set volume for a specific role
-	SET_MODE = 'set_mode', // Set a media mode (off/background/focused/party)
+	POWER_ON = 'power_on',
+	POWER_OFF = 'power_off',
+
+	VOLUME_SET = 'volume_set',
+	VOLUME_DELTA = 'volume_delta',
+	MUTE = 'mute',
+	UNMUTE = 'unmute',
+
+	ROLE_POWER = 'role_power',
+	ROLE_VOLUME = 'role_volume',
+
+	// Playback intents (high-value for media domain)
+	PLAY = 'play',
+	PAUSE = 'pause',
+	STOP = 'stop',
+	NEXT = 'next',
+	PREVIOUS = 'previous',
+
+	// Input/source intent (TV/AVR/STB)
+	INPUT_SET = 'input_set',
+
+	SET_MODE = 'set_mode',
 }
 
 /**
@@ -1649,67 +1662,95 @@ export const VOLUME_DELTA_STEPS: Record<VolumeDelta, number> = {
 
 /**
  * Media device categories for filtering
+ *
+ * Note:
+ * - streaming_service is intentionally excluded from power orchestration;
+ *   it can still participate in playback orchestration if you decide to map it as a device.
  */
 export const MEDIA_DEVICE_CATEGORIES = [
 	DeviceCategory.MEDIA,
 	DeviceCategory.SPEAKER,
 	DeviceCategory.TELEVISION,
+	DeviceCategory.AV_RECEIVER,
+	DeviceCategory.SET_TOP_BOX,
+	DeviceCategory.GAME_CONSOLE,
+	DeviceCategory.PROJECTOR,
+
+	// optional: only if you really represent it as "device" in spaces
+	// DeviceCategory.STREAMING_SERVICE,
 ] as const;
 
 /**
  * Media channel categories for filtering
+ *
+ * Important additions:
+ * - SWITCHER: generic power control for AVR/STB/Console/Speaker/Media (optional per device)
+ * - MEDIA_INPUT: source selection (TV/AVR)
  */
 export const MEDIA_CHANNEL_CATEGORIES = [
+	ChannelCategory.SWITCHER,
 	ChannelCategory.SPEAKER,
 	ChannelCategory.TELEVISION,
+	ChannelCategory.MEDIA_INPUT,
 	ChannelCategory.MEDIA_PLAYBACK,
 ] as const;
 
 /**
  * Mode definitions for media - maps each mode to role-specific settings
  * Volume values: 0-100
+ *
+ * IMPORTANT:
+ * - All fields are optional: apply only if the target device supports the capability.
+ * - `power` is an orchestration intent, NOT a device property.
+ *   (Device property remains `on` under television/switcher/etc.)
  */
-export interface MediaRoleVolumeRule {
-	/** Power state (true=on, false=off) */
-	on: boolean;
-	/** Volume percentage (0-100) or null for mute */
-	volume: number | null;
-	/** Mute state (true=muted) */
-	muted: boolean;
+export interface MediaRoleOrchestrationRule {
+	/** Desired power state when supported (true=on, false=off) */
+	power?: boolean;
+
+	/** Desired volume percentage (0-100) when supported; null can mean "mute" preference */
+	volume?: number | null;
+
+	/** Desired mute state when supported */
+	muted?: boolean;
 }
 
 /**
  * Mode orchestration rules for media
  */
-export type MediaModeOrchestrationRules = Partial<Record<MediaRole, MediaRoleVolumeRule>>;
+export type MediaModeOrchestrationRules = Partial<Record<MediaRole, MediaRoleOrchestrationRule>>;
 
 /**
  * Mode orchestration configuration for media
+ *
+ * Notes:
+ * - OFF: prefer power off, but only if device has a power capability (television.on or switcher.on)
+ * - BACKGROUND/FOCUSED: do not force power for PRIMARY unless you mean it; keep intent explicit
  */
 export const MEDIA_MODE_ORCHESTRATION: Record<MediaMode, MediaModeOrchestrationRules> = {
 	[MediaMode.OFF]: {
-		[MediaRole.PRIMARY]: { on: false, volume: null, muted: false },
-		[MediaRole.SECONDARY]: { on: false, volume: null, muted: false },
-		[MediaRole.BACKGROUND]: { on: false, volume: null, muted: false },
-		[MediaRole.GAMING]: { on: false, volume: null, muted: false },
+		[MediaRole.PRIMARY]: { power: false },
+		[MediaRole.SECONDARY]: { power: false },
+		[MediaRole.BACKGROUND]: { power: false },
+		[MediaRole.GAMING]: { power: false },
 	},
 	[MediaMode.BACKGROUND]: {
-		[MediaRole.PRIMARY]: { on: false, volume: null, muted: false },
-		[MediaRole.SECONDARY]: { on: false, volume: null, muted: false },
-		[MediaRole.BACKGROUND]: { on: true, volume: 30, muted: false },
-		[MediaRole.GAMING]: { on: false, volume: null, muted: false },
+		[MediaRole.PRIMARY]: { power: false },
+		[MediaRole.SECONDARY]: { power: false },
+		[MediaRole.BACKGROUND]: { power: true, volume: 30, muted: false },
+		[MediaRole.GAMING]: { power: false },
 	},
 	[MediaMode.FOCUSED]: {
-		[MediaRole.PRIMARY]: { on: true, volume: 50, muted: false },
-		[MediaRole.SECONDARY]: { on: false, volume: null, muted: false },
-		[MediaRole.BACKGROUND]: { on: true, volume: null, muted: true },
-		[MediaRole.GAMING]: { on: false, volume: null, muted: false },
+		[MediaRole.PRIMARY]: { power: true, volume: 50, muted: false },
+		[MediaRole.SECONDARY]: { power: false },
+		[MediaRole.BACKGROUND]: { power: true, muted: true },
+		[MediaRole.GAMING]: { power: false },
 	},
 	[MediaMode.PARTY]: {
-		[MediaRole.PRIMARY]: { on: true, volume: 70, muted: false },
-		[MediaRole.SECONDARY]: { on: true, volume: 70, muted: false },
-		[MediaRole.BACKGROUND]: { on: true, volume: 70, muted: false },
-		[MediaRole.GAMING]: { on: true, volume: 70, muted: false },
+		[MediaRole.PRIMARY]: { power: true, volume: 70, muted: false },
+		[MediaRole.SECONDARY]: { power: true, volume: 70, muted: false },
+		[MediaRole.BACKGROUND]: { power: true, volume: 70, muted: false },
+		[MediaRole.GAMING]: { power: true, volume: 70, muted: false },
 	},
 };
 
@@ -1807,21 +1848,21 @@ export const MEDIA_INTENT_CATALOG: IntentTypeMeta[] = [
 	{
 		type: MediaIntentType.POWER_ON,
 		label: 'Power On',
-		description: 'Turn on all media devices in the space',
+		description: 'Turn on all media devices in the space (where supported)',
 		icon: 'mdi:power',
 		params: [],
 	},
 	{
 		type: MediaIntentType.POWER_OFF,
 		label: 'Power Off',
-		description: 'Turn off all media devices in the space',
+		description: 'Turn off all media devices in the space (where supported)',
 		icon: 'mdi:power-off',
 		params: [],
 	},
 	{
 		type: MediaIntentType.VOLUME_SET,
 		label: 'Set Volume',
-		description: 'Set all media devices to a specific volume (0-100)',
+		description: 'Set all media devices to a specific volume (0-100) where supported',
 		icon: 'mdi:volume-high',
 		params: [
 			{
@@ -1837,7 +1878,7 @@ export const MEDIA_INTENT_CATALOG: IntentTypeMeta[] = [
 	{
 		type: MediaIntentType.VOLUME_DELTA,
 		label: 'Adjust Volume',
-		description: 'Increase or decrease volume of all media devices',
+		description: 'Increase or decrease volume of all media devices where supported',
 		icon: 'mdi:volume-medium',
 		params: [
 			{
@@ -1858,21 +1899,75 @@ export const MEDIA_INTENT_CATALOG: IntentTypeMeta[] = [
 	{
 		type: MediaIntentType.MUTE,
 		label: 'Mute',
-		description: 'Mute all media devices in the space',
+		description: 'Mute all media devices in the space where supported',
 		icon: 'mdi:volume-off',
 		params: [],
 	},
 	{
 		type: MediaIntentType.UNMUTE,
 		label: 'Unmute',
-		description: 'Unmute all media devices in the space',
+		description: 'Unmute all media devices in the space where supported',
 		icon: 'mdi:volume-high',
 		params: [],
 	},
+
+	// Playback intents (apply only to devices with MEDIA_PLAYBACK)
+	{
+		type: MediaIntentType.PLAY,
+		label: 'Play',
+		description: 'Start playback on supported media devices',
+		icon: 'mdi:play',
+		params: [],
+	},
+	{
+		type: MediaIntentType.PAUSE,
+		label: 'Pause',
+		description: 'Pause playback on supported media devices',
+		icon: 'mdi:pause',
+		params: [],
+	},
+	{
+		type: MediaIntentType.STOP,
+		label: 'Stop',
+		description: 'Stop playback on supported media devices',
+		icon: 'mdi:stop',
+		params: [],
+	},
+	{
+		type: MediaIntentType.NEXT,
+		label: 'Next',
+		description: 'Skip to next track on supported media devices',
+		icon: 'mdi:skip-next',
+		params: [],
+	},
+	{
+		type: MediaIntentType.PREVIOUS,
+		label: 'Previous',
+		description: 'Go to previous track on supported media devices',
+		icon: 'mdi:skip-previous',
+		params: [],
+	},
+
+	// Input intent (apply only to devices with MEDIA_INPUT or TELEVISION input_source)
+	{
+		type: MediaIntentType.INPUT_SET,
+		label: 'Set Input',
+		description: 'Set input/source on supported devices (TV/AVR/set-top box)',
+		icon: 'mdi:video-input-hdmi',
+		params: [
+			{
+				name: 'source',
+				type: 'string',
+				required: true,
+				description: 'Input/source identifier (integration-specific)',
+			},
+		],
+	},
+
 	{
 		type: MediaIntentType.ROLE_POWER,
 		label: 'Set Role Power',
-		description: 'Set power state for media devices with a specific role',
+		description: 'Set power state for media devices with a specific role (where supported)',
 		icon: 'mdi:power',
 		params: [
 			{
@@ -1893,7 +1988,7 @@ export const MEDIA_INTENT_CATALOG: IntentTypeMeta[] = [
 	{
 		type: MediaIntentType.ROLE_VOLUME,
 		label: 'Set Role Volume',
-		description: 'Set volume for media devices with a specific role',
+		description: 'Set volume for media devices with a specific role (where supported)',
 		icon: 'mdi:volume-high',
 		params: [
 			{
