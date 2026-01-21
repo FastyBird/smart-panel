@@ -281,11 +281,54 @@ export class MediaIntentService extends SpaceIntentBaseService {
 		return Object.keys(value).length > 0 ? value : null;
 	}
 
-	private getPlaybackProperties(device: DeviceEntity): {
+	private getPlaybackProperties(
+		device: DeviceEntity,
+		preferredChannel?: ChannelEntity | null,
+	): {
 		channel: ChannelEntity | null;
 		commandProperty: ChannelPropertyEntity | null;
 		remoteKeyProperty: ChannelPropertyEntity | null;
 	} {
+		// If a preferred channel is provided, only check that specific channel
+		// This prevents duplicate commands when a device has multiple media channels
+		if (preferredChannel) {
+			const isPlaybackChannel = preferredChannel.category === ChannelCategory.MEDIA_PLAYBACK;
+			const isTelevisionChannel = preferredChannel.category === ChannelCategory.TELEVISION;
+
+			if (isPlaybackChannel) {
+				const commandProperty =
+					preferredChannel.properties?.find((p) => p.category === PropertyCategory.COMMAND) ?? null;
+				if (commandProperty) {
+					return {
+						channel: preferredChannel,
+						commandProperty,
+						remoteKeyProperty: null,
+					};
+				}
+			}
+
+			if (isTelevisionChannel) {
+				const remoteKeyProperty =
+					preferredChannel.properties?.find((p) => p.category === PropertyCategory.REMOTE_KEY) ?? null;
+				if (remoteKeyProperty) {
+					return {
+						channel: preferredChannel,
+						commandProperty: null,
+						remoteKeyProperty,
+					};
+				}
+			}
+
+			// Preferred channel doesn't have playback capabilities, return empty result
+			// This ensures we only execute playback commands on channels that support them
+			return {
+				channel: null,
+				commandProperty: null,
+				remoteKeyProperty: null,
+			};
+		}
+
+		// No preferred channel specified, search all channels (backward compatibility)
 		// Primary: media_playback.command
 		const playbackChannel = device.channels?.find((ch) => ch.category === ChannelCategory.MEDIA_PLAYBACK) ?? null;
 		const commandProperty = playbackChannel?.properties?.find((p) => p.category === PropertyCategory.COMMAND) ?? null;
@@ -797,7 +840,10 @@ export class MediaIntentService extends SpaceIntentBaseService {
 			case MediaIntentType.STOP:
 			case MediaIntentType.NEXT:
 			case MediaIntentType.PREVIOUS: {
-				const { channel, commandProperty, remoteKeyProperty } = this.getPlaybackProperties(device.device);
+				const { channel, commandProperty, remoteKeyProperty } = this.getPlaybackProperties(
+					device.device,
+					device.mediaChannel,
+				);
 
 				const playbackValue =
 					intent.type === MediaIntentType.PLAY
