@@ -71,6 +71,11 @@
         "options": {
           "connected": "Connected",
           "disconnected": "Disconnected",
+          "init": "Initializing",
+          "ready": "Ready",
+          "running": "Running",
+          "sleeping": "Sleeping",
+          "stopped": "Stopped",
           "lost": "Lost",
           "alert": "Alert",
           "unknown": "Unknown"

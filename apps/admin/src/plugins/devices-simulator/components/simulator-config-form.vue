@@ -153,13 +153,10 @@ const { formEl, model, formChanged, submit, formResult } = useConfigPluginEditFo
 	},
 });
 
-const connectionStates = [
-	{ value: SIMULATOR_CONNECTION_STATES[0], label: t('devicesSimulatorPlugin.fields.config.connectionStateOnStart.options.connected') },
-	{ value: SIMULATOR_CONNECTION_STATES[1], label: t('devicesSimulatorPlugin.fields.config.connectionStateOnStart.options.disconnected') },
-	{ value: SIMULATOR_CONNECTION_STATES[2], label: t('devicesSimulatorPlugin.fields.config.connectionStateOnStart.options.lost') },
-	{ value: SIMULATOR_CONNECTION_STATES[3], label: t('devicesSimulatorPlugin.fields.config.connectionStateOnStart.options.alert') },
-	{ value: SIMULATOR_CONNECTION_STATES[4], label: t('devicesSimulatorPlugin.fields.config.connectionStateOnStart.options.unknown') },
-];
+const connectionStates = SIMULATOR_CONNECTION_STATES.map((state) => ({
+	value: state,
+	label: t(`devicesSimulatorPlugin.fields.config.connectionStateOnStart.options.${state}`),
+}));
 
 const rules = reactive<FormRules<ISimulatorConfigEditForm>>({
 	simulationInterval: [
