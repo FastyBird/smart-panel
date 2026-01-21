@@ -1633,6 +1633,12 @@ export class DelegatesManagerService {
 			}
 		}
 
+		for (const key of Array.from(this.setChannelsHandlers.keys())) {
+			if (key.startsWith(`${deviceId}|`)) {
+				this.setChannelsHandlers.delete(key);
+			}
+		}
+
 		const ids = this.propertiesMap.get(deviceId);
 
 		if (ids) {
@@ -1876,6 +1882,7 @@ export class DelegatesManagerService {
 
 		this.changeHandlers.clear();
 		this.setPropertiesHandlers.clear();
+		this.setChannelsHandlers.clear();
 		this.propertiesMap.clear();
 
 		for (const pendingWrite of this.pendingWrites.values()) {
