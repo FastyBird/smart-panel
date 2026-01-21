@@ -4,10 +4,11 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
+import { SpaceEntity } from '../entities/space.entity';
 import { SpaceMediaRoleEntity } from '../entities/space-media-role.entity';
 import { MediaRole } from '../spaces.constants';
 
-import { SpaceMediaRoleService } from './space-media-role.service';
+import { MediaTargetEventPayload, SpaceMediaRoleService } from './space-media-role.service';
 import { SpacesService } from './spaces.service';
 
 describe('SpaceMediaRoleService', () => {
@@ -35,7 +36,7 @@ describe('SpaceMediaRoleService', () => {
 
 	it('reports hasOn=false when only ACTIVE is present on speaker channel', async () => {
 		roleRepository.find.mockResolvedValue([]);
-		spacesService.getOneOrThrow.mockResolvedValue({ id: 'space-1' } as any);
+		spacesService.getOneOrThrow.mockResolvedValue({ id: 'space-1' } as SpaceEntity);
 		spacesService.findDevicesBySpace.mockResolvedValue([
 			{
 				id: 'device-1',
@@ -91,16 +92,33 @@ describe('SpaceMediaRoleService', () => {
 			],
 		} as unknown as DeviceEntity);
 
-		const payloadForTv = await (service as unknown as { buildMediaTargetEventPayload: (...args: any[]) => any })
-			.buildMediaTargetEventPayload('space-1', 'device-1', MediaRole.PRIMARY, 0, 'tv-channel');
+		const payloadForTv = (await (
+			service as unknown as {
+				buildMediaTargetEventPayload: (
+					spaceId: string,
+					deviceId: string,
+					role: MediaRole | null,
+					priority: number,
+					channelId?: string | null,
+				) => Promise<MediaTargetEventPayload | null>;
+			}
+		).buildMediaTargetEventPayload('space-1', 'device-1', MediaRole.PRIMARY, 0, 'tv-channel')) as MediaTargetEventPayload;
 
 		expect(payloadForTv.has_on).toBe(true);
 		expect(payloadForTv.has_volume).toBe(false);
 		expect(payloadForTv.has_mute).toBe(false);
 
-		const payloadForSpeaker = await (
-			service as unknown as { buildMediaTargetEventPayload: (...args: any[]) => any }
-		).buildMediaTargetEventPayload('space-1', 'device-1', MediaRole.PRIMARY, 0, 'speaker-channel');
+		const payloadForSpeaker = (await (
+			service as unknown as {
+				buildMediaTargetEventPayload: (
+					spaceId: string,
+					deviceId: string,
+					role: MediaRole | null,
+					priority: number,
+					channelId?: string | null,
+				) => Promise<MediaTargetEventPayload | null>;
+			}
+		).buildMediaTargetEventPayload('space-1', 'device-1', MediaRole.PRIMARY, 0, 'speaker-channel')) as MediaTargetEventPayload;
 
 		expect(payloadForSpeaker.has_on).toBe(false);
 		expect(payloadForSpeaker.has_volume).toBe(true);
