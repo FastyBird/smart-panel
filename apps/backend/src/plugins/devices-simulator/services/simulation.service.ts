@@ -158,11 +158,12 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy, IManage
 				}
 
 				this.state = 'started';
-			} catch (error) {
-				this.logger.error('Failed to start simulation service', error as Error);
+			} catch (error: unknown) {
+				const err = this.toError(error);
+				this.logger.error('Failed to start simulation service', err);
 				this.stopAutoSimulation();
 				this.state = 'error';
-				throw error;
+				throw err;
 			}
 		});
 	}
@@ -194,12 +195,13 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy, IManage
 			const intervalChanged = this.config.simulationInterval !== newConfig.simulationInterval;
 			const smoothChanged = this.config.smoothTransitions !== newConfig.smoothTransitions;
 			const latitudeChanged = this.config.latitude !== newConfig.latitude;
+			const connectionStateChanged = this.config.connectionStateOnStart !== newConfig.connectionStateOnStart;
 
 			this.config = newConfig;
 
 			if (this.state === 'started') {
 				// If connection state setting changed, apply on-the-fly
-				if (this.config.connectionStateOnStart !== newConfig.connectionStateOnStart) {
+				if (connectionStateChanged) {
 					await this.applyInitialConnectionState();
 				}
 
@@ -278,15 +280,20 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy, IManage
 		try {
 			const pluginConfig = this.configService.getPluginConfig<SimulatorConfigModel>(DEVICES_SIMULATOR_PLUGIN_NAME);
 
+			const connectionStateOnStart = this.isValidConnectionState(pluginConfig.connectionStateOnStart)
+				? pluginConfig.connectionStateOnStart
+				: undefined;
+
 			return {
 				updateOnStart: pluginConfig.updateOnStart ?? DEFAULT_CONFIG.updateOnStart,
 				simulationInterval: pluginConfig.simulationInterval ?? DEFAULT_CONFIG.simulationInterval,
 				latitude: pluginConfig.latitude ?? DEFAULT_CONFIG.latitude,
 				smoothTransitions: pluginConfig.smoothTransitions ?? DEFAULT_CONFIG.smoothTransitions,
-				connectionStateOnStart: pluginConfig.connectionStateOnStart,
+				connectionStateOnStart,
 			};
-		} catch (error) {
-			this.logger.warn('Failed to load plugin configuration, using defaults', { error: (error as Error).message });
+		} catch (error: unknown) {
+			const err = this.toError(error);
+			this.logger.warn('Failed to load plugin configuration, using defaults', { error: err.message });
 			return { ...DEFAULT_CONFIG };
 		}
 	}
@@ -331,8 +338,9 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy, IManage
 			}
 
 			this.logger.debug(`Simulation complete: ${devicesSimulated} devices, ${propertiesUpdated} properties`);
-		} catch (error) {
-			this.logger.error('Error during simulation', error as Error);
+		} catch (error: unknown) {
+			const err = this.toError(error);
+			this.logger.error('Error during simulation', err);
 		} finally {
 			this.isRunning = false;
 		}
@@ -390,8 +398,9 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy, IManage
 			}
 
 			return { success: true, propertiesUpdated };
-		} catch (error) {
-			this.logger.error(`Error simulating device ${device.id}`, error as Error);
+		} catch (error: unknown) {
+			const err = this.toError(error);
+			this.logger.error(`Error simulating device ${device.id}`, err);
 			return { success: false, propertiesUpdated: 0 };
 		}
 	}
@@ -431,8 +440,9 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy, IManage
 			}
 
 			return { success: true, propertiesUpdated };
-		} catch (error) {
-			this.logger.error(`Error in generic simulation for device ${device.id}`, error as Error);
+		} catch (error: unknown) {
+			const err = this.toError(error);
+			this.logger.error(`Error in generic simulation for device ${device.id}`, err);
 			return { success: false, propertiesUpdated: 0 };
 		}
 	}
@@ -495,8 +505,9 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy, IManage
 				value: simValue.value,
 			});
 			return true;
-		} catch (error) {
-			this.logger.warn(`Failed to update property ${property.id}: ${(error as Error).message}`);
+		} catch (error: unknown) {
+			const err = this.toError(error);
+			this.logger.warn(`Failed to update property ${property.id}: ${err.message}`);
 			return false;
 		}
 	}
@@ -567,11 +578,25 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy, IManage
 					state: this.config.connectionStateOnStart,
 					reason: `Initial simulator state: ${this.config.connectionStateOnStart}`,
 				});
-			} catch (error) {
-				this.logger.warn(
-					`Failed to set connection state for simulator device ${device.id}: ${(error as Error).message}`,
-				);
+			} catch (error: unknown) {
+				const err = this.toError(error);
+				this.logger.warn(`Failed to set connection state for simulator device ${device.id}: ${err.message}`);
 			}
 		}
+	}
+
+	private toError(error: unknown): Error {
+		if (error instanceof Error) return error;
+		if (typeof error === 'string') return new Error(error);
+
+		try {
+			return new Error(JSON.stringify(error));
+		} catch {
+			return new Error('Unknown error');
+		}
+	}
+
+	private isValidConnectionState(state: unknown): state is ConnectionState {
+		return Object.values(ConnectionState).includes(state as ConnectionState);
 	}
 }
