@@ -1821,3 +1821,32 @@ export const SENSOR_ROLE_META: Record<SensorRole, IntentEnumValueMeta> = {
 		icon: 'mdi:eye-off',
 	},
 };
+
+/**
+ * Safety sensor threshold constants (in ppm - parts per million)
+ * These thresholds determine when safety sensors trigger alerts
+ */
+export const SAFETY_SENSOR_THRESHOLDS = {
+	/**
+	 * Carbon Monoxide (CO) threshold in ppm
+	 * OSHA limit: 50 ppm for 8-hour exposure
+	 * Note: Lower thresholds may be used for shorter exposure times:
+	 * - 9 ppm for 8-hour exposure (some jurisdictions)
+	 * - 35 ppm for 1-hour exposure
+	 */
+	CARBON_MONOXIDE_PPM: 50,
+
+	/**
+	 * Generic gas detection threshold in ppm
+	 * Any measurable level above this threshold indicates potential gas leak
+	 * Using 0 as default (very conservative - any reading triggers alert)
+	 * Consider increasing to 10-20 ppm to avoid false positives from sensor noise
+	 */
+	GAS_DETECTION_PPM: 0,
+
+	/**
+	 * Default threshold for other numeric safety sensors
+	 * Any positive value above this threshold triggers an alert
+	 */
+	DEFAULT_NUMERIC_THRESHOLD: 0,
+} as const;

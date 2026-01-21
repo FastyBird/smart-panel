@@ -36,6 +36,7 @@
 				"lightingRoles": "Lighting roles",
 				"climateRoles": "Climate roles",
 				"coversRoles": "Covers roles",
+				"sensorRoles": "Sensor roles",
 				"smartSuggestions": "Smart suggestions"
 			}
 		}
@@ -216,6 +217,20 @@
 				"applyDefaults": "Apply defaults",
 				"applyDefaultsHint": "Sets first cover as Primary, others based on type"
 			},
+			"sensorRoles": {
+				"title": "Sensor roles",
+				"description": "Assign roles to sensor channels so the panel can group environment, safety, security, air quality, and energy readings.",
+				"noSensors": "No sensors found in this space",
+				"channel": {
+					"title": "Channel"
+				},
+				"role": {
+					"title": "Role",
+					"placeholder": "Select a role"
+				},
+				"applyDefaults": "Apply defaults",
+				"applyDefaultsHint": "Auto-assigns roles based on sensor channel category"
+			},
 			"suggestions": {
 				"title": "Smart suggestions"
 			},
@@ -261,6 +276,47 @@
 			"hidden": "Hidden devices are excluded from the climate domain UI and control."
 		}
 	},
+	"sensorRoles": {
+		"environment": "Environment",
+		"safety": "Safety",
+		"security": "Security",
+		"air_quality": "Air quality",
+		"energy": "Energy",
+		"other": "Other",
+		"hidden": "Hidden",
+		"descriptions": {
+			"environment": "Environmental sensors such as temperature, humidity, pressure, or light levels.",
+			"safety": "Safety sensors like smoke, gas, leak, or carbon monoxide detectors.",
+			"security": "Security and presence sensors like motion, occupancy, and contact sensors.",
+			"air_quality": "Air quality sensors including CO2, VOC, particulate matter, and other pollutants.",
+			"energy": "Energy monitoring sensors such as power or energy consumption.",
+			"other": "Sensors that don't fit a specific category.",
+			"hidden": "Hidden sensors are excluded from the UI."
+		},
+		"categories": {
+			"temperature": "Temperature",
+			"humidity": "Humidity",
+			"pressure": "Pressure",
+			"illuminance": "Illuminance",
+			"smoke": "Smoke",
+			"gas": "Gas",
+			"carbon_monoxide": "Carbon monoxide",
+			"carbon_dioxide": "Carbon dioxide",
+			"leak": "Leak",
+			"motion": "Motion",
+			"occupancy": "Occupancy",
+			"contact": "Contact",
+			"air_quality": "Air quality",
+			"air_particulate": "Air particulate",
+			"nitrogen_dioxide": "Nitrogen dioxide",
+			"ozone": "Ozone",
+			"sulphur_dioxide": "Sulphur dioxide",
+			"volatile_organic_compounds": "Volatile organic compounds",
+			"electrical_energy": "Energy",
+			"electrical_power": "Power",
+			"battery": "Battery"
+		}
+	},
 	"coversRoles": {
 		"primary": "Primary",
 		"blackout": "Blackout",
@@ -298,6 +354,9 @@
 		},
 		"coversRoles": {
 			"title": "Edit Covers Roles"
+		},
+		"sensorRoles": {
+			"title": "Edit Sensor Roles"
 		}
 	},
 	"buttons": {
@@ -374,6 +433,11 @@
 		"coversRoles": {
 			"title": "Covers roles",
 			"coversAssigned": "Covers assigned",
+			"noRolesAssigned": "No roles assigned yet"
+		},
+		"sensorRoles": {
+			"title": "Sensor roles",
+			"sensorsAssigned": "Sensors assigned",
 			"noRolesAssigned": "No roles assigned yet"
 		},
 		"info": {

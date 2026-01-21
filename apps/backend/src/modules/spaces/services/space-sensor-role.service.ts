@@ -369,7 +369,7 @@ export class SpaceSensorRoleService {
 
 		for (let i = 0; i < sensorTargets.length; i++) {
 			const target = sensorTargets[i];
-			const role = this.inferRoleFromChannelCategory(target.channelCategory);
+			const role = this.inferRoleFromTarget(target);
 
 			defaultRoles.push({
 				deviceId: target.deviceId,
@@ -382,6 +382,25 @@ export class SpaceSensorRoleService {
 		this.logger.debug(`Inferred ${defaultRoles.length} default sensor roles for space id=${spaceId}`);
 
 		return defaultRoles;
+	}
+
+	/**
+	 * Infer a sensor role using both channel and device category hints.
+	 * Channel category takes precedence; device category is used as a fallback
+	 * for generic sensor devices.
+	 */
+	private inferRoleFromTarget(target: SensorTargetInfo): SensorRole {
+		const channelRole = this.inferRoleFromChannelCategory(target.channelCategory);
+
+		if (channelRole !== SensorRole.OTHER) {
+			return channelRole;
+		}
+
+		if (target.deviceCategory === DeviceCategory.SENSOR) {
+			return SensorRole.ENVIRONMENT;
+		}
+
+		return SensorRole.OTHER;
 	}
 
 	/**

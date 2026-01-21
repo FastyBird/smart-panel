@@ -4,6 +4,7 @@ import { createExtensionLogger } from '../../../common/logger/extension-logger.s
 import { ChannelCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import {
+	SAFETY_SENSOR_THRESHOLDS,
 	SENSOR_CHANNEL_CATEGORIES,
 	SENSOR_SAFETY_CHANNEL_CATEGORIES,
 	SPACES_MODULE_NAME,
@@ -249,10 +250,12 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 				primaryProperty = properties.find((p) => p.category === PropertyCategory.MEASURED);
 				unit = 'hPa';
 				break;
-			case ChannelCategory.ILLUMINANCE:
-				primaryProperty = properties.find((p) => p.category === PropertyCategory.MEASURED);
-				unit = 'lux';
-				break;
+		case ChannelCategory.ILLUMINANCE:
+			// Illuminance uses "density" property for the actual lux value (measured in lx)
+			// There's also a "level" property with enum values (bright, moderate, dusky, dark)
+			primaryProperty = properties.find((p) => p.category === PropertyCategory.DENSITY);
+			unit = 'lux';
+			break;
 			case ChannelCategory.MOTION:
 			case ChannelCategory.OCCUPANCY:
 			case ChannelCategory.CONTACT:
@@ -360,7 +363,8 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 		}
 
 		if (channel.category === ChannelCategory.ILLUMINANCE) {
-			const illumProp = properties.find((p) => p.category === PropertyCategory.MEASURED);
+			// Illuminance uses "density" property for the actual lux value (measured in lx)
+			const illumProp = properties.find((p) => p.category === PropertyCategory.DENSITY);
 			const illuminance = this.getPropertyNumericValue(illumProp);
 			if (illuminance !== null) {
 				illuminances.push(illuminance);
@@ -392,17 +396,14 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 			// For numeric sensors (CO ppm, gas ppm), check against safety thresholds
 			switch (channel.category) {
 				case ChannelCategory.CARBON_MONOXIDE:
-					// CO is dangerous above 50 ppm (OSHA limit for 8-hour exposure)
-					triggered = value >= 50;
+					triggered = value >= SAFETY_SENSOR_THRESHOLDS.CARBON_MONOXIDE_PPM;
 					break;
 				case ChannelCategory.GAS:
-					// Generic gas detection - any measurable level may indicate a leak
-					// Using a conservative threshold - any reading above 0 indicates presence
-					triggered = value > 0;
+					triggered = value > SAFETY_SENSOR_THRESHOLDS.GAS_DETECTION_PPM;
 					break;
 				default:
 					// For other numeric safety sensors, consider any positive value as triggered
-					triggered = value > 0;
+					triggered = value > SAFETY_SENSOR_THRESHOLDS.DEFAULT_NUMERIC_THRESHOLD;
 			}
 		} else {
 			// For boolean/string sensors (smoke detected, leak detected, etc.)
