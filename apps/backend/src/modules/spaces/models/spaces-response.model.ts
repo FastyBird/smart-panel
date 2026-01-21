@@ -3129,6 +3129,7 @@ export class BulkMediaRolesResponseModel extends BaseSuccessResponseModel<BulkMe
 // Sensor State & Role Response Models
 // ================================
 
+/**
  * Individual sensor reading data model
  */
 @ApiSchema({ name: 'SpacesModuleDataSensorReading' })
