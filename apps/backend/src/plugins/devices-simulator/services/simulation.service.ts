@@ -2,10 +2,16 @@ import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../../modules/config/services/config.service';
-import { DeviceCategory } from '../../../modules/devices/devices.constants';
+import { ConnectionState, DeviceCategory } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
+import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { getAllProperties } from '../../../modules/devices/utils/schema.utils';
+import {
+	ConfigChangeResult,
+	IManagedPluginService,
+	ServiceState,
+} from '../../../modules/extensions/services/managed-plugin-service.interface';
 import { DEVICES_SIMULATOR_PLUGIN_NAME, DEVICES_SIMULATOR_TYPE } from '../devices-simulator.constants';
 import { SimulatorDeviceEntity } from '../entities/devices-simulator.entity';
 import { SimulatorConfigModel } from '../models/config.model';
@@ -53,6 +59,11 @@ export interface SimulationServiceConfig {
 	 * Default: true
 	 */
 	smoothTransitions: boolean;
+
+	/**
+	 * Optional connection state to apply to all simulator devices at service start
+	 */
+	connectionStateOnStart?: ConnectionState;
 }
 
 const DEFAULT_CONFIG: SimulationServiceConfig = {
@@ -68,21 +79,27 @@ const DEFAULT_CONFIG: SimulationServiceConfig = {
  * across all simulator devices.
  */
 @Injectable()
-export class SimulationService implements OnModuleInit, OnModuleDestroy {
+export class SimulationService implements OnModuleInit, OnModuleDestroy, IManagedPluginService {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
 		DEVICES_SIMULATOR_PLUGIN_NAME,
 		'SimulationService',
 	);
+
+	readonly pluginName = DEVICES_SIMULATOR_PLUGIN_NAME;
+	readonly serviceId = 'simulation';
 
 	private config: SimulationServiceConfig = { ...DEFAULT_CONFIG };
 	private simulators: Map<DeviceCategory, IDeviceSimulator> = new Map();
 	private previousValues: Map<string, Map<string, string | number | boolean>> = new Map();
 	private simulationTimer: ReturnType<typeof setInterval> | null = null;
 	private isRunning = false;
+	private state: ServiceState = 'stopped';
+	private startStopLock: Promise<void> = Promise.resolve();
 
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly devicesService: DevicesService,
+		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 	) {
 		this.registerSimulators();
@@ -113,56 +130,109 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy {
 		this.logger.log(`Registered ${this.simulators.size} device simulators`);
 	}
 
-	async onModuleInit(): Promise<void> {
-		this.logger.log('Simulation service initialized');
-
-		// Load persisted plugin configuration
-		this.loadPluginConfig();
-
-		if (this.config.updateOnStart) {
-			this.logger.log('Running initial simulation on startup...');
-			await this.simulateAllDevices();
-		}
-
-		if (this.config.simulationInterval > 0) {
-			this.startAutoSimulation();
-		}
+	onModuleInit(): void {
+		this.logger.log('Simulation service initialized (managed by PluginServiceManagerService)');
 	}
 
 	/**
-	 * Load configuration from the persisted plugin config
+	 * Start the managed simulation service.
 	 */
-	private loadPluginConfig(): void {
-		try {
-			const pluginConfig = this.configService.getPluginConfig<SimulatorConfigModel>(DEVICES_SIMULATOR_PLUGIN_NAME);
+	async start(): Promise<void> {
+		await this.withLock(async () => {
+			if (this.state === 'starting' || this.state === 'started') return;
 
-			this.config = {
-				updateOnStart: pluginConfig.updateOnStart ?? DEFAULT_CONFIG.updateOnStart,
-				simulationInterval: pluginConfig.simulationInterval ?? DEFAULT_CONFIG.simulationInterval,
-				latitude: pluginConfig.latitude ?? DEFAULT_CONFIG.latitude,
-				smoothTransitions: pluginConfig.smoothTransitions ?? DEFAULT_CONFIG.smoothTransitions,
-			};
+			this.state = 'starting';
 
-			this.logger.log('Loaded plugin configuration', { config: this.config });
-		} catch (error) {
-			this.logger.warn('Failed to load plugin configuration, using defaults', { error: (error as Error).message });
-			this.config = { ...DEFAULT_CONFIG };
-		}
-	}
+			try {
+				this.config = this.loadPluginConfig();
 
-	onModuleDestroy(): void {
-		this.stopAutoSimulation();
+				await this.applyInitialConnectionState();
+
+				if (this.config.updateOnStart) {
+					this.logger.log('Running initial simulation on startup...');
+					await this.simulateAllDevices();
+				}
+
+				if (this.config.simulationInterval > 0) {
+					this.startAutoSimulation();
+				}
+
+				this.state = 'started';
+			} catch (error: unknown) {
+				const err = this.toError(error);
+				this.logger.error('Failed to start simulation service', err);
+				this.stopAutoSimulation();
+				this.state = 'error';
+				throw err;
+			}
+		});
 	}
 
 	/**
-	 * Configure the simulation service
+	 * Stop the managed simulation service.
+	 */
+	async stop(): Promise<void> {
+		await this.withLock(async () => {
+			if (this.state === 'stopped') return;
+
+			await Promise.resolve();
+
+			this.state = 'stopping';
+			this.stopAutoSimulation();
+			this.isRunning = false;
+			this.state = 'stopped';
+		});
+	}
+
+	getState(): ServiceState {
+		return this.state;
+	}
+
+	async onConfigChanged(): Promise<ConfigChangeResult> {
+		await this.withLock(async () => {
+			const newConfig = this.loadPluginConfig();
+
+			const intervalChanged = this.config.simulationInterval !== newConfig.simulationInterval;
+			const smoothChanged = this.config.smoothTransitions !== newConfig.smoothTransitions;
+			const latitudeChanged = this.config.latitude !== newConfig.latitude;
+			const connectionStateChanged = this.config.connectionStateOnStart !== newConfig.connectionStateOnStart;
+
+			this.config = newConfig;
+
+			if (this.state === 'started') {
+				// If connection state setting changed, apply on-the-fly
+				if (connectionStateChanged) {
+					await this.applyInitialConnectionState();
+				}
+
+				if (intervalChanged) {
+					this.stopAutoSimulation();
+					if (this.config.simulationInterval > 0) {
+						this.startAutoSimulation();
+					}
+				}
+
+				if (smoothChanged && !this.config.smoothTransitions) {
+					this.previousValues.clear();
+				}
+
+				if (latitudeChanged && this.config.simulationInterval === 0) {
+					await this.simulateAllDevices();
+				}
+			}
+		});
+
+		return { restartRequired: false };
+	}
+
+	/**
+	 * Configure the simulation service (used by CLI)
 	 */
 	configure(config: Partial<SimulationServiceConfig>): void {
 		this.config = { ...this.config, ...config };
 		this.logger.log('Simulation service configured', { config: this.config });
 
-		// Restart auto-simulation if interval changed
-		if (this.simulationTimer) {
+		if (this.state === 'started' && this.simulationTimer) {
 			this.stopAutoSimulation();
 			if (this.config.simulationInterval > 0) {
 				this.startAutoSimulation();
@@ -170,16 +240,10 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy {
 		}
 	}
 
-	/**
-	 * Get current configuration
-	 */
 	getConfig(): SimulationServiceConfig {
 		return { ...this.config };
 	}
 
-	/**
-	 * Start automatic simulation updates
-	 */
 	startAutoSimulation(): void {
 		if (this.simulationTimer) {
 			this.logger.warn('Auto-simulation already running');
@@ -200,9 +264,6 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy {
 		}, this.config.simulationInterval);
 	}
 
-	/**
-	 * Stop automatic simulation updates
-	 */
 	stopAutoSimulation(): void {
 		if (this.simulationTimer) {
 			clearInterval(this.simulationTimer);
@@ -211,11 +272,34 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy {
 		}
 	}
 
-	/**
-	 * Check if auto-simulation is running
-	 */
 	isAutoSimulationRunning(): boolean {
 		return this.simulationTimer !== null;
+	}
+
+	private loadPluginConfig(): SimulationServiceConfig {
+		try {
+			const pluginConfig = this.configService.getPluginConfig<SimulatorConfigModel>(DEVICES_SIMULATOR_PLUGIN_NAME);
+
+			const connectionStateOnStart = this.isValidConnectionState(pluginConfig.connectionStateOnStart)
+				? pluginConfig.connectionStateOnStart
+				: undefined;
+
+			return {
+				updateOnStart: pluginConfig.updateOnStart ?? DEFAULT_CONFIG.updateOnStart,
+				simulationInterval: pluginConfig.simulationInterval ?? DEFAULT_CONFIG.simulationInterval,
+				latitude: pluginConfig.latitude ?? DEFAULT_CONFIG.latitude,
+				smoothTransitions: pluginConfig.smoothTransitions ?? DEFAULT_CONFIG.smoothTransitions,
+				connectionStateOnStart,
+			};
+		} catch (error: unknown) {
+			const err = this.toError(error);
+			this.logger.warn('Failed to load plugin configuration, using defaults', { error: err.message });
+			return { ...DEFAULT_CONFIG };
+		}
+	}
+
+	onModuleDestroy(): void {
+		void this.stop();
 	}
 
 	/**
@@ -254,8 +338,9 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy {
 			}
 
 			this.logger.debug(`Simulation complete: ${devicesSimulated} devices, ${propertiesUpdated} properties`);
-		} catch (error) {
-			this.logger.error('Error during simulation', error as Error);
+		} catch (error: unknown) {
+			const err = this.toError(error);
+			this.logger.error('Error during simulation', err);
 		} finally {
 			this.isRunning = false;
 		}
@@ -313,8 +398,9 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy {
 			}
 
 			return { success: true, propertiesUpdated };
-		} catch (error) {
-			this.logger.error(`Error simulating device ${device.id}`, error as Error);
+		} catch (error: unknown) {
+			const err = this.toError(error);
+			this.logger.error(`Error simulating device ${device.id}`, err);
 			return { success: false, propertiesUpdated: 0 };
 		}
 	}
@@ -354,8 +440,9 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy {
 			}
 
 			return { success: true, propertiesUpdated };
-		} catch (error) {
-			this.logger.error(`Error in generic simulation for device ${device.id}`, error as Error);
+		} catch (error: unknown) {
+			const err = this.toError(error);
+			this.logger.error(`Error in generic simulation for device ${device.id}`, err);
 			return { success: false, propertiesUpdated: 0 };
 		}
 	}
@@ -418,8 +505,9 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy {
 				value: simValue.value,
 			});
 			return true;
-		} catch (error) {
-			this.logger.warn(`Failed to update property ${property.id}: ${(error as Error).message}`);
+		} catch (error: unknown) {
+			const err = this.toError(error);
+			this.logger.warn(`Failed to update property ${property.id}: ${err.message}`);
 			return false;
 		}
 	}
@@ -462,5 +550,53 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy {
 	 */
 	hasSimulator(category: DeviceCategory): boolean {
 		return this.simulators.has(category);
+	}
+
+	private withLock<T>(fn: () => Promise<T>): Promise<T> {
+		const run = async () => fn();
+		this.startStopLock = this.startStopLock.then(run, run) as Promise<void>;
+		return this.startStopLock as unknown as Promise<T>;
+	}
+
+	private async applyInitialConnectionState(): Promise<void> {
+		if (!this.config.connectionStateOnStart) return;
+
+		const devices = await this.devicesService.findAll<SimulatorDeviceEntity>(DEVICES_SIMULATOR_TYPE);
+
+		if (!devices.length) {
+			this.logger.debug('No simulator devices found for initial connection state apply');
+			return;
+		}
+
+		this.logger.log(
+			`Setting initial connection state (${this.config.connectionStateOnStart}) for ${devices.length} simulator devices`,
+		);
+
+		for (const device of devices) {
+			try {
+				await this.deviceConnectivityService.setConnectionState(device.id, {
+					state: this.config.connectionStateOnStart,
+					reason: `Initial simulator state: ${this.config.connectionStateOnStart}`,
+				});
+			} catch (error: unknown) {
+				const err = this.toError(error);
+				this.logger.warn(`Failed to set connection state for simulator device ${device.id}: ${err.message}`);
+			}
+		}
+	}
+
+	private toError(error: unknown): Error {
+		if (error instanceof Error) return error;
+		if (typeof error === 'string') return new Error(error);
+
+		try {
+			return new Error(JSON.stringify(error));
+		} catch {
+			return new Error('Unknown error');
+		}
+	}
+
+	private isValidConnectionState(state: unknown): state is ConnectionState {
+		return Object.values(ConnectionState).includes(state as ConnectionState);
 	}
 }

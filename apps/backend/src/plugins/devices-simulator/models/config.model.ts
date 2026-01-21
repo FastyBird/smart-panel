@@ -1,9 +1,10 @@
 import { Expose } from 'class-transformer';
-import { IsBoolean, IsNumber, IsString, Max, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { PluginConfigModel } from '../../../modules/config/models/config.model';
+import { ConnectionState } from '../../../modules/devices/devices.constants';
 import { DEVICES_SIMULATOR_PLUGIN_NAME } from '../devices-simulator.constants';
 
 @ApiSchema({ name: 'DevicesSimulatorPluginDataConfig' })
@@ -72,4 +73,16 @@ export class SimulatorConfigModel extends PluginConfigModel {
 	@Expose({ name: 'smooth_transitions' })
 	@IsBoolean()
 	smoothTransitions: boolean = true;
+
+	@ApiProperty({
+		description: 'Initial connection state for all simulator devices at service start',
+		name: 'connection_state_on_start',
+		enum: ConnectionState,
+		example: ConnectionState.CONNECTED,
+		required: false,
+	})
+	@Expose({ name: 'connection_state_on_start' })
+	@IsEnum(ConnectionState)
+	@IsOptional()
+	connectionStateOnStart?: ConnectionState;
 }

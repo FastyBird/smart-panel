@@ -1,4 +1,9 @@
 {
+  "headings": {
+    "aboutPluginStatus": "Plugin status",
+    "aboutSimulation": "Simulation behaviour",
+    "aboutEnvironment": "Environment settings"
+  },
   "fields": {
     "devices": {
       "id": {
@@ -30,6 +35,63 @@
       "enabled": {
         "title": "Enabled"
       }
+    },
+    "config": {
+      "enabled": {
+        "title": "Enabled"
+      },
+      "updateOnStart": {
+        "title": "Simulate on service start"
+      },
+      "simulationInterval": {
+        "title": "Auto simulation interval (ms)",
+        "placeholder": "Set 0 to disable automatic updates",
+        "validation": {
+          "required": "Please set simulation interval",
+          "number": "Simulation interval must be between 0 and 3 600 000"
+        }
+      },
+      "latitude": {
+        "title": "Latitude",
+        "placeholder": "Latitude used for environment-based simulations",
+        "validation": {
+          "required": "Please set latitude",
+          "number": "Latitude must be between -90 and 90"
+        }
+      },
+      "smoothTransitions": {
+        "title": "Smooth value transitions"
+      },
+      "connectionStateOnStart": {
+        "title": "Initial connection state",
+        "placeholder": "Choose the connection state to set on startup",
+        "validation": {
+          "required": "Please select initial connection state"
+        },
+        "options": {
+          "connected": "Connected",
+          "disconnected": "Disconnected",
+          "init": "Initializing",
+          "ready": "Ready",
+          "running": "Running",
+          "sleeping": "Sleeping",
+          "stopped": "Stopped",
+          "lost": "Lost",
+          "alert": "Alert",
+          "unknown": "Unknown"
+        }
+      }
     }
+  },
+  "messages": {
+    "config": {
+      "edited": "Changes saved! The device simulator configuration has been updated.",
+      "notEdited": "Something went wrong. Device simulator configuration update was not successful."
+    }
+  },
+  "texts": {
+    "aboutPluginStatus": "Enable or disable the Device Simulator integration so that simulated devices are available across the Smart Panel.",
+    "aboutSimulation": "Configure how the simulator updates values automatically. You can trigger a single pass on service start or run a recurring update loop.",
+    "aboutEnvironment": "Set environmental parameters used by the simulator when generating realistic values. Only latitude is used in calculations; longitude is ignored."
   }
 }
