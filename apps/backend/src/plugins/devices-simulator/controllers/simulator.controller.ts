@@ -238,24 +238,9 @@ export class SimulatorController {
 			throw new DevicesNotFoundException(`Simulator device ${deviceId} not found`);
 		}
 
-		// Map the state string to ConnectionState enum
-		const stateMap: Record<string, ConnectionState> = {
-			connected: ConnectionState.CONNECTED,
-			disconnected: ConnectionState.DISCONNECTED,
-			lost: ConnectionState.LOST,
-			alert: ConnectionState.ALERT,
-			unknown: ConnectionState.UNKNOWN,
-		};
-
-		const connectionState = stateMap[dto.state];
-
-		if (!connectionState) {
-			throw new DevicesNotFoundException(`Invalid connection state: ${dto.state}`);
-		}
-
 		// Update the connection state
 		await this.deviceConnectivityService.setConnectionState(deviceId, {
-			state: connectionState,
+			state: dto.state,
 			reason: `Simulated state change to ${dto.state}`,
 		});
 

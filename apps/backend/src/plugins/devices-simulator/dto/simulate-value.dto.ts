@@ -1,5 +1,6 @@
 import { Expose, Type } from 'class-transformer';
-import { IsIn, IsNotEmpty, IsOptional, IsUUID, ValidateNested } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsUUID, ValidateNested } from 'class-validator';
+import { ConnectionState } from '../../../modules/devices/devices.constants';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -40,16 +41,15 @@ export class ReqSimulateValueDto {
 export class SimulateConnectionStateDto {
 	@ApiProperty({
 		description: 'Connection state to simulate',
-		type: 'string',
-		enum: ['connected', 'disconnected', 'lost', 'alert', 'unknown'],
-		example: 'connected',
+		enum: ConnectionState,
+		example: ConnectionState.CONNECTED,
 	})
 	@Expose()
 	@IsNotEmpty({ message: '[{"field":"state","reason":"Connection state is required."}]' })
-	@IsIn(['connected', 'disconnected', 'lost', 'alert', 'unknown'], {
-		message: '[{"field":"state","reason":"State must be one of: connected, disconnected, lost, alert, unknown."}]',
+	@IsEnum(ConnectionState, {
+		message: '[{"field":"state","reason":"State must be a valid connection state."}]',
 	})
-	state: 'connected' | 'disconnected' | 'lost' | 'alert' | 'unknown';
+	state: ConnectionState;
 }
 
 @ApiSchema({ name: 'DevicesSimulatorPluginReqSimulateConnectionState' })
