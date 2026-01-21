@@ -3135,7 +3135,8 @@ export class MediaIntentResponseModel extends BaseSuccessResponseModel<MediaInte
 // ================================
 
 /**
- * Media target data model (a media device/channel in a space)
+ * Media target data model (a media device in a space).
+ * Media targets are device-level only - roles operate at the device level.
  */
 @ApiSchema({ name: 'SpacesModuleDataMediaTarget' })
 export class MediaTargetDataModel {
@@ -3166,27 +3167,6 @@ export class MediaTargetDataModel {
 	})
 	@Expose({ name: 'device_category' })
 	deviceCategory: DeviceCategory;
-
-	@ApiPropertyOptional({
-		name: 'channel_id',
-		description: 'ID of the media channel (nullable for device-level roles)',
-		type: 'string',
-		format: 'uuid',
-		nullable: true,
-		example: 'c3d29eb4-632f-5e8c-c4af-ded8b9e6c0f8',
-	})
-	@Expose({ name: 'channel_id' })
-	channelId: string | null;
-
-	@ApiPropertyOptional({
-		name: 'channel_name',
-		description: 'Name of the channel (nullable for device-level roles)',
-		type: 'string',
-		nullable: true,
-		example: 'Media Playback',
-	})
-	@Expose({ name: 'channel_name' })
-	channelName: string | null;
 
 	@ApiPropertyOptional({
 		description: 'The assigned media role (null if not assigned)',
@@ -3275,17 +3255,6 @@ export class BulkMediaRoleResultItemModel {
 	})
 	@Expose({ name: 'device_id' })
 	deviceId: string;
-
-	@ApiPropertyOptional({
-		name: 'channel_id',
-		description: 'ID of the media channel (null for device-level roles)',
-		type: 'string',
-		format: 'uuid',
-		nullable: true,
-		example: null,
-	})
-	@Expose({ name: 'channel_id' })
-	channelId: string | null;
 
 	@ApiProperty({
 		description: 'Whether the role was set successfully',

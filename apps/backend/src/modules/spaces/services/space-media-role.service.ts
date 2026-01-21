@@ -9,13 +9,7 @@ import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { SetMediaRoleDto } from '../dto/media-role.dto';
 import { SpaceMediaRoleEntity } from '../entities/space-media-role.entity';
-import {
-	EventType,
-	MEDIA_CHANNEL_CATEGORIES,
-	MEDIA_DEVICE_CATEGORIES,
-	MediaRole,
-	SPACES_MODULE_NAME,
-} from '../spaces.constants';
+import { EventType, MEDIA_DEVICE_CATEGORIES, MediaRole, SPACES_MODULE_NAME } from '../spaces.constants';
 import { SpacesValidationException } from '../spaces.exceptions';
 
 import { SpacesService } from './spaces.service';
@@ -24,8 +18,6 @@ export interface MediaTargetInfo {
 	deviceId: string;
 	deviceName: string;
 	deviceCategory: DeviceCategory;
-	channelId: string | null;
-	channelName: string | null;
 	role: MediaRole | null;
 	priority: number;
 	hasOn: boolean;
@@ -38,7 +30,6 @@ export interface MediaTargetInfo {
  */
 export interface BulkMediaRoleResultItem {
 	deviceId: string;
-	channelId: string | null;
 	success: boolean;
 	role: MediaRole | null;
 	error: string | null;
@@ -65,8 +56,6 @@ export interface MediaTargetEventPayload {
 	device_id: string;
 	device_name: string;
 	device_category: DeviceCategory;
-	channel_id: string | null;
-	channel_name: string | null;
 	role: MediaRole | null;
 	priority: number;
 	has_on: boolean;
@@ -116,16 +105,16 @@ export class SpaceMediaRoleService {
 	}
 
 	/**
-	 * Set or update a media role assignment
+	 * Set or update a media role assignment.
+	 * Media roles operate at device level only (no channel required).
 	 */
 	async setRole(spaceId: string, dto: SetMediaRoleDto): Promise<SpaceMediaRoleEntity> {
 		// Verify space exists
 		await this.spacesService.getOneOrThrow(spaceId);
 
-		// Verify device exists and belongs to this space
+		// Verify device exists
 		const device = await this.deviceRepository.findOne({
 			where: { id: dto.deviceId },
-			relations: ['channels'],
 		});
 
 		if (!device) {
@@ -142,28 +131,6 @@ export class SpaceMediaRoleService {
 		if (!MEDIA_DEVICE_CATEGORIES.includes(device.category as (typeof MEDIA_DEVICE_CATEGORIES)[number])) {
 			throw new SpacesValidationException(`Device with id=${dto.deviceId} is not a media device`);
 		}
-
-		// Select a preferred controllable media channel for metadata (device-level control)
-		const mediaChannels =
-			device.channels?.filter((ch) =>
-				MEDIA_CHANNEL_CATEGORIES.includes(ch.category as (typeof MEDIA_CHANNEL_CATEGORIES)[number]),
-			) ?? [];
-
-		if (mediaChannels.length === 0) {
-			throw new SpacesValidationException(`Device with id=${dto.deviceId} has no media channels to control`);
-		}
-
-		const preferredOrder = [
-			ChannelCategory.SWITCHER,
-			ChannelCategory.TELEVISION,
-			ChannelCategory.MEDIA_INPUT,
-			ChannelCategory.MEDIA_PLAYBACK,
-			ChannelCategory.SPEAKER,
-		];
-		const targetChannel =
-			preferredOrder.map((cat) => mediaChannels.find((ch) => ch.category === cat)).find((ch) => ch) ?? mediaChannels[0];
-
-		const channelId = targetChannel.id;
 
 		let roleEntity: SpaceMediaRoleEntity | null = null;
 		let isUpdate = false;
@@ -193,7 +160,7 @@ export class SpaceMediaRoleService {
 				{
 					spaceId,
 					deviceId: dto.deviceId,
-					channelId,
+					channelId: null, // Media roles are device-level only
 					role: newRole,
 					priority: newPriority,
 				},
@@ -216,13 +183,7 @@ export class SpaceMediaRoleService {
 		// Only emit event if values actually changed
 		if (hasChanges) {
 			// Emit event for websocket clients with full media target info
-			const eventPayload = await this.buildMediaTargetEventPayload(
-				spaceId,
-				dto.deviceId,
-				dto.role,
-				dto.priority ?? 0,
-				channelId,
-			);
+			const eventPayload = await this.buildMediaTargetEventPayload(spaceId, dto.deviceId, dto.role, dto.priority ?? 0);
 
 			if (eventPayload) {
 				const eventType = isUpdate ? EventType.MEDIA_TARGET_UPDATED : EventType.MEDIA_TARGET_CREATED;
@@ -248,7 +209,6 @@ export class SpaceMediaRoleService {
 				await this.setRole(spaceId, dto);
 				results.push({
 					deviceId: dto.deviceId,
-					channelId: null,
 					success: true,
 					role: dto.role,
 					error: null,
@@ -258,7 +218,6 @@ export class SpaceMediaRoleService {
 				this.logger.warn(`Failed to set role for device=${dto.deviceId}: ${err.message}`);
 				results.push({
 					deviceId: dto.deviceId,
-					channelId: null,
 					success: false,
 					role: null,
 					error: err.message,
@@ -294,14 +253,14 @@ export class SpaceMediaRoleService {
 				id: deviceId,
 				space_id: spaceId,
 				device_id: deviceId,
-				channel_id: role.channelId ?? null,
 			});
 		}
 	}
 
 	/**
-	 * Get all media targets in a space with their role assignments
-	 * This combines device/channel info with role data
+	 * Get all media targets in a space with their role assignments.
+	 * Media targets are device-level only - all media device categories are listed
+	 * regardless of their channel structure.
 	 */
 	async getMediaTargetsInSpace(spaceId: string): Promise<MediaTargetInfo[]> {
 		this.logger.debug(`Getting media targets for space id=${spaceId}`);
@@ -323,43 +282,36 @@ export class SpaceMediaRoleService {
 		const mediaTargets: MediaTargetInfo[] = [];
 
 		for (const device of devices) {
-			// Only process media devices
+			// Only process media devices by device category
 			if (!MEDIA_DEVICE_CATEGORIES.includes(device.category as (typeof MEDIA_DEVICE_CATEGORIES)[number])) {
 				continue;
 			}
 
-			// Collect media-capable channels for this device
-			const mediaChannels = (device.channels ?? []).filter((channel) =>
-				MEDIA_CHANNEL_CATEGORIES.includes(channel.category as (typeof MEDIA_CHANNEL_CATEGORIES)[number]),
-			);
+			// Detect capabilities by scanning all channels and their properties
+			let hasOn = false;
+			let hasVolume = false;
+			let hasMute = false;
 
-			if (mediaChannels.length === 0) {
-				continue;
+			for (const channel of device.channels ?? []) {
+				const properties = channel.properties ?? [];
+
+				// Power control: check TELEVISION, SWITCHER channels for ON/ACTIVE properties
+				if (channel.category === ChannelCategory.TELEVISION || channel.category === ChannelCategory.SWITCHER) {
+					if (properties.some((p) => p.category === PropertyCategory.ON || p.category === PropertyCategory.ACTIVE)) {
+						hasOn = true;
+					}
+				}
+
+				// Volume control: check SPEAKER or TELEVISION channels for VOLUME property
+				if (channel.category === ChannelCategory.SPEAKER || channel.category === ChannelCategory.TELEVISION) {
+					if (properties.some((p) => p.category === PropertyCategory.VOLUME)) {
+						hasVolume = true;
+					}
+					if (properties.some((p) => p.category === PropertyCategory.MUTE)) {
+						hasMute = true;
+					}
+				}
 			}
-
-			// Prefer a single channel per device to avoid duplicate rows (television > media_playback > speaker)
-			const preferredOrder = [
-				ChannelCategory.SWITCHER,
-				ChannelCategory.TELEVISION,
-				ChannelCategory.MEDIA_INPUT,
-				ChannelCategory.MEDIA_PLAYBACK,
-				ChannelCategory.SPEAKER,
-			];
-
-			const targetChannel =
-				preferredOrder.map((cat) => mediaChannels.find((ch) => ch.category === cat)).find((ch) => ch) ??
-				mediaChannels[0];
-
-			// Check for properties (align with control logic in getMediaDevicesInSpace)
-			const isTelevision = targetChannel.category === ChannelCategory.TELEVISION;
-			const isSwitcher = targetChannel.category === ChannelCategory.SWITCHER;
-			const isSpeaker = targetChannel.category === ChannelCategory.SPEAKER;
-			const properties = targetChannel.properties ?? [];
-			const hasOn =
-				(isTelevision || isSwitcher) &&
-				properties.some((p) => p.category === PropertyCategory.ON || p.category === PropertyCategory.ACTIVE);
-			const hasVolume = isSpeaker && properties.some((p) => p.category === PropertyCategory.VOLUME);
-			const hasMute = isSpeaker && properties.some((p) => p.category === PropertyCategory.MUTE);
 
 			// Get existing role assignment if any (device-level)
 			const existingRole = rolesByDevice.get(device.id) ?? null;
@@ -368,8 +320,6 @@ export class SpaceMediaRoleService {
 				deviceId: device.id,
 				deviceName: device.name,
 				deviceCategory: device.category,
-				channelId: targetChannel.id,
-				channelName: targetChannel.name,
 				role: existingRole?.role ?? null,
 				priority: existingRole?.priority ?? 0,
 				hasOn,
@@ -384,10 +334,14 @@ export class SpaceMediaRoleService {
 	}
 
 	/**
-	 * Infer default media roles for a space (quick defaults helper)
-	 * - First TV becomes PRIMARY
-	 * - Other TVs become SECONDARY
-	 * - Speakers become BACKGROUND
+	 * Infer default media roles for a space based on device categories.
+	 *
+	 * Role assignment by device category:
+	 * - Television, Projector → PRIMARY (first one) or SECONDARY (others)
+	 * - AV Receiver, Set Top Box → SECONDARY
+	 * - Speaker → BACKGROUND
+	 * - Game Console → GAMING
+	 * - Media, Streaming Service → SECONDARY
 	 */
 	async inferDefaultMediaRoles(spaceId: string): Promise<SetMediaRoleDto[]> {
 		this.logger.debug(`Inferring default media roles for space id=${spaceId}`);
@@ -403,15 +357,42 @@ export class SpaceMediaRoleService {
 
 		for (let i = 0; i < mediaTargets.length; i++) {
 			const target = mediaTargets[i];
-			let inferredRole = MediaRole.SECONDARY;
+			let inferredRole: MediaRole;
 
-			// First target with volume control becomes PRIMARY
-			if (!hasPrimary && target.hasVolume) {
-				inferredRole = MediaRole.PRIMARY;
-				hasPrimary = true;
-			} else if (!target.hasVolume) {
-				// Devices without volume control go to BACKGROUND
-				inferredRole = MediaRole.BACKGROUND;
+			switch (target.deviceCategory) {
+				case DeviceCategory.TELEVISION:
+				case DeviceCategory.PROJECTOR:
+					// First TV/Projector becomes PRIMARY, others become SECONDARY
+					if (!hasPrimary) {
+						inferredRole = MediaRole.PRIMARY;
+						hasPrimary = true;
+					} else {
+						inferredRole = MediaRole.SECONDARY;
+					}
+					break;
+
+				case DeviceCategory.AV_RECEIVER:
+				case DeviceCategory.SET_TOP_BOX:
+				case DeviceCategory.MEDIA:
+				case DeviceCategory.STREAMING_SERVICE:
+					// AV equipment and media devices are SECONDARY
+					inferredRole = MediaRole.SECONDARY;
+					break;
+
+				case DeviceCategory.SPEAKER:
+					// Speakers are for background audio
+					inferredRole = MediaRole.BACKGROUND;
+					break;
+
+				case DeviceCategory.GAME_CONSOLE:
+					// Game consoles get their dedicated role
+					inferredRole = MediaRole.GAMING;
+					break;
+
+				default:
+					// Fallback for any other media device
+					inferredRole = MediaRole.SECONDARY;
+					break;
 			}
 
 			defaultRoles.push({
@@ -441,14 +422,14 @@ export class SpaceMediaRoleService {
 	}
 
 	/**
-	 * Build event payload for a media target with all required fields
+	 * Build event payload for a media target with all required fields.
+	 * Media targets are device-level - capabilities are aggregated from all channels.
 	 */
 	private async buildMediaTargetEventPayload(
 		spaceId: string,
 		deviceId: string,
 		role: MediaRole | null,
 		priority: number,
-		channelId?: string | null,
 	): Promise<MediaTargetEventPayload | null> {
 		// Fetch device with channels and properties
 		const device = await this.deviceRepository.findOne({
@@ -461,44 +442,38 @@ export class SpaceMediaRoleService {
 			return null;
 		}
 
-		// Use provided channelId when available, otherwise pick a media channel for metadata
-		const mediaChannels =
-			device.channels?.filter((ch) =>
-				MEDIA_CHANNEL_CATEGORIES.includes(ch.category as (typeof MEDIA_CHANNEL_CATEGORIES)[number]),
-			) ?? [];
+		// Detect capabilities by scanning all channels and their properties
+		let hasOn = false;
+		let hasVolume = false;
+		let hasMute = false;
 
-		const preferredOrder = [
-			ChannelCategory.SWITCHER,
-			ChannelCategory.TELEVISION,
-			ChannelCategory.MEDIA_INPUT,
-			ChannelCategory.MEDIA_PLAYBACK,
-			ChannelCategory.SPEAKER,
-		];
+		for (const channel of device.channels ?? []) {
+			const properties = channel.properties ?? [];
 
-		const channel =
-			(device.channels ?? []).find((ch) => ch.id === channelId) ??
-			preferredOrder.map((cat) => mediaChannels.find((ch) => ch.category === cat)).find((ch) => ch) ??
-			mediaChannels[0];
+			// Power control: check TELEVISION, SWITCHER channels for ON/ACTIVE properties
+			if (channel.category === ChannelCategory.TELEVISION || channel.category === ChannelCategory.SWITCHER) {
+				if (properties.some((p) => p.category === PropertyCategory.ON || p.category === PropertyCategory.ACTIVE)) {
+					hasOn = true;
+				}
+			}
 
-		const properties = channel?.properties ?? [];
-		const isTelevision = channel?.category === ChannelCategory.TELEVISION;
-		const isSwitcher = channel?.category === ChannelCategory.SWITCHER;
-		const isSpeaker = channel?.category === ChannelCategory.SPEAKER;
-
-		const hasOn =
-			(isTelevision || isSwitcher) &&
-			properties.some((p) => p.category === PropertyCategory.ON || p.category === PropertyCategory.ACTIVE);
-		const hasVolume = isSpeaker && properties.some((p) => p.category === PropertyCategory.VOLUME);
-		const hasMute = isSpeaker && properties.some((p) => p.category === PropertyCategory.MUTE);
+			// Volume control: check SPEAKER or TELEVISION channels for VOLUME property
+			if (channel.category === ChannelCategory.SPEAKER || channel.category === ChannelCategory.TELEVISION) {
+				if (properties.some((p) => p.category === PropertyCategory.VOLUME)) {
+					hasVolume = true;
+				}
+				if (properties.some((p) => p.category === PropertyCategory.MUTE)) {
+					hasMute = true;
+				}
+			}
+		}
 
 		return {
-			id: channel ? `${deviceId}:${channel.id}` : deviceId,
+			id: deviceId,
 			space_id: spaceId,
 			device_id: deviceId,
 			device_name: device.name,
 			device_category: device.category,
-			channel_id: channel?.id ?? null,
-			channel_name: channel?.name ?? null,
 			role,
 			priority,
 			has_on: hasOn,

@@ -2046,8 +2046,6 @@ export class SpacesController {
 			model.deviceId = t.deviceId;
 			model.deviceName = t.deviceName;
 			model.deviceCategory = t.deviceCategory;
-			model.channelId = t.channelId ?? null;
-			model.channelName = t.channelName ?? null;
 			model.role = t.role;
 			model.priority = t.priority;
 			model.hasOn = t.hasOn;
@@ -2116,7 +2114,6 @@ export class SpacesController {
 		resultData.results = result.results.map((item) => {
 			const resultItem = new BulkMediaRoleResultItemModel();
 			resultItem.deviceId = item.deviceId;
-			resultItem.channelId = item.channelId;
 			resultItem.success = item.success;
 			resultItem.role = item.role;
 			resultItem.error = item.error;
@@ -2136,7 +2133,7 @@ export class SpacesController {
 		summary: 'Apply default media roles',
 		description:
 			'Infers and applies default media roles for all media devices in the space. ' +
-			'First device with volume control becomes PRIMARY, others based on capabilities. Requires owner or admin role.',
+			'Roles are assigned based on device category: TV/Projector=PRIMARY, AV/STB=SECONDARY, Speaker=BACKGROUND, GameConsole=GAMING. Requires owner or admin role.',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
 	@ApiSuccessResponse(BulkMediaRolesResponseModel, 'Returns the bulk update result')
@@ -2157,7 +2154,6 @@ export class SpacesController {
 		resultData.results = result.results.map((item) => {
 			const resultItem = new BulkMediaRoleResultItemModel();
 			resultItem.deviceId = item.deviceId;
-			resultItem.channelId = item.channelId;
 			resultItem.success = item.success;
 			resultItem.role = item.role;
 			resultItem.error = item.error;

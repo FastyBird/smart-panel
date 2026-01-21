@@ -23,10 +23,7 @@
 					<template #default="{ row }">
 						<div class="flex items-center gap-2">
 							<icon :icon="getDeviceIcon(row.deviceCategory)" />
-							<div class="flex flex-col">
-								<span>{{ row.deviceName }}</span>
-								<span v-if="row.channelName" class="text-xs text-gray-400">{{ row.channelName }}</span>
-							</div>
+							<span>{{ row.deviceName }}</span>
 						</div>
 					</template>
 				</el-table-column>
@@ -107,8 +104,6 @@ interface IMediaTarget {
 	deviceId: string;
 	deviceName: string;
 	deviceCategory: string;
-	channelId: string | null;
-	channelName: string | null;
 	role: MediaRole | null;
 	priority: number;
 	hasOn: boolean;
@@ -181,8 +176,6 @@ const loadMediaTargets = async (): Promise<void> => {
 			deviceId: target.device_id,
 			deviceName: target.device_name,
 			deviceCategory: target.device_category ?? '',
-			channelId: target.channel_id ?? null,
-			channelName: target.channel_name ?? null,
 			role: target.role ? (target.role as unknown as MediaRole) : null,
 			priority: target.priority ?? 0,
 			hasOn: target.has_on ?? false,
