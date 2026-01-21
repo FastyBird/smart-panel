@@ -353,7 +353,11 @@ export class SpaceMediaRoleService {
 			const isSwitcher = targetChannel.category === ChannelCategory.SWITCHER;
 			const isSpeaker = targetChannel.category === ChannelCategory.SPEAKER;
 			const properties = targetChannel.properties ?? [];
-			const hasOn = (isTelevision || isSwitcher) && properties.some((p) => p.category === PropertyCategory.ON);
+			const hasOn =
+				(isTelevision || isSwitcher) &&
+				properties.some(
+					(p) => p.category === PropertyCategory.ON || p.category === PropertyCategory.ACTIVE,
+				);
 			const hasVolume = isSpeaker && properties.some((p) => p.category === PropertyCategory.VOLUME);
 			const hasMute = isSpeaker && properties.some((p) => p.category === PropertyCategory.MUTE);
 
@@ -464,7 +468,7 @@ export class SpaceMediaRoleService {
 			);
 
 		const properties = channel?.properties ?? [];
-		const hasOn = properties.some((p) => p.category === PropertyCategory.ON);
+		const hasOn = properties.some((p) => p.category === PropertyCategory.ON || p.category === PropertyCategory.ACTIVE);
 		const hasVolume = properties.some((p) => p.category === PropertyCategory.VOLUME);
 		const hasMute = properties.some((p) => p.category === PropertyCategory.MUTE);
 
