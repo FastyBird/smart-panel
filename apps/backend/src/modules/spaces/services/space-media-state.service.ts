@@ -17,6 +17,12 @@ import { SpaceMediaRoleService } from './space-media-role.service';
 import { SpacesService } from './spaces.service';
 
 /**
+ * Tolerance for volume matching in mode detection (percentage points).
+ * Devices with volumes within this tolerance are considered matching.
+ */
+const VOLUME_MATCH_TOLERANCE = 5;
+
+/**
  * Aggregated state for a single media role.
  */
 export interface RoleMediaAggregatedState {
@@ -241,9 +247,15 @@ export class SpaceMediaStateService {
 			for (const channel of mediaChannels) {
 				const isSpeaker = channel.category === ChannelCategory.SPEAKER;
 				const isTelevision = channel.category === ChannelCategory.TELEVISION;
+				const isSwitcher = channel.category === ChannelCategory.SWITCHER;
 
-				// Power is available when channel exposes an ON property
-				const onProperty = channel.properties?.find((p) => p.category === PropertyCategory.ON);
+				// Power only from television/switcher .on or .active (aligned with intent service)
+				const onProperty =
+					isTelevision || isSwitcher
+						? channel.properties?.find(
+								(p) => p.category === PropertyCategory.ON || p.category === PropertyCategory.ACTIVE,
+							) ?? null
+						: null;
 
 				// Volume/mute from speaker or television channels
 				// TVs can have integrated volume/mute controls on their TELEVISION channel
@@ -436,7 +448,7 @@ export class SpaceMediaStateService {
 					rule.volume === undefined ||
 					rule.volume === null ||
 					device.volume === null ||
-					Math.abs((device.volume ?? 0) - rule.volume) <= 5; // Allow 5% tolerance
+					Math.abs((device.volume ?? 0) - rule.volume) <= VOLUME_MATCH_TOLERANCE;
 				const muteMatches = rule.muted === undefined || device.isMuted === rule.muted;
 
 				if (powerMatches && volumeMatches && muteMatches) {
