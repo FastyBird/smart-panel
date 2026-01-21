@@ -43,6 +43,8 @@ export class ShellyNgService implements IManagedPluginService {
 
 	private state: ServiceState = 'stopped';
 	private startStopLock: Promise<void> = Promise.resolve();
+	private pendingRestart: Promise<void> | null = null;
+	private restartTimer: NodeJS.Timeout | null = null;
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -173,6 +175,36 @@ export class ShellyNgService implements IManagedPluginService {
 		if (!success) {
 			this.logger.debug('Restart skipped (plugin may be disabled)');
 		}
+	}
+
+	/**
+	 * Debounced restart to avoid rapid stop/start loops that disconnect devices.
+	 */
+	async requestRestart(delayMs: number = 750): Promise<void> {
+		if (this.pendingRestart !== null) {
+			return this.pendingRestart;
+		}
+
+		this.pendingRestart = new Promise((resolve) => {
+			if (this.restartTimer) {
+				clearTimeout(this.restartTimer);
+			}
+
+			this.restartTimer = setTimeout(() => {
+				this.restartTimer = null;
+
+				void this.restart()
+					.catch((): void => {
+						// restart errors are logged inside restart(); swallow to resolve promise
+					})
+					.finally(() => {
+						this.pendingRestart = null;
+						resolve();
+					});
+			}, delayMs);
+		});
+
+		return this.pendingRestart;
 	}
 
 	private withLock<T>(fn: () => Promise<T>): Promise<T> {

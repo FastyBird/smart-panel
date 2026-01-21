@@ -1,0 +1,95 @@
+# Shelly NG Sensor Component Mappings
+# Maps temperature, humidity, and battery components to sensor channels
+
+version: "1.0"
+
+transformers:
+  # Temperature (Celsius)
+  temperature:
+    type: round
+    precision: 1
+
+  # Humidity (%)
+  humidity:
+    type: round
+    precision: 0
+
+  # Battery percentage
+  battery:
+    type: clamp
+    min: 0
+    max: 100
+
+derivations:
+  # Battery status from percentage
+  # Note: Charging state requires external power detection, not derivable from percentage
+  battery_status:
+    description: "Derive battery status from percentage (low/normal only)"
+    rule:
+      type: threshold
+      thresholds:
+        - max: 20
+          value: "low"
+        - value: "normal"
+
+mappings:
+  # Temperature sensor
+  - name: temperature_sensor
+    description: "Shelly temperature component mapped as temperature channel"
+    priority: 100
+    match:
+      component_type: temperature
+    channels:
+      - identifier: "temperature:{key}"
+        name: "Temperature: {key}"
+        category: TEMPERATURE
+        properties:
+          - shelly_property: tC
+            panel:
+              identifier: TEMPERATURE
+              data_type: FLOAT
+              unit: "°C"
+            transformer: temperature
+
+  # Humidity sensor
+  - name: humidity_sensor
+    description: "Shelly humidity component mapped as humidity channel"
+    priority: 100
+    match:
+      component_type: humidity
+    channels:
+      - identifier: "humidity:{key}"
+        name: "Humidity: {key}"
+        category: HUMIDITY
+        properties:
+          - shelly_property: rh
+            panel:
+              identifier: HUMIDITY
+              data_type: FLOAT
+              unit: "%"
+            transformer: humidity
+
+  # Device power (battery)
+  - name: device_power_battery
+    description: "Shelly device power component mapped as battery channel"
+    priority: 100
+    match:
+      component_type: devicePower
+    channels:
+      - identifier: "devicePower:{key}"
+        name: "Battery: {key}"
+        category: BATTERY
+        properties:
+          - shelly_property: battery
+            panel:
+              identifier: PERCENTAGE
+              data_type: UCHAR
+              format: [0, 100]
+              unit: "%"
+            transformer: battery
+        derived_properties:
+          - identifier: STATUS
+            data_type: ENUM
+            format: ["normal", "low"]
+            source_property: PERCENTAGE
+            derivation: battery_status

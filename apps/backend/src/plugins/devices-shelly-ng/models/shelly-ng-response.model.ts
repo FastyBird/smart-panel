@@ -4,7 +4,7 @@ import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
 
-import { ShellyNgDeviceInfoModel, ShellyNgSupportedDeviceModel } from './shelly-ng.model';
+import { ShellyNgDeviceInfoModel, ShellyNgMappingReloadModel, ShellyNgSupportedDeviceModel } from './shelly-ng.model';
 
 /**
  * Response wrapper for ShellyNgDeviceInfoModel
@@ -31,4 +31,17 @@ export class ShellyNgSupportedDevicesResponseModel extends BaseSuccessResponseMo
 	})
 	@Expose()
 	declare data: ShellyNgSupportedDeviceModel[];
+}
+
+/**
+ * Response wrapper for ShellyNgMappingReloadModel
+ */
+@ApiSchema({ name: 'DevicesShellyNgPluginResMappingReload' })
+export class ShellyNgMappingReloadResponseModel extends BaseSuccessResponseModel<ShellyNgMappingReloadModel> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: () => ShellyNgMappingReloadModel,
+	})
+	@Expose()
+	declare data: ShellyNgMappingReloadModel;
 }

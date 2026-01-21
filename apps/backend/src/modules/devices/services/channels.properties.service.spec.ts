@@ -115,6 +115,7 @@ describe('ChannelsPropertiesService', () => {
 
 	const mockManager: jest.Mocked<Partial<EntityManager>> = {
 		findOneOrFail: jest.fn(),
+		findOne: jest.fn(),
 		remove: jest.fn(),
 	};
 
@@ -445,15 +446,15 @@ describe('ChannelsPropertiesService', () => {
 	describe('remove', () => {
 		it('should remove a channel property', async () => {
 			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(toInstance(ChannelEntity, mockChannel));
-			jest
-				.spyOn(channelsPropertiesService, 'findOne')
-				.mockResolvedValue(toInstance(MockChannelProperty, mockChannelProperty));
-			jest.spyOn(mockManager, 'findOneOrFail').mockResolvedValue(toInstance(MockChannelProperty, mockChannelProperty));
+			mockManager.findOne = jest.fn().mockResolvedValue(toInstance(MockChannelProperty, mockChannelProperty));
 
 			jest.spyOn(mockManager, 'remove');
 
 			await channelsPropertiesService.remove(mockChannelProperty.id);
 
+			expect(mockManager.findOne).toHaveBeenCalledWith(ChannelPropertyEntity, {
+				where: { id: mockChannelProperty.id },
+			});
 			expect(mockManager.remove).toHaveBeenCalledWith(toInstance(MockChannelProperty, mockChannelProperty));
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_PROPERTY_DELETED,

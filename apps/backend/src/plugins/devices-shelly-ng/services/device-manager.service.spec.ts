@@ -7,6 +7,7 @@ Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import {
+	ChannelCategory,
 	ConnectionState,
 	DataTypeType,
 	DeviceCategory,
@@ -34,6 +35,29 @@ const mockChannelsPropertiesService = {
 	findOneBy: jest.fn(),
 	create: jest.fn(),
 	update: jest.fn(),
+} as any;
+
+const mockMappingLoaderService = {
+	findMatchingMapping: jest.fn().mockImplementation((context: any) => {
+		// Return a valid mapping for switch components
+		if (context.componentType === 'switch') {
+			return {
+				channels: [
+					{
+						identifier: `switch:${context.componentKey}`,
+						name: `Switch: ${context.componentKey}`,
+						category: ChannelCategory.SWITCHER,
+						properties: [],
+					},
+				],
+			};
+		}
+		return null;
+	}),
+	interpolateTemplate: jest.fn((template: string, context: any) =>
+		template.replace(/\{key\}/g, String(context.componentKey)),
+	),
+	getDerivation: jest.fn(),
 } as any;
 
 const mockRpc = {
@@ -161,8 +185,34 @@ jest.mock('../devices-shelly-ng.constants', () => ({
 	DESCRIPTORS: {},
 }));
 
+const mockTransformerRegistry = {
+	get: jest.fn().mockReturnValue({
+		read: jest.fn((v) => v),
+		write: jest.fn((v) => v),
+		canRead: jest.fn().mockReturnValue(true),
+		canWrite: jest.fn().mockReturnValue(true),
+	}),
+	has: jest.fn().mockReturnValue(true),
+} as any;
+
+const mockPropertyMappingStorage = {
+	store: jest.fn(),
+	get: jest.fn(),
+	remove: jest.fn(),
+	clear: jest.fn(),
+	getPropertyIdsForChannel: jest.fn(),
+} as any;
+
 const makeService = () =>
-	new DeviceManagerService(mockRpc as any, mockDevicesService, mockChannelsService, mockChannelsPropertiesService);
+	new DeviceManagerService(
+		mockRpc as any,
+		mockDevicesService,
+		mockChannelsService,
+		mockChannelsPropertiesService,
+		mockMappingLoaderService,
+		mockTransformerRegistry,
+		mockPropertyMappingStorage,
+	);
 
 beforeEach(() => {
 	jest.clearAllMocks();
@@ -321,5 +371,165 @@ describe('DeviceManagerService.createOrUpdate', () => {
 		// Switch ON property was created with 'output' value
 		const onCall = mockChannelsPropertiesService.create.mock.calls.find((c) => c[1]?.category === PropertyCategory.ON);
 		expect(onCall).toBeTruthy();
+	});
+});
+
+describe('DeviceManagerService internals', () => {
+	test('enqueueProvision serializes work per device', async () => {
+		const svc: any = makeService();
+
+		const order: string[] = [];
+
+		const slow = svc.enqueueProvision('dev-1', async () => {
+			order.push('first');
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		});
+
+		const fast = svc.enqueueProvision('dev-1', async () => {
+			order.push('second');
+		});
+
+		await Promise.all([slow, fast]);
+
+		expect(order).toEqual(['first', 'second']);
+	});
+
+	test('normalizeValue clamps oversized numbers', () => {
+		const svc: any = makeService();
+
+		// With format range
+		expect(
+			svc.normalizeValue(200000, {
+				format: [0, 10000],
+			}),
+		).toBe(10000);
+
+		// Without format, keep value (mapping should define limits)
+		expect(svc.normalizeValue(500000, null, null)).toBe(500000);
+	});
+
+	describe('applyDerivation', () => {
+		test('threshold derivation: maps numeric ranges to enum values', () => {
+			const svc: any = makeService();
+
+			const derivation = {
+				type: 'threshold',
+				thresholds: [{ max: 20, value: 'low' }, { max: 80, value: 'medium' }, { value: 'high' }],
+			};
+
+			expect(svc.applyDerivation(derivation, 15)).toBe('low');
+			expect(svc.applyDerivation(derivation, 50)).toBe('medium');
+			expect(svc.applyDerivation(derivation, 90)).toBe('high');
+			expect(svc.applyDerivation(derivation, 100)).toBe('high');
+		});
+
+		test('threshold derivation: handles min boundaries', () => {
+			const svc: any = makeService();
+
+			const derivation = {
+				type: 'threshold',
+				thresholds: [{ min: 0, max: 10, value: 'low' }, { min: 11, max: 20, value: 'medium' }, { value: 'high' }],
+			};
+
+			expect(svc.applyDerivation(derivation, 5)).toBe('low');
+			expect(svc.applyDerivation(derivation, 15)).toBe('medium');
+			expect(svc.applyDerivation(derivation, 25)).toBe('high');
+		});
+
+		test('threshold derivation: returns undefined for non-numeric values', () => {
+			const svc: any = makeService();
+
+			const derivation = {
+				type: 'threshold',
+				thresholds: [{ value: 'test' }],
+			};
+
+			expect(svc.applyDerivation(derivation, 'not-a-number')).toBeUndefined();
+			expect(svc.applyDerivation(derivation, true)).toBeUndefined();
+		});
+
+		test('boolean_map derivation: maps boolean values to enum values', () => {
+			const svc: any = makeService();
+
+			const derivation = {
+				type: 'boolean_map',
+				true_value: 'locked',
+				false_value: 'unlocked',
+			};
+
+			expect(svc.applyDerivation(derivation, true)).toBe('locked');
+			expect(svc.applyDerivation(derivation, false)).toBe('unlocked');
+			expect(svc.applyDerivation(derivation, 1)).toBe('locked'); // truthy
+			expect(svc.applyDerivation(derivation, 0)).toBe('unlocked'); // falsy
+		});
+
+		test('position_status derivation: maps position to status', () => {
+			const svc: any = makeService();
+
+			const derivation = {
+				type: 'position_status',
+				closed_value: 'closed',
+				opened_value: 'opened',
+				partial_value: 'stopped',
+			};
+
+			expect(svc.applyDerivation(derivation, 0)).toBe('closed');
+			expect(svc.applyDerivation(derivation, 100)).toBe('opened');
+			expect(svc.applyDerivation(derivation, 50)).toBe('stopped');
+		});
+
+		test('position_status derivation: uses closed_value as default for partial', () => {
+			const svc: any = makeService();
+
+			const derivation = {
+				type: 'position_status',
+				closed_value: 'closed',
+				opened_value: 'opened',
+			};
+
+			expect(svc.applyDerivation(derivation, 0)).toBe('closed');
+			expect(svc.applyDerivation(derivation, 100)).toBe('opened');
+			expect(svc.applyDerivation(derivation, 50)).toBe('closed'); // default to closed
+		});
+
+		test('position_status derivation: returns undefined for non-numeric values', () => {
+			const svc: any = makeService();
+
+			const derivation = {
+				type: 'position_status',
+				closed_value: 'closed',
+				opened_value: 'opened',
+			};
+
+			expect(svc.applyDerivation(derivation, 'not-a-number')).toBeUndefined();
+		});
+
+		test('returns undefined when derivation is undefined', () => {
+			const svc: any = makeService();
+			expect(svc.applyDerivation(undefined, 50)).toBeUndefined();
+		});
+
+		test('returns undefined for unknown derivation type', () => {
+			const svc: any = makeService();
+
+			const derivation = {
+				type: 'unknown_type',
+			} as any;
+
+			expect(svc.applyDerivation(derivation, 50)).toBeUndefined();
+		});
+
+		test('handles errors gracefully', () => {
+			const svc: any = makeService();
+
+			const derivation = {
+				type: 'threshold',
+				thresholds: null, // This will cause an error
+			} as any;
+
+			// Should not throw, but return undefined
+			expect(() => svc.applyDerivation(derivation, 50)).not.toThrow();
+			expect(svc.applyDerivation(derivation, 50)).toBeUndefined();
+		});
 	});
 });

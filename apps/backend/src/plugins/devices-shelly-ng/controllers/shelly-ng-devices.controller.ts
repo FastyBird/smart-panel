@@ -20,8 +20,10 @@ import {
 } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
 import { DevicesShellyNgPluginReqGetInfo } from '../dto/shelly-ng-get-info.dto';
+import { MappingLoaderService } from '../mappings';
 import {
 	ShellyNgDeviceInfoResponseModel,
+	ShellyNgMappingReloadResponseModel,
 	ShellyNgSupportedDevicesResponseModel,
 } from '../models/shelly-ng-response.model';
 import { ShellyNgDeviceInfoModel, ShellyNgSupportedDeviceModel } from '../models/shelly-ng.model';
@@ -35,7 +37,10 @@ export class ShellyNgDevicesController {
 		'ShellyNgDevicesController',
 	);
 
-	constructor(private readonly deviceManagerService: DeviceManagerService) {}
+	constructor(
+		private readonly deviceManagerService: DeviceManagerService,
+		private readonly mappingLoaderService: MappingLoaderService,
+	) {}
 
 	@ApiOperation({
 		tags: [DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME],
@@ -140,5 +145,81 @@ export class ShellyNgDevicesController {
 		response.data = devices;
 
 		return response;
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME],
+		summary: 'Reload YAML mapping configurations',
+		description:
+			'Reloads all YAML mapping configuration files from built-in and user directories. This is useful after modifying custom mapping files without restarting the application. The cache is cleared before reloading. Returns validation results including any errors or warnings encountered during reload.',
+		operationId: 'post-devices-shelly-ng-plugin-reload-mappings',
+	})
+	@ApiSuccessResponse(
+		ShellyNgMappingReloadResponseModel,
+		'Mapping configurations reload operation completed. Returns statistics about loaded mappings, cache status, and any validation errors or warnings.',
+	)
+	@ApiInternalServerErrorResponse('Internal server error during mapping reload')
+	@Post('mappings/reload')
+	reloadMappings(): ShellyNgMappingReloadResponseModel {
+		try {
+			const reloadResult = this.mappingLoaderService.reload();
+			const cacheStats = this.mappingLoaderService.getCacheStats();
+			const loadResults = this.mappingLoaderService.getLoadResults();
+
+			// Collect all errors and warnings for detailed reporting
+			const allErrors: string[] = [];
+			const allWarnings: string[] = [];
+
+			for (const result of loadResults) {
+				if (result.errors) {
+					allErrors.push(...result.errors.map((e) => `${result.source}: ${e}`));
+				}
+				if (result.warnings) {
+					allWarnings.push(...result.warnings.map((w) => `${result.source}: ${w}`));
+				}
+			}
+
+			if (reloadResult.success) {
+				this.logger.log('Mapping configurations reloaded successfully', {
+					mappingsLoaded: reloadResult.mappingsLoaded,
+					filesLoaded: reloadResult.filesLoaded,
+					warnings: reloadResult.warnings,
+					cacheSize: cacheStats.size,
+				});
+			} else {
+				this.logger.warn('Mapping configurations reloaded with errors', {
+					mappingsLoaded: reloadResult.mappingsLoaded,
+					filesLoaded: reloadResult.filesLoaded,
+					filesFailed: reloadResult.filesFailed,
+					errors: reloadResult.errors,
+					warnings: reloadResult.warnings,
+					errorDetails: allErrors.slice(0, 10), // Limit to first 10 errors in log
+				});
+			}
+
+			const response = new ShellyNgMappingReloadResponseModel();
+			response.data = {
+				success: reloadResult.success,
+				cacheStats,
+				reloadStats: {
+					mappingsLoaded: reloadResult.mappingsLoaded,
+					filesLoaded: reloadResult.filesLoaded,
+					filesFailed: reloadResult.filesFailed,
+					errors: reloadResult.errors,
+					warnings: reloadResult.warnings,
+					errorDetails: allErrors.length > 0 ? allErrors : undefined,
+					warningDetails: allWarnings.length > 0 ? allWarnings : undefined,
+				},
+			};
+
+			return response;
+		} catch (error) {
+			this.logger.error('Failed to reload mapping configurations', {
+				error: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+			});
+
+			throw new UnprocessableEntityException('Failed to reload mapping configurations');
+		}
 	}
 }

@@ -34,6 +34,9 @@ import {
 	ShellyNgChannelPropertyEntity,
 	ShellyNgDeviceEntity,
 } from '../entities/devices-shelly-ng.entity';
+import { PropertyMappingStorageService, TransformerRegistry } from '../mappings';
+import { ITransformer } from '../mappings/transformers/transformer.types';
+import { createInlineTransformer } from '../mappings/transformers/transformers';
 import { CoerceNumberOpts, rssiToQuality, toEnergy } from '../utils/transform.utils';
 
 import { ShellyDeviceDelegate } from './shelly-device.delegate';
@@ -74,11 +77,15 @@ export class DelegatesManagerService {
 
 	private readonly propertiesMap: Map<string, Set<string>> = new Map();
 
+	private readonly delegateDeviceIds: Map<string, string> = new Map();
+
 	constructor(
 		private readonly devicesService: DevicesService,
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
+		private readonly propertyMappingStorage: PropertyMappingStorageService,
+		private readonly transformerRegistry: TransformerRegistry,
 	) {}
 
 	get(id: Device['id']): ShellyDeviceDelegate | undefined {
@@ -111,14 +118,30 @@ export class DelegatesManagerService {
 		);
 
 		if (device === null) {
-			device = await this.devicesService.create<ShellyNgDeviceEntity, CreateShellyNgDeviceDto>({
-				type: DEVICES_SHELLY_NG_TYPE,
-				category: this.determineCategory(delegate),
-				identifier: shelly.id,
-				hostname,
-				name: shelly.system.config.device.name ?? shelly.modelName,
-			});
+			try {
+				device = await this.devicesService.create<ShellyNgDeviceEntity, CreateShellyNgDeviceDto>({
+					type: DEVICES_SHELLY_NG_TYPE,
+					category: this.determineCategory(delegate),
+					identifier: shelly.id,
+					hostname,
+					name: shelly.system.config.device.name ?? shelly.modelName,
+				});
+			} catch (error) {
+				// Handle race condition: device may have been created by another process
+				// Retry finding the device
+				device = await this.devicesService.findOneBy<ShellyNgDeviceEntity>(
+					'identifier',
+					shelly.id,
+					DEVICES_SHELLY_NG_TYPE,
+				);
+
+				if (device === null) {
+					throw error; // Re-throw if device still doesn't exist
+				}
+			}
 		}
+
+		this.delegateDeviceIds.set(delegate.id, device.id);
 
 		const deviceInformation = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
 			'category',
@@ -128,53 +151,60 @@ export class DelegatesManagerService {
 		);
 
 		if (deviceInformation === null) {
-			throw new DevicesShellyNgNotFoundException('Failed to load device information channel');
-		}
+			// Channel may not be created yet - this is expected during device initialization
+			// Continue without device information handlers - they can be set up later when channel is created
+		} else {
+			const statusProperty = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+				'category',
+				PropertyCategory.STATUS,
+				deviceInformation.id,
+			);
 
-		await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
-			'category',
-			PropertyCategory.STATUS,
-			deviceInformation.id,
-		);
-
-		const linkQuality = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
-			'category',
-			PropertyCategory.LINK_QUALITY,
-			deviceInformation.id,
-		);
-
-		if (linkQuality !== null) {
-			if (ComponentType.WIFI in shelly) {
-				const comp = shelly.wifi as WiFi;
-
-				await this.setDefaultPropertyValue(device.id, linkQuality, clampNumber(rssiToQuality(comp.rssi), 0, 100));
+			if (statusProperty === null) {
+				// Property may not be created yet - this is expected during device initialization
 			}
 
-			this.changeHandlers.set(
-				`${delegate.id}|${deviceInformation.identifier}|rssi`,
-				(val: CharacteristicValue): void => {
-					const n = coerceNumberSafe(val);
-
-					if (n === null || Number.isNaN(n)) {
-						this.logger.warn(
-							`Dropping invalid numeric update for link quality -> ${safeToString(val)} (property=${linkQuality.id})`,
-						);
-
-						return;
-					}
-
-					this.handleChange(linkQuality, clampNumber(rssiToQuality(n), 0, 100)).catch((err: Error): void => {
-						this.logger.error(
-							`Failed to set value for component=${deviceInformation.identifier} attribute=rssi and property=${linkQuality.id}`,
-							{
-								resource: device.id,
-								message: err.message,
-								stack: err.stack,
-							},
-						);
-					});
-				},
+			const linkQuality = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+				'category',
+				PropertyCategory.LINK_QUALITY,
+				deviceInformation.id,
 			);
+
+			if (linkQuality !== null) {
+				if (ComponentType.WIFI in shelly) {
+					const comp = shelly.wifi as WiFi;
+
+					await this.setDefaultPropertyValue(device.id, linkQuality, clampNumber(rssiToQuality(comp.rssi), 0, 100));
+				}
+
+				this.changeHandlers.set(
+					`${delegate.id}|${deviceInformation.identifier}|rssi`,
+					(val: CharacteristicValue): void => {
+						const n = coerceNumberSafe(val);
+
+						if (n === null || Number.isNaN(n)) {
+							this.logger.warn(
+								`Dropping invalid numeric update for link quality -> ${safeToString(val)} (property=${linkQuality.id})`,
+							);
+
+							return;
+						}
+
+						this.handleChange(linkQuality, clampNumber(rssiToQuality(n), 0, 100)).catch((err: Error): void => {
+							this.logger.error(
+								`Failed to set value for component=${deviceInformation.identifier} attribute=rssi and property=${linkQuality.id}`,
+								{
+									resource: device.id,
+									message: err.message,
+									stack: err.stack,
+								},
+							);
+						});
+					},
+				);
+			} else {
+				// Property may not be created yet - this is expected during device initialization
+			}
 		}
 
 		for (const comp of delegate.switches.values()) {
@@ -186,17 +216,31 @@ export class DelegatesManagerService {
 			);
 
 			if (switcher === null) {
-				throw new DevicesShellyNgNotFoundException('Failed to load switcher channel');
+				// Channel may not be created yet - this is expected during device initialization
+				continue;
 			}
 
-			const switcherOn = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+			let switcherOn = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
 				'identifier',
 				'output',
 				switcher.id,
 			);
 
 			if (switcherOn === null) {
-				throw new DevicesShellyNgNotFoundException('Failed to load switcher on channel property');
+				// Check if property exists with 'on' identifier (YAML mappings might use different identifier)
+				const switcherOnAlt = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'identifier',
+					'on',
+					switcher.id,
+				);
+
+				if (switcherOnAlt === null) {
+					// Property may not be created yet - this is expected during device initialization
+					continue;
+				}
+
+				// Use alternative property if found
+				switcherOn = switcherOnAlt;
 			}
 
 			await this.setDefaultPropertyValue(device.id, switcherOn, comp.output);
@@ -236,26 +280,27 @@ export class DelegatesManagerService {
 				);
 
 				if (electricalEnergy === null) {
-					throw new DevicesShellyNgNotFoundException('Failed to load energy channel');
-				}
-
-				const consumption = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
-					'identifier',
-					'aenergy',
-					electricalEnergy.id,
-				);
-
-				if (consumption === null) {
-					throw new DevicesShellyNgNotFoundException('Failed to load energy consumption channel property');
-				}
-
-				await this.setDefaultPropertyValue(device.id, consumption, toEnergy(comp.aenergy));
-
-				this.changeHandlers.set(`${delegate.id}|${comp.key}|aenergy`, (val: CharacteristicValue): void => {
-					this.handleNumericChange(comp.key, 'aenergy', consumption.id, val, (n) =>
-						this.handleChange(consumption, toEnergy(n), false),
+					// Channel may not be created yet - this is expected during device initialization
+					// Continue without energy monitoring rather than failing
+				} else {
+					const consumption = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+						'identifier',
+						'aenergy',
+						electricalEnergy.id,
 					);
-				});
+
+					if (consumption === null) {
+						// Property may not be created yet - this is expected during device initialization
+					} else {
+						await this.setDefaultPropertyValue(device.id, consumption, toEnergy(comp.aenergy));
+
+						this.changeHandlers.set(`${delegate.id}|${comp.key}|aenergy`, (val: CharacteristicValue): void => {
+							this.handleNumericChange(comp.key, 'aenergy', consumption.id, val, (n) =>
+								this.handleChange(consumption, toEnergy(n), false),
+							);
+						});
+					}
+				}
 			}
 
 			if (typeof comp.apower !== 'undefined') {
@@ -267,59 +312,64 @@ export class DelegatesManagerService {
 				);
 
 				if (electricalPower === null) {
-					throw new DevicesShellyNgNotFoundException('Failed to load electrical power channel');
-				}
-
-				const power = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
-					'identifier',
-					'apower',
-					electricalPower.id,
-				);
-
-				if (power === null) {
-					throw new DevicesShellyNgNotFoundException('Failed to load electrical power channel property');
-				}
-
-				await this.setDefaultPropertyValue(device.id, power, comp.apower);
-
-				this.changeHandlers.set(`${delegate.id}|${comp.key}|apower`, (val: CharacteristicValue): void => {
-					this.handleNumericChange(comp.key, 'apower', power.id, val, (n) => this.handleChange(power, n, false));
-				});
-
-				if (typeof comp.voltage !== 'undefined') {
-					const voltage = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					// Channel may not be created yet - this is expected during device initialization
+					// Continue without power monitoring rather than failing
+				} else {
+					const power = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
 						'identifier',
-						'voltage',
+						'apower',
 						electricalPower.id,
 					);
 
-					if (voltage === null) {
-						throw new DevicesShellyNgNotFoundException('Failed to load electrical power voltage channel property');
+					if (power === null) {
+						// Property may not be created yet - this is expected during device initialization
+					} else {
+						await this.setDefaultPropertyValue(device.id, power, comp.apower);
+
+						this.changeHandlers.set(`${delegate.id}|${comp.key}|apower`, (val: CharacteristicValue): void => {
+							this.handleNumericChange(comp.key, 'apower', power.id, val, (n) => this.handleChange(power, n, false));
+						});
+
+						if (typeof comp.voltage !== 'undefined') {
+							const voltage = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+								'identifier',
+								'voltage',
+								electricalPower.id,
+							);
+
+							if (voltage === null) {
+								// Property may not be created yet - this is expected during device initialization
+							} else {
+								await this.setDefaultPropertyValue(device.id, voltage, comp.voltage);
+
+								this.changeHandlers.set(`${delegate.id}|${comp.key}|voltage`, (val: CharacteristicValue): void => {
+									this.handleNumericChange(comp.key, 'voltage', voltage.id, val, (n) =>
+										this.handleChange(voltage, n, false),
+									);
+								});
+							}
+						}
+
+						if (typeof comp.current !== 'undefined') {
+							const current = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+								'identifier',
+								'current',
+								electricalPower.id,
+							);
+
+							if (current === null) {
+								// Property may not be created yet - this is expected during device initialization
+							} else {
+								await this.setDefaultPropertyValue(device.id, current, comp.current);
+
+								this.changeHandlers.set(`${delegate.id}|${comp.key}|current`, (val: CharacteristicValue): void => {
+									this.handleNumericChange(comp.key, 'current', current.id, val, (n) =>
+										this.handleChange(current, n, false),
+									);
+								});
+							}
+						}
 					}
-
-					await this.setDefaultPropertyValue(device.id, voltage, comp.voltage);
-
-					this.changeHandlers.set(`${delegate.id}|${comp.key}|voltage`, (val: CharacteristicValue): void => {
-						this.handleNumericChange(comp.key, 'voltage', voltage.id, val, (n) => this.handleChange(voltage, n, false));
-					});
-				}
-
-				if (typeof comp.current !== 'undefined') {
-					const current = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
-						'identifier',
-						'current',
-						electricalPower.id,
-					);
-
-					if (current === null) {
-						throw new DevicesShellyNgNotFoundException('Failed to load electrical power current channel property');
-					}
-
-					await this.setDefaultPropertyValue(device.id, current, comp.current);
-
-					this.changeHandlers.set(`${delegate.id}|${comp.key}|current`, (val: CharacteristicValue): void => {
-						this.handleNumericChange(comp.key, 'current', current.id, val, (n) => this.handleChange(current, n, false));
-					});
 				}
 			}
 		}
@@ -333,7 +383,8 @@ export class DelegatesManagerService {
 			);
 
 			if (cover === null) {
-				throw new DevicesShellyNgNotFoundException('Failed to load cover channel');
+				// Channel may not be created yet - this is expected during device initialization
+				continue;
 			}
 
 			const coverState = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
@@ -446,7 +497,8 @@ export class DelegatesManagerService {
 			);
 
 			if (light === null) {
-				throw new DevicesShellyNgNotFoundException('Failed to load light channel');
+				// Channel may not be created yet - this is expected during device initialization
+				continue;
 			}
 
 			const lightOn = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
@@ -541,7 +593,8 @@ export class DelegatesManagerService {
 			);
 
 			if (rgb === null) {
-				throw new DevicesShellyNgNotFoundException('Failed to load rgb channel');
+				// Channel may not be created yet - this is expected during device initialization
+				continue;
 			}
 
 			const rgbOn = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
@@ -641,96 +694,100 @@ export class DelegatesManagerService {
 				);
 
 				if (colorRed === null || colorGreen === null || colorBlue === null) {
-					throw new DevicesShellyNgNotFoundException('Failed to load rgb color channels properties');
+					this.logger.warn(
+						`RGB color properties not found for device=${device.id} rgb=${comp.id}, skipping RGB color handling. Properties may not be created yet.`,
+						{ resource: device.id },
+					);
+					// Continue without RGB color handling
+				} else {
+					await this.setDefaultPropertyValue(device.id, colorRed, clampNumber(comp.rgb[0], 0, 255));
+					await this.setDefaultPropertyValue(device.id, colorGreen, clampNumber(comp.rgb[1], 0, 255));
+					await this.setDefaultPropertyValue(device.id, colorBlue, clampNumber(comp.rgb[2], 0, 255));
+
+					this.changeHandlers.set(`${delegate.id}|${comp.key}|rgb`, (val: CharacteristicValue): void => {
+						this.handleNumericChange(
+							comp.key,
+							'rgb:red',
+							colorRed.id,
+							val[0],
+							(n) => this.handleChange(colorRed, n, false),
+							{ clamp: { min: 0, max: 255 } },
+						);
+						this.handleNumericChange(
+							comp.key,
+							'rgb:green',
+							colorGreen.id,
+							val[1],
+							(n) => this.handleChange(colorGreen, n, false),
+							{ clamp: { min: 0, max: 255 } },
+						);
+						this.handleNumericChange(
+							comp.key,
+							'rgb:blue',
+							colorBlue.id,
+							val[2],
+							(n) => this.handleChange(colorBlue, n, false),
+							{ clamp: { min: 0, max: 255 } },
+						);
+					});
+
+					this.setPropertiesHandlers.set(
+						`${delegate.id}|${colorRed.id}`,
+						async (val: string | number | boolean): Promise<boolean> => {
+							const n = coerceNumberSafe(val);
+
+							if (n === null || Number.isNaN(n)) {
+								this.logger.warn(
+									`Dropping invalid numeric update for ${comp.key}.rgb:red -> ${String(val)} (property=${colorRed.id})`,
+								);
+
+								return;
+							}
+
+							await comp.set(true, comp.brightness, [Math.round(clampNumber(n, 0, 255)), comp.rgb[1], comp.rgb[2]]);
+
+							return true;
+						},
+					);
+
+					this.setPropertiesHandlers.set(
+						`${delegate.id}|${colorGreen.id}`,
+						async (val: string | number | boolean): Promise<boolean> => {
+							const n = coerceNumberSafe(val);
+
+							if (n === null || Number.isNaN(n)) {
+								this.logger.warn(
+									`Dropping invalid numeric update for ${comp.key}.rgb:green -> ${String(val)} (property=${colorGreen.id})`,
+								);
+
+								return;
+							}
+
+							await comp.set(true, comp.brightness, [comp.rgb[0], Math.round(clampNumber(n, 0, 255)), comp.rgb[2]]);
+
+							return true;
+						},
+					);
+
+					this.setPropertiesHandlers.set(
+						`${delegate.id}|${colorBlue.id}`,
+						async (val: string | number | boolean): Promise<boolean> => {
+							const n = coerceNumberSafe(val);
+
+							if (n === null || Number.isNaN(n)) {
+								this.logger.warn(
+									`Dropping invalid numeric update for ${comp.key}.rgb:blue -> ${String(val)} (property=${colorBlue.id})`,
+								);
+
+								return;
+							}
+
+							await comp.set(true, comp.brightness, [comp.rgb[0], comp.rgb[1], Math.round(clampNumber(n, 0, 255))]);
+
+							return true;
+						},
+					);
 				}
-
-				await this.setDefaultPropertyValue(device.id, colorRed, clampNumber(comp.rgb[0], 0, 255));
-				await this.setDefaultPropertyValue(device.id, colorGreen, clampNumber(comp.rgb[1], 0, 255));
-				await this.setDefaultPropertyValue(device.id, colorBlue, clampNumber(comp.rgb[2], 0, 255));
-
-				this.changeHandlers.set(`${delegate.id}|${comp.key}|rgb`, (val: CharacteristicValue): void => {
-					this.handleNumericChange(
-						comp.key,
-						'rgb:red',
-						colorRed.id,
-						val[0],
-						(n) => this.handleChange(colorRed, n, false),
-						{ clamp: { min: 0, max: 255 } },
-					);
-					this.handleNumericChange(
-						comp.key,
-						'rgb:green',
-						colorGreen.id,
-						val[1],
-						(n) => this.handleChange(colorGreen, n, false),
-						{ clamp: { min: 0, max: 255 } },
-					);
-					this.handleNumericChange(
-						comp.key,
-						'rgb:blue',
-						colorBlue.id,
-						val[2],
-						(n) => this.handleChange(colorBlue, n, false),
-						{ clamp: { min: 0, max: 255 } },
-					);
-				});
-
-				this.setPropertiesHandlers.set(
-					`${delegate.id}|${colorRed.id}`,
-					async (val: string | number | boolean): Promise<boolean> => {
-						const n = coerceNumberSafe(val);
-
-						if (n === null || Number.isNaN(n)) {
-							this.logger.warn(
-								`Dropping invalid numeric update for ${comp.key}.rgb:red -> ${String(val)} (property=${colorRed.id})`,
-							);
-
-							return;
-						}
-
-						await comp.set(true, comp.brightness, [Math.round(clampNumber(n, 0, 255)), comp.rgb[1], comp.rgb[2]]);
-
-						return true;
-					},
-				);
-
-				this.setPropertiesHandlers.set(
-					`${delegate.id}|${colorGreen.id}`,
-					async (val: string | number | boolean): Promise<boolean> => {
-						const n = coerceNumberSafe(val);
-
-						if (n === null || Number.isNaN(n)) {
-							this.logger.warn(
-								`Dropping invalid numeric update for ${comp.key}.rgb:green -> ${String(val)} (property=${colorGreen.id})`,
-							);
-
-							return;
-						}
-
-						await comp.set(true, comp.brightness, [comp.rgb[0], Math.round(clampNumber(n, 0, 255)), comp.rgb[2]]);
-
-						return true;
-					},
-				);
-
-				this.setPropertiesHandlers.set(
-					`${delegate.id}|${colorBlue.id}`,
-					async (val: string | number | boolean): Promise<boolean> => {
-						const n = coerceNumberSafe(val);
-
-						if (n === null || Number.isNaN(n)) {
-							this.logger.warn(
-								`Dropping invalid numeric update for ${comp.key}.rgb:blue -> ${String(val)} (property=${colorBlue.id})`,
-							);
-
-							return;
-						}
-
-						await comp.set(true, comp.brightness, [comp.rgb[0], comp.rgb[1], Math.round(clampNumber(n, 0, 255))]);
-
-						return true;
-					},
-				);
 			}
 
 			this.setChannelsHandlers.set(`${delegate.id}|${rgb.id}`, async (updates: BatchUpdate[]): Promise<boolean> => {
@@ -792,7 +849,8 @@ export class DelegatesManagerService {
 			);
 
 			if (rgbw === null) {
-				throw new DevicesShellyNgNotFoundException('Failed to load rgbw channel');
+				// Channel may not be created yet - this is expected during device initialization
+				continue;
 			}
 
 			const rgbwOn = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
@@ -895,96 +953,100 @@ export class DelegatesManagerService {
 				);
 
 				if (colorRed === null || colorGreen === null || colorBlue === null) {
-					throw new DevicesShellyNgNotFoundException('Failed to load rgbw color channels properties');
+					this.logger.warn(
+						`RGB color properties not found for device=${device.id} rgbw=${comp.id}, skipping RGB color handling. Properties may not be created yet or device doesn't support RGB.`,
+						{ resource: device.id },
+					);
+					// Continue without RGB color handling - some RGBW devices may only support white channel
+				} else {
+					await this.setDefaultPropertyValue(device.id, colorRed, clampNumber(comp.rgb[0], 0, 255));
+					await this.setDefaultPropertyValue(device.id, colorGreen, clampNumber(comp.rgb[1], 0, 255));
+					await this.setDefaultPropertyValue(device.id, colorBlue, clampNumber(comp.rgb[2], 0, 255));
+
+					this.changeHandlers.set(`${delegate.id}|${comp.key}|rgb`, (val: CharacteristicValue): void => {
+						this.handleNumericChange(
+							comp.key,
+							'rgb:red',
+							colorRed.id,
+							val[0],
+							(n) => this.handleChange(colorRed, n, false),
+							{ clamp: { min: 0, max: 255 } },
+						);
+						this.handleNumericChange(
+							comp.key,
+							'rgb:green',
+							colorGreen.id,
+							val[1],
+							(n) => this.handleChange(colorGreen, n, false),
+							{ clamp: { min: 0, max: 255 } },
+						);
+						this.handleNumericChange(
+							comp.key,
+							'rgb:blue',
+							colorBlue.id,
+							val[2],
+							(n) => this.handleChange(colorBlue, n, false),
+							{ clamp: { min: 0, max: 255 } },
+						);
+					});
+
+					this.setPropertiesHandlers.set(
+						`${delegate.id}|${colorRed.id}`,
+						async (val: string | number | boolean): Promise<boolean> => {
+							const n = coerceNumberSafe(val);
+
+							if (n === null || Number.isNaN(n)) {
+								this.logger.warn(
+									`Dropping invalid numeric update for ${comp.key}.rgb:red -> ${String(val)} (property=${colorRed.id})`,
+								);
+
+								return;
+							}
+
+							await comp.set(true, comp.brightness, [Math.round(clampNumber(n, 0, 255)), comp.rgb[1], comp.rgb[2]]);
+
+							return true;
+						},
+					);
+
+					this.setPropertiesHandlers.set(
+						`${delegate.id}|${colorGreen.id}`,
+						async (val: string | number | boolean): Promise<boolean> => {
+							const n = coerceNumberSafe(val);
+
+							if (n === null || Number.isNaN(n)) {
+								this.logger.warn(
+									`Dropping invalid numeric update for ${comp.key}.rgb:green -> ${String(val)} (property=${colorGreen.id})`,
+								);
+
+								return;
+							}
+
+							await comp.set(true, comp.brightness, [comp.rgb[0], Math.round(clampNumber(n, 0, 255)), comp.rgb[2]]);
+
+							return true;
+						},
+					);
+
+					this.setPropertiesHandlers.set(
+						`${delegate.id}|${colorBlue.id}`,
+						async (val: string | number | boolean): Promise<boolean> => {
+							const n = coerceNumberSafe(val);
+
+							if (n === null || Number.isNaN(n)) {
+								this.logger.warn(
+									`Dropping invalid numeric update for ${comp.key}.rgb:blue -> ${String(val)} (property=${colorBlue.id})`,
+								);
+
+								return;
+							}
+
+							await comp.set(true, comp.brightness, [comp.rgb[0], comp.rgb[1], Math.round(clampNumber(n, 0, 255))]);
+
+							return true;
+						},
+					);
 				}
-
-				await this.setDefaultPropertyValue(device.id, colorRed, clampNumber(comp.rgb[0], 0, 255));
-				await this.setDefaultPropertyValue(device.id, colorGreen, clampNumber(comp.rgb[1], 0, 255));
-				await this.setDefaultPropertyValue(device.id, colorBlue, clampNumber(comp.rgb[2], 0, 255));
-
-				this.changeHandlers.set(`${delegate.id}|${comp.key}|rgb`, (val: CharacteristicValue): void => {
-					this.handleNumericChange(
-						comp.key,
-						'rgb:red',
-						colorRed.id,
-						val[0],
-						(n) => this.handleChange(colorRed, n, false),
-						{ clamp: { min: 0, max: 255 } },
-					);
-					this.handleNumericChange(
-						comp.key,
-						'rgb:green',
-						colorGreen.id,
-						val[1],
-						(n) => this.handleChange(colorGreen, n, false),
-						{ clamp: { min: 0, max: 255 } },
-					);
-					this.handleNumericChange(
-						comp.key,
-						'rgb:blue',
-						colorBlue.id,
-						val[2],
-						(n) => this.handleChange(colorBlue, n, false),
-						{ clamp: { min: 0, max: 255 } },
-					);
-				});
-
-				this.setPropertiesHandlers.set(
-					`${delegate.id}|${colorRed.id}`,
-					async (val: string | number | boolean): Promise<boolean> => {
-						const n = coerceNumberSafe(val);
-
-						if (n === null || Number.isNaN(n)) {
-							this.logger.warn(
-								`Dropping invalid numeric update for ${comp.key}.rgb:red -> ${String(val)} (property=${colorRed.id})`,
-							);
-
-							return;
-						}
-
-						await comp.set(true, comp.brightness, [Math.round(clampNumber(n, 0, 255)), comp.rgb[1], comp.rgb[2]]);
-
-						return true;
-					},
-				);
-
-				this.setPropertiesHandlers.set(
-					`${delegate.id}|${colorGreen.id}`,
-					async (val: string | number | boolean): Promise<boolean> => {
-						const n = coerceNumberSafe(val);
-
-						if (n === null || Number.isNaN(n)) {
-							this.logger.warn(
-								`Dropping invalid numeric update for ${comp.key}.rgb:green -> ${String(val)} (property=${colorGreen.id})`,
-							);
-
-							return;
-						}
-
-						await comp.set(true, comp.brightness, [comp.rgb[0], Math.round(clampNumber(n, 0, 255)), comp.rgb[2]]);
-
-						return true;
-					},
-				);
-
-				this.setPropertiesHandlers.set(
-					`${delegate.id}|${colorBlue.id}`,
-					async (val: string | number | boolean): Promise<boolean> => {
-						const n = coerceNumberSafe(val);
-
-						if (n === null || Number.isNaN(n)) {
-							this.logger.warn(
-								`Dropping invalid numeric update for ${comp.key}.rgb:blue -> ${String(val)} (property=${colorBlue.id})`,
-							);
-
-							return;
-						}
-
-						await comp.set(true, comp.brightness, [comp.rgb[0], comp.rgb[1], Math.round(clampNumber(n, 0, 255))]);
-
-						return true;
-					},
-				);
 			}
 
 			if (typeof comp.white !== 'undefined') {
@@ -1095,7 +1157,8 @@ export class DelegatesManagerService {
 			);
 
 			if (cct === null) {
-				throw new DevicesShellyNgNotFoundException('Failed to load cct channel');
+				// Channel may not be created yet - this is expected during device initialization
+				continue;
 			}
 
 			const cctOn = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
@@ -1263,7 +1326,8 @@ export class DelegatesManagerService {
 			);
 
 			if (humidity === null) {
-				throw new DevicesShellyNgNotFoundException('Failed to load humidity channel');
+				// Channel may not be created yet - this is expected during device initialization
+				continue;
 			}
 
 			const relativeHumidity = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
@@ -1299,7 +1363,8 @@ export class DelegatesManagerService {
 			);
 
 			if (temperature === null) {
-				throw new DevicesShellyNgNotFoundException('Failed to load temperature channel');
+				// Channel may not be created yet - this is expected during device initialization
+				continue;
 			}
 
 			const relativeTemperature = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
@@ -1330,7 +1395,8 @@ export class DelegatesManagerService {
 			);
 
 			if (devicePower === null) {
-				throw new DevicesShellyNgNotFoundException('Failed to load device power channel');
+				// Channel may not be created yet - this is expected during device initialization
+				continue;
 			}
 
 			if (comp.battery) {
@@ -1368,7 +1434,8 @@ export class DelegatesManagerService {
 			);
 
 			if (electricalPower === null) {
-				throw new DevicesShellyNgNotFoundException('Failed to load electrical power channel');
+				// Channel may not be created yet - this is expected during device initialization
+				continue;
 			}
 
 			const power = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
@@ -1432,26 +1499,27 @@ export class DelegatesManagerService {
 				);
 
 				if (electricalEnergy === null) {
-					throw new DevicesShellyNgNotFoundException('Failed to load energy channel');
-				}
-
-				const consumption = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
-					'identifier',
-					'aenergy',
-					electricalEnergy.id,
-				);
-
-				if (consumption === null) {
-					throw new DevicesShellyNgNotFoundException('Failed to load energy consumption channel property');
-				}
-
-				await this.setDefaultPropertyValue(device.id, consumption, toEnergy(comp.aenergy));
-
-				this.changeHandlers.set(`${delegate.id}|${comp.key}|aenergy`, (val: CharacteristicValue): void => {
-					this.handleNumericChange(comp.key, 'aenergy', consumption.id, val, (n) =>
-						this.handleChange(consumption, toEnergy(n), false),
+					// Channel may not be created yet - this is expected during device initialization
+					// Continue without energy monitoring rather than failing
+				} else {
+					const consumption = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+						'identifier',
+						'aenergy',
+						electricalEnergy.id,
 					);
-				});
+
+					if (consumption === null) {
+						// Property may not be created yet - this is expected during device initialization
+					} else {
+						await this.setDefaultPropertyValue(device.id, consumption, toEnergy(comp.aenergy));
+
+						this.changeHandlers.set(`${delegate.id}|${comp.key}|aenergy`, (val: CharacteristicValue): void => {
+							this.handleNumericChange(comp.key, 'aenergy', consumption.id, val, (n) =>
+								this.handleChange(consumption, toEnergy(n), false),
+							);
+						});
+					}
+				}
 			}
 		}
 
@@ -1523,16 +1591,30 @@ export class DelegatesManagerService {
 		}
 
 		const valueHandler = this.delegateValueHandlers.get(delegate.id);
+		const connectionHandler = this.delegateConnectionHandlers.get(delegate.id);
+
+		if (connectionHandler) {
+			// Mark device as unknown before detaching listeners so UI reflects removal
+			connectionHandler(null);
+		} else {
+			const deviceDbId = this.delegateDeviceIds.get(deviceId) ?? deviceId;
+
+			void this.deviceConnectivityService
+				.setConnectionState(deviceDbId, { state: ConnectionState.UNKNOWN })
+				.catch((err: Error): void => {
+					this.logger.warn(`Failed to mark device=${delegate.id} as disconnected while removing delegate`, {
+						resource: delegate.id,
+						message: err.message,
+						stack: err.stack,
+					});
+				});
+		}
 
 		if (valueHandler) {
 			delegate.off('value', valueHandler);
 		}
 
-		const connectionHandler = this.delegateConnectionHandlers.get(delegate.id);
-
 		if (connectionHandler) {
-			connectionHandler(null);
-
 			delegate.off('connected', connectionHandler);
 		}
 
@@ -1551,6 +1633,12 @@ export class DelegatesManagerService {
 			}
 		}
 
+		for (const key of Array.from(this.setChannelsHandlers.keys())) {
+			if (key.startsWith(`${deviceId}|`)) {
+				this.setChannelsHandlers.delete(key);
+			}
+		}
+
 		const ids = this.propertiesMap.get(deviceId);
 
 		if (ids) {
@@ -1562,6 +1650,8 @@ export class DelegatesManagerService {
 
 			this.propertiesMap.delete(deviceId);
 		}
+
+		this.delegateDeviceIds.delete(deviceId);
 
 		this.delegates.delete(deviceId);
 
@@ -1581,7 +1671,23 @@ export class DelegatesManagerService {
 			);
 		}
 
-		return handler(updates.map((row): BatchUpdate => ({ property: row.property, val: row.value })));
+		// Apply transformers to all update values
+		const transformedUpdates = updates.map((row): BatchUpdate => {
+			const propertyMapping = this.propertyMappingStorage.get(row.property.id);
+			let transformedValue = row.value;
+
+			if (propertyMapping) {
+				transformedValue = this.applyTransformer(propertyMapping, row.value, 'write') as string | number | boolean;
+
+				this.logger.debug(`Applied transformer for property=${row.property.id}: ${row.value} -> ${transformedValue}`, {
+					resource: device.id,
+				});
+			}
+
+			return { property: row.property, val: transformedValue };
+		});
+
+		return handler(transformedUpdates);
 	}
 
 	async setPropertyValue(
@@ -1600,7 +1706,59 @@ export class DelegatesManagerService {
 			return Promise.resolve(false);
 		}
 
-		return handler(value);
+		// Apply transformer if mapping exists
+		const propertyMapping = this.propertyMappingStorage.get(property.id);
+		let transformedValue = value;
+
+		if (propertyMapping) {
+			transformedValue = this.applyTransformer(propertyMapping, value, 'write') as string | number | boolean;
+
+			this.logger.debug(`Applied transformer for property=${property.id}: ${value} -> ${transformedValue}`, {
+				resource: device.id,
+			});
+		}
+
+		return handler(transformedValue);
+	}
+
+	/**
+	 * Apply transformer to a value
+	 */
+	private applyTransformer(
+		propertyMapping: import('../mappings/mapping.types').ResolvedProperty,
+		value: unknown,
+		direction: 'read' | 'write' = 'read',
+	): unknown {
+		let transformer: ITransformer | null = null;
+
+		// Get transformer from named reference or inline transform
+		if (propertyMapping.transformerName) {
+			transformer = this.transformerRegistry.get(propertyMapping.transformerName);
+		} else if (propertyMapping.inlineTransform) {
+			transformer = createInlineTransformer(propertyMapping.inlineTransform);
+		}
+
+		if (!transformer) {
+			return value;
+		}
+
+		// Check if transformer supports the requested direction
+		if (direction === 'read' && !transformer.canRead()) {
+			this.logger.warn(`Transformer does not support read operation for property mapping`);
+			return value;
+		}
+
+		if (direction === 'write' && !transformer.canWrite()) {
+			this.logger.warn(`Transformer does not support write operation for property mapping`);
+			return value;
+		}
+
+		try {
+			return direction === 'read' ? transformer.read(value) : transformer.write(value);
+		} catch (error) {
+			this.logger.warn(`Failed to apply transformer: ${error instanceof Error ? error.message : String(error)}`);
+			return value;
+		}
 	}
 
 	private async handleChange(
@@ -1724,6 +1882,7 @@ export class DelegatesManagerService {
 
 		this.changeHandlers.clear();
 		this.setPropertiesHandlers.clear();
+		this.setChannelsHandlers.clear();
 		this.propertiesMap.clear();
 
 		for (const pendingWrite of this.pendingWrites.values()) {

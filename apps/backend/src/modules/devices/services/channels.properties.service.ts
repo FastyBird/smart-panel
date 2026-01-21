@@ -324,9 +324,14 @@ export class ChannelsPropertiesService {
 	}
 
 	async remove(id: string, manager: EntityManager = this.dataSource.manager): Promise<void> {
-		const property = await manager.findOneOrFail<ChannelPropertyEntity>(ChannelPropertyEntity, {
+		const property = await manager.findOne<ChannelPropertyEntity>(ChannelPropertyEntity, {
 			where: { id },
 		});
+
+		if (!property) {
+			this.logger.warn(`Property with id=${id} not found during removal (skipping)`);
+			return;
+		}
 
 		// Capture property entity before removal to preserve ID for event emission
 		const propertyForEvent = { ...property };

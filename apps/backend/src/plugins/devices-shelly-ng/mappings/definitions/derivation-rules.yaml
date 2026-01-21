@@ -1,0 +1,33 @@
+# Shelly NG Derivation Rules
+# Defines reusable rules for deriving property values from other properties
+
+version: "1.0"
+
+derivations:
+  # Battery status derivation
+  # Note: Charging state requires external power detection, not derivable from percentage
+  battery_status:
+    description: "Derive battery status from percentage (low/normal only)"
+    rule:
+      type: threshold
+      thresholds:
+        - max: 20
+          value: "low"
+        - value: "normal"
+
+  # Cover status from position
+  cover_status_from_position:
+    description: "Derive cover status from position"
+    rule:
+      type: position_status
+      closed_value: "closed"
+      opened_value: "opened"
+      partial_value: "stopped"
+
+  # Lock status from boolean
+  lock_status:
+    description: "Derive lock status from locked state"
+    rule:
+      type: boolean_map
+      true_value: "locked"
+      false_value: "unlocked"

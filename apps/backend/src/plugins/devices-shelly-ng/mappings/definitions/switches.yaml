@@ -1,0 +1,115 @@
+# Shelly NG Switch Component Mappings
+# Maps switch components to different channel types based on device category
+
+version: "1.0"
+
+transformers:
+  # Boolean state transformer
+  boolean_state:
+    type: boolean
+    true_value: true
+    false_value: false
+
+mappings:
+  # Switch as Switcher (default for SWITCHER, OUTLET, PUMP devices)
+  - name: switch_as_switcher
+    description: "Shelly switch component mapped as switcher channel"
+    priority: 100
+    match:
+      all_of:
+        - component_type: switch
+        - any_of:
+            - device_category: SWITCHER
+            - device_category: OUTLET
+            - device_category: PUMP
+    channels:
+      - identifier: "switch:{key}"
+        name: "Switch: {key}"
+        category: SWITCHER
+        properties:
+          - shelly_property: output
+            panel:
+              identifier: ON
+              data_type: BOOL
+            transformer: boolean_state
+
+  # Switch as Light (for LIGHTING category)
+  - name: switch_as_light
+    description: "Shelly switch component mapped as light channel (no dimming)"
+    priority: 100
+    match:
+      all_of:
+        - component_type: switch
+        - device_category: LIGHTING
+    channels:
+      - identifier: "switch:{key}"
+        name: "Light: {key}"
+        category: LIGHT
+        properties:
+          - shelly_property: output
+            panel:
+              identifier: ON
+              data_type: BOOL
+            transformer: boolean_state
+
+  # Switch as Fan (for FAN category)
+  - name: switch_as_fan
+    description: "Shelly switch component mapped as fan channel"
+    priority: 100
+    match:
+      all_of:
+        - component_type: switch
+        - device_category: FAN
+    channels:
+      - identifier: "switch:{key}"
+        name: "Fan: {key}"
+        category: FAN
+        properties:
+          - shelly_property: output
+            panel:
+              identifier: ON
+              data_type: BOOL
+            transformer: boolean_state
+
+  # Switch as Valve (for VALVE, SPRINKLER devices)
+  - name: switch_as_valve
+    description: "Shelly switch component mapped as valve channel"
+    priority: 100
+    match:
+      all_of:
+        - component_type: switch
+        - any_of:
+            - device_category: VALVE
+            - device_category: SPRINKLER
+    channels:
+      - identifier: "switch:{key}"
+        name: "Valve: {key}"
+        category: VALVE
+        properties:
+          - shelly_property: output
+            panel:
+              identifier: ON
+              data_type: BOOL
+            transformer: boolean_state
+        static_properties:
+          - identifier: TYPE
+            data_type: ENUM
+            format: ["generic", "irrigation", "shower_head", "water_faucet"]
+            value: "generic"
+
+  # Default Switch mapping (fallback for GENERIC and other uncovered device categories)
+  - name: switch_default
+    description: "Default switch mapping for unhandled device categories"
+    priority: 50
+    match:
+      component_type: switch
+    channels:
+      - identifier: "switch:{key}"
+        name: "Switch: {key}"
+        category: SWITCHER
+        properties:
+          - shelly_property: output
+            panel:
+              identifier: ON
+              data_type: BOOL
+            transformer: boolean_state

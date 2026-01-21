@@ -28,60 +28,26 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 		return ShellyNgDeviceEntity;
 	}
 
-	async afterInsert(event: InsertEvent<ShellyNgDeviceEntity>): Promise<void> {
-		try {
-			await this.deviceManagerService.createOrUpdate(event.entity.id);
-
-			this.shellyNgService.restart().catch((error) => {
-				const err = error as Error;
-
-				this.logger.error('Failed restart Shelly communication service', {
-					message: err.message,
-					stack: err.stack,
-				});
-			});
-		} catch (error) {
-			const err = error as Error;
-
-			this.logger.error(`Failed to finalize newly created device=${event.entity.id}`, {
-				message: err.message,
-				stack: err.stack,
-			});
-		}
+	afterInsert(event: InsertEvent<ShellyNgDeviceEntity>): void {
+		this.scheduleProvision(event.entity.id, event.queryRunner?.isTransactionActive ?? false);
 	}
 
-	async afterUpdate(event: UpdateEvent<ShellyNgDeviceEntity>): Promise<void> {
-		let credentialsUpdated = false;
+	afterUpdate(event: UpdateEvent<ShellyNgDeviceEntity>): void {
+		let needsResync = false;
 
 		for (const updatedColumn of event.updatedColumns) {
-			if (['password', 'hostname'].includes(updatedColumn.databaseName.toLowerCase())) {
-				credentialsUpdated = true;
+			// Resync when credentials, hostname, or category changes
+			// Category change requires channel re-creation with new categories
+			if (['password', 'hostname', 'category'].includes(updatedColumn.databaseName.toLowerCase())) {
+				needsResync = true;
 			}
 		}
 
-		if (!credentialsUpdated) {
+		if (!needsResync) {
 			return;
 		}
 
-		try {
-			await this.deviceManagerService.createOrUpdate(event.databaseEntity.id);
-
-			this.shellyNgService.restart().catch((error) => {
-				const err = error as Error;
-
-				this.logger.error('Failed restart Shelly communication service', {
-					message: err.message,
-					stack: err.stack,
-				});
-			});
-		} catch (error) {
-			const err = error as Error;
-
-			this.logger.error(`Failed to finalize updated device=${event.databaseEntity.id}`, {
-				message: err.message,
-				stack: err.stack,
-			});
-		}
+		this.scheduleProvision(event.databaseEntity.id, event.queryRunner?.isTransactionActive ?? false);
 	}
 
 	afterRemove(): void {
@@ -93,5 +59,37 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 				stack: err.stack,
 			});
 		});
+	}
+
+	private scheduleProvision(deviceId: string, inTransaction: boolean): void {
+		const run = async (): Promise<void> => {
+			try {
+				await this.deviceManagerService.createOrUpdate(deviceId);
+			} catch (error) {
+				const err = error as Error;
+
+				// If the device was deleted between insert/update and finalize, skip retrying.
+				if (err.message === 'Device not found.') {
+					this.logger.warn(`Skip finalize for missing device=${deviceId}`);
+					return;
+				}
+
+				this.logger.error(`Failed to finalize device=${deviceId}`, {
+					message: err.message,
+					stack: err.stack,
+				});
+			}
+		};
+
+		// If still inside a transaction, defer to the macrotask queue so the outer
+		// transaction can commit before we start new DB work (avoids SQLite savepoint issues).
+		if (inTransaction) {
+			setTimeout(() => {
+				void run();
+			}, 0);
+			return;
+		}
+
+		void run();
 	}
 }
