@@ -7,6 +7,7 @@ Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import {
+	ChannelCategory,
 	ConnectionState,
 	DataTypeType,
 	DeviceCategory,
@@ -194,6 +195,14 @@ const mockTransformerRegistry = {
 	has: jest.fn().mockReturnValue(true),
 } as any;
 
+const mockPropertyMappingStorage = {
+	store: jest.fn(),
+	get: jest.fn(),
+	remove: jest.fn(),
+	clear: jest.fn(),
+	getPropertyIdsForChannel: jest.fn(),
+} as any;
+
 const makeService = () =>
 	new DeviceManagerService(
 		mockRpc as any,
@@ -202,6 +211,7 @@ const makeService = () =>
 		mockChannelsPropertiesService,
 		mockMappingLoaderService,
 		mockTransformerRegistry,
+		mockPropertyMappingStorage,
 	);
 
 beforeEach(() => {

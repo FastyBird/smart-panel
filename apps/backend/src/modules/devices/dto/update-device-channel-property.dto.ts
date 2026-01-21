@@ -1,7 +1,9 @@
 import { Expose, Type } from 'class-transformer';
 import {
+	ArrayNotEmpty,
 	IsArray,
 	IsBoolean,
+	IsEnum,
 	IsNotEmpty,
 	IsNumber,
 	IsOptional,
@@ -11,6 +13,8 @@ import {
 } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+
+import { DataTypeType, PermissionType } from '../devices.constants';
 
 @ApiSchema({ name: 'DevicesModuleUpdateDeviceChannelProperty' })
 export class UpdateDeviceChannelPropertyDto {
@@ -44,6 +48,34 @@ export class UpdateDeviceChannelPropertyDto {
 	})
 	@ValidateIf((_, value) => value !== null)
 	identifier?: string | null;
+
+	@ApiPropertyOptional({
+		description: 'Property permissions',
+		enum: PermissionType,
+		isArray: true,
+		example: [PermissionType.READ_ONLY],
+	})
+	@Expose()
+	@IsOptional()
+	@IsArray()
+	@IsEnum(PermissionType, {
+		each: true,
+		message: '[{"field":"permissions","reason":"Each permission must be a valid permission type."}]',
+	})
+	@ArrayNotEmpty({ message: '[{"field":"permissions","reason":"Permissions array cannot be empty."}]' })
+	permissions?: PermissionType[];
+
+	@ApiPropertyOptional({
+		description: 'Property data type',
+		enum: DataTypeType,
+		example: DataTypeType.FLOAT,
+	})
+	@Expose()
+	@IsOptional()
+	@IsEnum(DataTypeType, {
+		message: '[{"field":"data_type","reason":"Data type must be a valid data type."}]',
+	})
+	data_type?: DataTypeType;
 
 	@ApiPropertyOptional({
 		description: 'Property name',

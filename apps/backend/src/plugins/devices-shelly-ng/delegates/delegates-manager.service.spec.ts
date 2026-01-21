@@ -41,6 +41,18 @@ const deviceConnectivityService = {
 	setConnectionState: jest.fn().mockResolvedValue(undefined),
 };
 
+const propertyMappingStorage = {
+	store: jest.fn(),
+	get: jest.fn(),
+	remove: jest.fn(),
+	clear: jest.fn(),
+	getPropertyIdsForChannel: jest.fn().mockReturnValue([]),
+};
+
+const transformerRegistry = {
+	get: jest.fn().mockReturnValue(null),
+};
+
 type Wifi = { key: string; rssi: number; sta_ip?: string | null };
 
 type FakeSwitch = {
@@ -118,11 +130,12 @@ describe('DelegatesManagerService', () => {
 		deviceConnectivityService.setConnectionState = jest.fn().mockResolvedValue(undefined);
 
 		svc = new DelegatesManagerService(
-			// @ts-expect-error bare mock
-			devicesService,
-			channelsService,
-			channelsPropertiesService,
-			deviceConnectivityService,
+			devicesService as any,
+			channelsService as any,
+			channelsPropertiesService as any,
+			deviceConnectivityService as any,
+			propertyMappingStorage as any,
+			transformerRegistry as any,
 		);
 	});
 

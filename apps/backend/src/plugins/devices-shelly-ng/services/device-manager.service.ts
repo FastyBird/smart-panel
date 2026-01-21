@@ -1918,19 +1918,31 @@ export class DeviceManagerService {
 		}
 
 		const channelSpec = channelsSchema[channel.category] as ChannelDefinition | undefined;
-		const propertySpec =
-			typeof channelSpec === 'object'
-				? (channelSpec['properties'][category] as
-						| {
-								permissions: PermissionType[];
-								data_type: DataTypeType;
-								unit: string | null;
-								format: string[] | number[] | null;
-						  }
-						| undefined)
-				: undefined;
+		const schemaPropertySpec = this.getSchemaPropertySpec(channelSpec, category);
+		const mappingPropertySpec = this.getMappingPropertySpec(propertyMapping);
 
-		const normalizedValue = this.normalizeValue(value, propertySpec, options);
+		const resolvedFormat = options?.format ?? mappingPropertySpec?.format ?? schemaPropertySpec?.format ?? null;
+		const normalizedValue = this.normalizeValue(value, { format: resolvedFormat });
+
+		const inferredDataType: DataTypeType =
+			typeof normalizedValue === 'number'
+				? DataTypeType.FLOAT
+				: typeof normalizedValue === 'boolean'
+					? DataTypeType.BOOL
+					: typeof normalizedValue === 'string'
+						? DataTypeType.STRING
+						: DataTypeType.UNKNOWN;
+
+		const resolvedDataType =
+			options?.data_type ?? mappingPropertySpec?.data_type ?? schemaPropertySpec?.data_type ?? inferredDataType;
+
+		const resolvedUnit = options?.unit ?? mappingPropertySpec?.unit ?? schemaPropertySpec?.unit ?? null;
+
+		const resolvedPermissions =
+			options?.permissions ??
+			mappingPropertySpec?.permissions ??
+			schemaPropertySpec?.permissions ??
+			[PermissionType.READ_WRITE];
 
 		let prop = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
 			column,
@@ -1949,20 +1961,7 @@ export class DeviceManagerService {
 				}
 			}
 
-			const spec =
-				propertySpec ??
-				(typeof channelSpec === 'object'
-					? (channelSpec['properties'][category] as
-							| {
-									permissions: PermissionType[];
-									data_type: DataTypeType;
-									unit: string | null;
-									format: string[] | number[] | null;
-							  }
-							| undefined)
-					: undefined);
-
-			if (!spec || typeof spec !== 'object') {
+			if (!schemaPropertySpec && !mappingPropertySpec && !options) {
 				this.logger.warn(
 					`Missing or invalid schema for property category=${category}. Falling back to minimal property.`,
 				);
@@ -1972,36 +1971,15 @@ export class DeviceManagerService {
 				}
 			}
 
-			const inferredType =
-				typeof normalizedValue === 'number'
-					? 'number'
-					: typeof normalizedValue === 'boolean'
-						? 'boolean'
-						: typeof normalizedValue === 'string'
-							? 'string'
-							: 'mixed';
-
-			const inferredDataType: DataTypeType =
-				spec?.data_type ??
-				(inferredType === 'number'
-					? DataTypeType.FLOAT
-					: inferredType === 'boolean'
-						? DataTypeType.BOOL
-						: inferredType === 'string'
-							? DataTypeType.STRING
-							: DataTypeType.UNKNOWN);
-
-			const permissions: PermissionType[] = spec?.permissions ?? [PermissionType.READ_WRITE];
-
 			prop = await this.channelsPropertiesService.create<
 				ShellyNgChannelPropertyEntity,
 				CreateShellyNgChannelPropertyDto
 			>(channel.id, {
 				...{
-					permissions,
-					data_type: inferredDataType,
-					unit: spec?.unit,
-					format: spec?.format,
+					permissions: resolvedPermissions,
+					data_type: resolvedDataType,
+					unit: resolvedUnit,
+					format: resolvedFormat ?? null,
 				},
 				type: DEVICES_SHELLY_NG_TYPE,
 				category,
@@ -2018,11 +1996,95 @@ export class DeviceManagerService {
 				category,
 				identifier: column === 'identifier' ? identifierOrCategory : null,
 				value: normalizedValue,
-				...options,
+				permissions: resolvedPermissions,
+				data_type: resolvedDataType,
+				unit: resolvedUnit,
+				format: resolvedFormat ?? null,
 			});
 		}
 
 		return prop;
+	}
+
+	private getSchemaPropertySpec(
+		channelSpec: ChannelDefinition | undefined,
+		category: PropertyCategory,
+	): {
+		permissions?: PermissionType[];
+		data_type?: DataTypeType;
+		unit?: string | null;
+		format?: string[] | number[] | null;
+	} | null {
+		if (!channelSpec || typeof channelSpec !== 'object') {
+			return null;
+		}
+
+		const properties = (channelSpec as { properties?: Record<string, unknown> }).properties;
+		const rawSpec = properties?.[category as unknown as string];
+
+		if (!rawSpec || typeof rawSpec !== 'object') {
+			return null;
+		}
+
+		if ('data_type' in rawSpec) {
+			const typed = rawSpec as {
+				permissions?: PermissionType[];
+				data_type?: DataTypeType;
+				unit?: string | null;
+				format?: string[] | number[] | null;
+			};
+
+			return {
+				permissions: typed.permissions,
+				data_type: typed.data_type,
+				unit: (typed.unit ?? null) as string | null,
+				format: (typed.format ?? null) as string[] | number[] | null,
+			};
+		}
+
+		if ('data_types' in rawSpec && Array.isArray((rawSpec as { data_types?: unknown[] }).data_types)) {
+			const [primaryVariant] = (rawSpec as {
+				permissions?: PermissionType[];
+				data_types: Array<{
+					data_type?: DataTypeType;
+					unit?: string | null;
+					format?: string[] | number[] | null;
+				}>;
+			}).data_types;
+
+			if (primaryVariant) {
+				return {
+					permissions: (rawSpec as { permissions?: PermissionType[] }).permissions,
+					data_type: primaryVariant.data_type,
+					unit: (primaryVariant.unit ?? null) as string | null,
+					format: (primaryVariant.format ?? null) as string[] | number[] | null,
+				};
+			}
+		}
+
+		return null;
+	}
+
+	private getMappingPropertySpec(
+		propertyMapping?: ResolvedProperty,
+	): {
+		permissions?: PermissionType[];
+		data_type?: DataTypeType;
+		unit?: string | null;
+		format?: string[] | number[] | null;
+	} | null {
+		if (!propertyMapping) {
+			return null;
+		}
+
+		return {
+			permissions: [
+				propertyMapping.panel.settable ? PermissionType.READ_WRITE : PermissionType.READ_ONLY,
+			],
+			data_type: propertyMapping.panel.dataType,
+			unit: propertyMapping.panel.unit ?? null,
+			format: (propertyMapping.panel.format ?? null) as string[] | number[] | null,
+		};
 	}
 
 	private normalizeValue(
