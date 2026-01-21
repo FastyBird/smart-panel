@@ -674,10 +674,12 @@ export class MediaIntentService extends SpaceIntentBaseService {
 				const isSwitcher = mediaChannel.category === ChannelCategory.SWITCHER;
 				const isSpeaker = mediaChannel.category === ChannelCategory.SPEAKER;
 
-				// Power only from television/switcher .on
+				// Power only from television/switcher .on or .active
 				const onProperty =
 					isTelevision || isSwitcher
-						? (mediaChannel.properties?.find((p) => p.category === PropertyCategory.ON) ?? null)
+						? (mediaChannel.properties?.find(
+								(p) => p.category === PropertyCategory.ON || p.category === PropertyCategory.ACTIVE,
+							) ?? null)
 						: null;
 
 				// Volume/mute from speaker or television channels
