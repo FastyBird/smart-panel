@@ -75,11 +75,7 @@ export class SpaceMediaStateListener implements OnModuleInit, OnModuleDestroy {
 			return;
 		}
 
-		if (
-			!MEDIA_CHANNEL_CATEGORIES.includes(
-				channel.category as (typeof MEDIA_CHANNEL_CATEGORIES)[number],
-			)
-		) {
+		if (!MEDIA_CHANNEL_CATEGORIES.includes(channel.category as (typeof MEDIA_CHANNEL_CATEGORIES)[number])) {
 			return;
 		}
 

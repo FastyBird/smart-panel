@@ -1,4 +1,5 @@
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
+import { IntentStatus } from '../../intents/intents.constants';
 import { MediaMode } from '../spaces.constants';
 
 import { SpaceMediaStateService } from './space-media-state.service';
@@ -12,8 +13,8 @@ describe('SpaceMediaStateService', () => {
 		getRoleMap: jest.fn(),
 	};
 	const intentTimeseriesService = {
-	getLastMediaState: jest.fn(),
-	storeMediaStateChange: jest.fn(),
+		getLastMediaState: jest.fn(),
+		storeMediaStateChange: jest.fn(),
 	};
 
 	let service: SpaceMediaStateService;
@@ -61,7 +62,7 @@ describe('SpaceMediaStateService', () => {
 			muted: false,
 			intentId: 'intent-1',
 			appliedAt: new Date('2024-01-01T00:00:00Z'),
-			status: 'completed_success' as any,
+			status: IntentStatus.COMPLETED_SUCCESS,
 			intentType: 'space.media.setMode',
 		});
 

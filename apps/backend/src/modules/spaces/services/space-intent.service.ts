@@ -9,20 +9,15 @@ import { ClimateIntentResult, ClimateIntentService, ClimateState } from './clima
 import { CoversIntentResult, CoversIntentService, CoversState } from './covers-intent.service';
 import { LightingIntentService } from './lighting-intent.service';
 import { MediaIntentResult, MediaIntentService } from './media-intent.service';
-import { SpaceMediaState, SpaceMediaStateService } from './space-media-state.service';
 import { IntentExecutionResult } from './space-intent-base.service';
+import { SpaceMediaState, SpaceMediaStateService } from './space-media-state.service';
 
 // Re-export types for backward compatibility
 export { ClimateState, ClimateIntentResult } from './climate-intent.service';
 export { CoversState, CoversIntentResult } from './covers-intent.service';
 export { LightDevice, LightModeSelection, selectLightsForMode } from './lighting-intent.service';
 export { CoverDevice, CoverModeSelection, selectCoversForMode } from './covers-intent.service';
-export {
-	MediaDevice,
-	MediaModeSelection,
-	selectMediaForMode,
-	MediaIntentResult,
-} from './media-intent.service';
+export { MediaDevice, MediaModeSelection, selectMediaForMode, MediaIntentResult } from './media-intent.service';
 export { SpaceMediaState } from './space-media-state.service';
 export { IntentExecutionResult } from './space-intent-base.service';
 

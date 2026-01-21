@@ -98,10 +98,10 @@ import {
 	LightingRoleResponseModel,
 	LightingRolesResponseModel,
 	LightingSummaryDataModel,
-	MediaRoleStateDataModel,
 	MediaIntentResponseModel,
 	MediaIntentResultDataModel,
 	MediaRoleResponseModel,
+	MediaRoleStateDataModel,
 	// Media response models
 	MediaStateDataModel,
 	MediaStateResponseModel,

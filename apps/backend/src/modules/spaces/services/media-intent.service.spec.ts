@@ -45,7 +45,7 @@ describe('MediaIntentService', () => {
 			eventEmitter,
 			mediaStateService as unknown as any,
 			intentsService as unknown as any,
-		intentTimeseriesService as unknown as any,
+			intentTimeseriesService as unknown as any,
 		);
 
 		platformRegistryService.get.mockReturnValue({

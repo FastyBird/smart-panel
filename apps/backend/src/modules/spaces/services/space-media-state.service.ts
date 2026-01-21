@@ -107,7 +107,10 @@ export class SpaceMediaStateService {
 	private readonly logger = createExtensionLogger(SPACES_MODULE_NAME, 'SpaceMediaStateService');
 
 	// Track last applied state per space (mode/volume/mute)
-	private lastAppliedModes = new Map<string, { mode: MediaMode | null; volume: number | null; muted: boolean | null; timestamp: Date }>();
+	private lastAppliedModes = new Map<
+		string,
+		{ mode: MediaMode | null; volume: number | null; muted: boolean | null; timestamp: Date }
+	>();
 
 	constructor(
 		private readonly spacesService: SpacesService,
@@ -200,7 +203,10 @@ export class SpaceMediaStateService {
 		}
 
 		const record = {
-			mode: persisted.mode && Object.values(MediaMode).includes(persisted.mode as MediaMode) ? (persisted.mode as MediaMode) : null,
+			mode:
+				persisted.mode && Object.values(MediaMode).includes(persisted.mode as MediaMode)
+					? (persisted.mode as MediaMode)
+					: null,
 			volume: persisted.volume ?? null,
 			muted: persisted.muted ?? null,
 			timestamp: persisted.appliedAt,
@@ -233,21 +239,18 @@ export class SpaceMediaStateService {
 				) ?? [];
 
 			for (const channel of mediaChannels) {
-				const isTelevision = channel.category === ChannelCategory.TELEVISION;
-				const isSwitcher = channel.category === ChannelCategory.SWITCHER;
 				const isSpeaker = channel.category === ChannelCategory.SPEAKER;
 
-				// Power only from television/switcher .on
-				const onProperty =
-					(isTelevision || isSwitcher)
-						? channel.properties?.find((p) => p.category === PropertyCategory.ON)
-						: undefined;
+				// Power is available when channel exposes an ON property
+				const onProperty = channel.properties?.find((p) => p.category === PropertyCategory.ON);
 
 				// Volume/mute only from speaker channel
-				const volumeProperty =
-					isSpeaker ? channel.properties?.find((p) => p.category === PropertyCategory.VOLUME) : undefined;
-				const muteProperty =
-					isSpeaker ? channel.properties?.find((p) => p.category === PropertyCategory.MUTE) : undefined;
+				const volumeProperty = isSpeaker
+					? channel.properties?.find((p) => p.category === PropertyCategory.VOLUME)
+					: undefined;
+				const muteProperty = isSpeaker
+					? channel.properties?.find((p) => p.category === PropertyCategory.MUTE)
+					: undefined;
 
 				// Only include channels that expose at least one controllable property
 				const isControlChannel =

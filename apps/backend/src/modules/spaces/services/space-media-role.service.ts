@@ -159,11 +159,7 @@ export class SpaceMediaRoleService {
 			ChannelCategory.SPEAKER,
 		];
 		const targetChannel =
-			preferredOrder.map((cat) => mediaChannels.find((ch) => ch.category === cat)).find((ch) => ch) ??
-			mediaChannels[0];
-
-		const properties = targetChannel.properties ?? [];
-		const hasOn = properties.some((p) => p.category === PropertyCategory.ON);
+			preferredOrder.map((cat) => mediaChannels.find((ch) => ch.category === cat)).find((ch) => ch) ?? mediaChannels[0];
 
 		const channelId = targetChannel.id;
 
@@ -218,7 +214,13 @@ export class SpaceMediaRoleService {
 		// Only emit event if values actually changed
 		if (hasChanges) {
 			// Emit event for websocket clients with full media target info
-			const eventPayload = await this.buildMediaTargetEventPayload(spaceId, dto.deviceId, dto.role, dto.priority ?? 0, channelId);
+			const eventPayload = await this.buildMediaTargetEventPayload(
+				spaceId,
+				dto.deviceId,
+				dto.role,
+				dto.priority ?? 0,
+				channelId,
+			);
 
 			if (eventPayload) {
 				const eventType = isUpdate ? EventType.MEDIA_TARGET_UPDATED : EventType.MEDIA_TARGET_CREATED;
@@ -360,8 +362,8 @@ export class SpaceMediaRoleService {
 			mediaTargets.push({
 				deviceId: device.id,
 				deviceName: device.name,
-			channelId: targetChannel.id,
-			channelName: targetChannel.name,
+				channelId: targetChannel.id,
+				channelName: targetChannel.name,
 				role: existingRole?.role ?? null,
 				priority: existingRole?.priority ?? 0,
 				hasOn,
