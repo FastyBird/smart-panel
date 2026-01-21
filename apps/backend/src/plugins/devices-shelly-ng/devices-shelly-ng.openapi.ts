@@ -20,12 +20,15 @@ import {
 import { ShellyNgConfigModel, ShellyNgMdnsConfigModel, ShellyNgWebsocketsConfigModel } from './models/config.model';
 import {
 	ShellyNgDeviceInfoResponseModel,
+	ShellyNgMappingReloadResponseModel,
 	ShellyNgSupportedDevicesResponseModel,
 } from './models/shelly-ng-response.model';
 import {
 	ShellyNgDeviceInfoAuthenticationModel,
 	ShellyNgDeviceInfoComponentModel,
 	ShellyNgDeviceInfoModel,
+	ShellyNgMappingReloadCacheStatsModel,
+	ShellyNgMappingReloadModel,
 	ShellyNgSupportedDeviceComponentModel,
 	ShellyNgSupportedDeviceModel,
 	ShellyNgSupportedDeviceSystemComponentModel,
@@ -44,8 +47,11 @@ export const DEVICES_SHELLY_NG_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	ShellyNgUpdatePluginConfigWebsocketsDto,
 	// Response models
 	ShellyNgDeviceInfoResponseModel,
+	ShellyNgMappingReloadResponseModel,
 	ShellyNgSupportedDevicesResponseModel,
 	// Data models
+	ShellyNgMappingReloadCacheStatsModel,
+	ShellyNgMappingReloadModel,
 	ShellyNgSupportedDeviceComponentModel,
 	ShellyNgSupportedDeviceSystemComponentModel,
 	ShellyNgSupportedDeviceModel,
