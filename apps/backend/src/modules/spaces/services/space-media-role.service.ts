@@ -163,9 +163,7 @@ export class SpaceMediaRoleService {
 			mediaChannels[0];
 
 		const properties = targetChannel.properties ?? [];
-		const hasOn = properties.some(
-			(p) => p.category === PropertyCategory.ON || p.category === PropertyCategory.ACTIVE,
-		);
+		const hasOn = properties.some((p) => p.category === PropertyCategory.ON);
 
 		const channelId = targetChannel.id;
 
@@ -463,7 +461,7 @@ export class SpaceMediaRoleService {
 			);
 
 		const properties = channel?.properties ?? [];
-		const hasOn = properties.some((p) => p.category === PropertyCategory.ON || p.category === PropertyCategory.ACTIVE);
+		const hasOn = properties.some((p) => p.category === PropertyCategory.ON);
 		const hasVolume = properties.some((p) => p.category === PropertyCategory.VOLUME);
 		const hasMute = properties.some((p) => p.category === PropertyCategory.MUTE);
 

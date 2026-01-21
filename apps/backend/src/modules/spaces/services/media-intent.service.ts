@@ -117,9 +117,12 @@ export function selectMediaForMode(devices: MediaDevice[], mode: MediaMode): Med
 export interface MediaIntentResult extends IntentExecutionResult {
 	newVolume?: number;
 	isMuted?: boolean;
+	skippedDevices?: number;
+	failedTargets?: string[];
 }
 
 export type MediaState = SpaceMediaState;
+type CommandOutcome = IntentTargetStatus.SUCCESS | IntentTargetStatus.FAILED | IntentTargetStatus.SKIPPED;
 
 /**
  * Service handling all media-related intent operations.
@@ -280,22 +283,40 @@ export class MediaIntentService extends SpaceIntentBaseService {
 
 	private getPlaybackProperties(device: DeviceEntity): {
 		channel: ChannelEntity | null;
-		stateProperty: ChannelPropertyEntity | null;
+		commandProperty: ChannelPropertyEntity | null;
 		remoteKeyProperty: ChannelPropertyEntity | null;
 	} {
+		// Primary: media_playback.command
 		const playbackChannel = device.channels?.find((ch) => ch.category === ChannelCategory.MEDIA_PLAYBACK) ?? null;
-		const stateProperty =
-			playbackChannel?.properties?.find((p) => p.category === PropertyCategory.STATE) ?? null;
-		const remoteKeyProperty =
-			playbackChannel?.properties?.find((p) => p.category === PropertyCategory.REMOTE_KEY) ?? null;
+		const commandProperty =
+			playbackChannel?.properties?.find((p) => p.category === PropertyCategory.COMMAND) ?? null;
 
-		return { channel: playbackChannel ?? null, stateProperty, remoteKeyProperty };
+		// Fallback: television.remote_key
+		const televisionChannel = device.channels?.find((ch) => ch.category === ChannelCategory.TELEVISION) ?? null;
+		const remoteKeyProperty =
+			televisionChannel?.properties?.find((p) => p.category === PropertyCategory.REMOTE_KEY) ?? null;
+
+		return {
+			channel: commandProperty ? playbackChannel : televisionChannel ?? playbackChannel ?? null,
+			commandProperty,
+			remoteKeyProperty,
+		};
 	}
 
 	private getInputProperties(device: DeviceEntity): {
 		channel: ChannelEntity | null;
 		sourceProperty: ChannelPropertyEntity | null;
 	} {
+		// Prefer television.input_source
+		const televisionChannel = device.channels?.find((ch) => ch.category === ChannelCategory.TELEVISION) ?? null;
+		const televisionSource =
+			televisionChannel?.properties?.find((p) => p.category === PropertyCategory.INPUT_SOURCE) ?? null;
+
+		if (televisionChannel && televisionSource) {
+			return { channel: televisionChannel, sourceProperty: televisionSource };
+		}
+
+		// Fallback: media_input.source
 		const inputChannel = device.channels?.find((ch) => ch.category === ChannelCategory.MEDIA_INPUT) ?? null;
 		const sourceProperty =
 			inputChannel?.properties?.find((p) => p.category === PropertyCategory.SOURCE) ?? null;
@@ -399,6 +420,7 @@ export class MediaIntentService extends SpaceIntentBaseService {
 	): Promise<MediaIntentResult> {
 		let affectedDevices = 0;
 		let failedDevices = 0;
+		let skippedDevices = 0;
 		let newVolume: number | undefined;
 		let isMuted: boolean | undefined;
 
@@ -408,14 +430,17 @@ export class MediaIntentService extends SpaceIntentBaseService {
 				continue;
 			}
 
-			const success = await this.executeIntentForDevice(device, intent);
+			const outcome = await this.executeIntentForDevice(device, intent);
 
-			if (success) {
+			if (outcome === IntentTargetStatus.SUCCESS) {
 				affectedDevices++;
 				targetResults.push({ deviceId: device.device.id, status: IntentTargetStatus.SUCCESS });
-			} else {
+			} else if (outcome === IntentTargetStatus.FAILED) {
 				failedDevices++;
 				targetResults.push({ deviceId: device.device.id, status: IntentTargetStatus.FAILED });
+			} else {
+				skippedDevices++;
+				targetResults.push({ deviceId: device.device.id, status: IntentTargetStatus.SKIPPED });
 			}
 		}
 
@@ -438,7 +463,9 @@ export class MediaIntentService extends SpaceIntentBaseService {
 			`Media intent completed spaceId=${spaceId} type=${intent.type} affected=${affectedDevices} failed=${failedDevices}`,
 		);
 
-		return { success: overallSuccess, affectedDevices, failedDevices, newVolume, isMuted };
+		const failedTargets = targetResults.filter((t) => t.status === IntentTargetStatus.FAILED).map((t) => t.deviceId);
+
+		return { success: overallSuccess, affectedDevices, failedDevices, skippedDevices, newVolume, isMuted, failedTargets };
 	}
 
 	/**
@@ -468,17 +495,21 @@ export class MediaIntentService extends SpaceIntentBaseService {
 
 		let affectedDevices = 0;
 		let failedDevices = 0;
+		let skippedDevices = 0;
 
 		// Execute commands for each device based on its selection
 		for (const selection of selections) {
-			const success = await this.executeRuleForDevice(selection.media, selection.rule);
+			const outcome = await this.executeRuleForDevice(selection.media, selection.rule);
 
-			if (success) {
+			if (outcome === IntentTargetStatus.SUCCESS) {
 				affectedDevices++;
 				targetResults.push({ deviceId: selection.media.device.id, status: IntentTargetStatus.SUCCESS });
-			} else {
+			} else if (outcome === IntentTargetStatus.FAILED) {
 				failedDevices++;
 				targetResults.push({ deviceId: selection.media.device.id, status: IntentTargetStatus.FAILED });
+			} else {
+				skippedDevices++;
+				targetResults.push({ deviceId: selection.media.device.id, status: IntentTargetStatus.SKIPPED });
 			}
 		}
 
@@ -493,19 +524,21 @@ export class MediaIntentService extends SpaceIntentBaseService {
 			`Mode intent completed spaceId=${spaceId} mode=${mode} affected=${affectedDevices} failed=${failedDevices}`,
 		);
 
-		return { success: overallSuccess, affectedDevices, failedDevices };
+		const failedTargets = targetResults.filter((t) => t.status === IntentTargetStatus.FAILED).map((t) => t.deviceId);
+
+		return { success: overallSuccess, affectedDevices, failedDevices, skippedDevices, failedTargets };
 	}
 
 	/**
 	 * Execute a role-based rule for a single device.
 	 * Handles on/off state, volume, and mute based on the rule.
 	 */
-	private async executeRuleForDevice(device: MediaDevice, rule: MediaRoleOrchestrationRule): Promise<boolean> {
+	private async executeRuleForDevice(device: MediaDevice, rule: MediaRoleOrchestrationRule): Promise<CommandOutcome> {
 		const platform = this.platformRegistryService.get(device.device);
 
 		if (!platform) {
 			this.logger.warn(`No platform registered for device id=${device.device.id} type=${device.device.type}`);
-			return false;
+			return IntentTargetStatus.FAILED;
 		}
 
 		const commands: IDevicePropertyData[] = [];
@@ -540,18 +573,22 @@ export class MediaIntentService extends SpaceIntentBaseService {
 			});
 		}
 
+		if (commands.length === 0) {
+			return IntentTargetStatus.SKIPPED;
+		}
+
 		try {
 			const success = await platform.processBatch(commands);
 
 			if (!success) {
 				this.logger.error(`Rule execution failed for device id=${device.device.id}`);
-				return false;
+				return IntentTargetStatus.FAILED;
 			}
 
-			return true;
+			return IntentTargetStatus.SUCCESS;
 		} catch (error) {
 			this.logger.error(`Error executing rule for device id=${device.device.id}: ${error}`);
-			return false;
+			return IntentTargetStatus.FAILED;
 		}
 	}
 
@@ -579,15 +616,21 @@ export class MediaIntentService extends SpaceIntentBaseService {
 				) ?? [];
 
 			for (const mediaChannel of mediaChannels) {
-				// Power property (optional)
-				const onProperty =
-					mediaChannel.properties?.find(
-						(p) => p.category === PropertyCategory.ON || p.category === PropertyCategory.ACTIVE,
-					) ?? null;
+				const isTelevision = mediaChannel.category === ChannelCategory.TELEVISION;
+				const isSwitcher = mediaChannel.category === ChannelCategory.SWITCHER;
+				const isSpeaker = mediaChannel.category === ChannelCategory.SPEAKER;
 
-				// Optional properties
-				const volumeProperty = mediaChannel.properties?.find((p) => p.category === PropertyCategory.VOLUME) ?? null;
-				const muteProperty = mediaChannel.properties?.find((p) => p.category === PropertyCategory.MUTE) ?? null;
+				// Power only from television/switcher .on
+				const onProperty =
+					(isTelevision || isSwitcher)
+						? mediaChannel.properties?.find((p) => p.category === PropertyCategory.ON) ?? null
+						: null;
+
+				// Volume/mute only from speaker channel
+				const volumeProperty =
+					isSpeaker ? mediaChannel.properties?.find((p) => p.category === PropertyCategory.VOLUME) ?? null : null;
+				const muteProperty =
+					isSpeaker ? mediaChannel.properties?.find((p) => p.category === PropertyCategory.MUTE) ?? null : null;
 
 				// Only include channels that expose at least one controllable property
 				const isControlChannel =
@@ -629,12 +672,12 @@ export class MediaIntentService extends SpaceIntentBaseService {
 	 * Execute a media intent for a single device (POWER_ON, POWER_OFF, VOLUME_SET, VOLUME_DELTA, MUTE, UNMUTE).
 	 * SET_MODE is handled separately via executeModeIntent for role-based orchestration.
 	 */
-	private async executeIntentForDevice(device: MediaDevice, intent: MediaIntentDto): Promise<boolean> {
+	private async executeIntentForDevice(device: MediaDevice, intent: MediaIntentDto): Promise<CommandOutcome> {
 		const platform = this.platformRegistryService.get(device.device);
 
 		if (!platform) {
 			this.logger.warn(`No platform registered for device id=${device.device.id} type=${device.device.type}`);
-			return false;
+			return IntentTargetStatus.FAILED;
 		}
 
 		const commands: IDevicePropertyData[] = [];
@@ -642,8 +685,8 @@ export class MediaIntentService extends SpaceIntentBaseService {
 		switch (intent.type) {
 			case MediaIntentType.POWER_OFF:
 				if (!device.onProperty) {
-					this.logger.debug(`Device does not support power control deviceId=${device.device.id}`);
-					return true; // Not a failure, device just doesn't support this
+				this.logger.debug(`Skipping power_off (no power capability) deviceId=${device.device.id}`);
+				return IntentTargetStatus.SKIPPED; // Not a failure, device just doesn't support this
 				}
 				commands.push({
 					device: device.device,
@@ -655,8 +698,8 @@ export class MediaIntentService extends SpaceIntentBaseService {
 
 			case MediaIntentType.POWER_ON:
 				if (!device.onProperty) {
-					this.logger.debug(`Device does not support power control deviceId=${device.device.id}`);
-					return true; // Not a failure, device just doesn't support this
+				this.logger.debug(`Skipping power_on (no power capability) deviceId=${device.device.id}`);
+				return IntentTargetStatus.SKIPPED; // Not a failure, device just doesn't support this
 				}
 				commands.push({
 					device: device.device,
@@ -669,12 +712,16 @@ export class MediaIntentService extends SpaceIntentBaseService {
 			case MediaIntentType.VOLUME_SET:
 				if (intent.volume === undefined) {
 					this.logger.warn('VOLUME_SET intent requires volume parameter');
-					return false;
+				return IntentTargetStatus.FAILED;
 				}
 				if (!device.volumeProperty) {
 					this.logger.debug(`Device does not support volume control deviceId=${device.device.id}`);
-					return true; // Not a failure, device just doesn't support this
+				return IntentTargetStatus.SKIPPED; // Not a failure, device just doesn't support this
 				}
+			if (device.onProperty && !this.getPropertyBooleanValue(device.onProperty)) {
+				this.logger.debug(`Skipping volume set; device is off deviceId=${device.device.id}`);
+				return IntentTargetStatus.SKIPPED;
+			}
 				commands.push({
 					device: device.device,
 					channel: device.mediaChannel,
@@ -686,35 +733,47 @@ export class MediaIntentService extends SpaceIntentBaseService {
 			case MediaIntentType.VOLUME_DELTA:
 				if (intent.delta === undefined || intent.increase === undefined) {
 					this.logger.warn('VOLUME_DELTA intent requires delta and increase parameters');
-					return false;
+				return IntentTargetStatus.FAILED;
 				}
 				commands.push(...this.buildVolumeDeltaCommands(device, intent.delta, intent.increase));
 				break;
 
 			case MediaIntentType.MUTE:
-				if (!device.muteProperty) {
-					this.logger.debug(`Device does not support mute deviceId=${device.device.id}`);
-					return true; // Not a failure, device just doesn't support this
-				}
+			if (device.muteProperty) {
 				commands.push({
 					device: device.device,
 					channel: device.mediaChannel,
 					property: device.muteProperty,
 					value: true,
 				});
+			} else if (device.volumeProperty) {
+				commands.push({
+					device: device.device,
+					channel: device.mediaChannel,
+					property: device.volumeProperty,
+					value: 0,
+				});
+			} else {
+				this.logger.debug(`Device does not support mute or volume fallback deviceId=${device.device.id}`);
+				return IntentTargetStatus.SKIPPED; // Not a failure, device just doesn't support this
+			}
 				break;
 
 			case MediaIntentType.UNMUTE:
-				if (!device.muteProperty) {
-					this.logger.debug(`Device does not support mute deviceId=${device.device.id}`);
-					return true; // Not a failure, device just doesn't support this
-				}
+			if (device.muteProperty) {
 				commands.push({
 					device: device.device,
 					channel: device.mediaChannel,
 					property: device.muteProperty,
 					value: false,
 				});
+			} else if (device.volumeProperty) {
+				this.logger.debug(`Device does not support mute; leaving volume unchanged deviceId=${device.device.id}`);
+				return IntentTargetStatus.SKIPPED;
+			} else {
+				this.logger.debug(`Device does not support mute deviceId=${device.device.id}`);
+				return IntentTargetStatus.SKIPPED; // Not a failure, device just doesn't support this
+			}
 				break;
 
 			case MediaIntentType.PLAY:
@@ -722,7 +781,7 @@ export class MediaIntentService extends SpaceIntentBaseService {
 			case MediaIntentType.STOP:
 			case MediaIntentType.NEXT:
 			case MediaIntentType.PREVIOUS: {
-				const { stateProperty, remoteKeyProperty, channel } = this.getPlaybackProperties(device.device);
+			const { channel, commandProperty, remoteKeyProperty } = this.getPlaybackProperties(device.device);
 
 				const playbackValue =
 					intent.type === MediaIntentType.PLAY
@@ -735,21 +794,21 @@ export class MediaIntentService extends SpaceIntentBaseService {
 									? 'next'
 									: 'previous';
 
-				if (remoteKeyProperty && channel) {
+			if (commandProperty && channel) {
 					commands.push({
 						device: device.device,
 						channel,
-						property: remoteKeyProperty,
+					property: commandProperty,
 						value: playbackValue,
 					});
 					break;
 				}
 
-				if (stateProperty && channel) {
+			if (remoteKeyProperty && channel) {
 					commands.push({
 						device: device.device,
 						channel,
-						property: stateProperty,
+					property: remoteKeyProperty,
 						value: playbackValue,
 					});
 					break;
@@ -758,13 +817,13 @@ export class MediaIntentService extends SpaceIntentBaseService {
 				this.logger.debug(
 					`Playback control not supported deviceId=${device.device.id} intent=${intent.type}`,
 				);
-				return true; // no-op
+			return IntentTargetStatus.SKIPPED; // no-op
 			}
 
 			case MediaIntentType.INPUT_SET: {
 				if (!intent.source) {
 					this.logger.warn('INPUT_SET intent requires source parameter');
-					return false;
+				return IntentTargetStatus.FAILED;
 				}
 
 				const { sourceProperty, channel } = this.getInputProperties(device.device);
@@ -780,22 +839,22 @@ export class MediaIntentService extends SpaceIntentBaseService {
 				}
 
 				this.logger.debug(`Input control not supported deviceId=${device.device.id}`);
-				return true; // no-op
+			return IntentTargetStatus.SKIPPED; // no-op
 			}
 
 			case MediaIntentType.SET_MODE:
 				// SET_MODE is handled via executeModeIntent, not here
 				this.logger.warn('SET_MODE should be handled via executeModeIntent');
-				return false;
+			return IntentTargetStatus.FAILED;
 
 			default:
 				this.logger.warn(`Unknown intent type: ${String(intent.type)}`);
-				return false;
+			return IntentTargetStatus.FAILED;
 		}
 
 		if (commands.length === 0) {
 			this.logger.debug(`No commands to execute for device id=${device.device.id}`);
-			return true;
+			return IntentTargetStatus.SKIPPED;
 		}
 
 		try {
@@ -803,14 +862,14 @@ export class MediaIntentService extends SpaceIntentBaseService {
 
 			if (!success) {
 				this.logger.error(`Command execution failed for device id=${device.device.id}`);
-				return false;
+				return IntentTargetStatus.FAILED;
 			}
 
 			this.logger.debug(`Successfully executed commands for device id=${device.device.id}`);
-			return true;
+			return IntentTargetStatus.SUCCESS;
 		} catch (error) {
 			this.logger.error(`Error executing commands for device id=${device.device.id}: ${error}`);
-			return false;
+			return IntentTargetStatus.FAILED;
 		}
 	}
 
@@ -826,10 +885,9 @@ export class MediaIntentService extends SpaceIntentBaseService {
 			return commands;
 		}
 
-		// Only adjust volume for devices that are currently ON
-		const isOn = this.getPropertyBooleanValue(device.onProperty);
-
-		if (!isOn) {
+		// Only adjust volume for devices that are currently ON when power-capable
+		const isPowerCapable = !!device.onProperty;
+		if (isPowerCapable && !this.getPropertyBooleanValue(device.onProperty)) {
 			this.logger.debug(`Skipping volume delta for OFF device deviceId=${device.device.id}`);
 			return commands;
 		}
@@ -889,16 +947,20 @@ export class MediaIntentService extends SpaceIntentBaseService {
 
 		let affectedDevices = 0;
 		let failedDevices = 0;
+		let skippedDevices = 0;
 
 		for (const device of roleDevices) {
-			const success = await this.executeRoleIntentForDevice(device, intent);
+			const outcome = await this.executeRoleIntentForDevice(device, intent);
 
-			if (success) {
+			if (outcome === IntentTargetStatus.SUCCESS) {
 				affectedDevices++;
 				targetResults.push({ deviceId: device.device.id, status: IntentTargetStatus.SUCCESS });
-			} else {
+			} else if (outcome === IntentTargetStatus.FAILED) {
 				failedDevices++;
 				targetResults.push({ deviceId: device.device.id, status: IntentTargetStatus.FAILED });
+			} else {
+				skippedDevices++;
+				targetResults.push({ deviceId: device.device.id, status: IntentTargetStatus.SKIPPED });
 			}
 		}
 
@@ -908,18 +970,20 @@ export class MediaIntentService extends SpaceIntentBaseService {
 			`Role intent completed spaceId=${spaceId} role=${intent.role} affected=${affectedDevices} failed=${failedDevices}`,
 		);
 
-		return { success: overallSuccess, affectedDevices, failedDevices };
+		const failedTargets = targetResults.filter((t) => t.status === IntentTargetStatus.FAILED).map((t) => t.deviceId);
+
+		return { success: overallSuccess, affectedDevices, failedDevices, skippedDevices, failedTargets };
 	}
 
 	/**
 	 * Execute a role-specific intent for a single device.
 	 */
-	private async executeRoleIntentForDevice(device: MediaDevice, intent: MediaIntentDto): Promise<boolean> {
+	private async executeRoleIntentForDevice(device: MediaDevice, intent: MediaIntentDto): Promise<CommandOutcome> {
 		const platform = this.platformRegistryService.get(device.device);
 
 		if (!platform) {
 			this.logger.warn(`No platform registered for device id=${device.device.id} type=${device.device.type}`);
-			return false;
+			return IntentTargetStatus.FAILED;
 		}
 
 		const commands: IDevicePropertyData[] = [];
@@ -928,11 +992,11 @@ export class MediaIntentService extends SpaceIntentBaseService {
 			case MediaIntentType.ROLE_POWER:
 				if (intent.on === undefined) {
 					this.logger.warn('ROLE_POWER intent missing on parameter');
-					return false;
+					return IntentTargetStatus.FAILED;
 				}
 				if (!device.onProperty) {
 					this.logger.debug(`Device does not support power control deviceId=${device.device.id}`);
-					return true; // Not a failure, device just doesn't support this
+					return IntentTargetStatus.SKIPPED; // Not a failure, device just doesn't support this
 				}
 				commands.push({
 					device: device.device,
@@ -945,11 +1009,15 @@ export class MediaIntentService extends SpaceIntentBaseService {
 			case MediaIntentType.ROLE_VOLUME:
 				if (intent.volume === undefined) {
 					this.logger.warn('ROLE_VOLUME intent missing volume parameter');
-					return false;
+					return IntentTargetStatus.FAILED;
 				}
 				if (!device.volumeProperty) {
 					this.logger.debug(`Device does not support volume deviceId=${device.device.id}`);
-					return true; // Not a failure, device just doesn't support this
+					return IntentTargetStatus.SKIPPED; // Not a failure, device just doesn't support this
+				}
+				if (device.onProperty && !this.getPropertyBooleanValue(device.onProperty)) {
+					this.logger.debug(`Skipping role volume; device is off deviceId=${device.device.id}`);
+					return IntentTargetStatus.SKIPPED;
 				}
 				commands.push({
 					device: device.device,
@@ -961,11 +1029,11 @@ export class MediaIntentService extends SpaceIntentBaseService {
 
 			default:
 				this.logger.warn(`Unknown role intent type: ${String(intent.type)}`);
-				return false;
+				return IntentTargetStatus.FAILED;
 		}
 
 		if (commands.length === 0) {
-			return true;
+			return IntentTargetStatus.SKIPPED;
 		}
 
 		try {
@@ -973,13 +1041,13 @@ export class MediaIntentService extends SpaceIntentBaseService {
 
 			if (!success) {
 				this.logger.error(`Role intent execution failed for device id=${device.device.id}`);
-				return false;
+				return IntentTargetStatus.FAILED;
 			}
 
-			return true;
+			return IntentTargetStatus.SUCCESS;
 		} catch (error) {
 			this.logger.error(`Error executing role intent for device id=${device.device.id}: ${error}`);
-			return false;
+			return IntentTargetStatus.FAILED;
 		}
 	}
 }

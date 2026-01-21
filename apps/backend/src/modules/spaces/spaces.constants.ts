@@ -1675,9 +1675,8 @@ export const MEDIA_DEVICE_CATEGORIES = [
 	DeviceCategory.SET_TOP_BOX,
 	DeviceCategory.GAME_CONSOLE,
 	DeviceCategory.PROJECTOR,
-
-	// optional: only if you really represent it as "device" in spaces
-	// DeviceCategory.STREAMING_SERVICE,
+	// Virtual playback sources (playback-only, excluded from power orchestration)
+	DeviceCategory.STREAMING_SERVICE,
 ] as const;
 
 /**

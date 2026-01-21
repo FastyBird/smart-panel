@@ -3076,6 +3076,16 @@ export class MediaIntentResultDataModel {
 	failedDevices: number;
 
 	@ApiPropertyOptional({
+		name: 'skipped_devices',
+		description: 'Number of devices skipped (no capability)',
+		type: 'integer',
+		nullable: true,
+		example: 1,
+	})
+	@Expose({ name: 'skipped_devices' })
+	skippedDevices: number | null;
+
+	@ApiPropertyOptional({
 		name: 'new_volume',
 		description: 'The new volume level after the intent (null if not applicable)',
 		type: 'integer',
@@ -3094,6 +3104,16 @@ export class MediaIntentResultDataModel {
 	})
 	@Expose({ name: 'is_muted' })
 	isMuted: boolean | null;
+
+	@ApiPropertyOptional({
+		name: 'failed_targets',
+		description: 'List of device IDs that failed (limited set)',
+		type: [String],
+		nullable: true,
+		example: ['device-uuid-1'],
+	})
+	@Expose({ name: 'failed_targets' })
+	failedTargets: string[] | null;
 }
 
 /**

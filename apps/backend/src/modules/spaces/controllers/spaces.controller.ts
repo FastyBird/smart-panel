@@ -2007,8 +2007,10 @@ export class SpacesController {
 		resultData.success = result.success;
 		resultData.affectedDevices = result.affectedDevices;
 		resultData.failedDevices = result.failedDevices;
+		resultData.skippedDevices = result.skippedDevices ?? null;
 		resultData.newVolume = result.newVolume ?? null;
 		resultData.isMuted = result.isMuted ?? null;
+		resultData.failedTargets = result.failedTargets ?? null;
 
 		const response = new MediaIntentResponseModel();
 		response.data = resultData;

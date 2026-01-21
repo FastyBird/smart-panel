@@ -233,14 +233,21 @@ export class SpaceMediaStateService {
 				) ?? [];
 
 			for (const channel of mediaChannels) {
-				// Find the ON/ACTIVE property (optional)
-				const onProperty = channel.properties?.find(
-					(p) => p.category === PropertyCategory.ON || p.category === PropertyCategory.ACTIVE,
-				);
+				const isTelevision = channel.category === ChannelCategory.TELEVISION;
+				const isSwitcher = channel.category === ChannelCategory.SWITCHER;
+				const isSpeaker = channel.category === ChannelCategory.SPEAKER;
 
-				// Find optional properties
-				const volumeProperty = channel.properties?.find((p) => p.category === PropertyCategory.VOLUME);
-				const muteProperty = channel.properties?.find((p) => p.category === PropertyCategory.MUTE);
+				// Power only from television/switcher .on
+				const onProperty =
+					(isTelevision || isSwitcher)
+						? channel.properties?.find((p) => p.category === PropertyCategory.ON)
+						: undefined;
+
+				// Volume/mute only from speaker channel
+				const volumeProperty =
+					isSpeaker ? channel.properties?.find((p) => p.category === PropertyCategory.VOLUME) : undefined;
+				const muteProperty =
+					isSpeaker ? channel.properties?.find((p) => p.category === PropertyCategory.MUTE) : undefined;
 
 				// Only include channels that expose at least one controllable property
 				const isControlChannel =
