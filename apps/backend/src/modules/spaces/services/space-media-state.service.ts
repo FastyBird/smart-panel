@@ -252,9 +252,7 @@ export class SpaceMediaStateService {
 						? channel.properties?.find((p) => p.category === PropertyCategory.VOLUME)
 						: undefined;
 				const muteProperty =
-					isSpeaker || isTelevision
-						? channel.properties?.find((p) => p.category === PropertyCategory.MUTE)
-						: undefined;
+					isSpeaker || isTelevision ? channel.properties?.find((p) => p.category === PropertyCategory.MUTE) : undefined;
 
 				// Only include channels that expose at least one controllable property
 				const isControlChannel =
