@@ -29,6 +29,9 @@ describe('MediaIntentService', () => {
 		createIntent: jest.fn(),
 		completeIntent: jest.fn(),
 	};
+	const intentTimeseriesService = {
+		storeMediaStateChange: jest.fn(),
+	};
 
 	let service: MediaIntentService;
 
@@ -42,6 +45,7 @@ describe('MediaIntentService', () => {
 			eventEmitter,
 			mediaStateService as unknown as any,
 			intentsService as unknown as any,
+		intentTimeseriesService as unknown as any,
 		);
 
 		platformRegistryService.get.mockReturnValue({
@@ -88,5 +92,10 @@ describe('MediaIntentService', () => {
 		);
 		expect(intentsService.completeIntent).toHaveBeenCalledWith('intent-1', expect.any(Array));
 		expect(mediaStateService.setLastAppliedMode).toHaveBeenCalledWith('space-1', MediaMode.PARTY);
+		expect(intentTimeseriesService.storeMediaStateChange).toHaveBeenCalledWith(
+			'space-1',
+			IntentType.SPACE_MEDIA_SET_MODE,
+			expect.objectContaining({ mode: MediaMode.PARTY }),
+		);
 	});
 });

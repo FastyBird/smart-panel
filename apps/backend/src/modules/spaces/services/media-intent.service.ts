@@ -9,6 +9,7 @@ import { PlatformRegistryService } from '../../devices/services/platform.registr
 import { DEFAULT_TTL_SPACE_COMMAND, IntentTargetStatus, IntentType } from '../../intents/intents.constants';
 import { IntentTarget, IntentTargetResult } from '../../intents/models/intent.model';
 import { IntentsService } from '../../intents/services/intents.service';
+import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
 import { MediaIntentDto } from '../dto/media-intent.dto';
 import {
 	EventType,
@@ -137,6 +138,8 @@ export class MediaIntentService extends SpaceIntentBaseService {
 		private readonly mediaStateService: SpaceMediaStateService,
 		@Inject(forwardRef(() => IntentsService))
 		private readonly intentsService: IntentsService,
+		@Inject(forwardRef(() => IntentTimeseriesService))
+		private readonly intentTimeseriesService: IntentTimeseriesService,
 	) {
 		super();
 	}
@@ -203,6 +206,7 @@ export class MediaIntentService extends SpaceIntentBaseService {
 
 		// Emit state change event for WebSocket clients (fire and forget)
 		if (result.success) {
+			void this.storeMediaState(spaceId, intent, result);
 			void this.emitMediaStateChange(spaceId);
 		}
 
@@ -259,6 +263,59 @@ export class MediaIntentService extends SpaceIntentBaseService {
 		if (intent.type !== undefined) value.intentType = intent.type;
 
 		return Object.keys(value).length > 0 ? value : null;
+	}
+
+	/**
+	 * Persist last applied media intent state for restoration (InfluxDB).
+	 */
+	private async storeMediaState(spaceId: string, intent: MediaIntentDto, result: MediaIntentResult): Promise<void> {
+		const intentType = this.mapMediaIntentType(intent.type);
+
+		let mode: MediaMode | null = null;
+		let volume: number | null = null;
+		let muted: boolean | null = null;
+		let role: string | null = null;
+		let on: boolean | null = null;
+
+		switch (intent.type) {
+			case MediaIntentType.SET_MODE:
+				mode = intent.mode ?? null;
+				break;
+			case MediaIntentType.VOLUME_SET:
+				volume = intent.volume ?? null;
+				break;
+			case MediaIntentType.VOLUME_DELTA:
+				volume = result.newVolume ?? null;
+				break;
+			case MediaIntentType.MUTE:
+				muted = true;
+				break;
+			case MediaIntentType.UNMUTE:
+				muted = false;
+				break;
+			case MediaIntentType.POWER_ON:
+				on = true;
+				break;
+			case MediaIntentType.POWER_OFF:
+				on = false;
+				break;
+			case MediaIntentType.ROLE_VOLUME:
+				volume = intent.volume ?? null;
+				role = intent.role ?? null;
+				break;
+			case MediaIntentType.ROLE_POWER:
+				on = intent.on ?? null;
+				role = intent.role ?? null;
+				break;
+		}
+
+		await this.intentTimeseriesService.storeMediaStateChange(spaceId, intentType, {
+			mode,
+			volume,
+			muted,
+			role,
+			on,
+		});
 	}
 
 	/**

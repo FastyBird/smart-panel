@@ -1964,6 +1964,8 @@ export class SpacesController {
 		stateData.devicesByRole = devicesByRole;
 		stateData.lastAppliedMode = state.lastAppliedMode ?? null;
 		stateData.lastAppliedAt = state.lastAppliedAt ?? null;
+		stateData.lastAppliedVolume = state.lastAppliedVolume ?? null;
+		stateData.lastAppliedMuted = state.lastAppliedMuted ?? null;
 		stateData.detectedMode = state.detectedMode ?? null;
 		stateData.modeConfidence = state.modeConfidence ?? 'none';
 		stateData.modeMatchPercentage = state.modeMatchPercentage ?? null;

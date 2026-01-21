@@ -32,6 +32,16 @@ export interface LastAppliedMode {
 	status: IntentStatus;
 }
 
+export interface LastAppliedMediaState {
+	mode: string | null;
+	volume: number | null;
+	muted: boolean | null;
+	intentId: string;
+	appliedAt: Date;
+	status: IntentStatus;
+	intentType: string;
+}
+
 /**
  * Last applied climate state for a space (mode + setpoints)
  */
@@ -169,6 +179,70 @@ export class IntentTimeseriesService {
 	 */
 	async getLastMediaMode(spaceId: string): Promise<LastAppliedMode | null> {
 		return this.getLastAppliedModeByType(spaceId, 'media.setMode');
+	}
+
+	/**
+	 * Query the last applied media state (mode/volume/muted) for a space.
+	 */
+	async getLastMediaState(spaceId: string): Promise<LastAppliedMediaState | null> {
+		if (!this.influxDbService.isConnected()) {
+			this.logger.debug(`InfluxDB not connected - cannot query last media state for spaceId=${spaceId}`);
+			return null;
+		}
+
+		if (!isValidUuid(spaceId)) {
+			this.logger.warn(`Invalid spaceId format rejected spaceId=${spaceId}`);
+			return null;
+		}
+
+		const safeSpaceId = sanitizeInfluxString(spaceId);
+
+		const query = `
+			SELECT intentId, intentType, mode, volume, muted, status
+			FROM space_intent
+			WHERE spaceId = '${safeSpaceId}'
+			AND intentType =~ /space\\.media.*/
+			AND (status = '${IntentStatus.COMPLETED_SUCCESS}' OR status = '${IntentStatus.COMPLETED_PARTIAL}')
+			ORDER BY time DESC
+			LIMIT 1
+		`
+			.trim()
+			.replace(/\s+/g, ' ');
+
+		try {
+			const result = await this.influxDbService.query<{
+				time: { _nanoISO: string };
+				intentId: string;
+				intentType: string;
+				mode: string;
+				volume: number;
+				muted: boolean;
+				status: IntentStatus;
+			}>(query);
+
+			if (!result.length) {
+				return null;
+			}
+
+			const row = result[0];
+
+			return {
+				mode: row.mode ?? null,
+				volume: row.volume !== undefined && row.volume !== null ? Number(row.volume) : null,
+				muted: row.muted !== undefined && row.muted !== null ? Boolean(row.muted) : null,
+				intentId: row.intentId || '',
+				intentType: row.intentType || '',
+				appliedAt: new Date(row.time._nanoISO),
+				status: row.status,
+			};
+		} catch (error) {
+			const err = error as Error;
+			this.logger.error(
+				`Failed to query last media state from InfluxDB spaceId=${spaceId} error=${err.message}`,
+				err.stack,
+			);
+			return null;
+		}
 	}
 
 	/**
@@ -551,12 +625,16 @@ export class IntentTimeseriesService {
 	}
 
 	/**
-	 * Store a media mode change directly (without full intent record).
-	 * Called by MediaIntentService after successfully applying a mode.
+	 * Store a media intent state change (mode/volume/muted).
+	 * Called by MediaIntentService after successfully applying an intent.
 	 */
-	async storeMediaModeChange(spaceId: string, mode: MediaMode): Promise<void> {
+	async storeMediaStateChange(
+		spaceId: string,
+		intentType: string,
+		state: { mode?: MediaMode | null; volume?: number | null; muted?: boolean | null; role?: string | null; on?: boolean | null },
+	): Promise<void> {
 		if (!this.influxDbService.isConnected()) {
-			this.logger.warn(`InfluxDB not connected - media mode not persisted spaceId=${spaceId}`);
+			this.logger.warn(`InfluxDB not connected - media intent not persisted spaceId=${spaceId}`);
 			return;
 		}
 
@@ -571,12 +649,16 @@ export class IntentTimeseriesService {
 					measurement: 'space_intent',
 					tags: {
 						spaceId,
-						intentType: 'media.setMode',
+						intentType,
 						status: IntentStatus.COMPLETED_SUCCESS,
 					},
 					fields: {
 						intentId: '',
-						mode,
+						mode: state.mode ?? '',
+						volume: state.volume ?? null,
+						muted: state.muted ?? null,
+						role: state.role ?? '',
+						on: state.on ?? null,
 						targetsCount: 0,
 						successCount: 0,
 						failedCount: 0,
@@ -585,10 +667,10 @@ export class IntentTimeseriesService {
 				},
 			]);
 
-			this.logger.debug(`Media mode stored spaceId=${spaceId} mode=${mode}`);
+			this.logger.debug(`Media intent stored spaceId=${spaceId} intentType=${intentType}`);
 		} catch (error) {
 			const err = error as Error;
-			this.logger.error(`Failed to store media mode to InfluxDB spaceId=${spaceId} error=${err.message}`, err.stack);
+			this.logger.error(`Failed to store media state to InfluxDB spaceId=${spaceId} error=${err.message}`, err.stack);
 		}
 	}
 

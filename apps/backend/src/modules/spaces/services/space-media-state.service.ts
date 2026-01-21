@@ -3,6 +3,7 @@ import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { PropertyCategory } from '../../devices/devices.constants';
 import { ChannelPropertyEntity } from '../../devices/entities/devices.entity';
+import { IntentType } from '../../intents/intents.constants';
 import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
 import {
 	MEDIA_CHANNEL_CATEGORIES,
@@ -69,6 +70,8 @@ export interface SpaceMediaState {
 
 	// Last applied mode (from in-memory tracking)
 	lastAppliedMode: MediaMode | null;
+	lastAppliedVolume: number | null;
+	lastAppliedMuted: boolean | null;
 	lastAppliedAt: Date | null;
 
 	// Summary
@@ -104,8 +107,8 @@ interface MediaDeviceState {
 export class SpaceMediaStateService {
 	private readonly logger = createExtensionLogger(SPACES_MODULE_NAME, 'SpaceMediaStateService');
 
-	// Track last applied mode per space (shared with MediaIntentService would be better but this is simpler)
-	private lastAppliedModes = new Map<string, { mode: MediaMode; timestamp: Date }>();
+	// Track last applied state per space (mode/volume/mute)
+	private lastAppliedModes = new Map<string, { mode: MediaMode | null; volume: number | null; muted: boolean | null; timestamp: Date }>();
 
 	constructor(
 		private readonly spacesService: SpacesService,
@@ -155,14 +158,16 @@ export class SpaceMediaStateService {
 		const modeMatch = this.detectMode(devices);
 
 		// Get last applied mode
-		const lastMode = await this.resolveLastAppliedMode(spaceId);
+		const lastState = await this.resolveLastAppliedState(spaceId);
 
 		return {
 			detectedMode: modeMatch?.mode ?? null,
 			modeConfidence: modeMatch?.confidence ?? 'none',
 			modeMatchPercentage: modeMatch?.matchPercentage ?? null,
-			lastAppliedMode: lastMode?.mode ?? null,
-			lastAppliedAt: lastMode?.timestamp ?? null,
+			lastAppliedMode: lastState?.mode ?? null,
+			lastAppliedVolume: lastState?.volume ?? null,
+			lastAppliedMuted: lastState?.muted ?? null,
+			lastAppliedAt: lastState?.timestamp ?? null,
 			totalDevices,
 			devicesOn,
 			averageVolume,
@@ -176,29 +181,37 @@ export class SpaceMediaStateService {
 	 * Update last applied mode (called by MediaIntentService)
 	 */
 	setLastAppliedMode(spaceId: string, mode: MediaMode): void {
-		const record = { mode, timestamp: new Date() };
+		const record = { mode, volume: null, muted: null, timestamp: new Date() };
 		this.lastAppliedModes.set(spaceId, record);
-		void this.intentTimeseriesService.storeMediaModeChange(spaceId, mode);
+		void this.intentTimeseriesService.storeMediaStateChange(spaceId, IntentType.SPACE_MEDIA_SET_MODE, {
+			mode,
+		});
 	}
 
-	private async resolveLastAppliedMode(
+	private async resolveLastAppliedState(
 		spaceId: string,
-	): Promise<{ mode: MediaMode; timestamp: Date } | null> {
+	): Promise<{ mode: MediaMode | null; volume: number | null; muted: boolean | null; timestamp: Date } | null> {
 		const cached = this.lastAppliedModes.get(spaceId);
 
 		if (cached) {
 			return cached;
 		}
 
-		const persisted = await this.intentTimeseriesService.getLastMediaMode(spaceId);
+		const persisted = await this.intentTimeseriesService.getLastMediaState(spaceId);
 
-		if (persisted?.mode && Object.values(MediaMode).includes(persisted.mode as MediaMode)) {
-			const record = { mode: persisted.mode as MediaMode, timestamp: persisted.appliedAt };
-			this.lastAppliedModes.set(spaceId, record);
-			return record;
+		if (!persisted) {
+			return null;
 		}
 
-		return null;
+		const record = {
+			mode: persisted.mode && Object.values(MediaMode).includes(persisted.mode as MediaMode) ? (persisted.mode as MediaMode) : null,
+			volume: persisted.volume ?? null,
+			muted: persisted.muted ?? null,
+			timestamp: persisted.appliedAt,
+		};
+
+		this.lastAppliedModes.set(spaceId, record);
+		return record;
 	}
 
 	/**

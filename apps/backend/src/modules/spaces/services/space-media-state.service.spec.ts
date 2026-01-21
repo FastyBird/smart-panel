@@ -12,8 +12,8 @@ describe('SpaceMediaStateService', () => {
 		getRoleMap: jest.fn(),
 	};
 	const intentTimeseriesService = {
-		getLastMediaMode: jest.fn(),
-		storeMediaModeChange: jest.fn(),
+	getLastMediaState: jest.fn(),
+	storeMediaStateChange: jest.fn(),
 	};
 
 	let service: SpaceMediaStateService;
@@ -55,11 +55,14 @@ describe('SpaceMediaStateService', () => {
 		spacesService.findOne.mockResolvedValue({ id: 'space-1' });
 		spacesService.findDevicesBySpace.mockResolvedValue([device]);
 		mediaRoleService.getRoleMap.mockResolvedValue(new Map());
-		intentTimeseriesService.getLastMediaMode.mockResolvedValue({
+		intentTimeseriesService.getLastMediaState.mockResolvedValue({
 			mode: MediaMode.BACKGROUND,
+			volume: 30,
+			muted: false,
 			intentId: 'intent-1',
 			appliedAt: new Date('2024-01-01T00:00:00Z'),
 			status: 'completed_success' as any,
+			intentType: 'space.media.setMode',
 		});
 
 		const state = await service.getMediaState('space-1');
@@ -67,6 +70,8 @@ describe('SpaceMediaStateService', () => {
 		expect(state?.totalDevices).toBe(1);
 		expect(state?.devicesOn).toBe(1);
 		expect(state?.lastAppliedMode).toBe(MediaMode.BACKGROUND);
-		expect(intentTimeseriesService.getLastMediaMode).toHaveBeenCalledWith('space-1');
+		expect(state?.lastAppliedVolume).toBe(30);
+		expect(state?.lastAppliedMuted).toBe(false);
+		expect(intentTimeseriesService.getLastMediaState).toHaveBeenCalledWith('space-1');
 	});
 });

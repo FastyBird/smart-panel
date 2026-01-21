@@ -2954,6 +2954,26 @@ export class MediaStateDataModel {
 	lastAppliedMode: MediaMode | null;
 
 	@ApiPropertyOptional({
+		name: 'last_applied_volume',
+		description: 'The last volume value explicitly applied via intent',
+		type: 'integer',
+		nullable: true,
+		example: 50,
+	})
+	@Expose({ name: 'last_applied_volume' })
+	lastAppliedVolume: number | null;
+
+	@ApiPropertyOptional({
+		name: 'last_applied_muted',
+		description: 'The last mute state explicitly applied via intent',
+		type: 'boolean',
+		nullable: true,
+		example: false,
+	})
+	@Expose({ name: 'last_applied_muted' })
+	lastAppliedMuted: boolean | null;
+
+	@ApiPropertyOptional({
 		name: 'last_applied_at',
 		description: 'When the last mode was applied',
 		type: 'string',
