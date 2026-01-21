@@ -302,8 +302,8 @@ export class SpaceMediaRoleService {
 					}
 				}
 
-				// Volume control: check SPEAKER or TELEVISION channels for VOLUME property
-				if (channel.category === ChannelCategory.SPEAKER || channel.category === ChannelCategory.TELEVISION) {
+				// Volume control: only from SPEAKER channels (consistent with MediaIntentService and SpaceMediaStateService)
+				if (channel.category === ChannelCategory.SPEAKER) {
 					if (properties.some((p) => p.category === PropertyCategory.VOLUME)) {
 						hasVolume = true;
 					}
@@ -457,8 +457,8 @@ export class SpaceMediaRoleService {
 				}
 			}
 
-			// Volume control: check SPEAKER or TELEVISION channels for VOLUME property
-			if (channel.category === ChannelCategory.SPEAKER || channel.category === ChannelCategory.TELEVISION) {
+			// Volume control: only from SPEAKER channels (consistent with MediaIntentService and SpaceMediaStateService)
+			if (channel.category === ChannelCategory.SPEAKER) {
 				if (properties.some((p) => p.category === PropertyCategory.VOLUME)) {
 					hasVolume = true;
 				}
