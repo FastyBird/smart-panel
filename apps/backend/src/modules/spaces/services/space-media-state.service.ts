@@ -237,18 +237,26 @@ export class SpaceMediaStateService {
 				) ?? [];
 
 			for (const channel of mediaChannels) {
-				// Find the ON/ACTIVE property (required)
+				// Find the ON/ACTIVE property (optional)
 				const onProperty = channel.properties?.find(
 					(p) => p.category === PropertyCategory.ON || p.category === PropertyCategory.ACTIVE,
 				);
 
-				if (!onProperty) {
-					continue;
-				}
-
 				// Find optional properties
 				const volumeProperty = channel.properties?.find((p) => p.category === PropertyCategory.VOLUME);
 				const muteProperty = channel.properties?.find((p) => p.category === PropertyCategory.MUTE);
+
+				// Only include channels that expose at least one controllable property
+				const isControlChannel =
+					onProperty ||
+					volumeProperty ||
+					muteProperty ||
+					channel.category === ChannelCategory.MEDIA_PLAYBACK ||
+					channel.category === ChannelCategory.MEDIA_INPUT;
+
+				if (!isControlChannel) {
+					continue;
+				}
 
 				// Get role assignment (device-level)
 				const roleEntity = roleMap.get(device.id);
@@ -415,12 +423,15 @@ export class SpaceMediaStateService {
 				totalCheckedDevices++;
 
 				// Check if device matches rule
-				const onMatches = device.isOn === rule.on;
+				const powerMatches = rule.power === undefined || device.isOn === rule.power;
 				const volumeMatches =
-					rule.volume === null || device.volume === null || Math.abs((device.volume ?? 0) - rule.volume) <= 5; // Allow 5% tolerance
-				const muteMatches = device.isMuted === rule.muted;
+					rule.volume === undefined ||
+					rule.volume === null ||
+					device.volume === null ||
+					Math.abs((device.volume ?? 0) - rule.volume) <= 5; // Allow 5% tolerance
+				const muteMatches = rule.muted === undefined || device.isMuted === rule.muted;
 
-				if (onMatches && volumeMatches && muteMatches) {
+				if (powerMatches && volumeMatches && muteMatches) {
 					matchingDevices++;
 				}
 			}

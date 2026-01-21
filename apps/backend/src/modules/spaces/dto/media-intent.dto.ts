@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsBoolean, IsDefined, IsEnum, IsInt, Max, Min, ValidateIf, ValidateNested } from 'class-validator';
+import { IsBoolean, IsDefined, IsEnum, IsInt, IsOptional, IsString, Max, Min, ValidateIf, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -8,6 +8,8 @@ import { MediaIntentType, MediaMode, MediaRole, VolumeDelta } from '../spaces.co
 // Helper to check if intent type is role-specific (requires role parameter)
 const isRoleIntent = (type: MediaIntentType): boolean =>
 	[MediaIntentType.ROLE_POWER, MediaIntentType.ROLE_VOLUME].includes(type);
+
+const isInputIntent = (type: MediaIntentType): boolean => type === MediaIntentType.INPUT_SET;
 
 @ApiSchema({ name: 'SpacesModuleMediaIntent' })
 export class MediaIntentDto {
@@ -93,6 +95,17 @@ export class MediaIntentDto {
 	@IsDefined({ message: '[{"field":"on","reason":"On is required when type is ROLE_POWER."}]' })
 	@IsBoolean({ message: '[{"field":"on","reason":"On must be a boolean."}]' })
 	on?: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Input/source identifier (required for INPUT_SET intent)',
+		type: 'string',
+		example: 'hdmi1',
+	})
+	@Expose()
+	@ValidateIf((o: MediaIntentDto) => isInputIntent(o.type))
+	@IsDefined({ message: '[{"field":"source","reason":"Source is required when type is INPUT_SET."}]' })
+	@IsString({ message: '[{"field":"source","reason":"Source must be a string."}]' })
+	source?: string;
 }
 
 @ApiSchema({ name: 'SpacesModuleReqMediaIntent' })

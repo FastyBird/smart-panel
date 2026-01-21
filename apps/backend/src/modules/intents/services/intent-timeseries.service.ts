@@ -36,6 +36,7 @@ export interface LastAppliedMediaState {
 	mode: string | null;
 	volume: number | null;
 	muted: boolean | null;
+	source: string | null;
 	intentId: string;
 	appliedAt: Date;
 	status: IntentStatus;
@@ -198,7 +199,7 @@ export class IntentTimeseriesService {
 		const safeSpaceId = sanitizeInfluxString(spaceId);
 
 		const query = `
-			SELECT intentId, intentType, mode, volume, muted, status
+			SELECT intentId, intentType, mode, volume, muted, source, status
 			FROM space_intent
 			WHERE spaceId = '${safeSpaceId}'
 			AND intentType =~ /space\\.media.*/
@@ -218,6 +219,7 @@ export class IntentTimeseriesService {
 				volume: number;
 				muted: boolean;
 				status: IntentStatus;
+				source: string | null;
 			}>(query);
 
 			if (!result.length) {
@@ -230,6 +232,7 @@ export class IntentTimeseriesService {
 				mode: row.mode ?? null,
 				volume: row.volume !== undefined && row.volume !== null ? Number(row.volume) : null,
 				muted: row.muted !== undefined && row.muted !== null ? Boolean(row.muted) : null,
+				source: row.source ?? null,
 				intentId: row.intentId || '',
 				intentType: row.intentType || '',
 				appliedAt: new Date(row.time._nanoISO),
@@ -631,7 +634,14 @@ export class IntentTimeseriesService {
 	async storeMediaStateChange(
 		spaceId: string,
 		intentType: string,
-		state: { mode?: MediaMode | null; volume?: number | null; muted?: boolean | null; role?: string | null; on?: boolean | null },
+		state: {
+			mode?: MediaMode | null;
+			volume?: number | null;
+			muted?: boolean | null;
+			role?: string | null;
+			on?: boolean | null;
+			source?: string | null;
+		},
 	): Promise<void> {
 		if (!this.influxDbService.isConnected()) {
 			this.logger.warn(`InfluxDB not connected - media intent not persisted spaceId=${spaceId}`);
@@ -659,6 +669,7 @@ export class IntentTimeseriesService {
 						muted: state.muted ?? null,
 						role: state.role ?? '',
 						on: state.on ?? null,
+						source: state.source ?? null,
 						targetsCount: 0,
 						successCount: 0,
 						failedCount: 0,

@@ -19,7 +19,7 @@ import {
 	MediaIntentType,
 	MediaMode,
 	MediaRole,
-	MediaRoleVolumeRule,
+	MediaRoleOrchestrationRule,
 	SPACES_MODULE_NAME,
 	VOLUME_DELTA_STEPS,
 	VolumeDelta,
@@ -36,7 +36,7 @@ import { SpacesService } from './spaces.service';
 export interface MediaDevice {
 	device: DeviceEntity;
 	mediaChannel: ChannelEntity;
-	onProperty: ChannelPropertyEntity;
+	onProperty: ChannelPropertyEntity | null;
 	volumeProperty: ChannelPropertyEntity | null;
 	muteProperty: ChannelPropertyEntity | null;
 	role: MediaRole | null;
@@ -48,7 +48,7 @@ export interface MediaDevice {
  */
 export interface MediaModeSelection {
 	media: MediaDevice;
-	rule: MediaRoleVolumeRule;
+	rule: MediaRoleOrchestrationRule;
 	isFallback: boolean;
 }
 
@@ -73,7 +73,7 @@ export function selectMediaForMode(devices: MediaDevice[], mode: MediaMode): Med
 	if (!hasAnyRoles) {
 		// MVP fallback: no roles configured, apply mode settings to all devices
 		// For OFF mode, turn all off; otherwise use PRIMARY role defaults
-		const fallbackRule = modeConfig[MediaRole.PRIMARY] ?? { on: false, volume: null, muted: false };
+		const fallbackRule = modeConfig[MediaRole.PRIMARY] ?? { power: false };
 
 		for (const media of devices) {
 			selections.push({
@@ -86,15 +86,40 @@ export function selectMediaForMode(devices: MediaDevice[], mode: MediaMode): Med
 		return selections;
 	}
 
+	private getPlaybackProperties(device: DeviceEntity): {
+		channel: ChannelEntity | null;
+		stateProperty: ChannelPropertyEntity | null;
+		remoteKeyProperty: ChannelPropertyEntity | null;
+	} {
+		const playbackChannel = device.channels?.find((ch) => ch.category === ChannelCategory.MEDIA_PLAYBACK) ?? null;
+		const stateProperty =
+			playbackChannel?.properties?.find((p) => p.category === PropertyCategory.STATE) ?? null;
+		const remoteKeyProperty =
+			playbackChannel?.properties?.find((p) => p.category === PropertyCategory.REMOTE_KEY) ?? null;
+
+		return { channel: playbackChannel ?? null, stateProperty, remoteKeyProperty };
+	}
+
+	private getInputProperties(device: DeviceEntity): {
+		channel: ChannelEntity | null;
+		sourceProperty: ChannelPropertyEntity | null;
+	} {
+		const inputChannel = device.channels?.find((ch) => ch.category === ChannelCategory.MEDIA_INPUT) ?? null;
+		const sourceProperty =
+			inputChannel?.properties?.find((p) => p.category === PropertyCategory.SOURCE) ?? null;
+
+		return { channel: inputChannel ?? null, sourceProperty };
+	}
+
 	// Apply role-based rules
 	for (const media of devices) {
-		let rule: MediaRoleVolumeRule;
+		let rule: MediaRoleOrchestrationRule;
 		let isFallback = false;
 
 		if (media.role === null) {
 			// Device has no role assigned - apply same rule as SECONDARY or turn off
 			const secondaryRule = modeConfig[MediaRole.SECONDARY];
-			rule = secondaryRule ?? { on: false, volume: null, muted: false };
+			rule = secondaryRule ?? { power: false };
 			isFallback = true; // Treat unconfigured devices as fallback
 		} else if (media.role === MediaRole.HIDDEN) {
 			// Hidden devices are never controlled
@@ -102,7 +127,7 @@ export function selectMediaForMode(devices: MediaDevice[], mode: MediaMode): Med
 		} else {
 			// Apply the rule for this role
 			const roleRule = modeConfig[media.role];
-			rule = roleRule ?? { on: false, volume: null, muted: false };
+			rule = roleRule ?? { power: false };
 		}
 
 		selections.push({ media, rule, isFallback });
@@ -234,6 +259,18 @@ export class MediaIntentService extends SpaceIntentBaseService {
 				return IntentType.SPACE_MEDIA_ROLE_POWER;
 			case MediaIntentType.ROLE_VOLUME:
 				return IntentType.SPACE_MEDIA_ROLE_VOLUME;
+			case MediaIntentType.PLAY:
+				return IntentType.SPACE_MEDIA_PLAY;
+			case MediaIntentType.PAUSE:
+				return IntentType.SPACE_MEDIA_PAUSE;
+			case MediaIntentType.STOP:
+				return IntentType.SPACE_MEDIA_STOP;
+			case MediaIntentType.NEXT:
+				return IntentType.SPACE_MEDIA_NEXT;
+			case MediaIntentType.PREVIOUS:
+				return IntentType.SPACE_MEDIA_PREVIOUS;
+			case MediaIntentType.INPUT_SET:
+				return IntentType.SPACE_MEDIA_INPUT_SET;
 			case MediaIntentType.SET_MODE:
 				return IntentType.SPACE_MEDIA_SET_MODE;
 			default:
@@ -261,6 +298,7 @@ export class MediaIntentService extends SpaceIntentBaseService {
 		if (intent.role !== undefined) value.role = intent.role;
 		if (intent.on !== undefined) value.on = intent.on;
 		if (intent.type !== undefined) value.intentType = intent.type;
+		if (intent.source !== undefined) value.source = intent.source;
 
 		return Object.keys(value).length > 0 ? value : null;
 	}
@@ -276,6 +314,7 @@ export class MediaIntentService extends SpaceIntentBaseService {
 		let muted: boolean | null = null;
 		let role: string | null = null;
 		let on: boolean | null = null;
+		let source: string | null = null;
 
 		switch (intent.type) {
 			case MediaIntentType.SET_MODE:
@@ -307,6 +346,15 @@ export class MediaIntentService extends SpaceIntentBaseService {
 				on = intent.on ?? null;
 				role = intent.role ?? null;
 				break;
+			case MediaIntentType.INPUT_SET:
+				source = intent.source ?? null;
+				break;
+			case MediaIntentType.PLAY:
+			case MediaIntentType.PAUSE:
+			case MediaIntentType.STOP:
+			case MediaIntentType.NEXT:
+			case MediaIntentType.PREVIOUS:
+				break;
 		}
 
 		await this.intentTimeseriesService.storeMediaStateChange(spaceId, intentType, {
@@ -315,6 +363,7 @@ export class MediaIntentService extends SpaceIntentBaseService {
 			muted,
 			role,
 			on,
+			source,
 		});
 	}
 
@@ -406,8 +455,8 @@ export class MediaIntentService extends SpaceIntentBaseService {
 		const selections = selectMediaForMode(devices, mode);
 
 		// Log telemetry for role-based selection
-		const onDevices = selections.filter((s) => s.rule.on);
-		const offDevices = selections.filter((s) => !s.rule.on);
+		const onDevices = selections.filter((s) => s.rule.power === true);
+		const offDevices = selections.filter((s) => s.rule.power === false);
 		const hasRoles = devices.some((d) => d.role !== null);
 		const usingFallback = selections.some((s) => s.isFallback);
 
@@ -451,7 +500,7 @@ export class MediaIntentService extends SpaceIntentBaseService {
 	 * Execute a role-based rule for a single device.
 	 * Handles on/off state, volume, and mute based on the rule.
 	 */
-	private async executeRuleForDevice(device: MediaDevice, rule: MediaRoleVolumeRule): Promise<boolean> {
+	private async executeRuleForDevice(device: MediaDevice, rule: MediaRoleOrchestrationRule): Promise<boolean> {
 		const platform = this.platformRegistryService.get(device.device);
 
 		if (!platform) {
@@ -461,16 +510,18 @@ export class MediaIntentService extends SpaceIntentBaseService {
 
 		const commands: IDevicePropertyData[] = [];
 
-		// Set on/off state
-		commands.push({
-			device: device.device,
-			channel: device.mediaChannel,
-			property: device.onProperty,
-			value: rule.on,
-		});
+		// Set power state if provided and capability exists
+		if (rule.power !== undefined && device.onProperty) {
+			commands.push({
+				device: device.device,
+				channel: device.mediaChannel,
+				property: device.onProperty,
+				value: rule.power,
+			});
+		}
 
 		// Set volume if device is turning on and has volume support
-		if (rule.on && rule.volume !== null && device.volumeProperty) {
+		if ((rule.power === undefined || rule.power) && rule.volume !== undefined && rule.volume !== null && device.volumeProperty) {
 			commands.push({
 				device: device.device,
 				channel: device.mediaChannel,
@@ -480,7 +531,7 @@ export class MediaIntentService extends SpaceIntentBaseService {
 		}
 
 		// Set mute state if specified and device supports it
-		if (rule.on && device.muteProperty) {
+		if ((rule.power === undefined || rule.power) && rule.muted !== undefined && device.muteProperty) {
 			commands.push({
 				device: device.device,
 				channel: device.mediaChannel,
@@ -528,18 +579,27 @@ export class MediaIntentService extends SpaceIntentBaseService {
 				) ?? [];
 
 			for (const mediaChannel of mediaChannels) {
-				// Find the ON/ACTIVE property (required for media)
-				const onProperty = mediaChannel.properties?.find(
-					(p) => p.category === PropertyCategory.ON || p.category === PropertyCategory.ACTIVE,
-				);
+				// Power property (optional)
+				const onProperty =
+					mediaChannel.properties?.find(
+						(p) => p.category === PropertyCategory.ON || p.category === PropertyCategory.ACTIVE,
+					) ?? null;
 
-				if (!onProperty) {
-					continue;
-				}
-
-				// Find optional properties
+				// Optional properties
 				const volumeProperty = mediaChannel.properties?.find((p) => p.category === PropertyCategory.VOLUME) ?? null;
 				const muteProperty = mediaChannel.properties?.find((p) => p.category === PropertyCategory.MUTE) ?? null;
+
+				// Only include channels that expose at least one controllable property
+				const isControlChannel =
+					onProperty ||
+					volumeProperty ||
+					muteProperty ||
+					mediaChannel.category === ChannelCategory.MEDIA_PLAYBACK ||
+					mediaChannel.category === ChannelCategory.MEDIA_INPUT;
+
+				if (!isControlChannel) {
+					continue;
+				}
 
 				// Get role assignment for this device (device-level)
 				const roleEntity = roleMap.get(device.id);
@@ -648,6 +708,72 @@ export class MediaIntentService extends SpaceIntentBaseService {
 					value: false,
 				});
 				break;
+
+			case MediaIntentType.PLAY:
+			case MediaIntentType.PAUSE:
+			case MediaIntentType.STOP:
+			case MediaIntentType.NEXT:
+			case MediaIntentType.PREVIOUS: {
+				const { stateProperty, remoteKeyProperty, channel } = this.getPlaybackProperties(device.device);
+
+				const playbackValue =
+					intent.type === MediaIntentType.PLAY
+						? 'play'
+						: intent.type === MediaIntentType.PAUSE
+							? 'pause'
+							: intent.type === MediaIntentType.STOP
+								? 'stop'
+								: intent.type === MediaIntentType.NEXT
+									? 'next'
+									: 'previous';
+
+				if (remoteKeyProperty && channel) {
+					commands.push({
+						device: device.device,
+						channel,
+						property: remoteKeyProperty,
+						value: playbackValue,
+					});
+					break;
+				}
+
+				if (stateProperty && channel) {
+					commands.push({
+						device: device.device,
+						channel,
+						property: stateProperty,
+						value: playbackValue,
+					});
+					break;
+				}
+
+				this.logger.debug(
+					`Playback control not supported deviceId=${device.device.id} intent=${intent.type}`,
+				);
+				return true; // no-op
+			}
+
+			case MediaIntentType.INPUT_SET: {
+				if (!intent.source) {
+					this.logger.warn('INPUT_SET intent requires source parameter');
+					return false;
+				}
+
+				const { sourceProperty, channel } = this.getInputProperties(device.device);
+
+				if (sourceProperty && channel) {
+					commands.push({
+						device: device.device,
+						channel,
+						property: sourceProperty,
+						value: intent.source,
+					});
+					break;
+				}
+
+				this.logger.debug(`Input control not supported deviceId=${device.device.id}`);
+				return true; // no-op
+			}
 
 			case MediaIntentType.SET_MODE:
 				// SET_MODE is handled via executeModeIntent, not here

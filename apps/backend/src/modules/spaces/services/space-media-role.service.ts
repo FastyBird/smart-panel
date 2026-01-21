@@ -151,7 +151,13 @@ export class SpaceMediaRoleService {
 			throw new SpacesValidationException(`Device with id=${dto.deviceId} has no media channels to control`);
 		}
 
-		const preferredOrder = [ChannelCategory.TELEVISION, ChannelCategory.MEDIA_PLAYBACK, ChannelCategory.SPEAKER];
+		const preferredOrder = [
+			ChannelCategory.SWITCHER,
+			ChannelCategory.TELEVISION,
+			ChannelCategory.MEDIA_INPUT,
+			ChannelCategory.MEDIA_PLAYBACK,
+			ChannelCategory.SPEAKER,
+		];
 		const targetChannel =
 			preferredOrder.map((cat) => mediaChannels.find((ch) => ch.category === cat)).find((ch) => ch) ??
 			mediaChannels[0];
@@ -331,7 +337,9 @@ export class SpaceMediaRoleService {
 
 			// Prefer a single channel per device to avoid duplicate rows (television > media_playback > speaker)
 			const preferredOrder = [
+				ChannelCategory.SWITCHER,
 				ChannelCategory.TELEVISION,
+				ChannelCategory.MEDIA_INPUT,
 				ChannelCategory.MEDIA_PLAYBACK,
 				ChannelCategory.SPEAKER,
 			];
