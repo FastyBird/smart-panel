@@ -355,9 +355,7 @@ export class SpaceMediaRoleService {
 			const properties = targetChannel.properties ?? [];
 			const hasOn =
 				(isTelevision || isSwitcher) &&
-				properties.some(
-					(p) => p.category === PropertyCategory.ON || p.category === PropertyCategory.ACTIVE,
-				);
+				properties.some((p) => p.category === PropertyCategory.ON || p.category === PropertyCategory.ACTIVE);
 			const hasVolume = isSpeaker && properties.some((p) => p.category === PropertyCategory.VOLUME);
 			const hasMute = isSpeaker && properties.some((p) => p.category === PropertyCategory.MUTE);
 
