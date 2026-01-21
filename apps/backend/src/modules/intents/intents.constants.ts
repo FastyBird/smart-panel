@@ -76,6 +76,17 @@ export enum IntentType {
 	SPACE_COVERS_POSITION_DELTA = 'space.covers.positionDelta',
 	SPACE_COVERS_ROLE_POSITION = 'space.covers.rolePosition',
 	SPACE_COVERS_SET_MODE = 'space.covers.setMode',
+
+	// Space media operations
+	SPACE_MEDIA_POWER_ON = 'space.media.powerOn',
+	SPACE_MEDIA_POWER_OFF = 'space.media.powerOff',
+	SPACE_MEDIA_VOLUME_SET = 'space.media.volumeSet',
+	SPACE_MEDIA_VOLUME_DELTA = 'space.media.volumeDelta',
+	SPACE_MEDIA_MUTE = 'space.media.mute',
+	SPACE_MEDIA_UNMUTE = 'space.media.unmute',
+	SPACE_MEDIA_ROLE_POWER = 'space.media.rolePower',
+	SPACE_MEDIA_ROLE_VOLUME = 'space.media.roleVolume',
+	SPACE_MEDIA_SET_MODE = 'space.media.setMode',
 }
 
 /**

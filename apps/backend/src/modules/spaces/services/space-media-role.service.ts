@@ -136,11 +136,29 @@ export class SpaceMediaRoleService {
 			throw new SpacesValidationException(`Device with id=${dto.deviceId} does not belong to space ${spaceId}`);
 		}
 
+		// Verify device is a media device
+		if (!MEDIA_DEVICE_CATEGORIES.includes(device.category as (typeof MEDIA_DEVICE_CATEGORIES)[number])) {
+			throw new SpacesValidationException(`Device with id=${dto.deviceId} is not a media device`);
+		}
+
 		// Verify channel exists and belongs to the device
 		const channel = device.channels?.find((ch) => ch.id === dto.channelId);
 
 		if (!channel) {
 			throw new SpacesValidationException(`Channel with id=${dto.channelId} not found on device ${dto.deviceId}`);
+		}
+
+		// Verify channel category is a media channel
+		if (!MEDIA_CHANNEL_CATEGORIES.includes(channel.category as (typeof MEDIA_CHANNEL_CATEGORIES)[number])) {
+			throw new SpacesValidationException(`Channel with id=${dto.channelId} is not a media channel`);
+		}
+
+		// Verify required ON property exists
+		const hasOn = (channel.properties ?? []).some((p) => p.category === PropertyCategory.ON);
+		if (!hasOn) {
+			throw new SpacesValidationException(
+				`Channel with id=${dto.channelId} is missing ON property required for media control`,
+			);
 		}
 
 		let roleEntity: SpaceMediaRoleEntity | null = null;

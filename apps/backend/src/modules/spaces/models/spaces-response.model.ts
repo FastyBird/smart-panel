@@ -2720,6 +2720,160 @@ export class LightingStateResponseModel extends BaseSuccessResponseModel<Lightin
 // ================================
 
 /**
+ * Aggregated state for media devices assigned to a role
+ */
+@ApiSchema({ name: 'SpacesModuleDataMediaRoleState' })
+export class MediaRoleStateDataModel {
+	@ApiProperty({
+		description: 'Role key',
+		enum: MediaRole,
+		example: MediaRole.PRIMARY,
+	})
+	@Expose()
+	role: MediaRole;
+
+	@ApiProperty({
+		name: 'is_on',
+		description: 'Whether any device in the role is on',
+		type: 'boolean',
+	})
+	@Expose({ name: 'is_on' })
+	isOn: boolean;
+
+	@ApiProperty({
+		name: 'is_on_mixed',
+		description: 'True when some devices in the role are on and some off',
+		type: 'boolean',
+	})
+	@Expose({ name: 'is_on_mixed' })
+	isOnMixed: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Shared volume for the role, null when mixed or unsupported',
+		type: 'integer',
+		nullable: true,
+		example: 50,
+	})
+	@Expose()
+	volume: number | null;
+
+	@ApiProperty({
+		name: 'is_volume_mixed',
+		description: 'True when devices have different volume values',
+		type: 'boolean',
+	})
+	@Expose({ name: 'is_volume_mixed' })
+	isVolumeMixed: boolean;
+
+	@ApiProperty({
+		name: 'is_muted',
+		description: 'Whether any device in the role is muted',
+		type: 'boolean',
+	})
+	@Expose({ name: 'is_muted' })
+	isMuted: boolean;
+
+	@ApiProperty({
+		name: 'is_muted_mixed',
+		description: 'True when some devices in the role are muted and some are not',
+		type: 'boolean',
+	})
+	@Expose({ name: 'is_muted_mixed' })
+	isMutedMixed: boolean;
+
+	@ApiProperty({
+		name: 'devices_count',
+		description: 'Number of devices in this role',
+		type: 'integer',
+		example: 2,
+	})
+	@Expose({ name: 'devices_count' })
+	devicesCount: number;
+
+	@ApiProperty({
+		name: 'devices_on',
+		description: 'Number of devices currently on in this role',
+		type: 'integer',
+		example: 1,
+	})
+	@Expose({ name: 'devices_on' })
+	devicesOn: number;
+}
+
+/**
+ * Aggregated state for unassigned media devices
+ */
+@ApiSchema({ name: 'SpacesModuleDataOtherMediaState' })
+export class OtherMediaStateDataModel {
+	@ApiProperty({
+		name: 'is_on',
+		description: 'Whether any unassigned device is on',
+		type: 'boolean',
+	})
+	@Expose({ name: 'is_on' })
+	isOn: boolean;
+
+	@ApiProperty({
+		name: 'is_on_mixed',
+		description: 'True when unassigned devices are a mix of on/off',
+		type: 'boolean',
+	})
+	@Expose({ name: 'is_on_mixed' })
+	isOnMixed: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Shared volume for unassigned devices, null when mixed or unsupported',
+		type: 'integer',
+		nullable: true,
+		example: 40,
+	})
+	@Expose()
+	volume: number | null;
+
+	@ApiProperty({
+		name: 'is_volume_mixed',
+		description: 'True when unassigned devices have different volume values',
+		type: 'boolean',
+	})
+	@Expose({ name: 'is_volume_mixed' })
+	isVolumeMixed: boolean;
+
+	@ApiProperty({
+		name: 'is_muted',
+		description: 'Whether any unassigned device is muted',
+		type: 'boolean',
+	})
+	@Expose({ name: 'is_muted' })
+	isMuted: boolean;
+
+	@ApiProperty({
+		name: 'is_muted_mixed',
+		description: 'True when mute state differs across unassigned devices',
+		type: 'boolean',
+	})
+	@Expose({ name: 'is_muted_mixed' })
+	isMutedMixed: boolean;
+
+	@ApiProperty({
+		name: 'devices_count',
+		description: 'Number of unassigned media devices',
+		type: 'integer',
+		example: 1,
+	})
+	@Expose({ name: 'devices_count' })
+	devicesCount: number;
+
+	@ApiProperty({
+		name: 'devices_on',
+		description: 'Number of unassigned devices that are on',
+		type: 'integer',
+		example: 0,
+	})
+	@Expose({ name: 'devices_on' })
+	devicesOn: number;
+}
+
+/**
  * Media state data model for a space
  */
 @ApiSchema({ name: 'SpacesModuleDataMediaState' })
@@ -2808,6 +2962,52 @@ export class MediaStateDataModel {
 	})
 	@Expose({ name: 'last_applied_at' })
 	lastAppliedAt: Date | null;
+
+	@ApiPropertyOptional({
+		name: 'detected_mode',
+		description: 'Mode detected from current device states',
+		enum: MediaMode,
+		nullable: true,
+		example: MediaMode.BACKGROUND,
+	})
+	@Expose({ name: 'detected_mode' })
+	detectedMode: MediaMode | null;
+
+	@ApiProperty({
+		name: 'mode_confidence',
+		description: 'Confidence of detected mode',
+		enum: ['exact', 'approximate', 'none'],
+		example: 'approximate',
+	})
+	@Expose({ name: 'mode_confidence' })
+	modeConfidence: 'exact' | 'approximate' | 'none';
+
+	@ApiPropertyOptional({
+		name: 'mode_match_percentage',
+		description: 'Percentage of devices matching the detected mode',
+		type: 'integer',
+		nullable: true,
+		example: 85,
+	})
+	@Expose({ name: 'mode_match_percentage' })
+	modeMatchPercentage: number | null;
+
+	@ApiProperty({
+		description: 'Aggregated state per media role',
+		type: 'object',
+		additionalProperties: { $ref: getSchemaPath(MediaRoleStateDataModel) },
+	})
+	@Expose()
+	@Type(() => MediaRoleStateDataModel)
+	roles: Record<string, MediaRoleStateDataModel>;
+
+	@ApiProperty({
+		description: 'Aggregated state for unassigned media devices',
+		type: () => OtherMediaStateDataModel,
+	})
+	@Expose()
+	@Type(() => OtherMediaStateDataModel)
+	other: OtherMediaStateDataModel;
 }
 
 /**

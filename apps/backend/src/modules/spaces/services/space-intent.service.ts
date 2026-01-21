@@ -8,7 +8,8 @@ import { MediaIntentDto } from '../dto/media-intent.dto';
 import { ClimateIntentResult, ClimateIntentService, ClimateState } from './climate-intent.service';
 import { CoversIntentResult, CoversIntentService, CoversState } from './covers-intent.service';
 import { LightingIntentService } from './lighting-intent.service';
-import { MediaIntentResult, MediaIntentService, MediaState } from './media-intent.service';
+import { MediaIntentResult, MediaIntentService } from './media-intent.service';
+import { SpaceMediaState, SpaceMediaStateService } from './space-media-state.service';
 import { IntentExecutionResult } from './space-intent-base.service';
 
 // Re-export types for backward compatibility
@@ -21,8 +22,8 @@ export {
 	MediaModeSelection,
 	selectMediaForMode,
 	MediaIntentResult,
-	MediaState,
 } from './media-intent.service';
+export { SpaceMediaState } from './space-media-state.service';
 export { IntentExecutionResult } from './space-intent-base.service';
 
 /**
@@ -37,6 +38,7 @@ export class SpaceIntentService {
 		private readonly climateIntentService: ClimateIntentService,
 		private readonly coversIntentService: CoversIntentService,
 		private readonly mediaIntentService: MediaIntentService,
+		private readonly mediaStateService: SpaceMediaStateService,
 	) {}
 
 	// =====================
@@ -130,14 +132,14 @@ export class SpaceIntentService {
 
 	/**
 	 * Get the current media state for a space.
-	 * Delegates to MediaIntentService.
+	 * Delegates to SpaceMediaStateService.
 	 *
 	 * @param spaceId - The UUID of the space to get media state for
-	 * @returns The aggregated media state including volume, power, mute status, and device counts,
+	 * @returns The aggregated media state including volume, power, mute status, device counts,
 	 *          or null if the space doesn't exist
 	 */
-	async getMediaState(spaceId: string): Promise<MediaState | null> {
-		return this.mediaIntentService.getMediaState(spaceId);
+	async getMediaState(spaceId: string): Promise<SpaceMediaState | null> {
+		return this.mediaStateService.getMediaState(spaceId);
 	}
 
 	/**

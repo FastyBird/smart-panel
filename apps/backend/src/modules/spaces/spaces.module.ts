@@ -24,6 +24,7 @@ import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
 import { SpaceEntity } from './entities/space.entity';
 import { SpaceActivityListener } from './listeners/space-activity.listener';
 import { SpaceClimateStateListener } from './listeners/space-climate-state.listener';
+import { SpaceMediaStateListener } from './listeners/space-media-state.listener';
 import { SpaceSensorStateListener } from './listeners/space-sensor-state.listener';
 import { SpacesConfigModel } from './models/config.model';
 import { ClimateIntentService } from './services/climate-intent.service';
@@ -99,6 +100,7 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceUndoHistoryService,
 		SpaceActivityListener,
 		SpaceClimateStateListener,
+		SpaceMediaStateListener,
 		SpaceSensorStateListener,
 		IntentSpecLoaderService,
 		SpacesSeederService,

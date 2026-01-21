@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { PropertyCategory } from '../../devices/devices.constants';
 import { ChannelPropertyEntity } from '../../devices/entities/devices.entity';
+import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
 import {
 	MEDIA_CHANNEL_CATEGORIES,
 	MEDIA_DEVICE_CATEGORIES,
@@ -109,6 +110,8 @@ export class SpaceMediaStateService {
 	constructor(
 		private readonly spacesService: SpacesService,
 		private readonly mediaRoleService: SpaceMediaRoleService,
+		@Inject(forwardRef(() => IntentTimeseriesService))
+		private readonly intentTimeseriesService: IntentTimeseriesService,
 	) {}
 
 	/**
@@ -152,7 +155,7 @@ export class SpaceMediaStateService {
 		const modeMatch = this.detectMode(devices);
 
 		// Get last applied mode
-		const lastMode = this.lastAppliedModes.get(spaceId);
+		const lastMode = await this.resolveLastAppliedMode(spaceId);
 
 		return {
 			detectedMode: modeMatch?.mode ?? null,
@@ -173,7 +176,29 @@ export class SpaceMediaStateService {
 	 * Update last applied mode (called by MediaIntentService)
 	 */
 	setLastAppliedMode(spaceId: string, mode: MediaMode): void {
-		this.lastAppliedModes.set(spaceId, { mode, timestamp: new Date() });
+		const record = { mode, timestamp: new Date() };
+		this.lastAppliedModes.set(spaceId, record);
+		void this.intentTimeseriesService.storeMediaModeChange(spaceId, mode);
+	}
+
+	private async resolveLastAppliedMode(
+		spaceId: string,
+	): Promise<{ mode: MediaMode; timestamp: Date } | null> {
+		const cached = this.lastAppliedModes.get(spaceId);
+
+		if (cached) {
+			return cached;
+		}
+
+		const persisted = await this.intentTimeseriesService.getLastMediaMode(spaceId);
+
+		if (persisted?.mode && Object.values(MediaMode).includes(persisted.mode as MediaMode)) {
+			const record = { mode: persisted.mode as MediaMode, timestamp: persisted.appliedAt };
+			this.lastAppliedModes.set(spaceId, record);
+			return record;
+		}
+
+		return null;
 	}
 
 	/**

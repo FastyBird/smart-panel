@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { InfluxDbService } from '../../influxdb/services/influxdb.service';
+import { MediaMode } from '../../spaces/spaces.constants';
 import { INTENTS_MODULE_NAME, IntentStatus, IntentTargetStatus, IntentType } from '../intents.constants';
 import { IntentRecord } from '../models/intent.model';
 
@@ -161,6 +162,13 @@ export class IntentTimeseriesService {
 	 */
 	async getLastClimateMode(spaceId: string): Promise<LastAppliedMode | null> {
 		return this.getLastAppliedModeByType(spaceId, 'climate.setMode');
+	}
+
+	/**
+	 * Query the last applied media mode for a space.
+	 */
+	async getLastMediaMode(spaceId: string): Promise<LastAppliedMode | null> {
+		return this.getLastAppliedModeByType(spaceId, 'media.setMode');
 	}
 
 	/**
@@ -543,6 +551,48 @@ export class IntentTimeseriesService {
 	}
 
 	/**
+	 * Store a media mode change directly (without full intent record).
+	 * Called by MediaIntentService after successfully applying a mode.
+	 */
+	async storeMediaModeChange(spaceId: string, mode: MediaMode): Promise<void> {
+		if (!this.influxDbService.isConnected()) {
+			this.logger.warn(`InfluxDB not connected - media mode not persisted spaceId=${spaceId}`);
+			return;
+		}
+
+		if (!isValidUuid(spaceId)) {
+			this.logger.warn(`Invalid spaceId format rejected spaceId=${spaceId}`);
+			return;
+		}
+
+		try {
+			await this.influxDbService.writePoints([
+				{
+					measurement: 'space_intent',
+					tags: {
+						spaceId,
+						intentType: 'media.setMode',
+						status: IntentStatus.COMPLETED_SUCCESS,
+					},
+					fields: {
+						intentId: '',
+						mode,
+						targetsCount: 0,
+						successCount: 0,
+						failedCount: 0,
+					},
+					timestamp: new Date(),
+				},
+			]);
+
+			this.logger.debug(`Media mode stored spaceId=${spaceId} mode=${mode}`);
+		} catch (error) {
+			const err = error as Error;
+			this.logger.error(`Failed to store media mode to InfluxDB spaceId=${spaceId} error=${err.message}`, err.stack);
+		}
+	}
+
+	/**
 	 * Delete all intent history for a space.
 	 */
 	async deleteSpaceHistory(spaceId: string): Promise<void> {
@@ -581,6 +631,7 @@ export class IntentTimeseriesService {
 			IntentType.LIGHT_SET_COLOR_TEMP,
 			IntentType.LIGHT_SET_WHITE,
 			IntentType.DEVICE_SET_PROPERTY,
+			IntentType.SPACE_MEDIA_SET_MODE,
 		].includes(type);
 	}
 

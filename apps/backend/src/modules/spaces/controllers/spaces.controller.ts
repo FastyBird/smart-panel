@@ -79,11 +79,13 @@ import {
 	LightingStateDataModel,
 	LightingStateResponseModel,
 	LightingSummaryDataModel,
+	MediaRoleStateDataModel,
 	MediaIntentResponseModel,
 	MediaIntentResultDataModel,
 	MediaRoleResponseModel,
 	MediaStateDataModel,
 	MediaStateResponseModel,
+	OtherMediaStateDataModel,
 	MediaTargetDataModel,
 	MediaTargetsResponseModel,
 	OtherLightsStateDataModel,
@@ -128,6 +130,7 @@ import { SpacesService } from '../services/spaces.service';
 import {
 	IntentCategory,
 	LightingRole,
+	MediaRole,
 	QUICK_ACTION_CATALOG,
 	SPACES_MODULE_API_TAG_NAME,
 	SPACES_MODULE_NAME,
@@ -1917,15 +1920,55 @@ export class SpacesController {
 		}
 
 		const stateData = new MediaStateDataModel();
-		stateData.hasMedia = state.hasMedia;
-		stateData.anyOn = state.anyOn;
-		stateData.allOff = state.allOff;
+		const rolesMap: Record<string, MediaRoleStateDataModel> = {};
+		const devicesByRole: Record<string, number> = {};
+
+		for (const [role, roleState] of Object.entries(state.roles ?? {})) {
+			if (!roleState) continue;
+
+			const roleModel = new MediaRoleStateDataModel();
+			roleModel.role = role as MediaRole;
+			roleModel.isOn = roleState.isOn;
+			roleModel.isOnMixed = roleState.isOnMixed;
+			roleModel.volume = roleState.volume;
+			roleModel.isVolumeMixed = roleState.isVolumeMixed;
+			roleModel.isMuted = roleState.isMuted;
+			roleModel.isMutedMixed = roleState.isMutedMixed;
+			roleModel.devicesCount = roleState.devicesCount;
+			roleModel.devicesOn = roleState.devicesOn;
+
+			rolesMap[role] = roleModel;
+			devicesByRole[role] = roleState.devicesCount;
+		}
+
+		const otherModel = new OtherMediaStateDataModel();
+		otherModel.isOn = state.other?.isOn ?? false;
+		otherModel.isOnMixed = state.other?.isOnMixed ?? false;
+		otherModel.volume = state.other?.volume ?? null;
+		otherModel.isVolumeMixed = state.other?.isVolumeMixed ?? false;
+		otherModel.isMuted = state.other?.isMuted ?? false;
+		otherModel.isMutedMixed = state.other?.isMutedMixed ?? false;
+		otherModel.devicesCount = state.other?.devicesCount ?? 0;
+		otherModel.devicesOn = state.other?.devicesOn ?? 0;
+
+		if (otherModel.devicesCount > 0) {
+			devicesByRole.other = otherModel.devicesCount;
+		}
+
+		stateData.hasMedia = state.totalDevices > 0;
+		stateData.anyOn = state.devicesOn > 0;
+		stateData.allOff = state.devicesOn === 0;
 		stateData.averageVolume = state.averageVolume;
 		stateData.anyMuted = state.anyMuted;
-		stateData.devicesCount = state.devicesCount;
-		stateData.devicesByRole = state.devicesByRole;
-		stateData.lastAppliedMode = state.lastAppliedMode;
-		stateData.lastAppliedAt = state.lastAppliedAt;
+		stateData.devicesCount = state.totalDevices;
+		stateData.devicesByRole = devicesByRole;
+		stateData.lastAppliedMode = state.lastAppliedMode ?? null;
+		stateData.lastAppliedAt = state.lastAppliedAt ?? null;
+		stateData.detectedMode = state.detectedMode ?? null;
+		stateData.modeConfidence = state.modeConfidence ?? 'none';
+		stateData.modeMatchPercentage = state.modeMatchPercentage ?? null;
+		stateData.roles = rolesMap;
+		stateData.other = otherModel;
 
 		const response = new MediaStateResponseModel();
 		response.data = stateData;

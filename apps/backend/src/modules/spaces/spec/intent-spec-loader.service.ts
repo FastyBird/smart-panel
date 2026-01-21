@@ -40,12 +40,14 @@ export class IntentSpecLoaderService implements OnModuleInit {
 	private enums: YamlEnumsConfig | null = null;
 	private lightingIntents: ResolvedIntentCategory | null = null;
 	private climateIntents: ResolvedIntentCategory | null = null;
+	private mediaIntents: ResolvedIntentCategory | null = null;
 	private lightingModes: Map<string, ResolvedModeOrchestration> = new Map();
 	private loadResults: SpecLoadResult[] = [];
 
 	// Delta step mappings (derived from enums)
 	private brightnessDeltas: Map<string, number> = new Map();
 	private setpointDeltas: Map<string, number> = new Map();
+	private volumeDeltas: Map<string, number> = new Map();
 
 	// Paths for spec files
 	private readonly builtinSpecPath = join(__dirname, 'definitions');
@@ -63,9 +65,11 @@ export class IntentSpecLoaderService implements OnModuleInit {
 		this.enums = null;
 		this.lightingIntents = null;
 		this.climateIntents = null;
+		this.mediaIntents = null;
 		this.lightingModes.clear();
 		this.brightnessDeltas.clear();
 		this.setpointDeltas.clear();
+		this.volumeDeltas.clear();
 
 		// Step 1: Load enums (required for other specs)
 		this.loadEnums();
@@ -73,6 +77,7 @@ export class IntentSpecLoaderService implements OnModuleInit {
 		// Step 2: Load intent specs
 		this.loadLightingIntents();
 		this.loadClimateIntents();
+		this.loadMediaIntents();
 
 		// Step 3: Load lighting modes
 		this.loadLightingModes();
@@ -80,6 +85,7 @@ export class IntentSpecLoaderService implements OnModuleInit {
 		this.logger.log(
 			`Loaded specs: ${this.lightingIntents?.intents.length ?? 0} lighting intents, ` +
 				`${this.climateIntents?.intents.length ?? 0} climate intents, ` +
+				`${this.mediaIntents?.intents.length ?? 0} media intents, ` +
 				`${this.lightingModes.size} lighting modes`,
 		);
 	}
@@ -129,6 +135,9 @@ export class IntentSpecLoaderService implements OnModuleInit {
 			'climate_roles',
 			'climate_modes',
 			'setpoint_deltas',
+			'media_roles',
+			'media_modes',
+			'volume_deltas',
 		];
 
 		for (const category of categories) {
@@ -158,6 +167,13 @@ export class IntentSpecLoaderService implements OnModuleInit {
 		for (const [key, meta] of Object.entries(this.enums.setpoint_deltas)) {
 			if (meta.step !== undefined) {
 				this.setpointDeltas.set(key, meta.step);
+			}
+		}
+
+		// Volume deltas
+		for (const [key, meta] of Object.entries(this.enums.volume_deltas)) {
+			if (meta.step !== undefined) {
+				this.volumeDeltas.set(key, meta.step);
 			}
 		}
 	}
@@ -228,6 +244,39 @@ export class IntentSpecLoaderService implements OnModuleInit {
 		}
 
 		this.climateIntents = {
+			category: builtinConfig.category.id,
+			label: builtinConfig.category.label,
+			description: builtinConfig.category.description,
+			icon: builtinConfig.category.icon,
+			intents,
+		};
+	}
+
+	/**
+	 * Load and merge media intents
+	 */
+	private loadMediaIntents(): void {
+		const builtinPath = join(this.builtinSpecPath, 'media-intents.yaml');
+		const userPath = join(this.userSpecPath, 'media-intents.yaml');
+
+		const builtinConfig = this.loadYamlFile<YamlIntentConfig>(builtinPath, 'builtin');
+
+		if (!builtinConfig) {
+			this.logger.error('Failed to load builtin media intents');
+			return;
+		}
+
+		let intents = this.resolveIntents(builtinConfig.intents, builtinConfig.limits);
+
+		if (existsSync(userPath)) {
+			const userConfig = this.loadYamlFile<YamlIntentConfig>(userPath, 'user');
+
+			if (userConfig) {
+				intents = this.mergeIntents(intents, this.resolveIntents(userConfig.intents, userConfig.limits));
+			}
+		}
+
+		this.mediaIntents = {
 			category: builtinConfig.category.id,
 			label: builtinConfig.category.label,
 			description: builtinConfig.category.description,
@@ -494,6 +543,10 @@ export class IntentSpecLoaderService implements OnModuleInit {
 			catalog.push(this.climateIntents);
 		}
 
+		if (this.mediaIntents) {
+			catalog.push(this.mediaIntents);
+		}
+
 		return catalog;
 	}
 
@@ -509,6 +562,13 @@ export class IntentSpecLoaderService implements OnModuleInit {
 	 */
 	getClimateIntents(): ResolvedIntent[] {
 		return this.climateIntents?.intents ?? [];
+	}
+
+	/**
+	 * Get media intents only
+	 */
+	getMediaIntents(): ResolvedIntent[] {
+		return this.mediaIntents?.intents ?? [];
 	}
 
 	/**

@@ -29,6 +29,9 @@ export interface YamlEnumsConfig {
 	climate_roles: Record<string, YamlEnumValueMeta>;
 	climate_modes: Record<string, YamlEnumValueMeta>;
 	setpoint_deltas: Record<string, YamlEnumValueMeta>;
+	media_roles: Record<string, YamlEnumValueMeta>;
+	media_modes: Record<string, YamlEnumValueMeta>;
+	volume_deltas: Record<string, YamlEnumValueMeta>;
 }
 
 /**

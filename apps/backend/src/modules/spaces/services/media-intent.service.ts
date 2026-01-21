@@ -6,6 +6,9 @@ import { PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
+import { DEFAULT_TTL_SPACE_COMMAND, IntentTargetStatus, IntentType } from '../../intents/intents.constants';
+import { IntentTarget, IntentTargetResult } from '../../intents/models/intent.model';
+import { IntentsService } from '../../intents/services/intents.service';
 import { MediaIntentDto } from '../dto/media-intent.dto';
 import {
 	EventType,
@@ -23,7 +26,7 @@ import {
 
 import { IntentExecutionResult, SpaceIntentBaseService } from './space-intent-base.service';
 import { SpaceMediaRoleService } from './space-media-role.service';
-import { SpaceMediaStateService } from './space-media-state.service';
+import { SpaceMediaState, SpaceMediaStateService } from './space-media-state.service';
 import { SpacesService } from './spaces.service';
 
 /**
@@ -115,20 +118,7 @@ export interface MediaIntentResult extends IntentExecutionResult {
 	isMuted?: boolean;
 }
 
-/**
- * State of media devices in a space.
- */
-export interface MediaState {
-	hasMedia: boolean;
-	anyOn: boolean;
-	allOff: boolean;
-	averageVolume: number | null;
-	anyMuted: boolean;
-	devicesCount: number;
-	devicesByRole: Record<string, number>;
-	lastAppliedMode: MediaMode | null;
-	lastAppliedAt: Date | null;
-}
+export type MediaState = SpaceMediaState;
 
 /**
  * Service handling all media-related intent operations.
@@ -138,9 +128,6 @@ export interface MediaState {
 export class MediaIntentService extends SpaceIntentBaseService {
 	private readonly logger = createExtensionLogger(SPACES_MODULE_NAME, 'MediaIntentService');
 
-	// Track last applied mode per space (in-memory, resets on restart)
-	private lastAppliedModes = new Map<string, { mode: MediaMode; timestamp: Date }>();
-
 	constructor(
 		private readonly spacesService: SpacesService,
 		private readonly platformRegistryService: PlatformRegistryService,
@@ -148,6 +135,8 @@ export class MediaIntentService extends SpaceIntentBaseService {
 		private readonly eventEmitter: EventEmitter2,
 		@Inject(forwardRef(() => SpaceMediaStateService))
 		private readonly mediaStateService: SpaceMediaStateService,
+		@Inject(forwardRef(() => IntentsService))
+		private readonly intentsService: IntentsService,
 	) {
 		super();
 	}
@@ -157,72 +146,7 @@ export class MediaIntentService extends SpaceIntentBaseService {
 	 * Returns null if space doesn't exist (controller should throw 404).
 	 */
 	async getMediaState(spaceId: string): Promise<MediaState | null> {
-		// Verify space exists - return null for controller to throw 404
-		const space = await this.spacesService.findOne(spaceId);
-
-		if (!space) {
-			this.logger.warn(`Space not found id=${spaceId}`);
-			return null;
-		}
-
-		// Get all media devices in the space
-		const devices = await this.getMediaDevicesInSpace(spaceId);
-
-		if (devices.length === 0) {
-			return {
-				hasMedia: false,
-				anyOn: false,
-				allOff: true,
-				averageVolume: null,
-				anyMuted: false,
-				devicesCount: 0,
-				devicesByRole: {},
-				lastAppliedMode: null,
-				lastAppliedAt: null,
-			};
-		}
-
-		// Calculate aggregate state
-		let onCount = 0;
-		let volumeSum = 0;
-		let volumeCount = 0;
-		let mutedCount = 0;
-		const roleCount: Record<string, number> = {};
-
-		for (const device of devices) {
-			const isOn = this.getPropertyBooleanValue(device.onProperty);
-			if (isOn) {
-				onCount++;
-			}
-
-			const volume = this.getPropertyNumericValue(device.volumeProperty);
-			if (volume !== null) {
-				volumeSum += volume;
-				volumeCount++;
-			}
-
-			const isMuted = this.getPropertyBooleanValue(device.muteProperty);
-			if (isMuted) {
-				mutedCount++;
-			}
-
-			const roleKey = device.role ?? 'unassigned';
-			roleCount[roleKey] = (roleCount[roleKey] ?? 0) + 1;
-		}
-
-		const lastMode = this.lastAppliedModes.get(spaceId);
-
-		return {
-			hasMedia: true,
-			anyOn: onCount > 0,
-			allOff: onCount === 0,
-			averageVolume: volumeCount > 0 ? Math.round(volumeSum / volumeCount) : null,
-			anyMuted: mutedCount > 0,
-			devicesCount: devices.length,
-			devicesByRole: roleCount,
-			lastAppliedMode: lastMode?.mode ?? null,
-			lastAppliedAt: lastMode?.timestamp ?? null,
-		};
+		return this.mediaStateService.getMediaState(spaceId);
 	}
 
 	/**
@@ -248,18 +172,34 @@ export class MediaIntentService extends SpaceIntentBaseService {
 
 		this.logger.debug(`Found ${devices.length} media devices in space id=${spaceId}`);
 
+		const targets = this.buildMediaTargets(devices);
+		const targetResults: IntentTargetResult[] = [];
+
+		const intentRecord = this.intentsService.createIntent({
+			type: this.mapMediaIntentType(intent.type),
+			context: {
+				origin: 'panel.spaces',
+				spaceId,
+			},
+			targets,
+			value: this.buildMediaIntentValue(intent),
+			ttlMs: DEFAULT_TTL_SPACE_COMMAND,
+		});
+
 		let result: MediaIntentResult;
 
 		// For SET_MODE, use role-based orchestration
 		if (intent.type === MediaIntentType.SET_MODE && intent.mode) {
-			result = await this.executeModeIntent(spaceId, devices, intent.mode);
+			result = await this.executeModeIntent(spaceId, devices, intent.mode, targetResults);
 		} else if (this.isRoleSpecificIntent(intent.type)) {
 			// For role-specific intents, only affect devices with the specified role
-			result = await this.executeRoleIntent(spaceId, devices, intent);
+			result = await this.executeRoleIntent(spaceId, devices, intent, targetResults);
 		} else {
 			// For other intents (POWER_ON, POWER_OFF, VOLUME_SET, VOLUME_DELTA, MUTE, UNMUTE), apply to all devices
-			result = await this.executeGlobalIntent(spaceId, devices, intent);
+			result = await this.executeGlobalIntent(spaceId, devices, intent, targetResults);
 		}
+
+		this.intentsService.completeIntent(intentRecord.id, targetResults);
 
 		// Emit state change event for WebSocket clients (fire and forget)
 		if (result.success) {
@@ -267,6 +207,58 @@ export class MediaIntentService extends SpaceIntentBaseService {
 		}
 
 		return result;
+	}
+
+	/**
+	 * Map MediaIntentType to IntentType for intent tracking.
+	 */
+	private mapMediaIntentType(type: MediaIntentType): IntentType {
+		switch (type) {
+			case MediaIntentType.POWER_ON:
+				return IntentType.SPACE_MEDIA_POWER_ON;
+			case MediaIntentType.POWER_OFF:
+				return IntentType.SPACE_MEDIA_POWER_OFF;
+			case MediaIntentType.VOLUME_SET:
+				return IntentType.SPACE_MEDIA_VOLUME_SET;
+			case MediaIntentType.VOLUME_DELTA:
+				return IntentType.SPACE_MEDIA_VOLUME_DELTA;
+			case MediaIntentType.MUTE:
+				return IntentType.SPACE_MEDIA_MUTE;
+			case MediaIntentType.UNMUTE:
+				return IntentType.SPACE_MEDIA_UNMUTE;
+			case MediaIntentType.ROLE_POWER:
+				return IntentType.SPACE_MEDIA_ROLE_POWER;
+			case MediaIntentType.ROLE_VOLUME:
+				return IntentType.SPACE_MEDIA_ROLE_VOLUME;
+			case MediaIntentType.SET_MODE:
+				return IntentType.SPACE_MEDIA_SET_MODE;
+			default:
+				return IntentType.SPACE_MEDIA_POWER_ON;
+		}
+	}
+
+	/**
+	 * Build intent targets for tracking.
+	 */
+	private buildMediaTargets(devices: MediaDevice[]): IntentTarget[] {
+		return devices.map((device) => ({ deviceId: device.device.id }));
+	}
+
+	/**
+	 * Build value payload for intent tracking.
+	 */
+	private buildMediaIntentValue(intent: MediaIntentDto): unknown {
+		const value: Record<string, unknown> = {};
+
+		if (intent.mode !== undefined) value.mode = intent.mode;
+		if (intent.volume !== undefined) value.volume = intent.volume;
+		if (intent.delta !== undefined) value.delta = intent.delta;
+		if (intent.increase !== undefined) value.increase = intent.increase;
+		if (intent.role !== undefined) value.role = intent.role;
+		if (intent.on !== undefined) value.on = intent.on;
+		if (intent.type !== undefined) value.intentType = intent.type;
+
+		return Object.keys(value).length > 0 ? value : null;
 	}
 
 	/**
@@ -297,6 +289,7 @@ export class MediaIntentService extends SpaceIntentBaseService {
 		spaceId: string,
 		devices: MediaDevice[],
 		intent: MediaIntentDto,
+		targetResults: IntentTargetResult[],
 	): Promise<MediaIntentResult> {
 		let affectedDevices = 0;
 		let failedDevices = 0;
@@ -313,8 +306,10 @@ export class MediaIntentService extends SpaceIntentBaseService {
 
 			if (success) {
 				affectedDevices++;
+				targetResults.push({ deviceId: device.device.id, status: IntentTargetStatus.SUCCESS });
 			} else {
 				failedDevices++;
+				targetResults.push({ deviceId: device.device.id, status: IntentTargetStatus.FAILED });
 			}
 		}
 
@@ -348,6 +343,7 @@ export class MediaIntentService extends SpaceIntentBaseService {
 		spaceId: string,
 		devices: MediaDevice[],
 		mode: MediaMode,
+		targetResults: IntentTargetResult[],
 	): Promise<MediaIntentResult> {
 		// Use the pure function to determine what to do with each device
 		const selections = selectMediaForMode(devices, mode);
@@ -373,16 +369,17 @@ export class MediaIntentService extends SpaceIntentBaseService {
 
 			if (success) {
 				affectedDevices++;
+				targetResults.push({ deviceId: selection.media.device.id, status: IntentTargetStatus.SUCCESS });
 			} else {
 				failedDevices++;
+				targetResults.push({ deviceId: selection.media.device.id, status: IntentTargetStatus.FAILED });
 			}
 		}
 
 		const overallSuccess = failedDevices === 0 || affectedDevices > 0;
 
-		// Store last applied mode in both local cache and state service
+		// Store last applied mode (state service persists and caches)
 		if (overallSuccess) {
-			this.lastAppliedModes.set(spaceId, { mode, timestamp: new Date() });
 			this.mediaStateService.setLastAppliedMode(spaceId, mode);
 		}
 
@@ -679,6 +676,7 @@ export class MediaIntentService extends SpaceIntentBaseService {
 		spaceId: string,
 		allDevices: MediaDevice[],
 		intent: MediaIntentDto,
+		targetResults: IntentTargetResult[],
 	): Promise<MediaIntentResult> {
 		if (!intent.role) {
 			this.logger.warn('Role-specific intent missing role parameter');
@@ -705,8 +703,10 @@ export class MediaIntentService extends SpaceIntentBaseService {
 
 			if (success) {
 				affectedDevices++;
+				targetResults.push({ deviceId: device.device.id, status: IntentTargetStatus.SUCCESS });
 			} else {
 				failedDevices++;
+				targetResults.push({ deviceId: device.device.id, status: IntentTargetStatus.FAILED });
 			}
 		}
 
