@@ -250,12 +250,12 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 				primaryProperty = properties.find((p) => p.category === PropertyCategory.MEASURED);
 				unit = 'hPa';
 				break;
-		case ChannelCategory.ILLUMINANCE:
-			// Illuminance uses "density" property for the actual lux value (measured in lx)
-			// There's also a "level" property with enum values (bright, moderate, dusky, dark)
-			primaryProperty = properties.find((p) => p.category === PropertyCategory.DENSITY);
-			unit = 'lux';
-			break;
+			case ChannelCategory.ILLUMINANCE:
+				// Illuminance uses "density" property for the actual lux value (measured in lx)
+				// There's also a "level" property with enum values (bright, moderate, dusky, dark)
+				primaryProperty = properties.find((p) => p.category === PropertyCategory.DENSITY);
+				unit = 'lux';
+				break;
 			case ChannelCategory.MOTION:
 			case ChannelCategory.OCCUPANCY:
 			case ChannelCategory.CONTACT:
