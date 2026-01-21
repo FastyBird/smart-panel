@@ -1,8 +1,8 @@
 import { Inject, Injectable, forwardRef } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { PropertyCategory } from '../../devices/devices.constants';
-import { ChannelCategory, ChannelPropertyEntity } from '../../devices/entities/devices.entity';
+import { ChannelCategory, PropertyCategory } from '../../devices/devices.constants';
+import { ChannelPropertyEntity } from '../../devices/entities/devices.entity';
 import { IntentType } from '../../intents/intents.constants';
 import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
 import {
