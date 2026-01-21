@@ -5,7 +5,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { ChannelCategory, PropertyCategory } from '../../devices/devices.constants';
+import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { SetMediaRoleDto } from '../dto/media-role.dto';
 import { SpaceMediaRoleEntity } from '../entities/space-media-role.entity';
@@ -23,6 +23,7 @@ import { SpacesService } from './spaces.service';
 export interface MediaTargetInfo {
 	deviceId: string;
 	deviceName: string;
+	deviceCategory: DeviceCategory;
 	channelId: string | null;
 	channelName: string | null;
 	role: MediaRole | null;
@@ -63,6 +64,7 @@ export interface MediaTargetEventPayload {
 	space_id: string;
 	device_id: string;
 	device_name: string;
+	device_category: DeviceCategory;
 	channel_id: string | null;
 	channel_name: string | null;
 	role: MediaRole | null;
@@ -365,6 +367,7 @@ export class SpaceMediaRoleService {
 			mediaTargets.push({
 				deviceId: device.id,
 				deviceName: device.name,
+				deviceCategory: device.category,
 				channelId: targetChannel.id,
 				channelName: targetChannel.name,
 				role: existingRole?.role ?? null,
@@ -493,6 +496,7 @@ export class SpaceMediaRoleService {
 			space_id: spaceId,
 			device_id: deviceId,
 			device_name: device.name,
+			device_category: device.category,
 			channel_id: channel?.id ?? null,
 			channel_name: channel?.name ?? null,
 			role,

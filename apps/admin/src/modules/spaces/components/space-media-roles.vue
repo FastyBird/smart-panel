@@ -22,7 +22,7 @@
 				<el-table-column prop="deviceName" :label="t('spacesModule.onboarding.deviceName')" min-width="180">
 					<template #default="{ row }">
 						<div class="flex items-center gap-2">
-							<icon :icon="getDeviceIcon()" />
+							<icon :icon="getDeviceIcon(row.deviceCategory)" />
 							<div class="flex flex-col">
 								<span>{{ row.deviceName }}</span>
 								<span v-if="row.channelName" class="text-xs text-gray-400">{{ row.channelName }}</span>
@@ -141,7 +141,28 @@ const roleOptions = computed(() =>
 	}))
 );
 
-const getDeviceIcon = (): string => 'mdi:cast';
+const getDeviceIcon = (category: string): string => {
+	switch (category) {
+		case 'television':
+			return 'mdi:television';
+		case 'speaker':
+			return 'mdi:speaker';
+		case 'media':
+			return 'mdi:cast';
+		case 'av_receiver':
+			return 'mdi:audio-video';
+		case 'set_top_box':
+			return 'mdi:television-box';
+		case 'game_console':
+			return 'mdi:gamepad-variant';
+		case 'projector':
+			return 'mdi:projector';
+		case 'streaming_service':
+			return 'mdi:cast-variant';
+		default:
+			return 'mdi:cast';
+	}
+};
 
 const loadMediaTargets = async (): Promise<void> => {
 	loading.value = true;
@@ -159,7 +180,7 @@ const loadMediaTargets = async (): Promise<void> => {
 		mediaTargets.value = (responseData.data ?? []).map((target) => ({
 			deviceId: target.device_id,
 			deviceName: target.device_name,
-			deviceCategory: '',
+			deviceCategory: target.device_category ?? '',
 			channelId: target.channel_id ?? null,
 			channelName: target.channel_name ?? null,
 			role: target.role ? (target.role as unknown as MediaRole) : null,

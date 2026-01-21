@@ -50,7 +50,7 @@
 								:key="device.deviceId"
 								class="flex items-center gap-2 text-sm py-1"
 							>
-								<icon :icon="getDeviceIcon()" class="text-gray-400" />
+								<icon :icon="getDeviceIcon(device.deviceCategory)" class="text-gray-400" />
 								<span>{{ device.deviceName }}</span>
 							</li>
 						</ul>
@@ -141,7 +141,28 @@ const getRoleIcon = (role: string): string => {
 	}
 };
 
-const getDeviceIcon = (): string => 'mdi:cast';
+const getDeviceIcon = (category: string): string => {
+	switch (category) {
+		case 'television':
+			return 'mdi:television';
+		case 'speaker':
+			return 'mdi:speaker';
+		case 'media':
+			return 'mdi:cast';
+		case 'av_receiver':
+			return 'mdi:audio-video';
+		case 'set_top_box':
+			return 'mdi:television-box';
+		case 'game_console':
+			return 'mdi:gamepad-variant';
+		case 'projector':
+			return 'mdi:projector';
+		case 'streaming_service':
+			return 'mdi:cast-variant';
+		default:
+			return 'mdi:cast';
+	}
+};
 
 const loadMediaRoles = async (): Promise<void> => {
 	if (!props.space?.id) return;
@@ -178,7 +199,7 @@ const loadMediaRoles = async (): Promise<void> => {
 			roleMap.get(role)!.devices.push({
 				deviceId: target.device_id,
 				deviceName: target.device_name,
-				deviceCategory: '',
+				deviceCategory: target.device_category ?? '',
 			});
 		}
 

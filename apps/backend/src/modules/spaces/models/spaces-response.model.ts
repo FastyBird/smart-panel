@@ -3158,6 +3158,15 @@ export class MediaTargetDataModel {
 	@Expose({ name: 'device_name' })
 	deviceName: string;
 
+	@ApiProperty({
+		name: 'device_category',
+		description: 'Category of the media device',
+		enum: DeviceCategory,
+		example: 'television',
+	})
+	@Expose({ name: 'device_category' })
+	deviceCategory: DeviceCategory;
+
 	@ApiPropertyOptional({
 		name: 'channel_id',
 		description: 'ID of the media channel (nullable for device-level roles)',

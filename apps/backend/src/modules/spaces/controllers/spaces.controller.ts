@@ -2045,6 +2045,7 @@ export class SpacesController {
 			const model = new MediaTargetDataModel();
 			model.deviceId = t.deviceId;
 			model.deviceName = t.deviceName;
+			model.deviceCategory = t.deviceCategory;
 			model.channelId = t.channelId ?? null;
 			model.channelName = t.channelName ?? null;
 			model.role = t.role;

@@ -58,6 +58,7 @@ describe('SpaceMediaRoleService', () => {
 		const targets = await service.getMediaTargetsInSpace('space-1');
 
 		expect(targets).toHaveLength(1);
+		expect(targets[0].deviceCategory).toBe(DeviceCategory.SPEAKER);
 		expect(targets[0].hasOn).toBe(false);
 		expect(targets[0].hasVolume).toBe(true);
 	});
@@ -66,6 +67,7 @@ describe('SpaceMediaRoleService', () => {
 		deviceRepository.findOne.mockResolvedValue({
 			id: 'device-1',
 			name: 'Media Device',
+			category: DeviceCategory.MEDIA,
 			channels: [
 				{
 					id: 'tv-channel',
@@ -103,5 +105,6 @@ describe('SpaceMediaRoleService', () => {
 		expect(payloadForSpeaker.has_on).toBe(false);
 		expect(payloadForSpeaker.has_volume).toBe(true);
 		expect(payloadForSpeaker.has_mute).toBe(true);
+		expect(payloadForSpeaker.device_category).toBe(DeviceCategory.MEDIA);
 	});
 });
