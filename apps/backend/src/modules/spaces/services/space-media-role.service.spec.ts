@@ -5,6 +5,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { SpaceMediaRoleEntity } from '../entities/space-media-role.entity';
+import { MediaRole } from '../spaces.constants';
 
 import { SpaceMediaRoleService } from './space-media-role.service';
 import { SpacesService } from './spaces.service';
@@ -20,7 +21,9 @@ describe('SpaceMediaRoleService', () => {
 			find: jest.fn(),
 		} as unknown as jest.Mocked<Repository<SpaceMediaRoleEntity>>;
 
-		deviceRepository = {} as jest.Mocked<Repository<DeviceEntity>>;
+		deviceRepository = {
+			findOne: jest.fn(),
+		} as unknown as jest.Mocked<Repository<DeviceEntity>>;
 
 		spacesService = {
 			getOneOrThrow: jest.fn(),
@@ -57,5 +60,48 @@ describe('SpaceMediaRoleService', () => {
 		expect(targets).toHaveLength(1);
 		expect(targets[0].hasOn).toBe(false);
 		expect(targets[0].hasVolume).toBe(true);
+	});
+
+	it('applies channel category gating when emitting websocket payload', async () => {
+		deviceRepository.findOne.mockResolvedValue({
+			id: 'device-1',
+			name: 'Media Device',
+			channels: [
+				{
+					id: 'tv-channel',
+					name: 'TV Channel',
+					category: ChannelCategory.TELEVISION,
+					properties: [
+						{ category: PropertyCategory.ON, value: true },
+						{ category: PropertyCategory.VOLUME, value: 50 },
+						{ category: PropertyCategory.MUTE, value: false },
+					],
+				},
+				{
+					id: 'speaker-channel',
+					name: 'Speaker Channel',
+					category: ChannelCategory.SPEAKER,
+					properties: [
+						{ category: PropertyCategory.VOLUME, value: 30 },
+						{ category: PropertyCategory.MUTE, value: false },
+					],
+				},
+			],
+		} as unknown as DeviceEntity);
+
+		const payloadForTv = await (service as unknown as { buildMediaTargetEventPayload: (...args: any[]) => any })
+			.buildMediaTargetEventPayload('space-1', 'device-1', MediaRole.PRIMARY, 0, 'tv-channel');
+
+		expect(payloadForTv.has_on).toBe(true);
+		expect(payloadForTv.has_volume).toBe(false);
+		expect(payloadForTv.has_mute).toBe(false);
+
+		const payloadForSpeaker = await (
+			service as unknown as { buildMediaTargetEventPayload: (...args: any[]) => any }
+		).buildMediaTargetEventPayload('space-1', 'device-1', MediaRole.PRIMARY, 0, 'speaker-channel');
+
+		expect(payloadForSpeaker.has_on).toBe(false);
+		expect(payloadForSpeaker.has_volume).toBe(true);
+		expect(payloadForSpeaker.has_mute).toBe(true);
 	});
 });

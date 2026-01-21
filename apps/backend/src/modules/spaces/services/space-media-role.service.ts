@@ -459,16 +459,34 @@ export class SpaceMediaRoleService {
 		}
 
 		// Use provided channelId when available, otherwise pick a media channel for metadata
+		const mediaChannels =
+			device.channels?.filter((ch) =>
+				MEDIA_CHANNEL_CATEGORIES.includes(ch.category as (typeof MEDIA_CHANNEL_CATEGORIES)[number]),
+			) ?? [];
+
+		const preferredOrder = [
+			ChannelCategory.SWITCHER,
+			ChannelCategory.TELEVISION,
+			ChannelCategory.MEDIA_INPUT,
+			ChannelCategory.MEDIA_PLAYBACK,
+			ChannelCategory.SPEAKER,
+		];
+
 		const channel =
 			(device.channels ?? []).find((ch) => ch.id === channelId) ??
-			(device.channels ?? []).find((ch) =>
-				MEDIA_CHANNEL_CATEGORIES.includes(ch.category as (typeof MEDIA_CHANNEL_CATEGORIES)[number]),
-			);
+			preferredOrder.map((cat) => mediaChannels.find((ch) => ch.category === cat)).find((ch) => ch) ??
+			mediaChannels[0];
 
 		const properties = channel?.properties ?? [];
-		const hasOn = properties.some((p) => p.category === PropertyCategory.ON || p.category === PropertyCategory.ACTIVE);
-		const hasVolume = properties.some((p) => p.category === PropertyCategory.VOLUME);
-		const hasMute = properties.some((p) => p.category === PropertyCategory.MUTE);
+		const isTelevision = channel?.category === ChannelCategory.TELEVISION;
+		const isSwitcher = channel?.category === ChannelCategory.SWITCHER;
+		const isSpeaker = channel?.category === ChannelCategory.SPEAKER;
+
+		const hasOn =
+			(isTelevision || isSwitcher) &&
+			properties.some((p) => p.category === PropertyCategory.ON || p.category === PropertyCategory.ACTIVE);
+		const hasVolume = isSpeaker && properties.some((p) => p.category === PropertyCategory.VOLUME);
+		const hasMute = isSpeaker && properties.some((p) => p.category === PropertyCategory.MUTE);
 
 		return {
 			id: channel ? `${deviceId}:${channel.id}` : deviceId,
