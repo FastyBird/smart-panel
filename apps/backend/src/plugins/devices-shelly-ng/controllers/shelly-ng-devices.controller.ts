@@ -151,29 +151,65 @@ export class ShellyNgDevicesController {
 		tags: [DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME],
 		summary: 'Reload YAML mapping configurations',
 		description:
-			'Reloads all YAML mapping configuration files from built-in and user directories. This is useful after modifying custom mapping files without restarting the application. The cache is cleared before reloading.',
+			'Reloads all YAML mapping configuration files from built-in and user directories. This is useful after modifying custom mapping files without restarting the application. The cache is cleared before reloading. Returns validation results including any errors or warnings encountered during reload.',
 		operationId: 'post-devices-shelly-ng-plugin-reload-mappings',
 	})
 	@ApiSuccessResponse(
 		ShellyNgMappingReloadResponseModel,
-		'Mapping configurations were successfully reloaded. Returns statistics about loaded mappings and cache status.',
+		'Mapping configurations reload operation completed. Returns statistics about loaded mappings, cache status, and any validation errors or warnings.',
 	)
 	@ApiInternalServerErrorResponse('Internal server error during mapping reload')
 	@Post('mappings/reload')
 	reloadMappings(): ShellyNgMappingReloadResponseModel {
 		try {
-			this.mappingLoaderService.reload();
+			const reloadResult = this.mappingLoaderService.reload();
 			const cacheStats = this.mappingLoaderService.getCacheStats();
+			const loadResults = this.mappingLoaderService.getLoadResults();
 
-			this.logger.log('Mapping configurations reloaded successfully', {
-				mappingsLoaded: cacheStats.mappingsLoaded,
-				cacheSize: cacheStats.size,
-			});
+			// Collect all errors and warnings for detailed reporting
+			const allErrors: string[] = [];
+			const allWarnings: string[] = [];
+
+			for (const result of loadResults) {
+				if (result.errors) {
+					allErrors.push(...result.errors.map((e) => `${result.source}: ${e}`));
+				}
+				if (result.warnings) {
+					allWarnings.push(...result.warnings.map((w) => `${result.source}: ${w}`));
+				}
+			}
+
+			if (reloadResult.success) {
+				this.logger.log('Mapping configurations reloaded successfully', {
+					mappingsLoaded: reloadResult.mappingsLoaded,
+					filesLoaded: reloadResult.filesLoaded,
+					warnings: reloadResult.warnings,
+					cacheSize: cacheStats.size,
+				});
+			} else {
+				this.logger.warn('Mapping configurations reloaded with errors', {
+					mappingsLoaded: reloadResult.mappingsLoaded,
+					filesLoaded: reloadResult.filesLoaded,
+					filesFailed: reloadResult.filesFailed,
+					errors: reloadResult.errors,
+					warnings: reloadResult.warnings,
+					errorDetails: allErrors.slice(0, 10), // Limit to first 10 errors in log
+				});
+			}
 
 			const response = new ShellyNgMappingReloadResponseModel();
 			response.data = {
-				success: true,
+				success: reloadResult.success,
 				cacheStats,
+				reloadStats: {
+					mappingsLoaded: reloadResult.mappingsLoaded,
+					filesLoaded: reloadResult.filesLoaded,
+					filesFailed: reloadResult.filesFailed,
+					errors: reloadResult.errors,
+					warnings: reloadResult.warnings,
+					errorDetails: allErrors.length > 0 ? allErrors : undefined,
+					warningDetails: allWarnings.length > 0 ? allWarnings : undefined,
+				},
 			};
 
 			return response;

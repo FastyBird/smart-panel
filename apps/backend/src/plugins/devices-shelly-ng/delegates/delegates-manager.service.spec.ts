@@ -411,4 +411,227 @@ describe('DelegatesManagerService', () => {
 		expect(svc['propertiesMap'].size).toBe(0);
 		expect(svc['pendingWrites'].size).toBe(0);
 	});
+
+	describe('Transformer Application', () => {
+		test('setPropertyValue() applies transformer when property mapping exists', async () => {
+			arrangeBaseEntities();
+
+			const device = { id: 'dev-transformer', identifier: 'dev-transformer' } as unknown as ShellyNgDeviceEntity;
+			const property = { id: 'prop-transformer' } as unknown as ShellyNgChannelPropertyEntity;
+
+			// Mock transformer that doubles the value
+			const mockTransformer = {
+				write: jest.fn((value: unknown) => (typeof value === 'number' ? value * 2 : value)),
+				canWrite: jest.fn(() => true),
+				canRead: jest.fn(() => true),
+			};
+
+			// Mock property mapping storage
+			(propertyMappingStorage.get as jest.Mock).mockReturnValueOnce({
+				shellyProperty: 'output',
+				direction: 'bidirectional',
+				transformerName: 'test-transformer',
+			});
+
+			// Mock transformer registry
+			(transformerRegistry.get as jest.Mock).mockReturnValueOnce(mockTransformer);
+
+			const handlerSpy = jest.fn(async (v: unknown) => {
+				expect(v).toBe(20); // 10 * 2
+				return true;
+			});
+
+			svc['setPropertiesHandlers'].set(`${device.identifier}|${property.id}`, handlerSpy);
+
+			const result = await svc.setPropertyValue(device, property, 10);
+
+			expect(result).toBe(true);
+			expect(mockTransformer.write).toHaveBeenCalledWith(10);
+			expect(handlerSpy).toHaveBeenCalledWith(20);
+		});
+
+		test('setPropertyValue() skips transformer when no mapping exists', async () => {
+			arrangeBaseEntities();
+
+			const device = { id: 'dev-no-transformer', identifier: 'dev-no-transformer' } as unknown as ShellyNgDeviceEntity;
+			const property = { id: 'prop-no-transformer' } as unknown as ShellyNgChannelPropertyEntity;
+
+			// No mapping stored
+			(propertyMappingStorage.get as jest.Mock).mockReturnValueOnce(undefined);
+
+			const handlerSpy = jest.fn(async (v: unknown) => {
+				expect(v).toBe(10); // Original value, no transformation
+				return true;
+			});
+
+			svc['setPropertiesHandlers'].set(`${device.identifier}|${property.id}`, handlerSpy);
+
+			const result = await svc.setPropertyValue(device, property, 10);
+
+			expect(result).toBe(true);
+			expect(transformerRegistry.get).not.toHaveBeenCalled();
+			expect(handlerSpy).toHaveBeenCalledWith(10);
+		});
+
+		test('setChannelValue() applies transformers to all properties in batch', async () => {
+			const device = {
+				id: 'dev-batch-transformer',
+				identifier: 'dev-batch-transformer',
+			} as unknown as ShellyNgDeviceEntity;
+
+			const channel = {
+				id: 'ch-batch-transformer',
+			} as unknown as ShellyNgChannelEntity;
+
+			const prop1 = { id: 'p1' } as unknown as ShellyNgChannelPropertyEntity;
+			const prop2 = { id: 'p2' } as unknown as ShellyNgChannelPropertyEntity;
+
+			// Mock transformers
+			const transformer1 = {
+				write: jest.fn((v: unknown) => (typeof v === 'number' ? v * 2 : v)),
+				canWrite: jest.fn(() => true),
+				canRead: jest.fn(() => true),
+			};
+
+			const transformer2 = {
+				write: jest.fn((v: unknown) => (typeof v === 'number' ? v + 10 : v)),
+				canWrite: jest.fn(() => true),
+				canRead: jest.fn(() => true),
+			};
+
+			// Mock property mappings
+			(propertyMappingStorage.get as jest.Mock)
+				.mockReturnValueOnce({
+					shellyProperty: 'output',
+					direction: 'bidirectional',
+					transformerName: 'transformer1',
+				})
+				.mockReturnValueOnce({
+					shellyProperty: 'brightness',
+					direction: 'bidirectional',
+					transformerName: 'transformer2',
+				});
+
+			(transformerRegistry.get as jest.Mock)
+				.mockReturnValueOnce(transformer1)
+				.mockReturnValueOnce(transformer2);
+
+			const handlerSpy = jest.fn(async (updates: { property: ShellyNgChannelPropertyEntity; val: unknown }[]) => {
+				expect(updates).toEqual([
+					{ property: prop1, val: 20 }, // 10 * 2
+					{ property: prop2, val: 25 }, // 15 + 10
+				]);
+				return true;
+			});
+
+			svc['setChannelsHandlers'].set(`${device.identifier}|${channel.id}`, handlerSpy);
+
+			const result = await svc.setChannelValue(device, channel, [
+				{ property: prop1, value: 10 },
+				{ property: prop2, value: 15 },
+			]);
+
+			expect(result).toBe(true);
+			expect(transformer1.write).toHaveBeenCalledWith(10);
+			expect(transformer2.write).toHaveBeenCalledWith(15);
+			expect(handlerSpy).toHaveBeenCalledTimes(1);
+		});
+
+		test('setPropertyValue() respects transformer direction (write_only)', async () => {
+			arrangeBaseEntities();
+
+			const device = { id: 'dev-write-only', identifier: 'dev-write-only' } as unknown as ShellyNgDeviceEntity;
+			const property = { id: 'prop-write-only' } as unknown as ShellyNgChannelPropertyEntity;
+
+			const mockTransformer = {
+				write: jest.fn((value: unknown) => value),
+				canWrite: jest.fn(() => true),
+				canRead: jest.fn(() => false), // Read not supported
+			};
+
+			(propertyMappingStorage.get as jest.Mock).mockReturnValueOnce({
+				shellyProperty: 'output',
+				direction: 'write_only',
+				transformerName: 'write-only-transformer',
+			});
+
+			(transformerRegistry.get as jest.Mock).mockReturnValueOnce(mockTransformer);
+
+			const handlerSpy = jest.fn(async () => true);
+			svc['setPropertiesHandlers'].set(`${device.identifier}|${property.id}`, handlerSpy);
+
+			const result = await svc.setPropertyValue(device, property, true);
+
+			expect(result).toBe(true);
+			expect(mockTransformer.write).toHaveBeenCalled();
+			expect(handlerSpy).toHaveBeenCalled();
+		});
+
+		test('setPropertyValue() skips transformer when it does not support write', async () => {
+			arrangeBaseEntities();
+
+			const device = { id: 'dev-read-only', identifier: 'dev-read-only' } as unknown as ShellyNgDeviceEntity;
+			const property = { id: 'prop-read-only' } as unknown as ShellyNgChannelPropertyEntity;
+
+			const mockTransformer = {
+				write: jest.fn(),
+				canWrite: jest.fn(() => false), // Write not supported
+				canRead: jest.fn(() => true),
+			};
+
+			(propertyMappingStorage.get as jest.Mock).mockReturnValueOnce({
+				shellyProperty: 'output',
+				direction: 'read_only',
+				transformerName: 'read-only-transformer',
+			});
+
+			(transformerRegistry.get as jest.Mock).mockReturnValueOnce(mockTransformer);
+
+			const handlerSpy = jest.fn(async (v: unknown) => {
+				expect(v).toBe(10); // Original value, transformer skipped
+				return true;
+			});
+
+			svc['setPropertiesHandlers'].set(`${device.identifier}|${property.id}`, handlerSpy);
+
+			const result = await svc.setPropertyValue(device, property, 10);
+
+			expect(result).toBe(true);
+			expect(mockTransformer.write).not.toHaveBeenCalled();
+			expect(handlerSpy).toHaveBeenCalledWith(10);
+		});
+
+		test('setPropertyValue() uses inline transform when no transformer name', async () => {
+			arrangeBaseEntities();
+
+			const device = { id: 'dev-inline', identifier: 'dev-inline' } as unknown as ShellyNgDeviceEntity;
+			const property = { id: 'prop-inline' } as unknown as ShellyNgChannelPropertyEntity;
+
+			// Mock inline transform (scale transformer)
+			(propertyMappingStorage.get as jest.Mock).mockReturnValueOnce({
+				shellyProperty: 'brightness',
+				direction: 'bidirectional',
+				inlineTransform: {
+					type: 'scale',
+					input_range: [0, 100],
+					output_range: [0, 255],
+				},
+			});
+
+			const handlerSpy = jest.fn(async (v: unknown) => {
+				// 50% brightness should map to ~128 (50/100 * 255)
+				expect(typeof v).toBe('number');
+				expect(v).toBeGreaterThan(120);
+				expect(v).toBeLessThan(135);
+				return true;
+			});
+
+			svc['setPropertiesHandlers'].set(`${device.identifier}|${property.id}`, handlerSpy);
+
+			const result = await svc.setPropertyValue(device, property, 50);
+
+			expect(result).toBe(true);
+			expect(handlerSpy).toHaveBeenCalled();
+		});
+	});
 });

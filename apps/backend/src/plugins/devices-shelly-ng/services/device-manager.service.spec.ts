@@ -407,4 +407,137 @@ describe('DeviceManagerService internals', () => {
 		// Without format, keep value (mapping should define limits)
 		expect(svc.normalizeValue(500000, null, null)).toBe(500000);
 	});
+
+	describe('applyDerivation', () => {
+		test('threshold derivation: maps numeric ranges to enum values', () => {
+			const svc: any = makeService();
+
+			const derivation = {
+				type: 'threshold',
+				thresholds: [
+					{ max: 20, value: 'low' },
+					{ max: 80, value: 'medium' },
+					{ value: 'high' },
+				],
+			};
+
+			expect(svc.applyDerivation(derivation, 15)).toBe('low');
+			expect(svc.applyDerivation(derivation, 50)).toBe('medium');
+			expect(svc.applyDerivation(derivation, 90)).toBe('high');
+			expect(svc.applyDerivation(derivation, 100)).toBe('high');
+		});
+
+		test('threshold derivation: handles min boundaries', () => {
+			const svc: any = makeService();
+
+			const derivation = {
+				type: 'threshold',
+				thresholds: [
+					{ min: 0, max: 10, value: 'low' },
+					{ min: 11, max: 20, value: 'medium' },
+					{ value: 'high' },
+				],
+			};
+
+			expect(svc.applyDerivation(derivation, 5)).toBe('low');
+			expect(svc.applyDerivation(derivation, 15)).toBe('medium');
+			expect(svc.applyDerivation(derivation, 25)).toBe('high');
+		});
+
+		test('threshold derivation: returns undefined for non-numeric values', () => {
+			const svc: any = makeService();
+
+			const derivation = {
+				type: 'threshold',
+				thresholds: [{ value: 'test' }],
+			};
+
+			expect(svc.applyDerivation(derivation, 'not-a-number')).toBeUndefined();
+			expect(svc.applyDerivation(derivation, true)).toBeUndefined();
+		});
+
+		test('boolean_map derivation: maps boolean values to enum values', () => {
+			const svc: any = makeService();
+
+			const derivation = {
+				type: 'boolean_map',
+				true_value: 'locked',
+				false_value: 'unlocked',
+			};
+
+			expect(svc.applyDerivation(derivation, true)).toBe('locked');
+			expect(svc.applyDerivation(derivation, false)).toBe('unlocked');
+			expect(svc.applyDerivation(derivation, 1)).toBe('locked'); // truthy
+			expect(svc.applyDerivation(derivation, 0)).toBe('unlocked'); // falsy
+		});
+
+		test('position_status derivation: maps position to status', () => {
+			const svc: any = makeService();
+
+			const derivation = {
+				type: 'position_status',
+				closed_value: 'closed',
+				opened_value: 'opened',
+				partial_value: 'stopped',
+			};
+
+			expect(svc.applyDerivation(derivation, 0)).toBe('closed');
+			expect(svc.applyDerivation(derivation, 100)).toBe('opened');
+			expect(svc.applyDerivation(derivation, 50)).toBe('stopped');
+		});
+
+		test('position_status derivation: uses closed_value as default for partial', () => {
+			const svc: any = makeService();
+
+			const derivation = {
+				type: 'position_status',
+				closed_value: 'closed',
+				opened_value: 'opened',
+			};
+
+			expect(svc.applyDerivation(derivation, 0)).toBe('closed');
+			expect(svc.applyDerivation(derivation, 100)).toBe('opened');
+			expect(svc.applyDerivation(derivation, 50)).toBe('closed'); // default to closed
+		});
+
+		test('position_status derivation: returns undefined for non-numeric values', () => {
+			const svc: any = makeService();
+
+			const derivation = {
+				type: 'position_status',
+				closed_value: 'closed',
+				opened_value: 'opened',
+			};
+
+			expect(svc.applyDerivation(derivation, 'not-a-number')).toBeUndefined();
+		});
+
+		test('returns undefined when derivation is undefined', () => {
+			const svc: any = makeService();
+			expect(svc.applyDerivation(undefined, 50)).toBeUndefined();
+		});
+
+		test('returns undefined for unknown derivation type', () => {
+			const svc: any = makeService();
+
+			const derivation = {
+				type: 'unknown_type',
+			} as any;
+
+			expect(svc.applyDerivation(derivation, 50)).toBeUndefined();
+		});
+
+		test('handles errors gracefully', () => {
+			const svc: any = makeService();
+
+			const derivation = {
+				type: 'threshold',
+				thresholds: null, // This will cause an error
+			} as any;
+
+			// Should not throw, but return undefined
+			expect(() => svc.applyDerivation(derivation, 50)).not.toThrow();
+			expect(svc.applyDerivation(derivation, 50)).toBeUndefined();
+		});
+	});
 });

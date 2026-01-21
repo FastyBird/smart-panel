@@ -255,10 +255,77 @@ export class ShellyNgMappingReloadCacheStatsModel {
 	mappingsLoaded: number;
 }
 
+@ApiSchema({ name: 'DevicesShellyNgPluginDataMappingReloadStats' })
+export class ShellyNgMappingReloadStatsModel {
+	@ApiProperty({
+		description: 'Number of mappings loaded after reload',
+		example: 15,
+	})
+	@Expose()
+	@IsInt()
+	mappingsLoaded: number;
+
+	@ApiProperty({
+		description: 'Number of files successfully loaded',
+		example: 8,
+	})
+	@Expose()
+	@IsInt()
+	filesLoaded: number;
+
+	@ApiProperty({
+		description: 'Number of files that failed to load',
+		example: 0,
+	})
+	@Expose()
+	@IsInt()
+	filesFailed: number;
+
+	@ApiProperty({
+		description: 'Total number of errors encountered',
+		example: 0,
+	})
+	@Expose()
+	@IsInt()
+	errors: number;
+
+	@ApiProperty({
+		description: 'Total number of warnings encountered',
+		example: 2,
+	})
+	@Expose()
+	@IsInt()
+	warnings: number;
+
+	@ApiPropertyOptional({
+		description: 'Detailed error messages (if any)',
+		type: 'array',
+		items: { type: 'string' },
+		example: ['mapping.yaml: Invalid schema at /mappings/0'],
+	})
+	@Expose()
+	@IsOptional()
+	@IsArray()
+	@IsString({ each: true })
+	errorDetails?: string[];
+
+	@ApiPropertyOptional({
+		description: 'Detailed warning messages (if any)',
+		type: 'array',
+		items: { type: 'string' },
+		example: ['mapping.yaml: Unknown transformer "custom_transform"'],
+	})
+	@Expose()
+	@IsOptional()
+	@IsArray()
+	@IsString({ each: true })
+	warningDetails?: string[];
+}
+
 @ApiSchema({ name: 'DevicesShellyNgPluginDataMappingReload' })
 export class ShellyNgMappingReloadModel {
 	@ApiProperty({
-		description: 'Whether the reload was successful',
+		description: 'Whether the reload was successful (no errors)',
 		example: true,
 	})
 	@Expose()
@@ -273,4 +340,13 @@ export class ShellyNgMappingReloadModel {
 	@ValidateNested()
 	@Type(() => ShellyNgMappingReloadCacheStatsModel)
 	cacheStats: ShellyNgMappingReloadCacheStatsModel;
+
+	@ApiProperty({
+		description: 'Reload operation statistics and validation results',
+		type: () => ShellyNgMappingReloadStatsModel,
+	})
+	@Expose()
+	@ValidateNested()
+	@Type(() => ShellyNgMappingReloadStatsModel)
+	reloadStats: ShellyNgMappingReloadStatsModel;
 }

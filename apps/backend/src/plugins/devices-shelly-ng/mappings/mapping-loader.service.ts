@@ -44,6 +44,7 @@ import {
 	ResolvedStaticProperty,
 	StaticPropertyConfig,
 } from './mapping.types';
+import { MAPPING_PRIORITY } from './mapping.constants';
 import { BUILTIN_TRANSFORMERS, TransformerRegistry } from './transformers';
 
 /**
@@ -155,7 +156,7 @@ export class MappingLoaderService implements OnModuleInit {
 		this.loadedSources = [];
 
 		// Load built-in generic mappings (lowest priority)
-		const builtinFiles = this.discoverMappingFiles(this.builtinMappingsPath, 'builtin', 0);
+		const builtinFiles = this.discoverMappingFiles(this.builtinMappingsPath, 'builtin', MAPPING_PRIORITY.GENERIC);
 		for (const fileInfo of builtinFiles) {
 			const result = this.loadMappingFile(fileInfo);
 			this.loadedSources.push(result);
@@ -167,7 +168,12 @@ export class MappingLoaderService implements OnModuleInit {
 		// Load built-in device-specific mappings (higher priority than generic)
 		const deviceMappingsPath = join(this.builtinMappingsPath, 'devices');
 		if (existsSync(deviceMappingsPath)) {
-			const deviceFiles = this.discoverMappingFiles(deviceMappingsPath, 'builtin', 500, true);
+			const deviceFiles = this.discoverMappingFiles(
+				deviceMappingsPath,
+				'builtin',
+				MAPPING_PRIORITY.DEVICE_SPECIFIC,
+				true,
+			);
 			for (const fileInfo of deviceFiles) {
 				const result = this.loadMappingFile(fileInfo);
 				this.loadedSources.push(result);
@@ -179,7 +185,7 @@ export class MappingLoaderService implements OnModuleInit {
 
 		// Load user mappings (highest priority, can override built-in)
 		if (existsSync(this.userMappingsPath)) {
-			const userFiles = this.discoverMappingFiles(this.userMappingsPath, 'user', 1000, true);
+			const userFiles = this.discoverMappingFiles(this.userMappingsPath, 'user', MAPPING_PRIORITY.USER, true);
 			for (const fileInfo of userFiles) {
 				const result = this.loadMappingFile(fileInfo);
 				this.loadedSources.push(result);
@@ -362,7 +368,7 @@ export class MappingLoaderService implements OnModuleInit {
 		return {
 			name: mapping.name,
 			description: mapping.description,
-			priority: basePriority + (mapping.priority ?? 100),
+			priority: basePriority + (mapping.priority ?? MAPPING_PRIORITY.DEFAULT_OFFSET),
 			match: this.resolveMatchCondition(mapping.match),
 			channels: mapping.channels.map((ch) => this.resolveChannel(ch)),
 		};
@@ -734,11 +740,55 @@ export class MappingLoaderService implements OnModuleInit {
 
 	/**
 	 * Reload all mappings (for hot-reload support)
+	 * @returns Object with success status, error count, warning count, and statistics
 	 */
-	reload(): void {
+	reload(): {
+		success: boolean;
+		errors: number;
+		warnings: number;
+		mappingsLoaded: number;
+		filesLoaded: number;
+		filesFailed: number;
+	} {
 		this.logger.log('Reloading mapping configurations...');
 		this.mappingCache.clear(); // Clear cache before reload
+
+		const beforeCount = this.resolvedMappings.length;
+		const beforeSources = this.loadedSources.length;
+
 		this.loadAllMappings();
+
+		const errors = this.loadedSources.filter((r) => !r.success || (r.errors && r.errors.length > 0)).length;
+		const warnings = this.loadedSources.reduce((sum, r) => sum + (r.warnings?.length ?? 0), 0);
+		const filesFailed = this.loadedSources.length - this.loadedSources.filter((r) => r.success).length;
+		const filesLoaded = this.loadedSources.filter((r) => r.success).length;
+
+		const result = {
+			success: errors === 0,
+			errors,
+			warnings,
+			mappingsLoaded: this.resolvedMappings.length,
+			filesLoaded,
+			filesFailed,
+		};
+
+		if (errors > 0) {
+			this.logger.warn(`Mapping reload completed with ${errors} error(s) and ${warnings} warning(s)`, {
+				errors,
+				warnings,
+				mappingsLoaded: result.mappingsLoaded,
+				filesLoaded,
+				filesFailed,
+			});
+		} else {
+			this.logger.log(`Mapping reload completed successfully`, {
+				mappingsLoaded: result.mappingsLoaded,
+				filesLoaded,
+				warnings,
+			});
+		}
+
+		return result;
 	}
 
 	/**
