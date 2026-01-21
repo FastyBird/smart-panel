@@ -22,7 +22,7 @@
 				<el-table-column prop="deviceName" :label="t('spacesModule.onboarding.deviceName')" min-width="180">
 					<template #default="{ row }">
 						<div class="flex items-center gap-2">
-							<icon :icon="getDeviceIcon(row.deviceCategory)" />
+							<icon :icon="getDeviceIcon()" />
 							<div class="flex flex-col">
 								<span>{{ row.deviceName }}</span>
 								<span v-if="row.channelName" class="text-xs text-gray-400">{{ row.channelName }}</span>
@@ -99,7 +99,8 @@ import { useI18n } from 'vue-i18n';
 import { IconWithChild, useBackend, useFlashMessage } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
 import { useSpacesRefreshSignals } from '../composables';
-import { MediaRole, MEDIA_ROLE_ORDER, SPACES_MODULE_PREFIX } from '../spaces.constants';
+import { MEDIA_ROLE_ORDER, SPACES_MODULE_PREFIX } from '../spaces.constants';
+import { SpacesModuleMediaRole as MediaRole } from '../../../openapi.constants';
 import type { ISpace } from '../store';
 
 interface IMediaTarget {
@@ -140,18 +141,7 @@ const roleOptions = computed(() =>
 	}))
 );
 
-const getDeviceIcon = (category: string): string => {
-	switch (category) {
-		case 'media':
-			return 'mdi:cast';
-		case 'speaker':
-			return 'mdi:speaker';
-		case 'television':
-			return 'mdi:television';
-		default:
-			return 'mdi:cast';
-	}
-};
+const getDeviceIcon = (): string => 'mdi:cast';
 
 const loadMediaTargets = async (): Promise<void> => {
 	loading.value = true;
@@ -169,7 +159,7 @@ const loadMediaTargets = async (): Promise<void> => {
 		mediaTargets.value = (responseData.data ?? []).map((target) => ({
 			deviceId: target.device_id,
 			deviceName: target.device_name,
-			deviceCategory: target.device_category ?? '',
+			deviceCategory: '',
 			channelId: target.channel_id ?? null,
 			channelName: target.channel_name ?? null,
 			role: target.role ? (target.role as unknown as MediaRole) : null,

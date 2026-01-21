@@ -445,9 +445,8 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 				success: data.data.success ?? false,
 				affectedDevices: data.data.affected_devices ?? 0,
 				failedDevices: data.data.failed_devices ?? 0,
-				mode: data.data.mode ?? undefined,
-				volume: data.data.volume ?? null,
-				muted: data.data.muted ?? null,
+				volume: data.data.new_volume ?? null,
+				muted: data.data.is_muted ?? null,
 			};
 
 			lastResult.value = result;

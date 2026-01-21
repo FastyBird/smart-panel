@@ -50,7 +50,7 @@
 								:key="device.deviceId"
 								class="flex items-center gap-2 text-sm py-1"
 							>
-								<icon :icon="getDeviceIcon(device.deviceCategory)" class="text-gray-400" />
+								<icon :icon="getDeviceIcon()" class="text-gray-400" />
 								<span>{{ device.deviceName }}</span>
 							</li>
 						</ul>
@@ -86,7 +86,8 @@ import { useI18n } from 'vue-i18n';
 import { useBackend } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
 import { useSpacesRefreshSignals } from '../composables';
-import { MediaRole, MEDIA_ROLE_ORDER, SPACES_MODULE_PREFIX } from '../spaces.constants';
+import { MEDIA_ROLE_ORDER, SPACES_MODULE_PREFIX } from '../spaces.constants';
+import { SpacesModuleMediaRole as MediaRole } from '../../../openapi.constants';
 
 import type { IMediaRoleSummary, ISpaceMediaRolesSummaryProps } from './space-media-roles-summary.types';
 
@@ -140,18 +141,7 @@ const getRoleIcon = (role: string): string => {
 	}
 };
 
-const getDeviceIcon = (category: string): string => {
-	switch (category) {
-		case 'media':
-			return 'mdi:cast';
-		case 'speaker':
-			return 'mdi:speaker';
-		case 'television':
-			return 'mdi:television';
-		default:
-			return 'mdi:cast';
-	}
-};
+const getDeviceIcon = (): string => 'mdi:cast';
 
 const loadMediaRoles = async (): Promise<void> => {
 	if (!props.space?.id) return;
@@ -188,7 +178,7 @@ const loadMediaRoles = async (): Promise<void> => {
 			roleMap.get(role)!.devices.push({
 				deviceId: target.device_id,
 				deviceName: target.device_name,
-				deviceCategory: target.device_category ?? '',
+				deviceCategory: '',
 			});
 		}
 

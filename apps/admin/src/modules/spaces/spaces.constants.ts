@@ -444,9 +444,6 @@ export {
 	SpacesModuleLightingRole as LightingRole,
 	SpacesModuleClimateRole as ClimateRole,
 	SpacesModuleCoversRole as CoversRole,
-	SpacesModuleMediaRole as MediaRole,
-	SpacesModuleMediaMode as MediaMode,
-	SpacesModuleMediaIntentType as MediaIntentType,
 } from '../../openapi.constants';
 
 // Sensor domain roles (not yet present in OpenAPI generator)

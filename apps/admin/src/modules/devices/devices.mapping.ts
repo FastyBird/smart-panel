@@ -156,6 +156,31 @@ const deviceChannelsSortingSpecification: Record<DevicesModuleDeviceCategory, De
 		DevicesModuleChannelCategory.speaker,
 		DevicesModuleChannelCategory.device_information,
 	],
+	[DevicesModuleDeviceCategory.av_receiver]: [
+		DevicesModuleChannelCategory.media_input,
+		DevicesModuleChannelCategory.media_playback,
+		DevicesModuleChannelCategory.speaker,
+		DevicesModuleChannelCategory.device_information,
+	],
+	[DevicesModuleDeviceCategory.game_console]: [
+		DevicesModuleChannelCategory.media_playback,
+		DevicesModuleChannelCategory.media_input,
+		DevicesModuleChannelCategory.device_information,
+	],
+	[DevicesModuleDeviceCategory.projector]: [
+		DevicesModuleChannelCategory.media_input,
+		DevicesModuleChannelCategory.media_playback,
+		DevicesModuleChannelCategory.device_information,
+	],
+	[DevicesModuleDeviceCategory.set_top_box]: [
+		DevicesModuleChannelCategory.media_input,
+		DevicesModuleChannelCategory.media_playback,
+		DevicesModuleChannelCategory.device_information,
+	],
+	[DevicesModuleDeviceCategory.streaming_service]: [
+		DevicesModuleChannelCategory.media_playback,
+		DevicesModuleChannelCategory.device_information,
+	],
 	[DevicesModuleDeviceCategory.outlet]: [
 		DevicesModuleChannelCategory.outlet,
 		DevicesModuleChannelCategory.electrical_energy,

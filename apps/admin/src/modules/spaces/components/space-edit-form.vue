@@ -462,7 +462,9 @@ const hasClimateDevices = computed(() =>
 
 // Media device categories for role assignment
 const hasMediaDevices = computed(() =>
-	spaceDevices.value.some((d) => MEDIA_DEVICE_CATEGORIES.includes(d.category as DevicesModuleDeviceCategory))
+	spaceDevices.value.some((d) =>
+		MEDIA_DEVICE_CATEGORIES.includes(d.category as (typeof MEDIA_DEVICE_CATEGORIES)[number])
+	)
 );
 
 // Check if there are covers devices in this space

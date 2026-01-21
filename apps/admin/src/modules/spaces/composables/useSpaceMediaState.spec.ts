@@ -85,7 +85,7 @@ describe('useSpaceMediaState', () => {
 
 		expect(result).not.toBeNull();
 		expect(mediaState.value?.detectedMode).toBe('background');
-		expect(mediaState.value?.roles.primary.volume).toBe(50);
+		expect(mediaState.value?.roles.primary?.volume).toBe(50);
 		expect(hasMedia.value).toBe(true);
 		expect(anyOn.value).toBe(true);
 		expect(allOff.value).toBe(false);
