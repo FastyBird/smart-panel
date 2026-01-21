@@ -5,7 +5,7 @@
  * Supports built-in mappings and user custom mappings.
  */
 import Ajv from 'ajv';
-import { existsSync, readFileSync, readdirSync } from 'fs';
+import { existsSync, readFileSync, readdirSync, realpathSync } from 'fs';
 import { join, normalize, resolve } from 'path';
 import { parse as parseYaml } from 'yaml';
 
@@ -206,13 +206,25 @@ export class MappingLoaderService implements OnModuleInit {
 
 	/**
 	 * Validate that a path is within the allowed directory (prevent path traversal)
+	 * Resolves symlinks to their actual targets to prevent symlink attacks
 	 */
 	private validatePath(allowedBasePath: string, filePath: string): boolean {
-		const normalizedBase = normalize(resolve(allowedBasePath));
-		const normalizedPath = normalize(resolve(filePath));
+		try {
+			// Resolve symlinks to actual paths before validation
+			// This prevents attackers from creating symlinks pointing outside the allowed directory
+			const realBasePath = normalize(resolve(realpathSync(allowedBasePath)));
+			const realFilePath = normalize(resolve(realpathSync(filePath)));
 
-		// Ensure the resolved path starts with the base path
-		return normalizedPath.startsWith(normalizedBase);
+			// Ensure the resolved path starts with the base path
+			return realFilePath.startsWith(realBasePath);
+		} catch (error) {
+			// If realpathSync fails (e.g., path doesn't exist), reject for safety
+			this.logger.warn(`Path validation failed: ${error instanceof Error ? error.message : String(error)}`, {
+				allowedBasePath,
+				filePath,
+			});
+			return false;
+		}
 	}
 
 	/**
