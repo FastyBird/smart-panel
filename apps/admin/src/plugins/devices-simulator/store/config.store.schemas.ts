@@ -1,7 +1,6 @@
 import { type ZodType, z } from 'zod';
 
 import { ConfigPluginResSchema, ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../modules/config/store/config-plugins.store.schemas';
-import { ConnectionState } from '../../../openapi.constants';
 import { DEVICES_SIMULATOR_PLUGIN_NAME } from '../devices-simulator.constants';
 
 type ApiUpdateConfig = {
@@ -11,7 +10,7 @@ type ApiUpdateConfig = {
 	simulation_interval?: number;
 	latitude?: number;
 	smooth_transitions?: boolean;
-	connection_state_on_start?: ConnectionState;
+	connection_state_on_start?: 'connected' | 'disconnected' | 'lost' | 'alert' | 'unknown';
 };
 
 type ApiConfig = {
@@ -21,7 +20,7 @@ type ApiConfig = {
 	simulation_interval: number;
 	latitude: number;
 	smooth_transitions: boolean;
-	connection_state_on_start?: ConnectionState;
+	connection_state_on_start?: 'connected' | 'disconnected' | 'lost' | 'alert' | 'unknown';
 };
 
 export const SimulatorConfigSchema = ConfigPluginSchema.extend({
