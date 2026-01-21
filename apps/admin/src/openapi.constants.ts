@@ -349,7 +349,7 @@ export { DevicesModuleCreateDeviceChannelPropertyPermissions as DevicesModuleCha
 
 // Device Status Enums
 // ===================
-export { DevicesModuleDataDeviceConnectionStatusStatus as DevicesModuleDeviceConnectionStatus } from './openapi';
+export { PathsPluginsDevicesSimulatorSimulatorDeviceIdSimulateConnectionPostRequestBodyApplicationJsonDataState as DevicesModuleDeviceConnectionStatus } from './openapi';
 
 // Config Module Enums
 // ===================
