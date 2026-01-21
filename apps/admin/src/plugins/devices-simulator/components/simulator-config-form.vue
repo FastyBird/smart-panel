@@ -96,7 +96,6 @@
 		<el-form-item
 			:label="t('devicesSimulatorPlugin.fields.config.connectionStateOnStart.title')"
 			prop="connectionStateOnStart"
-			label-position="left"
 		>
 			<el-select
 				v-model="model.connectionStateOnStart"
@@ -122,6 +121,7 @@ import { ElAlert, ElForm, ElFormItem, ElInputNumber, ElSelect, ElOption, ElSwitc
 
 import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import type { ISimulatorConfigEditForm } from '../schemas/config.types';
+import { SIMULATOR_CONNECTION_STATES } from '../devices-simulator.constants';
 
 import type { ISimulatorConfigFormProps } from './simulator-config-form.types';
 
@@ -154,11 +154,11 @@ const { formEl, model, formChanged, submit, formResult } = useConfigPluginEditFo
 });
 
 const connectionStates = [
-	{ value: 'connected', label: t('devicesSimulatorPlugin.fields.config.connectionStateOnStart.options.connected') },
-	{ value: 'disconnected', label: t('devicesSimulatorPlugin.fields.config.connectionStateOnStart.options.disconnected') },
-	{ value: 'lost', label: t('devicesSimulatorPlugin.fields.config.connectionStateOnStart.options.lost') },
-	{ value: 'alert', label: t('devicesSimulatorPlugin.fields.config.connectionStateOnStart.options.alert') },
-	{ value: 'unknown', label: t('devicesSimulatorPlugin.fields.config.connectionStateOnStart.options.unknown') },
+	{ value: SIMULATOR_CONNECTION_STATES[0], label: t('devicesSimulatorPlugin.fields.config.connectionStateOnStart.options.connected') },
+	{ value: SIMULATOR_CONNECTION_STATES[1], label: t('devicesSimulatorPlugin.fields.config.connectionStateOnStart.options.disconnected') },
+	{ value: SIMULATOR_CONNECTION_STATES[2], label: t('devicesSimulatorPlugin.fields.config.connectionStateOnStart.options.lost') },
+	{ value: SIMULATOR_CONNECTION_STATES[3], label: t('devicesSimulatorPlugin.fields.config.connectionStateOnStart.options.alert') },
+	{ value: SIMULATOR_CONNECTION_STATES[4], label: t('devicesSimulatorPlugin.fields.config.connectionStateOnStart.options.unknown') },
 ];
 
 const rules = reactive<FormRules<ISimulatorConfigEditForm>>({
