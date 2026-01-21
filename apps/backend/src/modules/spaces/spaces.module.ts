@@ -40,6 +40,7 @@ import { SpaceSensorRoleService } from './services/space-sensor-role.service';
 import { SpaceSensorStateService } from './services/space-sensor-state.service';
 import { SpaceSuggestionService } from './services/space-suggestion.service';
 import { SpaceUndoHistoryService } from './services/space-undo-history.service';
+import { SpaceSensorStateListener } from './listeners/space-sensor-state.listener';
 import { SpacesSeederService } from './services/spaces-seeder.service';
 import { SpacesService } from './services/spaces.service';
 import { SPACES_MODULE_API_TAG_DESCRIPTION, SPACES_MODULE_API_TAG_NAME, SPACES_MODULE_NAME } from './spaces.constants';
@@ -90,6 +91,7 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceUndoHistoryService,
 		SpaceActivityListener,
 		SpaceClimateStateListener,
+		SpaceSensorStateListener,
 		IntentSpecLoaderService,
 		SpacesSeederService,
 	],
