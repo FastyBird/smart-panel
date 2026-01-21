@@ -512,9 +512,7 @@ describe('DelegatesManagerService', () => {
 					transformerName: 'transformer2',
 				});
 
-			(transformerRegistry.get as jest.Mock)
-				.mockReturnValueOnce(transformer1)
-				.mockReturnValueOnce(transformer2);
+			(transformerRegistry.get as jest.Mock).mockReturnValueOnce(transformer1).mockReturnValueOnce(transformer2);
 
 			const handlerSpy = jest.fn(async (updates: { property: ShellyNgChannelPropertyEntity; val: unknown }[]) => {
 				expect(updates).toEqual([
@@ -608,18 +606,19 @@ describe('DelegatesManagerService', () => {
 			const property = { id: 'prop-inline' } as unknown as ShellyNgChannelPropertyEntity;
 
 			// Mock inline transform (scale transformer)
+			// input_range is Shelly range, output_range is Panel range
 			(propertyMappingStorage.get as jest.Mock).mockReturnValueOnce({
 				shellyProperty: 'brightness',
 				direction: 'bidirectional',
 				inlineTransform: {
 					type: 'scale',
-					input_range: [0, 100],
-					output_range: [0, 255],
+					input_range: [0, 255], // Shelly range
+					output_range: [0, 100], // Panel range
 				},
 			});
 
 			const handlerSpy = jest.fn(async (v: unknown) => {
-				// 50% brightness should map to ~128 (50/100 * 255)
+				// Panel value 50 should map to Shelly ~128 (50/100 * 255)
 				expect(typeof v).toBe('number');
 				expect(v).toBeGreaterThan(120);
 				expect(v).toBeLessThan(135);

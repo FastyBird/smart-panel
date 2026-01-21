@@ -20,6 +20,7 @@ import {
 } from '../../../modules/devices/devices.constants';
 import { ComponentType, DEVICES_SHELLY_NG_PLUGIN_NAME } from '../devices-shelly-ng.constants';
 
+import { MAPPING_PRIORITY } from './mapping.constants';
 import {
 	AnyDerivation,
 	ChannelMapping,
@@ -44,7 +45,6 @@ import {
 	ResolvedStaticProperty,
 	StaticPropertyConfig,
 } from './mapping.types';
-import { MAPPING_PRIORITY } from './mapping.constants';
 import { BUILTIN_TRANSFORMERS, TransformerRegistry } from './transformers';
 
 /**
@@ -764,9 +764,6 @@ export class MappingLoaderService implements OnModuleInit {
 	} {
 		this.logger.log('Reloading mapping configurations...');
 		this.mappingCache.clear(); // Clear cache before reload
-
-		const beforeCount = this.resolvedMappings.length;
-		const beforeSources = this.loadedSources.length;
 
 		this.loadAllMappings();
 

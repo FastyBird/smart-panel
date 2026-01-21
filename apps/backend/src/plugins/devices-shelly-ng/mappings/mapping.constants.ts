@@ -36,4 +36,4 @@ export const MAPPING_PRIORITY = {
 /**
  * Type for mapping priority values
  */
-export type MappingPriority = typeof MAPPING_PRIORITY[keyof typeof MAPPING_PRIORITY];
+export type MappingPriority = (typeof MAPPING_PRIORITY)[keyof typeof MAPPING_PRIORITY];

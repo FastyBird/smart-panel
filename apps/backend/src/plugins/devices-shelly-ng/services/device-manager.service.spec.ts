@@ -414,11 +414,7 @@ describe('DeviceManagerService internals', () => {
 
 			const derivation = {
 				type: 'threshold',
-				thresholds: [
-					{ max: 20, value: 'low' },
-					{ max: 80, value: 'medium' },
-					{ value: 'high' },
-				],
+				thresholds: [{ max: 20, value: 'low' }, { max: 80, value: 'medium' }, { value: 'high' }],
 			};
 
 			expect(svc.applyDerivation(derivation, 15)).toBe('low');
@@ -432,11 +428,7 @@ describe('DeviceManagerService internals', () => {
 
 			const derivation = {
 				type: 'threshold',
-				thresholds: [
-					{ min: 0, max: 10, value: 'low' },
-					{ min: 11, max: 20, value: 'medium' },
-					{ value: 'high' },
-				],
+				thresholds: [{ min: 0, max: 10, value: 'low' }, { min: 11, max: 20, value: 'medium' }, { value: 'high' }],
 			};
 
 			expect(svc.applyDerivation(derivation, 5)).toBe('low');

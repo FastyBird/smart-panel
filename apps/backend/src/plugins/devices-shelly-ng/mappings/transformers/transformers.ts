@@ -99,6 +99,7 @@ export class ScaleTransformer extends BaseTransformer {
 		}
 
 		// Inverse interpolation: Panel -> Shelly
+		// Convert from output_range (Panel) to input_range (Shelly)
 		const ratio = (value - this.outputMin) / (this.outputMax - this.outputMin);
 		return Math.round(this.inputMin + ratio * (this.inputMax - this.inputMin));
 	}
