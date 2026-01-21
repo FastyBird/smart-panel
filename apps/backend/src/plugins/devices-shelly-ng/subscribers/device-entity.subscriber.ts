@@ -29,29 +29,7 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 	}
 
 	async afterInsert(event: InsertEvent<ShellyNgDeviceEntity>): Promise<void> {
-		// Defer work to next tick to avoid transaction savepoint issues
-		// Entity subscribers run within transactions, so heavy DB operations can cause savepoint conflicts
-		setImmediate(async () => {
-			try {
-				await this.deviceManagerService.createOrUpdate(event.entity.id);
-
-				this.shellyNgService.restart().catch((error) => {
-					const err = error as Error;
-
-					this.logger.error('Failed restart Shelly communication service', {
-						message: err.message,
-						stack: err.stack,
-					});
-				});
-			} catch (error) {
-				const err = error as Error;
-
-				this.logger.error(`Failed to finalize newly created device=${event.entity.id}`, {
-					message: err.message,
-					stack: err.stack,
-				});
-			}
-		});
+		this.scheduleProvision(event.entity.id, event.queryRunner?.isTransactionActive ?? false);
 	}
 
 	async afterUpdate(event: UpdateEvent<ShellyNgDeviceEntity>): Promise<void> {
@@ -69,29 +47,7 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 			return;
 		}
 
-		// Defer work to next tick to avoid transaction savepoint issues
-		// Entity subscribers run within transactions, so heavy DB operations can cause savepoint conflicts
-		setImmediate(async () => {
-			try {
-				await this.deviceManagerService.createOrUpdate(event.databaseEntity.id);
-
-				this.shellyNgService.restart().catch((error) => {
-					const err = error as Error;
-
-					this.logger.error('Failed restart Shelly communication service', {
-						message: err.message,
-						stack: err.stack,
-					});
-				});
-			} catch (error) {
-				const err = error as Error;
-
-				this.logger.error(`Failed to finalize updated device=${event.databaseEntity.id}`, {
-					message: err.message,
-					stack: err.stack,
-				});
-			}
-		});
+		this.scheduleProvision(event.databaseEntity.id, event.queryRunner?.isTransactionActive ?? false);
 	}
 
 	afterRemove(): void {
@@ -103,5 +59,37 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 				stack: err.stack,
 			});
 		});
+	}
+
+	private scheduleProvision(deviceId: string, inTransaction: boolean): void {
+		const run = async (): Promise<void> => {
+			try {
+				await this.deviceManagerService.createOrUpdate(deviceId);
+			} catch (error) {
+				const err = error as Error;
+
+				// If the device was deleted between insert/update and finalize, skip retrying.
+				if (err.message === 'Device not found.') {
+					this.logger.warn(`Skip finalize for missing device=${deviceId}`);
+					return;
+				}
+
+				this.logger.error(`Failed to finalize device=${deviceId}`, {
+					message: err.message,
+					stack: err.stack,
+				});
+			}
+		};
+
+		// If still inside a transaction, defer to the macrotask queue so the outer
+		// transaction can commit before we start new DB work (avoids SQLite savepoint issues).
+		if (inTransaction) {
+			setTimeout(() => {
+				void run();
+			}, 0);
+			return;
+		}
+
+		void run();
 	}
 }

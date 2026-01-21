@@ -363,3 +363,38 @@ describe('DeviceManagerService.createOrUpdate', () => {
 		expect(onCall).toBeTruthy();
 	});
 });
+
+describe('DeviceManagerService internals', () => {
+	test('enqueueProvision serializes work per device', async () => {
+		const svc: any = makeService();
+
+		const order: string[] = [];
+
+		const slow = svc.enqueueProvision('dev-1', async () => {
+			order.push('first');
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		});
+
+		const fast = svc.enqueueProvision('dev-1', async () => {
+			order.push('second');
+		});
+
+		await Promise.all([slow, fast]);
+
+		expect(order).toEqual(['first', 'second']);
+	});
+
+	test('normalizeValue clamps oversized numbers', () => {
+		const svc: any = makeService();
+
+		// With format range
+		expect(
+			svc.normalizeValue(200000, {
+				format: [0, 10000],
+			}),
+		).toBe(10000);
+
+		// Without format, keep value (mapping should define limits)
+		expect(svc.normalizeValue(500000, null, null)).toBe(500000);
+	});
+});

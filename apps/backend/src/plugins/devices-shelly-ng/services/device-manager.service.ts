@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { EntityManager } from 'typeorm';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { pLimit, retry, withTimeout } from '../../../common/utils/http.utils';
+import { clampNumber } from '../../../common/utils/transform.utils';
 import {
 	ChannelCategory,
 	ConnectionState,
@@ -53,7 +55,16 @@ export class DeviceManagerService {
 		'DeviceManagerService',
 	);
 
-	private readonly strictSchema: boolean = true;
+	private readonly provisionLocks: Map<string, Promise<unknown>> = new Map();
+	private readonly defaultManager: EntityManager | undefined = ((): EntityManager | undefined => {
+		// Reuse any available manager to avoid spawning new transactions for cleanup paths.
+		const candidate =
+			(this.channelsService as unknown as { dataSource?: { manager?: EntityManager } }).dataSource?.manager ??
+			(this.channelsPropertiesService as unknown as { dataSource?: { manager?: EntityManager } }).dataSource?.manager;
+		return candidate;
+	})();
+
+	private readonly strictSchema: boolean = false;
 
 	private timeoutSec: number = 30;
 
@@ -137,21 +148,22 @@ export class DeviceManagerService {
 	}
 
 	async createOrUpdate(id: string): Promise<ShellyNgDeviceEntity> {
-		const device = await this.devicesService.findOne<ShellyNgDeviceEntity>(id, DEVICES_SHELLY_NG_TYPE);
+		return this.enqueueProvision(id, async () => {
+			const device = await this.devicesService.findOne<ShellyNgDeviceEntity>(id, DEVICES_SHELLY_NG_TYPE);
 
-		if (device === null) {
-			throw new DevicesShellyNgException('Device not found.');
-		}
+			if (device === null) {
+				throw new DevicesShellyNgException('Device not found.');
+			}
 
-		const deviceInfo = await this.getDeviceInfo(device.hostname, device.password);
+			const deviceInfo = await this.getDeviceInfo(device.hostname, device.password);
 
-		const deviceSpec = this.getSpecification(deviceInfo.model);
+			const deviceSpec = this.getSpecification(deviceInfo.model);
 
-		if (deviceSpec === null) {
-			throw new DevicesShellyNgException(
-				`Provided device is not supported hostname=${device.hostname} model=${deviceInfo.model}`,
-			);
-		}
+			if (deviceSpec === null) {
+				throw new DevicesShellyNgException(
+					`Provided device is not supported hostname=${device.hostname} model=${deviceInfo.model}`,
+				);
+			}
 
 		const channelsIds: string[] = [];
 
@@ -1683,11 +1695,38 @@ export class DeviceManagerService {
 
 		for (const channel of allChannels) {
 			if (!channelsIds.includes(channel.id)) {
-				await this.channelsService.remove(channel.id);
+				try {
+					if (this.defaultManager) {
+						await this.channelsService.remove(channel.id, this.defaultManager);
+					} else {
+						await this.channelsService.remove(channel.id);
+					}
+				} catch (error) {
+					const err = error as Error;
+
+					this.logger.warn(`Failed to remove stale channel id=${channel.id}: ${err.message}`, {
+						resource: device.id,
+					});
+				}
 			}
 		}
 
 		return device;
+		});
+	}
+
+	private enqueueProvision<T>(deviceId: string, task: () => Promise<T>): Promise<T> {
+		const previous = this.provisionLocks.get(deviceId) ?? Promise.resolve();
+
+		const chained = previous.catch(() => undefined).then(task);
+
+		this.provisionLocks.set(deviceId, chained);
+
+		return chained.finally(() => {
+			if (this.provisionLocks.get(deviceId) === chained) {
+				this.provisionLocks.delete(deviceId);
+			}
+		});
 	}
 
 	private async ensureChannel(
@@ -1878,6 +1917,21 @@ export class DeviceManagerService {
 			}
 		}
 
+		const channelSpec = channelsSchema[channel.category] as ChannelDefinition | undefined;
+		const propertySpec =
+			typeof channelSpec === 'object'
+				? (channelSpec['properties'][category] as
+						| {
+								permissions: PermissionType[];
+								data_type: DataTypeType;
+								unit: string | null;
+								format: string[] | number[] | null;
+						  }
+						| undefined)
+				: undefined;
+
+		const normalizedValue = this.normalizeValue(value, propertySpec, options);
+
 		let prop = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
 			column,
 			identifierOrCategory,
@@ -1885,8 +1939,6 @@ export class DeviceManagerService {
 		);
 
 		if (prop === null) {
-			const channelSpec = channelsSchema[channel.category] as ChannelDefinition | undefined;
-
 			if (!channelSpec || typeof channelSpec !== 'object') {
 				this.logger.warn(
 					`Missing or invalid schema for channel category=${channel.category}. Falling back to minimal channel`,
@@ -1897,8 +1949,9 @@ export class DeviceManagerService {
 				}
 			}
 
-			const propertySpec =
-				typeof channelSpec === 'object'
+			const spec =
+				propertySpec ??
+				(typeof channelSpec === 'object'
 					? (channelSpec['properties'][category] as
 							| {
 									permissions: PermissionType[];
@@ -1907,9 +1960,9 @@ export class DeviceManagerService {
 									format: string[] | number[] | null;
 							  }
 							| undefined)
-					: undefined;
+					: undefined);
 
-			if (!propertySpec || typeof propertySpec !== 'object') {
+			if (!spec || typeof spec !== 'object') {
 				this.logger.warn(
 					`Missing or invalid schema for property category=${category}. Falling back to minimal property.`,
 				);
@@ -1920,16 +1973,16 @@ export class DeviceManagerService {
 			}
 
 			const inferredType =
-				typeof value === 'number'
+				typeof normalizedValue === 'number'
 					? 'number'
-					: typeof value === 'boolean'
+					: typeof normalizedValue === 'boolean'
 						? 'boolean'
-						: typeof value === 'string'
+						: typeof normalizedValue === 'string'
 							? 'string'
 							: 'mixed';
 
 			const inferredDataType: DataTypeType =
-				propertySpec?.data_type ??
+				spec?.data_type ??
 				(inferredType === 'number'
 					? DataTypeType.FLOAT
 					: inferredType === 'boolean'
@@ -1938,7 +1991,7 @@ export class DeviceManagerService {
 							? DataTypeType.STRING
 							: DataTypeType.UNKNOWN);
 
-			const permissions: PermissionType[] = propertySpec?.permissions ?? [PermissionType.READ_WRITE];
+			const permissions: PermissionType[] = spec?.permissions ?? [PermissionType.READ_WRITE];
 
 			prop = await this.channelsPropertiesService.create<
 				ShellyNgChannelPropertyEntity,
@@ -1947,13 +2000,13 @@ export class DeviceManagerService {
 				...{
 					permissions,
 					data_type: inferredDataType,
-					unit: propertySpec?.unit,
-					format: propertySpec?.format,
+					unit: spec?.unit,
+					format: spec?.format,
 				},
 				type: DEVICES_SHELLY_NG_TYPE,
 				category,
 				identifier: column === 'identifier' ? identifierOrCategory : null,
-				value,
+				value: normalizedValue,
 				...options,
 			});
 		} else {
@@ -1964,12 +2017,52 @@ export class DeviceManagerService {
 				type: DEVICES_SHELLY_NG_TYPE,
 				category,
 				identifier: column === 'identifier' ? identifierOrCategory : null,
-				value,
+				value: normalizedValue,
 				...options,
 			});
 		}
 
 		return prop;
+	}
+
+	private normalizeValue(
+		value: string | number | boolean | undefined,
+		propertySpec?:
+			| {
+					format?: string[] | number[] | null;
+			  }
+			| null,
+		options?:
+			| {
+					format?: string[] | number[];
+			  }
+			| null,
+	): string | number | boolean | undefined {
+		if (typeof value !== 'number') {
+			return value;
+		}
+
+		const range = this.getNumericRange(options?.format ?? propertySpec?.format);
+
+		if (range) {
+			return clampNumber(value, range.min, range.max);
+		}
+
+		// Without an explicit range, keep the original value so that mapping definitions
+		// (which should include min/max) drive validation instead of a blanket clamp.
+		return value;
+	}
+
+	private getNumericRange(format: string[] | number[] | null | undefined): { min: number; max: number } | null {
+		if (!Array.isArray(format)) {
+			return null;
+		}
+
+		if (format.length === 2 && format.every((n) => typeof n === 'number' && Number.isFinite(n))) {
+			return { min: Number(format[0]), max: Number(format[1]) };
+		}
+
+		return null;
 	}
 
 	private async ensureElectricalEnergy(
