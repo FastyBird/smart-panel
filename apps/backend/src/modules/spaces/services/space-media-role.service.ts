@@ -348,13 +348,14 @@ export class SpaceMediaRoleService {
 				preferredOrder.map((cat) => mediaChannels.find((ch) => ch.category === cat)).find((ch) => ch) ??
 				mediaChannels[0];
 
-			// Check for properties
+			// Check for properties (align with control logic in getMediaDevicesInSpace)
+			const isTelevision = targetChannel.category === ChannelCategory.TELEVISION;
+			const isSwitcher = targetChannel.category === ChannelCategory.SWITCHER;
+			const isSpeaker = targetChannel.category === ChannelCategory.SPEAKER;
 			const properties = targetChannel.properties ?? [];
-			const hasOn = properties.some(
-				(p) => p.category === PropertyCategory.ON || p.category === PropertyCategory.ACTIVE,
-			);
-			const hasVolume = properties.some((p) => p.category === PropertyCategory.VOLUME);
-			const hasMute = properties.some((p) => p.category === PropertyCategory.MUTE);
+			const hasOn = (isTelevision || isSwitcher) && properties.some((p) => p.category === PropertyCategory.ON);
+			const hasVolume = isSpeaker && properties.some((p) => p.category === PropertyCategory.VOLUME);
+			const hasMute = isSpeaker && properties.some((p) => p.category === PropertyCategory.MUTE);
 
 			// Get existing role assignment if any (device-level)
 			const existingRole = rolesByDevice.get(device.id) ?? null;
