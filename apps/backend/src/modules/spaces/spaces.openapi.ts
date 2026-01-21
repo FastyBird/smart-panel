@@ -32,12 +32,6 @@ import {
 	SetMediaRoleDto,
 } from './dto/media-role.dto';
 import {
-	BulkSetLightingRolesDto,
-	ReqBulkSetLightingRolesDto,
-	ReqSetLightingRoleDto,
-	SetLightingRoleDto,
-} from './dto/lighting-role.dto';
-import {
 	BulkSetSensorRolesDto,
 	ReqBulkSetSensorRolesDto,
 	ReqSetSensorRoleDto,
