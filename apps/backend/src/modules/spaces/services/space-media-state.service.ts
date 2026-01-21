@@ -237,8 +237,10 @@ export class SpaceMediaStateService {
 				) ?? [];
 
 			for (const channel of mediaChannels) {
-				// Find the ON property (required)
-				const onProperty = channel.properties?.find((p) => p.category === PropertyCategory.ON);
+				// Find the ON/ACTIVE property (required)
+				const onProperty = channel.properties?.find(
+					(p) => p.category === PropertyCategory.ON || p.category === PropertyCategory.ACTIVE,
+				);
 
 				if (!onProperty) {
 					continue;

@@ -528,8 +528,10 @@ export class MediaIntentService extends SpaceIntentBaseService {
 				) ?? [];
 
 			for (const mediaChannel of mediaChannels) {
-				// Find the ON property (required for media)
-				const onProperty = mediaChannel.properties?.find((p) => p.category === PropertyCategory.ON);
+				// Find the ON/ACTIVE property (required for media)
+				const onProperty = mediaChannel.properties?.find(
+					(p) => p.category === PropertyCategory.ON || p.category === PropertyCategory.ACTIVE,
+				);
 
 				if (!onProperty) {
 					continue;

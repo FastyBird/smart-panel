@@ -160,11 +160,6 @@ export class SpaceMediaRoleService {
 		const hasOn = properties.some(
 			(p) => p.category === PropertyCategory.ON || p.category === PropertyCategory.ACTIVE,
 		);
-		if (!hasOn) {
-			throw new SpacesValidationException(
-				`Device with id=${dto.deviceId} has no controllable media channel (missing ON/ACTIVE property)`,
-			);
-		}
 
 		const channelId = targetChannel.id;
 
@@ -352,11 +347,6 @@ export class SpaceMediaRoleService {
 			);
 			const hasVolume = properties.some((p) => p.category === PropertyCategory.VOLUME);
 			const hasMute = properties.some((p) => p.category === PropertyCategory.MUTE);
-
-			// Must have at least ON/ACTIVE property to be controllable
-			if (!hasOn) {
-				continue;
-			}
 
 			// Get existing role assignment if any (device-level)
 			const existingRole = rolesByDevice.get(device.id) ?? null;
