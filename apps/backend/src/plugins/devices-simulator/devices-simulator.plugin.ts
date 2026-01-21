@@ -17,6 +17,7 @@ import { DevicesTypeMapperService } from '../../modules/devices/services/devices
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 import { ExtensionsModule } from '../../modules/extensions/extensions.module';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
+import { PluginServiceManagerService } from '../../modules/extensions/services/plugin-service-manager.service';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
@@ -87,6 +88,8 @@ export class DevicesSimulatorPlugin {
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
 		private readonly extensionsService: ExtensionsService,
+		private readonly pluginServiceManager: PluginServiceManagerService,
+		private readonly simulationService: SimulationService,
 	) {}
 
 	onModuleInit() {
@@ -281,5 +284,8 @@ pnpm run cli simulator:connection --device <id> --state lost
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});
+
+		// Register service with centralized plugin service manager
+		this.pluginServiceManager.register(this.simulationService);
 	}
 }

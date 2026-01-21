@@ -5,6 +5,12 @@ import { defaultsDeep } from 'lodash';
 import type { IPluginOptions } from '../../app.types';
 import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../../common';
 import {
+	CONFIG_MODULE_NAME,
+	CONFIG_MODULE_PLUGIN_TYPE,
+	type IPluginsComponents,
+	type IPluginsSchemas,
+} from '../../modules/config';
+import {
 	DEVICES_MODULE_NAME,
 	type IChannelPluginsComponents,
 	type IChannelPluginsSchemas,
@@ -14,17 +20,20 @@ import {
 	type IDevicePluginsSchemas,
 } from '../../modules/devices';
 
+import { SimulatorConfigForm } from './components/components';
 import { DEVICES_SIMULATOR_PLUGIN_NAME, DEVICES_SIMULATOR_TYPE } from './devices-simulator.constants';
 import enUS from './locales/en-US.json';
+import { SimulatorConfigEditFormSchema } from './schemas/config.schemas';
 import { SimulatorDeviceAddFormSchema, SimulatorDeviceEditFormSchema } from './schemas/devices.schemas';
 import { SimulatorChannelPropertySchema } from './store/channels.properties.store.schemas';
 import { SimulatorChannelSchema } from './store/channels.store.schemas';
+import { SimulatorConfigSchema, SimulatorConfigUpdateReqSchema } from './store/config.store.schemas';
 import { SimulatorDeviceCreateReqSchema, SimulatorDeviceSchema, SimulatorDeviceUpdateReqSchema } from './store/devices.store.schemas';
 
 export const devicesSimulatorPluginKey: PluginInjectionKey<
 	IPlugin<
-		IDevicePluginsComponents & IChannelPluginsComponents & IChannelPropertyPluginsComponents,
-		IDevicePluginsSchemas & IChannelPluginsSchemas & IChannelPropertyPluginsSchemas
+		IDevicePluginsComponents & IChannelPluginsComponents & IChannelPropertyPluginsComponents & IPluginsComponents,
+		IDevicePluginsSchemas & IChannelPluginsSchemas & IChannelPropertyPluginsSchemas & IPluginsSchemas
 	>
 > = Symbol('FB-Plugin-DevicesSimulator');
 
@@ -51,6 +60,18 @@ export default {
 			},
 			elements: [
 				{
+					type: CONFIG_MODULE_PLUGIN_TYPE,
+					components: {
+						pluginConfigEditForm: SimulatorConfigForm,
+					},
+					schemas: {
+						pluginConfigSchema: SimulatorConfigSchema,
+						pluginConfigEditFormSchema: SimulatorConfigEditFormSchema,
+						pluginConfigUpdateReqSchema: SimulatorConfigUpdateReqSchema,
+					},
+					modules: [CONFIG_MODULE_NAME],
+				},
+				{
 					type: DEVICES_SIMULATOR_TYPE,
 					schemas: {
 						deviceSchema: SimulatorDeviceSchema,
@@ -63,7 +84,7 @@ export default {
 					},
 				},
 			],
-			modules: [DEVICES_MODULE_NAME],
+			modules: [DEVICES_MODULE_NAME, CONFIG_MODULE_NAME],
 			isCore: false,
 		});
 	},
