@@ -103,7 +103,7 @@ export class FanSimulator extends BaseDeviceSimulator {
 		});
 
 		// Direction (some fans have reversible direction)
-		const direction = Math.random() < 0.9 ? 'forward' : 'reverse';
+		const direction = Math.random() < 0.9 ? 'clockwise' : 'counter_clockwise';
 		values.push({
 			channelCategory: ChannelCategory.FAN,
 			propertyCategory: PropertyCategory.DIRECTION,

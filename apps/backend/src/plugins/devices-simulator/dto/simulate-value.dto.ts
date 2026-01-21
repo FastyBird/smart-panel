@@ -1,8 +1,9 @@
 import { Expose, Type } from 'class-transformer';
 import { IsEnum, IsNotEmpty, IsOptional, IsUUID, ValidateNested } from 'class-validator';
-import { ConnectionState } from '../../../modules/devices/devices.constants';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+
+import { ConnectionState } from '../../../modules/devices/devices.constants';
 
 @ApiSchema({ name: 'DevicesSimulatorPluginSimulateValue' })
 export class SimulateValueDto {

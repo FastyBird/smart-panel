@@ -2,10 +2,7 @@ import { CreateSimulatorChannelPropertyDto } from './dto/create-channel-property
 import { CreateSimulatorChannelDto } from './dto/create-channel.dto';
 import { CreateSimulatorDeviceDto } from './dto/create-device.dto';
 import { GenerateDeviceDto, ReqGenerateDeviceDto } from './dto/generate-device.dto';
-import {
-	ReqSimulateValueDto,
-	SimulateValueDto,
-} from './dto/simulate-value.dto';
+import { ReqSimulateValueDto, SimulateValueDto } from './dto/simulate-value.dto';
 import { UpdateSimulatorChannelPropertyDto } from './dto/update-channel-property.dto';
 import { UpdateSimulatorChannelDto } from './dto/update-channel.dto';
 import { UpdateSimulatorDeviceDto } from './dto/update-device.dto';

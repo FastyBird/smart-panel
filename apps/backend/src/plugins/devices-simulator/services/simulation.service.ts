@@ -130,7 +130,7 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy, IManage
 		this.logger.log(`Registered ${this.simulators.size} device simulators`);
 	}
 
-	async onModuleInit(): Promise<void> {
+	onModuleInit(): void {
 		this.logger.log('Simulation service initialized (managed by PluginServiceManagerService)');
 	}
 
@@ -173,6 +173,8 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy, IManage
 	async stop(): Promise<void> {
 		await this.withLock(async () => {
 			if (this.state === 'stopped') return;
+
+			await Promise.resolve();
 
 			this.state = 'stopping';
 			this.stopAutoSimulation();
