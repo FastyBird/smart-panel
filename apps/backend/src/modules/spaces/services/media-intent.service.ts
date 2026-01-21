@@ -86,31 +86,6 @@ export function selectMediaForMode(devices: MediaDevice[], mode: MediaMode): Med
 		return selections;
 	}
 
-	private getPlaybackProperties(device: DeviceEntity): {
-		channel: ChannelEntity | null;
-		stateProperty: ChannelPropertyEntity | null;
-		remoteKeyProperty: ChannelPropertyEntity | null;
-	} {
-		const playbackChannel = device.channels?.find((ch) => ch.category === ChannelCategory.MEDIA_PLAYBACK) ?? null;
-		const stateProperty =
-			playbackChannel?.properties?.find((p) => p.category === PropertyCategory.STATE) ?? null;
-		const remoteKeyProperty =
-			playbackChannel?.properties?.find((p) => p.category === PropertyCategory.REMOTE_KEY) ?? null;
-
-		return { channel: playbackChannel ?? null, stateProperty, remoteKeyProperty };
-	}
-
-	private getInputProperties(device: DeviceEntity): {
-		channel: ChannelEntity | null;
-		sourceProperty: ChannelPropertyEntity | null;
-	} {
-		const inputChannel = device.channels?.find((ch) => ch.category === ChannelCategory.MEDIA_INPUT) ?? null;
-		const sourceProperty =
-			inputChannel?.properties?.find((p) => p.category === PropertyCategory.SOURCE) ?? null;
-
-		return { channel: inputChannel ?? null, sourceProperty };
-	}
-
 	// Apply role-based rules
 	for (const media of devices) {
 		let rule: MediaRoleOrchestrationRule;
@@ -301,6 +276,31 @@ export class MediaIntentService extends SpaceIntentBaseService {
 		if (intent.source !== undefined) value.source = intent.source;
 
 		return Object.keys(value).length > 0 ? value : null;
+	}
+
+	private getPlaybackProperties(device: DeviceEntity): {
+		channel: ChannelEntity | null;
+		stateProperty: ChannelPropertyEntity | null;
+		remoteKeyProperty: ChannelPropertyEntity | null;
+	} {
+		const playbackChannel = device.channels?.find((ch) => ch.category === ChannelCategory.MEDIA_PLAYBACK) ?? null;
+		const stateProperty =
+			playbackChannel?.properties?.find((p) => p.category === PropertyCategory.STATE) ?? null;
+		const remoteKeyProperty =
+			playbackChannel?.properties?.find((p) => p.category === PropertyCategory.REMOTE_KEY) ?? null;
+
+		return { channel: playbackChannel ?? null, stateProperty, remoteKeyProperty };
+	}
+
+	private getInputProperties(device: DeviceEntity): {
+		channel: ChannelEntity | null;
+		sourceProperty: ChannelPropertyEntity | null;
+	} {
+		const inputChannel = device.channels?.find((ch) => ch.category === ChannelCategory.MEDIA_INPUT) ?? null;
+		const sourceProperty =
+			inputChannel?.properties?.find((p) => p.category === PropertyCategory.SOURCE) ?? null;
+
+		return { channel: inputChannel ?? null, sourceProperty };
 	}
 
 	/**
