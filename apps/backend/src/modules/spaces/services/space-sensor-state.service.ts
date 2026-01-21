@@ -275,6 +275,15 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 				primaryProperty = properties.find((p) => p.category === PropertyCategory.DENSITY);
 				unit = 'ppm';
 				break;
+			case ChannelCategory.NITROGEN_DIOXIDE:
+			case ChannelCategory.OZONE:
+			case ChannelCategory.SULPHUR_DIOXIDE:
+			case ChannelCategory.VOLATILE_ORGANIC_COMPOUNDS:
+				primaryProperty =
+					properties.find((p) => p.category === PropertyCategory.DETECTED) ??
+					properties.find((p) => p.category === PropertyCategory.DENSITY);
+				unit = primaryProperty?.category === PropertyCategory.DENSITY ? 'ppb' : null;
+				break;
 			case ChannelCategory.AIR_QUALITY:
 				primaryProperty = properties.find((p) => p.category === PropertyCategory.AQI);
 				unit = 'AQI';
