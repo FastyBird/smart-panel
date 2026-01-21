@@ -464,6 +464,7 @@ export class MediaIntentService extends SpaceIntentBaseService {
 		let skippedDevices = 0;
 		let newVolume: number | undefined;
 		let isMuted: boolean | undefined;
+		const volumeDeltaVolumes: number[] = [];
 
 		for (const device of devices) {
 			// Skip HIDDEN devices
@@ -471,11 +472,23 @@ export class MediaIntentService extends SpaceIntentBaseService {
 				continue;
 			}
 
+			// For VOLUME_DELTA, calculate the new volume BEFORE execution
+			// (we'll only track it if the execution succeeds)
+			let calculatedVolume: number | null = null;
+			if (intent.type === MediaIntentType.VOLUME_DELTA && intent.delta !== undefined && intent.increase !== undefined) {
+				calculatedVolume = this.calculateVolumeDelta(device, intent.delta, intent.increase);
+			}
+
 			const outcome = await this.executeIntentForDevice(device, intent);
 
 			if (outcome === IntentTargetStatus.SUCCESS) {
 				affectedDevices++;
 				targetResults.push({ deviceId: device.device.id, status: IntentTargetStatus.SUCCESS });
+
+				// For VOLUME_DELTA, track the calculated volume for successfully affected devices
+				if (calculatedVolume !== null) {
+					volumeDeltaVolumes.push(calculatedVolume);
+				}
 			} else if (outcome === IntentTargetStatus.FAILED) {
 				failedDevices++;
 				targetResults.push({ deviceId: device.device.id, status: IntentTargetStatus.FAILED });
@@ -489,6 +502,13 @@ export class MediaIntentService extends SpaceIntentBaseService {
 		switch (intent.type) {
 			case MediaIntentType.VOLUME_SET:
 				newVolume = intent.volume;
+				break;
+			case MediaIntentType.VOLUME_DELTA:
+				// Calculate average volume from successfully affected devices
+				if (volumeDeltaVolumes.length > 0) {
+					const sum = volumeDeltaVolumes.reduce((a, b) => a + b, 0);
+					newVolume = Math.round(sum / volumeDeltaVolumes.length);
+				}
 				break;
 			case MediaIntentType.MUTE:
 				isMuted = true;
@@ -936,22 +956,19 @@ export class MediaIntentService extends SpaceIntentBaseService {
 	}
 
 	/**
-	 * Build commands for a volume delta adjustment.
+	 * Calculate the new volume after a delta adjustment for a device.
+	 * Returns null if the device cannot be adjusted (no volume support or is off).
 	 */
-	private buildVolumeDeltaCommands(device: MediaDevice, delta: VolumeDelta, increase: boolean): IDevicePropertyData[] {
-		const commands: IDevicePropertyData[] = [];
-
-		// If device doesn't support volume, just ignore (no-op)
+	private calculateVolumeDelta(device: MediaDevice, delta: VolumeDelta, increase: boolean): number | null {
+		// If device doesn't support volume, return null
 		if (!device.volumeProperty) {
-			this.logger.debug(`Device does not support volume adjustment deviceId=${device.device.id}`);
-			return commands;
+			return null;
 		}
 
 		// Only adjust volume for devices that are currently ON when power-capable
 		const isPowerCapable = !!device.onProperty;
 		if (isPowerCapable && !this.getPropertyBooleanValue(device.onProperty)) {
-			this.logger.debug(`Skipping volume delta for OFF device deviceId=${device.device.id}`);
-			return commands;
+			return null;
 		}
 
 		// Get current volume value
@@ -963,6 +980,27 @@ export class MediaIntentService extends SpaceIntentBaseService {
 
 		// Clamp to [0, 100]
 		newVolume = this.clampValue(newVolume, 0, 100);
+
+		return newVolume;
+	}
+
+	/**
+	 * Build commands for a volume delta adjustment.
+	 */
+	private buildVolumeDeltaCommands(device: MediaDevice, delta: VolumeDelta, increase: boolean): IDevicePropertyData[] {
+		const commands: IDevicePropertyData[] = [];
+
+		const newVolume = this.calculateVolumeDelta(device, delta, increase);
+
+		// If device can't be adjusted, return empty commands
+		if (newVolume === null) {
+			if (!device.volumeProperty) {
+				this.logger.debug(`Device does not support volume adjustment deviceId=${device.device.id}`);
+			} else {
+				this.logger.debug(`Skipping volume delta for OFF device deviceId=${device.device.id}`);
+			}
+			return commands;
+		}
 
 		commands.push({
 			device: device.device,
