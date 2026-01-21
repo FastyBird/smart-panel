@@ -61,6 +61,20 @@
       },
       "smoothTransitions": {
         "title": "Smooth value transitions"
+      },
+      "connectionStateOnStart": {
+        "title": "Initial connection state",
+        "placeholder": "Choose the connection state to set on startup",
+        "validation": {
+          "required": "Please select initial connection state"
+        },
+        "options": {
+          "connected": "Connected",
+          "disconnected": "Disconnected",
+          "lost": "Lost",
+          "alert": "Alert",
+          "unknown": "Unknown"
+        }
       }
     }
   },

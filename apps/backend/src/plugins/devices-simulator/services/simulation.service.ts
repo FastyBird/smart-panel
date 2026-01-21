@@ -2,8 +2,9 @@ import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../../modules/config/services/config.service';
-import { DeviceCategory } from '../../../modules/devices/devices.constants';
+import { ConnectionState, DeviceCategory } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
+import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { getAllProperties } from '../../../modules/devices/utils/schema.utils';
 import {
@@ -58,6 +59,11 @@ export interface SimulationServiceConfig {
 	 * Default: true
 	 */
 	smoothTransitions: boolean;
+
+	/**
+	 * Optional connection state to apply to all simulator devices at service start
+	 */
+	connectionStateOnStart?: ConnectionState;
 }
 
 const DEFAULT_CONFIG: SimulationServiceConfig = {
@@ -93,6 +99,7 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy, IManage
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly devicesService: DevicesService,
+		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 	) {
 		this.registerSimulators();
@@ -138,6 +145,8 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy, IManage
 
 			try {
 				this.config = this.loadPluginConfig();
+
+				await this.applyInitialConnectionState();
 
 				if (this.config.updateOnStart) {
 					this.logger.log('Running initial simulation on startup...');
@@ -187,6 +196,11 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy, IManage
 			this.config = newConfig;
 
 			if (this.state === 'started') {
+				// If connection state setting changed, apply on-the-fly
+				if (this.config.connectionStateOnStart !== newConfig.connectionStateOnStart) {
+					await this.applyInitialConnectionState();
+				}
+
 				if (intervalChanged) {
 					this.stopAutoSimulation();
 					if (this.config.simulationInterval > 0) {
@@ -267,6 +281,7 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy, IManage
 				simulationInterval: pluginConfig.simulationInterval ?? DEFAULT_CONFIG.simulationInterval,
 				latitude: pluginConfig.latitude ?? DEFAULT_CONFIG.latitude,
 				smoothTransitions: pluginConfig.smoothTransitions ?? DEFAULT_CONFIG.smoothTransitions,
+				connectionStateOnStart: pluginConfig.connectionStateOnStart,
 			};
 		} catch (error) {
 			this.logger.warn('Failed to load plugin configuration, using defaults', { error: (error as Error).message });
@@ -528,5 +543,33 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy, IManage
 		const run = async () => fn();
 		this.startStopLock = this.startStopLock.then(run, run) as Promise<void>;
 		return this.startStopLock as unknown as Promise<T>;
+	}
+
+	private async applyInitialConnectionState(): Promise<void> {
+		if (!this.config.connectionStateOnStart) return;
+
+		const devices = await this.devicesService.findAll<SimulatorDeviceEntity>(DEVICES_SIMULATOR_TYPE);
+
+		if (!devices.length) {
+			this.logger.debug('No simulator devices found for initial connection state apply');
+			return;
+		}
+
+		this.logger.log(
+			`Setting initial connection state (${this.config.connectionStateOnStart}) for ${devices.length} simulator devices`,
+		);
+
+		for (const device of devices) {
+			try {
+				await this.deviceConnectivityService.setConnectionState(device.id, {
+					state: this.config.connectionStateOnStart,
+					reason: `Initial simulator state: ${this.config.connectionStateOnStart}`,
+				});
+			} catch (error) {
+				this.logger.warn(
+					`Failed to set connection state for simulator device ${device.id}: ${(error as Error).message}`,
+				);
+			}
+		}
 	}
 }

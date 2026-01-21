@@ -92,6 +92,25 @@
 				name="smoothTransitions"
 			/>
 		</el-form-item>
+
+		<el-form-item
+			:label="t('devicesSimulatorPlugin.fields.config.connectionStateOnStart.title')"
+			prop="connectionStateOnStart"
+			label-position="left"
+		>
+			<el-select
+				v-model="model.connectionStateOnStart"
+				name="connectionStateOnStart"
+				:placeholder="t('devicesSimulatorPlugin.fields.config.connectionStateOnStart.placeholder')"
+			>
+				<el-option
+					v-for="state in connectionStates"
+					:key="state.value"
+					:label="state.label"
+					:value="state.value"
+				/>
+			</el-select>
+		</el-form-item>
 	</el-form>
 </template>
 
@@ -99,7 +118,7 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElForm, ElFormItem, ElInputNumber, ElSwitch, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElInputNumber, ElSelect, ElOption, ElSwitch, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import type { ISimulatorConfigEditForm } from '../schemas/config.types';
@@ -134,6 +153,14 @@ const { formEl, model, formChanged, submit, formResult } = useConfigPluginEditFo
 	},
 });
 
+const connectionStates = [
+	{ value: 'connected', label: t('devicesSimulatorPlugin.fields.config.connectionStateOnStart.options.connected') },
+	{ value: 'disconnected', label: t('devicesSimulatorPlugin.fields.config.connectionStateOnStart.options.disconnected') },
+	{ value: 'lost', label: t('devicesSimulatorPlugin.fields.config.connectionStateOnStart.options.lost') },
+	{ value: 'alert', label: t('devicesSimulatorPlugin.fields.config.connectionStateOnStart.options.alert') },
+	{ value: 'unknown', label: t('devicesSimulatorPlugin.fields.config.connectionStateOnStart.options.unknown') },
+];
+
 const rules = reactive<FormRules<ISimulatorConfigEditForm>>({
 	simulationInterval: [
 		{ required: true, message: t('devicesSimulatorPlugin.fields.config.simulationInterval.validation.required'), trigger: 'change' },
@@ -152,6 +179,9 @@ const rules = reactive<FormRules<ISimulatorConfigEditForm>>({
 			validator: (rule, value) => typeof value === 'number' && value >= -90 && value <= 90,
 			trigger: 'change',
 		},
+	],
+	connectionStateOnStart: [
+		{ required: true, message: t('devicesSimulatorPlugin.fields.config.connectionStateOnStart.validation.required'), trigger: 'change' },
 	],
 });
 

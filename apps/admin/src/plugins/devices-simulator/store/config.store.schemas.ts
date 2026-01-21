@@ -1,6 +1,7 @@
 import { type ZodType, z } from 'zod';
 
 import { ConfigPluginResSchema, ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../modules/config/store/config-plugins.store.schemas';
+import { ConnectionState } from '../../../openapi.constants';
 import { DEVICES_SIMULATOR_PLUGIN_NAME } from '../devices-simulator.constants';
 
 type ApiUpdateConfig = {
@@ -10,6 +11,7 @@ type ApiUpdateConfig = {
 	simulation_interval?: number;
 	latitude?: number;
 	smooth_transitions?: boolean;
+	connection_state_on_start?: ConnectionState;
 };
 
 type ApiConfig = {
@@ -19,6 +21,7 @@ type ApiConfig = {
 	simulation_interval: number;
 	latitude: number;
 	smooth_transitions: boolean;
+	connection_state_on_start?: ConnectionState;
 };
 
 export const SimulatorConfigSchema = ConfigPluginSchema.extend({
@@ -26,6 +29,7 @@ export const SimulatorConfigSchema = ConfigPluginSchema.extend({
 	simulationInterval: z.number().min(0).max(3_600_000),
 	latitude: z.number().min(-90).max(90),
 	smoothTransitions: z.boolean(),
+	connectionStateOnStart: z.enum(['connected', 'disconnected', 'lost', 'alert', 'unknown']).optional(),
 });
 
 // BACKEND API
@@ -46,6 +50,7 @@ export const SimulatorConfigUpdateReqSchema: ZodType<ApiUpdateConfig> = ConfigPl
 			.max(90)
 			.optional(),
 		smooth_transitions: z.boolean().optional(),
+		connection_state_on_start: z.enum(['connected', 'disconnected', 'lost', 'alert', 'unknown']).optional(),
 	})
 );
 
@@ -56,5 +61,6 @@ export const SimulatorConfigResSchema: ZodType<ApiConfig> = ConfigPluginResSchem
 		simulation_interval: z.number(),
 		latitude: z.number(),
 		smooth_transitions: z.boolean(),
+		connection_state_on_start: z.enum(['connected', 'disconnected', 'lost', 'alert', 'unknown']).optional(),
 	})
 );

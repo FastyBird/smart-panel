@@ -1,9 +1,10 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsBoolean, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdatePluginConfigDto } from '../../../modules/config/dto/config.dto';
+import { ConnectionState } from '../../../modules/devices/devices.constants';
 import { DEVICES_SIMULATOR_PLUGIN_NAME } from '../devices-simulator.constants';
 
 @ApiSchema({ name: 'DevicesSimulatorPluginUpdateConfig' })
@@ -78,4 +79,22 @@ export class SimulatorUpdatePluginConfigDto extends UpdatePluginConfigDto {
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"smooth_transitions","reason":"Must be a boolean."}]' })
 	smoothTransitions?: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Initial connection state for simulator devices when the service starts',
+		name: 'connection_state_on_start',
+		enum: ConnectionState,
+		example: ConnectionState.CONNECTED,
+	})
+	@Expose({ name: 'connection_state_on_start' })
+	@Transform(
+		({ obj }: { obj: { connection_state_on_start?: ConnectionState; connectionStateOnStart?: ConnectionState } }) =>
+			obj.connection_state_on_start ?? obj.connectionStateOnStart,
+		{ toClassOnly: true },
+	)
+	@IsOptional()
+	@IsEnum(ConnectionState, {
+		message: '[{"field":"connection_state_on_start","reason":"Must be a valid connection state."}]',
+	})
+	connectionStateOnStart?: ConnectionState;
 }
