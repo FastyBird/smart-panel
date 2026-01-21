@@ -91,7 +91,7 @@ export class MappingLoaderService implements OnModuleInit {
 
 	private resolvedMappings: ResolvedMapping[] = [];
 	private loadedSources: MappingLoadResult[] = [];
-	
+
 	// Cache for resolved mappings by context (keyed by context hash)
 	private readonly mappingCache: Map<string, ResolvedMapping | undefined> = new Map();
 
@@ -204,7 +204,7 @@ export class MappingLoaderService implements OnModuleInit {
 	private validatePath(allowedBasePath: string, filePath: string): boolean {
 		const normalizedBase = normalize(resolve(allowedBasePath));
 		const normalizedPath = normalize(resolve(filePath));
-		
+
 		// Ensure the resolved path starts with the base path
 		return normalizedPath.startsWith(normalizedBase);
 	}
@@ -321,10 +321,10 @@ export class MappingLoaderService implements OnModuleInit {
 			for (const mapping of config.mappings) {
 				try {
 					const resolved = this.resolveMapping(mapping, fileInfo.priority);
-					
+
 					// Validate referenced transformers and derivations
 					this.validateMapping(resolved, warnings);
-					
+
 					resolvedMappings.push(resolved);
 				} catch (error) {
 					warnings.push(
@@ -334,10 +334,10 @@ export class MappingLoaderService implements OnModuleInit {
 			}
 
 			this.logger.log(`Loaded ${resolvedMappings.length} mappings from ${filePath}`, {
-			mappingsCount: resolvedMappings.length,
-			source: filePath,
-			warnings: warnings.length > 0 ? warnings.length : undefined,
-		});
+				mappingsCount: resolvedMappings.length,
+				source: filePath,
+				warnings: warnings.length > 0 ? warnings.length : undefined,
+			});
 
 			return {
 				success: true,
@@ -583,7 +583,7 @@ export class MappingLoaderService implements OnModuleInit {
 	 */
 	findMatchingMapping(context: MappingContext): ResolvedMapping | undefined {
 		const cacheKey = this.getCacheKey(context);
-		
+
 		// Check cache first
 		if (this.mappingCache.has(cacheKey)) {
 			const cached = this.mappingCache.get(cacheKey);
@@ -626,7 +626,7 @@ export class MappingLoaderService implements OnModuleInit {
 
 		// Cache the result (even if undefined - avoids repeated lookups)
 		this.mappingCache.set(cacheKey, result);
-		
+
 		return result;
 	}
 
@@ -820,7 +820,7 @@ export class MappingLoaderService implements OnModuleInit {
 							`Mapping '${mapping.name}' channel '${channel.identifier}' derived property '${derived.identifier}' references unknown derivation '${derived.derivationName}'`,
 						);
 					}
-					
+
 					if (!derived.inlineDerivation && !derived.derivationName) {
 						warnings.push(
 							`Mapping '${mapping.name}' channel '${channel.identifier}' derived property '${derived.identifier}' has no derivation rule (neither inline nor named reference)`,

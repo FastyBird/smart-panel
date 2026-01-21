@@ -177,7 +177,7 @@ export class MapTransformer extends BaseTransformer {
 
 /**
  * Formula transformer - JavaScript expressions
- * 
+ *
  * SECURITY NOTE: Currently uses `new Function()` which allows arbitrary code execution.
  * For production use, consider replacing with a sandboxed expression evaluator like 'expr-eval'.
  * This implementation includes basic validation to prevent obvious security issues.
@@ -253,7 +253,9 @@ export class FormulaTransformer extends BaseTransformer {
 			}
 		}
 		if (this.readFormula) {
-			console.warn(`Formula transformer: Read formula not compiled, returning original value. Formula: ${this.readFormula}`);
+			console.warn(
+				`Formula transformer: Read formula not compiled, returning original value. Formula: ${this.readFormula}`,
+			);
 		}
 		return value;
 	}
@@ -269,7 +271,9 @@ export class FormulaTransformer extends BaseTransformer {
 			}
 		}
 		if (this.writeFormula) {
-			console.warn(`Formula transformer: Write formula not compiled, returning original value. Formula: ${this.writeFormula}`);
+			console.warn(
+				`Formula transformer: Write formula not compiled, returning original value. Formula: ${this.writeFormula}`,
+			);
 		}
 		return value;
 	}

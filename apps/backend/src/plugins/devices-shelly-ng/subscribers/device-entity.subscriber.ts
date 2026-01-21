@@ -28,11 +28,11 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 		return ShellyNgDeviceEntity;
 	}
 
-	async afterInsert(event: InsertEvent<ShellyNgDeviceEntity>): Promise<void> {
+	afterInsert(event: InsertEvent<ShellyNgDeviceEntity>): void {
 		this.scheduleProvision(event.entity.id, event.queryRunner?.isTransactionActive ?? false);
 	}
 
-	async afterUpdate(event: UpdateEvent<ShellyNgDeviceEntity>): Promise<void> {
+	afterUpdate(event: UpdateEvent<ShellyNgDeviceEntity>): void {
 		let needsResync = false;
 
 		for (const updatedColumn of event.updatedColumns) {

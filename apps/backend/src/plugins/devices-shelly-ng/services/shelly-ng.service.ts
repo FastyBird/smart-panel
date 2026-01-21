@@ -181,7 +181,7 @@ export class ShellyNgService implements IManagedPluginService {
 	 * Debounced restart to avoid rapid stop/start loops that disconnect devices.
 	 */
 	async requestRestart(delayMs: number = 750): Promise<void> {
-		if (this.pendingRestart) {
+		if (this.pendingRestart !== null) {
 			return this.pendingRestart;
 		}
 
@@ -190,14 +190,17 @@ export class ShellyNgService implements IManagedPluginService {
 				clearTimeout(this.restartTimer);
 			}
 
-			this.restartTimer = setTimeout(async () => {
+			this.restartTimer = setTimeout(() => {
 				this.restartTimer = null;
-				try {
-					await this.restart();
-				} finally {
-					this.pendingRestart = null;
-					resolve();
-				}
+
+				void this.restart()
+					.catch((): void => {
+						// restart errors are logged inside restart(); swallow to resolve promise
+					})
+					.finally(() => {
+						this.pendingRestart = null;
+						resolve();
+					});
 			}, delayMs);
 		});
 

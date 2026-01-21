@@ -1,13 +1,15 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { mkdirSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
+import { join } from 'path';
+
+import { Test, TestingModule } from '@nestjs/testing';
 
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ComponentType } from '../devices-shelly-ng.constants';
-import { TransformerRegistry } from './transformers';
+
 import { MappingLoaderService } from './mapping-loader.service';
-import { MappingContext, ResolvedMapping } from './mapping.types';
+import { MappingContext } from './mapping.types';
+import { TransformerRegistry } from './transformers';
 
 describe('MappingLoaderService Integration Tests', () => {
 	let service: MappingLoaderService;
@@ -27,7 +29,7 @@ describe('MappingLoaderService Integration Tests', () => {
 				factory: (transformerRegistry: TransformerRegistry) => {
 					const service = new MappingLoaderService(transformerRegistry);
 					// Override paths to use temp directory
-					(service as any).userMappingsPath = tempDir;
+					Reflect.set(service as object, 'userMappingsPath', tempDir);
 					return service;
 				},
 				inject: [TransformerRegistry],

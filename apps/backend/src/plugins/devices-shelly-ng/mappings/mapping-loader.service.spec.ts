@@ -1,22 +1,24 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
+import { ChannelCategory, DeviceCategory } from '../../../modules/devices/devices.constants';
 import { ComponentType } from '../devices-shelly-ng.constants';
-import { TransformerRegistry } from './transformers';
+
 import { MappingLoaderService } from './mapping-loader.service';
-import { MappingContext, ResolvedMapping } from './mapping.types';
+import { MappingContext } from './mapping.types';
+import { TransformerRegistry } from './transformers';
 
 describe('MappingLoaderService', () => {
 	let service: MappingLoaderService;
-	let transformerRegistry: TransformerRegistry;
 
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [TransformerRegistry, MappingLoaderService],
 		}).compile();
 
-		transformerRegistry = module.get<TransformerRegistry>(TransformerRegistry);
 		service = module.get<MappingLoaderService>(MappingLoaderService);
+
+		// Ensure mappings & derivations are loaded for tests
+		service.onModuleInit();
 	});
 
 	it('should be defined', () => {
@@ -24,7 +26,7 @@ describe('MappingLoaderService', () => {
 	});
 
 	describe('findMatchingMapping', () => {
-		it('should return undefined when no mapping matches', () => {
+		it('should return fallback mapping when available', () => {
 			const context: MappingContext = {
 				componentType: ComponentType.SWITCH,
 				componentKey: 0,
@@ -32,7 +34,8 @@ describe('MappingLoaderService', () => {
 			};
 
 			const result = service.findMatchingMapping(context);
-			expect(result).toBeUndefined();
+			expect(result).toBeDefined();
+			expect(result?.name).toContain('switch');
 		});
 
 		it('should match by component type', () => {
@@ -68,12 +71,12 @@ describe('MappingLoaderService', () => {
 
 			// First lookup
 			const result1 = service.findMatchingMapping(context);
-			
+
 			// Second lookup should use cache
 			const result2 = service.findMatchingMapping(context);
-			
+
 			expect(result1).toBe(result2);
-			
+
 			const stats = service.getCacheStats();
 			expect(stats.size).toBeGreaterThan(0);
 		});
@@ -142,7 +145,6 @@ describe('MappingLoaderService', () => {
 
 			// Populate cache
 			service.findMatchingMapping(context);
-			const sizeBefore = service.getCacheStats().size;
 
 			// Reload should clear cache
 			service.reload();

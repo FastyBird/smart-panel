@@ -22,9 +22,6 @@ import { ChannelsService } from '../../../modules/devices/services/channels.serv
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { ComponentType, DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
-import { PropertyMappingStorageService, TransformerRegistry } from '../mappings';
-import { ITransformer } from '../mappings/transformers/transformer.types';
-import { createInlineTransformer } from '../mappings/transformers/transformers';
 import {
 	DevicesShellyNgException,
 	DevicesShellyNgNotFoundException,
@@ -37,6 +34,9 @@ import {
 	ShellyNgChannelPropertyEntity,
 	ShellyNgDeviceEntity,
 } from '../entities/devices-shelly-ng.entity';
+import { PropertyMappingStorageService, TransformerRegistry } from '../mappings';
+import { ITransformer } from '../mappings/transformers/transformer.types';
+import { createInlineTransformer } from '../mappings/transformers/transformers';
 import { CoerceNumberOpts, rssiToQuality, toEnergy } from '../utils/transform.utils';
 
 import { ShellyDeviceDelegate } from './shelly-device.delegate';
@@ -76,6 +76,8 @@ export class DelegatesManagerService {
 	private readonly pendingWrites: Map<string, NodeJS.Timeout> = new Map();
 
 	private readonly propertiesMap: Map<string, Set<string>> = new Map();
+
+	private readonly delegateDeviceIds: Map<string, string> = new Map();
 
 	constructor(
 		private readonly devicesService: DevicesService,
@@ -132,12 +134,14 @@ export class DelegatesManagerService {
 					shelly.id,
 					DEVICES_SHELLY_NG_TYPE,
 				);
-				
+
 				if (device === null) {
 					throw error; // Re-throw if device still doesn't exist
 				}
 			}
 		}
+
+		this.delegateDeviceIds.set(delegate.id, device.id);
 
 		const deviceInformation = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
 			'category',
@@ -229,12 +233,12 @@ export class DelegatesManagerService {
 					'on',
 					switcher.id,
 				);
-				
+
 				if (switcherOnAlt === null) {
 					// Property may not be created yet - this is expected during device initialization
 					continue;
 				}
-				
+
 				// Use alternative property if found
 				switcherOn = switcherOnAlt;
 			}
@@ -311,7 +315,6 @@ export class DelegatesManagerService {
 					// Channel may not be created yet - this is expected during device initialization
 					// Continue without power monitoring rather than failing
 				} else {
-
 					const power = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
 						'identifier',
 						'apower',
@@ -340,7 +343,9 @@ export class DelegatesManagerService {
 								await this.setDefaultPropertyValue(device.id, voltage, comp.voltage);
 
 								this.changeHandlers.set(`${delegate.id}|${comp.key}|voltage`, (val: CharacteristicValue): void => {
-									this.handleNumericChange(comp.key, 'voltage', voltage.id, val, (n) => this.handleChange(voltage, n, false));
+									this.handleNumericChange(comp.key, 'voltage', voltage.id, val, (n) =>
+										this.handleChange(voltage, n, false),
+									);
 								});
 							}
 						}
@@ -358,7 +363,9 @@ export class DelegatesManagerService {
 								await this.setDefaultPropertyValue(device.id, current, comp.current);
 
 								this.changeHandlers.set(`${delegate.id}|${comp.key}|current`, (val: CharacteristicValue): void => {
-									this.handleNumericChange(comp.key, 'current', current.id, val, (n) => this.handleChange(current, n, false));
+									this.handleNumericChange(comp.key, 'current', current.id, val, (n) =>
+										this.handleChange(current, n, false),
+									);
 								});
 							}
 						}
@@ -725,61 +732,61 @@ export class DelegatesManagerService {
 					});
 
 					this.setPropertiesHandlers.set(
-					`${delegate.id}|${colorRed.id}`,
-					async (val: string | number | boolean): Promise<boolean> => {
-						const n = coerceNumberSafe(val);
+						`${delegate.id}|${colorRed.id}`,
+						async (val: string | number | boolean): Promise<boolean> => {
+							const n = coerceNumberSafe(val);
 
-						if (n === null || Number.isNaN(n)) {
-							this.logger.warn(
-								`Dropping invalid numeric update for ${comp.key}.rgb:red -> ${String(val)} (property=${colorRed.id})`,
-							);
+							if (n === null || Number.isNaN(n)) {
+								this.logger.warn(
+									`Dropping invalid numeric update for ${comp.key}.rgb:red -> ${String(val)} (property=${colorRed.id})`,
+								);
 
-							return;
-						}
+								return;
+							}
 
-						await comp.set(true, comp.brightness, [Math.round(clampNumber(n, 0, 255)), comp.rgb[1], comp.rgb[2]]);
+							await comp.set(true, comp.brightness, [Math.round(clampNumber(n, 0, 255)), comp.rgb[1], comp.rgb[2]]);
 
-						return true;
-					},
-				);
+							return true;
+						},
+					);
 
-				this.setPropertiesHandlers.set(
-					`${delegate.id}|${colorGreen.id}`,
-					async (val: string | number | boolean): Promise<boolean> => {
-						const n = coerceNumberSafe(val);
+					this.setPropertiesHandlers.set(
+						`${delegate.id}|${colorGreen.id}`,
+						async (val: string | number | boolean): Promise<boolean> => {
+							const n = coerceNumberSafe(val);
 
-						if (n === null || Number.isNaN(n)) {
-							this.logger.warn(
-								`Dropping invalid numeric update for ${comp.key}.rgb:green -> ${String(val)} (property=${colorGreen.id})`,
-							);
+							if (n === null || Number.isNaN(n)) {
+								this.logger.warn(
+									`Dropping invalid numeric update for ${comp.key}.rgb:green -> ${String(val)} (property=${colorGreen.id})`,
+								);
 
-							return;
-						}
+								return;
+							}
 
-						await comp.set(true, comp.brightness, [comp.rgb[0], Math.round(clampNumber(n, 0, 255)), comp.rgb[2]]);
+							await comp.set(true, comp.brightness, [comp.rgb[0], Math.round(clampNumber(n, 0, 255)), comp.rgb[2]]);
 
-						return true;
-					},
-				);
+							return true;
+						},
+					);
 
-				this.setPropertiesHandlers.set(
-					`${delegate.id}|${colorBlue.id}`,
-					async (val: string | number | boolean): Promise<boolean> => {
-						const n = coerceNumberSafe(val);
+					this.setPropertiesHandlers.set(
+						`${delegate.id}|${colorBlue.id}`,
+						async (val: string | number | boolean): Promise<boolean> => {
+							const n = coerceNumberSafe(val);
 
-						if (n === null || Number.isNaN(n)) {
-							this.logger.warn(
-								`Dropping invalid numeric update for ${comp.key}.rgb:blue -> ${String(val)} (property=${colorBlue.id})`,
-							);
+							if (n === null || Number.isNaN(n)) {
+								this.logger.warn(
+									`Dropping invalid numeric update for ${comp.key}.rgb:blue -> ${String(val)} (property=${colorBlue.id})`,
+								);
 
-							return;
-						}
+								return;
+							}
 
-						await comp.set(true, comp.brightness, [comp.rgb[0], comp.rgb[1], Math.round(clampNumber(n, 0, 255))]);
+							await comp.set(true, comp.brightness, [comp.rgb[0], comp.rgb[1], Math.round(clampNumber(n, 0, 255))]);
 
-						return true;
-					},
-				);
+							return true;
+						},
+					);
 				}
 			}
 
@@ -1583,6 +1590,18 @@ export class DelegatesManagerService {
 			return;
 		}
 
+		const deviceDbId = this.delegateDeviceIds.get(deviceId) ?? deviceId;
+
+		void this.deviceConnectivityService
+			.setConnectionState(deviceDbId, { state: ConnectionState.UNKNOWN })
+			.catch((err: Error): void => {
+				this.logger.warn(`Failed to mark device=${delegate.id} as disconnected while removing delegate`, {
+					resource: delegate.id,
+					message: err.message,
+					stack: err.stack,
+				});
+			});
+
 		const valueHandler = this.delegateValueHandlers.get(delegate.id);
 
 		if (valueHandler) {
@@ -1622,6 +1641,8 @@ export class DelegatesManagerService {
 			this.propertiesMap.delete(deviceId);
 		}
 
+		this.delegateDeviceIds.delete(deviceId);
+
 		this.delegates.delete(deviceId);
 
 		this.logger.log(`Detached Shelly device=${deviceId}`, { resource: deviceId });
@@ -1647,11 +1668,10 @@ export class DelegatesManagerService {
 
 			if (propertyMapping) {
 				transformedValue = this.applyTransformer(propertyMapping, row.value, 'write') as string | number | boolean;
-				
-				this.logger.debug(
-					`Applied transformer for property=${row.property.id}: ${row.value} -> ${transformedValue}`,
-					{ resource: device.id },
-				);
+
+				this.logger.debug(`Applied transformer for property=${row.property.id}: ${row.value} -> ${transformedValue}`, {
+					resource: device.id,
+				});
 			}
 
 			return { property: row.property, val: transformedValue };
@@ -1682,11 +1702,10 @@ export class DelegatesManagerService {
 
 		if (propertyMapping) {
 			transformedValue = this.applyTransformer(propertyMapping, value, 'write') as string | number | boolean;
-			
-			this.logger.debug(
-				`Applied transformer for property=${property.id}: ${value} -> ${transformedValue}`,
-				{ resource: device.id },
-			);
+
+			this.logger.debug(`Applied transformer for property=${property.id}: ${value} -> ${transformedValue}`, {
+				resource: device.id,
+			});
 		}
 
 		return handler(transformedValue);

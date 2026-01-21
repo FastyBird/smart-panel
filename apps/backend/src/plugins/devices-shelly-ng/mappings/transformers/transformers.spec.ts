@@ -1,4 +1,12 @@
 import {
+	BooleanTransformerDefinition,
+	ClampTransformerDefinition,
+	FormulaTransformerDefinition,
+	MapTransformerDefinition,
+	RoundTransformerDefinition,
+	ScaleTransformerDefinition,
+} from './transformer.types';
+import {
 	BooleanTransformer,
 	ClampTransformer,
 	FormulaTransformer,
@@ -7,14 +15,6 @@ import {
 	ScaleTransformer,
 	createTransformer,
 } from './transformers';
-import {
-	BooleanTransformerDefinition,
-	ClampTransformerDefinition,
-	FormulaTransformerDefinition,
-	MapTransformerDefinition,
-	RoundTransformerDefinition,
-	ScaleTransformerDefinition,
-} from './transformer.types';
 
 describe('ScaleTransformer', () => {
 	test('linear interpolation from 0-100 to 0-255', () => {

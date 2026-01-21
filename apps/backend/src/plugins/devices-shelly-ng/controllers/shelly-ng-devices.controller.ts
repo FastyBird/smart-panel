@@ -160,7 +160,7 @@ export class ShellyNgDevicesController {
 	)
 	@ApiInternalServerErrorResponse('Internal server error during mapping reload')
 	@Post('mappings/reload')
-	async reloadMappings(): Promise<ShellyNgMappingReloadResponseModel> {
+	reloadMappings(): ShellyNgMappingReloadResponseModel {
 		try {
 			this.mappingLoaderService.reload();
 			const cacheStats = this.mappingLoaderService.getCacheStats();

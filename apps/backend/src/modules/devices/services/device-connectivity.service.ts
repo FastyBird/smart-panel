@@ -44,7 +44,7 @@ export class DeviceConnectivityService {
 		try {
 			channel = await this.findOrCreateConnectionChannel(device, true);
 			property = await this.findOrCreateConnectionProperty(channel, true);
-		} catch (error) {
+		} catch {
 			// Channel or property not found/created - this can happen during initialization
 			// Just skip setting connection state, it will be set later when channels are created
 			return;
@@ -67,7 +67,7 @@ export class DeviceConnectivityService {
 				});
 
 				changed = true;
-			} catch (error) {
+			} catch {
 				// Property may have been deleted or doesn't exist - skip
 				return;
 			}
@@ -81,7 +81,7 @@ export class DeviceConnectivityService {
 
 				changed = true;
 			}
-		} catch (error) {
+		} catch {
 			// Connection state service error - skip
 			return;
 		}
@@ -103,7 +103,7 @@ export class DeviceConnectivityService {
 					category: ChannelCategory.DEVICE_INFORMATION,
 					name: 'Device Information',
 				});
-			} catch (error) {
+			} catch {
 				// Handle race condition: channel may have been created by another process
 				// Retry finding the channel
 				channel = await this.channelsService.findOneBy('category', ChannelCategory.DEVICE_INFORMATION, device.id);
@@ -145,7 +145,7 @@ export class DeviceConnectivityService {
 						ConnectionState.UNKNOWN,
 					],
 				});
-			} catch (error) {
+			} catch {
 				// Handle race condition: property may have been created by another process
 				// Retry finding the property
 				property = await this.channelsPropertiesService.findOneBy('category', PropertyCategory.STATUS, channel.id);

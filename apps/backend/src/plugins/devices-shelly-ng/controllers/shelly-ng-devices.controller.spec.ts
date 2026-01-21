@@ -12,6 +12,7 @@ import { FetchError } from 'node-fetch';
 import { NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { MappingLoaderService } from '../mappings';
 import { DeviceManagerService } from '../services/device-manager.service';
 
 import { ShellyNgDevicesController } from './shelly-ng-devices.controller';
@@ -48,7 +49,16 @@ describe('ShellyNgDevicesController', () => {
 
 		const module: TestingModule = await Test.createTestingModule({
 			controllers: [ShellyNgDevicesController],
-			providers: [{ provide: DeviceManagerService, useValue: deviceManagerMock }],
+			providers: [
+				{ provide: DeviceManagerService, useValue: deviceManagerMock },
+				{
+					provide: MappingLoaderService,
+					useValue: {
+						reload: jest.fn(),
+						getCacheStats: jest.fn(() => ({ size: 0, mappingsLoaded: 0 })),
+					},
+				},
+			],
 		}).compile();
 
 		controller = module.get(ShellyNgDevicesController);
