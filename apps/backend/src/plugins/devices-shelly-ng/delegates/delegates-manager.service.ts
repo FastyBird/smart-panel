@@ -1590,25 +1590,29 @@ export class DelegatesManagerService {
 			return;
 		}
 
-		const deviceDbId = this.delegateDeviceIds.get(deviceId) ?? deviceId;
-
-		void this.deviceConnectivityService
-			.setConnectionState(deviceDbId, { state: ConnectionState.UNKNOWN })
-			.catch((err: Error): void => {
-				this.logger.warn(`Failed to mark device=${delegate.id} as disconnected while removing delegate`, {
-					resource: delegate.id,
-					message: err.message,
-					stack: err.stack,
-				});
-			});
-
 		const valueHandler = this.delegateValueHandlers.get(delegate.id);
+		const connectionHandler = this.delegateConnectionHandlers.get(delegate.id);
+
+		if (connectionHandler) {
+			// Mark device as unknown before detaching listeners so UI reflects removal
+			connectionHandler(null);
+		} else {
+			const deviceDbId = this.delegateDeviceIds.get(deviceId) ?? deviceId;
+
+			void this.deviceConnectivityService
+				.setConnectionState(deviceDbId, { state: ConnectionState.UNKNOWN })
+				.catch((err: Error): void => {
+					this.logger.warn(`Failed to mark device=${delegate.id} as disconnected while removing delegate`, {
+						resource: delegate.id,
+						message: err.message,
+						stack: err.stack,
+					});
+				});
+		}
 
 		if (valueHandler) {
 			delegate.off('value', valueHandler);
 		}
-
-		const connectionHandler = this.delegateConnectionHandlers.get(delegate.id);
 
 		if (connectionHandler) {
 			delegate.off('connected', connectionHandler);
