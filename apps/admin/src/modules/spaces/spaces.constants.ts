@@ -493,6 +493,11 @@ export const MEDIA_DEVICE_CATEGORIES = [
 	DevicesModuleDeviceCategory.media,
 	DevicesModuleDeviceCategory.speaker,
 	DevicesModuleDeviceCategory.television,
+	DevicesModuleDeviceCategory.av_receiver,
+	DevicesModuleDeviceCategory.set_top_box,
+	DevicesModuleDeviceCategory.game_console,
+	DevicesModuleDeviceCategory.projector,
+	DevicesModuleDeviceCategory.streaming_service,
 ] as const;
 
 // Media role ordering for consistent UI presentation
