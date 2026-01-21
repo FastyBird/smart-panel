@@ -453,6 +453,8 @@ export class SpaceMediaStateService {
 			modeConfidence: 'none',
 			modeMatchPercentage: null,
 			lastAppliedMode: null,
+			lastAppliedVolume: null,
+			lastAppliedMuted: null,
 			lastAppliedAt: null,
 			totalDevices: 0,
 			devicesOn: 0,
