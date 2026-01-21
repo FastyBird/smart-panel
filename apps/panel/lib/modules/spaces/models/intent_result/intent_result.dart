@@ -77,6 +77,36 @@ class CoversIntentResult {
   }
 }
 
+/// Result of a media intent execution
+class MediaIntentResult {
+  final bool success;
+  final int affectedDevices;
+  final int failedDevices;
+  final int? skippedDevices;
+  final int? newVolume;
+  final bool? isMuted;
+
+  MediaIntentResult({
+    required this.success,
+    required this.affectedDevices,
+    required this.failedDevices,
+    this.skippedDevices,
+    this.newVolume,
+    this.isMuted,
+  });
+
+  factory MediaIntentResult.fromJson(Map<String, dynamic> json) {
+    return MediaIntentResult(
+      success: json['success'] as bool? ?? false,
+      affectedDevices: json['affected_devices'] as int? ?? 0,
+      failedDevices: json['failed_devices'] as int? ?? 0,
+      skippedDevices: json['skipped_devices'] as int?,
+      newVolume: (json['new_volume'] as num?)?.toInt(),
+      isMuted: json['is_muted'] as bool?,
+    );
+  }
+}
+
 /// Result of a suggestion feedback
 class SuggestionFeedbackResult {
   final bool success;

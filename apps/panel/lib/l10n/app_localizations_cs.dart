@@ -1088,6 +1088,84 @@ class AppLocalizationsCs extends AppLocalizations {
   String get domain_media => 'Média';
 
   @override
+  String media_devices_summary(Object count) {
+    return '$count zařízení';
+  }
+
+  @override
+  String media_devices_summary_on(Object count, Object on) {
+    return '$count zařízení • $on zapnuto';
+  }
+
+  @override
+  String get media_modes_title => 'Režimy';
+
+  @override
+  String get media_action_power_on => 'Zapnout';
+
+  @override
+  String get media_action_power_off => 'Vypnout';
+
+  @override
+  String get media_action_mute => 'Ztlumit';
+
+  @override
+  String get media_action_unmute => 'Zrušit ztlumení';
+
+  @override
+  String get media_mode_off => 'Vypnuto';
+
+  @override
+  String get media_mode_background => 'Pozadí';
+
+  @override
+  String get media_mode_focused => 'Soustředění';
+
+  @override
+  String get media_mode_party => 'Párty';
+
+  @override
+  String get media_roles_title => 'Role';
+
+  @override
+  String media_role_summary(Object on, Object total) {
+    return '$on z $total zapnuto';
+  }
+
+  @override
+  String get media_roles_unassigned => 'Nepřiřazená zařízení';
+
+  @override
+  String get media_role_primary => 'Primární';
+
+  @override
+  String get media_role_secondary => 'Sekundární';
+
+  @override
+  String get media_role_background => 'Pozadí';
+
+  @override
+  String get media_role_gaming => 'Hraní';
+
+  @override
+  String get media_role_hidden => 'Skryté';
+
+  @override
+  String get media_targets_title => 'Zařízení';
+
+  @override
+  String get media_capability_power => 'Napájení';
+
+  @override
+  String get media_capability_volume => 'Hlasitost';
+
+  @override
+  String get media_capability_mute => 'Ztlumení';
+
+  @override
+  String get media_capability_none => 'Bez schopností';
+
+  @override
   String get domain_sensors => 'Senzory';
 
   @override

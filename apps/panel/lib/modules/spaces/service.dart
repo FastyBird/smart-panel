@@ -3,22 +3,26 @@ import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_type.d
 import 'package:fastybird_smart_panel/modules/spaces/mappers/climate_target.dart';
 import 'package:fastybird_smart_panel/modules/spaces/mappers/covers_target.dart';
 import 'package:fastybird_smart_panel/modules/spaces/mappers/light_target.dart';
+import 'package:fastybird_smart_panel/modules/spaces/mappers/media_target.dart';
 import 'package:fastybird_smart_panel/modules/spaces/mappers/space.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/covers_state/covers_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/intent_result/intent_result.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/media_state/media_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/suggestion/suggestion.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/undo/undo_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/climate_targets.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/covers_targets.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/intent_types.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/light_targets.dart';
+import 'package:fastybird_smart_panel/modules/spaces/repositories/media_targets.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/space_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/spaces.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/climate_targets/view.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/covers_targets/view.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/light_targets/view.dart';
+import 'package:fastybird_smart_panel/modules/spaces/views/media_targets/view.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/spaces/view.dart';
 import 'package:flutter/foundation.dart';
 
@@ -58,12 +62,14 @@ class SpacesService extends ChangeNotifier {
   final SpacesRepository _spacesRepository;
   final LightTargetsRepository _lightTargetsRepository;
   final ClimateTargetsRepository _climateTargetsRepository;
+  final MediaTargetsRepository _mediaTargetsRepository;
   final CoversTargetsRepository _coversTargetsRepository;
   final SpaceStateRepository _spaceStateRepository;
 
   Map<String, SpaceView> _spaces = {};
   Map<String, LightTargetView> _lightTargets = {};
   Map<String, ClimateTargetView> _climateTargets = {};
+  Map<String, MediaTargetView> _mediaTargets = {};
   Map<String, CoversTargetView> _coversTargets = {};
 
   /// Creates a new [SpacesService] with the required repositories.
@@ -71,11 +77,13 @@ class SpacesService extends ChangeNotifier {
     required SpacesRepository spacesRepository,
     required LightTargetsRepository lightTargetsRepository,
     required ClimateTargetsRepository climateTargetsRepository,
+    required MediaTargetsRepository mediaTargetsRepository,
     required CoversTargetsRepository coversTargetsRepository,
     required SpaceStateRepository spaceStateRepository,
   })  : _spacesRepository = spacesRepository,
         _lightTargetsRepository = lightTargetsRepository,
         _climateTargetsRepository = climateTargetsRepository,
+        _mediaTargetsRepository = mediaTargetsRepository,
         _coversTargetsRepository = coversTargetsRepository,
         _spaceStateRepository = spaceStateRepository;
 
@@ -88,6 +96,7 @@ class SpacesService extends ChangeNotifier {
     _spacesRepository.addListener(_updateData);
     _lightTargetsRepository.addListener(_updateData);
     _climateTargetsRepository.addListener(_updateData);
+    _mediaTargetsRepository.addListener(_updateData);
     _coversTargetsRepository.addListener(_updateData);
     _spaceStateRepository.addListener(_onStateChanged);
 
@@ -191,6 +200,19 @@ class SpacesService extends ChangeNotifier {
     return _climateTargets[id];
   }
 
+  /// Get media targets for a specific space
+  List<MediaTargetView> getMediaTargetsForSpace(String spaceId) {
+    return _mediaTargets.values
+        .where((t) => t.spaceId == spaceId)
+        .toList()
+      ..sort((a, b) => a.priority.compareTo(b.priority));
+  }
+
+  /// Get a specific media target by ID
+  MediaTargetView? getMediaTarget(String id) {
+    return _mediaTargets[id];
+  }
+
   /// Fetch climate targets for a specific space
   Future<void> fetchClimateTargetsForSpace(String spaceId) async {
     await _climateTargetsRepository.fetchForSpace(spaceId);
@@ -200,6 +222,17 @@ class SpacesService extends ChangeNotifier {
   Future<void> fetchAllClimateTargets() async {
     final roomIds = rooms.map((r) => r.id).toList();
     await _climateTargetsRepository.fetchForSpaces(roomIds);
+  }
+
+  /// Fetch media targets for a specific space
+  Future<void> fetchMediaTargetsForSpace(String spaceId) async {
+    await _mediaTargetsRepository.fetchForSpace(spaceId);
+  }
+
+  /// Fetch media targets for all rooms
+  Future<void> fetchAllMediaTargets() async {
+    final roomIds = rooms.map((r) => r.id).toList();
+    await _mediaTargetsRepository.fetchForSpaces(roomIds);
   }
 
   /// Get covers targets for a specific space
@@ -278,6 +311,20 @@ class SpacesService extends ChangeNotifier {
   /// Fetch climate state from API
   Future<ClimateStateModel?> fetchClimateState(String spaceId) {
     return _spaceStateRepository.fetchClimateState(spaceId);
+  }
+
+  // ============================================
+  // MEDIA STATE
+  // ============================================
+
+  /// Get cached media state for a space
+  MediaStateModel? getMediaState(String spaceId) {
+    return _spaceStateRepository.getMediaState(spaceId);
+  }
+
+  /// Fetch media state from API
+  Future<MediaStateModel?> fetchMediaState(String spaceId) {
+    return _spaceStateRepository.fetchMediaState(spaceId);
   }
 
   // ============================================
@@ -408,6 +455,86 @@ class SpacesService extends ChangeNotifier {
     ClimateMode mode,
   ) {
     return _spaceStateRepository.setClimateMode(spaceId, mode);
+  }
+
+  // ============================================
+  // MEDIA INTENTS (via SpaceStateRepository)
+  // ============================================
+
+  Future<MediaIntentResult?> setMediaMode(
+    String spaceId,
+    MediaMode mode,
+  ) {
+    return _spaceStateRepository.setMediaMode(spaceId, mode);
+  }
+
+  Future<MediaIntentResult?> setMediaVolume(
+    String spaceId,
+    int volume,
+  ) {
+    return _spaceStateRepository.setMediaVolume(spaceId, volume);
+  }
+
+  Future<MediaIntentResult?> adjustMediaVolume(
+    String spaceId, {
+    required VolumeDelta delta,
+    required bool increase,
+  }) {
+    return _spaceStateRepository.adjustMediaVolume(
+      spaceId,
+      delta: delta,
+      increase: increase,
+    );
+  }
+
+  Future<MediaIntentResult?> muteMedia(String spaceId) {
+    return _spaceStateRepository.muteMedia(spaceId);
+  }
+
+  Future<MediaIntentResult?> unmuteMedia(String spaceId) {
+    return _spaceStateRepository.unmuteMedia(spaceId);
+  }
+
+  Future<MediaIntentResult?> powerOnMedia(String spaceId) {
+    return _spaceStateRepository.powerOnMedia(spaceId);
+  }
+
+  Future<MediaIntentResult?> powerOffMedia(String spaceId) {
+    return _spaceStateRepository.powerOffMedia(spaceId);
+  }
+
+  Future<MediaIntentResult?> setMediaRoleVolume(
+    String spaceId, {
+    required MediaRole role,
+    required int volume,
+  }) {
+    return _spaceStateRepository.setMediaRoleVolume(
+      spaceId,
+      role: role,
+      volume: volume,
+    );
+  }
+
+  Future<MediaIntentResult?> setMediaRolePower(
+    String spaceId, {
+    required MediaRole role,
+    required bool on,
+  }) {
+    return _spaceStateRepository.setMediaRolePower(
+      spaceId,
+      role: role,
+      on: on,
+    );
+  }
+
+  Future<MediaIntentResult?> setMediaInput(
+    String spaceId, {
+    required String source,
+  }) {
+    return _spaceStateRepository.setMediaInput(
+      spaceId,
+      source: source,
+    );
   }
 
   // ============================================
@@ -563,6 +690,32 @@ class SpacesService extends ChangeNotifier {
       triggerNotifyListeners = true;
     }
 
+    // Build media target views
+    Map<String, MediaTargetView> newMediaTargetViews = {};
+
+    for (var space in spaceModels) {
+      final mediaTargetModels =
+          _mediaTargetsRepository.getMediaTargetsForSpace(space.id);
+
+      for (var mediaTarget in mediaTargetModels) {
+        try {
+          newMediaTargetViews[mediaTarget.id] =
+              buildMediaTargetView(mediaTarget);
+        } catch (e) {
+          if (kDebugMode) {
+            debugPrint(
+              '[SPACES MODULE][SERVICE] Failed to create media target view: ${e.toString()}',
+            );
+          }
+        }
+      }
+    }
+
+    if (!mapEquals(_mediaTargets, newMediaTargetViews)) {
+      _mediaTargets = newMediaTargetViews;
+      triggerNotifyListeners = true;
+    }
+
     // Build covers target views
     Map<String, CoversTargetView> newCoversTargetViews = {};
 
@@ -619,6 +772,7 @@ class SpacesService extends ChangeNotifier {
     _spacesRepository.removeListener(_updateData);
     _lightTargetsRepository.removeListener(_updateData);
     _climateTargetsRepository.removeListener(_updateData);
+    _mediaTargetsRepository.removeListener(_updateData);
     _coversTargetsRepository.removeListener(_updateData);
     _spaceStateRepository.removeListener(_onStateChanged);
 

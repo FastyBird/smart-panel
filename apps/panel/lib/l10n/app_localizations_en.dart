@@ -1087,6 +1087,84 @@ class AppLocalizationsEn extends AppLocalizations {
   String get domain_media => 'Media';
 
   @override
+  String media_devices_summary(Object count) {
+    return '$count devices';
+  }
+
+  @override
+  String media_devices_summary_on(Object count, Object on) {
+    return '$count devices • $on on';
+  }
+
+  @override
+  String get media_modes_title => 'Modes';
+
+  @override
+  String get media_action_power_on => 'Power on';
+
+  @override
+  String get media_action_power_off => 'Power off';
+
+  @override
+  String get media_action_mute => 'Mute';
+
+  @override
+  String get media_action_unmute => 'Unmute';
+
+  @override
+  String get media_mode_off => 'Off';
+
+  @override
+  String get media_mode_background => 'Background';
+
+  @override
+  String get media_mode_focused => 'Focused';
+
+  @override
+  String get media_mode_party => 'Party';
+
+  @override
+  String get media_roles_title => 'Roles';
+
+  @override
+  String media_role_summary(Object on, Object total) {
+    return '$on of $total on';
+  }
+
+  @override
+  String get media_roles_unassigned => 'Unassigned devices';
+
+  @override
+  String get media_role_primary => 'Primary';
+
+  @override
+  String get media_role_secondary => 'Secondary';
+
+  @override
+  String get media_role_background => 'Background';
+
+  @override
+  String get media_role_gaming => 'Gaming';
+
+  @override
+  String get media_role_hidden => 'Hidden';
+
+  @override
+  String get media_targets_title => 'Devices';
+
+  @override
+  String get media_capability_power => 'Power';
+
+  @override
+  String get media_capability_volume => 'Volume';
+
+  @override
+  String get media_capability_mute => 'Mute';
+
+  @override
+  String get media_capability_none => 'No capabilities';
+
+  @override
   String get domain_sensors => 'Sensors';
 
   @override

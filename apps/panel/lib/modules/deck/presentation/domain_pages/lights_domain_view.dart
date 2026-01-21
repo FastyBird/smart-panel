@@ -17,13 +17,10 @@ import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state
 import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
 import 'package:fastybird_smart_panel/modules/deck/views/light_role_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
-import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/light.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
-import 'package:fastybird_smart_panel/modules/devices/services/intent_overlay_service.dart';
-import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';

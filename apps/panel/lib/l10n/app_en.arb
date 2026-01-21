@@ -1459,6 +1459,113 @@
   "@domain_media": {
     "description": "Title for media domain view in room navigation"
   },
+  "media_devices_summary": "{count} devices",
+  "@media_devices_summary": {
+    "description": "Summary showing total media devices",
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "media_devices_summary_on": "{count} devices \u2022 {on} on",
+  "@media_devices_summary_on": {
+    "description": "Summary showing total/on media devices",
+    "placeholders": {
+      "count": {},
+      "on": {}
+    }
+  },
+  "media_modes_title": "Modes",
+  "@media_modes_title": {
+    "description": "Section heading for media modes"
+  },
+  "media_action_power_on": "Power on",
+  "@media_action_power_on": {
+    "description": "Button label to power on media devices"
+  },
+  "media_action_power_off": "Power off",
+  "@media_action_power_off": {
+    "description": "Button label to power off media devices"
+  },
+  "media_action_mute": "Mute",
+  "@media_action_mute": {
+    "description": "Button label to mute media devices"
+  },
+  "media_action_unmute": "Unmute",
+  "@media_action_unmute": {
+    "description": "Button label to unmute media devices"
+  },
+  "media_mode_off": "Off",
+  "@media_mode_off": {
+    "description": "Media mode Off"
+  },
+  "media_mode_background": "Background",
+  "@media_mode_background": {
+    "description": "Media mode Background"
+  },
+  "media_mode_focused": "Focused",
+  "@media_mode_focused": {
+    "description": "Media mode Focused"
+  },
+  "media_mode_party": "Party",
+  "@media_mode_party": {
+    "description": "Media mode Party"
+  },
+  "media_roles_title": "Roles",
+  "@media_roles_title": {
+    "description": "Section heading for media roles"
+  },
+  "media_role_summary": "{on} of {total} on",
+  "@media_role_summary": {
+    "description": "Summary for a media role",
+    "placeholders": {
+      "on": {},
+      "total": {}
+    }
+  },
+  "media_roles_unassigned": "Unassigned devices",
+  "@media_roles_unassigned": {
+    "description": "Label for unassigned media devices"
+  },
+  "media_role_primary": "Primary",
+  "@media_role_primary": {
+    "description": "Label for primary media role"
+  },
+  "media_role_secondary": "Secondary",
+  "@media_role_secondary": {
+    "description": "Label for secondary media role"
+  },
+  "media_role_background": "Background",
+  "@media_role_background": {
+    "description": "Label for background media role"
+  },
+  "media_role_gaming": "Gaming",
+  "@media_role_gaming": {
+    "description": "Label for gaming media role"
+  },
+  "media_role_hidden": "Hidden",
+  "@media_role_hidden": {
+    "description": "Label for hidden media role"
+  },
+  "media_targets_title": "Devices",
+  "@media_targets_title": {
+    "description": "Section heading for media targets/devices"
+  },
+  "media_capability_power": "Power",
+  "@media_capability_power": {
+    "description": "Capability label - power"
+  },
+  "media_capability_volume": "Volume",
+  "@media_capability_volume": {
+    "description": "Capability label - volume"
+  },
+  "media_capability_mute": "Mute",
+  "@media_capability_mute": {
+    "description": "Capability label - mute"
+  },
+  "media_capability_none": "No capabilities",
+  "@media_capability_none": {
+    "description": "Shown when device has no media capabilities"
+  },
   "domain_sensors": "Sensors",
   "@domain_sensors": {
     "description": "Title for sensors domain view in room navigation"
