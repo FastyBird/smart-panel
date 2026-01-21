@@ -7,6 +7,7 @@ import { ChannelCategory, DeviceCategory } from '../../devices/devices.constants
 import { SpaceClimateRoleEntity } from '../entities/space-climate-role.entity';
 import { SpaceCoversRoleEntity } from '../entities/space-covers-role.entity';
 import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
+import { SpaceSensorRoleEntity } from '../entities/space-sensor-role.entity';
 import { SpaceEntity } from '../entities/space.entity';
 import {
 	ClimateMode,
@@ -17,6 +18,7 @@ import {
 	LightingMode,
 	LightingRole,
 	QuickActionType,
+	SensorRole,
 	SpaceCategory,
 	SpaceType,
 	SuggestionType,
@@ -2708,4 +2710,546 @@ export class LightingStateResponseModel extends BaseSuccessResponseModel<Lightin
 	@Expose()
 	@Type(() => LightingStateDataModel)
 	declare data: LightingStateDataModel;
+}
+
+// ================================
+// Sensor State & Role Response Models
+// ================================
+
+/**
+ * Individual sensor reading data model
+ */
+@ApiSchema({ name: 'SpacesModuleDataSensorReading' })
+export class SensorReadingDataModel {
+	@ApiProperty({
+		name: 'device_id',
+		description: 'ID of the sensor device',
+		type: 'string',
+		format: 'uuid',
+		example: 'a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7',
+	})
+	@Expose({ name: 'device_id' })
+	deviceId: string;
+
+	@ApiProperty({
+		name: 'device_name',
+		description: 'Name of the sensor device',
+		type: 'string',
+		example: 'Living Room Sensor',
+	})
+	@Expose({ name: 'device_name' })
+	deviceName: string;
+
+	@ApiProperty({
+		name: 'channel_id',
+		description: 'ID of the sensor channel',
+		type: 'string',
+		format: 'uuid',
+		example: 'c3d29eb4-632f-5e8c-c4af-ded8b9e6c0f8',
+	})
+	@Expose({ name: 'channel_id' })
+	channelId: string;
+
+	@ApiProperty({
+		name: 'channel_name',
+		description: 'Name of the sensor channel',
+		type: 'string',
+		example: 'Temperature',
+	})
+	@Expose({ name: 'channel_name' })
+	channelName: string;
+
+	@ApiProperty({
+		name: 'channel_category',
+		description: 'Category of the sensor channel',
+		enum: ChannelCategory,
+		example: 'temperature',
+	})
+	@Expose({ name: 'channel_category' })
+	channelCategory: ChannelCategory;
+
+	@ApiPropertyOptional({
+		description: 'Current sensor value (type depends on sensor)',
+		oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
+		nullable: true,
+		example: 22.5,
+	})
+	@Expose()
+	value: number | boolean | string | null;
+
+	@ApiPropertyOptional({
+		description: 'Unit of the sensor value',
+		type: 'string',
+		nullable: true,
+		example: '°C',
+	})
+	@Expose()
+	unit: string | null;
+
+	@ApiPropertyOptional({
+		description: 'The sensor role for this channel',
+		enum: SensorRole,
+		nullable: true,
+		example: SensorRole.ENVIRONMENT,
+	})
+	@Expose()
+	role: SensorRole | null;
+}
+
+/**
+ * Aggregated sensor readings by role
+ */
+@ApiSchema({ name: 'SpacesModuleDataSensorRoleReadings' })
+export class SensorRoleReadingsDataModel {
+	@ApiProperty({
+		description: 'The sensor role',
+		enum: SensorRole,
+		example: SensorRole.ENVIRONMENT,
+	})
+	@Expose()
+	role: SensorRole;
+
+	@ApiProperty({
+		name: 'sensors_count',
+		description: 'Number of sensors with this role',
+		type: 'integer',
+		example: 3,
+	})
+	@Expose({ name: 'sensors_count' })
+	sensorsCount: number;
+
+	@ApiProperty({
+		description: 'Sensor readings for this role',
+		type: () => [SensorReadingDataModel],
+	})
+	@Expose()
+	@Type(() => SensorReadingDataModel)
+	readings: SensorReadingDataModel[];
+}
+
+/**
+ * Environment summary data (aggregated environmental readings)
+ */
+@ApiSchema({ name: 'SpacesModuleDataEnvironmentSummary' })
+export class EnvironmentSummaryDataModel {
+	@ApiPropertyOptional({
+		name: 'average_temperature',
+		description: 'Average temperature from all environment sensors (°C)',
+		type: 'number',
+		nullable: true,
+		example: 22.5,
+	})
+	@Expose({ name: 'average_temperature' })
+	averageTemperature: number | null;
+
+	@ApiPropertyOptional({
+		name: 'average_humidity',
+		description: 'Average humidity from all environment sensors (%)',
+		type: 'number',
+		nullable: true,
+		example: 45,
+	})
+	@Expose({ name: 'average_humidity' })
+	averageHumidity: number | null;
+
+	@ApiPropertyOptional({
+		name: 'average_pressure',
+		description: 'Average atmospheric pressure (hPa)',
+		type: 'number',
+		nullable: true,
+		example: 1013.25,
+	})
+	@Expose({ name: 'average_pressure' })
+	averagePressure: number | null;
+
+	@ApiPropertyOptional({
+		name: 'average_illuminance',
+		description: 'Average light level (lux)',
+		type: 'number',
+		nullable: true,
+		example: 500,
+	})
+	@Expose({ name: 'average_illuminance' })
+	averageIlluminance: number | null;
+}
+
+/**
+ * Safety alert info
+ */
+@ApiSchema({ name: 'SpacesModuleDataSafetyAlert' })
+export class SafetyAlertDataModel {
+	@ApiProperty({
+		name: 'channel_category',
+		description: 'Type of safety sensor that triggered the alert',
+		enum: ChannelCategory,
+		example: 'smoke',
+	})
+	@Expose({ name: 'channel_category' })
+	channelCategory: ChannelCategory;
+
+	@ApiProperty({
+		name: 'device_id',
+		description: 'ID of the device with the alert',
+		type: 'string',
+		format: 'uuid',
+		example: 'a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7',
+	})
+	@Expose({ name: 'device_id' })
+	deviceId: string;
+
+	@ApiProperty({
+		name: 'device_name',
+		description: 'Name of the device with the alert',
+		type: 'string',
+		example: 'Kitchen Smoke Detector',
+	})
+	@Expose({ name: 'device_name' })
+	deviceName: string;
+
+	@ApiProperty({
+		name: 'channel_id',
+		description: 'ID of the sensor channel',
+		type: 'string',
+		format: 'uuid',
+		example: 'c3d29eb4-632f-5e8c-c4af-ded8b9e6c0f8',
+	})
+	@Expose({ name: 'channel_id' })
+	channelId: string;
+
+	@ApiProperty({
+		description: 'Whether the sensor is currently triggered',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	triggered: boolean;
+}
+
+/**
+ * Sensor state data model (aggregated sensor state for a space)
+ */
+@ApiSchema({ name: 'SpacesModuleDataSensorState' })
+export class SensorStateDataModel {
+	@ApiProperty({
+		name: 'has_sensors',
+		description: 'Whether the space has any sensor devices',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'has_sensors' })
+	hasSensors: boolean;
+
+	@ApiProperty({
+		name: 'total_sensors',
+		description: 'Total number of sensor channels in the space',
+		type: 'integer',
+		example: 5,
+	})
+	@Expose({ name: 'total_sensors' })
+	totalSensors: number;
+
+	@ApiProperty({
+		name: 'sensors_by_role',
+		description: 'Count of sensors grouped by role',
+		type: 'object',
+		additionalProperties: { type: 'integer' },
+		example: { environment: 3, safety: 1, security: 1 },
+	})
+	@Expose({ name: 'sensors_by_role' })
+	sensorsByRole: Record<string, number>;
+
+	@ApiPropertyOptional({
+		description: 'Aggregated environmental readings summary',
+		type: () => EnvironmentSummaryDataModel,
+		nullable: true,
+	})
+	@Expose()
+	@Type(() => EnvironmentSummaryDataModel)
+	environment: EnvironmentSummaryDataModel | null;
+
+	@ApiProperty({
+		name: 'safety_alerts',
+		description: 'List of active safety alerts',
+		type: () => [SafetyAlertDataModel],
+	})
+	@Expose({ name: 'safety_alerts' })
+	@Type(() => SafetyAlertDataModel)
+	safetyAlerts: SafetyAlertDataModel[];
+
+	@ApiProperty({
+		name: 'has_safety_alert',
+		description: 'Whether any safety sensor is currently triggered',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'has_safety_alert' })
+	hasSafetyAlert: boolean;
+
+	@ApiProperty({
+		name: 'motion_detected',
+		description: 'Whether any motion sensor is currently detecting motion',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'motion_detected' })
+	motionDetected: boolean;
+
+	@ApiProperty({
+		name: 'occupancy_detected',
+		description: 'Whether any occupancy sensor is currently detecting presence',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'occupancy_detected' })
+	occupancyDetected: boolean;
+
+	@ApiProperty({
+		description: 'Sensor readings grouped by role',
+		type: () => [SensorRoleReadingsDataModel],
+	})
+	@Expose()
+	@Type(() => SensorRoleReadingsDataModel)
+	readings: SensorRoleReadingsDataModel[];
+}
+
+/**
+ * Response wrapper for sensor state
+ */
+@ApiSchema({ name: 'SpacesModuleResSensorState' })
+export class SensorStateResponseModel extends BaseSuccessResponseModel<SensorStateDataModel> {
+	@ApiProperty({
+		description: 'The sensor state data',
+		type: () => SensorStateDataModel,
+	})
+	@Expose()
+	@Type(() => SensorStateDataModel)
+	declare data: SensorStateDataModel;
+}
+
+// ================================
+// Sensor Target Response Models
+// ================================
+
+/**
+ * Sensor target data model (a sensor device/channel in a space)
+ */
+@ApiSchema({ name: 'SpacesModuleDataSensorTarget' })
+export class SensorTargetDataModel {
+	@ApiProperty({
+		name: 'device_id',
+		description: 'ID of the sensor device',
+		type: 'string',
+		format: 'uuid',
+		example: 'a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7',
+	})
+	@Expose({ name: 'device_id' })
+	deviceId: string;
+
+	@ApiProperty({
+		name: 'device_name',
+		description: 'Name of the device',
+		type: 'string',
+		example: 'Living Room Sensor',
+	})
+	@Expose({ name: 'device_name' })
+	deviceName: string;
+
+	@ApiProperty({
+		name: 'device_category',
+		description: 'Category of the device',
+		enum: DeviceCategory,
+		example: 'sensor',
+	})
+	@Expose({ name: 'device_category' })
+	deviceCategory: DeviceCategory;
+
+	@ApiProperty({
+		name: 'channel_id',
+		description: 'ID of the sensor channel',
+		type: 'string',
+		format: 'uuid',
+		example: 'c3d29eb4-632f-5e8c-c4af-ded8b9e6c0f8',
+	})
+	@Expose({ name: 'channel_id' })
+	channelId: string;
+
+	@ApiProperty({
+		name: 'channel_name',
+		description: 'Name of the channel',
+		type: 'string',
+		example: 'Temperature',
+	})
+	@Expose({ name: 'channel_name' })
+	channelName: string;
+
+	@ApiProperty({
+		name: 'channel_category',
+		description: 'Category of the sensor channel',
+		enum: ChannelCategory,
+		example: 'temperature',
+	})
+	@Expose({ name: 'channel_category' })
+	channelCategory: ChannelCategory;
+
+	@ApiPropertyOptional({
+		description: 'The assigned sensor role (null if not assigned)',
+		enum: SensorRole,
+		nullable: true,
+		example: SensorRole.ENVIRONMENT,
+	})
+	@Expose()
+	role: SensorRole | null;
+
+	@ApiProperty({
+		description: 'Priority for role ordering (lower = higher priority)',
+		type: 'integer',
+		example: 0,
+	})
+	@Expose()
+	priority: number;
+}
+
+/**
+ * Response wrapper for sensor targets in a space
+ */
+@ApiSchema({ name: 'SpacesModuleResSensorTargets' })
+export class SensorTargetsResponseModel extends BaseSuccessResponseModel<SensorTargetDataModel[]> {
+	@ApiProperty({
+		description: 'Array of sensor targets in the space with their role assignments',
+		type: () => [SensorTargetDataModel],
+	})
+	@Expose()
+	@Type(() => SensorTargetDataModel)
+	declare data: SensorTargetDataModel[];
+}
+
+/**
+ * Response wrapper for a single sensor role entity
+ */
+@ApiSchema({ name: 'SpacesModuleResSensorRole' })
+export class SensorRoleResponseModel extends BaseSuccessResponseModel<SpaceSensorRoleEntity | null> {
+	@ApiProperty({
+		description: 'The sensor role assignment, or null if the role was removed',
+		type: () => SpaceSensorRoleEntity,
+		nullable: true,
+		required: false,
+	})
+	@Expose()
+	@Type(() => SpaceSensorRoleEntity)
+	declare data: SpaceSensorRoleEntity | null;
+}
+
+/**
+ * Bulk sensor role update result item
+ */
+@ApiSchema({ name: 'SpacesModuleDataBulkSensorRoleResultItem' })
+export class BulkSensorRoleResultItemModel {
+	@ApiProperty({
+		name: 'device_id',
+		description: 'ID of the sensor device',
+		type: 'string',
+		format: 'uuid',
+		example: 'a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7',
+	})
+	@Expose({ name: 'device_id' })
+	deviceId: string;
+
+	@ApiProperty({
+		name: 'channel_id',
+		description: 'ID of the sensor channel',
+		type: 'string',
+		format: 'uuid',
+		example: 'c3d29eb4-632f-5e8c-c4af-ded8b9e6c0f8',
+	})
+	@Expose({ name: 'channel_id' })
+	channelId: string;
+
+	@ApiProperty({
+		description: 'Whether the role was set successfully',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	success: boolean;
+
+	@ApiPropertyOptional({
+		description: 'The role that was set (null if failed)',
+		enum: SensorRole,
+		nullable: true,
+		example: SensorRole.ENVIRONMENT,
+	})
+	@Expose()
+	role: SensorRole | null;
+
+	@ApiPropertyOptional({
+		description: 'Error message if the role assignment failed',
+		type: 'string',
+		nullable: true,
+		example: null,
+	})
+	@Expose()
+	error: string | null;
+}
+
+/**
+ * Bulk sensor role update result data
+ */
+@ApiSchema({ name: 'SpacesModuleDataBulkSensorRolesResult' })
+export class BulkSensorRolesResultDataModel {
+	@ApiProperty({
+		description: 'Whether all role assignments succeeded',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	success: boolean;
+
+	@ApiProperty({
+		name: 'total_count',
+		description: 'Total number of role assignments attempted',
+		type: 'integer',
+		example: 3,
+	})
+	@Expose({ name: 'total_count' })
+	totalCount: number;
+
+	@ApiProperty({
+		name: 'success_count',
+		description: 'Number of successful role assignments',
+		type: 'integer',
+		example: 3,
+	})
+	@Expose({ name: 'success_count' })
+	successCount: number;
+
+	@ApiProperty({
+		name: 'failure_count',
+		description: 'Number of failed role assignments',
+		type: 'integer',
+		example: 0,
+	})
+	@Expose({ name: 'failure_count' })
+	failureCount: number;
+
+	@ApiProperty({
+		description: 'Detailed results for each role assignment',
+		type: () => [BulkSensorRoleResultItemModel],
+	})
+	@Expose()
+	@Type(() => BulkSensorRoleResultItemModel)
+	results: BulkSensorRoleResultItemModel[];
+}
+
+/**
+ * Response wrapper for bulk sensor role update result
+ */
+@ApiSchema({ name: 'SpacesModuleResBulkSensorRoles' })
+export class BulkSensorRolesResponseModel extends BaseSuccessResponseModel<BulkSensorRolesResultDataModel> {
+	@ApiProperty({
+		description: 'The result of the bulk sensor role update',
+		type: () => BulkSensorRolesResultDataModel,
+	})
+	@Expose()
+	@Type(() => BulkSensorRolesResultDataModel)
+	declare data: BulkSensorRolesResultDataModel;
 }

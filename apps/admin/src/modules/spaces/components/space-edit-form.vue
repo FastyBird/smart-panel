@@ -208,6 +208,11 @@
 						<space-covers-roles :space="props.space" />
 					</template>
 
+					<!-- Sensor Roles -->
+					<template v-if="hasSensorDevices">
+						<space-sensor-roles :space="props.space" />
+					</template>
+
 					<!-- Smart Suggestions -->
 					<el-divider content-position="left" class="mt-6!">
 						{{ t('spacesModule.edit.sections.smartOverrides.smartSuggestions') }}
@@ -295,6 +300,7 @@ import SpaceClimateRoles from './space-climate-roles.vue';
 import SpaceCoversRoles from './space-covers-roles.vue';
 import SpaceEditSummarySection from './space-edit-summary-section.vue';
 import SpaceLightingRoles from './space-lighting-roles.vue';
+import SpaceSensorRoles from './space-sensor-roles.vue';
 import { type ISpaceEditFormProps, spaceEditFormEmits } from './space-edit-form.types';
 
 const props = withDefaults(defineProps<ISpaceEditFormProps>(), {
@@ -451,6 +457,9 @@ const hasClimateDevices = computed(() =>
 const hasCoversDevices = computed(() =>
 	spaceDevices.value.some((d) => d.category === DevicesModuleDeviceCategory.window_covering)
 );
+
+// Sensor roles apply when any devices are present in the space (many devices expose sensor channels)
+const hasSensorDevices = computed(() => spaceDevices.value.length > 0);
 
 watch(
 	(): boolean => formChanged.value,

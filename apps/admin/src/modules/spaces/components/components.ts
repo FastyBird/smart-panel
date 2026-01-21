@@ -11,9 +11,12 @@ export { default as SpaceClimateRoles } from './space-climate-roles.vue';
 export { default as SpaceClimateRolesSummary } from './space-climate-roles-summary.vue';
 export { default as SpaceCoversRoles } from './space-covers-roles.vue';
 export { default as SpaceCoversRolesSummary } from './space-covers-roles-summary.vue';
+export { default as SpaceSensorRoles } from './space-sensor-roles.vue';
+export { default as SpaceSensorRolesSummary } from './space-sensor-roles-summary.vue';
 export { default as SpaceLightingRolesDialog } from './space-lighting-roles-dialog.vue';
 export { default as SpaceClimateRolesDialog } from './space-climate-roles-dialog.vue';
 export { default as SpaceCoversRolesDialog } from './space-covers-roles-dialog.vue';
+export { default as SpaceSensorRolesDialog } from './space-sensor-roles-dialog.vue';
 
 // Space detail sections
 export { default as SpaceDetail } from './space-detail.vue';

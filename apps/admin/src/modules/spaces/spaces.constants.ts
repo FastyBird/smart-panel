@@ -18,9 +18,13 @@ export enum EventType {
 	COVERS_TARGET_CREATED = 'SpacesModule.CoversTarget.Created',
 	COVERS_TARGET_UPDATED = 'SpacesModule.CoversTarget.Updated',
 	COVERS_TARGET_DELETED = 'SpacesModule.CoversTarget.Deleted',
+	SENSOR_TARGET_CREATED = 'SpacesModule.SensorTarget.Created',
+	SENSOR_TARGET_UPDATED = 'SpacesModule.SensorTarget.Updated',
+	SENSOR_TARGET_DELETED = 'SpacesModule.SensorTarget.Deleted',
 	LIGHTING_STATE_CHANGED = 'SpacesModule.Space.LightingStateChanged',
 	CLIMATE_STATE_CHANGED = 'SpacesModule.Space.ClimateStateChanged',
 	COVERS_STATE_CHANGED = 'SpacesModule.Space.CoversStateChanged',
+	SENSOR_STATE_CHANGED = 'SpacesModule.Space.SensorStateChanged',
 }
 
 export const RouteNames = {
@@ -438,6 +442,17 @@ export {
 	SpacesModuleCoversRole as CoversRole,
 } from '../../openapi.constants';
 
+// Sensor domain roles (not yet present in OpenAPI generator)
+export enum SensorRole {
+	ENVIRONMENT = 'environment',
+	SAFETY = 'safety',
+	SECURITY = 'security',
+	AIR_QUALITY = 'air_quality',
+	ENERGY = 'energy',
+	OTHER = 'other',
+	HIDDEN = 'hidden',
+}
+
 // Import for local use in helper arrays
 import { SpacesModuleClimateRole, DevicesModuleDeviceCategory } from '../../openapi.constants';
 
@@ -464,6 +479,17 @@ export const CLIMATE_AUXILIARY_CATEGORIES = [
 	DevicesModuleDeviceCategory.air_purifier,
 	DevicesModuleDeviceCategory.fan,
 ] as const;
+
+// Sensor role ordering for consistent UI presentation
+export const SENSOR_ROLE_ORDER: SensorRole[] = [
+	SensorRole.ENVIRONMENT,
+	SensorRole.SAFETY,
+	SensorRole.SECURITY,
+	SensorRole.AIR_QUALITY,
+	SensorRole.ENERGY,
+	SensorRole.OTHER,
+	SensorRole.HIDDEN,
+];
 
 export { DevicesModuleDeviceCategory as DeviceCategory } from '../../openapi.constants';
 

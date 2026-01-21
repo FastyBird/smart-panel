@@ -77,6 +77,12 @@
 				:space="space"
 				@edit="showCoversRolesDialog = true"
 			/>
+			<!-- Sensor roles summary -->
+			<space-sensor-roles-summary
+				ref="sensorRolesSummaryRef"
+				:space="space"
+				@edit="showSensorRolesDialog = true"
+			/>
 			<!-- Inline Floor selector (Room only) -->
 			<dt
 				v-if="space.type === SpaceType.ROOM"
@@ -161,6 +167,13 @@
 		:space="space"
 		@roles-changed="onCoversRolesChanged"
 	/>
+
+	<!-- Sensor roles dialog -->
+	<space-sensor-roles-dialog
+		v-model:visible="showSensorRolesDialog"
+		:space="space"
+		@roles-changed="onSensorRolesChanged"
+	/>
 </template>
 
 <script setup lang="ts">
@@ -181,6 +194,8 @@ import SpaceCoversRolesDialog from './space-covers-roles-dialog.vue';
 import SpaceCoversRolesSummary from './space-covers-roles-summary.vue';
 import SpaceLightingRolesDialog from './space-lighting-roles-dialog.vue';
 import SpaceLightingRolesSummary from './space-lighting-roles-summary.vue';
+import SpaceSensorRolesDialog from './space-sensor-roles-dialog.vue';
+import SpaceSensorRolesSummary from './space-sensor-roles-summary.vue';
 
 import type { ISpaceDetailProps } from './space-detail.types';
 
@@ -200,9 +215,11 @@ const { editSpace } = useSpace(computed(() => props.space?.id));
 const showLightingRolesDialog = ref(false);
 const showClimateRolesDialog = ref(false);
 const showCoversRolesDialog = ref(false);
+const showSensorRolesDialog = ref(false);
 const lightingRolesSummaryRef = ref<InstanceType<typeof SpaceLightingRolesSummary> | null>(null);
 const climateRolesSummaryRef = ref<InstanceType<typeof SpaceClimateRolesSummary> | null>(null);
 const coversRolesSummaryRef = ref<InstanceType<typeof SpaceCoversRolesSummary> | null>(null);
+const sensorRolesSummaryRef = ref<InstanceType<typeof SpaceSensorRolesSummary> | null>(null);
 
 // Ensure all spaces are loaded when component mounts (needed for floor selector)
 onMounted(async () => {
@@ -334,6 +351,10 @@ const onClimateRolesChanged = (): void => {
 
 const onCoversRolesChanged = (): void => {
 	coversRolesSummaryRef.value?.reload();
+};
+
+const onSensorRolesChanged = (): void => {
+	sensorRolesSummaryRef.value?.reload();
 };
 </script>
 
