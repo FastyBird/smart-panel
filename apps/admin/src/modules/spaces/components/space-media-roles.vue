@@ -187,9 +187,9 @@ const loadMediaTargets = async (): Promise<void> => {
 	}
 };
 
-const onRoleChange = async (target: IMediaTarget, newRole: string): Promise<void> => {
+const onRoleChange = async (target: IMediaTarget, newRole: string | null | undefined): Promise<void> => {
 	try {
-		if (newRole === '') {
+		if (!newRole) {
 			const { error } = await backend.client.DELETE(
 				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/media/roles/{deviceId}`,
 				{
