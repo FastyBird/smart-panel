@@ -3,7 +3,6 @@ import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelPropertyEntity } from '../../devices/entities/devices.entity';
-import { IntentType } from '../../intents/intents.constants';
 import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
 import {
 	MEDIA_CHANNEL_CATEGORIES,
@@ -183,9 +182,6 @@ export class SpaceMediaStateService {
 	setLastAppliedMode(spaceId: string, mode: MediaMode): void {
 		const record = { mode, volume: null, muted: null, timestamp: new Date() };
 		this.lastAppliedModes.set(spaceId, record);
-		void this.intentTimeseriesService.storeMediaStateChange(spaceId, IntentType.SPACE_MEDIA_SET_MODE, {
-			mode,
-		});
 	}
 
 	private async resolveLastAppliedState(
