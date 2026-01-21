@@ -248,9 +248,8 @@ export class SpaceMediaStateService {
 				const volumeProperty = channel.properties?.find((p) => p.category === PropertyCategory.VOLUME);
 				const muteProperty = channel.properties?.find((p) => p.category === PropertyCategory.MUTE);
 
-				// Get role assignment
-				const roleKey = `${device.id}:${channel.id}`;
-				const roleEntity = roleMap.get(roleKey);
+				// Get role assignment (device-level)
+				const roleEntity = roleMap.get(device.id);
 				const role = roleEntity?.role ?? null;
 
 				// Skip HIDDEN devices

@@ -5,7 +5,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { PropertyCategory } from '../../devices/devices.constants';
+import { ChannelCategory, PropertyCategory } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { SetMediaRoleDto } from '../dto/media-role.dto';
 import { SpaceMediaRoleEntity } from '../entities/space-media-role.entity';
@@ -23,8 +23,8 @@ import { SpacesService } from './spaces.service';
 export interface MediaTargetInfo {
 	deviceId: string;
 	deviceName: string;
-	channelId: string;
-	channelName: string;
+	channelId: string | null;
+	channelName: string | null;
 	role: MediaRole | null;
 	priority: number;
 	hasOn: boolean;
@@ -37,7 +37,7 @@ export interface MediaTargetInfo {
  */
 export interface BulkMediaRoleResultItem {
 	deviceId: string;
-	channelId: string;
+	channelId: string | null;
 	success: boolean;
 	role: MediaRole | null;
 	error: string | null;
@@ -63,8 +63,8 @@ export interface MediaTargetEventPayload {
 	space_id: string;
 	device_id: string;
 	device_name: string;
-	channel_id: string;
-	channel_name: string;
+	channel_id: string | null;
+	channel_name: string | null;
 	role: MediaRole | null;
 	priority: number;
 	has_on: boolean;
@@ -107,9 +107,9 @@ export class SpaceMediaRoleService {
 	/**
 	 * Get a single media role assignment
 	 */
-	async findOne(spaceId: string, deviceId: string, channelId: string): Promise<SpaceMediaRoleEntity | null> {
+	async findOne(spaceId: string, deviceId: string): Promise<SpaceMediaRoleEntity | null> {
 		return this.repository.findOne({
-			where: { spaceId, deviceId, channelId },
+			where: { spaceId, deviceId },
 		});
 	}
 
@@ -141,25 +141,32 @@ export class SpaceMediaRoleService {
 			throw new SpacesValidationException(`Device with id=${dto.deviceId} is not a media device`);
 		}
 
-		// Verify channel exists and belongs to the device
-		const channel = device.channels?.find((ch) => ch.id === dto.channelId);
+		// Select a preferred controllable media channel for metadata (device-level control)
+		const mediaChannels =
+			device.channels?.filter((ch) =>
+				MEDIA_CHANNEL_CATEGORIES.includes(ch.category as (typeof MEDIA_CHANNEL_CATEGORIES)[number]),
+			) ?? [];
 
-		if (!channel) {
-			throw new SpacesValidationException(`Channel with id=${dto.channelId} not found on device ${dto.deviceId}`);
+		if (mediaChannels.length === 0) {
+			throw new SpacesValidationException(`Device with id=${dto.deviceId} has no media channels to control`);
 		}
 
-		// Verify channel category is a media channel
-		if (!MEDIA_CHANNEL_CATEGORIES.includes(channel.category as (typeof MEDIA_CHANNEL_CATEGORIES)[number])) {
-			throw new SpacesValidationException(`Channel with id=${dto.channelId} is not a media channel`);
-		}
+		const preferredOrder = [ChannelCategory.TELEVISION, ChannelCategory.MEDIA_PLAYBACK, ChannelCategory.SPEAKER];
+		const targetChannel =
+			preferredOrder.map((cat) => mediaChannels.find((ch) => ch.category === cat)).find((ch) => ch) ??
+			mediaChannels[0];
 
-		// Verify required ON property exists
-		const hasOn = (channel.properties ?? []).some((p) => p.category === PropertyCategory.ON);
+		const properties = targetChannel.properties ?? [];
+		const hasOn = properties.some(
+			(p) => p.category === PropertyCategory.ON || p.category === PropertyCategory.ACTIVE,
+		);
 		if (!hasOn) {
 			throw new SpacesValidationException(
-				`Channel with id=${dto.channelId} is missing ON property required for media control`,
+				`Device with id=${dto.deviceId} has no controllable media channel (missing ON/ACTIVE property)`,
 			);
 		}
+
+		const channelId = targetChannel.id;
 
 		let roleEntity: SpaceMediaRoleEntity | null = null;
 		let isUpdate = false;
@@ -172,7 +179,7 @@ export class SpaceMediaRoleService {
 		await this.repository.manager.transaction(async (transactionalManager) => {
 			// Check if this is an update or create within the transaction
 			const existingRole = await transactionalManager.findOne(SpaceMediaRoleEntity, {
-				where: { spaceId, deviceId: dto.deviceId, channelId: dto.channelId },
+				where: { spaceId, deviceId: dto.deviceId },
 			});
 			isUpdate = existingRole !== null;
 
@@ -189,38 +196,30 @@ export class SpaceMediaRoleService {
 				{
 					spaceId,
 					deviceId: dto.deviceId,
-					channelId: dto.channelId,
+					channelId,
 					role: newRole,
 					priority: newPriority,
 				},
 				{
-					conflictPaths: ['spaceId', 'deviceId', 'channelId'],
+					conflictPaths: ['spaceId', 'deviceId'],
 					skipUpdateIfNoValuesChanged: true,
 				},
 			);
 
 			// Fetch the saved entity within the transaction
 			roleEntity = await transactionalManager.findOne(SpaceMediaRoleEntity, {
-				where: { spaceId, deviceId: dto.deviceId, channelId: dto.channelId },
+				where: { spaceId, deviceId: dto.deviceId },
 			});
 		});
 
 		if (!roleEntity) {
-			throw new SpacesValidationException(
-				`Failed to save media role for device=${dto.deviceId} channel=${dto.channelId}`,
-			);
+			throw new SpacesValidationException(`Failed to save media role for device=${dto.deviceId}`);
 		}
 
 		// Only emit event if values actually changed
 		if (hasChanges) {
 			// Emit event for websocket clients with full media target info
-			const eventPayload = await this.buildMediaTargetEventPayload(
-				spaceId,
-				dto.deviceId,
-				dto.channelId,
-				dto.role,
-				dto.priority ?? 0,
-			);
+			const eventPayload = await this.buildMediaTargetEventPayload(spaceId, dto.deviceId, dto.role, dto.priority ?? 0, channelId);
 
 			if (eventPayload) {
 				const eventType = isUpdate ? EventType.MEDIA_TARGET_UPDATED : EventType.MEDIA_TARGET_CREATED;
@@ -246,17 +245,17 @@ export class SpaceMediaRoleService {
 				await this.setRole(spaceId, dto);
 				results.push({
 					deviceId: dto.deviceId,
-					channelId: dto.channelId,
+					channelId: null,
 					success: true,
 					role: dto.role,
 					error: null,
 				});
 			} catch (error) {
 				const err = error as Error;
-				this.logger.warn(`Failed to set role for device=${dto.deviceId} channel=${dto.channelId}: ${err.message}`);
+				this.logger.warn(`Failed to set role for device=${dto.deviceId}: ${err.message}`);
 				results.push({
 					deviceId: dto.deviceId,
-					channelId: dto.channelId,
+					channelId: null,
 					success: false,
 					role: null,
 					error: err.message,
@@ -278,21 +277,21 @@ export class SpaceMediaRoleService {
 	/**
 	 * Delete a media role assignment
 	 */
-	async deleteRole(spaceId: string, deviceId: string, channelId: string): Promise<void> {
+	async deleteRole(spaceId: string, deviceId: string): Promise<void> {
 		// Verify space exists
 		await this.spacesService.getOneOrThrow(spaceId);
 
-		const role = await this.findOne(spaceId, deviceId, channelId);
+		const role = await this.findOne(spaceId, deviceId);
 
 		if (role) {
 			await this.repository.remove(role);
 
 			// Emit event for websocket clients with the media target ID
 			this.eventEmitter.emit(EventType.MEDIA_TARGET_DELETED, {
-				id: `${deviceId}:${channelId}`,
+				id: deviceId,
 				space_id: spaceId,
 				device_id: deviceId,
-				channel_id: channelId,
+				channel_id: role.channelId ?? null,
 			});
 		}
 	}
@@ -310,12 +309,12 @@ export class SpaceMediaRoleService {
 		// Get all devices in the space
 		const devices = await this.spacesService.findDevicesBySpace(spaceId);
 
-		// Get all existing role assignments for this space
+		// Get all existing role assignments for this space grouped by device
 		const existingRoles = await this.findBySpace(spaceId);
-		const roleMap = new Map<string, SpaceMediaRoleEntity>();
+		const rolesByDevice = new Map<string, SpaceMediaRoleEntity>();
 
 		for (const role of existingRoles) {
-			roleMap.set(`${role.deviceId}:${role.channelId}`, role);
+			rolesByDevice.set(role.deviceId, role);
 		}
 
 		const mediaTargets: MediaTargetInfo[] = [];
@@ -326,39 +325,53 @@ export class SpaceMediaRoleService {
 				continue;
 			}
 
-			// Find media channels
-			for (const channel of device.channels ?? []) {
-				if (!MEDIA_CHANNEL_CATEGORIES.includes(channel.category as (typeof MEDIA_CHANNEL_CATEGORIES)[number])) {
-					continue;
-				}
+			// Collect media-capable channels for this device
+			const mediaChannels = (device.channels ?? []).filter((channel) =>
+				MEDIA_CHANNEL_CATEGORIES.includes(channel.category as (typeof MEDIA_CHANNEL_CATEGORIES)[number]),
+			);
 
-				// Check for properties
-				const properties = channel.properties ?? [];
-				const hasOn = properties.some((p) => p.category === PropertyCategory.ON);
-				const hasVolume = properties.some((p) => p.category === PropertyCategory.VOLUME);
-				const hasMute = properties.some((p) => p.category === PropertyCategory.MUTE);
-
-				// Must have at least ON property to be controllable
-				if (!hasOn) {
-					continue;
-				}
-
-				// Get existing role assignment if any
-				const roleKey = `${device.id}:${channel.id}`;
-				const existingRole = roleMap.get(roleKey);
-
-				mediaTargets.push({
-					deviceId: device.id,
-					deviceName: device.name,
-					channelId: channel.id,
-					channelName: channel.name,
-					role: existingRole?.role ?? null,
-					priority: existingRole?.priority ?? 0,
-					hasOn,
-					hasVolume,
-					hasMute,
-				});
+			if (mediaChannels.length === 0) {
+				continue;
 			}
+
+			// Prefer a single channel per device to avoid duplicate rows (television > media_playback > speaker)
+			const preferredOrder = [
+				ChannelCategory.TELEVISION,
+				ChannelCategory.MEDIA_PLAYBACK,
+				ChannelCategory.SPEAKER,
+			];
+
+			const targetChannel =
+				preferredOrder.map((cat) => mediaChannels.find((ch) => ch.category === cat)).find((ch) => ch) ??
+				mediaChannels[0];
+
+			// Check for properties
+			const properties = targetChannel.properties ?? [];
+			const hasOn = properties.some(
+				(p) => p.category === PropertyCategory.ON || p.category === PropertyCategory.ACTIVE,
+			);
+			const hasVolume = properties.some((p) => p.category === PropertyCategory.VOLUME);
+			const hasMute = properties.some((p) => p.category === PropertyCategory.MUTE);
+
+			// Must have at least ON/ACTIVE property to be controllable
+			if (!hasOn) {
+				continue;
+			}
+
+			// Get existing role assignment if any (device-level)
+			const existingRole = rolesByDevice.get(device.id) ?? null;
+
+			mediaTargets.push({
+				deviceId: device.id,
+				deviceName: device.name,
+			channelId: targetChannel.id,
+			channelName: targetChannel.name,
+				role: existingRole?.role ?? null,
+				priority: existingRole?.priority ?? 0,
+				hasOn,
+				hasVolume,
+				hasMute,
+			});
 		}
 
 		this.logger.debug(`Found ${mediaTargets.length} media targets in space id=${spaceId}`);
@@ -399,7 +412,6 @@ export class SpaceMediaRoleService {
 
 			defaultRoles.push({
 				deviceId: target.deviceId,
-				channelId: target.channelId,
 				role: inferredRole,
 				priority: i,
 			});
@@ -418,7 +430,7 @@ export class SpaceMediaRoleService {
 		const map = new Map<string, SpaceMediaRoleEntity>();
 
 		for (const role of roles) {
-			map.set(`${role.deviceId}:${role.channelId}`, role);
+			map.set(role.deviceId, role);
 		}
 
 		return map;
@@ -430,9 +442,9 @@ export class SpaceMediaRoleService {
 	private async buildMediaTargetEventPayload(
 		spaceId: string,
 		deviceId: string,
-		channelId: string,
 		role: MediaRole | null,
 		priority: number,
+		channelId?: string | null,
 	): Promise<MediaTargetEventPayload | null> {
 		// Fetch device with channels and properties
 		const device = await this.deviceRepository.findOne({
@@ -445,25 +457,25 @@ export class SpaceMediaRoleService {
 			return null;
 		}
 
-		const channel = device.channels?.find((ch) => ch.id === channelId);
+		// Use provided channelId when available, otherwise pick a media channel for metadata
+		const channel =
+			(device.channels ?? []).find((ch) => ch.id === channelId) ??
+			(device.channels ?? []).find((ch) =>
+				MEDIA_CHANNEL_CATEGORIES.includes(ch.category as (typeof MEDIA_CHANNEL_CATEGORIES)[number]),
+			);
 
-		if (!channel) {
-			this.logger.warn(`Channel ${channelId} not found when building event payload`);
-			return null;
-		}
-
-		const properties = channel.properties ?? [];
-		const hasOn = properties.some((p) => p.category === PropertyCategory.ON);
+		const properties = channel?.properties ?? [];
+		const hasOn = properties.some((p) => p.category === PropertyCategory.ON || p.category === PropertyCategory.ACTIVE);
 		const hasVolume = properties.some((p) => p.category === PropertyCategory.VOLUME);
 		const hasMute = properties.some((p) => p.category === PropertyCategory.MUTE);
 
 		return {
-			id: `${deviceId}:${channelId}`,
+			id: channel ? `${deviceId}:${channel.id}` : deviceId,
 			space_id: spaceId,
 			device_id: deviceId,
 			device_name: device.name,
-			channel_id: channelId,
-			channel_name: channel.name,
+			channel_id: channel?.id ?? null,
+			channel_name: channel?.name ?? null,
 			role,
 			priority,
 			has_on: hasOn,

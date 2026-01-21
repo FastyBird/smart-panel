@@ -2043,8 +2043,8 @@ export class SpacesController {
 			const model = new MediaTargetDataModel();
 			model.deviceId = t.deviceId;
 			model.deviceName = t.deviceName;
-			model.channelId = t.channelId;
-			model.channelName = t.channelName;
+			model.channelId = t.channelId ?? null;
+			model.channelName = t.channelName ?? null;
 			model.role = t.role;
 			model.priority = t.priority;
 			model.hasOn = t.hasOn;
@@ -2167,29 +2167,26 @@ export class SpacesController {
 		return response;
 	}
 
-	@Delete(':id/media/roles/:deviceId/:channelId')
+	@Delete(':id/media/roles/:deviceId')
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
 		operationId: 'delete-spaces-module-space-media-role',
 		summary: 'Delete media role assignment',
-		description:
-			'Removes the media role assignment for a specific device/channel in a space. Requires owner or admin role.',
+		description: 'Removes the media role assignment for a specific device in a space. Requires owner or admin role.',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
-	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiNoContentResponse({ description: 'Media role deleted successfully' })
 	@ApiNotFoundResponse('Space not found')
 	@HttpCode(204)
 	async deleteMediaRole(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
-		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 	): Promise<void> {
-		this.logger.debug(`Deleting media role for space=${id} device=${deviceId} channel=${channelId}`);
+		this.logger.debug(`Deleting media role for space=${id} device=${deviceId}`);
 
-		await this.spaceMediaRoleService.deleteRole(id, deviceId, channelId);
+		await this.spaceMediaRoleService.deleteRole(id, deviceId);
 
-		this.logger.debug(`Successfully deleted media role for device=${deviceId} channel=${channelId}`);
+		this.logger.debug(`Successfully deleted media role for device=${deviceId}`);
 	}
 }

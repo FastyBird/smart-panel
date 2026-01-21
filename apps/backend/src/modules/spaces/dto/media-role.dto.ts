@@ -25,21 +25,7 @@ export class SetMediaRoleDto {
 	deviceId: string;
 
 	@ApiProperty({
-		name: 'channel_id',
-		description: 'ID of the media channel within the device',
-		type: 'string',
-		format: 'uuid',
-		example: 'c3d29eb4-632f-5e8c-c4af-ded8b9e6c0f8',
-	})
-	@Expose({ name: 'channel_id' })
-	@IsUUID('4', { message: '[{"field":"channel_id","reason":"Channel ID must be a valid UUID."}]' })
-	@Transform(({ obj }: { obj: { channel_id?: string; channelId?: string } }) => obj.channel_id ?? obj.channelId, {
-		toClassOnly: true,
-	})
-	channelId: string;
-
-	@ApiProperty({
-		description: 'The media role for this device/channel',
+		description: 'The media role for this device',
 		enum: MediaRole,
 		example: MediaRole.PRIMARY,
 	})

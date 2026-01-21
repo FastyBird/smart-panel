@@ -3138,24 +3138,26 @@ export class MediaTargetDataModel {
 	@Expose({ name: 'device_name' })
 	deviceName: string;
 
-	@ApiProperty({
+	@ApiPropertyOptional({
 		name: 'channel_id',
-		description: 'ID of the media channel',
+		description: 'ID of the media channel (nullable for device-level roles)',
 		type: 'string',
 		format: 'uuid',
+		nullable: true,
 		example: 'c3d29eb4-632f-5e8c-c4af-ded8b9e6c0f8',
 	})
 	@Expose({ name: 'channel_id' })
-	channelId: string;
+	channelId: string | null;
 
-	@ApiProperty({
+	@ApiPropertyOptional({
 		name: 'channel_name',
-		description: 'Name of the channel',
+		description: 'Name of the channel (nullable for device-level roles)',
 		type: 'string',
+		nullable: true,
 		example: 'Media Playback',
 	})
 	@Expose({ name: 'channel_name' })
-	channelName: string;
+	channelName: string | null;
 
 	@ApiPropertyOptional({
 		description: 'The assigned media role (null if not assigned)',

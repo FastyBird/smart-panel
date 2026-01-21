@@ -12,7 +12,7 @@ import { SpaceEntity } from './space.entity';
 
 @ApiSchema({ name: 'SpacesModuleDataSpaceMediaRole' })
 @Entity('spaces_module_media_roles')
-@Unique(['spaceId', 'deviceId', 'channelId'])
+@Unique(['spaceId', 'deviceId'])
 export class SpaceMediaRoleEntity extends BaseEntity {
 	@ApiProperty({
 		name: 'space_id',
@@ -52,24 +52,25 @@ export class SpaceMediaRoleEntity extends BaseEntity {
 	@JoinColumn({ name: 'deviceId' })
 	device: DeviceEntity;
 
-	@ApiProperty({
+	@ApiPropertyOptional({
 		name: 'channel_id',
-		description: 'ID of the media channel within the device',
+		description: 'ID of the media channel used for control (optional, informational)',
 		type: 'string',
 		format: 'uuid',
 		example: 'c3d29eb4-632f-5e8c-c4af-ded8b9e6c0f8',
 	})
 	@Expose({ name: 'channel_id' })
+	@IsOptional()
 	@IsUUID('4')
 	@Transform(({ obj }: { obj: { channel_id?: string; channelId?: string } }) => obj.channel_id ?? obj.channelId, {
 		toClassOnly: true,
 	})
-	@Column({ nullable: false })
-	channelId: string;
+	@Column({ nullable: true })
+	channelId: string | null;
 
-	@ManyToOne(() => ChannelEntity, { nullable: false, onDelete: 'CASCADE' })
+	@ManyToOne(() => ChannelEntity, { nullable: true, onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'channelId' })
-	channel: ChannelEntity;
+	channel: ChannelEntity | null;
 
 	@ApiProperty({
 		description: 'The media role for this device/channel in the space',

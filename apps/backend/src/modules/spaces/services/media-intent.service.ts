@@ -539,9 +539,8 @@ export class MediaIntentService extends SpaceIntentBaseService {
 				const volumeProperty = mediaChannel.properties?.find((p) => p.category === PropertyCategory.VOLUME) ?? null;
 				const muteProperty = mediaChannel.properties?.find((p) => p.category === PropertyCategory.MUTE) ?? null;
 
-				// Get role assignment for this device (keyed by deviceId:channelId)
-				const roleKey = `${device.id}:${mediaChannel.id}`;
-				const roleEntity = roleMap.get(roleKey);
+				// Get role assignment for this device (device-level)
+				const roleEntity = roleMap.get(device.id);
 				const role = roleEntity?.role ?? null;
 
 				// Skip HIDDEN devices - they should not be controlled by intents
