@@ -637,13 +637,16 @@ export class MediaIntentService extends SpaceIntentBaseService {
 						? (mediaChannel.properties?.find((p) => p.category === PropertyCategory.ON) ?? null)
 						: null;
 
-				// Volume/mute only from speaker channel
-				const volumeProperty = isSpeaker
-					? (mediaChannel.properties?.find((p) => p.category === PropertyCategory.VOLUME) ?? null)
-					: null;
-				const muteProperty = isSpeaker
-					? (mediaChannel.properties?.find((p) => p.category === PropertyCategory.MUTE) ?? null)
-					: null;
+				// Volume/mute from speaker or television channels
+				// TVs can have integrated volume/mute controls on their TELEVISION channel
+				const volumeProperty =
+					isSpeaker || isTelevision
+						? (mediaChannel.properties?.find((p) => p.category === PropertyCategory.VOLUME) ?? null)
+						: null;
+				const muteProperty =
+					isSpeaker || isTelevision
+						? (mediaChannel.properties?.find((p) => p.category === PropertyCategory.MUTE) ?? null)
+						: null;
 
 				// Only include channels that expose at least one controllable property
 				const isControlChannel =
