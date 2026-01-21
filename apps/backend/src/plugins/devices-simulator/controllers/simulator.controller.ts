@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
@@ -24,7 +24,7 @@ import {
 	DEVICES_SIMULATOR_TYPE,
 } from '../devices-simulator.constants';
 import { ReqGenerateDeviceDto } from '../dto/generate-device.dto';
-import { ReqSimulateConnectionStateDto, ReqSimulateValueDto } from '../dto/simulate-value.dto';
+import { ReqSimulateValueDto } from '../dto/simulate-value.dto';
 import { SimulatorDeviceEntity } from '../entities/devices-simulator.entity';
 import {
 	ConnectionStateResponseModel,
@@ -216,8 +216,24 @@ export class SimulatorController {
 		format: 'uuid',
 	})
 	@ApiBody({
-		type: ReqSimulateConnectionStateDto,
 		description: 'Connection state simulation parameters',
+		schema: {
+			type: 'object',
+			required: ['data'],
+			properties: {
+				data: {
+					type: 'object',
+					required: ['state'],
+					properties: {
+						state: {
+							type: 'string',
+							enum: Object.values(ConnectionState),
+							description: 'Desired connection state',
+						},
+					},
+				},
+			},
+		},
 	})
 	@ApiSuccessResponse(ConnectionStateResponseModel, 'Connection state simulation result')
 	@ApiNotFoundResponse('Device not found')
@@ -225,11 +241,15 @@ export class SimulatorController {
 	@Post(':deviceId/simulate-connection')
 	async simulateConnectionState(
 		@Param('deviceId', ParseUUIDPipe) deviceId: string,
-		@Body() body: ReqSimulateConnectionStateDto,
+		@Body() body: { data?: { state?: ConnectionState } },
 	): Promise<ConnectionStateResponseModel> {
-		const dto = body.data;
+		const state = body?.data?.state;
 
-		this.logger.debug(`Simulating connection state for device=${deviceId}: ${dto.state}`);
+		if (!state || !Object.values(ConnectionState).includes(state)) {
+			throw new BadRequestException('Invalid connection state');
+		}
+
+		this.logger.debug(`Simulating connection state for device=${deviceId}: ${state}`);
 
 		// Verify the device exists and is a simulator device
 		const device = await this.devicesService.findOne<SimulatorDeviceEntity>(deviceId, DEVICES_SIMULATOR_TYPE);
@@ -240,15 +260,15 @@ export class SimulatorController {
 
 		// Update the connection state
 		await this.deviceConnectivityService.setConnectionState(deviceId, {
-			state: dto.state,
-			reason: `Simulated state change to ${dto.state}`,
+			state,
+			reason: `Simulated state change to ${state}`,
 		});
 
-		this.logger.log(`Simulated connection state for device=${deviceId}: ${dto.state}`, { resource: deviceId });
+		this.logger.log(`Simulated connection state for device=${deviceId}: ${state}`, { resource: deviceId });
 
 		const result: ConnectionStateResultModel = {
 			device_id: deviceId,
-			state: dto.state,
+			state,
 			success: true,
 		};
 

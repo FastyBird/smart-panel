@@ -3,9 +3,7 @@ import { CreateSimulatorChannelDto } from './dto/create-channel.dto';
 import { CreateSimulatorDeviceDto } from './dto/create-device.dto';
 import { GenerateDeviceDto, ReqGenerateDeviceDto } from './dto/generate-device.dto';
 import {
-	ReqSimulateConnectionStateDto,
 	ReqSimulateValueDto,
-	SimulateConnectionStateDto,
 	SimulateValueDto,
 } from './dto/simulate-value.dto';
 import { UpdateSimulatorChannelPropertyDto } from './dto/update-channel-property.dto';
@@ -47,8 +45,6 @@ export const DEVICES_SIMULATOR_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	ReqGenerateDeviceDto,
 	SimulateValueDto,
 	ReqSimulateValueDto,
-	SimulateConnectionStateDto,
-	ReqSimulateConnectionStateDto,
 
 	// Response models
 	GeneratedDeviceResponseModel,
