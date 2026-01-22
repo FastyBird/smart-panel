@@ -118,41 +118,56 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
   Future<void> _setMode(MediaMode mode) async {
     if (_spacesService == null) return;
     setState(() => _isSending = true);
-    await _spacesService!.setMediaMode(_roomId, mode);
-    setState(() => _isSending = false);
+    try {
+      await _spacesService!.setMediaMode(_roomId, mode);
+    } finally {
+      setState(() => _isSending = false);
+    }
   }
 
   Future<void> _setVolume(int volume) async {
     if (_spacesService == null) return;
     setState(() => _isSending = true);
-    await _spacesService!.setMediaVolume(_roomId, volume.clamp(0, 100));
-    setState(() => _isSending = false);
+    try {
+      await _spacesService!.setMediaVolume(_roomId, volume.clamp(0, 100));
+    } finally {
+      setState(() => _isSending = false);
+    }
   }
 
   Future<void> _adjustVolume(bool increase, VolumeDelta delta) async {
     if (_spacesService == null) return;
     setState(() => _isSending = true);
-    await _spacesService!
-        .adjustMediaVolume(_roomId, delta: delta, increase: increase);
-    setState(() => _isSending = false);
+    try {
+      await _spacesService!
+          .adjustMediaVolume(_roomId, delta: delta, increase: increase);
+    } finally {
+      setState(() => _isSending = false);
+    }
   }
 
   Future<void> _setPower(bool on) async {
     if (_spacesService == null) return;
     setState(() => _isSending = true);
-    await (on
-        ? _spacesService!.powerOnMedia(_roomId)
-        : _spacesService!.powerOffMedia(_roomId));
-    setState(() => _isSending = false);
+    try {
+      await (on
+          ? _spacesService!.powerOnMedia(_roomId)
+          : _spacesService!.powerOffMedia(_roomId));
+    } finally {
+      setState(() => _isSending = false);
+    }
   }
 
   Future<void> _setMute(bool muted) async {
     if (_spacesService == null) return;
     setState(() => _isSending = true);
-    await (muted
-        ? _spacesService!.muteMedia(_roomId)
-        : _spacesService!.unmuteMedia(_roomId));
-    setState(() => _isSending = false);
+    try {
+      await (muted
+          ? _spacesService!.muteMedia(_roomId)
+          : _spacesService!.unmuteMedia(_roomId));
+    } finally {
+      setState(() => _isSending = false);
+    }
   }
 
   @override

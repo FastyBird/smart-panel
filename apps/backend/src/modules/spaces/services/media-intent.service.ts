@@ -208,9 +208,14 @@ export class MediaIntentService extends SpaceIntentBaseService {
 		this.intentsService.completeIntent(intentRecord.id, targetResults);
 
 		// Emit state change event for WebSocket clients (fire and forget)
-		if (result.success) {
+		// Always emit state change so UI stays in sync
+		void this.emitMediaStateChange(spaceId);
+
+		// Only store "last applied" state when ALL devices succeeded
+		// Partial failures should not update the stored state, as it would mislead
+		// the panel about what was actually applied across all devices
+		if (result.success && result.failedDevices === 0) {
 			void this.storeMediaState(spaceId, intent, result);
-			void this.emitMediaStateChange(spaceId);
 		}
 
 		return result;
@@ -483,9 +488,27 @@ export class MediaIntentService extends SpaceIntentBaseService {
 		let isMuted: boolean | undefined;
 		const volumeDeltaVolumes: number[] = [];
 
+		// Track processed device IDs for playback intents to avoid duplicate commands
+		// when a device has multiple media channels (e.g., TELEVISION + MEDIA_PLAYBACK)
+		const isPlaybackIntent = [
+			MediaIntentType.PLAY,
+			MediaIntentType.PAUSE,
+			MediaIntentType.STOP,
+			MediaIntentType.NEXT,
+			MediaIntentType.PREVIOUS,
+		].includes(intent.type);
+		const processedDeviceIds = new Set<string>();
+
 		for (const device of devices) {
 			// Skip HIDDEN devices
 			if (device.role === MediaRole.HIDDEN) {
+				continue;
+			}
+
+			// For playback intents, skip if we've already processed this device
+			// (prevents duplicate commands for devices with multiple media channels)
+			if (isPlaybackIntent && processedDeviceIds.has(device.device.id)) {
+				this.logger.debug(`Skipping duplicate playback for deviceId=${device.device.id} (already processed)`);
 				continue;
 			}
 
@@ -497,6 +520,11 @@ export class MediaIntentService extends SpaceIntentBaseService {
 			}
 
 			const outcome = await this.executeIntentForDevice(device, intent);
+
+			// Mark device as processed for playback deduplication
+			if (isPlaybackIntent) {
+				processedDeviceIds.add(device.device.id);
+			}
 
 			if (outcome === IntentTargetStatus.SUCCESS) {
 				affectedDevices++;
