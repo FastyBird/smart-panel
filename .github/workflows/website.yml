@@ -41,6 +41,9 @@ jobs:
           node-version: "${{ matrix.node-version }}"
           pnpm-version: "${{ matrix.pnpm-version }}"
 
+      - name: "Generate documentation"
+        run: 'pnpm --filter @fastybird/smart-panel-website run generate:docs'
+
       - name: "Build"
         shell: "bash"
         run: 'pnpm --filter @fastybird/smart-panel-website build'

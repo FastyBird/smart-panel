@@ -18,7 +18,7 @@ function stripDocFields(obj) {
 
 	for (const [key, value] of Object.entries(obj)) {
 		// Skip documentation-only fields
-		if (['useCases', 'developerNotes', 'docGroup', 'name'].includes(key)) {
+		if (['useCases', 'developerNotes', 'docGroup', 'name', 'description'].includes(key)) {
 			continue;
 		}
 
