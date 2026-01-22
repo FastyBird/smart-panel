@@ -10,7 +10,7 @@ import { DeviceResponseModel } from '../../../modules/devices/models/devices-res
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { getAllProperties, getDeviceSpec } from '../../../modules/devices/utils/schema.utils';
+import { getAllProperties } from '../../../modules/devices/utils/schema.utils';
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
@@ -65,12 +65,10 @@ export class SimulatorController {
 		const categories: DeviceCategoryModel[] = [];
 
 		for (const category of Object.values(DeviceCategory)) {
-			const spec = getDeviceSpec(category);
-
 			categories.push({
 				category,
 				name: this.formatCategoryName(category),
-				description: spec?.description?.en || '',
+				description: '',
 			});
 		}
 
