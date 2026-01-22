@@ -1,18 +1,41 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import YAML from 'yaml';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const inputPath = path.join(__dirname, '../../../spec/devices/channels.json');
+const inputPath = path.join(__dirname, '../../../spec/devices/channels.yaml');
 const outputPath = path.join(__dirname, '../src/spec/channels.ts');
 
 const raw = fs.readFileSync(inputPath, 'utf-8');
-const json = JSON.parse(raw);
+const yamlData = YAML.parse(raw);
+
+// Strip documentation-only fields to keep generated code lean
+function stripDocFields(obj) {
+	const result = {};
+
+	for (const [key, value] of Object.entries(obj)) {
+		// Skip documentation-only fields
+		if (['useCases', 'developerNotes', 'docGroup', 'name', 'description'].includes(key)) {
+			continue;
+		}
+
+		if (value && typeof value === 'object' && !Array.isArray(value)) {
+			result[key] = stripDocFields(value);
+		} else {
+			result[key] = value;
+		}
+	}
+
+	return result;
+}
+
+const json = stripDocFields(yamlData);
 
 const output = `
-// This file is generated from ${path.relative(path.dirname(outputPath), inputPath)}
+// This file is generated from channels.yaml
 // Do not edit manually!
 
 export const channelsSchema = ${JSON.stringify(json, null, 2)} as const;

@@ -212,14 +212,10 @@ export class GenerateDeviceCommand extends CommandRunner {
 		for (const category of categories) {
 			const spec = getDeviceSpec(category);
 			const channelCount = spec?.channels ? Object.keys(spec.channels).length : 0;
-			const description = spec?.description?.en || '';
 
 			console.log(`  \x1b[1m${category}\x1b[0m`);
 			console.log(`    Name: ${this.formatCategoryName(category)}`);
 			console.log(`    Channels: ${channelCount}`);
-			if (description) {
-				console.log(`    Description: ${description}`);
-			}
 			console.log('');
 		}
 

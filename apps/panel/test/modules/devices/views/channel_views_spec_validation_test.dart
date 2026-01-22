@@ -1,11 +1,11 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:yaml/yaml.dart';
 
 /// Test that validates channel view implementations match the spec.
 ///
-/// This test reads the channel spec JSON and verifies that:
+/// This test reads the channel spec YAML and verifies that:
 /// - Properties marked as `required: true` use `.first` (non-nullable)
 /// - Properties marked as `required: false` use `.firstOrNull` (nullable)
 void main() {
@@ -25,12 +25,13 @@ void main() {
         projectRoot = currentDir;
       }
 
-      final specFile = File('$projectRoot/spec/devices/channels.json');
+      final specFile = File('$projectRoot/spec/devices/channels.yaml');
       expect(specFile.existsSync(), isTrue,
-          reason: 'channels.json spec file should exist at ${specFile.path}');
+          reason: 'channels.yaml spec file should exist at ${specFile.path}');
 
       final specContent = specFile.readAsStringSync();
-      channelsSpec = jsonDecode(specContent) as Map<String, dynamic>;
+      final yamlData = loadYaml(specContent) as YamlMap;
+      channelsSpec = _yamlToMap(yamlData);
 
       viewsBasePath =
           '$projectRoot/apps/panel/lib/modules/devices/views/channels';
@@ -316,12 +317,13 @@ void main() {
         projectRoot = currentDir;
       }
 
-      final specFile = File('$projectRoot/spec/devices/devices.json');
+      final specFile = File('$projectRoot/spec/devices/devices.yaml');
       expect(specFile.existsSync(), isTrue,
-          reason: 'devices.json spec file should exist');
+          reason: 'devices.yaml spec file should exist');
 
       final specContent = specFile.readAsStringSync();
-      devicesSpec = jsonDecode(specContent) as Map<String, dynamic>;
+      final yamlData = loadYaml(specContent) as YamlMap;
+      devicesSpec = _yamlToMap(yamlData);
 
       viewsBasePath =
           '$projectRoot/apps/panel/lib/modules/devices/views/devices';
@@ -517,4 +519,26 @@ void main() {
       expect(devicesSpec.containsKey('sensor'), isTrue);
     });
   });
+}
+
+/// Converts YamlMap to regular Map<String, dynamic>
+Map<String, dynamic> _yamlToMap(YamlMap yamlMap) {
+  final result = <String, dynamic>{};
+  for (final entry in yamlMap.entries) {
+    final key = entry.key.toString();
+    final value = entry.value;
+    result[key] = _convertYamlValue(value);
+  }
+  return result;
+}
+
+/// Converts YAML values to Dart types
+dynamic _convertYamlValue(dynamic value) {
+  if (value is YamlMap) {
+    return _yamlToMap(value);
+  } else if (value is YamlList) {
+    return value.map(_convertYamlValue).toList();
+  } else {
+    return value;
+  }
 }
