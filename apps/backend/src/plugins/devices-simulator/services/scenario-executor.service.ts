@@ -8,7 +8,12 @@ import { v4 as uuidv4 } from 'uuid';
 import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
-import { ChannelCategory, ConnectionState, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	ConnectionState,
+	DeviceCategory,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 import { CreateDeviceChannelPropertyDto } from '../../../modules/devices/dto/create-device-channel-property.dto';
 import { CreateDeviceChannelDto } from '../../../modules/devices/dto/create-device-channel.dto';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
@@ -19,11 +24,10 @@ import {
 	getRequiredChannels,
 	getRequiredProperties,
 } from '../../../modules/devices/utils/schema.utils';
-import { SpaceType } from '../../../modules/spaces/spaces.constants';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
+import { SpaceType } from '../../../modules/spaces/spaces.constants';
 import { DEVICES_SIMULATOR_PLUGIN_NAME, DEVICES_SIMULATOR_TYPE } from '../devices-simulator.constants';
 import { SimulatorDeviceEntity } from '../entities/devices-simulator.entity';
-
 import {
 	ScenarioChannelDefinition,
 	ScenarioConfig,
@@ -52,10 +56,7 @@ export class ScenarioExecutorService {
 	/**
 	 * Execute a scenario by name
 	 */
-	async executeByName(
-		scenarioName: string,
-		options: ScenarioExecutionOptions = {},
-	): Promise<ScenarioExecutionResult> {
+	async executeByName(scenarioName: string, options: ScenarioExecutionOptions = {}): Promise<ScenarioExecutionResult> {
 		const loadResult = this.scenarioLoader.loadScenarioByName(scenarioName);
 
 		if (!loadResult.success || !loadResult.config) {
@@ -75,10 +76,7 @@ export class ScenarioExecutorService {
 	/**
 	 * Execute a scenario from file path
 	 */
-	async executeFromFile(
-		filePath: string,
-		options: ScenarioExecutionOptions = {},
-	): Promise<ScenarioExecutionResult> {
+	async executeFromFile(filePath: string, options: ScenarioExecutionOptions = {}): Promise<ScenarioExecutionResult> {
 		const loadResult = this.scenarioLoader.loadScenarioFile(filePath);
 
 		if (!loadResult.success || !loadResult.config) {
@@ -98,10 +96,7 @@ export class ScenarioExecutorService {
 	/**
 	 * Execute a scenario configuration
 	 */
-	async execute(
-		config: ScenarioConfig,
-		options: ScenarioExecutionOptions = {},
-	): Promise<ScenarioExecutionResult> {
+	async execute(config: ScenarioConfig, options: ScenarioExecutionOptions = {}): Promise<ScenarioExecutionResult> {
 		const errors: string[] = [];
 		const deviceIds: string[] = [];
 		const roomIds: string[] = [];
@@ -165,9 +160,7 @@ export class ScenarioExecutorService {
 		if (options.dryRun) {
 			this.logger.log(`[DRY RUN] Scenario '${config.name}' preview complete`);
 		} else {
-			this.logger.log(
-				`Scenario '${config.name}' execution ${success ? 'completed' : 'completed with errors'}`,
-			);
+			this.logger.log(`Scenario '${config.name}' execution ${success ? 'completed' : 'completed with errors'}`);
 		}
 
 		return {
@@ -305,9 +298,7 @@ export class ScenarioExecutorService {
 			const metadata = getPropertyMetadata(channelCategory, propertyCategory);
 
 			if (!metadata) {
-				throw new Error(
-					`Property '${propertyDef.category}' is not defined for channel '${channelCategory}'`,
-				);
+				throw new Error(`Property '${propertyDef.category}' is not defined for channel '${channelCategory}'`);
 			}
 
 			// Determine value - use provided value or generate default
@@ -354,9 +345,7 @@ export class ScenarioExecutorService {
 						value: defaultValue,
 					});
 
-					this.logger.debug(
-						`Added missing required property '${requiredCategory}' for channel '${channelCategory}'`,
-					);
+					this.logger.debug(`Added missing required property '${requiredCategory}' for channel '${channelCategory}'`);
 				}
 			}
 		}
@@ -399,10 +388,7 @@ export class ScenarioExecutorService {
 	/**
 	 * Get a default value for a property based on its data type
 	 */
-	private getDefaultValue(
-		dataType: string,
-		format: string[] | number[] | null,
-	): string | number | boolean | null {
+	private getDefaultValue(dataType: string, format: string[] | number[] | null): string | number | boolean | null {
 		switch (dataType) {
 			case 'bool':
 				return false;
@@ -442,10 +428,10 @@ export class ScenarioExecutorService {
 	/**
 	 * Get preview of what would be created (dry run)
 	 */
-	async preview(config: ScenarioConfig): Promise<{
+	preview(config: ScenarioConfig): {
 		rooms: { name: string }[];
 		devices: { name: string; category: string; channelCount: number; propertyCount: number }[];
-	}> {
+	} {
 		const rooms = config.rooms?.map((r) => ({ name: r.name })) ?? [];
 
 		const devices = config.devices.map((d) => {

@@ -15,7 +15,6 @@ import { ExtensionLoggerService, createExtensionLogger } from '../../../common/l
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { getPropertyMetadata, isChannelAllowed } from '../../../modules/devices/utils/schema.utils';
 import { DEVICES_SIMULATOR_PLUGIN_NAME } from '../devices-simulator.constants';
-
 import {
 	ScenarioChannelDefinition,
 	ScenarioConfig,
@@ -303,9 +302,10 @@ export class ScenarioLoaderService implements OnModuleInit {
 		}
 
 		// Try lowercase match
-		const values = Object.values(DeviceCategory);
-		const match = values.find((v) => v === category.toLowerCase());
-		return match ?? null;
+		const lowerCategory = category.toLowerCase();
+		const values = Object.values(DeviceCategory) as string[];
+		const match = values.find((v) => v === lowerCategory);
+		return (match as DeviceCategory) ?? null;
 	}
 
 	/**
@@ -318,9 +318,10 @@ export class ScenarioLoaderService implements OnModuleInit {
 		}
 
 		// Try lowercase match
-		const values = Object.values(ChannelCategory);
-		const match = values.find((v) => v === category.toLowerCase());
-		return match ?? null;
+		const lowerCategory = category.toLowerCase();
+		const values = Object.values(ChannelCategory) as string[];
+		const match = values.find((v) => v === lowerCategory);
+		return (match as ChannelCategory) ?? null;
 	}
 
 	/**
@@ -333,9 +334,10 @@ export class ScenarioLoaderService implements OnModuleInit {
 		}
 
 		// Try lowercase match
-		const values = Object.values(PropertyCategory);
-		const match = values.find((v) => v === category.toLowerCase());
-		return match ?? null;
+		const lowerCategory = category.toLowerCase();
+		const values = Object.values(PropertyCategory) as string[];
+		const match = values.find((v) => v === lowerCategory);
+		return (match as PropertyCategory) ?? null;
 	}
 
 	/**

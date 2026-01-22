@@ -12,6 +12,7 @@ import { createExtensionLogger } from '../../../common/logger';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DEVICES_SIMULATOR_PLUGIN_NAME, DEVICES_SIMULATOR_TYPE } from '../devices-simulator.constants';
 import { SimulatorDeviceEntity } from '../entities/devices-simulator.entity';
+import { ScenarioLoadResult } from '../scenarios/scenario.types';
 import { ScenarioExecutorService } from '../services/scenario-executor.service';
 import { ScenarioLoaderService } from '../services/scenario-loader.service';
 
@@ -224,7 +225,7 @@ export class ScenarioCommand extends CommandRunner {
 		}
 
 		// Load and show preview
-		let loadResult;
+		let loadResult: ScenarioLoadResult;
 		if (options.file) {
 			loadResult = this.scenarioLoader.loadScenarioFile(options.file);
 		} else if (options.scenario) {
@@ -243,11 +244,13 @@ export class ScenarioCommand extends CommandRunner {
 			return;
 		}
 
+		const scenarioConfig = loadResult.config;
+
 		// Show preview
-		const preview = await this.scenarioExecutor.preview(loadResult.config);
-		console.log(`\n\x1b[36m📦 Scenario: ${loadResult.config.name}\x1b[0m`);
-		if (loadResult.config.description) {
-			console.log(`  ${loadResult.config.description}`);
+		const preview = this.scenarioExecutor.preview(scenarioConfig);
+		console.log(`\n\x1b[36m📦 Scenario: ${scenarioConfig.name}\x1b[0m`);
+		if (scenarioConfig.description) {
+			console.log(`  ${scenarioConfig.description}`);
 		}
 		console.log('');
 
@@ -261,7 +264,9 @@ export class ScenarioCommand extends CommandRunner {
 
 		console.log(`  \x1b[1mDevices (${preview.devices.length}):\x1b[0m`);
 		for (const device of preview.devices) {
-			console.log(`    • ${device.name} (${device.category}) - ${device.channelCount} channels, ${device.propertyCount} properties`);
+			console.log(
+				`    • ${device.name} (${device.category}) - ${device.channelCount} channels, ${device.propertyCount} properties`,
+			);
 		}
 		console.log('');
 
@@ -273,7 +278,7 @@ export class ScenarioCommand extends CommandRunner {
 		// Execute
 		console.log('\x1b[36m🔧 Creating devices...\x1b[0m\n');
 
-		const result = await this.scenarioExecutor.execute(loadResult.config, {
+		const result = await this.scenarioExecutor.execute(scenarioConfig, {
 			createRooms: !options.noRooms,
 			dryRun: options.dryRun,
 		});

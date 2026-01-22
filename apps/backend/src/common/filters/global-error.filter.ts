@@ -21,12 +21,16 @@ export class GlobalErrorFilter implements ExceptionFilter {
 
 		const errorMessage = exception instanceof HttpException ? exception.message : 'An unexpected error occurred.';
 
-		const exceptionMessage =
-			exception instanceof Error
-				? exception.message
-				: typeof exception === 'object'
-					? JSON.stringify(exception)
-					: String(exception);
+		let exceptionMessage: string;
+		if (exception instanceof Error) {
+			exceptionMessage = exception.message;
+		} else if (typeof exception === 'object' && exception !== null) {
+			exceptionMessage = JSON.stringify(exception);
+		} else if (typeof exception === 'string') {
+			exceptionMessage = exception;
+		} else {
+			exceptionMessage = 'Unknown error';
+		}
 
 		this.logger.error(
 			`[ERROR] [GlobalErrorFilter] ${exceptionMessage}`,
