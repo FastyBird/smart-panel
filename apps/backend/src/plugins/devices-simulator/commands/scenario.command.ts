@@ -246,6 +246,14 @@ export class ScenarioCommand extends CommandRunner {
 
 		const scenarioConfig = loadResult.config;
 
+		// Display warnings if any
+		if (loadResult.warnings && loadResult.warnings.length > 0) {
+			console.log('\n\x1b[33m⚠ Validation warnings:\x1b[0m');
+			for (const warning of loadResult.warnings) {
+				console.log(`  • ${warning}`);
+			}
+		}
+
 		// Show preview
 		const preview = this.scenarioExecutor.preview(scenarioConfig);
 		console.log(`\n\x1b[36m📦 Scenario: ${scenarioConfig.name}\x1b[0m`);

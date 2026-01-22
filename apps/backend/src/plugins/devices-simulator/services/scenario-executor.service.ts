@@ -427,6 +427,7 @@ export class ScenarioExecutorService {
 
 	/**
 	 * Get preview of what would be created (dry run)
+	 * Calculates actual counts including auto-added required channels/properties
 	 */
 	preview(config: ScenarioConfig): {
 		rooms: { name: string }[];
@@ -435,12 +436,59 @@ export class ScenarioExecutorService {
 		const rooms = config.rooms?.map((r) => ({ name: r.name })) ?? [];
 
 		const devices = config.devices.map((d) => {
-			const propertyCount = d.channels.reduce((sum, ch) => sum + ch.properties.length, 0);
+			const deviceCategory = this.scenarioLoader.resolveDeviceCategory(d.category);
+			if (!deviceCategory) {
+				// Invalid category - return YAML counts (will fail during execution)
+				const propertyCount = d.channels.reduce((sum, ch) => sum + ch.properties.length, 0);
+				return {
+					name: d.name,
+					category: d.category,
+					channelCount: d.channels.length,
+					propertyCount,
+				};
+			}
+
+			// Calculate actual channel count including required channels
+			const requiredChannelCategories = getRequiredChannels(deviceCategory);
+			const definedChannelCategories = new Set<ChannelCategory>();
+			d.channels.forEach((ch) => {
+				const cat = this.scenarioLoader.resolveChannelCategory(ch.category);
+				if (cat) definedChannelCategories.add(cat);
+			});
+			const missingChannelCount = requiredChannelCategories.filter((c) => !definedChannelCategories.has(c)).length;
+			const actualChannelCount = d.channels.length + missingChannelCount;
+
+			// Calculate actual property count including required properties
+			let actualPropertyCount = 0;
+			for (const ch of d.channels) {
+				const channelCategory = this.scenarioLoader.resolveChannelCategory(ch.category);
+				if (!channelCategory) {
+					actualPropertyCount += ch.properties.length;
+					continue;
+				}
+
+				const requiredPropertyCategories = getRequiredProperties(channelCategory);
+				const definedPropertyCategories = new Set<PropertyCategory>();
+				ch.properties.forEach((p) => {
+					const cat = this.scenarioLoader.resolvePropertyCategory(p.category);
+					if (cat) definedPropertyCategories.add(cat);
+				});
+				const missingPropertyCount = requiredPropertyCategories.filter((p) => !definedPropertyCategories.has(p)).length;
+				actualPropertyCount += ch.properties.length + missingPropertyCount;
+			}
+
+			// Add properties for missing required channels
+			for (const requiredChannelCat of requiredChannelCategories) {
+				if (!definedChannelCategories.has(requiredChannelCat)) {
+					actualPropertyCount += getRequiredProperties(requiredChannelCat).length;
+				}
+			}
+
 			return {
 				name: d.name,
 				category: d.category,
-				channelCount: d.channels.length,
-				propertyCount,
+				channelCount: actualChannelCount,
+				propertyCount: actualPropertyCount,
 			};
 		});
 

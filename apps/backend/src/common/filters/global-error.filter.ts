@@ -38,7 +38,7 @@ export class GlobalErrorFilter implements ExceptionFilter {
 		}
 
 		this.logger.error(
-			`[ERROR] [GlobalErrorFilter] ${exceptionMessage}`,
+			`[ERROR] [GlobalErrorFilter] ${request.method} ${request.originalUrl} ${status} - ${exceptionMessage}`,
 			exception instanceof Error ? exception.stack : undefined,
 		);
 
