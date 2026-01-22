@@ -269,7 +269,7 @@ export class ScenarioLoaderService implements OnModuleInit {
 		channelCategory: ChannelCategory,
 		channelPath: string,
 		errors: string[],
-		warnings: string[],
+		_warnings: string[],
 	): void {
 		for (let k = 0; k < channel.properties.length; k++) {
 			const property = channel.properties[k];
