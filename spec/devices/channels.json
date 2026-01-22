@@ -96,7 +96,7 @@
     "category": "air_particulate",
     "constraints": {
       "oneOrMoreOf": [
-        ["detected", "density"]
+        ["detected", "concentration"]
       ]
     },
     "properties": {
@@ -115,8 +115,8 @@
         "invalid": null,
         "step": null
       },
-      "density": {
-        "category": "density",
+      "concentration": {
+        "category": "concentration",
         "required": false,
         "description": {
           "en": ""
@@ -513,7 +513,7 @@
     "category": "carbon_dioxide",
     "constraints": {
       "oneOrMoreOf": [
-        ["detected", "density"]
+        ["detected", "concentration"]
       ]
     },
     "properties": {
@@ -532,8 +532,8 @@
         "invalid": null,
         "step": null
       },
-      "density": {
-        "category": "density",
+      "concentration": {
+        "category": "concentration",
         "required": false,
         "description": {
           "en": ""
@@ -618,7 +618,7 @@
     "category": "carbon_monoxide",
     "constraints": {
       "oneOrMoreOf": [
-        ["detected", "density"]
+        ["detected", "concentration"]
       ]
     },
     "properties": {
@@ -637,8 +637,8 @@
         "invalid": null,
         "step": null
       },
-      "density": {
-        "category": "density",
+      "concentration": {
+        "category": "concentration",
         "required": false,
         "description": {
           "en": ""
@@ -1966,8 +1966,8 @@
         "invalid": null,
         "step": null
       },
-      "density": {
-        "category": "density",
+      "concentration": {
+        "category": "concentration",
         "required": false,
         "description": {
           "en": ""
@@ -2411,8 +2411,8 @@
   "illuminance": {
     "category": "illuminance",
     "properties": {
-      "density": {
-        "category": "density",
+      "illuminance": {
+        "category": "illuminance",
         "required": true,
         "description": {
           "en": ""
@@ -3302,7 +3302,7 @@
     "category": "nitrogen_dioxide",
     "constraints": {
       "oneOrMoreOf": [
-        ["detected", "density"]
+        ["detected", "concentration"]
       ]
     },
     "properties": {
@@ -3321,8 +3321,8 @@
         "invalid": null,
         "step": null
       },
-      "density": {
-        "category": "density",
+      "concentration": {
+        "category": "concentration",
         "required": false,
         "description": {
           "en": ""
@@ -3528,10 +3528,10 @@
     "category": "ozone",
     "constraints": {
       "oneOrMoreOf": [
-        ["detected", "density", "level"]
+        ["detected", "concentration", "level"]
       ],
       "oneOf": [
-        ["density", "level"]
+        ["concentration", "level"]
       ]
     },
     "properties": {
@@ -3550,8 +3550,8 @@
         "invalid": null,
         "step": null
       },
-      "density": {
-        "category": "density",
+      "concentration": {
+        "category": "concentration",
         "required": false,
         "description": {
           "en": ""
@@ -3638,8 +3638,8 @@
   "pressure": {
     "category": "pressure",
     "properties": {
-      "measured": {
-        "category": "measured",
+      "pressure": {
+        "category": "pressure",
         "required": true,
         "description": {
           "en": ""
@@ -4001,8 +4001,8 @@
         "invalid": null,
         "step": null
       },
-      "density": {
-        "category": "density",
+      "concentration": {
+        "category": "concentration",
         "required": true,
         "description": {
           "en": ""
@@ -4219,8 +4219,8 @@
           }
         ]
       },
-      "input_source": {
-        "category": "input_source",
+      "source": {
+        "category": "source",
         "required": true,
         "description": {
           "en": "Select input/source using either a standardized identifier or an integration-specific value."
@@ -4288,8 +4288,8 @@
           }
         ]
       },
-      "input_source_label": {
-        "category": "input_source_label",
+      "source_label": {
+        "category": "source_label",
         "required": false,
         "description": {
           "en": "Human-readable label for the current input/source."
@@ -4560,10 +4560,10 @@
     "category": "volatile_organic_compounds",
     "constraints": {
       "oneOrMoreOf": [
-        ["detected", "density", "level"]
+        ["detected", "concentration", "level"]
       ],
       "oneOf": [
-        ["density", "level"]
+        ["concentration", "level"]
       ]
     },
     "properties": {
@@ -4582,8 +4582,8 @@
         "invalid": null,
         "step": null
       },
-      "density": {
-        "category": "density",
+      "concentration": {
+        "category": "concentration",
         "required": false,
         "description": {
           "en": ""

@@ -567,7 +567,7 @@ export class MappingLoaderService implements OnModuleInit {
 			DETECTED: PropertyCategory.DETECTED,
 			LEVEL: PropertyCategory.LEVEL,
 		};
-		return aliases[upperCategory] ?? PropertyCategory.MEASURED;
+		return aliases[upperCategory] ?? PropertyCategory.GENERIC;
 	}
 
 	/**

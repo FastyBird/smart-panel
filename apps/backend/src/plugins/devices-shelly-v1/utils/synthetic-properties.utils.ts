@@ -76,20 +76,20 @@ export const SYNTHETIC_PROPERTIES: Partial<Record<ChannelCategory, SyntheticProp
 	[ChannelCategory.ILLUMINANCE]: [
 		{
 			propertyCategory: PropertyCategory.LEVEL,
-			sourcePropertyCategory: PropertyCategory.DENSITY,
+			sourcePropertyCategory: PropertyCategory.ILLUMINANCE,
 			deriveValue: (
-				density: string | number | boolean | null,
+				illuminance: string | number | boolean | null,
 				_currentValue?: string | number | boolean | null,
 			): string => {
-				// Derive illuminance level from lux density
+				// Derive illuminance level from lux value
 				// Global schema allows: ['bright', 'moderate', 'dusky', 'dark']
 				// Shelly devices can derive all values based on lux thresholds
 				// Note: This always recalculates from source (doesn't preserve currentValue)
-				if (density === null || density === undefined) {
+				if (illuminance === null || illuminance === undefined) {
 					return 'dark'; // Default to dark if no value
 				}
 
-				const luxValue = typeof density === 'number' ? density : Number(density);
+				const luxValue = typeof illuminance === 'number' ? illuminance : Number(illuminance);
 
 				if (isNaN(luxValue)) {
 					return 'dark'; // Default to dark if invalid value

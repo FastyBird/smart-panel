@@ -5,7 +5,7 @@ import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/mixins.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/active.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/density.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/concentration.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/detected.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/fault.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/level.dart';
@@ -14,7 +14,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/tampered.
 class OzoneChannelView extends ChannelView
     with
         ChannelDetectedMixin,
-        ChannelDensityMixin,
+        ChannelConcentrationMixin,
         ChannelActiveMixin,
         ChannelFaultMixin,
         ChannelTamperedMixin {
@@ -36,8 +36,8 @@ class OzoneChannelView extends ChannelView
       properties.whereType<DetectedChannelPropertyView>().firstOrNull;
 
   @override
-  DensityChannelPropertyView? get densityProp =>
-      properties.whereType<DensityChannelPropertyView>().firstOrNull;
+  ConcentrationChannelPropertyView? get concentrationProp =>
+      properties.whereType<ConcentrationChannelPropertyView>().firstOrNull;
 
   LevelChannelPropertyView? get levelProp =>
       properties.whereType<LevelChannelPropertyView>().firstOrNull;

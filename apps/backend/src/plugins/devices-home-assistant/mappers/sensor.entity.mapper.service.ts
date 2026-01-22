@@ -41,7 +41,7 @@ export class SensorEntityMapperService extends EntityMapper {
 					{
 						const sensorProp = await this.getValidProperty(
 							properties,
-							PropertyCategory.MEASURED,
+							PropertyCategory.PRESSURE,
 							ENTITY_MAIN_STATE_ATTRIBUTE,
 							[ChannelCategory.PRESSURE],
 						);
@@ -122,7 +122,7 @@ export class SensorEntityMapperService extends EntityMapper {
 					{
 						const sensorProp = await this.getValidProperty(
 							properties,
-							PropertyCategory.DENSITY,
+							PropertyCategory.CONCENTRATION,
 							ENTITY_MAIN_STATE_ATTRIBUTE,
 							[ChannelCategory.CARBON_DIOXIDE],
 						);
@@ -144,7 +144,7 @@ export class SensorEntityMapperService extends EntityMapper {
 					{
 						const sensorProp = await this.getValidProperty(
 							properties,
-							PropertyCategory.DENSITY,
+							PropertyCategory.CONCENTRATION,
 							ENTITY_MAIN_STATE_ATTRIBUTE,
 							[ChannelCategory.CARBON_MONOXIDE],
 						);
@@ -409,11 +409,11 @@ export class SensorEntityMapperService extends EntityMapper {
 					break;
 				case 'illuminance':
 					{
-						// Illuminance LUX value is stored in DENSITY property
-						// LEVEL is a virtual property derived from DENSITY
+						// Illuminance LUX value is stored in ILLUMINANCE property
+						// LEVEL is a virtual property derived from ILLUMINANCE
 						const sensorProp = await this.getValidProperty(
 							properties,
-							PropertyCategory.DENSITY,
+							PropertyCategory.ILLUMINANCE,
 							ENTITY_MAIN_STATE_ATTRIBUTE,
 							[ChannelCategory.ILLUMINANCE],
 						);
@@ -445,7 +445,7 @@ export class SensorEntityMapperService extends EntityMapper {
 					{
 						const sensorProp = await this.getValidProperty(
 							properties,
-							PropertyCategory.DENSITY,
+							PropertyCategory.CONCENTRATION,
 							ENTITY_MAIN_STATE_ATTRIBUTE,
 							[ChannelCategory.NITROGEN_DIOXIDE],
 						);
@@ -475,7 +475,7 @@ export class SensorEntityMapperService extends EntityMapper {
 					{
 						const sensorProp = await this.getValidProperty(
 							properties,
-							PropertyCategory.DENSITY,
+							PropertyCategory.CONCENTRATION,
 							ENTITY_MAIN_STATE_ATTRIBUTE,
 							[ChannelCategory.OZONE],
 						);
@@ -505,7 +505,7 @@ export class SensorEntityMapperService extends EntityMapper {
 					{
 						const sensorProp = await this.getValidProperty(
 							properties,
-							PropertyCategory.DENSITY,
+							PropertyCategory.CONCENTRATION,
 							ENTITY_MAIN_STATE_ATTRIBUTE,
 							[ChannelCategory.AIR_PARTICULATE],
 						);
@@ -587,7 +587,7 @@ export class SensorEntityMapperService extends EntityMapper {
 					{
 						const sensorProp = await this.getValidProperty(
 							properties,
-							PropertyCategory.MEASURED,
+							PropertyCategory.PRESSURE,
 							ENTITY_MAIN_STATE_ATTRIBUTE,
 							[ChannelCategory.PRESSURE],
 						);
@@ -679,7 +679,7 @@ export class SensorEntityMapperService extends EntityMapper {
 					{
 						const sensorProp = await this.getValidProperty(
 							properties,
-							PropertyCategory.DENSITY,
+							PropertyCategory.CONCENTRATION,
 							ENTITY_MAIN_STATE_ATTRIBUTE,
 							[ChannelCategory.SULPHUR_DIOXIDE],
 						);
@@ -748,7 +748,7 @@ export class SensorEntityMapperService extends EntityMapper {
 					{
 						const sensorProp = await this.getValidProperty(
 							properties,
-							PropertyCategory.DENSITY,
+							PropertyCategory.CONCENTRATION,
 							ENTITY_MAIN_STATE_ATTRIBUTE,
 							[ChannelCategory.VOLATILE_ORGANIC_COMPOUNDS],
 						);

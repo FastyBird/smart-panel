@@ -1909,7 +1909,7 @@
     "_debug_name": "Living Room Television - Television",
     "type": "devices-simulator",
     "id": "03a2a8f7-ac1a-4738-b5a4-dba2a3f999bd",
-    "category": "input_source",
+    "category": "source",
     "name": null,
     "permissions": [
       "rw",

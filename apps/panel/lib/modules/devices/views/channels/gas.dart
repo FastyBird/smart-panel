@@ -3,7 +3,7 @@ import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/mixins.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/active.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/density.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/concentration.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/detected.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/fault.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/status.dart';
@@ -13,7 +13,7 @@ import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.d
 class GasChannelView extends ChannelView
     with
         ChannelDetectedMixin,
-        ChannelDensityMixin,
+        ChannelConcentrationMixin,
         ChannelActiveMixin,
         ChannelFaultMixin,
         ChannelTamperedMixin {
@@ -38,8 +38,8 @@ class GasChannelView extends ChannelView
       properties.whereType<StatusChannelPropertyView>().first;
 
   @override
-  DensityChannelPropertyView? get densityProp =>
-      properties.whereType<DensityChannelPropertyView>().firstOrNull;
+  ConcentrationChannelPropertyView? get concentrationProp =>
+      properties.whereType<ConcentrationChannelPropertyView>().firstOrNull;
 
   @override
   ActiveChannelPropertyView? get activeProp =>

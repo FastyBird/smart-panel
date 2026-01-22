@@ -264,7 +264,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     final aqChannel = _device.airQualityChannel;
     final pmChannel = _device.airParticulateChannel;
     return (aqChannel != null && (aqChannel.hasLevel || aqChannel.hasAqi)) ||
-        (pmChannel != null && pmChannel.hasDensity);
+        (pmChannel != null && pmChannel.hasConcentration);
   }
 
   int get _aqi {
@@ -278,9 +278,9 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       if (aqChannel.hasLevel) {
         return AirQualityUtils.calculateAqiFromLevel(aqChannel.level);
       }
-    } else if (pmChannel != null && pmChannel.hasDensity) {
+    } else if (pmChannel != null && pmChannel.hasConcentration) {
       final mode = pmChannel.hasMode ? pmChannel.mode : AirParticulateModeValue.pm25;
-      return AirQualityUtils.calculateAqi(pmChannel.density, mode);
+      return AirQualityUtils.calculateAqi(pmChannel.concentration, mode);
     }
     return 0;
   }
@@ -295,8 +295,8 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
 
   int get _pm25 {
     final pmChannel = _device.airParticulateChannel;
-    if (pmChannel != null && pmChannel.hasDensity) {
-      return pmChannel.density.toInt();
+    if (pmChannel != null && pmChannel.hasConcentration) {
+      return pmChannel.concentration.toInt();
     }
     return 0;
   }
@@ -1077,13 +1077,13 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     // CO tile - carbon monoxide (can be lethal, highest priority)
     final coChannel = _device.carbonMonoxideChannel;
     if (coChannel != null) {
-      if (coChannel.hasDensity) {
+      if (coChannel.hasConcentration) {
         infoTiles.add(InfoTile(
           label: localizations.device_co,
-          value: NumberFormatUtils.defaultFormat.formatDecimal(coChannel.density, decimalPlaces: 1),
+          value: NumberFormatUtils.defaultFormat.formatDecimal(coChannel.concentration, decimalPlaces: 1),
           unit: 'ppm',
           valueColor: airColor,
-          isWarning: coChannel.density > 35, // Warn if CO exceeds 35 ppm (EPA 1-hour limit)
+          isWarning: coChannel.concentration > 35, // Warn if CO exceeds 35 ppm (EPA 1-hour limit)
         ));
       } else if (coChannel.hasDetected) {
         final isDetected = coChannel.detected;
@@ -1119,7 +1119,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     final pmChannel = _device.airParticulateChannel;
     if (pmChannel != null) {
       final pmMode = pmChannel.hasMode ? pmChannel.mode : AirParticulateModeValue.pm25;
-      if (pmChannel.hasDensity) {
+      if (pmChannel.hasConcentration) {
         infoTiles.add(InfoTile(
           label: AirQualityUtils.getParticulateLabel(localizations, pmMode),
           value: NumberFormatUtils.defaultFormat.formatInteger(_pm25),
@@ -1148,10 +1148,10 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           value: AirQualityUtils.getVocLevelLabel(localizations, vocChannel.level),
           valueColor: airColor,
         ));
-      } else if (vocChannel.hasDensity) {
+      } else if (vocChannel.hasConcentration) {
         infoTiles.add(InfoTile(
           label: localizations.device_voc,
-          value: AirQualityUtils.calculateVocLevelFromDensity(localizations, vocChannel.density),
+          value: AirQualityUtils.calculateVocLevelFromConcentration(localizations, vocChannel.concentration),
           valueColor: airColor,
         ));
       } else if (vocChannel.hasDetected) {
@@ -1169,13 +1169,13 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
 
     // CO₂ tile - carbon dioxide (indoor air quality indicator)
     final co2Channel = _device.carbonDioxideChannel;
-    if (co2Channel != null && co2Channel.hasDensity) {
+    if (co2Channel != null && co2Channel.hasConcentration) {
       infoTiles.add(InfoTile(
         label: localizations.device_co2,
-        value: NumberFormatUtils.defaultFormat.formatInteger(co2Channel.density.toInt()),
+        value: NumberFormatUtils.defaultFormat.formatInteger(co2Channel.concentration.toInt()),
         unit: 'ppm',
         valueColor: airColor,
-        isWarning: co2Channel.density > 1000, // Warn if CO₂ exceeds 1000 ppm
+        isWarning: co2Channel.concentration > 1000, // Warn if CO₂ exceeds 1000 ppm
       ));
     }
 
@@ -1192,13 +1192,13 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           value: AirQualityUtils.getOzoneLevelLabel(localizations, o3Channel.level),
           valueColor: airColor,
         ));
-      } else if (o3Channel.hasDensity) {
+      } else if (o3Channel.hasConcentration) {
         infoTiles.add(InfoTile(
           label: localizations.device_o3,
-          value: NumberFormatUtils.defaultFormat.formatInteger(o3Channel.density.toInt()),
+          value: NumberFormatUtils.defaultFormat.formatInteger(o3Channel.concentration.toInt()),
           unit: 'µg/m³',
           valueColor: airColor,
-          isWarning: o3Channel.density > 100, // Warn if exceeds WHO 8-hour limit
+          isWarning: o3Channel.concentration > 100, // Warn if exceeds WHO 8-hour limit
         ));
       } else if (o3Channel.hasDetected) {
         final isDetected = o3Channel.detected;
@@ -1216,13 +1216,13 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     // NO₂ tile - nitrogen dioxide
     final no2Channel = _device.nitrogenDioxideChannel;
     if (no2Channel != null) {
-      if (no2Channel.hasDensity) {
+      if (no2Channel.hasConcentration) {
         infoTiles.add(InfoTile(
           label: localizations.device_no2,
-          value: NumberFormatUtils.defaultFormat.formatInteger(no2Channel.density.toInt()),
+          value: NumberFormatUtils.defaultFormat.formatInteger(no2Channel.concentration.toInt()),
           unit: 'µg/m³',
           valueColor: airColor,
-          isWarning: no2Channel.density > 200, // Warn if exceeds WHO 1-hour limit
+          isWarning: no2Channel.concentration > 200, // Warn if exceeds WHO 1-hour limit
         ));
       } else if (no2Channel.hasDetected) {
         final isDetected = no2Channel.detected;
@@ -1246,13 +1246,13 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           value: AirQualityUtils.getSulphurDioxideLevelLabel(localizations, so2Channel.level),
           valueColor: airColor,
         ));
-      } else if (so2Channel.hasDensity) {
+      } else if (so2Channel.hasConcentration) {
         infoTiles.add(InfoTile(
           label: localizations.device_so2,
-          value: NumberFormatUtils.defaultFormat.formatInteger(so2Channel.density.toInt()),
+          value: NumberFormatUtils.defaultFormat.formatInteger(so2Channel.concentration.toInt()),
           unit: 'µg/m³',
           valueColor: airColor,
-          isWarning: so2Channel.density > 500, // Warn if exceeds WHO 10-min limit
+          isWarning: so2Channel.concentration > 500, // Warn if exceeds WHO 10-min limit
         ));
       } else if (so2Channel.hasDetected) {
         final isDetected = so2Channel.detected;
@@ -1324,7 +1324,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     if (pressureChannel != null) {
       infoTiles.add(InfoTile(
         label: localizations.device_pressure,
-        value: NumberFormatUtils.defaultFormat.formatDecimal(pressureChannel.measured, decimalPlaces: 1),
+        value: NumberFormatUtils.defaultFormat.formatDecimal(pressureChannel.pressure, decimalPlaces: 1),
         unit: 'kPa',
         valueColor: airColor,
       ));

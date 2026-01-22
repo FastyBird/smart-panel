@@ -247,13 +247,13 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 				unit = '%';
 				break;
 			case ChannelCategory.PRESSURE:
-				primaryProperty = properties.find((p) => p.category === PropertyCategory.MEASURED);
+				primaryProperty = properties.find((p) => p.category === PropertyCategory.PRESSURE);
 				unit = 'hPa';
 				break;
 			case ChannelCategory.ILLUMINANCE:
-				// Illuminance uses "density" property for the actual lux value (measured in lx)
+				// Illuminance uses its own property category
 				// There's also a "level" property with enum values (bright, moderate, dusky, dark)
-				primaryProperty = properties.find((p) => p.category === PropertyCategory.DENSITY);
+				primaryProperty = properties.find((p) => p.category === PropertyCategory.ILLUMINANCE);
 				unit = 'lux';
 				break;
 			case ChannelCategory.MOTION:
@@ -267,12 +267,12 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 			case ChannelCategory.GAS:
 				primaryProperty =
 					properties.find((p) => p.category === PropertyCategory.DETECTED) ??
-					properties.find((p) => p.category === PropertyCategory.DENSITY);
-				unit = primaryProperty?.category === PropertyCategory.DENSITY ? 'ppm' : null;
+					properties.find((p) => p.category === PropertyCategory.CONCENTRATION);
+				unit = primaryProperty?.category === PropertyCategory.CONCENTRATION ? 'ppm' : null;
 				break;
 			case ChannelCategory.CARBON_DIOXIDE:
 			case ChannelCategory.CARBON_MONOXIDE:
-				primaryProperty = properties.find((p) => p.category === PropertyCategory.DENSITY);
+				primaryProperty = properties.find((p) => p.category === PropertyCategory.CONCENTRATION);
 				unit = 'ppm';
 				break;
 			case ChannelCategory.NITROGEN_DIOXIDE:
@@ -281,15 +281,15 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 			case ChannelCategory.VOLATILE_ORGANIC_COMPOUNDS:
 				primaryProperty =
 					properties.find((p) => p.category === PropertyCategory.DETECTED) ??
-					properties.find((p) => p.category === PropertyCategory.DENSITY);
-				unit = primaryProperty?.category === PropertyCategory.DENSITY ? 'ppb' : null;
+					properties.find((p) => p.category === PropertyCategory.CONCENTRATION);
+				unit = primaryProperty?.category === PropertyCategory.CONCENTRATION ? 'ppb' : null;
 				break;
 			case ChannelCategory.AIR_QUALITY:
 				primaryProperty = properties.find((p) => p.category === PropertyCategory.AQI);
 				unit = 'AQI';
 				break;
 			case ChannelCategory.AIR_PARTICULATE:
-				primaryProperty = properties.find((p) => p.category === PropertyCategory.DENSITY);
+				primaryProperty = properties.find((p) => p.category === PropertyCategory.CONCENTRATION);
 				unit = 'µg/m³';
 				break;
 			case ChannelCategory.ELECTRICAL_POWER:
@@ -364,7 +364,7 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 		}
 
 		if (channel.category === ChannelCategory.PRESSURE) {
-			const pressProp = properties.find((p) => p.category === PropertyCategory.MEASURED);
+			const pressProp = properties.find((p) => p.category === PropertyCategory.PRESSURE);
 			const pressure = this.getPropertyNumericValue(pressProp);
 			if (pressure !== null) {
 				pressures.push(pressure);
@@ -372,8 +372,7 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 		}
 
 		if (channel.category === ChannelCategory.ILLUMINANCE) {
-			// Illuminance uses "density" property for the actual lux value (measured in lx)
-			const illumProp = properties.find((p) => p.category === PropertyCategory.DENSITY);
+			const illumProp = properties.find((p) => p.category === PropertyCategory.ILLUMINANCE);
 			const illuminance = this.getPropertyNumericValue(illumProp);
 			if (illuminance !== null) {
 				illuminances.push(illuminance);

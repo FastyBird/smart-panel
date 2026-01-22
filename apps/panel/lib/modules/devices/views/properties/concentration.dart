@@ -1,8 +1,10 @@
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 
-class MeasuredChannelPropertyView extends ChannelPropertyView {
-  MeasuredChannelPropertyView({
+/// Property view for concentration values.
+/// Supports float and uint data types.
+class ConcentrationChannelPropertyView extends ChannelPropertyView {
+  ConcentrationChannelPropertyView({
     required super.id,
     required super.type,
     required super.channel,
@@ -18,5 +20,6 @@ class MeasuredChannelPropertyView extends ChannelPropertyView {
     super.value,
   });
 
-  num? get measured => value is NumberValueType ? (value as NumberValueType).value : null;
+  /// Returns the concentration value.
+  num? get concentration => value is NumberValueType ? (value as NumberValueType).value : null;
 }

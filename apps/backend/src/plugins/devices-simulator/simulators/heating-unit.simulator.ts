@@ -128,7 +128,7 @@ export class HeatingUnitSimulator extends BaseDeviceSimulator {
 		const prevTemp = this.getPreviousValue(
 			previousValues,
 			ChannelCategory.TEMPERATURE,
-			PropertyCategory.MEASURED,
+			PropertyCategory.TEMPERATURE,
 			baseIndoor,
 		) as number;
 
@@ -140,7 +140,7 @@ export class HeatingUnitSimulator extends BaseDeviceSimulator {
 		return [
 			{
 				channelCategory: ChannelCategory.TEMPERATURE,
-				propertyCategory: PropertyCategory.MEASURED,
+				propertyCategory: PropertyCategory.TEMPERATURE,
 				value: this.clamp(finalTemp, 5, 35),
 			},
 		];
@@ -193,7 +193,7 @@ export class HeatingUnitSimulator extends BaseDeviceSimulator {
 		const roomTemp = this.getPreviousValue(
 			previousValues,
 			ChannelCategory.TEMPERATURE,
-			PropertyCategory.MEASURED,
+			PropertyCategory.TEMPERATURE,
 			18,
 		) as number;
 

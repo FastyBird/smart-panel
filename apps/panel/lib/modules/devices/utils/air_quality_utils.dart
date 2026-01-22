@@ -123,18 +123,18 @@ class AirQualityUtils {
     }
   }
 
-  /// Calculate VOC level label from density (µg/m³).
+  /// Calculate VOC level label from concentration (µg/m³).
   /// Based on general indoor air quality guidelines.
-  static String calculateVocLevelFromDensity(
+  static String calculateVocLevelFromConcentration(
     AppLocalizations localizations,
-    double density,
+    double concentration,
   ) {
     // Thresholds based on common indoor air quality standards
     // Good: < 300 µg/m³
     // Moderate: 300-500 µg/m³
     // Poor: > 500 µg/m³
-    if (density < 300) return localizations.voc_level_good;
-    if (density < 500) return localizations.voc_level_moderate;
+    if (concentration < 300) return localizations.voc_level_good;
+    if (concentration < 500) return localizations.voc_level_moderate;
     return localizations.voc_level_poor;
   }
 

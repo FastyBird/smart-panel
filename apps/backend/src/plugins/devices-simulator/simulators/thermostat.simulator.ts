@@ -127,7 +127,7 @@ export class ThermostatSimulator extends BaseDeviceSimulator {
 		const currentTemp = this.getPreviousValue(
 			previousValues,
 			ChannelCategory.TEMPERATURE,
-			PropertyCategory.MEASURED,
+			PropertyCategory.TEMPERATURE,
 			20,
 		) as number;
 
@@ -246,7 +246,7 @@ export class ThermostatSimulator extends BaseDeviceSimulator {
 		const prevTemp = this.getPreviousValue(
 			previousValues,
 			ChannelCategory.TEMPERATURE,
-			PropertyCategory.MEASURED,
+			PropertyCategory.TEMPERATURE,
 			baseIndoor,
 		) as number;
 
@@ -266,7 +266,7 @@ export class ThermostatSimulator extends BaseDeviceSimulator {
 		return [
 			{
 				channelCategory: ChannelCategory.TEMPERATURE,
-				propertyCategory: PropertyCategory.MEASURED,
+				propertyCategory: PropertyCategory.TEMPERATURE,
 				value: this.clamp(finalTemp, 5, 40),
 			},
 		];
@@ -292,7 +292,7 @@ export class ThermostatSimulator extends BaseDeviceSimulator {
 		const prevHumidity = this.getPreviousValue(
 			previousValues,
 			ChannelCategory.HUMIDITY,
-			PropertyCategory.MEASURED,
+			PropertyCategory.HUMIDITY,
 			target,
 		) as number;
 
@@ -302,7 +302,7 @@ export class ThermostatSimulator extends BaseDeviceSimulator {
 		return [
 			{
 				channelCategory: ChannelCategory.HUMIDITY,
-				propertyCategory: PropertyCategory.MEASURED,
+				propertyCategory: PropertyCategory.HUMIDITY,
 				value: this.clamp(Math.round(finalHumidity), 15, 85),
 			},
 		];

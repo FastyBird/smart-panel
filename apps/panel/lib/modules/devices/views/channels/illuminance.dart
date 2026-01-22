@@ -5,12 +5,12 @@ import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/mixins.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/active.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/density.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/fault.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/illuminance.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/level.dart';
 
 class IlluminanceChannelView extends ChannelView
-    with ChannelDensityMixin, ChannelActiveMixin, ChannelFaultMixin {
+    with ChannelIlluminanceMixin, ChannelActiveMixin, ChannelFaultMixin {
   IlluminanceChannelView({
     required super.id,
     required super.type,
@@ -25,8 +25,8 @@ class IlluminanceChannelView extends ChannelView
   });
 
   @override
-  DensityChannelPropertyView get densityProp =>
-      properties.whereType<DensityChannelPropertyView>().first;
+  IlluminanceChannelPropertyView get illuminanceProp =>
+      properties.whereType<IlluminanceChannelPropertyView>().first;
 
   LevelChannelPropertyView get levelProp =>
       properties.whereType<LevelChannelPropertyView>().first;

@@ -2,7 +2,7 @@ import 'package:collection/collection.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/mixins.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/active.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/density.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/concentration.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/detected.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/fault.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/peak_level.dart';
@@ -11,7 +11,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/tampered.
 class CarbonDioxideChannelView extends ChannelView
     with
         ChannelDetectedMixin,
-        ChannelDensityMixin,
+        ChannelConcentrationMixin,
         ChannelPeakLevelMixin,
         ChannelActiveMixin,
         ChannelFaultMixin,
@@ -34,8 +34,8 @@ class CarbonDioxideChannelView extends ChannelView
       properties.whereType<DetectedChannelPropertyView>().firstOrNull;
 
   @override
-  DensityChannelPropertyView? get densityProp =>
-      properties.whereType<DensityChannelPropertyView>().firstOrNull;
+  ConcentrationChannelPropertyView? get concentrationProp =>
+      properties.whereType<ConcentrationChannelPropertyView>().firstOrNull;
 
   @override
   PeakLevelChannelPropertyView? get peakLevelProp =>

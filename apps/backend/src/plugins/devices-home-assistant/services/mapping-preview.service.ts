@@ -734,7 +734,7 @@ export class MappingPreviewService {
 		// Media input source
 		if (
 			(channelCategory === ChannelCategory.MEDIA_INPUT || channelCategory === ChannelCategory.TELEVISION) &&
-			propertyCategory === PropertyCategory.INPUT_SOURCE
+			propertyCategory === PropertyCategory.SOURCE
 		) {
 			const sourceList = attrs.source_list;
 			if (Array.isArray(sourceList) && sourceList.length > 0) {
