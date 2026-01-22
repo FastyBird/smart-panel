@@ -551,7 +551,6 @@ export interface ChannelSpec {
 	category: ChannelCategoryType;
 	required: boolean;
 	multiple: boolean;
-	description: { en: string };
 }
 
 /**
@@ -559,7 +558,6 @@ export interface ChannelSpec {
  */
 export interface DeviceSpec {
 	category: DeviceCategoryType;
-	description: { en: string };
 	channels: Record<string, ChannelSpec>;
 }
 
