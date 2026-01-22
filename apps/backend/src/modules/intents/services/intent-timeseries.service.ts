@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { InfluxDbService } from '../../influxdb/services/influxdb.service';
+import { MediaMode } from '../../spaces/spaces.constants';
 import { INTENTS_MODULE_NAME, IntentStatus, IntentTargetStatus, IntentType } from '../intents.constants';
 import { IntentRecord } from '../models/intent.model';
 
@@ -29,6 +30,17 @@ export interface LastAppliedMode {
 	intentId: string;
 	appliedAt: Date;
 	status: IntentStatus;
+}
+
+export interface LastAppliedMediaState {
+	mode: string | null;
+	volume: number | null;
+	muted: boolean | null;
+	source: string | null;
+	intentId: string;
+	appliedAt: Date;
+	status: IntentStatus;
+	intentType: string;
 }
 
 /**
@@ -161,6 +173,80 @@ export class IntentTimeseriesService {
 	 */
 	async getLastClimateMode(spaceId: string): Promise<LastAppliedMode | null> {
 		return this.getLastAppliedModeByType(spaceId, 'climate.setMode');
+	}
+
+	/**
+	 * Query the last applied media mode for a space.
+	 * Note: Uses full intent type 'space.media.setMode' to match what storeMediaStateChange stores.
+	 */
+	async getLastMediaMode(spaceId: string): Promise<LastAppliedMode | null> {
+		return this.getLastAppliedModeByType(spaceId, 'space.media.setMode');
+	}
+
+	/**
+	 * Query the last applied media state (mode/volume/muted) for a space.
+	 */
+	async getLastMediaState(spaceId: string): Promise<LastAppliedMediaState | null> {
+		if (!this.influxDbService.isConnected()) {
+			this.logger.debug(`InfluxDB not connected - cannot query last media state for spaceId=${spaceId}`);
+			return null;
+		}
+
+		if (!isValidUuid(spaceId)) {
+			this.logger.warn(`Invalid spaceId format rejected spaceId=${spaceId}`);
+			return null;
+		}
+
+		const safeSpaceId = sanitizeInfluxString(spaceId);
+
+		const query = `
+			SELECT intentId, intentType, mode, volume, muted, source, status
+			FROM space_intent
+			WHERE spaceId = '${safeSpaceId}'
+			AND intentType =~ /space\\.media.*/
+			AND (status = '${IntentStatus.COMPLETED_SUCCESS}' OR status = '${IntentStatus.COMPLETED_PARTIAL}')
+			ORDER BY time DESC
+			LIMIT 1
+		`
+			.trim()
+			.replace(/\s+/g, ' ');
+
+		try {
+			const result = await this.influxDbService.query<{
+				time: { _nanoISO: string };
+				intentId: string;
+				intentType: string;
+				mode: string;
+				volume: number;
+				muted: boolean;
+				status: IntentStatus;
+				source: string | null;
+			}>(query);
+
+			if (!result.length) {
+				return null;
+			}
+
+			const row = result[0];
+
+			return {
+				mode: row.mode ?? null,
+				volume: row.volume !== undefined && row.volume !== null ? Number(row.volume) : null,
+				muted: row.muted !== undefined && row.muted !== null ? Boolean(row.muted) : null,
+				source: row.source ?? null,
+				intentId: row.intentId || '',
+				intentType: row.intentType || '',
+				appliedAt: new Date(row.time._nanoISO),
+				status: row.status,
+			};
+		} catch (error) {
+			const err = error as Error;
+			this.logger.error(
+				`Failed to query last media state from InfluxDB spaceId=${spaceId} error=${err.message}`,
+				err.stack,
+			);
+			return null;
+		}
 	}
 
 	/**
@@ -543,6 +629,64 @@ export class IntentTimeseriesService {
 	}
 
 	/**
+	 * Store a media intent state change (mode/volume/muted).
+	 * Called by MediaIntentService after successfully applying an intent.
+	 */
+	async storeMediaStateChange(
+		spaceId: string,
+		intentType: string,
+		state: {
+			mode?: MediaMode | null;
+			volume?: number | null;
+			muted?: boolean | null;
+			role?: string | null;
+			on?: boolean | null;
+			source?: string | null;
+		},
+	): Promise<void> {
+		if (!this.influxDbService.isConnected()) {
+			this.logger.warn(`InfluxDB not connected - media intent not persisted spaceId=${spaceId}`);
+			return;
+		}
+
+		if (!isValidUuid(spaceId)) {
+			this.logger.warn(`Invalid spaceId format rejected spaceId=${spaceId}`);
+			return;
+		}
+
+		try {
+			await this.influxDbService.writePoints([
+				{
+					measurement: 'space_intent',
+					tags: {
+						spaceId,
+						intentType,
+						status: IntentStatus.COMPLETED_SUCCESS,
+					},
+					fields: {
+						intentId: '',
+						mode: state.mode ?? '',
+						volume: state.volume ?? null,
+						muted: state.muted ?? null,
+						role: state.role ?? '',
+						on: state.on ?? null,
+						source: state.source ?? null,
+						targetsCount: 0,
+						successCount: 0,
+						failedCount: 0,
+					},
+					timestamp: new Date(),
+				},
+			]);
+
+			this.logger.debug(`Media intent stored spaceId=${spaceId} intentType=${intentType}`);
+		} catch (error) {
+			const err = error as Error;
+			this.logger.error(`Failed to store media state to InfluxDB spaceId=${spaceId} error=${err.message}`, err.stack);
+		}
+	}
+
+	/**
 	 * Delete all intent history for a space.
 	 */
 	async deleteSpaceHistory(spaceId: string): Promise<void> {
@@ -581,6 +725,7 @@ export class IntentTimeseriesService {
 			IntentType.LIGHT_SET_COLOR_TEMP,
 			IntentType.LIGHT_SET_WHITE,
 			IntentType.DEVICE_SET_PROPERTY,
+			IntentType.SPACE_MEDIA_SET_MODE,
 		].includes(type);
 	}
 

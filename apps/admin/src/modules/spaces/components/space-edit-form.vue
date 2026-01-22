@@ -203,6 +203,11 @@
 						<space-climate-roles :space="props.space" />
 					</template>
 
+					<!-- Media Roles -->
+					<template v-if="hasMediaDevices">
+						<space-media-roles :space="props.space" />
+					</template>
+
 					<!-- Covers Roles -->
 					<template v-if="hasCoversDevices">
 						<space-covers-roles :space="props.space" />
@@ -294,11 +299,13 @@ import {
 	isValidCategoryForType,
 	type SpaceCategory,
 	SpaceType,
+	MEDIA_DEVICE_CATEGORIES,
 } from '../spaces.constants';
 
 import SpaceClimateRoles from './space-climate-roles.vue';
 import SpaceCoversRoles from './space-covers-roles.vue';
 import SpaceEditSummarySection from './space-edit-summary-section.vue';
+import SpaceMediaRoles from './space-media-roles.vue';
 import SpaceLightingRoles from './space-lighting-roles.vue';
 import SpaceSensorRoles from './space-sensor-roles.vue';
 import { type ISpaceEditFormProps, spaceEditFormEmits } from './space-edit-form.types';
@@ -451,6 +458,13 @@ const climateDeviceCategories = [
 // Check if there are climate devices in this space (for role assignment)
 const hasClimateDevices = computed(() =>
 	spaceDevices.value.some((d) => climateDeviceCategories.includes(d.category as DevicesModuleDeviceCategory))
+);
+
+// Media device categories for role assignment
+const hasMediaDevices = computed(() =>
+	spaceDevices.value.some((d) =>
+		MEDIA_DEVICE_CATEGORIES.includes(d.category as (typeof MEDIA_DEVICE_CATEGORIES)[number])
+	)
 );
 
 // Check if there are covers devices in this space

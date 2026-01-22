@@ -378,3 +378,9 @@ export { SpacesModuleDataRoleAggregatedStateRole as SpacesModuleLightingRole } f
 export { SpacesModuleSetClimateRoleRole as SpacesModuleClimateRole } from './openapi';
 
 export { SpacesModuleCoversIntentRole as SpacesModuleCoversRole } from './openapi';
+
+export {
+	SpacesModuleMediaIntentRole as SpacesModuleMediaRole,
+	SpacesModuleMediaIntentMode as SpacesModuleMediaMode,
+	SpacesModuleMediaIntentType as SpacesModuleMediaIntentType,
+} from './openapi';

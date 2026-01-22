@@ -9,6 +9,7 @@ export * from './useSpaceDisplays';
 export * from './useSpaceEditForm';
 export * from './useSpaceIntents';
 export * from './useSpaceLightingState';
+export * from './useSpaceMediaState';
 export * from './useSpaceScenes';
 export * from './useSpaceSuggestion';
 export * from './useSpaceUndo';

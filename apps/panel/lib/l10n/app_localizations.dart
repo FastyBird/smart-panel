@@ -2207,6 +2207,150 @@ abstract class AppLocalizations {
   /// **'Media'**
   String get domain_media;
 
+  /// Summary showing total media devices
+  ///
+  /// In en, this message translates to:
+  /// **'{count} devices'**
+  String media_devices_summary(Object count);
+
+  /// Summary showing total/on media devices
+  ///
+  /// In en, this message translates to:
+  /// **'{count} devices • {on} on'**
+  String media_devices_summary_on(Object count, Object on);
+
+  /// Section heading for media modes
+  ///
+  /// In en, this message translates to:
+  /// **'Modes'**
+  String get media_modes_title;
+
+  /// Button label to power on media devices
+  ///
+  /// In en, this message translates to:
+  /// **'Power on'**
+  String get media_action_power_on;
+
+  /// Button label to power off media devices
+  ///
+  /// In en, this message translates to:
+  /// **'Power off'**
+  String get media_action_power_off;
+
+  /// Button label to mute media devices
+  ///
+  /// In en, this message translates to:
+  /// **'Mute'**
+  String get media_action_mute;
+
+  /// Button label to unmute media devices
+  ///
+  /// In en, this message translates to:
+  /// **'Unmute'**
+  String get media_action_unmute;
+
+  /// Media mode Off
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get media_mode_off;
+
+  /// Media mode Background
+  ///
+  /// In en, this message translates to:
+  /// **'Background'**
+  String get media_mode_background;
+
+  /// Media mode Focused
+  ///
+  /// In en, this message translates to:
+  /// **'Focused'**
+  String get media_mode_focused;
+
+  /// Media mode Party
+  ///
+  /// In en, this message translates to:
+  /// **'Party'**
+  String get media_mode_party;
+
+  /// Section heading for media roles
+  ///
+  /// In en, this message translates to:
+  /// **'Roles'**
+  String get media_roles_title;
+
+  /// Summary for a media role
+  ///
+  /// In en, this message translates to:
+  /// **'{on} of {total} on'**
+  String media_role_summary(Object on, Object total);
+
+  /// Label for unassigned media devices
+  ///
+  /// In en, this message translates to:
+  /// **'Unassigned devices'**
+  String get media_roles_unassigned;
+
+  /// Label for primary media role
+  ///
+  /// In en, this message translates to:
+  /// **'Primary'**
+  String get media_role_primary;
+
+  /// Label for secondary media role
+  ///
+  /// In en, this message translates to:
+  /// **'Secondary'**
+  String get media_role_secondary;
+
+  /// Label for background media role
+  ///
+  /// In en, this message translates to:
+  /// **'Background'**
+  String get media_role_background;
+
+  /// Label for gaming media role
+  ///
+  /// In en, this message translates to:
+  /// **'Gaming'**
+  String get media_role_gaming;
+
+  /// Label for hidden media role
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden'**
+  String get media_role_hidden;
+
+  /// Section heading for media targets/devices
+  ///
+  /// In en, this message translates to:
+  /// **'Devices'**
+  String get media_targets_title;
+
+  /// Capability label - power
+  ///
+  /// In en, this message translates to:
+  /// **'Power'**
+  String get media_capability_power;
+
+  /// Capability label - volume
+  ///
+  /// In en, this message translates to:
+  /// **'Volume'**
+  String get media_capability_volume;
+
+  /// Capability label - mute
+  ///
+  /// In en, this message translates to:
+  /// **'Mute'**
+  String get media_capability_mute;
+
+  /// Shown when device has no media capabilities
+  ///
+  /// In en, this message translates to:
+  /// **'No capabilities'**
+  String get media_capability_none;
+
   /// Title for sensors domain view in room navigation
   ///
   /// In en, this message translates to:

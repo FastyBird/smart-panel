@@ -2841,21 +2841,70 @@
         "category": "source",
         "required": true,
         "description": {
-          "en": ""
+          "en": "Select input/source using either a standardized identifier or an integration-specific value."
         },
         "permissions": [
           "rw"
         ],
-        "data_type": "enum",
-        "unit": null,
-        "format": [
-          "hdmi1",
-          "hdmi2",
-          "usb",
-          "optical"
-        ],
-        "invalid": null,
-        "step": null
+        "data_types": [
+          {
+            "id": "standard",
+            "data_type": "enum",
+            "unit": null,
+            "format": [
+              "hdmi1",
+              "hdmi2",
+              "hdmi3",
+              "hdmi4",
+              "hdmi5",
+              "hdmi6",
+              "arc",
+              "earc",
+              "tv",
+              "cable",
+              "satellite",
+              "antenna",
+              "av1",
+              "av2",
+              "component",
+              "vga",
+              "dvi",
+              "usb",
+              "bluetooth",
+              "wifi",
+              "airplay",
+              "cast",
+              "dlna",
+              "miracast",
+              "app_netflix",
+              "app_youtube",
+              "app_spotify",
+              "app_prime_video",
+              "app_disney_plus",
+              "app_hbo_max",
+              "app_apple_tv",
+              "app_plex",
+              "app_kodi",
+              "other"
+            ],
+            "invalid": null,
+            "step": null,
+            "description": {
+              "en": "Standardized input/source identifier (recommended for UI)."
+            }
+          },
+          {
+            "id": "custom",
+            "data_type": "string",
+            "unit": null,
+            "format": null,
+            "invalid": null,
+            "step": null,
+            "description": {
+              "en": "Integration-specific input/source value (fallback)."
+            }
+          }
+        ]
       },
       "active": {
         "category": "active",
@@ -2867,6 +2916,21 @@
           "ro"
         ],
         "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "source_label": {
+        "category": "source_label",
+        "required": false,
+        "description": {
+          "en": "Human-readable label for the current input/source."
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "string",
         "unit": null,
         "format": null,
         "invalid": null,
@@ -2943,6 +3007,148 @@
         "format": [
           0,
           86400
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "shuffle": {
+        "category": "shuffle",
+        "required": false,
+        "description": {
+          "en": "Shuffle mode."
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "repeat": {
+        "category": "repeat",
+        "required": false,
+        "description": {
+          "en": "Repeat mode."
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "off",
+          "one",
+          "all"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "command": {
+        "category": "command",
+        "required": false,
+        "description": {
+          "en": "One-shot playback command."
+        },
+        "permissions": [
+          "wo"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "play",
+          "pause",
+          "stop",
+          "next",
+          "previous",
+          "rewind",
+          "fast_forward"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "title": {
+        "category": "title",
+        "required": false,
+        "description": {
+          "en": "Track title."
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "string",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "artist": {
+        "category": "artist",
+        "required": false,
+        "description": {
+          "en": "Track artist."
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "string",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "album": {
+        "category": "album",
+        "required": false,
+        "description": {
+          "en": "Album name."
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "string",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "artwork_url": {
+        "category": "artwork_url",
+        "required": false,
+        "description": {
+          "en": "Artwork/cover URL."
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "string",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "media_type": {
+        "category": "media_type",
+        "required": false,
+        "description": {
+          "en": "Media type classification."
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "music",
+          "tvshow",
+          "movie",
+          "video",
+          "playlist",
+          "podcast",
+          "audiobook",
+          "radio",
+          "unknown"
         ],
         "invalid": null,
         "step": null
@@ -3705,6 +3911,75 @@
         ],
         "invalid": null,
         "step": null
+      },
+      "mute": {
+        "category": "mute",
+        "required": false,
+        "description": {
+          "en": "Mute audio output."
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "balance": {
+        "category": "balance",
+        "required": false,
+        "description": {
+          "en": "Left/right balance (-1.0..1.0)."
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "float",
+        "unit": null,
+        "format": [
+          -1.0,
+          1.0
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "bass": {
+        "category": "bass",
+        "required": false,
+        "description": {
+          "en": "Bass adjustment."
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "float",
+        "unit": null,
+        "format": [
+          -10.0,
+          10.0
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "treble": {
+        "category": "treble",
+        "required": false,
+        "description": {
+          "en": "Treble adjustment."
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "float",
+        "unit": null,
+        "format": [
+          -10.0,
+          10.0
+        ],
+        "invalid": null,
+        "step": null
       }
     }
   },
@@ -3907,7 +4182,7 @@
       },
       "brightness": {
         "category": "brightness",
-        "required": true,
+        "required": false,
         "description": {
           "en": "TV brightness - integrator can choose between percentage or discrete levels"
         },
@@ -3948,13 +4223,85 @@
         "category": "input_source",
         "required": true,
         "description": {
-          "en": ""
+          "en": "Select input/source using either a standardized identifier or an integration-specific value."
         },
         "permissions": [
           "rw"
         ],
-        "data_type": "enum",
-        "unit": null
+        "data_types": [
+          {
+            "id": "standard",
+            "data_type": "enum",
+            "unit": null,
+            "format": [
+              "hdmi1",
+              "hdmi2",
+              "hdmi3",
+              "hdmi4",
+              "hdmi5",
+              "hdmi6",
+              "arc",
+              "earc",
+              "tv",
+              "cable",
+              "satellite",
+              "antenna",
+              "av1",
+              "av2",
+              "component",
+              "vga",
+              "dvi",
+              "usb",
+              "bluetooth",
+              "wifi",
+              "airplay",
+              "cast",
+              "dlna",
+              "miracast",
+              "app_netflix",
+              "app_youtube",
+              "app_spotify",
+              "app_prime_video",
+              "app_disney_plus",
+              "app_hbo_max",
+              "app_apple_tv",
+              "app_plex",
+              "app_kodi",
+              "other"
+            ],
+            "invalid": null,
+            "step": null,
+            "description": {
+              "en": "Standardized input/source identifier (recommended for UI)."
+            }
+          },
+          {
+            "id": "custom",
+            "data_type": "string",
+            "unit": null,
+            "format": null,
+            "invalid": null,
+            "step": null,
+            "description": {
+              "en": "Integration-specific input/source value (fallback)."
+            }
+          }
+        ]
+      },
+      "input_source_label": {
+        "category": "input_source_label",
+        "required": false,
+        "description": {
+          "en": "Human-readable label for the current input/source."
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "string",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
       },
       "remote_key": {
         "category": "remote_key",
@@ -3963,7 +4310,7 @@
           "en": ""
         },
         "permissions": [
-          "rw"
+          "wo"
         ],
         "data_type": "enum",
         "unit": null,

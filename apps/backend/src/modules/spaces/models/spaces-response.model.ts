@@ -7,6 +7,7 @@ import { ChannelCategory, DeviceCategory } from '../../devices/devices.constants
 import { SpaceClimateRoleEntity } from '../entities/space-climate-role.entity';
 import { SpaceCoversRoleEntity } from '../entities/space-covers-role.entity';
 import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
+import { SpaceMediaRoleEntity } from '../entities/space-media-role.entity';
 import { SpaceSensorRoleEntity } from '../entities/space-sensor-role.entity';
 import { SpaceEntity } from '../entities/space.entity';
 import {
@@ -17,6 +18,8 @@ import {
 	IntentCategory,
 	LightingMode,
 	LightingRole,
+	MediaMode,
+	MediaRole,
 	QuickActionType,
 	SensorRole,
 	SpaceCategory,
@@ -2169,14 +2172,14 @@ export class UndoStateDataModel {
 
 	@ApiPropertyOptional({
 		name: 'intent_category',
-		description: 'Category of the intent that can be undone (lighting, climate, or covers)',
+		description: 'Category of the intent that can be undone (lighting, climate, covers, or media)',
 		type: 'string',
-		enum: ['lighting', 'climate', 'covers'],
+		enum: ['lighting', 'climate', 'covers', 'media'],
 		nullable: true,
 		example: 'lighting',
 	})
 	@Expose({ name: 'intent_category' })
-	intentCategory: 'lighting' | 'climate' | 'covers' | null;
+	intentCategory: 'lighting' | 'climate' | 'covers' | 'media' | null;
 
 	@ApiPropertyOptional({
 		name: 'captured_at',
@@ -2710,6 +2713,637 @@ export class LightingStateResponseModel extends BaseSuccessResponseModel<Lightin
 	@Expose()
 	@Type(() => LightingStateDataModel)
 	declare data: LightingStateDataModel;
+}
+
+// ================================
+// Media State & Intent Models
+// ================================
+
+/**
+ * Aggregated state for media devices assigned to a role
+ */
+@ApiSchema({ name: 'SpacesModuleDataMediaRoleState' })
+export class MediaRoleStateDataModel {
+	@ApiProperty({
+		description: 'Role key',
+		enum: MediaRole,
+		example: MediaRole.PRIMARY,
+	})
+	@Expose()
+	role: MediaRole;
+
+	@ApiProperty({
+		name: 'is_on',
+		description: 'Whether any device in the role is on',
+		type: 'boolean',
+	})
+	@Expose({ name: 'is_on' })
+	isOn: boolean;
+
+	@ApiProperty({
+		name: 'is_on_mixed',
+		description: 'True when some devices in the role are on and some off',
+		type: 'boolean',
+	})
+	@Expose({ name: 'is_on_mixed' })
+	isOnMixed: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Shared volume for the role, null when mixed or unsupported',
+		type: 'integer',
+		nullable: true,
+		example: 50,
+	})
+	@Expose()
+	volume: number | null;
+
+	@ApiProperty({
+		name: 'is_volume_mixed',
+		description: 'True when devices have different volume values',
+		type: 'boolean',
+	})
+	@Expose({ name: 'is_volume_mixed' })
+	isVolumeMixed: boolean;
+
+	@ApiProperty({
+		name: 'is_muted',
+		description: 'Whether any device in the role is muted',
+		type: 'boolean',
+	})
+	@Expose({ name: 'is_muted' })
+	isMuted: boolean;
+
+	@ApiProperty({
+		name: 'is_muted_mixed',
+		description: 'True when some devices in the role are muted and some are not',
+		type: 'boolean',
+	})
+	@Expose({ name: 'is_muted_mixed' })
+	isMutedMixed: boolean;
+
+	@ApiProperty({
+		name: 'devices_count',
+		description: 'Number of devices in this role',
+		type: 'integer',
+		example: 2,
+	})
+	@Expose({ name: 'devices_count' })
+	devicesCount: number;
+
+	@ApiProperty({
+		name: 'devices_on',
+		description: 'Number of devices currently on in this role',
+		type: 'integer',
+		example: 1,
+	})
+	@Expose({ name: 'devices_on' })
+	devicesOn: number;
+}
+
+/**
+ * Aggregated state for unassigned media devices
+ */
+@ApiSchema({ name: 'SpacesModuleDataOtherMediaState' })
+export class OtherMediaStateDataModel {
+	@ApiProperty({
+		name: 'is_on',
+		description: 'Whether any unassigned device is on',
+		type: 'boolean',
+	})
+	@Expose({ name: 'is_on' })
+	isOn: boolean;
+
+	@ApiProperty({
+		name: 'is_on_mixed',
+		description: 'True when unassigned devices are a mix of on/off',
+		type: 'boolean',
+	})
+	@Expose({ name: 'is_on_mixed' })
+	isOnMixed: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Shared volume for unassigned devices, null when mixed or unsupported',
+		type: 'integer',
+		nullable: true,
+		example: 40,
+	})
+	@Expose()
+	volume: number | null;
+
+	@ApiProperty({
+		name: 'is_volume_mixed',
+		description: 'True when unassigned devices have different volume values',
+		type: 'boolean',
+	})
+	@Expose({ name: 'is_volume_mixed' })
+	isVolumeMixed: boolean;
+
+	@ApiProperty({
+		name: 'is_muted',
+		description: 'Whether any unassigned device is muted',
+		type: 'boolean',
+	})
+	@Expose({ name: 'is_muted' })
+	isMuted: boolean;
+
+	@ApiProperty({
+		name: 'is_muted_mixed',
+		description: 'True when mute state differs across unassigned devices',
+		type: 'boolean',
+	})
+	@Expose({ name: 'is_muted_mixed' })
+	isMutedMixed: boolean;
+
+	@ApiProperty({
+		name: 'devices_count',
+		description: 'Number of unassigned media devices',
+		type: 'integer',
+		example: 1,
+	})
+	@Expose({ name: 'devices_count' })
+	devicesCount: number;
+
+	@ApiProperty({
+		name: 'devices_on',
+		description: 'Number of unassigned devices that are on',
+		type: 'integer',
+		example: 0,
+	})
+	@Expose({ name: 'devices_on' })
+	devicesOn: number;
+}
+
+/**
+ * Media state data model for a space
+ */
+@ApiSchema({ name: 'SpacesModuleDataMediaState' })
+export class MediaStateDataModel {
+	@ApiProperty({
+		name: 'has_media',
+		description: 'Whether the space has any media devices',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'has_media' })
+	hasMedia: boolean;
+
+	@ApiProperty({
+		name: 'any_on',
+		description: 'Whether any media device is currently on',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'any_on' })
+	anyOn: boolean;
+
+	@ApiProperty({
+		name: 'all_off',
+		description: 'Whether all media devices are off',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'all_off' })
+	allOff: boolean;
+
+	@ApiPropertyOptional({
+		name: 'average_volume',
+		description: 'Average volume level of all media devices (0-100), null if no devices have volume',
+		type: 'integer',
+		nullable: true,
+		example: 50,
+	})
+	@Expose({ name: 'average_volume' })
+	averageVolume: number | null;
+
+	@ApiProperty({
+		name: 'any_muted',
+		description: 'Whether any media device is currently muted',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'any_muted' })
+	anyMuted: boolean;
+
+	@ApiProperty({
+		name: 'devices_count',
+		description: 'Total number of media devices in the space',
+		type: 'integer',
+		example: 3,
+	})
+	@Expose({ name: 'devices_count' })
+	devicesCount: number;
+
+	@ApiProperty({
+		name: 'devices_by_role',
+		description: 'Number of devices per role',
+		type: 'object',
+		additionalProperties: { type: 'integer' },
+		example: { primary: 1, secondary: 1, background: 1 },
+	})
+	@Expose({ name: 'devices_by_role' })
+	devicesByRole: Record<string, number>;
+
+	@ApiPropertyOptional({
+		name: 'last_applied_mode',
+		description: 'The last media mode that was explicitly applied via intent',
+		enum: MediaMode,
+		nullable: true,
+		example: MediaMode.FOCUSED,
+	})
+	@Expose({ name: 'last_applied_mode' })
+	lastAppliedMode: MediaMode | null;
+
+	@ApiPropertyOptional({
+		name: 'last_applied_volume',
+		description: 'The last volume value explicitly applied via intent',
+		type: 'integer',
+		nullable: true,
+		example: 50,
+	})
+	@Expose({ name: 'last_applied_volume' })
+	lastAppliedVolume: number | null;
+
+	@ApiPropertyOptional({
+		name: 'last_applied_muted',
+		description: 'The last mute state explicitly applied via intent',
+		type: 'boolean',
+		nullable: true,
+		example: false,
+	})
+	@Expose({ name: 'last_applied_muted' })
+	lastAppliedMuted: boolean | null;
+
+	@ApiPropertyOptional({
+		name: 'last_applied_at',
+		description: 'When the last mode was applied',
+		type: 'string',
+		format: 'date-time',
+		nullable: true,
+	})
+	@Expose({ name: 'last_applied_at' })
+	lastAppliedAt: Date | null;
+
+	@ApiPropertyOptional({
+		name: 'detected_mode',
+		description: 'Mode detected from current device states',
+		enum: MediaMode,
+		nullable: true,
+		example: MediaMode.BACKGROUND,
+	})
+	@Expose({ name: 'detected_mode' })
+	detectedMode: MediaMode | null;
+
+	@ApiProperty({
+		name: 'mode_confidence',
+		description: 'Confidence of detected mode',
+		enum: ['exact', 'approximate', 'none'],
+		example: 'approximate',
+	})
+	@Expose({ name: 'mode_confidence' })
+	modeConfidence: 'exact' | 'approximate' | 'none';
+
+	@ApiPropertyOptional({
+		name: 'mode_match_percentage',
+		description: 'Percentage of devices matching the detected mode',
+		type: 'integer',
+		nullable: true,
+		example: 85,
+	})
+	@Expose({ name: 'mode_match_percentage' })
+	modeMatchPercentage: number | null;
+
+	@ApiProperty({
+		description: 'Aggregated state per media role',
+		type: 'object',
+		additionalProperties: { $ref: getSchemaPath(MediaRoleStateDataModel) },
+	})
+	@Expose()
+	@Type(() => MediaRoleStateDataModel)
+	roles: Record<string, MediaRoleStateDataModel>;
+
+	@ApiProperty({
+		description: 'Aggregated state for unassigned media devices',
+		type: () => OtherMediaStateDataModel,
+	})
+	@Expose()
+	@Type(() => OtherMediaStateDataModel)
+	other: OtherMediaStateDataModel;
+}
+
+/**
+ * Response wrapper for media state
+ */
+@ApiSchema({ name: 'SpacesModuleResMediaState' })
+export class MediaStateResponseModel extends BaseSuccessResponseModel<MediaStateDataModel> {
+	@ApiProperty({
+		description: 'The media state data',
+		type: () => MediaStateDataModel,
+	})
+	@Expose()
+	@Type(() => MediaStateDataModel)
+	declare data: MediaStateDataModel;
+}
+
+/**
+ * Media intent execution result data model
+ */
+@ApiSchema({ name: 'SpacesModuleDataMediaIntentResult' })
+export class MediaIntentResultDataModel {
+	@ApiProperty({
+		description: 'Whether the intent was executed successfully',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	success: boolean;
+
+	@ApiProperty({
+		name: 'affected_devices',
+		description: 'Number of devices that were successfully affected',
+		type: 'integer',
+		example: 3,
+	})
+	@Expose({ name: 'affected_devices' })
+	affectedDevices: number;
+
+	@ApiProperty({
+		name: 'failed_devices',
+		description: 'Number of devices that failed to respond',
+		type: 'integer',
+		example: 0,
+	})
+	@Expose({ name: 'failed_devices' })
+	failedDevices: number;
+
+	@ApiPropertyOptional({
+		name: 'skipped_devices',
+		description: 'Number of devices skipped (no capability)',
+		type: 'integer',
+		nullable: true,
+		example: 1,
+	})
+	@Expose({ name: 'skipped_devices' })
+	skippedDevices: number | null;
+
+	@ApiPropertyOptional({
+		name: 'new_volume',
+		description: 'The new volume level after the intent (null if not applicable)',
+		type: 'integer',
+		nullable: true,
+		example: 50,
+	})
+	@Expose({ name: 'new_volume' })
+	newVolume: number | null;
+
+	@ApiPropertyOptional({
+		name: 'is_muted',
+		description: 'The mute state after the intent (null if not applicable)',
+		type: 'boolean',
+		nullable: true,
+		example: false,
+	})
+	@Expose({ name: 'is_muted' })
+	isMuted: boolean | null;
+
+	@ApiPropertyOptional({
+		name: 'failed_targets',
+		description: 'List of device IDs that failed (limited set)',
+		type: [String],
+		nullable: true,
+		example: ['device-uuid-1'],
+	})
+	@Expose({ name: 'failed_targets' })
+	failedTargets: string[] | null;
+}
+
+/**
+ * Response wrapper for media intent execution result
+ */
+@ApiSchema({ name: 'SpacesModuleResMediaIntent' })
+export class MediaIntentResponseModel extends BaseSuccessResponseModel<MediaIntentResultDataModel> {
+	@ApiProperty({
+		description: 'The result of the media intent execution',
+		type: () => MediaIntentResultDataModel,
+	})
+	@Expose()
+	@Type(() => MediaIntentResultDataModel)
+	declare data: MediaIntentResultDataModel;
+}
+
+// ================================
+// Media Role Response Models
+// ================================
+
+/**
+ * Media target data model (a media device in a space).
+ * Media targets are device-level only - roles operate at the device level.
+ */
+@ApiSchema({ name: 'SpacesModuleDataMediaTarget' })
+export class MediaTargetDataModel {
+	@ApiProperty({
+		name: 'device_id',
+		description: 'ID of the media device',
+		type: 'string',
+		format: 'uuid',
+		example: 'a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7',
+	})
+	@Expose({ name: 'device_id' })
+	deviceId: string;
+
+	@ApiProperty({
+		name: 'device_name',
+		description: 'Name of the device',
+		type: 'string',
+		example: 'Living Room TV',
+	})
+	@Expose({ name: 'device_name' })
+	deviceName: string;
+
+	@ApiProperty({
+		name: 'device_category',
+		description: 'Category of the media device',
+		enum: DeviceCategory,
+		example: 'television',
+	})
+	@Expose({ name: 'device_category' })
+	deviceCategory: DeviceCategory;
+
+	@ApiPropertyOptional({
+		description: 'The assigned media role (null if not assigned)',
+		enum: MediaRole,
+		nullable: true,
+		example: MediaRole.PRIMARY,
+	})
+	@Expose()
+	role: MediaRole | null;
+
+	@ApiProperty({
+		description: 'Priority for role ordering (lower = higher priority)',
+		type: 'integer',
+		example: 0,
+	})
+	@Expose()
+	priority: number;
+
+	@ApiProperty({
+		name: 'has_on',
+		description: 'Whether the device supports power control',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'has_on' })
+	hasOn: boolean;
+
+	@ApiProperty({
+		name: 'has_volume',
+		description: 'Whether the device supports volume control',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'has_volume' })
+	hasVolume: boolean;
+
+	@ApiProperty({
+		name: 'has_mute',
+		description: 'Whether the device supports mute control',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'has_mute' })
+	hasMute: boolean;
+}
+
+/**
+ * Response wrapper for media targets in a space
+ */
+@ApiSchema({ name: 'SpacesModuleResMediaTargets' })
+export class MediaTargetsResponseModel extends BaseSuccessResponseModel<MediaTargetDataModel[]> {
+	@ApiProperty({
+		description: 'Array of media targets in the space with their role assignments',
+		type: () => [MediaTargetDataModel],
+	})
+	@Expose()
+	@Type(() => MediaTargetDataModel)
+	declare data: MediaTargetDataModel[];
+}
+
+/**
+ * Response wrapper for a single media role entity
+ */
+@ApiSchema({ name: 'SpacesModuleResMediaRole' })
+export class MediaRoleResponseModel extends BaseSuccessResponseModel<SpaceMediaRoleEntity> {
+	@ApiProperty({
+		description: 'The media role assignment',
+		type: () => SpaceMediaRoleEntity,
+	})
+	@Expose()
+	@Type(() => SpaceMediaRoleEntity)
+	declare data: SpaceMediaRoleEntity;
+}
+
+/**
+ * Bulk media role update result item
+ */
+@ApiSchema({ name: 'SpacesModuleDataBulkMediaRoleResultItem' })
+export class BulkMediaRoleResultItemModel {
+	@ApiProperty({
+		name: 'device_id',
+		description: 'ID of the media device',
+		type: 'string',
+		format: 'uuid',
+		example: 'a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7',
+	})
+	@Expose({ name: 'device_id' })
+	deviceId: string;
+
+	@ApiProperty({
+		description: 'Whether the role was set successfully',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	success: boolean;
+
+	@ApiPropertyOptional({
+		description: 'The role that was set (null if failed)',
+		enum: MediaRole,
+		nullable: true,
+		example: MediaRole.PRIMARY,
+	})
+	@Expose()
+	role: MediaRole | null;
+
+	@ApiPropertyOptional({
+		description: 'Error message if the role assignment failed',
+		type: 'string',
+		nullable: true,
+		example: null,
+	})
+	@Expose()
+	error: string | null;
+}
+
+/**
+ * Bulk media role update result data
+ */
+@ApiSchema({ name: 'SpacesModuleDataBulkMediaRolesResult' })
+export class BulkMediaRolesResultDataModel {
+	@ApiProperty({
+		description: 'Whether all role assignments succeeded',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	success: boolean;
+
+	@ApiProperty({
+		name: 'total_count',
+		description: 'Total number of role assignments attempted',
+		type: 'integer',
+		example: 2,
+	})
+	@Expose({ name: 'total_count' })
+	totalCount: number;
+
+	@ApiProperty({
+		name: 'success_count',
+		description: 'Number of successful role assignments',
+		type: 'integer',
+		example: 2,
+	})
+	@Expose({ name: 'success_count' })
+	successCount: number;
+
+	@ApiProperty({
+		name: 'failure_count',
+		description: 'Number of failed role assignments',
+		type: 'integer',
+		example: 0,
+	})
+	@Expose({ name: 'failure_count' })
+	failureCount: number;
+
+	@ApiProperty({
+		description: 'Detailed results for each role assignment',
+		type: () => [BulkMediaRoleResultItemModel],
+	})
+	@Expose()
+	@Type(() => BulkMediaRoleResultItemModel)
+	results: BulkMediaRoleResultItemModel[];
+}
+
+/**
+ * Response wrapper for bulk media role update result
+ */
+@ApiSchema({ name: 'SpacesModuleResBulkMediaRoles' })
+export class BulkMediaRolesResponseModel extends BaseSuccessResponseModel<BulkMediaRolesResultDataModel> {
+	@ApiProperty({
+		description: 'The result of the bulk media role update',
+		type: () => BulkMediaRolesResultDataModel,
+	})
+	@Expose()
+	@Type(() => BulkMediaRolesResultDataModel)
+	declare data: BulkMediaRolesResultDataModel;
 }
 
 // ================================

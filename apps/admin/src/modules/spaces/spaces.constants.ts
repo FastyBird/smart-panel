@@ -15,6 +15,9 @@ export enum EventType {
 	LIGHT_TARGET_CREATED = 'SpacesModule.LightTarget.Created',
 	LIGHT_TARGET_UPDATED = 'SpacesModule.LightTarget.Updated',
 	LIGHT_TARGET_DELETED = 'SpacesModule.LightTarget.Deleted',
+	MEDIA_TARGET_CREATED = 'SpacesModule.MediaTarget.Created',
+	MEDIA_TARGET_UPDATED = 'SpacesModule.MediaTarget.Updated',
+	MEDIA_TARGET_DELETED = 'SpacesModule.MediaTarget.Deleted',
 	COVERS_TARGET_CREATED = 'SpacesModule.CoversTarget.Created',
 	COVERS_TARGET_UPDATED = 'SpacesModule.CoversTarget.Updated',
 	COVERS_TARGET_DELETED = 'SpacesModule.CoversTarget.Deleted',
@@ -23,6 +26,7 @@ export enum EventType {
 	SENSOR_TARGET_DELETED = 'SpacesModule.SensorTarget.Deleted',
 	LIGHTING_STATE_CHANGED = 'SpacesModule.Space.LightingStateChanged',
 	CLIMATE_STATE_CHANGED = 'SpacesModule.Space.ClimateStateChanged',
+	MEDIA_STATE_CHANGED = 'SpacesModule.Space.MediaStateChanged',
 	COVERS_STATE_CHANGED = 'SpacesModule.Space.CoversStateChanged',
 	SENSOR_STATE_CHANGED = 'SpacesModule.Space.SensorStateChanged',
 }
@@ -454,7 +458,11 @@ export enum SensorRole {
 }
 
 // Import for local use in helper arrays
-import { SpacesModuleClimateRole, DevicesModuleDeviceCategory } from '../../openapi.constants';
+import {
+	SpacesModuleClimateRole,
+	SpacesModuleMediaRole,
+	DevicesModuleDeviceCategory,
+} from '../../openapi.constants';
 
 // Helper arrays for role categorization
 export const CLIMATE_CONTROL_ROLES = [
@@ -479,6 +487,27 @@ export const CLIMATE_AUXILIARY_CATEGORIES = [
 	DevicesModuleDeviceCategory.air_purifier,
 	DevicesModuleDeviceCategory.fan,
 ] as const;
+
+// Media device category classifications
+export const MEDIA_DEVICE_CATEGORIES = [
+	DevicesModuleDeviceCategory.media,
+	DevicesModuleDeviceCategory.speaker,
+	DevicesModuleDeviceCategory.television,
+	DevicesModuleDeviceCategory.av_receiver,
+	DevicesModuleDeviceCategory.set_top_box,
+	DevicesModuleDeviceCategory.game_console,
+	DevicesModuleDeviceCategory.projector,
+	DevicesModuleDeviceCategory.streaming_service,
+] as const;
+
+// Media role ordering for consistent UI presentation
+export const MEDIA_ROLE_ORDER: SpacesModuleMediaRole[] = [
+	SpacesModuleMediaRole.primary,
+	SpacesModuleMediaRole.secondary,
+	SpacesModuleMediaRole.background,
+	SpacesModuleMediaRole.gaming,
+	SpacesModuleMediaRole.hidden,
+];
 
 // Sensor role ordering for consistent UI presentation
 export const SENSOR_ROLE_ORDER: SensorRole[] = [

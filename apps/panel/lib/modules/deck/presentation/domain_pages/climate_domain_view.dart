@@ -15,13 +15,8 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_dehumidifier.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_humidifier.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_purifier.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/fan.dart';
 import 'package:fastybird_smart_panel/modules/deck/views/climate_role_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
-import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_conditioner.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_dehumidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_humidifier.dart';
@@ -31,7 +26,6 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/heating_unit
 import 'package:fastybird_smart_panel/modules/devices/views/devices/water_heater.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/sensor.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
 import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart'

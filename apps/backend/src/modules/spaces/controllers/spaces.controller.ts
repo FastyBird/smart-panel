@@ -20,6 +20,8 @@ import { ReqBulkSetCoversRolesDto, ReqSetCoversRoleDto } from '../dto/covers-rol
 import { ReqCreateSpaceDto } from '../dto/create-space.dto';
 import { ReqLightingIntentDto } from '../dto/lighting-intent.dto';
 import { ReqBulkSetLightingRolesDto, ReqSetLightingRoleDto } from '../dto/lighting-role.dto';
+import { ReqMediaIntentDto } from '../dto/media-intent.dto';
+import { ReqBulkSetMediaRolesDto, ReqSetMediaRoleDto } from '../dto/media-role.dto';
 import { ReqBulkSetSensorRolesDto, ReqSetSensorRoleDto } from '../dto/sensor-role.dto';
 import { ReqSuggestionFeedbackDto } from '../dto/suggestion.dto';
 import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
@@ -35,6 +37,9 @@ import {
 	BulkLightingRoleResultItemModel,
 	BulkLightingRolesResponseModel,
 	BulkLightingRolesResultDataModel,
+	BulkMediaRoleResultItemModel,
+	BulkMediaRolesResponseModel,
+	BulkMediaRolesResultDataModel,
 	BulkSensorRoleResultItemModel,
 	BulkSensorRolesResponseModel,
 	BulkSensorRolesResultDataModel,
@@ -74,7 +79,16 @@ import {
 	LightingStateDataModel,
 	LightingStateResponseModel,
 	LightingSummaryDataModel,
+	MediaIntentResponseModel,
+	MediaIntentResultDataModel,
+	MediaRoleResponseModel,
+	MediaRoleStateDataModel,
+	MediaStateDataModel,
+	MediaStateResponseModel,
+	MediaTargetDataModel,
+	MediaTargetsResponseModel,
 	OtherLightsStateDataModel,
+	OtherMediaStateDataModel,
 	ProposedSpaceDataModel,
 	ProposedSpacesResponseModel,
 	QuickActionDataModel,
@@ -106,6 +120,8 @@ import { SpaceCoversRoleService } from '../services/space-covers-role.service';
 import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
 import { SpaceLightingStateService } from '../services/space-lighting-state.service';
+import { SpaceMediaRoleService } from '../services/space-media-role.service';
+import { SpaceMediaStateService } from '../services/space-media-state.service';
 import { SpaceSensorRoleService } from '../services/space-sensor-role.service';
 import { SpaceSensorStateService } from '../services/space-sensor-state.service';
 import { SpaceSuggestionService } from '../services/space-suggestion.service';
@@ -114,6 +130,7 @@ import { SpacesService } from '../services/spaces.service';
 import {
 	IntentCategory,
 	LightingRole,
+	MediaRole,
 	QUICK_ACTION_CATALOG,
 	SPACES_MODULE_API_TAG_NAME,
 	SPACES_MODULE_NAME,
@@ -155,6 +172,8 @@ export class SpacesController {
 		private readonly spaceLightingStateService: SpaceLightingStateService,
 		private readonly spaceClimateRoleService: SpaceClimateRoleService,
 		private readonly spaceCoversRoleService: SpaceCoversRoleService,
+		private readonly spaceMediaRoleService: SpaceMediaRoleService,
+		private readonly spaceMediaStateService: SpaceMediaStateService,
 		private readonly spaceSensorRoleService: SpaceSensorRoleService,
 		private readonly spaceSensorStateService: SpaceSensorStateService,
 		private readonly spaceSuggestionService: SpaceSuggestionService,
@@ -1874,5 +1893,299 @@ export class SpacesController {
 		response.data = resultData;
 
 		return response;
+	}
+
+	// ================================
+	// Media State & Intent Endpoints
+	// ================================
+
+	@Get(':id/media')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-media',
+		summary: 'Get media state for space',
+		description:
+			'Retrieves the current media state for a space, including volume levels, ' +
+			'power status, mute status, and device counts by role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(MediaStateResponseModel, 'Returns the media state')
+	@ApiNotFoundResponse('Space not found')
+	async getMediaState(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<MediaStateResponseModel> {
+		this.logger.debug(`Fetching media state for space with id=${id}`);
+
+		const state = await this.spaceIntentService.getMediaState(id);
+
+		if (!state) {
+			throw new SpacesNotFoundException('Space not found');
+		}
+
+		const stateData = new MediaStateDataModel();
+		const rolesMap: Record<string, MediaRoleStateDataModel> = {};
+		const devicesByRole: Record<string, number> = {};
+
+		for (const [role, roleState] of Object.entries(state.roles ?? {})) {
+			if (!roleState) continue;
+
+			const roleModel = new MediaRoleStateDataModel();
+			roleModel.role = role as MediaRole;
+			roleModel.isOn = roleState.isOn;
+			roleModel.isOnMixed = roleState.isOnMixed;
+			roleModel.volume = roleState.volume;
+			roleModel.isVolumeMixed = roleState.isVolumeMixed;
+			roleModel.isMuted = roleState.isMuted;
+			roleModel.isMutedMixed = roleState.isMutedMixed;
+			roleModel.devicesCount = roleState.devicesCount;
+			roleModel.devicesOn = roleState.devicesOn;
+
+			rolesMap[role] = roleModel;
+			devicesByRole[role] = roleState.devicesCount;
+		}
+
+		const otherModel = new OtherMediaStateDataModel();
+		otherModel.isOn = state.other?.isOn ?? false;
+		otherModel.isOnMixed = state.other?.isOnMixed ?? false;
+		otherModel.volume = state.other?.volume ?? null;
+		otherModel.isVolumeMixed = state.other?.isVolumeMixed ?? false;
+		otherModel.isMuted = state.other?.isMuted ?? false;
+		otherModel.isMutedMixed = state.other?.isMutedMixed ?? false;
+		otherModel.devicesCount = state.other?.devicesCount ?? 0;
+		otherModel.devicesOn = state.other?.devicesOn ?? 0;
+
+		if (otherModel.devicesCount > 0) {
+			devicesByRole.other = otherModel.devicesCount;
+		}
+
+		stateData.hasMedia = state.totalDevices > 0;
+		stateData.anyOn = state.devicesOn > 0;
+		stateData.allOff = state.devicesOn === 0;
+		stateData.averageVolume = state.averageVolume;
+		stateData.anyMuted = state.anyMuted;
+		stateData.devicesCount = state.totalDevices;
+		stateData.devicesByRole = devicesByRole;
+		stateData.lastAppliedMode = state.lastAppliedMode ?? null;
+		stateData.lastAppliedAt = state.lastAppliedAt ?? null;
+		stateData.lastAppliedVolume = state.lastAppliedVolume ?? null;
+		stateData.lastAppliedMuted = state.lastAppliedMuted ?? null;
+		stateData.detectedMode = state.detectedMode ?? null;
+		stateData.modeConfidence = state.modeConfidence ?? 'none';
+		stateData.modeMatchPercentage = state.modeMatchPercentage ?? null;
+		stateData.roles = rolesMap;
+		stateData.other = otherModel;
+
+		const response = new MediaStateResponseModel();
+		response.data = stateData;
+
+		return response;
+	}
+
+	@Post(':id/intents/media')
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-media-intent',
+		summary: 'Execute media intent for space',
+		description:
+			'Executes a media intent command for all media devices in the space. ' +
+			'Supports power_on, power_off, volume_set, volume_delta, mute, unmute, and set_mode operations. ' +
+			'Commands are applied based on device capabilities and role assignments.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(MediaIntentResponseModel, 'Returns the intent execution result')
+	@ApiNotFoundResponse('Space not found')
+	@ApiUnprocessableEntityResponse('Invalid intent data')
+	async executeMediaIntent(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqMediaIntentDto,
+	): Promise<MediaIntentResponseModel> {
+		this.logger.debug(`Executing media intent for space with id=${id}`);
+
+		const result = await this.spaceIntentService.executeMediaIntent(id, body.data);
+
+		if (!result) {
+			throw new SpacesNotFoundException('Space not found');
+		}
+
+		const resultData = new MediaIntentResultDataModel();
+		resultData.success = result.success;
+		resultData.affectedDevices = result.affectedDevices;
+		resultData.failedDevices = result.failedDevices;
+		resultData.skippedDevices = result.skippedDevices ?? null;
+		resultData.newVolume = result.newVolume ?? null;
+		resultData.isMuted = result.isMuted ?? null;
+		resultData.failedTargets = result.failedTargets ?? null;
+
+		const response = new MediaIntentResponseModel();
+		response.data = resultData;
+
+		return response;
+	}
+
+	// ================================
+	// Media Role Endpoints
+	// ================================
+
+	@Get(':id/media/targets')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-media-targets',
+		summary: 'List media targets in space',
+		description:
+			'Retrieves all controllable media targets (device/channel pairs) in a space ' +
+			'along with their current role assignments and capabilities.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(MediaTargetsResponseModel, 'Returns the list of media targets with role assignments')
+	@ApiNotFoundResponse('Space not found')
+	async getMediaTargets(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<MediaTargetsResponseModel> {
+		this.logger.debug(`Fetching media targets for space with id=${id}`);
+
+		const targets = await this.spaceMediaRoleService.getMediaTargetsInSpace(id);
+
+		const response = new MediaTargetsResponseModel();
+		response.data = targets.map((t) => {
+			const model = new MediaTargetDataModel();
+			model.deviceId = t.deviceId;
+			model.deviceName = t.deviceName;
+			model.deviceCategory = t.deviceCategory;
+			model.role = t.role;
+			model.priority = t.priority;
+			model.hasOn = t.hasOn;
+			model.hasVolume = t.hasVolume;
+			model.hasMute = t.hasMute;
+			return model;
+		});
+
+		return response;
+	}
+
+	@Post(':id/media/roles')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-media-role',
+		summary: 'Set media role for a media target',
+		description:
+			'Sets or updates the media role for a specific device/channel in a space. ' + 'Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(MediaRoleResponseModel, 'Returns the created/updated media role assignment')
+	@ApiNotFoundResponse('Space not found')
+	@ApiBadRequestResponse('Invalid role data')
+	@ApiUnprocessableEntityResponse('Role assignment validation failed')
+	async setMediaRole(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqSetMediaRoleDto,
+	): Promise<MediaRoleResponseModel> {
+		this.logger.debug(`Setting media role for space with id=${id}`);
+
+		const role = await this.spaceMediaRoleService.setRole(id, body.data);
+
+		const response = new MediaRoleResponseModel();
+		response.data = role;
+
+		return response;
+	}
+
+	@Post(':id/media/roles/bulk')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-media-roles-bulk',
+		summary: 'Bulk set media roles for media targets',
+		description:
+			'Sets or updates media roles for multiple device/channels in a space in a single operation. ' +
+			'Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(BulkMediaRolesResponseModel, 'Returns the bulk update result')
+	@ApiNotFoundResponse('Space not found')
+	@ApiBadRequestResponse('Invalid role data')
+	@ApiUnprocessableEntityResponse('Role assignment validation failed')
+	async bulkSetMediaRoles(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqBulkSetMediaRolesDto,
+	): Promise<BulkMediaRolesResponseModel> {
+		this.logger.debug(`Bulk setting media roles for space with id=${id}`);
+
+		const result = await this.spaceMediaRoleService.bulkSetRoles(id, body.data.roles);
+
+		const resultData = new BulkMediaRolesResultDataModel();
+		resultData.success = result.success;
+		resultData.totalCount = result.totalCount;
+		resultData.successCount = result.successCount;
+		resultData.failureCount = result.failureCount;
+		resultData.results = result.results.map((item) => {
+			const resultItem = new BulkMediaRoleResultItemModel();
+			resultItem.deviceId = item.deviceId;
+			resultItem.success = item.success;
+			resultItem.role = item.role;
+			resultItem.error = item.error;
+			return resultItem;
+		});
+
+		const response = new BulkMediaRolesResponseModel();
+		response.data = resultData;
+
+		return response;
+	}
+
+	@Post(':id/media/roles/defaults')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-media-roles-defaults',
+		summary: 'Apply default media roles',
+		description:
+			'Infers and applies default media roles for all media devices in the space. ' +
+			'Roles are assigned based on device category: TV/Projector=PRIMARY, AV/STB=SECONDARY, Speaker=BACKGROUND, GameConsole=GAMING. Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(BulkMediaRolesResponseModel, 'Returns the bulk update result')
+	@ApiNotFoundResponse('Space not found')
+	async applyDefaultMediaRoles(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<BulkMediaRolesResponseModel> {
+		this.logger.debug(`Applying default media roles for space with id=${id}`);
+
+		const defaultRoles = await this.spaceMediaRoleService.inferDefaultMediaRoles(id);
+		const result = await this.spaceMediaRoleService.bulkSetRoles(id, defaultRoles);
+
+		const resultData = new BulkMediaRolesResultDataModel();
+		resultData.success = result.success;
+		resultData.totalCount = result.totalCount;
+		resultData.successCount = result.successCount;
+		resultData.failureCount = result.failureCount;
+		resultData.results = result.results.map((item) => {
+			const resultItem = new BulkMediaRoleResultItemModel();
+			resultItem.deviceId = item.deviceId;
+			resultItem.success = item.success;
+			resultItem.role = item.role;
+			resultItem.error = item.error;
+			return resultItem;
+		});
+
+		const response = new BulkMediaRolesResponseModel();
+		response.data = resultData;
+
+		return response;
+	}
+
+	@Delete(':id/media/roles/:deviceId')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'delete-spaces-module-space-media-role',
+		summary: 'Delete media role assignment',
+		description: 'Removes the media role assignment for a specific device in a space. Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiNoContentResponse({ description: 'Media role deleted successfully' })
+	@ApiNotFoundResponse('Space not found')
+	@HttpCode(204)
+	async deleteMediaRole(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
+	): Promise<void> {
+		this.logger.debug(`Deleting media role for space=${id} device=${deviceId}`);
+
+		await this.spaceMediaRoleService.deleteRole(id, deviceId);
+
+		this.logger.debug(`Successfully deleted media role for device=${deviceId}`);
 	}
 }

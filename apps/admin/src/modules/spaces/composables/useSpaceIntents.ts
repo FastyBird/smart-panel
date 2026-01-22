@@ -13,6 +13,9 @@ import {
 	SpacesModuleDataRoleAggregatedStateRole,
 	SpacesModuleClimateIntentType,
 	SpacesModuleClimateIntentMode,
+	SpacesModuleMediaIntentType,
+	SpacesModuleMediaIntentMode,
+	SpacesModuleMediaIntentRole,
 } from '../../../openapi';
 
 type LightingIntentBody = components['schemas']['SpacesModuleLightingIntent'];
@@ -75,6 +78,52 @@ export type ClimateIntentType = `${SpacesModuleClimateIntentType}`;
 export type SetpointDelta = `${SpacesModuleLightingIntentDelta}`;
 export type ClimateMode = `${SpacesModuleClimateIntentMode}`;
 
+// ============================================
+// MEDIA INTENT TYPES
+// ============================================
+
+export type MediaIntentType = `${SpacesModuleMediaIntentType}`;
+export type MediaMode = `${SpacesModuleMediaIntentMode}`;
+export type MediaRole = `${SpacesModuleMediaIntentRole}`;
+
+/**
+ * Request parameters for a media intent.
+ */
+export interface IMediaIntentRequest {
+	/** Type of media intent to execute */
+	type: MediaIntentType;
+	/** Target media mode (for set_mode intent) */
+	mode?: MediaMode;
+	/** Absolute volume level (0-100) */
+	volume?: number;
+	/** Volume delta size (for volume_delta intent) */
+	delta?: SetpointDelta;
+	/** Direction of volume change (true = increase, false = decrease) */
+	increase?: boolean;
+	/** Target media role (for role_* intents) */
+	role?: MediaRole;
+	/** On/off state (for role_power intent) */
+	on?: boolean;
+}
+
+/**
+ * Result of a media intent execution.
+ */
+export interface IMediaIntentResult {
+	/** Whether the intent executed successfully */
+	success: boolean;
+	/** Number of devices affected by the intent */
+	affectedDevices: number;
+	/** Number of devices that failed to respond */
+	failedDevices: number;
+	/** New media mode after intent execution */
+	mode?: string;
+	/** Volume that was applied (if available) */
+	volume?: number | null;
+	/** Mute state that was applied (if available) */
+	muted?: boolean | null;
+}
+
 /**
  * Request parameters for a climate intent.
  */
@@ -128,7 +177,7 @@ export interface IClimateIntentResult {
 export interface IUseSpaceIntents {
 	isExecuting: ComputedRef<boolean>;
 	error: Ref<string | null>;
-	lastResult: Ref<ILightingIntentResult | IClimateIntentResult | null>;
+	lastResult: Ref<ILightingIntentResult | IClimateIntentResult | IMediaIntentResult | null>;
 	// Lighting intents
 	executeLightingIntent: (request: ILightingIntentRequest) => Promise<ILightingIntentResult | null>;
 	turnLightsOff: () => Promise<ILightingIntentResult | null>;
@@ -145,6 +194,17 @@ export interface IUseSpaceIntents {
 	adjustSetpoint: (delta: SetpointDelta, increase: boolean) => Promise<IClimateIntentResult | null>;
 	setSetpoint: (value: number, mode?: ClimateMode) => Promise<IClimateIntentResult | null>;
 	setClimateMode: (mode: ClimateMode) => Promise<IClimateIntentResult | null>;
+	// Media intents
+	executeMediaIntent: (request: IMediaIntentRequest) => Promise<IMediaIntentResult | null>;
+	mediaPowerOn: () => Promise<IMediaIntentResult | null>;
+	mediaPowerOff: () => Promise<IMediaIntentResult | null>;
+	setMediaMode: (mode: MediaMode) => Promise<IMediaIntentResult | null>;
+	setMediaVolume: (volume: number) => Promise<IMediaIntentResult | null>;
+	adjustMediaVolume: (delta: SetpointDelta, increase: boolean) => Promise<IMediaIntentResult | null>;
+	muteMedia: () => Promise<IMediaIntentResult | null>;
+	unmuteMedia: () => Promise<IMediaIntentResult | null>;
+	setMediaRolePower: (role: MediaRole, on: boolean) => Promise<IMediaIntentResult | null>;
+	setMediaRoleVolume: (role: MediaRole, volume: number) => Promise<IMediaIntentResult | null>;
 }
 
 /**
@@ -180,7 +240,7 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 	const executingCount = ref(0);
 	const isExecuting = computed(() => executingCount.value > 0);
 	const error = ref<string | null>(null);
-	const lastResult = ref<ILightingIntentResult | IClimateIntentResult | null>(null);
+	const lastResult = ref<ILightingIntentResult | IClimateIntentResult | IMediaIntentResult | null>(null);
 	// Generation counter to distinguish requests across space navigation cycles
 	let spaceGeneration = 0;
 
@@ -342,6 +402,80 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 	};
 	const setClimateMode = (mode: ClimateMode) => executeClimateIntent({ type: 'set_mode', mode });
 
+	// ============================================
+	// MEDIA INTENTS
+	// ============================================
+
+	const executeMediaIntent = async (request: IMediaIntentRequest): Promise<IMediaIntentResult | null> => {
+		const currentSpaceId = spaceId.value;
+		if (!currentSpaceId) return null;
+
+		const requestGeneration = spaceGeneration;
+		executingCount.value++;
+		error.value = null;
+
+		try {
+			const body = {
+				type: request.type as SpacesModuleMediaIntentType,
+				mode: request.mode as SpacesModuleMediaIntentMode | undefined,
+				volume: request.volume,
+				delta: request.delta as SpacesModuleLightingIntentDelta | undefined,
+				increase: request.increase,
+				role: request.role as SpacesModuleMediaIntentRole | undefined,
+				on: request.on,
+			} satisfies components['schemas']['SpacesModuleMediaIntent'];
+
+			const { data, error: apiError } = await backend.client.POST(
+				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/intents/media`,
+				{
+					params: { path: { id: currentSpaceId } },
+					body: { data: body },
+				}
+			);
+
+			if (apiError || !data) {
+				throw new Error('Failed to execute media intent');
+			}
+
+			if (spaceId.value !== currentSpaceId || spaceGeneration !== requestGeneration) {
+				return null;
+			}
+
+			const result: IMediaIntentResult = {
+				success: data.data.success ?? false,
+				affectedDevices: data.data.affected_devices ?? 0,
+				failedDevices: data.data.failed_devices ?? 0,
+				volume: data.data.new_volume ?? null,
+				muted: data.data.is_muted ?? null,
+			};
+
+			lastResult.value = result;
+			return result;
+		} catch (e) {
+			if (spaceId.value === currentSpaceId && spaceGeneration === requestGeneration) {
+				error.value = e instanceof Error ? e.message : 'Unknown error';
+			}
+			return null;
+		} finally {
+			if (spaceId.value === currentSpaceId && spaceGeneration === requestGeneration && executingCount.value > 0) {
+				executingCount.value--;
+			}
+		}
+	};
+
+	const mediaPowerOn = () => executeMediaIntent({ type: 'power_on' });
+	const mediaPowerOff = () => executeMediaIntent({ type: 'power_off' });
+	const setMediaMode = (mode: MediaMode) => executeMediaIntent({ type: 'set_mode', mode });
+	const setMediaVolume = (volume: number) => executeMediaIntent({ type: 'volume_set', volume });
+	const adjustMediaVolume = (delta: SetpointDelta, increase: boolean) =>
+		executeMediaIntent({ type: 'volume_delta', delta, increase });
+	const muteMedia = () => executeMediaIntent({ type: 'mute' });
+	const unmuteMedia = () => executeMediaIntent({ type: 'unmute' });
+	const setMediaRolePower = (role: MediaRole, on: boolean) =>
+		executeMediaIntent({ type: 'role_power', role, on });
+	const setMediaRoleVolume = (role: MediaRole, volume: number) =>
+		executeMediaIntent({ type: 'role_volume', role, volume });
+
 	// Clear state when space changes to prevent stale data from appearing in new space
 	watch(spaceId, () => {
 		// Increment generation to invalidate any in-flight requests
@@ -371,5 +505,16 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 		adjustSetpoint,
 		setSetpoint,
 		setClimateMode,
+		// Media intents
+		executeMediaIntent,
+		mediaPowerOn,
+		mediaPowerOff,
+		setMediaMode,
+		setMediaVolume,
+		adjustMediaVolume,
+		muteMedia,
+		unmuteMedia,
+		setMediaRolePower,
+		setMediaRoleVolume,
 	};
 };

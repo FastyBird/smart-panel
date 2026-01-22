@@ -568,10 +568,14 @@ class _AirConditionerDeviceDetailState
     if (controller == null ||
         !fanChannel.hasSpeed ||
         !fanChannel.isSpeedNumeric ||
-        speedProp == null) return;
+        speedProp == null) {
+      return;
+    }
 
     final range = fanChannel.maxSpeed - fanChannel.minSpeed;
-    if (range <= 0) return;
+    if (range <= 0) {
+      return;
+    }
 
     final rawSpeed = fanChannel.minSpeed + (normalizedSpeed * range);
     final step = fanChannel.speedStep;

@@ -56,6 +56,11 @@ DomainType? classifyDeviceToDomain(DevicesModuleDeviceCategory category) {
     case DevicesModuleDeviceCategory.television:
     case DevicesModuleDeviceCategory.media:
     case DevicesModuleDeviceCategory.speaker:
+    case DevicesModuleDeviceCategory.avReceiver:
+    case DevicesModuleDeviceCategory.gameConsole:
+    case DevicesModuleDeviceCategory.projector:
+    case DevicesModuleDeviceCategory.setTopBox:
+    case DevicesModuleDeviceCategory.streamingService:
       return DomainType.media;
 
     // SENSORS domain

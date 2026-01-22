@@ -7,6 +7,7 @@ import 'package:fastybird_smart_panel/modules/spaces/constants.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/climate_targets.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/covers_targets.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/light_targets.dart';
+import 'package:fastybird_smart_panel/modules/spaces/repositories/media_targets.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/space_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/spaces.dart';
 import 'package:fastybird_smart_panel/modules/spaces/service.dart';
@@ -18,6 +19,7 @@ class SpacesModuleService {
   late SpacesRepository _spacesRepository;
   late LightTargetsRepository _lightTargetsRepository;
   late ClimateTargetsRepository _climateTargetsRepository;
+  late MediaTargetsRepository _mediaTargetsRepository;
   late CoversTargetsRepository _coversTargetsRepository;
   late SpaceStateRepository _spaceStateRepository;
   late SpacesService _spacesService;
@@ -40,6 +42,10 @@ class SpacesModuleService {
       apiClient: apiClient.spacesModule,
     );
 
+    _mediaTargetsRepository = MediaTargetsRepository(
+      apiClient: apiClient.spacesModule,
+    );
+
     _coversTargetsRepository = CoversTargetsRepository(
       apiClient: apiClient.spacesModule,
     );
@@ -53,6 +59,7 @@ class SpacesModuleService {
       spacesRepository: _spacesRepository,
       lightTargetsRepository: _lightTargetsRepository,
       climateTargetsRepository: _climateTargetsRepository,
+      mediaTargetsRepository: _mediaTargetsRepository,
       coversTargetsRepository: _coversTargetsRepository,
       spaceStateRepository: _spaceStateRepository,
     );
@@ -60,6 +67,7 @@ class SpacesModuleService {
     locator.registerSingleton(_spacesRepository);
     locator.registerSingleton(_lightTargetsRepository);
     locator.registerSingleton(_climateTargetsRepository);
+    locator.registerSingleton(_mediaTargetsRepository);
     locator.registerSingleton(_coversTargetsRepository);
     locator.registerSingleton(_spaceStateRepository);
     locator.registerSingleton(_spacesService);
@@ -117,6 +125,7 @@ class SpacesModuleService {
     _spacesRepository.clearAll();
     _lightTargetsRepository.clearAll();
     _climateTargetsRepository.clearAll();
+    _mediaTargetsRepository.clearAll();
     _coversTargetsRepository.clearAll();
     _spaceStateRepository.clearAll();
   }
@@ -137,6 +146,7 @@ class SpacesModuleService {
       _spacesRepository.delete(payload['id']);
       _lightTargetsRepository.deleteForSpace(payload['id']);
       _climateTargetsRepository.deleteForSpace(payload['id']);
+      _mediaTargetsRepository.deleteForSpace(payload['id']);
       _coversTargetsRepository.deleteForSpace(payload['id']);
       _spaceStateRepository.clearForSpace(payload['id']);
 
@@ -159,6 +169,16 @@ class SpacesModuleService {
     } else if (event == SpacesModuleConstants.climateTargetDeletedEvent &&
         payload.containsKey('id')) {
       _climateTargetsRepository.delete(payload['id']);
+
+      /// Media Target CREATE/UPDATE
+    } else if (event == SpacesModuleConstants.mediaTargetCreatedEvent ||
+        event == SpacesModuleConstants.mediaTargetUpdatedEvent) {
+      _mediaTargetsRepository.insertOne(payload);
+
+      /// Media Target DELETE
+    } else if (event == SpacesModuleConstants.mediaTargetDeletedEvent &&
+        payload.containsKey('id')) {
+      _mediaTargetsRepository.delete(payload['id']);
 
       /// Covers Target CREATE/UPDATE
     } else if (event == SpacesModuleConstants.coversTargetCreatedEvent ||
@@ -184,6 +204,14 @@ class SpacesModuleService {
       final stateData = payload['state'] as Map<String, dynamic>?;
       if (spaceId != null && stateData != null) {
         _spaceStateRepository.updateClimateState(spaceId, stateData);
+      }
+
+      /// Media State CHANGED
+    } else if (event == SpacesModuleConstants.mediaStateChangedEvent) {
+      final spaceId = payload['space_id'] as String?;
+      final stateData = payload['state'] as Map<String, dynamic>?;
+      if (spaceId != null && stateData != null) {
+        _spaceStateRepository.updateMediaState(spaceId, stateData);
       }
 
       /// Covers State CHANGED
@@ -223,6 +251,7 @@ class SpacesModuleService {
       if (name != null) {
         _lightTargetsRepository.updateDeviceName(id, name);
         _coversTargetsRepository.updateDeviceName(id, name);
+        _mediaTargetsRepository.updateDeviceName(id, name);
       }
     }
   }

@@ -1175,13 +1175,17 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         channel == null ||
         !channel.hasMistLevel ||
         !channel.isMistLevelNumeric ||
-        mistLevelProp == null) return;
+        mistLevelProp == null) {
+      return;
+    }
 
     // Convert normalized 0-1 value to actual device level range
     final minLevel = channel.minMistLevel;
     final maxLevel = channel.maxMistLevel;
     final range = maxLevel - minLevel;
-    if (range <= 0) return;
+    if (range <= 0) {
+      return;
+    }
 
     final actualLevel = (minLevel + (normalizedLevel * range)).round();
 
@@ -1430,7 +1434,9 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     final minSpeed = fanChannel.minSpeed;
     final maxSpeed = fanChannel.maxSpeed;
     final range = maxSpeed - minSpeed;
-    if (range <= 0) return 0.0;
+    if (range <= 0) {
+      return 0.0;
+    }
     return (actualSpeed - minSpeed) / range;
   }
 
@@ -1442,7 +1448,9 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         fanChannel == null ||
         !fanChannel.hasSpeed ||
         !fanChannel.isSpeedNumeric ||
-        speedProp == null) return;
+        speedProp == null) {
+      return;
+    }
 
     // Convert normalized 0-1 value to actual device speed range
     final minSpeed = fanChannel.minSpeed;

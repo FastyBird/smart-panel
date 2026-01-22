@@ -21,10 +21,15 @@ export enum EventType {
 	LIGHTING_STATE_CHANGED = 'SpacesModule.Space.LightingStateChanged',
 	CLIMATE_STATE_CHANGED = 'SpacesModule.Space.ClimateStateChanged',
 	COVERS_STATE_CHANGED = 'SpacesModule.Space.CoversStateChanged',
+	MEDIA_STATE_CHANGED = 'SpacesModule.Space.MediaStateChanged',
 	// Covers role events
 	COVERS_TARGET_CREATED = 'SpacesModule.CoversTarget.Created',
 	COVERS_TARGET_UPDATED = 'SpacesModule.CoversTarget.Updated',
 	COVERS_TARGET_DELETED = 'SpacesModule.CoversTarget.Deleted',
+	// Media role events
+	MEDIA_TARGET_CREATED = 'SpacesModule.MediaTarget.Created',
+	MEDIA_TARGET_UPDATED = 'SpacesModule.MediaTarget.Updated',
+	MEDIA_TARGET_DELETED = 'SpacesModule.MediaTarget.Deleted',
 	// Sensor state change events
 	SENSOR_STATE_CHANGED = 'SpacesModule.Space.SensorStateChanged',
 	// Sensor role events
@@ -705,6 +710,7 @@ export enum IntentCategory {
 	LIGHTING = 'lighting',
 	CLIMATE = 'climate',
 	COVERS = 'covers',
+	MEDIA = 'media',
 }
 
 /**
@@ -1583,6 +1589,441 @@ export const COVERS_INTENT_CATALOG: IntentTypeMeta[] = [
 	},
 ];
 
+// ========================
+// Media Domain Constants
+// ========================
+
+/**
+ * Media Roles - classify media devices within a space for intent-based control
+ */
+export enum MediaRole {
+	PRIMARY = 'primary', // Main entertainment device (e.g., living room TV)
+	SECONDARY = 'secondary', // Secondary display/speaker
+	BACKGROUND = 'background', // Background music speakers
+	GAMING = 'gaming', // Gaming-optimized devices
+	HIDDEN = 'hidden', // Excluded from space-level control
+}
+
+/**
+ * Media Intent Types - space-level intents for media device control
+ */
+export enum MediaIntentType {
+	POWER_ON = 'power_on',
+	POWER_OFF = 'power_off',
+
+	VOLUME_SET = 'volume_set',
+	VOLUME_DELTA = 'volume_delta',
+	MUTE = 'mute',
+	UNMUTE = 'unmute',
+
+	ROLE_POWER = 'role_power',
+	ROLE_VOLUME = 'role_volume',
+
+	// Playback intents (high-value for media domain)
+	PLAY = 'play',
+	PAUSE = 'pause',
+	STOP = 'stop',
+	NEXT = 'next',
+	PREVIOUS = 'previous',
+
+	// Input/source intent (TV/AVR/STB)
+	INPUT_SET = 'input_set',
+
+	SET_MODE = 'set_mode',
+}
+
+/**
+ * Media Modes - preset configurations for different scenarios
+ */
+export enum MediaMode {
+	OFF = 'off', // All media off
+	BACKGROUND = 'background', // Background at 30%, others off
+	FOCUSED = 'focused', // Primary at 50%, others muted
+	PARTY = 'party', // All at 70%
+}
+
+/**
+ * Volume delta sizes for media adjustment
+ */
+export enum VolumeDelta {
+	SMALL = 'small',
+	MEDIUM = 'medium',
+	LARGE = 'large',
+}
+
+/**
+ * Volume delta steps (percentage points)
+ */
+export const VOLUME_DELTA_STEPS: Record<VolumeDelta, number> = {
+	[VolumeDelta.SMALL]: 5,
+	[VolumeDelta.MEDIUM]: 10,
+	[VolumeDelta.LARGE]: 20,
+};
+
+/**
+ * Media device categories for filtering
+ *
+ * Note:
+ * - streaming_service is intentionally excluded from power orchestration;
+ *   it can still participate in playback orchestration if you decide to map it as a device.
+ */
+export const MEDIA_DEVICE_CATEGORIES = [
+	DeviceCategory.MEDIA,
+	DeviceCategory.SPEAKER,
+	DeviceCategory.TELEVISION,
+	DeviceCategory.AV_RECEIVER,
+	DeviceCategory.SET_TOP_BOX,
+	DeviceCategory.GAME_CONSOLE,
+	DeviceCategory.PROJECTOR,
+	// Virtual playback sources (playback-only, excluded from power orchestration)
+	DeviceCategory.STREAMING_SERVICE,
+] as const;
+
+/**
+ * Media channel categories for filtering
+ *
+ * Important additions:
+ * - SWITCHER: generic power control for AVR/STB/Console/Speaker/Media (optional per device)
+ * - MEDIA_INPUT: source selection (TV/AVR)
+ */
+export const MEDIA_CHANNEL_CATEGORIES = [
+	ChannelCategory.SWITCHER,
+	ChannelCategory.SPEAKER,
+	ChannelCategory.TELEVISION,
+	ChannelCategory.MEDIA_INPUT,
+	ChannelCategory.MEDIA_PLAYBACK,
+] as const;
+
+/**
+ * Mode definitions for media - maps each mode to role-specific settings
+ * Volume values: 0-100
+ *
+ * IMPORTANT:
+ * - All fields are optional: apply only if the target device supports the capability.
+ * - `power` is an orchestration intent, NOT a device property.
+ *   (Device property remains `on` under television/switcher/etc.)
+ */
+export interface MediaRoleOrchestrationRule {
+	/** Desired power state when supported (true=on, false=off) */
+	power?: boolean;
+
+	/** Desired volume percentage (0-100) when supported; null can mean "mute" preference */
+	volume?: number | null;
+
+	/** Desired mute state when supported */
+	muted?: boolean;
+}
+
+/**
+ * Mode orchestration rules for media
+ */
+export type MediaModeOrchestrationRules = Partial<Record<MediaRole, MediaRoleOrchestrationRule>>;
+
+/**
+ * Mode orchestration configuration for media
+ *
+ * Notes:
+ * - OFF: prefer power off, but only if device has a power capability (television.on or switcher.on)
+ * - BACKGROUND/FOCUSED: do not force power for PRIMARY unless you mean it; keep intent explicit
+ */
+export const MEDIA_MODE_ORCHESTRATION: Record<MediaMode, MediaModeOrchestrationRules> = {
+	[MediaMode.OFF]: {
+		[MediaRole.PRIMARY]: { power: false },
+		[MediaRole.SECONDARY]: { power: false },
+		[MediaRole.BACKGROUND]: { power: false },
+		[MediaRole.GAMING]: { power: false },
+	},
+	[MediaMode.BACKGROUND]: {
+		[MediaRole.PRIMARY]: { power: false },
+		[MediaRole.SECONDARY]: { power: false },
+		[MediaRole.BACKGROUND]: { power: true, volume: 30, muted: false },
+		[MediaRole.GAMING]: { power: false },
+	},
+	[MediaMode.FOCUSED]: {
+		[MediaRole.PRIMARY]: { power: true, volume: 50, muted: false },
+		[MediaRole.SECONDARY]: { power: false },
+		[MediaRole.BACKGROUND]: { power: true, muted: true },
+		[MediaRole.GAMING]: { power: false },
+	},
+	[MediaMode.PARTY]: {
+		[MediaRole.PRIMARY]: { power: true, volume: 70, muted: false },
+		[MediaRole.SECONDARY]: { power: true, volume: 70, muted: false },
+		[MediaRole.BACKGROUND]: { power: true, volume: 70, muted: false },
+		[MediaRole.GAMING]: { power: true, volume: 70, muted: false },
+	},
+};
+
+/**
+ * Metadata for media role values
+ */
+export const MEDIA_ROLE_META: Record<MediaRole, IntentEnumValueMeta> = {
+	[MediaRole.PRIMARY]: {
+		value: MediaRole.PRIMARY,
+		label: 'Primary',
+		description: 'Main entertainment device (e.g., living room TV)',
+		icon: 'mdi:television',
+	},
+	[MediaRole.SECONDARY]: {
+		value: MediaRole.SECONDARY,
+		label: 'Secondary',
+		description: 'Secondary display or speaker',
+		icon: 'mdi:monitor',
+	},
+	[MediaRole.BACKGROUND]: {
+		value: MediaRole.BACKGROUND,
+		label: 'Background',
+		description: 'Background music speakers',
+		icon: 'mdi:speaker',
+	},
+	[MediaRole.GAMING]: {
+		value: MediaRole.GAMING,
+		label: 'Gaming',
+		description: 'Gaming-optimized devices',
+		icon: 'mdi:gamepad-variant',
+	},
+	[MediaRole.HIDDEN]: {
+		value: MediaRole.HIDDEN,
+		label: 'Hidden',
+		description: 'Excluded from space-level control',
+		icon: 'mdi:eye-off',
+	},
+};
+
+/**
+ * Metadata for media mode values
+ */
+export const MEDIA_MODE_META: Record<MediaMode, IntentEnumValueMeta> = {
+	[MediaMode.OFF]: {
+		value: MediaMode.OFF,
+		label: 'Off',
+		description: 'All media devices off',
+		icon: 'mdi:power-off',
+	},
+	[MediaMode.BACKGROUND]: {
+		value: MediaMode.BACKGROUND,
+		label: 'Background',
+		description: 'Background music at low volume',
+		icon: 'mdi:music',
+	},
+	[MediaMode.FOCUSED]: {
+		value: MediaMode.FOCUSED,
+		label: 'Focused',
+		description: 'Primary device on, others muted',
+		icon: 'mdi:eye',
+	},
+	[MediaMode.PARTY]: {
+		value: MediaMode.PARTY,
+		label: 'Party',
+		description: 'All devices at high volume',
+		icon: 'mdi:party-popper',
+	},
+};
+
+/**
+ * Metadata for volume delta values
+ */
+export const VOLUME_DELTA_META: Record<VolumeDelta, IntentEnumValueMeta> = {
+	[VolumeDelta.SMALL]: {
+		value: VolumeDelta.SMALL,
+		label: 'Small',
+		description: `Adjust volume by ${VOLUME_DELTA_STEPS[VolumeDelta.SMALL]}%`,
+	},
+	[VolumeDelta.MEDIUM]: {
+		value: VolumeDelta.MEDIUM,
+		label: 'Medium',
+		description: `Adjust volume by ${VOLUME_DELTA_STEPS[VolumeDelta.MEDIUM]}%`,
+	},
+	[VolumeDelta.LARGE]: {
+		value: VolumeDelta.LARGE,
+		label: 'Large',
+		description: `Adjust volume by ${VOLUME_DELTA_STEPS[VolumeDelta.LARGE]}%`,
+	},
+};
+
+/**
+ * Complete media intent catalog
+ */
+export const MEDIA_INTENT_CATALOG: IntentTypeMeta[] = [
+	{
+		type: MediaIntentType.POWER_ON,
+		label: 'Power On',
+		description: 'Turn on all media devices in the space (where supported)',
+		icon: 'mdi:power',
+		params: [],
+	},
+	{
+		type: MediaIntentType.POWER_OFF,
+		label: 'Power Off',
+		description: 'Turn off all media devices in the space (where supported)',
+		icon: 'mdi:power-off',
+		params: [],
+	},
+	{
+		type: MediaIntentType.VOLUME_SET,
+		label: 'Set Volume',
+		description: 'Set all media devices to a specific volume (0-100) where supported',
+		icon: 'mdi:volume-high',
+		params: [
+			{
+				name: 'volume',
+				type: 'number',
+				required: true,
+				description: 'Volume percentage (0-100)',
+				minValue: 0,
+				maxValue: 100,
+			},
+		],
+	},
+	{
+		type: MediaIntentType.VOLUME_DELTA,
+		label: 'Adjust Volume',
+		description: 'Increase or decrease volume of all media devices where supported',
+		icon: 'mdi:volume-medium',
+		params: [
+			{
+				name: 'delta',
+				type: 'enum',
+				required: true,
+				description: 'The step size for volume adjustment',
+				enumValues: Object.values(VOLUME_DELTA_META),
+			},
+			{
+				name: 'increase',
+				type: 'boolean',
+				required: true,
+				description: 'True to increase volume, false to decrease',
+			},
+		],
+	},
+	{
+		type: MediaIntentType.MUTE,
+		label: 'Mute',
+		description: 'Mute all media devices in the space where supported',
+		icon: 'mdi:volume-off',
+		params: [],
+	},
+	{
+		type: MediaIntentType.UNMUTE,
+		label: 'Unmute',
+		description: 'Unmute all media devices in the space where supported',
+		icon: 'mdi:volume-high',
+		params: [],
+	},
+
+	// Playback intents (apply only to devices with MEDIA_PLAYBACK)
+	{
+		type: MediaIntentType.PLAY,
+		label: 'Play',
+		description: 'Start playback on supported media devices',
+		icon: 'mdi:play',
+		params: [],
+	},
+	{
+		type: MediaIntentType.PAUSE,
+		label: 'Pause',
+		description: 'Pause playback on supported media devices',
+		icon: 'mdi:pause',
+		params: [],
+	},
+	{
+		type: MediaIntentType.STOP,
+		label: 'Stop',
+		description: 'Stop playback on supported media devices',
+		icon: 'mdi:stop',
+		params: [],
+	},
+	{
+		type: MediaIntentType.NEXT,
+		label: 'Next',
+		description: 'Skip to next track on supported media devices',
+		icon: 'mdi:skip-next',
+		params: [],
+	},
+	{
+		type: MediaIntentType.PREVIOUS,
+		label: 'Previous',
+		description: 'Go to previous track on supported media devices',
+		icon: 'mdi:skip-previous',
+		params: [],
+	},
+
+	// Input intent (apply only to devices with MEDIA_INPUT or TELEVISION input_source)
+	{
+		type: MediaIntentType.INPUT_SET,
+		label: 'Set Input',
+		description: 'Set input/source on supported devices (TV/AVR/set-top box)',
+		icon: 'mdi:video-input-hdmi',
+		params: [
+			{
+				name: 'source',
+				type: 'string',
+				required: true,
+				description: 'Input/source identifier (integration-specific)',
+			},
+		],
+	},
+
+	{
+		type: MediaIntentType.ROLE_POWER,
+		label: 'Set Role Power',
+		description: 'Set power state for media devices with a specific role (where supported)',
+		icon: 'mdi:power',
+		params: [
+			{
+				name: 'role',
+				type: 'enum',
+				required: true,
+				description: 'The media role to control',
+				enumValues: Object.values(MEDIA_ROLE_META).filter((r) => r.value !== (MediaRole.HIDDEN as string)),
+			},
+			{
+				name: 'on',
+				type: 'boolean',
+				required: true,
+				description: 'Power state (true=on, false=off)',
+			},
+		],
+	},
+	{
+		type: MediaIntentType.ROLE_VOLUME,
+		label: 'Set Role Volume',
+		description: 'Set volume for media devices with a specific role (where supported)',
+		icon: 'mdi:volume-high',
+		params: [
+			{
+				name: 'role',
+				type: 'enum',
+				required: true,
+				description: 'The media role to control',
+				enumValues: Object.values(MEDIA_ROLE_META).filter((r) => r.value !== (MediaRole.HIDDEN as string)),
+			},
+			{
+				name: 'volume',
+				type: 'number',
+				required: true,
+				description: 'Volume percentage (0-100)',
+				minValue: 0,
+				maxValue: 100,
+			},
+		],
+	},
+	{
+		type: MediaIntentType.SET_MODE,
+		label: 'Set Mode',
+		description: 'Set a media mode (off/background/focused/party) with role-based settings',
+		icon: 'mdi:television-guide',
+		params: [
+			{
+				name: 'mode',
+				type: 'enum',
+				required: true,
+				description: 'The media mode to apply',
+				enumValues: Object.values(MEDIA_MODE_META),
+			},
+		],
+	},
+];
+
 /**
  * Complete intent category catalog
  */
@@ -1607,6 +2048,13 @@ export const INTENT_CATEGORY_CATALOG: IntentCategoryMeta[] = [
 		description: 'Control window coverings (blinds, curtains, shutters) with modes and position adjustments',
 		icon: 'mdi:blinds',
 		intents: COVERS_INTENT_CATALOG,
+	},
+	{
+		category: IntentCategory.MEDIA,
+		label: 'Media',
+		description: 'Control media devices (TVs, speakers, audio systems) with modes and volume adjustments',
+		icon: 'mdi:television',
+		intents: MEDIA_INTENT_CATALOG,
 	},
 ];
 
