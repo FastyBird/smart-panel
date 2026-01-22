@@ -93,6 +93,12 @@ code {
 	--border-color-light: var(--el-border-color-lighter);
 }
 
+html,
+body {
+	background-color: var(--el-bg-color);
+	color: var(--el-text-color-primary);
+}
+
 .dark {
 	--bg-color-rgb: 0, 0, 0;
 	--bg-color-soft: #242424;
