@@ -21,13 +21,17 @@ export class GlobalErrorFilter implements ExceptionFilter {
 
 		const errorMessage = exception instanceof HttpException ? exception.message : 'An unexpected error occurred.';
 
-		this.logger.error({
-			message: '[ERROR] Unhandled exception occurred',
-			method: request.method,
-			url: request.url,
-			statusCode: status,
-			exception: exception instanceof Error ? exception.stack : exception,
-		});
+		const exceptionMessage =
+			exception instanceof Error
+				? exception.message
+				: typeof exception === 'object'
+					? JSON.stringify(exception)
+					: String(exception);
+
+		this.logger.error(
+			`[ERROR] [GlobalErrorFilter] ${exceptionMessage}`,
+			exception instanceof Error ? exception.stack : undefined,
+		);
 
 		const errorResponse = {
 			status: RequestResultState.ERROR,

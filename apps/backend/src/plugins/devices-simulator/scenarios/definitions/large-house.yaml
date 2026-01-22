@@ -1,0 +1,2145 @@
+version: "1.0"
+name: "Large Smart House"
+description: "Two-story smart home with comprehensive automation across all floors including multiple climate zones, advanced lighting, security, and entertainment systems"
+
+rooms:
+  # Floor 1
+  - id: foyer
+    name: "Foyer"
+  - id: living-room
+    name: "Living Room"
+  - id: family-room
+    name: "Family Room"
+  - id: kitchen
+    name: "Kitchen"
+  - id: dining-room
+    name: "Dining Room"
+  - id: office
+    name: "Home Office"
+  - id: powder-room
+    name: "Powder Room"
+  - id: mudroom
+    name: "Mudroom"
+  - id: laundry
+    name: "Laundry Room"
+  - id: garage
+    name: "Garage"
+  # Floor 2
+  - id: upper-hallway
+    name: "Upper Hallway"
+  - id: master-suite
+    name: "Master Suite"
+  - id: master-bathroom
+    name: "Master Bathroom"
+  - id: master-closet
+    name: "Master Closet"
+  - id: bedroom-2
+    name: "Bedroom 2"
+  - id: bedroom-3
+    name: "Bedroom 3"
+  - id: bedroom-4
+    name: "Bedroom 4"
+  - id: bathroom-2
+    name: "Bathroom 2"
+  - id: bathroom-3
+    name: "Bathroom 3"
+  - id: bonus-room
+    name: "Bonus Room"
+  # Outdoor
+  - id: front-porch
+    name: "Front Porch"
+  - id: back-patio
+    name: "Back Patio"
+  - id: pool-area
+    name: "Pool Area"
+  - id: backyard
+    name: "Backyard"
+
+devices:
+  # ============================================================================
+  # FLOOR 1 - FOYER
+  # ============================================================================
+  - name: "Foyer Chandelier"
+    category: lighting
+    room: foyer
+    auto_simulate: true
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: true
+          - category: brightness
+            value: 80
+          - category: color_temperature
+            value: 3000
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Foyer Accent Sconces"
+    category: lighting
+    room: foyer
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 40
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Front Door Lock"
+    category: lock
+    room: foyer
+    channels:
+      - category: lock
+        properties:
+          - category: status
+            value: "locked"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Front Door Sensor"
+    category: sensor
+    room: foyer
+    channels:
+      - category: contact
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Video Doorbell"
+    category: doorbell
+    room: foyer
+    channels:
+      - category: doorbell
+        properties:
+          - category: event
+            value: "single_press"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Foyer Motion Sensor"
+    category: sensor
+    room: foyer
+    auto_simulate: true
+    simulate_interval: 5000
+    channels:
+      - category: motion
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Main Thermostat"
+    category: thermostat
+    room: foyer
+    auto_simulate: true
+    simulate_interval: 60000
+    channels:
+      - category: temperature
+        properties:
+          - category: temperature
+            value: 22.0
+      - category: heater
+        properties:
+          - category: on
+            value: false
+          - category: temperature
+            value: 21.0
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # ============================================================================
+  # FLOOR 1 - LIVING ROOM
+  # ============================================================================
+  - name: "Living Room Ceiling Light"
+    category: lighting
+    room: living-room
+    auto_simulate: true
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: true
+          - category: brightness
+            value: 80
+          - category: color_temperature
+            value: 4000
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Living Room Recessed Lights"
+    category: lighting
+    room: living-room
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: true
+          - category: brightness
+            value: 60
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Living Room Accent Cove"
+    category: lighting
+    room: living-room
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 40
+          - category: hue
+            value: 30
+          - category: saturation
+            value: 70
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Living Room Floor Lamp"
+    category: lighting
+    room: living-room
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 50
+          - category: color_temperature
+            value: 2700
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Living Room Table Lamp"
+    category: lighting
+    room: living-room
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 40
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Living Room Climate Sensor"
+    category: sensor
+    room: living-room
+    auto_simulate: true
+    simulate_interval: 30000
+    channels:
+      - category: temperature
+        properties:
+          - category: temperature
+            value: 22.5
+      - category: humidity
+        properties:
+          - category: humidity
+            value: 45
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Living Room Air Purifier"
+    category: air_purifier
+    room: living-room
+    auto_simulate: true
+    channels:
+      - category: fan
+        properties:
+          - category: on
+            value: true
+          - category: speed
+            value: "low"
+      - category: air_quality
+        properties:
+          - category: level
+            value: "excellent"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Living Room Sheer Curtains Left"
+    category: window_covering
+    room: living-room
+    auto_simulate: true
+    channels:
+      - category: window_covering
+        properties:
+          - category: position
+            value: 100
+          - category: type
+            value: "curtain"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Living Room Sheer Curtains Right"
+    category: window_covering
+    room: living-room
+    channels:
+      - category: window_covering
+        properties:
+          - category: position
+            value: 100
+          - category: type
+            value: "curtain"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Living Room Solar Shades"
+    category: window_covering
+    room: living-room
+    auto_simulate: true
+    channels:
+      - category: window_covering
+        properties:
+          - category: position
+            value: 50
+          - category: type
+            value: "roller"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Living Room Window Sensor"
+    category: sensor
+    room: living-room
+    channels:
+      - category: contact
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # ============================================================================
+  # FLOOR 1 - FAMILY ROOM
+  # ============================================================================
+  - name: "Family Room Ceiling Fan"
+    category: fan
+    room: family-room
+    auto_simulate: true
+    channels:
+      - category: fan
+        properties:
+          - category: on
+            value: true
+          - category: speed
+            value: "medium"
+          - category: direction
+            value: "clockwise"
+      - category: light
+        properties:
+          - category: on
+            value: true
+          - category: brightness
+            value: 70
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Family Room Recessed Lights"
+    category: lighting
+    room: family-room
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 80
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Family Room TV"
+    category: television
+    room: family-room
+    channels:
+      - category: television
+        properties:
+          - category: on
+            value: false
+      - category: speaker
+        properties:
+          - category: volume
+            value: 20
+          - category: active
+            value: true
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Family Room Soundbar"
+    category: speaker
+    room: family-room
+    channels:
+      - category: speaker
+        properties:
+          - category: active
+            value: false
+          - category: volume
+            value: 30
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Family Room Accent Lights"
+    category: lighting
+    room: family-room
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 30
+          - category: hue
+            value: 280
+          - category: saturation
+            value: 60
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Family Room Motorized Blinds"
+    category: window_covering
+    room: family-room
+    channels:
+      - category: window_covering
+        properties:
+          - category: position
+            value: 0
+          - category: tilt
+            value: 45
+          - category: type
+            value: "blind"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Family Room Blackout Shades"
+    category: window_covering
+    room: family-room
+    channels:
+      - category: window_covering
+        properties:
+          - category: position
+            value: 0
+          - category: type
+            value: "roller"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # ============================================================================
+  # FLOOR 1 - KITCHEN
+  # ============================================================================
+  - name: "Kitchen Main Light"
+    category: lighting
+    room: kitchen
+    auto_simulate: true
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: true
+          - category: brightness
+            value: 100
+          - category: color_temperature
+            value: 5000
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Kitchen Under-Cabinet Lights"
+    category: lighting
+    room: kitchen
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 80
+          - category: color_temperature
+            value: 4500
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Kitchen Island Pendants"
+    category: lighting
+    room: kitchen
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 70
+          - category: color_temperature
+            value: 3000
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Kitchen Pantry Light"
+    category: lighting
+    room: kitchen
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 100
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Kitchen Outlet - Coffee Maker"
+    category: outlet
+    room: kitchen
+    auto_simulate: true
+    channels:
+      - category: outlet
+        properties:
+          - category: on
+            value: true
+      - category: electrical_power
+        properties:
+          - category: power
+            value: 950.0
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Kitchen Outlet - Toaster"
+    category: outlet
+    room: kitchen
+    channels:
+      - category: outlet
+        properties:
+          - category: on
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Kitchen Outlet - Mixer"
+    category: outlet
+    room: kitchen
+    auto_simulate: true
+    channels:
+      - category: outlet
+        properties:
+          - category: on
+            value: true
+      - category: electrical_power
+        properties:
+          - category: power
+            value: 300.0
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Kitchen Smoke Detector"
+    category: sensor
+    room: kitchen
+    channels:
+      - category: smoke
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Kitchen Sink Leak Sensor"
+    category: sensor
+    room: kitchen
+    channels:
+      - category: leak
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Kitchen Dishwasher Leak Sensor"
+    category: sensor
+    room: kitchen
+    channels:
+      - category: leak
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Kitchen Roman Shades"
+    category: window_covering
+    room: kitchen
+    channels:
+      - category: window_covering
+        properties:
+          - category: position
+            value: 100
+          - category: type
+            value: "roller"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # ============================================================================
+  # FLOOR 1 - DINING ROOM
+  # ============================================================================
+  - name: "Dining Room Chandelier"
+    category: lighting
+    room: dining-room
+    auto_simulate: true
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 60
+          - category: color_temperature
+            value: 2700
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Dining Room Accent Sconces"
+    category: lighting
+    room: dining-room
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 30
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Dining Room Curtains"
+    category: window_covering
+    room: dining-room
+    channels:
+      - category: window_covering
+        properties:
+          - category: position
+            value: 100
+          - category: type
+            value: "curtain"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # ============================================================================
+  # FLOOR 1 - OFFICE
+  # ============================================================================
+  - name: "Office Ceiling Light"
+    category: lighting
+    room: office
+    auto_simulate: true
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: true
+          - category: brightness
+            value: 80
+          - category: color_temperature
+            value: 5000
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Office Desk Lamp"
+    category: lighting
+    room: office
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: true
+          - category: brightness
+            value: 90
+          - category: color_temperature
+            value: 5500
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Office Ambient Light"
+    category: lighting
+    room: office
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 40
+          - category: hue
+            value: 200
+          - category: saturation
+            value: 30
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Office Air Quality Monitor"
+    category: sensor
+    room: office
+    auto_simulate: true
+    simulate_interval: 30000
+    channels:
+      - category: temperature
+        properties:
+          - category: temperature
+            value: 22.5
+      - category: humidity
+        properties:
+          - category: humidity
+            value: 42
+      - category: carbon_dioxide
+        properties:
+          - category: concentration
+            value: 650
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Office Roller Shade"
+    category: window_covering
+    room: office
+    channels:
+      - category: window_covering
+        properties:
+          - category: position
+            value: 75
+          - category: type
+            value: "roller"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # ============================================================================
+  # FLOOR 1 - POWDER ROOM
+  # ============================================================================
+  - name: "Powder Room Light"
+    category: lighting
+    room: powder-room
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 100
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Powder Room Fan"
+    category: fan
+    room: powder-room
+    channels:
+      - category: fan
+        properties:
+          - category: on
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # ============================================================================
+  # FLOOR 1 - MUDROOM
+  # ============================================================================
+  - name: "Mudroom Light"
+    category: lighting
+    room: mudroom
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 100
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Side Door Lock"
+    category: lock
+    room: mudroom
+    channels:
+      - category: lock
+        properties:
+          - category: status
+            value: "locked"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Side Door Sensor"
+    category: sensor
+    room: mudroom
+    channels:
+      - category: contact
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # ============================================================================
+  # FLOOR 1 - LAUNDRY
+  # ============================================================================
+  - name: "Laundry Room Light"
+    category: lighting
+    room: laundry
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 100
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Laundry Washer Outlet"
+    category: outlet
+    room: laundry
+    auto_simulate: true
+    channels:
+      - category: outlet
+        properties:
+          - category: on
+            value: true
+      - category: electrical_power
+        properties:
+          - category: power
+            value: 450.0
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Laundry Dryer Outlet"
+    category: outlet
+    room: laundry
+    auto_simulate: true
+    channels:
+      - category: outlet
+        properties:
+          - category: on
+            value: true
+      - category: electrical_power
+        properties:
+          - category: power
+            value: 2200.0
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Laundry Leak Sensor"
+    category: sensor
+    room: laundry
+    channels:
+      - category: leak
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # ============================================================================
+  # FLOOR 1 - GARAGE
+  # ============================================================================
+  - name: "Garage Main Lights"
+    category: lighting
+    room: garage
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 100
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Garage Workbench Light"
+    category: lighting
+    room: garage
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 100
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Garage Door Sensor"
+    category: sensor
+    room: garage
+    channels:
+      - category: contact
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Garage Motion Sensor"
+    category: sensor
+    room: garage
+    auto_simulate: true
+    simulate_interval: 5000
+    channels:
+      - category: motion
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Garage Smart Outlet"
+    category: outlet
+    room: garage
+    channels:
+      - category: outlet
+        properties:
+          - category: on
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Garage Freezer Outlet"
+    category: outlet
+    room: garage
+    auto_simulate: true
+    channels:
+      - category: outlet
+        properties:
+          - category: on
+            value: true
+      - category: electrical_power
+        properties:
+          - category: power
+            value: 120.0
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # ============================================================================
+  # FLOOR 2 - UPPER HALLWAY
+  # ============================================================================
+  - name: "Upper Hallway Light"
+    category: lighting
+    room: upper-hallway
+    auto_simulate: true
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: true
+          - category: brightness
+            value: 50
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Upper Hallway Motion Sensor"
+    category: sensor
+    room: upper-hallway
+    auto_simulate: true
+    simulate_interval: 5000
+    channels:
+      - category: motion
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Upper Hallway Smoke Detector"
+    category: sensor
+    room: upper-hallway
+    channels:
+      - category: smoke
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Upstairs Thermostat"
+    category: thermostat
+    room: upper-hallway
+    auto_simulate: true
+    simulate_interval: 60000
+    channels:
+      - category: temperature
+        properties:
+          - category: temperature
+            value: 21.5
+      - category: heater
+        properties:
+          - category: on
+            value: false
+          - category: temperature
+            value: 21.0
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # ============================================================================
+  # FLOOR 2 - MASTER SUITE
+  # ============================================================================
+  - name: "Master Bedroom Main Light"
+    category: lighting
+    room: master-suite
+    auto_simulate: true
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 70
+          - category: color_temperature
+            value: 2700
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Master Bedroom Bedside Left"
+    category: lighting
+    room: master-suite
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 30
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Master Bedroom Bedside Right"
+    category: lighting
+    room: master-suite
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 30
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Master Bedroom Accent Strip"
+    category: lighting
+    room: master-suite
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 20
+          - category: hue
+            value: 240
+          - category: saturation
+            value: 50
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Master Bedroom Ceiling Fan"
+    category: fan
+    room: master-suite
+    channels:
+      - category: fan
+        properties:
+          - category: on
+            value: false
+          - category: speed
+            value: "low"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Master Bedroom TV"
+    category: television
+    room: master-suite
+    channels:
+      - category: television
+        properties:
+          - category: on
+            value: false
+      - category: speaker
+        properties:
+          - category: volume
+            value: 15
+          - category: active
+            value: true
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Master Bedroom Climate Sensor"
+    category: sensor
+    room: master-suite
+    auto_simulate: true
+    channels:
+      - category: temperature
+        properties:
+          - category: temperature
+            value: 21.0
+      - category: humidity
+        properties:
+          - category: humidity
+            value: 50
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Master Bedroom AC"
+    category: air_conditioner
+    room: master-suite
+    auto_simulate: true
+    channels:
+      - category: cooler
+        properties:
+          - category: on
+            value: false
+          - category: temperature
+            value: 22.0
+      - category: temperature
+        properties:
+          - category: temperature
+            value: 23.0
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Master Bedroom Humidifier"
+    category: air_humidifier
+    room: master-suite
+    auto_simulate: true
+    channels:
+      - category: humidifier
+        properties:
+          - category: on
+            value: false
+          - category: humidity
+            value: 50
+      - category: humidity
+        properties:
+          - category: humidity
+            value: 45
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Master Bedroom Blackout Shades"
+    category: window_covering
+    room: master-suite
+    auto_simulate: true
+    channels:
+      - category: window_covering
+        properties:
+          - category: position
+            value: 0
+          - category: type
+            value: "roller"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Master Bedroom Sheer Curtains"
+    category: window_covering
+    room: master-suite
+    channels:
+      - category: window_covering
+        properties:
+          - category: position
+            value: 100
+          - category: type
+            value: "curtain"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Master Bedroom Motion Sensor"
+    category: sensor
+    room: master-suite
+    auto_simulate: true
+    simulate_interval: 5000
+    channels:
+      - category: motion
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # ============================================================================
+  # FLOOR 2 - MASTER BATHROOM
+  # ============================================================================
+  - name: "Master Bath Main Light"
+    category: lighting
+    room: master-bathroom
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 100
+          - category: color_temperature
+            value: 5000
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Master Bath Vanity Light"
+    category: lighting
+    room: master-bathroom
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 80
+          - category: color_temperature
+            value: 4000
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Master Bath Shower Light"
+    category: lighting
+    room: master-bathroom
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 100
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Master Bath Exhaust Fan"
+    category: fan
+    room: master-bathroom
+    channels:
+      - category: fan
+        properties:
+          - category: on
+            value: false
+          - category: speed
+            value: "low"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Master Bath Humidity Sensor"
+    category: sensor
+    room: master-bathroom
+    auto_simulate: true
+    channels:
+      - category: humidity
+        properties:
+          - category: humidity
+            value: 55
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Master Bath Leak Sensor"
+    category: sensor
+    room: master-bathroom
+    channels:
+      - category: leak
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Master Bath Dehumidifier"
+    category: air_dehumidifier
+    room: master-bathroom
+    auto_simulate: true
+    channels:
+      - category: dehumidifier
+        properties:
+          - category: on
+            value: false
+          - category: humidity
+            value: 50
+      - category: humidity
+        properties:
+          - category: humidity
+            value: 58
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # ============================================================================
+  # FLOOR 2 - MASTER CLOSET
+  # ============================================================================
+  - name: "Master Closet Light"
+    category: lighting
+    room: master-closet
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 100
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Master Closet Motion Sensor"
+    category: sensor
+    room: master-closet
+    auto_simulate: true
+    channels:
+      - category: motion
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # ============================================================================
+  # FLOOR 2 - BEDROOM 2
+  # ============================================================================
+  - name: "Bedroom 2 Ceiling Light"
+    category: lighting
+    room: bedroom-2
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 100
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Bedroom 2 Desk Lamp"
+    category: lighting
+    room: bedroom-2
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 70
+          - category: color_temperature
+            value: 5000
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Bedroom 2 Ceiling Fan"
+    category: fan
+    room: bedroom-2
+    channels:
+      - category: fan
+        properties:
+          - category: on
+            value: false
+          - category: speed
+            value: "medium"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Bedroom 2 Roller Shade"
+    category: window_covering
+    room: bedroom-2
+    channels:
+      - category: window_covering
+        properties:
+          - category: position
+            value: 50
+          - category: type
+            value: "roller"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # ============================================================================
+  # FLOOR 2 - BEDROOM 3
+  # ============================================================================
+  - name: "Bedroom 3 Ceiling Light"
+    category: lighting
+    room: bedroom-3
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 100
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Bedroom 3 Bedside Lamp"
+    category: lighting
+    room: bedroom-3
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 40
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Bedroom 3 Ceiling Fan"
+    category: fan
+    room: bedroom-3
+    channels:
+      - category: fan
+        properties:
+          - category: on
+            value: false
+          - category: speed
+            value: "low"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Bedroom 3 Roller Shade"
+    category: window_covering
+    room: bedroom-3
+    channels:
+      - category: window_covering
+        properties:
+          - category: position
+            value: 0
+          - category: type
+            value: "roller"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # ============================================================================
+  # FLOOR 2 - BEDROOM 4
+  # ============================================================================
+  - name: "Bedroom 4 Ceiling Light"
+    category: lighting
+    room: bedroom-4
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 100
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Bedroom 4 Nightlight"
+    category: lighting
+    room: bedroom-4
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: true
+          - category: brightness
+            value: 10
+          - category: hue
+            value: 30
+          - category: saturation
+            value: 80
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Bedroom 4 Roller Shade"
+    category: window_covering
+    room: bedroom-4
+    channels:
+      - category: window_covering
+        properties:
+          - category: position
+            value: 0
+          - category: type
+            value: "roller"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # ============================================================================
+  # FLOOR 2 - BATHROOM 2
+  # ============================================================================
+  - name: "Bathroom 2 Light"
+    category: lighting
+    room: bathroom-2
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 100
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Bathroom 2 Fan"
+    category: fan
+    room: bathroom-2
+    channels:
+      - category: fan
+        properties:
+          - category: on
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Bathroom 2 Humidity Sensor"
+    category: sensor
+    room: bathroom-2
+    auto_simulate: true
+    channels:
+      - category: humidity
+        properties:
+          - category: humidity
+            value: 50
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # ============================================================================
+  # FLOOR 2 - BATHROOM 3
+  # ============================================================================
+  - name: "Bathroom 3 Light"
+    category: lighting
+    room: bathroom-3
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 100
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Bathroom 3 Fan"
+    category: fan
+    room: bathroom-3
+    channels:
+      - category: fan
+        properties:
+          - category: on
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # ============================================================================
+  # FLOOR 2 - BONUS ROOM
+  # ============================================================================
+  - name: "Bonus Room Main Light"
+    category: lighting
+    room: bonus-room
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 80
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Bonus Room Accent Lights"
+    category: lighting
+    room: bonus-room
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 40
+          - category: hue
+            value: 280
+          - category: saturation
+            value: 70
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Bonus Room TV"
+    category: television
+    room: bonus-room
+    channels:
+      - category: television
+        properties:
+          - category: on
+            value: false
+      - category: speaker
+        properties:
+          - category: volume
+            value: 25
+          - category: active
+            value: true
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Bonus Room Ceiling Fan"
+    category: fan
+    room: bonus-room
+    channels:
+      - category: fan
+        properties:
+          - category: on
+            value: false
+          - category: speed
+            value: "medium"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # ============================================================================
+  # OUTDOOR - FRONT PORCH
+  # ============================================================================
+  - name: "Front Porch Light"
+    category: lighting
+    room: front-porch
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 100
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Front Porch Motion Sensor"
+    category: sensor
+    room: front-porch
+    auto_simulate: true
+    simulate_interval: 5000
+    channels:
+      - category: motion
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # ============================================================================
+  # OUTDOOR - BACK PATIO
+  # ============================================================================
+  - name: "Back Patio Ceiling Light"
+    category: lighting
+    room: back-patio
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 100
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Back Patio String Lights"
+    category: lighting
+    room: back-patio
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 70
+          - category: hue
+            value: 45
+          - category: saturation
+            value: 80
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Back Patio Ceiling Fan"
+    category: fan
+    room: back-patio
+    channels:
+      - category: fan
+        properties:
+          - category: on
+            value: false
+          - category: speed
+            value: "high"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Patio Door Lock"
+    category: lock
+    room: back-patio
+    channels:
+      - category: lock
+        properties:
+          - category: status
+            value: "locked"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Patio Door Sensor"
+    category: sensor
+    room: back-patio
+    channels:
+      - category: contact
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Patio Motorized Awning"
+    category: window_covering
+    room: back-patio
+    channels:
+      - category: window_covering
+        properties:
+          - category: position
+            value: 0
+          - category: type
+            value: "outdoor_blind"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Patio Heater Outlet"
+    category: outlet
+    room: back-patio
+    channels:
+      - category: outlet
+        properties:
+          - category: on
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # ============================================================================
+  # OUTDOOR - POOL AREA
+  # ============================================================================
+  - name: "Pool Area Lights"
+    category: lighting
+    room: pool-area
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 100
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Pool Underwater Lights"
+    category: lighting
+    room: pool-area
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 80
+          - category: hue
+            value: 200
+          - category: saturation
+            value: 90
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Pool Pump Outlet"
+    category: outlet
+    room: pool-area
+    auto_simulate: true
+    channels:
+      - category: outlet
+        properties:
+          - category: on
+            value: true
+      - category: electrical_power
+        properties:
+          - category: power
+            value: 1500.0
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Pool Heater Outlet"
+    category: outlet
+    room: pool-area
+    auto_simulate: true
+    channels:
+      - category: outlet
+        properties:
+          - category: on
+            value: false
+      - category: electrical_power
+        properties:
+          - category: power
+            value: 0.0
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Pool Temperature Sensor"
+    category: sensor
+    room: pool-area
+    auto_simulate: true
+    simulate_interval: 60000
+    channels:
+      - category: temperature
+        properties:
+          - category: temperature
+            value: 28.0
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # ============================================================================
+  # OUTDOOR - BACKYARD
+  # ============================================================================
+  - name: "Backyard Flood Lights"
+    category: lighting
+    room: backyard
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 100
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Backyard Path Lights"
+    category: lighting
+    room: backyard
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 50
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Backyard Garden Lights"
+    category: lighting
+    room: backyard
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 40
+          - category: hue
+            value: 120
+          - category: saturation
+            value: 60
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Backyard Weather Station"
+    category: sensor
+    room: backyard
+    auto_simulate: true
+    simulate_interval: 60000
+    channels:
+      - category: temperature
+        properties:
+          - category: temperature
+            value: 18.0
+      - category: humidity
+        properties:
+          - category: humidity
+            value: 65
+      - category: illuminance
+        properties:
+          - category: illuminance
+            value: 500
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Garden Sprinkler Zone 1"
+    category: sprinkler
+    room: backyard
+    channels:
+      - category: valve
+        properties:
+          - category: on
+            value: false
+          - category: type
+            value: "irrigation"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Garden Sprinkler Zone 2"
+    category: sprinkler
+    room: backyard
+    channels:
+      - category: valve
+        properties:
+          - category: on
+            value: false
+          - category: type
+            value: "irrigation"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Garden Sprinkler Zone 3"
+    category: sprinkler
+    room: backyard
+    channels:
+      - category: valve
+        properties:
+          - category: on
+            value: false
+          - category: type
+            value: "irrigation"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Backyard Motion Sensor"
+    category: sensor
+    room: backyard
+    auto_simulate: true
+    simulate_interval: 5000
+    channels:
+      - category: motion
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"

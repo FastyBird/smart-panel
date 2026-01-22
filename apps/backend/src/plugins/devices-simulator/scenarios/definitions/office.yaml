@@ -1,0 +1,216 @@
+version: "1.0"
+name: "Small Office"
+description: "Small office space with climate control and security"
+
+rooms:
+  - id: reception
+    name: "Reception"
+  - id: main-office
+    name: "Main Office"
+  - id: meeting-room
+    name: "Meeting Room"
+  - id: server-room
+    name: "Server Room"
+
+devices:
+  # Reception
+  - name: "Reception Lights"
+    category: lighting
+    room: reception
+    auto_simulate: true
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: true
+          - category: brightness
+            value: 100
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Reception Motion"
+    category: sensor
+    room: reception
+    auto_simulate: true
+    simulate_interval: 5000
+    channels:
+      - category: motion
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Entry Door Lock"
+    category: lock
+    room: reception
+    channels:
+      - category: lock
+        properties:
+          - category: status
+            value: "locked"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # Main Office
+  - name: "Office Ceiling Lights"
+    category: lighting
+    room: main-office
+    auto_simulate: true
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: true
+          - category: brightness
+            value: 90
+          - category: color_temperature
+            value: 4500
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Office Thermostat"
+    category: thermostat
+    room: main-office
+    auto_simulate: true
+    simulate_interval: 60000
+    channels:
+      - category: temperature
+        properties:
+          - category: temperature
+            value: 23.0
+      - category: heater
+        properties:
+          - category: on
+            value: true
+          - category: temperature
+            value: 22.0
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Office Climate Sensor"
+    category: sensor
+    room: main-office
+    auto_simulate: true
+    simulate_interval: 30000
+    channels:
+      - category: temperature
+        properties:
+          - category: temperature
+            value: 22.8
+      - category: humidity
+        properties:
+          - category: humidity
+            value: 42
+      - category: carbon_dioxide
+        properties:
+          - category: concentration
+            value: 650
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # Meeting Room
+  - name: "Meeting Room Lights"
+    category: lighting
+    room: meeting-room
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 100
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Meeting Room Display"
+    category: television
+    room: meeting-room
+    channels:
+      - category: television
+        properties:
+          - category: on
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Meeting Room Occupancy"
+    category: sensor
+    room: meeting-room
+    auto_simulate: true
+    channels:
+      - category: occupancy
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # Server Room
+  - name: "Server Room Temperature"
+    category: sensor
+    room: server-room
+    auto_simulate: true
+    simulate_interval: 10000
+    channels:
+      - category: temperature
+        properties:
+          - category: temperature
+            value: 18.5
+      - category: humidity
+        properties:
+          - category: humidity
+            value: 35
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Server Room AC"
+    category: air_conditioner
+    room: server-room
+    auto_simulate: true
+    channels:
+      - category: cooler
+        properties:
+          - category: on
+            value: true
+      - category: temperature
+        properties:
+          - category: temperature
+            value: 18.0
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Server Room Door"
+    category: sensor
+    room: server-room
+    channels:
+      - category: contact
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"

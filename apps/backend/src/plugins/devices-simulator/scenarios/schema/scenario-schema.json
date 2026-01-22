@@ -1,0 +1,161 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://fastybird.com/schemas/simulator-scenario-v1.json",
+	"title": "Simulator Device Scenario",
+	"description": "Schema for device simulator scenario YAML configuration files",
+	"type": "object",
+	"required": ["version", "name", "devices"],
+	"additionalProperties": false,
+	"properties": {
+		"version": {
+			"type": "string",
+			"pattern": "^[0-9]+\\.[0-9]+$",
+			"description": "Schema version (e.g., '1.0')"
+		},
+		"name": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 100,
+			"description": "Scenario display name"
+		},
+		"description": {
+			"type": "string",
+			"maxLength": 500,
+			"description": "Optional scenario description"
+		},
+		"rooms": {
+			"type": "array",
+			"items": {
+				"$ref": "#/definitions/room"
+			},
+			"description": "Rooms to create (optional)"
+		},
+		"devices": {
+			"type": "array",
+			"items": {
+				"$ref": "#/definitions/device"
+			},
+			"minItems": 1,
+			"description": "Devices to create"
+		}
+	},
+	"definitions": {
+		"room": {
+			"type": "object",
+			"required": ["id", "name"],
+			"additionalProperties": false,
+			"properties": {
+				"id": {
+					"type": "string",
+					"pattern": "^[a-z][a-z0-9-]*$",
+					"minLength": 1,
+					"maxLength": 50,
+					"description": "Unique room identifier for device references"
+				},
+				"name": {
+					"type": "string",
+					"minLength": 1,
+					"maxLength": 100,
+					"description": "Room display name"
+				}
+			}
+		},
+		"device": {
+			"type": "object",
+			"required": ["name", "category", "channels"],
+			"additionalProperties": false,
+			"properties": {
+				"name": {
+					"type": "string",
+					"minLength": 1,
+					"maxLength": 100,
+					"description": "Device display name"
+				},
+				"category": {
+					"type": "string",
+					"minLength": 1,
+					"description": "Device category (e.g., lighting, sensor, thermostat)"
+				},
+				"room": {
+					"type": "string",
+					"description": "Reference to room id from rooms array"
+				},
+				"description": {
+					"type": "string",
+					"maxLength": 500,
+					"description": "Optional device description"
+				},
+				"auto_simulate": {
+					"type": "boolean",
+					"default": false,
+					"description": "Enable automatic value simulation"
+				},
+				"simulate_interval": {
+					"type": "integer",
+					"minimum": 1000,
+					"maximum": 3600000,
+					"default": 5000,
+					"description": "Auto-simulation interval in milliseconds"
+				},
+				"channels": {
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/channel"
+					},
+					"minItems": 1,
+					"description": "Channels for this device"
+				}
+			}
+		},
+		"channel": {
+			"type": "object",
+			"required": ["category", "properties"],
+			"additionalProperties": false,
+			"properties": {
+				"category": {
+					"type": "string",
+					"minLength": 1,
+					"description": "Channel category (e.g., light, temperature, thermostat)"
+				},
+				"name": {
+					"type": "string",
+					"maxLength": 100,
+					"description": "Optional channel display name"
+				},
+				"properties": {
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/property"
+					},
+					"minItems": 1,
+					"description": "Properties for this channel"
+				}
+			}
+		},
+		"property": {
+			"type": "object",
+			"required": ["category"],
+			"additionalProperties": false,
+			"properties": {
+				"category": {
+					"type": "string",
+					"minLength": 1,
+					"description": "Property category (e.g., on, brightness, temperature)"
+				},
+				"data_type": {
+					"type": "string",
+					"enum": ["bool", "char", "uchar", "short", "ushort", "int", "uint", "float", "string", "enum"],
+					"description": "Optional data type override for multi-datatype properties"
+				},
+				"value": {
+					"oneOf": [
+						{ "type": "string" },
+						{ "type": "number" },
+						{ "type": "boolean" }
+					],
+					"description": "Initial property value"
+				}
+			}
+		}
+	}
+}

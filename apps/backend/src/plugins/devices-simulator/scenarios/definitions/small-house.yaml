@@ -1,0 +1,378 @@
+version: "1.0"
+name: "Small House"
+description: "2-3 bedroom house with typical smart home devices"
+
+rooms:
+  - id: living-room
+    name: "Living Room"
+  - id: master-bedroom
+    name: "Master Bedroom"
+  - id: kids-bedroom
+    name: "Kids Bedroom"
+  - id: bathroom
+    name: "Bathroom"
+  - id: kitchen
+    name: "Kitchen"
+  - id: garage
+    name: "Garage"
+  - id: hallway
+    name: "Hallway"
+  - id: backyard
+    name: "Backyard"
+
+devices:
+  # Living Room
+  - name: "Living Room Main Light"
+    category: lighting
+    room: living-room
+    auto_simulate: true
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: true
+          - category: brightness
+            value: 80
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Living Room Floor Lamp"
+    category: lighting
+    room: living-room
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 50
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Living Room Climate"
+    category: sensor
+    room: living-room
+    auto_simulate: true
+    simulate_interval: 30000
+    channels:
+      - category: temperature
+        properties:
+          - category: temperature
+            value: 21.5
+      - category: humidity
+        properties:
+          - category: humidity
+            value: 48
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Living Room TV"
+    category: television
+    room: living-room
+    channels:
+      - category: television
+        properties:
+          - category: on
+            value: false
+      - category: speaker
+        properties:
+          - category: volume
+            value: 20
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Living Room Window"
+    category: sensor
+    room: living-room
+    channels:
+      - category: contact
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # Master Bedroom
+  - name: "Master Bedroom Light"
+    category: lighting
+    room: master-bedroom
+    auto_simulate: true
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 40
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Master Bedroom Sensor"
+    category: sensor
+    room: master-bedroom
+    auto_simulate: true
+    channels:
+      - category: temperature
+        properties:
+          - category: temperature
+            value: 20.0
+      - category: motion
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # Kids Bedroom
+  - name: "Kids Room Light"
+    category: lighting
+    room: kids-bedroom
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 100
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Kids Room Nightlight"
+    category: lighting
+    room: kids-bedroom
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: true
+          - category: brightness
+            value: 10
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # Bathroom
+  - name: "Bathroom Light"
+    category: lighting
+    room: bathroom
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Bathroom Fan"
+    category: fan
+    room: bathroom
+    channels:
+      - category: fan
+        properties:
+          - category: on
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Bathroom Humidity"
+    category: sensor
+    room: bathroom
+    auto_simulate: true
+    channels:
+      - category: humidity
+        properties:
+          - category: humidity
+            value: 55
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # Kitchen
+  - name: "Kitchen Light"
+    category: lighting
+    room: kitchen
+    auto_simulate: true
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: true
+          - category: brightness
+            value: 100
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Kitchen Smart Plug"
+    category: outlet
+    room: kitchen
+    auto_simulate: true
+    channels:
+      - category: outlet
+        properties:
+          - category: on
+            value: true
+      - category: electrical_power
+        properties:
+          - category: power
+            value: 350.0
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Kitchen Smoke Alarm"
+    category: sensor
+    room: kitchen
+    channels:
+      - category: smoke
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # Garage
+  - name: "Garage Light"
+    category: lighting
+    room: garage
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Garage Door Sensor"
+    category: sensor
+    room: garage
+    channels:
+      - category: contact
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # Hallway
+  - name: "Hallway Light"
+    category: lighting
+    room: hallway
+    auto_simulate: true
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: true
+          - category: brightness
+            value: 50
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Front Door Lock"
+    category: lock
+    room: hallway
+    channels:
+      - category: lock
+        properties:
+          - category: status
+            value: "locked"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Hallway Motion"
+    category: sensor
+    room: hallway
+    auto_simulate: true
+    simulate_interval: 5000
+    channels:
+      - category: motion
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "House Thermostat"
+    category: thermostat
+    room: hallway
+    auto_simulate: true
+    simulate_interval: 60000
+    channels:
+      - category: temperature
+        properties:
+          - category: temperature
+            value: 21.0
+      - category: heater
+        properties:
+          - category: on
+            value: true
+          - category: temperature
+            value: 21.0
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # Backyard
+  - name: "Patio Light"
+    category: lighting
+    room: backyard
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Garden Sprinkler"
+    category: sprinkler
+    room: backyard
+    channels:
+      - category: valve
+        properties:
+          - category: on
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"

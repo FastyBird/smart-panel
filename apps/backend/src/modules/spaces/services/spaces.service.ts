@@ -266,12 +266,12 @@ export class SpacesService {
 				.where('roomId = :id', { id })
 				.execute();
 
-			// Set spaceId to null for all displays in this space
+			// Set roomId to null for all displays in this space
 			await manager
 				.createQueryBuilder()
 				.update(DisplayEntity)
-				.set({ spaceId: null })
-				.where('spaceId = :id', { id })
+				.set({ roomId: null })
+				.where('roomId = :id', { id })
 				.execute();
 
 			await manager.remove(space);

@@ -18,6 +18,7 @@ import { PlatformRegistryService } from '../../modules/devices/services/platform
 import { ExtensionsModule } from '../../modules/extensions/extensions.module';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { PluginServiceManagerService } from '../../modules/extensions/services/plugin-service-manager.service';
+import { SpacesModule } from '../../modules/spaces/spaces.module';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
@@ -25,6 +26,7 @@ import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { GenerateDeviceCommand } from './commands/generate-device.command';
 import { PopulateValuesCommand } from './commands/populate-values.command';
+import { ScenarioCommand } from './commands/scenario.command';
 import { SetConnectionStateCommand } from './commands/set-connection-state.command';
 import { SimulateCommand } from './commands/simulate.command';
 import { SimulatorController } from './controllers/simulator.controller';
@@ -50,6 +52,8 @@ import {
 import { SimulatorConfigModel } from './models/config.model';
 import { SimulatorDevicePlatform } from './platforms/simulator-device.platform';
 import { DeviceGeneratorService } from './services/device-generator.service';
+import { ScenarioExecutorService } from './services/scenario-executor.service';
+import { ScenarioLoaderService } from './services/scenario-loader.service';
 import { SimulationService } from './services/simulation.service';
 
 @ApiTag({
@@ -63,14 +67,18 @@ import { SimulationService } from './services/simulation.service';
 		DevicesModule,
 		ConfigModule,
 		ExtensionsModule,
+		SpacesModule,
 		SwaggerModule,
 	],
 	providers: [
 		SimulatorDevicePlatform,
 		DeviceGeneratorService,
+		ScenarioLoaderService,
+		ScenarioExecutorService,
 		SimulationService,
 		GenerateDeviceCommand,
 		PopulateValuesCommand,
+		ScenarioCommand,
 		SetConnectionStateCommand,
 		SimulateCommand,
 	],
@@ -212,6 +220,7 @@ Plugin for creating virtual devices for testing purposes without requiring physi
 
 ## Features
 
+- **Load Scenarios** - Load predefined device sets from YAML files (small apartment, penthouse, office, etc.)
 - **Generate Devices** - Create simulated devices of any category with proper channels and properties
 - **Realistic Simulation** - Time-based and environmental simulation for realistic device behavior
 - **Smart Simulators** - Dedicated simulators for sensors, lighting, AC, heaters, thermostats, and more
@@ -251,6 +260,16 @@ pnpm run cli simulator:simulate --config            # Show configuration
 pnpm run cli simulator:simulate --start --interval 5000  # Start auto-simulation
 pnpm run cli simulator:simulate --stop              # Stop auto-simulation
 pnpm run cli simulator:simulate                     # Interactive mode
+\`\`\`
+
+### Load Scenarios (New!)
+\`\`\`bash
+pnpm run cli simulator:scenario --list              # List available scenarios
+pnpm run cli simulator:scenario -s small-apartment  # Load a scenario
+pnpm run cli simulator:scenario --truncate -s office # Clear devices first
+pnpm run cli simulator:scenario -f /path/to/custom.yaml  # Load custom YAML
+pnpm run cli simulator:scenario --dry-run -s penthouse   # Preview only
+pnpm run cli simulator:scenario                     # Interactive mode
 \`\`\`
 
 ### Generate Devices

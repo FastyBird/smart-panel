@@ -1,0 +1,183 @@
+version: "1.0"
+name: "Small Apartment"
+description: "Typical 1-bedroom apartment with essential smart home devices"
+
+rooms:
+  - id: living-room
+    name: "Living Room"
+  - id: bedroom
+    name: "Bedroom"
+  - id: bathroom
+    name: "Bathroom"
+  - id: kitchen
+    name: "Kitchen"
+  - id: hallway
+    name: "Hallway"
+
+devices:
+  # Living Room
+  - name: "Living Room Ceiling Light"
+    category: lighting
+    room: living-room
+    auto_simulate: true
+    simulate_interval: 15000
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: true
+          - category: brightness
+            value: 80
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+          - category: model
+            value: "SIM-Light-01"
+
+  - name: "Living Room Climate Sensor"
+    category: sensor
+    room: living-room
+    auto_simulate: true
+    simulate_interval: 30000
+    channels:
+      - category: temperature
+        properties:
+          - category: temperature
+            value: 22.5
+      - category: humidity
+        properties:
+          - category: humidity
+            value: 45
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Smart TV"
+    category: television
+    room: living-room
+    channels:
+      - category: television
+        properties:
+          - category: on
+            value: false
+      - category: speaker
+        properties:
+          - category: volume
+            value: 30
+          - category: active
+            value: true
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # Bedroom
+  - name: "Bedroom Light"
+    category: lighting
+    room: bedroom
+    auto_simulate: true
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 50
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Bedroom Motion Sensor"
+    category: sensor
+    room: bedroom
+    auto_simulate: true
+    simulate_interval: 10000
+    channels:
+      - category: motion
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # Bathroom
+  - name: "Bathroom Light"
+    category: lighting
+    room: bathroom
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Bathroom Humidity Sensor"
+    category: sensor
+    room: bathroom
+    auto_simulate: true
+    channels:
+      - category: humidity
+        properties:
+          - category: humidity
+            value: 55
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # Kitchen
+  - name: "Kitchen Outlet"
+    category: outlet
+    room: kitchen
+    auto_simulate: true
+    simulate_interval: 20000
+    channels:
+      - category: outlet
+        properties:
+          - category: on
+            value: true
+      - category: electrical_power
+        properties:
+          - category: power
+            value: 150.5
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # Hallway
+  - name: "Front Door Lock"
+    category: lock
+    room: hallway
+    channels:
+      - category: lock
+        properties:
+          - category: status
+            value: "locked"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Hallway Motion Sensor"
+    category: sensor
+    room: hallway
+    auto_simulate: true
+    simulate_interval: 5000
+    channels:
+      - category: motion
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
