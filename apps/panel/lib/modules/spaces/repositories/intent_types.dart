@@ -1,4 +1,5 @@
-import 'package:fastybird_smart_panel/modules/spaces/models/covers_state/covers_state.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/covers_state/covers_state.dart'
+    show CoversMode, CoversStateRole;
 import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
 
 /// Types of lighting intents that can be executed on a space.
@@ -310,5 +311,19 @@ String coversRoleToString(CoversStateRole role) {
       return 'outdoor';
     case CoversStateRole.hidden:
       return 'hidden';
+  }
+}
+
+/// Convert CoversMode to API string
+String coversModeToString(CoversMode mode) {
+  switch (mode) {
+    case CoversMode.open:
+      return 'open';
+    case CoversMode.closed:
+      return 'closed';
+    case CoversMode.privacy:
+      return 'privacy';
+    case CoversMode.daylight:
+      return 'daylight';
   }
 }

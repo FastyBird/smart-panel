@@ -1,0 +1,83 @@
+# Covers mode orchestration rules
+# Defines how each covers mode affects window coverings by their role
+#
+# Design decisions:
+# - OPEN mode: all covers fully open (100% position)
+# - CLOSED mode: all covers fully closed (0% position)
+# - PRIVACY mode: sheer at 50% for light diffusion, others open
+# - DAYLIGHT mode: optimized positions for natural light while reducing glare
+# - HIDDEN covers are always excluded from intent processing
+
+modes:
+  open:
+    label: "Open"
+    description: "All covers fully open for maximum light"
+    icon: "mdi:blinds-horizontal"
+    roles:
+      primary:
+        position: 100
+      blackout:
+        position: 100
+      sheer:
+        position: 100
+      outdoor:
+        position: 100
+
+  closed:
+    label: "Closed"
+    description: "All covers fully closed for darkness or privacy"
+    icon: "mdi:blinds-horizontal-closed"
+    roles:
+      primary:
+        position: 0
+      blackout:
+        position: 0
+      sheer:
+        position: 0
+      outdoor:
+        position: 0
+
+  privacy:
+    label: "Privacy"
+    description: "Sheer covers for privacy while allowing light"
+    icon: "mdi:eye-off"
+    roles:
+      primary:
+        position: 100
+      blackout:
+        position: 100
+      sheer:
+        position: 50
+      outdoor:
+        position: 100
+
+  daylight:
+    label: "Daylight"
+    description: "Optimized for natural light with reduced glare"
+    icon: "mdi:weather-sunny"
+    roles:
+      primary:
+        position: 75
+      blackout:
+        position: 100
+      sheer:
+        position: 75
+      outdoor:
+        position: 50
+
+# Custom modes can be added here or in user overrides
+# Example user-defined mode (users can add in var/spaces/covers-modes.yaml):
+#
+#   movie:
+#     label: "Movie"
+#     description: "Blackout for home theater"
+#     icon: "mdi:movie"
+#     roles:
+#       primary:
+#         position: 0
+#       blackout:
+#         position: 0
+#       sheer:
+#         position: 0
+#       outdoor:
+#         position: 0

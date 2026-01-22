@@ -1,3 +1,34 @@
+/// Predefined covers modes that can be applied to a space.
+///
+/// Each mode represents a different covers configuration:
+/// - [open]: All covers fully open (100%)
+/// - [closed]: All covers fully closed (0%)
+/// - [privacy]: Optimized for privacy while allowing some light
+/// - [daylight]: Optimized for natural daylight
+enum CoversMode {
+  open,
+  closed,
+  privacy,
+  daylight,
+}
+
+/// Parse CoversMode from string
+CoversMode? parseCoversMode(String? mode) {
+  if (mode == null) return null;
+  switch (mode) {
+    case 'open':
+      return CoversMode.open;
+    case 'closed':
+      return CoversMode.closed;
+    case 'privacy':
+      return CoversMode.privacy;
+    case 'daylight':
+      return CoversMode.daylight;
+    default:
+      return null;
+  }
+}
+
 /// Role assigned to covers for grouped control.
 ///
 /// Roles allow controlling specific categories of window coverings:
@@ -40,6 +71,7 @@ CoversStateRole? parseCoversStateRole(String? role) {
 /// - Average position across all covers
 /// - Open/closed status
 /// - Device counts by role
+/// - Last applied mode (if any)
 class CoversStateModel {
   final String spaceId;
   final bool hasCovers;
@@ -48,6 +80,7 @@ class CoversStateModel {
   final bool allClosed;
   final int devicesCount;
   final Map<CoversStateRole, int> coversByRole;
+  final CoversMode? lastAppliedMode;
 
   CoversStateModel({
     required this.spaceId,
@@ -57,6 +90,7 @@ class CoversStateModel {
     required this.allClosed,
     required this.devicesCount,
     required this.coversByRole,
+    this.lastAppliedMode,
   });
 
   /// Check if all covers are open (position = 100)
@@ -88,6 +122,7 @@ class CoversStateModel {
       allClosed: json['all_closed'] as bool? ?? true,
       devicesCount: json['devices_count'] as int? ?? 0,
       coversByRole: rolesMap,
+      lastAppliedMode: parseCoversMode(json['last_applied_mode'] as String?),
     );
   }
 

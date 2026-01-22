@@ -578,6 +578,11 @@ class SpacesService extends ChangeNotifier {
     return _spaceStateRepository.setRolePosition(spaceId, role, position);
   }
 
+  /// Set covers mode (open, closed, privacy, daylight)
+  Future<CoversIntentResult?> setCoversMode(String spaceId, CoversMode mode) {
+    return _spaceStateRepository.setCoversMode(spaceId, mode);
+  }
+
   // ============================================
   // SUGGESTIONS
   // ============================================

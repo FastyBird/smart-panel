@@ -1225,6 +1225,18 @@ class SpaceStateRepository extends ChangeNotifier {
     );
   }
 
+  /// Set covers mode (open, closed, privacy, daylight)
+  Future<CoversIntentResult?> setCoversMode(
+    String spaceId,
+    CoversMode mode,
+  ) {
+    return executeCoversIntent(
+      spaceId: spaceId,
+      type: CoversIntentType.setMode,
+      mode: coversModeToString(mode),
+    );
+  }
+
   // ============================================
   // SUGGESTIONS
   // ============================================

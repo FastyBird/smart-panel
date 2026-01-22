@@ -3220,6 +3220,162 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Climate Devices'**
   String get climate_devices_section;
+
+  /// Title for shading domain view in room navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Shading'**
+  String get domain_shading;
+
+  /// Title shown when no window coverings are found in the room
+  ///
+  /// In en, this message translates to:
+  /// **'No Window Coverings'**
+  String get domain_shading_empty_title;
+
+  /// Description shown when no window coverings are found in the room
+  ///
+  /// In en, this message translates to:
+  /// **'No window covering devices found in this room'**
+  String get domain_shading_empty_description;
+
+  /// Title for modes section in shading domain
+  ///
+  /// In en, this message translates to:
+  /// **'Modes'**
+  String get shading_modes_title;
+
+  /// Title for devices section in shading domain
+  ///
+  /// In en, this message translates to:
+  /// **'Devices'**
+  String get shading_devices_title;
+
+  /// Count of devices in a role group
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 device} other{{count} devices}}'**
+  String shading_devices_count(int count);
+
+  /// Button label for open action
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get shading_action_open;
+
+  /// Button label for close action
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get shading_action_close;
+
+  /// Button label for stop action
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get shading_action_stop;
+
+  /// State label when covering is fully open
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get shading_state_open;
+
+  /// State label when covering is fully closed
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get shading_state_closed;
+
+  /// State label when covering is partially open
+  ///
+  /// In en, this message translates to:
+  /// **'{position}% open'**
+  String shading_state_partial(int position);
+
+  /// Covers mode for fully open blinds
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get covers_mode_open;
+
+  /// Covers mode for fully closed blinds
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get covers_mode_closed;
+
+  /// Covers mode for privacy (partial close)
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy'**
+  String get covers_mode_privacy;
+
+  /// Covers mode optimized for natural daylight
+  ///
+  /// In en, this message translates to:
+  /// **'Daylight'**
+  String get covers_mode_daylight;
+
+  /// Label for primary covers role
+  ///
+  /// In en, this message translates to:
+  /// **'Primary'**
+  String get covers_role_primary;
+
+  /// Label for blackout covers role
+  ///
+  /// In en, this message translates to:
+  /// **'Blackout'**
+  String get covers_role_blackout;
+
+  /// Label for sheer covers role
+  ///
+  /// In en, this message translates to:
+  /// **'Sheer'**
+  String get covers_role_sheer;
+
+  /// Label for outdoor covers role
+  ///
+  /// In en, this message translates to:
+  /// **'Outdoor'**
+  String get covers_role_outdoor;
+
+  /// Label for hidden covers role
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden'**
+  String get covers_role_hidden;
+
+  /// Cover type label for curtain
+  ///
+  /// In en, this message translates to:
+  /// **'Curtain'**
+  String get cover_type_curtain;
+
+  /// Cover type label for blind
+  ///
+  /// In en, this message translates to:
+  /// **'Blind'**
+  String get cover_type_blind;
+
+  /// Cover type label for roller shade
+  ///
+  /// In en, this message translates to:
+  /// **'Roller'**
+  String get cover_type_roller;
+
+  /// Cover type label for outdoor blind
+  ///
+  /// In en, this message translates to:
+  /// **'Outdoor Blind'**
+  String get cover_type_outdoor_blind;
+
+  /// Generic cover type label
+  ///
+  /// In en, this message translates to:
+  /// **'Cover'**
+  String get cover_type_cover;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

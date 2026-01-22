@@ -540,5 +540,37 @@
   "device_status_standby": "Pohotovost",
   "device_status_active": "Aktivní",
   "device_status_inactive": "Neaktivní",
-  "climate_devices_section": "Klimatizační zařízení"
+  "climate_devices_section": "Klimatizační zařízení",
+
+  "domain_shading": "Stínění",
+  "domain_shading_empty_title": "Žádné stínění",
+  "domain_shading_empty_description": "V této místnosti nebylo nalezeno žádné stínění",
+  "shading_modes_title": "Režimy",
+  "shading_devices_title": "Zařízení",
+  "shading_devices_count": "{count, plural, =1{1 zařízení} few{{count} zařízení} other{{count} zařízení}}",
+  "@shading_devices_count": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "shading_action_open": "Otevřít",
+  "shading_action_close": "Zavřít",
+  "shading_action_stop": "Zastavit",
+  "shading_state_open": "Otevřeno",
+  "shading_state_closed": "Zavřeno",
+  "shading_state_partial": "Částečně",
+  "covers_mode_open": "Otevřeno",
+  "covers_mode_closed": "Zavřeno",
+  "covers_mode_privacy": "Soukromí",
+  "covers_mode_daylight": "Denní světlo",
+  "covers_role_primary": "Hlavní",
+  "covers_role_blackout": "Zatemnění",
+  "covers_role_sheer": "Záclony",
+  "covers_role_outdoor": "Venkovní",
+  "covers_role_hidden": "Skryté",
+  "cover_type_curtain": "Záclona",
+  "cover_type_blind": "Žaluzie",
+  "cover_type_roller": "Roleta",
+  "cover_type_outdoor_blind": "Venkovní žaluzie",
+  "cover_type_cover": "Krytina"
 }

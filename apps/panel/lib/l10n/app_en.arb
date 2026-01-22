@@ -2184,5 +2184,120 @@
   "climate_devices_section": "Climate Devices",
   "@climate_devices_section": {
     "description": "Section header for climate devices list"
+  },
+
+  "domain_shading": "Shading",
+  "@domain_shading": {
+    "description": "Title for shading domain view in room navigation"
+  },
+  "domain_shading_empty_title": "No Window Coverings",
+  "@domain_shading_empty_title": {
+    "description": "Title shown when no window coverings are found in the room"
+  },
+  "domain_shading_empty_description": "No window covering devices found in this room",
+  "@domain_shading_empty_description": {
+    "description": "Description shown when no window coverings are found in the room"
+  },
+  "shading_modes_title": "Modes",
+  "@shading_modes_title": {
+    "description": "Title for modes section in shading domain"
+  },
+  "shading_devices_title": "Devices",
+  "@shading_devices_title": {
+    "description": "Title for devices section in shading domain"
+  },
+  "shading_devices_count": "{count, plural, =1{1 device} other{{count} devices}}",
+  "@shading_devices_count": {
+    "description": "Count of devices in a role group",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "shading_action_open": "Open",
+  "@shading_action_open": {
+    "description": "Button label for open action"
+  },
+  "shading_action_close": "Close",
+  "@shading_action_close": {
+    "description": "Button label for close action"
+  },
+  "shading_action_stop": "Stop",
+  "@shading_action_stop": {
+    "description": "Button label for stop action"
+  },
+  "shading_state_open": "Open",
+  "@shading_state_open": {
+    "description": "State label when covering is fully open"
+  },
+  "shading_state_closed": "Closed",
+  "@shading_state_closed": {
+    "description": "State label when covering is fully closed"
+  },
+  "shading_state_partial": "{position}% open",
+  "@shading_state_partial": {
+    "description": "State label when covering is partially open",
+    "placeholders": {
+      "position": {
+        "type": "int"
+      }
+    }
+  },
+  "covers_mode_open": "Open",
+  "@covers_mode_open": {
+    "description": "Covers mode for fully open blinds"
+  },
+  "covers_mode_closed": "Closed",
+  "@covers_mode_closed": {
+    "description": "Covers mode for fully closed blinds"
+  },
+  "covers_mode_privacy": "Privacy",
+  "@covers_mode_privacy": {
+    "description": "Covers mode for privacy (partial close)"
+  },
+  "covers_mode_daylight": "Daylight",
+  "@covers_mode_daylight": {
+    "description": "Covers mode optimized for natural daylight"
+  },
+  "covers_role_primary": "Primary",
+  "@covers_role_primary": {
+    "description": "Label for primary covers role"
+  },
+  "covers_role_blackout": "Blackout",
+  "@covers_role_blackout": {
+    "description": "Label for blackout covers role"
+  },
+  "covers_role_sheer": "Sheer",
+  "@covers_role_sheer": {
+    "description": "Label for sheer covers role"
+  },
+  "covers_role_outdoor": "Outdoor",
+  "@covers_role_outdoor": {
+    "description": "Label for outdoor covers role"
+  },
+  "covers_role_hidden": "Hidden",
+  "@covers_role_hidden": {
+    "description": "Label for hidden covers role"
+  },
+  "cover_type_curtain": "Curtain",
+  "@cover_type_curtain": {
+    "description": "Cover type label for curtain"
+  },
+  "cover_type_blind": "Blind",
+  "@cover_type_blind": {
+    "description": "Cover type label for blind"
+  },
+  "cover_type_roller": "Roller",
+  "@cover_type_roller": {
+    "description": "Cover type label for roller shade"
+  },
+  "cover_type_outdoor_blind": "Outdoor Blind",
+  "@cover_type_outdoor_blind": {
+    "description": "Cover type label for outdoor blind"
+  },
+  "cover_type_cover": "Cover",
+  "@cover_type_cover": {
+    "description": "Generic cover type label"
   }
 }
