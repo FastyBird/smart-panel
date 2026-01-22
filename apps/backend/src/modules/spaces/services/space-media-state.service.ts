@@ -252,9 +252,9 @@ export class SpaceMediaStateService {
 				// Power only from television/switcher .on or .active (aligned with intent service)
 				const onProperty =
 					isTelevision || isSwitcher
-						? channel.properties?.find(
+						? (channel.properties?.find(
 								(p) => p.category === PropertyCategory.ON || p.category === PropertyCategory.ACTIVE,
-							) ?? null
+							) ?? null)
 						: null;
 
 				// Volume/mute from speaker or television channels
