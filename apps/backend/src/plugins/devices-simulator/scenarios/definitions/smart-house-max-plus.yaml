@@ -1937,6 +1937,8 @@ devices:
       value: true
     - category: volume
       value: 18
+    - category: mute
+      value: false
   - category: device_information
     properties:
     - category: manufacturer
@@ -1951,6 +1953,8 @@ devices:
       value: false
     - category: volume
       value: 12
+    - category: mute
+      value: false
   - category: device_information
     properties:
     - category: manufacturer
@@ -1965,6 +1969,8 @@ devices:
       value: false
     - category: volume
       value: 15
+    - category: mute
+      value: true
   - category: device_information
     properties:
     - category: manufacturer

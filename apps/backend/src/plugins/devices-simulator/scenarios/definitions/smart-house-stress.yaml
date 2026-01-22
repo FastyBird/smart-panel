@@ -1936,6 +1936,8 @@ devices:
       value: true
     - category: volume
       value: 18
+    - category: mute
+      value: false
   - category: device_information
     properties:
     - category: manufacturer
@@ -1950,6 +1952,8 @@ devices:
       value: false
     - category: volume
       value: 12
+    - category: mute
+      value: false
   - category: device_information
     properties:
     - category: manufacturer
@@ -1964,6 +1968,8 @@ devices:
       value: false
     - category: volume
       value: 15
+    - category: mute
+      value: true
   - category: device_information
     properties:
     - category: manufacturer
@@ -5962,6 +5968,8 @@ devices:
       value: true
     - category: volume
       value: 35
+    - category: mute
+      value: false
   - category: device_information
     properties:
     - category: manufacturer
@@ -5978,6 +5986,8 @@ devices:
       value: false
     - category: volume
       value: 26
+    - category: mute
+      value: false
   - category: device_information
     properties:
     - category: manufacturer
@@ -6214,6 +6224,8 @@ devices:
       value: true
     - category: volume
       value: 26
+    - category: mute
+      value: true
   - category: device_information
     properties:
     - category: manufacturer
@@ -6230,6 +6242,8 @@ devices:
       value: true
     - category: volume
       value: 39
+    - category: mute
+      value: false
   - category: device_information
     properties:
     - category: manufacturer
@@ -6470,6 +6484,8 @@ devices:
       value: false
     - category: volume
       value: 14
+    - category: mute
+      value: true
   - category: device_information
     properties:
     - category: manufacturer
@@ -6486,6 +6502,8 @@ devices:
       value: true
     - category: volume
       value: 47
+    - category: mute
+      value: true
   - category: device_information
     properties:
     - category: manufacturer
@@ -6722,6 +6740,8 @@ devices:
       value: true
     - category: volume
       value: 39
+    - category: mute
+      value: false
   - category: device_information
     properties:
     - category: manufacturer
@@ -6738,6 +6758,8 @@ devices:
       value: false
     - category: volume
       value: 20
+    - category: mute
+      value: true
   - category: device_information
     properties:
     - category: manufacturer
@@ -6970,6 +6992,8 @@ devices:
       value: false
     - category: volume
       value: 1
+    - category: mute
+      value: true
   - category: device_information
     properties:
     - category: manufacturer
@@ -6986,6 +7010,8 @@ devices:
       value: false
     - category: volume
       value: 13
+    - category: mute
+      value: true
   - category: device_information
     properties:
     - category: manufacturer
@@ -7596,6 +7622,8 @@ devices:
       value: false
     - category: volume
       value: 28
+    - category: mute
+      value: true
   - category: device_information
     properties:
     - category: manufacturer
@@ -7612,6 +7640,8 @@ devices:
       value: true
     - category: volume
       value: 35
+    - category: mute
+      value: false
   - category: device_information
     properties:
     - category: manufacturer
