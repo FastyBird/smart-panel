@@ -285,7 +285,7 @@ export class ScenarioLoaderService implements OnModuleInit {
 			// Get property metadata from schema
 			const metadata = getPropertyMetadata(channelCategory, propertyCategory);
 			if (!metadata) {
-				warnings.push(
+				errors.push(
 					`${propertyPath}: Property '${property.category}' is not defined for channel '${channel.category}'`,
 				);
 			}
