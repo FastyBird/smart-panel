@@ -1,10 +1,9 @@
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 
-/// Property view for density values.
-/// Supports float and uint data types.
-class DensityChannelPropertyView extends ChannelPropertyView {
-  DensityChannelPropertyView({
+/// Property view for illuminance values.
+class IlluminanceChannelPropertyView extends ChannelPropertyView {
+  IlluminanceChannelPropertyView({
     required super.id,
     required super.type,
     required super.channel,
@@ -20,6 +19,6 @@ class DensityChannelPropertyView extends ChannelPropertyView {
     super.value,
   });
 
-  /// Returns the density value.
-  num? get density => value is NumberValueType ? (value as NumberValueType).value : null;
+  /// Returns the illuminance value in lux.
+  num? get illuminance => value is NumberValueType ? (value as NumberValueType).value : null;
 }

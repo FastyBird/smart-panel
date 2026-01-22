@@ -1,8 +1,9 @@
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 
-class InputSourceChannelPropertyView extends ChannelPropertyView {
-  InputSourceChannelPropertyView({
+/// Property view for pressure values.
+class PressureChannelPropertyView extends ChannelPropertyView {
+  PressureChannelPropertyView({
     required super.id,
     required super.type,
     required super.channel,
@@ -18,5 +19,6 @@ class InputSourceChannelPropertyView extends ChannelPropertyView {
     super.value,
   });
 
-  String? get inputSource => value is StringValueType ? (value as StringValueType).value : null;
+  /// Returns the pressure value.
+  num? get pressure => value is NumberValueType ? (value as NumberValueType).value : null;
 }

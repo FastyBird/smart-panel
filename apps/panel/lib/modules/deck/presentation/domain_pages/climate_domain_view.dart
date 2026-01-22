@@ -785,24 +785,24 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     if (target.hasAirParticulate) {
       if (device is SensorDeviceView && device.airParticulateChannel != null) {
         final pmChannel = device.airParticulateChannel!;
-        if (pmChannel.hasDensity) {
+        if (pmChannel.hasConcentration) {
           sensors.add(ClimateSensor(
             id: '${target.id}_pm',
             label: target.displayName,
             value:
-                '${formatter.formatInteger(pmChannel.density.toInt())} µg/m³',
+                '${formatter.formatInteger(pmChannel.concentration.toInt())} µg/m³',
             type: 'pm',
           ));
         }
       } else if (device is AirPurifierDeviceView &&
           device.airParticulateChannel != null) {
         final pmChannel = device.airParticulateChannel!;
-        if (pmChannel.hasDensity) {
+        if (pmChannel.hasConcentration) {
           sensors.add(ClimateSensor(
             id: '${target.id}_pm',
             label: target.displayName,
             value:
-                '${formatter.formatInteger(pmChannel.density.toInt())} µg/m³',
+                '${formatter.formatInteger(pmChannel.concentration.toInt())} µg/m³',
             type: 'pm',
           ));
         }
@@ -813,22 +813,22 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     if (target.hasCarbonDioxide) {
       if (device is SensorDeviceView && device.carbonDioxideChannel != null) {
         final co2Channel = device.carbonDioxideChannel!;
-        if (co2Channel.hasDensity) {
+        if (co2Channel.hasConcentration) {
           sensors.add(ClimateSensor(
             id: '${target.id}_co2',
             label: target.displayName,
-            value: '${formatter.formatInteger(co2Channel.density.toInt())} ppm',
+            value: '${formatter.formatInteger(co2Channel.concentration.toInt())} ppm',
             type: 'co2',
           ));
         }
       } else if (device is AirPurifierDeviceView &&
           device.carbonDioxideChannel != null) {
         final co2Channel = device.carbonDioxideChannel!;
-        if (co2Channel.hasDensity) {
+        if (co2Channel.hasConcentration) {
           sensors.add(ClimateSensor(
             id: '${target.id}_co2',
             label: target.displayName,
-            value: '${formatter.formatInteger(co2Channel.density.toInt())} ppm',
+            value: '${formatter.formatInteger(co2Channel.concentration.toInt())} ppm',
             type: 'co2',
           ));
         }
@@ -840,22 +840,22 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       if (device is SensorDeviceView &&
           device.volatileOrganicCompoundsChannel != null) {
         final vocChannel = device.volatileOrganicCompoundsChannel!;
-        if (vocChannel.hasDensity) {
+        if (vocChannel.hasConcentration) {
           sensors.add(ClimateSensor(
             id: '${target.id}_voc',
             label: target.displayName,
-            value: '${formatter.formatInteger(vocChannel.density.toInt())} ppb',
+            value: '${formatter.formatInteger(vocChannel.concentration.toInt())} ppb',
             type: 'voc',
           ));
         }
       } else if (device is AirPurifierDeviceView &&
           device.volatileOrganicCompoundsChannel != null) {
         final vocChannel = device.volatileOrganicCompoundsChannel!;
-        if (vocChannel.hasDensity) {
+        if (vocChannel.hasConcentration) {
           sensors.add(ClimateSensor(
             id: '${target.id}_voc',
             label: target.displayName,
-            value: '${formatter.formatInteger(vocChannel.density.toInt())} ppb',
+            value: '${formatter.formatInteger(vocChannel.concentration.toInt())} ppb',
             type: 'voc',
           ));
         }
@@ -870,7 +870,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           id: '${target.id}_pressure',
           label: target.displayName,
           value:
-              '${formatter.formatInteger(pressureChannel.measured.toInt())} hPa',
+              '${formatter.formatInteger(pressureChannel.pressure.toInt())} hPa',
           type: 'pressure',
         ));
       }

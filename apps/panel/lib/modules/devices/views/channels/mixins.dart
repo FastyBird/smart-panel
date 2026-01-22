@@ -2,16 +2,17 @@ import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/active.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/brightness.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/density.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/concentration.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/detected.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/distance.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/fault.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/measured.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/illuminance.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/obstruction.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/on.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/peak_level.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/percentage.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/position.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/pressure.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/tampered.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/temperature.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/tilt.dart';
@@ -119,13 +120,13 @@ mixin ChannelBrightnessMixin {
   }
 }
 
-mixin ChannelDensityMixin {
-  DensityChannelPropertyView? get densityProp;
+mixin ChannelConcentrationMixin {
+  ConcentrationChannelPropertyView? get concentrationProp;
 
-  bool get hasDensity => densityProp != null;
+  bool get hasConcentration => concentrationProp != null;
 
-  double get density {
-    final DensityChannelPropertyView? prop = densityProp;
+  double get concentration {
+    final ConcentrationChannelPropertyView? prop = concentrationProp;
 
     final ValueType? value = prop?.value;
 
@@ -156,8 +157,8 @@ mixin ChannelDensityMixin {
     return 0.0;
   }
 
-  double get minDensity {
-    final FormatType? format = densityProp?.format;
+  double get minConcentration {
+    final FormatType? format = concentrationProp?.format;
 
     if (format is NumberListFormatType && format.value.length == 2) {
       return (format.value[0] as num).toDouble();
@@ -166,8 +167,8 @@ mixin ChannelDensityMixin {
     return 0.0;
   }
 
-  double get maxDensity {
-    final FormatType? format = densityProp?.format;
+  double get maxConcentration {
+    final FormatType? format = concentrationProp?.format;
 
     if (format is NumberListFormatType && format.value.length == 2) {
       return (format.value[1] as num).toDouble();
@@ -306,13 +307,13 @@ mixin ChannelFaultMixin {
   }
 }
 
-mixin ChannelMeasuredMixin {
-  MeasuredChannelPropertyView? get measuredProp;
+mixin ChannelPressureMixin {
+  PressureChannelPropertyView? get pressureProp;
 
-  bool get hasMeasured => measuredProp != null;
+  bool get hasPressure => pressureProp != null;
 
-  double get measured {
-    final MeasuredChannelPropertyView? prop = measuredProp;
+  double get pressure {
+    final PressureChannelPropertyView? prop = pressureProp;
 
     final ValueType? value = prop?.value;
 
@@ -343,8 +344,8 @@ mixin ChannelMeasuredMixin {
     return 0.0;
   }
 
-  double get minMeasured {
-    final FormatType? format = measuredProp?.format;
+  double get minPressure {
+    final FormatType? format = pressureProp?.format;
 
     if (format is NumberListFormatType && format.value.length == 2) {
       return (format.value[0] as num).toDouble();
@@ -353,14 +354,72 @@ mixin ChannelMeasuredMixin {
     return 0.0;
   }
 
-  double get maxMeasured {
-    final FormatType? format = measuredProp?.format;
+  double get maxPressure {
+    final FormatType? format = pressureProp?.format;
 
     if (format is NumberListFormatType && format.value.length == 2) {
       return (format.value[1] as num).toDouble();
     }
 
     return 100.0;
+  }
+}
+
+mixin ChannelIlluminanceMixin {
+  IlluminanceChannelPropertyView? get illuminanceProp;
+
+  bool get hasIlluminance => illuminanceProp != null;
+
+  double get illuminance {
+    final IlluminanceChannelPropertyView? prop = illuminanceProp;
+
+    final ValueType? value = prop?.value;
+
+    if (value is NumberValueType) {
+      return value.value.toDouble();
+    }
+
+    if (value is StringValueType) {
+      final parsed = _parseDouble(value.value);
+      if (parsed != null) {
+        return parsed;
+      }
+    }
+
+    final ValueType? defaultValue = prop?.defaultValue;
+
+    if (defaultValue is NumberValueType) {
+      return defaultValue.value.toDouble();
+    }
+
+    if (defaultValue is StringValueType) {
+      final parsed = _parseDouble(defaultValue.value);
+      if (parsed != null) {
+        return parsed;
+      }
+    }
+
+    return 0.0;
+  }
+
+  double get minIlluminance {
+    final FormatType? format = illuminanceProp?.format;
+
+    if (format is NumberListFormatType && format.value.length == 2) {
+      return (format.value[0] as num).toDouble();
+    }
+
+    return 0.0;
+  }
+
+  double get maxIlluminance {
+    final FormatType? format = illuminanceProp?.format;
+
+    if (format is NumberListFormatType && format.value.length == 2) {
+      return (format.value[1] as num).toDouble();
+    }
+
+    return 100000.0;
   }
 }
 

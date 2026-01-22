@@ -371,10 +371,9 @@ export class MediaIntentService extends SpaceIntentBaseService {
 		channel: ChannelEntity | null;
 		sourceProperty: ChannelPropertyEntity | null;
 	} {
-		// Prefer television.input_source
+		// Prefer television.source
 		const televisionChannel = device.channels?.find((ch) => ch.category === ChannelCategory.TELEVISION) ?? null;
-		const televisionSource =
-			televisionChannel?.properties?.find((p) => p.category === PropertyCategory.INPUT_SOURCE) ?? null;
+		const televisionSource = televisionChannel?.properties?.find((p) => p.category === PropertyCategory.SOURCE) ?? null;
 
 		if (televisionChannel && televisionSource) {
 			return { channel: televisionChannel, sourceProperty: televisionSource };

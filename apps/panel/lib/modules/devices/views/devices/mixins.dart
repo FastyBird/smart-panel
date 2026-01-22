@@ -51,16 +51,16 @@ mixin DeviceAirParticulateMixin {
 
   bool get isAirParticulateDetected => airParticulateChannel?.detected ?? false;
 
-  bool get hasAirParticulateDensity =>
-      airParticulateChannel?.hasDensity ?? false;
+  bool get hasAirParticulateConcentration =>
+      airParticulateChannel?.hasConcentration ?? false;
 
-  double get airParticulateDensity => airParticulateChannel?.density ?? 0.0;
+  double get airParticulateConcentration => airParticulateChannel?.concentration ?? 0.0;
 
-  double get airParticulateMinDensity =>
-      airParticulateChannel?.minDensity ?? 0.0;
+  double get airParticulateMinConcentration =>
+      airParticulateChannel?.minConcentration ?? 0.0;
 
-  double get airParticulateMaxDensity =>
-      airParticulateChannel?.maxDensity ?? 100.0;
+  double get airParticulateMaxConcentration =>
+      airParticulateChannel?.maxConcentration ?? 100.0;
 
   bool get hasAirParticulateMode => airParticulateChannel?.hasMode ?? false;
 
@@ -191,14 +191,14 @@ mixin DeviceCarbonDioxideMixin {
 
   bool get isCarbonDioxideDetected => carbonDioxideChannel?.detected ?? false;
 
-  bool get hasCarbonDioxideDensity => carbonDioxideChannel?.hasDensity ?? false;
+  bool get hasCarbonDioxideConcentration => carbonDioxideChannel?.hasConcentration ?? false;
 
-  double get carbonDioxideDensity => carbonDioxideChannel?.density ?? 0.0;
+  double get carbonDioxideConcentration => carbonDioxideChannel?.concentration ?? 0.0;
 
-  double get carbonDioxideMinDensity => carbonDioxideChannel?.minDensity ?? 0.0;
+  double get carbonDioxideMinConcentration => carbonDioxideChannel?.minConcentration ?? 0.0;
 
-  double get carbonDioxideMaxDensity =>
-      carbonDioxideChannel?.maxDensity ?? 100.0;
+  double get carbonDioxideMaxConcentration =>
+      carbonDioxideChannel?.maxConcentration ?? 100.0;
 
   bool get hasCarbonDioxidePeakLevel =>
       carbonDioxideChannel?.hasPeakLevel ?? false;
@@ -235,16 +235,16 @@ mixin DeviceCarbonMonoxideMixin {
 
   bool get isCarbonMonoxideDetected => carbonMonoxideChannel?.detected ?? false;
 
-  bool get hasCarbonMonoxideDensity =>
-      carbonMonoxideChannel?.hasDensity ?? false;
+  bool get hasCarbonMonoxideConcentration =>
+      carbonMonoxideChannel?.hasConcentration ?? false;
 
-  double get carbonMonoxideDensity => carbonMonoxideChannel?.density ?? 0.0;
+  double get carbonMonoxideConcentration => carbonMonoxideChannel?.concentration ?? 0.0;
 
-  double get carbonMonoxideMinDensity =>
-      carbonMonoxideChannel?.minDensity ?? 0.0;
+  double get carbonMonoxideMinConcentration =>
+      carbonMonoxideChannel?.minConcentration ?? 0.0;
 
-  double get carbonMonoxideMaxDensity =>
-      carbonMonoxideChannel?.maxDensity ?? 100.0;
+  double get carbonMonoxideMaxConcentration =>
+      carbonMonoxideChannel?.maxConcentration ?? 100.0;
 
   bool get hasCarbonMonoxidePeakLevel =>
       carbonMonoxideChannel?.hasPeakLevel ?? false;
@@ -519,13 +519,13 @@ mixin DeviceGasMixin {
 
   bool get isGasAlarm => gasChannel?.isAlarm ?? false;
 
-  bool get hasGasDensity => gasChannel?.hasDensity ?? false;
+  bool get hasGasConcentration => gasChannel?.hasConcentration ?? false;
 
-  double get gasDensity => gasChannel?.density ?? 0.0;
+  double get gasConcentration => gasChannel?.concentration ?? 0.0;
 
-  double get gasMinDensity => gasChannel?.minDensity ?? 0.0;
+  double get gasMinConcentration => gasChannel?.minConcentration ?? 0.0;
 
-  double get gasMaxDensity => gasChannel?.maxDensity ?? 65535.0;
+  double get gasMaxConcentration => gasChannel?.maxConcentration ?? 65535.0;
 
   bool get hasGasActive => gasChannel?.hasActive ?? false;
 
@@ -678,13 +678,13 @@ mixin DeviceIlluminanceMixin {
 
   bool get hasIlluminance => illuminanceChannel != null;
 
-  bool get hasIlluminanceDensity => illuminanceChannel?.hasDensity ?? false;
+  bool get hasIlluminanceValue => illuminanceChannel?.hasIlluminance ?? false;
 
-  double get illuminanceDensity => illuminanceChannel?.density ?? 0.0;
+  double get illuminanceValue => illuminanceChannel?.illuminance ?? 0.0;
 
-  double get illuminanceMinDensity => illuminanceChannel?.minDensity ?? 0.0;
+  double get illuminanceMinValue => illuminanceChannel?.minIlluminance ?? 0.0;
 
-  double get illuminanceMaxDensity => illuminanceChannel?.maxDensity ?? 100.0;
+  double get illuminanceMaxValue => illuminanceChannel?.maxIlluminance ?? 100.0;
 
   bool get hasIlluminanceLevel => illuminanceChannel?.hasLevel ?? false;
 
@@ -942,16 +942,16 @@ mixin DeviceNitrogenDioxideMixin {
   bool get isNitrogenDioxideDetected =>
       nitrogenDioxideChannel?.detected ?? false;
 
-  bool get hasNitrogenDioxideDensity =>
-      nitrogenDioxideChannel?.hasDensity ?? false;
+  bool get hasNitrogenDioxideConcentration =>
+      nitrogenDioxideChannel?.hasConcentration ?? false;
 
-  double get nitrogenDioxideDensity => nitrogenDioxideChannel?.density ?? 0.0;
+  double get nitrogenDioxideConcentration => nitrogenDioxideChannel?.concentration ?? 0.0;
 
-  double get nitrogenDioxideMinDensity =>
-      nitrogenDioxideChannel?.minDensity ?? 0.0;
+  double get nitrogenDioxideMinConcentration =>
+      nitrogenDioxideChannel?.minConcentration ?? 0.0;
 
-  double get nitrogenDioxideMaxDensity =>
-      nitrogenDioxideChannel?.maxDensity ?? 100.0;
+  double get nitrogenDioxideMaxConcentration =>
+      nitrogenDioxideChannel?.maxConcentration ?? 100.0;
 
   bool get hasNitrogenDioxideMode => nitrogenDioxideChannel?.hasMode ?? false;
 
@@ -1028,13 +1028,13 @@ mixin DeviceOzoneMixin {
 
   bool get isOzoneDetected => ozoneChannel?.detected ?? false;
 
-  bool get hasOzoneDensity => ozoneChannel?.hasDensity ?? false;
+  bool get hasOzoneConcentration => ozoneChannel?.hasConcentration ?? false;
 
-  double get ozoneDensity => ozoneChannel?.density ?? 0.0;
+  double get ozoneConcentration => ozoneChannel?.concentration ?? 0.0;
 
-  double get ozoneMinDensity => ozoneChannel?.minDensity ?? 0.0;
+  double get ozoneMinConcentration => ozoneChannel?.minConcentration ?? 0.0;
 
-  double get ozoneMaxDensity => ozoneChannel?.maxDensity ?? 100.0;
+  double get ozoneMaxConcentration => ozoneChannel?.maxConcentration ?? 100.0;
 
   bool get hasOzoneActive => ozoneChannel?.hasActive ?? false;
 
@@ -1054,11 +1054,11 @@ mixin DevicePressureMixin {
 
   bool get hasPressure => pressureChannel != null;
 
-  double get pressureMeasured => pressureChannel?.measured ?? 0.0;
+  double get pressureValue => pressureChannel?.pressure ?? 0.0;
 
-  double get pressureMinMeasured => pressureChannel?.minMeasured ?? 0.0;
+  double get pressureMinValue => pressureChannel?.minPressure ?? 0.0;
 
-  double get pressureMaxMeasured => pressureChannel?.maxMeasured ?? 100.0;
+  double get pressureMaxValue => pressureChannel?.maxPressure ?? 100.0;
 
   bool get hasPressureActive => pressureChannel?.hasActive ?? false;
 
@@ -1124,16 +1124,16 @@ mixin DeviceSulphurDioxideMixin {
 
   bool get isSulphurDioxideDetected => sulphurDioxideChannel?.detected ?? false;
 
-  bool get hasSulphurDioxideDensity =>
-      sulphurDioxideChannel?.hasDensity ?? false;
+  bool get hasSulphurDioxideConcentration =>
+      sulphurDioxideChannel?.hasConcentration ?? false;
 
-  double get sulphurDioxideDensity => sulphurDioxideChannel?.density ?? 0.0;
+  double get sulphurDioxideConcentration => sulphurDioxideChannel?.concentration ?? 0.0;
 
-  double get sulphurDioxideMinDensity =>
-      sulphurDioxideChannel?.minDensity ?? 0.0;
+  double get sulphurDioxideMinConcentration =>
+      sulphurDioxideChannel?.minConcentration ?? 0.0;
 
-  double get sulphurDioxideMaxDensity =>
-      sulphurDioxideChannel?.maxDensity ?? 100.0;
+  double get sulphurDioxideMaxConcentration =>
+      sulphurDioxideChannel?.maxConcentration ?? 100.0;
 
   bool get hasSulphurDioxideLevel => sulphurDioxideChannel?.hasLevel ?? false;
 
@@ -1235,17 +1235,17 @@ mixin DeviceVolatileOrganicCompoundsMixin {
   bool get isVolatileOrganicCompoundsDetected =>
       volatileOrganicCompoundsChannel?.detected ?? false;
 
-  bool get hasVolatileOrganicCompoundsDensity =>
-      volatileOrganicCompoundsChannel?.hasDensity ?? false;
+  bool get hasVolatileOrganicCompoundsConcentration =>
+      volatileOrganicCompoundsChannel?.hasConcentration ?? false;
 
-  double get volatileOrganicCompoundsDensity =>
-      volatileOrganicCompoundsChannel?.density ?? 0.0;
+  double get volatileOrganicCompoundsConcentration =>
+      volatileOrganicCompoundsChannel?.concentration ?? 0.0;
 
-  double get volatileOrganicCompoundsMinDensity =>
-      volatileOrganicCompoundsChannel?.minDensity ?? 0.0;
+  double get volatileOrganicCompoundsMinConcentration =>
+      volatileOrganicCompoundsChannel?.minConcentration ?? 0.0;
 
-  double get volatileOrganicCompoundsMaxDensity =>
-      volatileOrganicCompoundsChannel?.maxDensity ?? 100.0;
+  double get volatileOrganicCompoundsMaxConcentration =>
+      volatileOrganicCompoundsChannel?.maxConcentration ?? 100.0;
 
   bool get hasVolatileOrganicCompoundsLevel =>
       volatileOrganicCompoundsChannel?.hasLevel ?? false;

@@ -107,7 +107,7 @@ export class SensorSimulator extends BaseDeviceSimulator {
 		const prevTemp = this.getPreviousValue(
 			previousValues,
 			ChannelCategory.TEMPERATURE,
-			PropertyCategory.MEASURED,
+			PropertyCategory.TEMPERATURE,
 			targetTemp,
 		) as number;
 
@@ -118,7 +118,7 @@ export class SensorSimulator extends BaseDeviceSimulator {
 		return [
 			{
 				channelCategory: ChannelCategory.TEMPERATURE,
-				propertyCategory: PropertyCategory.MEASURED,
+				propertyCategory: PropertyCategory.TEMPERATURE,
 				value: this.clamp(finalTemp, -40, 80),
 			},
 		];
@@ -145,7 +145,7 @@ export class SensorSimulator extends BaseDeviceSimulator {
 		const prevHumidity = this.getPreviousValue(
 			previousValues,
 			ChannelCategory.HUMIDITY,
-			PropertyCategory.MEASURED,
+			PropertyCategory.HUMIDITY,
 			target,
 		) as number;
 
@@ -156,7 +156,7 @@ export class SensorSimulator extends BaseDeviceSimulator {
 		return [
 			{
 				channelCategory: ChannelCategory.HUMIDITY,
-				propertyCategory: PropertyCategory.MEASURED,
+				propertyCategory: PropertyCategory.HUMIDITY,
 				value: this.clamp(Math.round(finalHumidity), 0, 100),
 			},
 		];
@@ -216,7 +216,7 @@ export class SensorSimulator extends BaseDeviceSimulator {
 		return [
 			{
 				channelCategory: ChannelCategory.ILLUMINANCE,
-				propertyCategory: PropertyCategory.MEASURED,
+				propertyCategory: PropertyCategory.ILLUMINANCE,
 				value: Math.max(0, Math.round(lux)),
 			},
 		];
@@ -246,7 +246,7 @@ export class SensorSimulator extends BaseDeviceSimulator {
 		const prevPressure = this.getPreviousValue(
 			previousValues,
 			ChannelCategory.PRESSURE,
-			PropertyCategory.MEASURED,
+			PropertyCategory.PRESSURE,
 			target,
 		) as number;
 
@@ -257,7 +257,7 @@ export class SensorSimulator extends BaseDeviceSimulator {
 		return [
 			{
 				channelCategory: ChannelCategory.PRESSURE,
-				propertyCategory: PropertyCategory.MEASURED,
+				propertyCategory: PropertyCategory.PRESSURE,
 				value: this.clamp(finalPressure, 900, 1100),
 			},
 		];
@@ -327,18 +327,18 @@ export class SensorSimulator extends BaseDeviceSimulator {
 		// CO should normally be very low (0-9 ppm is normal)
 		// Rarely above threshold
 		const isNormal = Math.random() > 0.001;
-		const density = isNormal ? this.addNoise(2, 3, 0) : this.addNoise(50, 20, 0);
+		const concentration = isNormal ? this.addNoise(2, 3, 0) : this.addNoise(50, 20, 0);
 
 		return [
 			{
 				channelCategory: ChannelCategory.CARBON_MONOXIDE,
-				propertyCategory: PropertyCategory.DENSITY,
-				value: Math.max(0, Math.round(density)),
+				propertyCategory: PropertyCategory.CONCENTRATION,
+				value: Math.max(0, Math.round(concentration)),
 			},
 			{
 				channelCategory: ChannelCategory.CARBON_MONOXIDE,
 				propertyCategory: PropertyCategory.DETECTED,
-				value: density > 35, // Alarm threshold
+				value: concentration > 35, // Alarm threshold
 			},
 		];
 	}
@@ -367,7 +367,7 @@ export class SensorSimulator extends BaseDeviceSimulator {
 		const prevCO2 = this.getPreviousValue(
 			previousValues,
 			ChannelCategory.CARBON_DIOXIDE,
-			PropertyCategory.DENSITY,
+			PropertyCategory.CONCENTRATION,
 			targetCO2,
 		) as number;
 
@@ -377,7 +377,7 @@ export class SensorSimulator extends BaseDeviceSimulator {
 		return [
 			{
 				channelCategory: ChannelCategory.CARBON_DIOXIDE,
-				propertyCategory: PropertyCategory.DENSITY,
+				propertyCategory: PropertyCategory.CONCENTRATION,
 				value: this.clamp(Math.round(finalCO2), 350, 5000),
 			},
 		];
@@ -407,7 +407,7 @@ export class SensorSimulator extends BaseDeviceSimulator {
 		const prevAQI = this.getPreviousValue(
 			previousValues,
 			ChannelCategory.AIR_QUALITY,
-			PropertyCategory.AQI,
+			PropertyCategory.CONCENTRATION,
 			targetAQI,
 		) as number;
 
@@ -417,7 +417,7 @@ export class SensorSimulator extends BaseDeviceSimulator {
 		return [
 			{
 				channelCategory: ChannelCategory.AIR_QUALITY,
-				propertyCategory: PropertyCategory.AQI,
+				propertyCategory: PropertyCategory.CONCENTRATION,
 				value: this.clamp(Math.round(finalAQI), 0, 500),
 			},
 		];

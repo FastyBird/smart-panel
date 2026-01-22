@@ -3,10 +3,10 @@ import 'package:fastybird_smart_panel/modules/devices/views/channels/mixins.dart
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/active.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/fault.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/measured.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/pressure.dart';
 
 class PressureChannelView extends ChannelView
-    with ChannelMeasuredMixin, ChannelActiveMixin, ChannelFaultMixin {
+    with ChannelPressureMixin, ChannelActiveMixin, ChannelFaultMixin {
   PressureChannelView({
     required super.id,
     required super.type,
@@ -21,8 +21,8 @@ class PressureChannelView extends ChannelView
   });
 
   @override
-  MeasuredChannelPropertyView get measuredProp =>
-      properties.whereType<MeasuredChannelPropertyView>().first;
+  PressureChannelPropertyView get pressureProp =>
+      properties.whereType<PressureChannelPropertyView>().first;
 
   @override
   ActiveChannelPropertyView? get activeProp =>

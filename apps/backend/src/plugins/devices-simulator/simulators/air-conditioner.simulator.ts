@@ -234,7 +234,7 @@ export class AirConditionerSimulator extends BaseDeviceSimulator {
 		const prevTemp = this.getPreviousValue(
 			previousValues,
 			ChannelCategory.TEMPERATURE,
-			PropertyCategory.MEASURED,
+			PropertyCategory.TEMPERATURE,
 			baseIndoor,
 		) as number;
 
@@ -246,7 +246,7 @@ export class AirConditionerSimulator extends BaseDeviceSimulator {
 		return [
 			{
 				channelCategory: ChannelCategory.TEMPERATURE,
-				propertyCategory: PropertyCategory.MEASURED,
+				propertyCategory: PropertyCategory.TEMPERATURE,
 				value: this.clamp(finalTemp, 10, 40),
 			},
 		];
@@ -274,7 +274,7 @@ export class AirConditionerSimulator extends BaseDeviceSimulator {
 		const prevHumidity = this.getPreviousValue(
 			previousValues,
 			ChannelCategory.HUMIDITY,
-			PropertyCategory.MEASURED,
+			PropertyCategory.HUMIDITY,
 			targetHumidity,
 		) as number;
 
@@ -284,7 +284,7 @@ export class AirConditionerSimulator extends BaseDeviceSimulator {
 		return [
 			{
 				channelCategory: ChannelCategory.HUMIDITY,
-				propertyCategory: PropertyCategory.MEASURED,
+				propertyCategory: PropertyCategory.HUMIDITY,
 				value: this.clamp(Math.round(finalHumidity), 20, 90),
 			},
 		];

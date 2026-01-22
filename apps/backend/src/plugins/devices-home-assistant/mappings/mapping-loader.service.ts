@@ -546,7 +546,7 @@ export class MappingLoaderService implements OnModuleInit {
 		if (upperCategory in PropertyCategory) {
 			return PropertyCategory[upperCategory as keyof typeof PropertyCategory];
 		}
-		return PropertyCategory.MEASURED;
+		return PropertyCategory.GENERIC;
 	}
 
 	/**
