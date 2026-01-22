@@ -12,10 +12,20 @@ import { EventType, MEDIA_CHANNEL_CATEGORIES, SPACES_MODULE_NAME } from '../spac
 
 const MEDIA_STATE_DEBOUNCE_MS = 100;
 
+/**
+ * Property categories that trigger media state recalculation.
+ * Must include all properties checked by media services:
+ * - ON/ACTIVE: Power state (checked by media-intent, space-media-state, space-media-role services)
+ * - VOLUME/MUTE: Audio state
+ * - COMMAND/REMOTE_KEY: Playback state changes
+ */
 const MEDIA_PROPERTY_CATEGORIES: PropertyCategory[] = [
 	PropertyCategory.ON,
+	PropertyCategory.ACTIVE,
 	PropertyCategory.VOLUME,
 	PropertyCategory.MUTE,
+	PropertyCategory.COMMAND,
+	PropertyCategory.REMOTE_KEY,
 ];
 
 @Injectable()
