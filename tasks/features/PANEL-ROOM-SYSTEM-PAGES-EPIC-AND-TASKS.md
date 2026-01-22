@@ -4,7 +4,7 @@ Type: feature
 Scope: panel
 Size: large
 Parent: (none)
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -53,14 +53,14 @@ I want the panel app to automatically generate high-quality "system pages" for a
 
 ## 4. Acceptance criteria
 
-- [ ] With `displayRole=room` and `roomId` set, the panel shows a **Room Overview** system page first when `homePageMode=auto`.
-- [ ] Room Overview header displays room icon + room name (not static "Room").
-- [ ] Room Overview shows **only** domain tiles for domains with device count > 0 (Lights/Climate/Sensors).
-- [ ] Tapping a domain tile navigates to the corresponding domain system page (deterministic index).
-- [ ] Domain pages load devices filtered by the assigned room and render meaningful MVP UI (no "landing-only" placeholder when devices exist).
-- [ ] Room Overview shows **Quick Scenes** (up to 4), filtered for room first then whole-home fallback; tapping executes the scene.
-- [ ] If the room has no devices at all, show a clean empty state with guidance (no crash).
-- [ ] No media page is rendered anywhere in the Room system views.
+- [x] With `displayRole=room` and `roomId` set, the panel shows a **Room Overview** system page first when `homePageMode=auto`.
+- [x] Room Overview header displays room icon + room name (not static "Room").
+- [x] Room Overview shows **only** domain tiles for domains with device count > 0 (Lights/Climate/Sensors).
+- [x] Tapping a domain tile navigates to the corresponding domain system page (deterministic index).
+- [x] Domain pages load devices filtered by the assigned room and render meaningful MVP UI (no "landing-only" placeholder when devices exist).
+- [x] Room Overview shows **Quick Scenes** (up to 4), filtered for room first then whole-home fallback; tapping executes the scene.
+- [x] If the room has no devices at all, show a clean empty state with guidance (no crash).
+- [x] No media page is rendered anywhere in the Room system views.
 
 ## 5. Example scenarios (optional, Gherkin-style)
 
@@ -119,7 +119,7 @@ Type: technical
 Scope: panel
 Size: medium
 Parent: FEATURE-PANEL-ROOM-SYSTEM-PAGES
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -154,11 +154,11 @@ I want a single, tested RoomContext source of truth that loads room metadata, de
 
 ## 4. Acceptance criteria
 
-- [ ] `RoomContext.load(roomId)` returns room metadata and device groups (lights/climate/sensors) based on device categories/capabilities.
-- [ ] Domain counts match the filtered device lists.
-- [ ] `lightsOn/total` is computed from device state when available; if not available, safely falls back (no crash).
-- [ ] `primaryTemperature` is derived from the best available sensor/override; if missing, returns null and UI handles it.
-- [ ] Scenes are loaded with priority: room scenes first; fallback includes whole-home scenes.
+- [x] `RoomContext.load(roomId)` returns room metadata and device groups (lights/climate/sensors) based on device categories/capabilities.
+- [x] Domain counts match the filtered device lists.
+- [x] `lightsOn/total` is computed from device state when available; if not available, safely falls back (no crash).
+- [x] `primaryTemperature` is derived from the best available sensor/override; if missing, returns null and UI handles it.
+- [x] Scenes are loaded with priority: room scenes first; fallback includes whole-home scenes.
 - [ ] Unit tests cover: filtering, grouping, counts, and scene selection ordering.
 
 ## 6. Technical constraints
@@ -183,7 +183,7 @@ Type: technical
 Scope: panel
 Size: medium
 Parent: FEATURE-PANEL-ROOM-SYSTEM-PAGES
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -207,9 +207,9 @@ I want the Room deck order to be deterministic and stable across runs.
 
 ## 4. Acceptance criteria
 
-- [ ] Given a RoomContext, builder outputs deterministic `systemViews[]` order.
-- [ ] A domain with 0 devices is excluded from `systemViews[]`.
-- [ ] `getDomainIndex(domain)` returns correct indices matching the built deck.
+- [x] Given a RoomContext, builder outputs deterministic `systemViews[]` order.
+- [x] A domain with 0 devices is excluded from `systemViews[]`.
+- [x] `getDomainIndex(domain)` returns correct indices matching the built deck.
 - [ ] Unit tests cover multiple combinations (only lights, lights+sensors, all three, none).
 
 ## 6. Technical constraints
@@ -233,7 +233,7 @@ Type: feature
 Scope: panel
 Size: large
 Parent: FEATURE-PANEL-ROOM-SYSTEM-PAGES
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -273,12 +273,12 @@ I want an overview that shows relevant domains only, gives quick status, and pro
 
 ## 4. Acceptance criteria
 
-- [ ] Header uses room name/icon from space data.
-- [ ] Domain tiles are hidden when their count is 0.
-- [ ] Tap on a domain tile routes to the correct domain page.
-- [ ] Quick Scenes shows max 4, prioritizing room scenes; tapping runs the scene.
-- [ ] Empty room shows empty state instead of blank grid or crash.
-- [ ] Layout adapts to display size; tiles remain readable and touch-friendly.
+- [x] Header uses room name/icon from space data.
+- [x] Domain tiles are hidden when their count is 0.
+- [x] Tap on a domain tile routes to the correct domain page.
+- [x] Quick Scenes shows max 4, prioritizing room scenes; tapping runs the scene.
+- [x] Empty room shows empty state instead of blank grid or crash.
+- [x] Layout adapts to display size; tiles remain readable and touch-friendly.
 
 ## 6. Technical constraints
 
@@ -406,7 +406,7 @@ Type: feature
 Scope: panel
 Size: medium
 Parent: FEATURE-PANEL-ROOM-SYSTEM-PAGES
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -430,9 +430,9 @@ I want a sensors page that shows key sensor values per device.
 
 ## 4. Acceptance criteria
 
-- [ ] Sensors page renders correctly when included and lists sensor devices for the room.
-- [ ] Each sensor shows available readings; missing readings do not break layout.
-- [ ] Values update when property updates arrive.
+- [x] Sensors page renders correctly when included and lists sensor devices for the room.
+- [x] Each sensor shows available readings; missing readings do not break layout.
+- [x] Values update when property updates arrive.
 
 ## 6. Technical constraints
 
@@ -454,7 +454,7 @@ Type: technical
 Scope: panel
 Size: small
 Parent: FEATURE-PANEL-ROOM-SYSTEM-PAGES
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -474,10 +474,10 @@ I want clear feedback when a scene execution succeeds or fails.
 
 ## 4. Acceptance criteria
 
-- [ ] Scene tile shows executing/loading state during the call.
-- [ ] Success shows a brief confirmation.
-- [ ] Failure shows a brief error and resets UI state.
-- [ ] No repeated execution spam on fast taps (basic debouncing while loading).
+- [x] Scene tile shows executing/loading state during the call.
+- [x] Success shows a brief confirmation.
+- [x] Failure shows a brief error and resets UI state.
+- [x] No repeated execution spam on fast taps (basic debouncing while loading).
 
 ## 6. Technical constraints
 
