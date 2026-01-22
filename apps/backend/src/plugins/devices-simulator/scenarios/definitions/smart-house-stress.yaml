@@ -1,0 +1,8216 @@
+version: '2.0'
+name: Smart House – Hardcore Stress Test
+description: High-density simulator scenario intended for maximum Smart Panel display
+  and performance testing. Includes heavy redundancy across lighting zones, sensors,
+  outlets with power/energy, multi-room audio, security perimeter contacts, outdoor
+  devices, and mixed simulation intervals.
+rooms:
+- id: living-room
+  name: Living Room
+- id: family-room
+  name: Family Room
+- id: master-bedroom
+  name: Master Bedroom
+- id: bedroom-2
+  name: Bedroom 2
+- id: bedroom-3
+  name: Bedroom 3
+- id: master-bathroom
+  name: Master Bathroom
+- id: bathroom-2
+  name: Bathroom 2
+- id: kitchen
+  name: Kitchen
+- id: dining-room
+  name: Dining Room
+- id: home-office
+  name: Home Office
+- id: laundry
+  name: Laundry Room
+- id: garage
+  name: Garage
+- id: foyer
+  name: Foyer
+- id: hallway
+  name: Hallway
+- id: patio
+  name: Patio
+- id: backyard
+  name: Backyard
+devices:
+- name: Living Room Ceiling Light
+  category: lighting
+  room: living-room
+  auto_simulate: true
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 80
+    - category: color_temperature
+      value: 4000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Recessed Lights
+  category: lighting
+  room: living-room
+  auto_simulate: true
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Accent Cove
+  category: lighting
+  room: living-room
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 40
+    - category: hue
+      value: 30
+    - category: saturation
+      value: 70
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Floor Lamp
+  category: lighting
+  room: living-room
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 50
+    - category: color_temperature
+      value: 2700
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Climate Sensor
+  category: sensor
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: temperature
+    properties:
+    - category: temperature
+      value: 22.5
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 45
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Air Purifier
+  category: air_purifier
+  room: living-room
+  auto_simulate: true
+  channels:
+  - category: fan
+    properties:
+    - category: 'on'
+      value: true
+    - category: speed
+      value: low
+  - category: air_quality
+    properties:
+    - category: level
+      value: excellent
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Sheer Curtains
+  category: window_covering
+  room: living-room
+  auto_simulate: true
+  channels:
+  - category: window_covering
+    properties:
+    - category: position
+      value: 100
+    - category: type
+      value: curtain
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Solar Shades
+  category: window_covering
+  room: living-room
+  auto_simulate: true
+  channels:
+  - category: window_covering
+    properties:
+    - category: position
+      value: 50
+    - category: type
+      value: roller
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Window Sensor
+  category: sensor
+  room: living-room
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Ceiling Fan
+  category: fan
+  room: family-room
+  auto_simulate: true
+  channels:
+  - category: fan
+    properties:
+    - category: 'on'
+      value: true
+    - category: speed
+      value: medium
+    - category: direction
+      value: clockwise
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 70
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room TV
+  category: television
+  room: family-room
+  channels:
+  - category: television
+    properties:
+    - category: 'on'
+      value: false
+  - category: speaker
+    properties:
+    - category: volume
+      value: 20
+    - category: active
+      value: true
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Soundbar
+  category: speaker
+  room: family-room
+  channels:
+  - category: speaker
+    properties:
+    - category: active
+      value: false
+    - category: volume
+      value: 30
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Accent Lights
+  category: lighting
+  room: family-room
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 30
+    - category: hue
+      value: 280
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Motorized Blinds
+  category: window_covering
+  room: family-room
+  channels:
+  - category: window_covering
+    properties:
+    - category: position
+      value: 0
+    - category: tilt
+      value: 45
+    - category: type
+      value: blind
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Main Light
+  category: lighting
+  room: master-bedroom
+  auto_simulate: true
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 70
+    - category: color_temperature
+      value: 2700
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Bedside Left
+  category: lighting
+  room: master-bedroom
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 30
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Bedside Right
+  category: lighting
+  room: master-bedroom
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 30
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Ceiling Fan
+  category: fan
+  room: master-bedroom
+  channels:
+  - category: fan
+    properties:
+    - category: 'on'
+      value: false
+    - category: speed
+      value: low
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Climate Sensor
+  category: sensor
+  room: master-bedroom
+  auto_simulate: true
+  channels:
+  - category: temperature
+    properties:
+    - category: temperature
+      value: 21.0
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 50
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom AC
+  category: air_conditioner
+  room: master-bedroom
+  auto_simulate: true
+  channels:
+  - category: cooler
+    properties:
+    - category: 'on'
+      value: false
+    - category: temperature
+      value: 22.0
+  - category: temperature
+    properties:
+    - category: temperature
+      value: 23.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Humidifier
+  category: air_humidifier
+  room: master-bedroom
+  auto_simulate: true
+  channels:
+  - category: humidifier
+    properties:
+    - category: 'on'
+      value: false
+    - category: humidity
+      value: 50
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 45
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Blackout Shades
+  category: window_covering
+  room: master-bedroom
+  auto_simulate: true
+  channels:
+  - category: window_covering
+    properties:
+    - category: position
+      value: 0
+    - category: type
+      value: roller
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Sheer Curtains
+  category: window_covering
+  room: master-bedroom
+  channels:
+  - category: window_covering
+    properties:
+    - category: position
+      value: 100
+    - category: type
+      value: curtain
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Motion Sensor
+  category: sensor
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: motion
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 2 Ceiling Light
+  category: lighting
+  room: bedroom-2
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 100
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 2 Desk Lamp
+  category: lighting
+  room: bedroom-2
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 70
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 2 Ceiling Fan
+  category: fan
+  room: bedroom-2
+  channels:
+  - category: fan
+    properties:
+    - category: 'on'
+      value: false
+    - category: speed
+      value: medium
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 2 Roller Shade
+  category: window_covering
+  room: bedroom-2
+  channels:
+  - category: window_covering
+    properties:
+    - category: position
+      value: 50
+    - category: type
+      value: roller
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 3 Ceiling Light
+  category: lighting
+  room: bedroom-3
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 100
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 3 Nightlight
+  category: lighting
+  room: bedroom-3
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 10
+    - category: hue
+      value: 30
+    - category: saturation
+      value: 80
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 3 Roller Shade
+  category: window_covering
+  room: bedroom-3
+  channels:
+  - category: window_covering
+    properties:
+    - category: position
+      value: 0
+    - category: type
+      value: roller
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bathroom Main Light
+  category: lighting
+  room: master-bathroom
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 100
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bathroom Vanity Light
+  category: lighting
+  room: master-bathroom
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 80
+    - category: color_temperature
+      value: 4000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bathroom Exhaust Fan
+  category: fan
+  room: master-bathroom
+  channels:
+  - category: fan
+    properties:
+    - category: 'on'
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bathroom Humidity Sensor
+  category: sensor
+  room: master-bathroom
+  auto_simulate: true
+  channels:
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 55
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bathroom Leak Sensor
+  category: sensor
+  room: master-bathroom
+  channels:
+  - category: leak
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bathroom Dehumidifier
+  category: air_dehumidifier
+  room: master-bathroom
+  auto_simulate: true
+  channels:
+  - category: dehumidifier
+    properties:
+    - category: 'on'
+      value: false
+    - category: humidity
+      value: 50
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 58
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bathroom 2 Light
+  category: lighting
+  room: bathroom-2
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 100
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bathroom 2 Fan
+  category: fan
+  room: bathroom-2
+  channels:
+  - category: fan
+    properties:
+    - category: 'on'
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bathroom 2 Humidity Sensor
+  category: sensor
+  room: bathroom-2
+  auto_simulate: true
+  channels:
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 50
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Ceiling Light
+  category: lighting
+  room: kitchen
+  auto_simulate: true
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 100
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Under-Cabinet Lights
+  category: lighting
+  room: kitchen
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 80
+    - category: color_temperature
+      value: 4500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Island Pendants
+  category: lighting
+  room: kitchen
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 70
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Smart Outlet - Coffee
+  category: outlet
+  room: kitchen
+  auto_simulate: true
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 950.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Smart Outlet - Toaster
+  category: outlet
+  room: kitchen
+  auto_simulate: true
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Smoke Detector
+  category: sensor
+  room: kitchen
+  channels:
+  - category: smoke
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Leak Sensor
+  category: sensor
+  room: kitchen
+  channels:
+  - category: leak
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Roller Blind
+  category: window_covering
+  room: kitchen
+  channels:
+  - category: window_covering
+    properties:
+    - category: position
+      value: 100
+    - category: type
+      value: roller
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Dining Room Chandelier
+  category: lighting
+  room: dining-room
+  auto_simulate: true
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 60
+    - category: color_temperature
+      value: 2700
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Dining Room Accent Lights
+  category: lighting
+  room: dining-room
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 30
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Dining Room Curtains
+  category: window_covering
+  room: dining-room
+  channels:
+  - category: window_covering
+    properties:
+    - category: position
+      value: 100
+    - category: type
+      value: curtain
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Office Main Light
+  category: lighting
+  room: home-office
+  auto_simulate: true
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 80
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Office Desk Lamp
+  category: lighting
+  room: home-office
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 90
+    - category: color_temperature
+      value: 5500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Office Air Quality Monitor
+  category: sensor
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: temperature
+    properties:
+    - category: temperature
+      value: 22.5
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 42
+  - category: carbon_dioxide
+    properties:
+    - category: concentration
+      value: 650
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Office Roller Shade
+  category: window_covering
+  room: home-office
+  channels:
+  - category: window_covering
+    properties:
+    - category: position
+      value: 75
+    - category: type
+      value: roller
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Laundry Room Light
+  category: lighting
+  room: laundry
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 100
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Laundry Washer Outlet
+  category: outlet
+  room: laundry
+  auto_simulate: true
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 450.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Laundry Dryer Outlet
+  category: outlet
+  room: laundry
+  auto_simulate: true
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 2200.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Laundry Leak Sensor
+  category: sensor
+  room: laundry
+  channels:
+  - category: leak
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage Main Light
+  category: lighting
+  room: garage
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 100
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage Workbench Light
+  category: lighting
+  room: garage
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 100
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage Door Sensor
+  category: sensor
+  room: garage
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage Motion Sensor
+  category: sensor
+  room: garage
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: motion
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage Smart Outlet
+  category: outlet
+  room: garage
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Foyer Chandelier
+  category: lighting
+  room: foyer
+  auto_simulate: true
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 70
+    - category: color_temperature
+      value: 3000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Front Door Lock
+  category: lock
+  room: foyer
+  channels:
+  - category: lock
+    properties:
+    - category: status
+      value: locked
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Front Door Sensor
+  category: sensor
+  room: foyer
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Video Doorbell
+  category: doorbell
+  room: foyer
+  channels:
+  - category: doorbell
+    properties:
+    - category: event
+      value: single_press
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Foyer Motion Sensor
+  category: sensor
+  room: foyer
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: motion
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Hallway Ceiling Light
+  category: lighting
+  room: hallway
+  auto_simulate: true
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 50
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Main Thermostat
+  category: thermostat
+  room: hallway
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: temperature
+    properties:
+    - category: temperature
+      value: 22.0
+  - category: heater
+    properties:
+    - category: 'on'
+      value: false
+    - category: temperature
+      value: 21.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Hallway Motion Sensor
+  category: sensor
+  room: hallway
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: motion
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Hallway Smoke Detector
+  category: sensor
+  room: hallway
+  channels:
+  - category: smoke
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio Ceiling Light
+  category: lighting
+  room: patio
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 100
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio String Lights
+  category: lighting
+  room: patio
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 70
+    - category: hue
+      value: 45
+    - category: saturation
+      value: 80
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio Ceiling Fan
+  category: fan
+  room: patio
+  channels:
+  - category: fan
+    properties:
+    - category: 'on'
+      value: false
+    - category: speed
+      value: medium
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio Door Lock
+  category: lock
+  room: patio
+  channels:
+  - category: lock
+    properties:
+    - category: status
+      value: locked
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio Door Sensor
+  category: sensor
+  room: patio
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio Outdoor Blind
+  category: window_covering
+  room: patio
+  channels:
+  - category: window_covering
+    properties:
+    - category: position
+      value: 0
+    - category: type
+      value: outdoor_blind
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Backyard Flood Lights
+  category: lighting
+  room: backyard
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 100
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Backyard Path Lights
+  category: lighting
+  room: backyard
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 50
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Backyard Weather Sensor
+  category: sensor
+  room: backyard
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: temperature
+    properties:
+    - category: temperature
+      value: 18.0
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 65
+  - category: illuminance
+    properties:
+    - category: illuminance
+      value: 500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garden Sprinkler Zone 1
+  category: sprinkler
+  room: backyard
+  channels:
+  - category: valve
+    properties:
+    - category: 'on'
+      value: false
+    - category: type
+      value: irrigation
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garden Sprinkler Zone 2
+  category: sprinkler
+  room: backyard
+  channels:
+  - category: valve
+    properties:
+    - category: 'on'
+      value: false
+    - category: type
+      value: irrigation
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Pool Pump Outlet
+  category: outlet
+  room: backyard
+  auto_simulate: true
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 1500.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Backyard Motion Sensor
+  category: sensor
+  room: backyard
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: motion
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room AC Unit
+  category: air_conditioner
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: cooler
+    properties:
+    - category: 'on'
+      value: false
+    - category: temperature
+      value: 24.0
+  - category: heater
+    properties:
+    - category: 'on'
+      value: false
+    - category: temperature
+      value: 21.0
+  - category: fan
+    properties:
+    - category: 'on'
+      value: true
+    - category: speed
+      value: auto
+  - category: temperature
+    properties:
+    - category: temperature
+      value: 22.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Main Power Monitor
+  category: outlet
+  room: garage
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 3200.0
+  - category: electrical_energy
+    properties:
+    - category: consumption
+      value: 1245.6
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Main Water Shutoff
+  category: sprinkler
+  room: garage
+  auto_simulate: true
+  simulate_interval: 15000
+  channels:
+  - category: valve
+    properties:
+    - category: 'on'
+      value: true
+    - category: type
+      value: generic
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Home Alarm System
+  category: alarm
+  room: hallway
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: alarm
+    properties:
+    - category: state
+      value: armed_home
+    - category: triggered
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Media Center
+  category: television
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: television
+    properties:
+    - category: 'on'
+      value: true
+    - category: source
+      value: hdmi_1
+  - category: speaker
+    properties:
+    - category: active
+      value: true
+    - category: volume
+      value: 25
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room LED Strip
+  category: lighting
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 45000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 60
+    - category: color_red
+      value: 255
+    - category: color_green
+      value: 100
+    - category: color_blue
+      value: 50
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Air Quality Sensor
+  category: sensor
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: air_quality
+    properties:
+    - category: level
+      value: good
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Home Office Occupancy Sensor
+  category: sensor
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: occupancy
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage Climate Sensor
+  category: sensor
+  room: garage
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: temperature
+    properties:
+    - category: temperature
+      value: 15.0
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 40
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Task Lamp
+  category: lighting
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 85
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Ambient Wall Lights
+  category: lighting
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 25
+    - category: hue
+      value: 210
+    - category: saturation
+      value: 40
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Night Light
+  category: lighting
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 8
+    - category: color_temperature
+      value: 2200
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Main Ceiling Lights
+  category: lighting
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 25000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 75
+    - category: color_temperature
+      value: 3500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room TV Bias Light
+  category: lighting
+  room: family-room
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 20
+    - category: hue
+      value: 300
+    - category: saturation
+      value: 55
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Night Lamp
+  category: lighting
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 12
+    - category: color_temperature
+      value: 2000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 2 Accent Strip
+  category: lighting
+  room: bedroom-2
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 35
+    - category: hue
+      value: 120
+    - category: saturation
+      value: 65
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Night Light
+  category: lighting
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 5
+    - category: color_temperature
+      value: 2200
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Hallway Night Lights
+  category: lighting
+  room: hallway
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 10
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio Accent Spots
+  category: lighting
+  room: patio
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 40
+    - category: hue
+      value: 35
+    - category: saturation
+      value: 70
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Backyard Decorative Lights
+  category: lighting
+  room: backyard
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 35
+    - category: hue
+      value: 45
+    - category: saturation
+      value: 85
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room CO2 Sensor
+  category: sensor
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: carbon_dioxide
+    properties:
+    - category: concentration
+      value: 720
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Climate Sensor
+  category: sensor
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: temperature
+    properties:
+    - category: temperature
+      value: 22.0
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 46
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 2 Climate Sensor
+  category: sensor
+  room: bedroom-2
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: temperature
+    properties:
+    - category: temperature
+      value: 20.5
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 48
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 3 Climate Sensor
+  category: sensor
+  room: bedroom-3
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: temperature
+    properties:
+    - category: temperature
+      value: 20.0
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 52
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bathroom 2 Ventilation Fan
+  category: fan
+  room: bathroom-2
+  auto_simulate: true
+  simulate_interval: 45000
+  channels:
+  - category: fan
+    properties:
+    - category: 'on'
+      value: true
+    - category: speed
+      value: low
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Laundry Dehumidifier
+  category: air_dehumidifier
+  room: laundry
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: dehumidifier
+    properties:
+    - category: 'on'
+      value: false
+    - category: humidity
+      value: 45
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 55
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Home Office Air Purifier
+  category: air_purifier
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: fan
+    properties:
+    - category: 'on'
+      value: true
+    - category: speed
+      value: medium
+  - category: air_quality
+    properties:
+    - category: level
+      value: good
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Window Sensor
+  category: sensor
+  room: master-bedroom
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 2 Window Sensor
+  category: sensor
+  room: bedroom-2
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 3 Window Sensor
+  category: sensor
+  room: bedroom-3
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage Smoke Detector
+  category: sensor
+  room: garage
+  channels:
+  - category: smoke
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio Motion Sensor
+  category: sensor
+  room: patio
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: motion
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Backyard Door Contact (Shed)
+  category: sensor
+  room: backyard
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage Side Door Lock
+  category: lock
+  room: garage
+  channels:
+  - category: lock
+    properties:
+    - category: status
+      value: locked
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Soundbar
+  category: speaker
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: speaker
+    properties:
+    - category: active
+      value: true
+    - category: volume
+      value: 18
+    - category: mute
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Smart Speaker
+  category: speaker
+  room: kitchen
+  channels:
+  - category: speaker
+    properties:
+    - category: active
+      value: false
+    - category: volume
+      value: 12
+    - category: mute
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio Speaker
+  category: speaker
+  room: patio
+  channels:
+  - category: speaker
+    properties:
+    - category: active
+      value: false
+    - category: volume
+      value: 15
+    - category: mute
+      value: true
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Smart Outlet - Dishwasher
+  category: outlet
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Home Office Smart Outlet - Desk
+  category: outlet
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 85.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage EV Charger Outlet
+  category: outlet
+  room: garage
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 7400.0
+  - category: electrical_energy
+    properties:
+    - category: consumption
+      value: 523.4
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bathroom 2 Leak Sensor
+  category: sensor
+  room: bathroom-2
+  channels:
+  - category: leak
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage Leak Sensor
+  category: sensor
+  room: garage
+  channels:
+  - category: leak
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Main Light Zone
+  category: lighting
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 75
+    - category: color_temperature
+      value: 3500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Task Light Zone
+  category: lighting
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 90
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Ambient Light Zone
+  category: lighting
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 25
+    - category: hue
+      value: 150
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Accent Light Zone
+  category: lighting
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 35
+    - category: hue
+      value: 210
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Night Light Zone
+  category: lighting
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 8
+    - category: color_temperature
+      value: 2200
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Other Light Zone
+  category: lighting
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 50
+    - category: color_temperature
+      value: 4000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Temp Sensor
+  category: sensor
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: temperature
+    properties:
+    - category: temperature
+      value: 19.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Humidity Sensor
+  category: sensor
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 38
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Motion Sensor
+  category: sensor
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: motion
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Contact Sensor
+  category: sensor
+  room: living-room
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Living Room CO2 Sensor #2'
+  category: sensor
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: carbon_dioxide
+    properties:
+    - category: concentration
+      value: 893
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Smart Outlet 1
+  category: outlet
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 1366.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Smart Outlet 2
+  category: outlet
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: electrical_energy
+    properties:
+    - category: consumption
+      value: 695.9
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Smart Outlet 3
+  category: outlet
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 922.4
+  - category: electrical_energy
+    properties:
+    - category: consumption
+      value: 14.3
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Main Light Zone
+  category: lighting
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 75
+    - category: color_temperature
+      value: 3500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Task Light Zone
+  category: lighting
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 90
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Ambient Light Zone
+  category: lighting
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 25
+    - category: hue
+      value: 150
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Accent Light Zone
+  category: lighting
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 35
+    - category: hue
+      value: 210
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Night Light Zone
+  category: lighting
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 8
+    - category: color_temperature
+      value: 2200
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Other Light Zone
+  category: lighting
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 50
+    - category: color_temperature
+      value: 4000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Temp Sensor
+  category: sensor
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: temperature
+    properties:
+    - category: temperature
+      value: 20.5
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Humidity Sensor
+  category: sensor
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 37
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Motion Sensor
+  category: sensor
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: motion
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Contact Sensor
+  category: sensor
+  room: family-room
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room CO2 Sensor
+  category: sensor
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: carbon_dioxide
+    properties:
+    - category: concentration
+      value: 1029
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Smart Outlet 1
+  category: outlet
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: electrical_energy
+    properties:
+    - category: consumption
+      value: 357.6
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Smart Outlet 2
+  category: outlet
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Smart Outlet 3
+  category: outlet
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Main Light Zone
+  category: lighting
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 75
+    - category: color_temperature
+      value: 3500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Task Light Zone
+  category: lighting
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 90
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Ambient Light Zone
+  category: lighting
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 25
+    - category: hue
+      value: 150
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Accent Light Zone
+  category: lighting
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 35
+    - category: hue
+      value: 210
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Night Light Zone
+  category: lighting
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 8
+    - category: color_temperature
+      value: 2200
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Other Light Zone
+  category: lighting
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 50
+    - category: color_temperature
+      value: 4000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Temp Sensor
+  category: sensor
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: temperature
+    properties:
+    - category: temperature
+      value: 22.1
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Humidity Sensor
+  category: sensor
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 41
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Master Bedroom Motion Sensor #2'
+  category: sensor
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: motion
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Contact Sensor
+  category: sensor
+  room: master-bedroom
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom CO2 Sensor
+  category: sensor
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: carbon_dioxide
+    properties:
+    - category: concentration
+      value: 919
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Smart Outlet 1
+  category: outlet
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 80.5
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Smart Outlet 2
+  category: outlet
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 1091.9
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Smart Outlet 3
+  category: outlet
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 1196.5
+  - category: electrical_energy
+    properties:
+    - category: consumption
+      value: 41.8
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 2 Main Light Zone
+  category: lighting
+  room: bedroom-2
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 75
+    - category: color_temperature
+      value: 3500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 2 Task Light Zone
+  category: lighting
+  room: bedroom-2
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 90
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 2 Ambient Light Zone
+  category: lighting
+  room: bedroom-2
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 25
+    - category: hue
+      value: 150
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 2 Accent Light Zone
+  category: lighting
+  room: bedroom-2
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 35
+    - category: hue
+      value: 210
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 2 Night Light Zone
+  category: lighting
+  room: bedroom-2
+  auto_simulate: true
+  simulate_interval: 15000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 8
+    - category: color_temperature
+      value: 2200
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 2 Other Light Zone
+  category: lighting
+  room: bedroom-2
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 50
+    - category: color_temperature
+      value: 4000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 2 Temp Sensor
+  category: sensor
+  room: bedroom-2
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: temperature
+    properties:
+    - category: temperature
+      value: 24.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 2 Humidity Sensor
+  category: sensor
+  room: bedroom-2
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 56
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 2 Motion Sensor
+  category: sensor
+  room: bedroom-2
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: motion
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 2 Contact Sensor
+  category: sensor
+  room: bedroom-2
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 2 Smart Outlet 1
+  category: outlet
+  room: bedroom-2
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 2 Smart Outlet 2
+  category: outlet
+  room: bedroom-2
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 1113.9
+  - category: electrical_energy
+    properties:
+    - category: consumption
+      value: 152.7
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 2 Smart Outlet 3
+  category: outlet
+  room: bedroom-2
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 502.4
+  - category: electrical_energy
+    properties:
+    - category: consumption
+      value: 548.3
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 3 Main Light Zone
+  category: lighting
+  room: bedroom-3
+  auto_simulate: true
+  simulate_interval: 15000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 75
+    - category: color_temperature
+      value: 3500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 3 Task Light Zone
+  category: lighting
+  room: bedroom-3
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 90
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 3 Ambient Light Zone
+  category: lighting
+  room: bedroom-3
+  auto_simulate: true
+  simulate_interval: 15000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 25
+    - category: hue
+      value: 150
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 3 Accent Light Zone
+  category: lighting
+  room: bedroom-3
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 35
+    - category: hue
+      value: 210
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 3 Night Light Zone
+  category: lighting
+  room: bedroom-3
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 8
+    - category: color_temperature
+      value: 2200
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 3 Other Light Zone
+  category: lighting
+  room: bedroom-3
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 50
+    - category: color_temperature
+      value: 4000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 3 Temp Sensor
+  category: sensor
+  room: bedroom-3
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: temperature
+    properties:
+    - category: temperature
+      value: 23.6
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 3 Humidity Sensor
+  category: sensor
+  room: bedroom-3
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 57
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 3 Motion Sensor
+  category: sensor
+  room: bedroom-3
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: motion
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 3 Contact Sensor
+  category: sensor
+  room: bedroom-3
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 3 Smart Outlet 1
+  category: outlet
+  room: bedroom-3
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 881.5
+  - category: electrical_energy
+    properties:
+    - category: consumption
+      value: 518.3
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 3 Smart Outlet 2
+  category: outlet
+  room: bedroom-3
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 753.5
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 3 Smart Outlet 3
+  category: outlet
+  room: bedroom-3
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bathroom Main Light Zone
+  category: lighting
+  room: master-bathroom
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 75
+    - category: color_temperature
+      value: 3500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bathroom Task Light Zone
+  category: lighting
+  room: master-bathroom
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 90
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bathroom Ambient Light Zone
+  category: lighting
+  room: master-bathroom
+  auto_simulate: true
+  simulate_interval: 15000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 25
+    - category: hue
+      value: 150
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bathroom Accent Light Zone
+  category: lighting
+  room: master-bathroom
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 35
+    - category: hue
+      value: 210
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bathroom Night Light Zone
+  category: lighting
+  room: master-bathroom
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 8
+    - category: color_temperature
+      value: 2200
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bathroom Other Light Zone
+  category: lighting
+  room: master-bathroom
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 50
+    - category: color_temperature
+      value: 4000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bathroom Temp Sensor
+  category: sensor
+  room: master-bathroom
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: temperature
+    properties:
+    - category: temperature
+      value: 22.7
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Master Bathroom Humidity Sensor #2'
+  category: sensor
+  room: master-bathroom
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 39
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bathroom Motion Sensor
+  category: sensor
+  room: master-bathroom
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: motion
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bathroom Contact Sensor
+  category: sensor
+  room: master-bathroom
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Master Bathroom Leak Sensor #2'
+  category: sensor
+  room: master-bathroom
+  channels:
+  - category: leak
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bathroom Smart Outlet 1
+  category: outlet
+  room: master-bathroom
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 738.4
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bathroom Smart Outlet 2
+  category: outlet
+  room: master-bathroom
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 787.6
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bathroom Smart Outlet 3
+  category: outlet
+  room: master-bathroom
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: electrical_energy
+    properties:
+    - category: consumption
+      value: 450.1
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bathroom 2 Main Light Zone
+  category: lighting
+  room: bathroom-2
+  auto_simulate: true
+  simulate_interval: 15000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 75
+    - category: color_temperature
+      value: 3500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bathroom 2 Task Light Zone
+  category: lighting
+  room: bathroom-2
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 90
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bathroom 2 Ambient Light Zone
+  category: lighting
+  room: bathroom-2
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 25
+    - category: hue
+      value: 150
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bathroom 2 Accent Light Zone
+  category: lighting
+  room: bathroom-2
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 35
+    - category: hue
+      value: 210
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bathroom 2 Night Light Zone
+  category: lighting
+  room: bathroom-2
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 8
+    - category: color_temperature
+      value: 2200
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bathroom 2 Other Light Zone
+  category: lighting
+  room: bathroom-2
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 50
+    - category: color_temperature
+      value: 4000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bathroom 2 Temp Sensor
+  category: sensor
+  room: bathroom-2
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: temperature
+    properties:
+    - category: temperature
+      value: 20.1
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Bathroom 2 Humidity Sensor #2'
+  category: sensor
+  room: bathroom-2
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 49
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bathroom 2 Motion Sensor
+  category: sensor
+  room: bathroom-2
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: motion
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bathroom 2 Contact Sensor
+  category: sensor
+  room: bathroom-2
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Bathroom 2 Leak Sensor #2'
+  category: sensor
+  room: bathroom-2
+  channels:
+  - category: leak
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bathroom 2 Smart Outlet 1
+  category: outlet
+  room: bathroom-2
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: electrical_energy
+    properties:
+    - category: consumption
+      value: 637.4
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bathroom 2 Smart Outlet 2
+  category: outlet
+  room: bathroom-2
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 1305.4
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bathroom 2 Smart Outlet 3
+  category: outlet
+  room: bathroom-2
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 1345.8
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Main Light Zone
+  category: lighting
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 75
+    - category: color_temperature
+      value: 3500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Task Light Zone
+  category: lighting
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 90
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Ambient Light Zone
+  category: lighting
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 25
+    - category: hue
+      value: 150
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Accent Light Zone
+  category: lighting
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 35
+    - category: hue
+      value: 210
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Night Light Zone
+  category: lighting
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 8
+    - category: color_temperature
+      value: 2200
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Other Light Zone
+  category: lighting
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 50
+    - category: color_temperature
+      value: 4000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Temp Sensor
+  category: sensor
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: temperature
+    properties:
+    - category: temperature
+      value: 20.7
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Humidity Sensor
+  category: sensor
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 46
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Motion Sensor
+  category: sensor
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: motion
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Contact Sensor
+  category: sensor
+  room: kitchen
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Kitchen Leak Sensor #2'
+  category: sensor
+  room: kitchen
+  channels:
+  - category: leak
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Smart Outlet 1
+  category: outlet
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Smart Outlet 2
+  category: outlet
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 944.6
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Smart Outlet 3
+  category: outlet
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 359.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Dining Room Main Light Zone
+  category: lighting
+  room: dining-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 75
+    - category: color_temperature
+      value: 3500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Dining Room Task Light Zone
+  category: lighting
+  room: dining-room
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 90
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Dining Room Ambient Light Zone
+  category: lighting
+  room: dining-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 25
+    - category: hue
+      value: 150
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Dining Room Accent Light Zone
+  category: lighting
+  room: dining-room
+  auto_simulate: true
+  simulate_interval: 15000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 35
+    - category: hue
+      value: 210
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Dining Room Night Light Zone
+  category: lighting
+  room: dining-room
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 8
+    - category: color_temperature
+      value: 2200
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Dining Room Other Light Zone
+  category: lighting
+  room: dining-room
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 50
+    - category: color_temperature
+      value: 4000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Dining Room Temp Sensor
+  category: sensor
+  room: dining-room
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: temperature
+    properties:
+    - category: temperature
+      value: 20.5
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Dining Room Humidity Sensor
+  category: sensor
+  room: dining-room
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 35
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Dining Room Motion Sensor
+  category: sensor
+  room: dining-room
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: motion
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Dining Room Contact Sensor
+  category: sensor
+  room: dining-room
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Dining Room Smart Outlet 1
+  category: outlet
+  room: dining-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Dining Room Smart Outlet 2
+  category: outlet
+  room: dining-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 812.0
+  - category: electrical_energy
+    properties:
+    - category: consumption
+      value: 664.4
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Dining Room Smart Outlet 3
+  category: outlet
+  room: dining-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 494.9
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Home Office Main Light Zone
+  category: lighting
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 75
+    - category: color_temperature
+      value: 3500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Home Office Task Light Zone
+  category: lighting
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 90
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Home Office Ambient Light Zone
+  category: lighting
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 25
+    - category: hue
+      value: 150
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Home Office Accent Light Zone
+  category: lighting
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 35
+    - category: hue
+      value: 210
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Home Office Night Light Zone
+  category: lighting
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 8
+    - category: color_temperature
+      value: 2200
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Home Office Other Light Zone
+  category: lighting
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 50
+    - category: color_temperature
+      value: 4000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Home Office Temp Sensor
+  category: sensor
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: temperature
+    properties:
+    - category: temperature
+      value: 22.8
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Home Office Humidity Sensor
+  category: sensor
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 62
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Home Office Motion Sensor
+  category: sensor
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: motion
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Home Office Contact Sensor
+  category: sensor
+  room: home-office
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Home Office CO2 Sensor
+  category: sensor
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: carbon_dioxide
+    properties:
+    - category: concentration
+      value: 634
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Home Office Smart Outlet 1
+  category: outlet
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 1380.7
+  - category: electrical_energy
+    properties:
+    - category: consumption
+      value: 876.9
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Home Office Smart Outlet 2
+  category: outlet
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: electrical_energy
+    properties:
+    - category: consumption
+      value: 463.9
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Home Office Smart Outlet 3
+  category: outlet
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Laundry Room Main Light Zone
+  category: lighting
+  room: laundry
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 75
+    - category: color_temperature
+      value: 3500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Laundry Room Task Light Zone
+  category: lighting
+  room: laundry
+  auto_simulate: true
+  simulate_interval: 15000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 90
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Laundry Room Ambient Light Zone
+  category: lighting
+  room: laundry
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 25
+    - category: hue
+      value: 150
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Laundry Room Accent Light Zone
+  category: lighting
+  room: laundry
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 35
+    - category: hue
+      value: 210
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Laundry Room Night Light Zone
+  category: lighting
+  room: laundry
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 8
+    - category: color_temperature
+      value: 2200
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Laundry Room Other Light Zone
+  category: lighting
+  room: laundry
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 50
+    - category: color_temperature
+      value: 4000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Laundry Room Temp Sensor
+  category: sensor
+  room: laundry
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: temperature
+    properties:
+    - category: temperature
+      value: 21.3
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Laundry Room Humidity Sensor
+  category: sensor
+  room: laundry
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 35
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Laundry Room Motion Sensor
+  category: sensor
+  room: laundry
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: motion
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Laundry Room Contact Sensor
+  category: sensor
+  room: laundry
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Laundry Room Leak Sensor
+  category: sensor
+  room: laundry
+  channels:
+  - category: leak
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Laundry Room Smart Outlet 1
+  category: outlet
+  room: laundry
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 594.5
+  - category: electrical_energy
+    properties:
+    - category: consumption
+      value: 410.1
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Laundry Room Smart Outlet 2
+  category: outlet
+  room: laundry
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Laundry Room Smart Outlet 3
+  category: outlet
+  room: laundry
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 1128.4
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage Main Light Zone
+  category: lighting
+  room: garage
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 75
+    - category: color_temperature
+      value: 3500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage Task Light Zone
+  category: lighting
+  room: garage
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 90
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage Ambient Light Zone
+  category: lighting
+  room: garage
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 25
+    - category: hue
+      value: 150
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage Accent Light Zone
+  category: lighting
+  room: garage
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 35
+    - category: hue
+      value: 210
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage Night Light Zone
+  category: lighting
+  room: garage
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 8
+    - category: color_temperature
+      value: 2200
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage Other Light Zone
+  category: lighting
+  room: garage
+  auto_simulate: true
+  simulate_interval: 15000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 50
+    - category: color_temperature
+      value: 4000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage Temp Sensor
+  category: sensor
+  room: garage
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: temperature
+    properties:
+    - category: temperature
+      value: 21.6
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage Humidity Sensor
+  category: sensor
+  room: garage
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 40
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Garage Motion Sensor #2'
+  category: sensor
+  room: garage
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: motion
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage Contact Sensor
+  category: sensor
+  room: garage
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Garage Leak Sensor #2'
+  category: sensor
+  room: garage
+  channels:
+  - category: leak
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage Smart Outlet 1
+  category: outlet
+  room: garage
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 827.5
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage Smart Outlet 2
+  category: outlet
+  room: garage
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 1019.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage Smart Outlet 3
+  category: outlet
+  room: garage
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 587.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Foyer Main Light Zone
+  category: lighting
+  room: foyer
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 75
+    - category: color_temperature
+      value: 3500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Foyer Task Light Zone
+  category: lighting
+  room: foyer
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 90
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Foyer Ambient Light Zone
+  category: lighting
+  room: foyer
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 25
+    - category: hue
+      value: 150
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Foyer Accent Light Zone
+  category: lighting
+  room: foyer
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 35
+    - category: hue
+      value: 210
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Foyer Night Light Zone
+  category: lighting
+  room: foyer
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 8
+    - category: color_temperature
+      value: 2200
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Foyer Other Light Zone
+  category: lighting
+  room: foyer
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 50
+    - category: color_temperature
+      value: 4000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Foyer Temp Sensor
+  category: sensor
+  room: foyer
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: temperature
+    properties:
+    - category: temperature
+      value: 22.7
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Foyer Humidity Sensor
+  category: sensor
+  room: foyer
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 61
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Foyer Motion Sensor #2'
+  category: sensor
+  room: foyer
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: motion
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Foyer Contact Sensor
+  category: sensor
+  room: foyer
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Foyer Smart Outlet 1
+  category: outlet
+  room: foyer
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 1264.9
+  - category: electrical_energy
+    properties:
+    - category: consumption
+      value: 194.3
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Foyer Smart Outlet 2
+  category: outlet
+  room: foyer
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 1424.6
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Foyer Smart Outlet 3
+  category: outlet
+  room: foyer
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 688.5
+  - category: electrical_energy
+    properties:
+    - category: consumption
+      value: 880.4
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Hallway Main Light Zone
+  category: lighting
+  room: hallway
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 75
+    - category: color_temperature
+      value: 3500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Hallway Task Light Zone
+  category: lighting
+  room: hallway
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 90
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Hallway Ambient Light Zone
+  category: lighting
+  room: hallway
+  auto_simulate: true
+  simulate_interval: 15000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 25
+    - category: hue
+      value: 150
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Hallway Accent Light Zone
+  category: lighting
+  room: hallway
+  auto_simulate: true
+  simulate_interval: 15000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 35
+    - category: hue
+      value: 210
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Hallway Night Light Zone
+  category: lighting
+  room: hallway
+  auto_simulate: true
+  simulate_interval: 15000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 8
+    - category: color_temperature
+      value: 2200
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Hallway Other Light Zone
+  category: lighting
+  room: hallway
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 50
+    - category: color_temperature
+      value: 4000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Hallway Temp Sensor
+  category: sensor
+  room: hallway
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: temperature
+    properties:
+    - category: temperature
+      value: 19.6
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Hallway Humidity Sensor
+  category: sensor
+  room: hallway
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 41
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Hallway Motion Sensor #2'
+  category: sensor
+  room: hallway
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: motion
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Hallway Contact Sensor
+  category: sensor
+  room: hallway
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Hallway Smart Outlet 1
+  category: outlet
+  room: hallway
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: electrical_energy
+    properties:
+    - category: consumption
+      value: 817.4
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Hallway Smart Outlet 2
+  category: outlet
+  room: hallway
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: electrical_energy
+    properties:
+    - category: consumption
+      value: 416.5
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Hallway Smart Outlet 3
+  category: outlet
+  room: hallway
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio Main Light Zone
+  category: lighting
+  room: patio
+  auto_simulate: true
+  simulate_interval: 15000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 75
+    - category: color_temperature
+      value: 3500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio Task Light Zone
+  category: lighting
+  room: patio
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 90
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio Ambient Light Zone
+  category: lighting
+  room: patio
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 25
+    - category: hue
+      value: 150
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio Accent Light Zone
+  category: lighting
+  room: patio
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 35
+    - category: hue
+      value: 210
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio Night Light Zone
+  category: lighting
+  room: patio
+  auto_simulate: true
+  simulate_interval: 15000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 8
+    - category: color_temperature
+      value: 2200
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio Other Light Zone
+  category: lighting
+  room: patio
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 50
+    - category: color_temperature
+      value: 4000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio Temp Sensor
+  category: sensor
+  room: patio
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: temperature
+    properties:
+    - category: temperature
+      value: 19.9
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio Humidity Sensor
+  category: sensor
+  room: patio
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 57
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Patio Motion Sensor #2'
+  category: sensor
+  room: patio
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: motion
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio Contact Sensor
+  category: sensor
+  room: patio
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio Smart Outlet 1
+  category: outlet
+  room: patio
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio Smart Outlet 2
+  category: outlet
+  room: patio
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 491.7
+  - category: electrical_energy
+    properties:
+    - category: consumption
+      value: 76.2
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio Smart Outlet 3
+  category: outlet
+  room: patio
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 116.8
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Backyard Main Light Zone
+  category: lighting
+  room: backyard
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 75
+    - category: color_temperature
+      value: 3500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Backyard Task Light Zone
+  category: lighting
+  room: backyard
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 90
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Backyard Ambient Light Zone
+  category: lighting
+  room: backyard
+  auto_simulate: true
+  simulate_interval: 15000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 25
+    - category: hue
+      value: 150
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Backyard Accent Light Zone
+  category: lighting
+  room: backyard
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 35
+    - category: hue
+      value: 210
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Backyard Night Light Zone
+  category: lighting
+  room: backyard
+  auto_simulate: true
+  simulate_interval: 15000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 8
+    - category: color_temperature
+      value: 2200
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Backyard Other Light Zone
+  category: lighting
+  room: backyard
+  auto_simulate: true
+  simulate_interval: 15000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 50
+    - category: color_temperature
+      value: 4000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Backyard Temp Sensor
+  category: sensor
+  room: backyard
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: temperature
+    properties:
+    - category: temperature
+      value: 21.4
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Backyard Humidity Sensor
+  category: sensor
+  room: backyard
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: humidity
+    properties:
+    - category: humidity
+      value: 57
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Backyard Motion Sensor #2'
+  category: sensor
+  room: backyard
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: motion
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Backyard Contact Sensor
+  category: sensor
+  room: backyard
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Backyard Smart Outlet 1
+  category: outlet
+  room: backyard
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Backyard Smart Outlet 2
+  category: outlet
+  room: backyard
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 1280.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Backyard Smart Outlet 3
+  category: outlet
+  room: backyard
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 1299.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Living Room Main Light Zone #2'
+  category: lighting
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 75
+    - category: color_temperature
+      value: 3500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Living Room Task Light Zone #2'
+  category: lighting
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 90
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Living Room Ambient Light Zone #2'
+  category: lighting
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 25
+    - category: hue
+      value: 150
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Living Room Accent Light Zone #2'
+  category: lighting
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 35
+    - category: hue
+      value: 210
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Living Room Night Light Zone #2'
+  category: lighting
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 8
+    - category: color_temperature
+      value: 2200
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Living Room Other Light Zone #2'
+  category: lighting
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 50
+    - category: color_temperature
+      value: 4000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Living Room Smart Outlet 1 #2'
+  category: outlet
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 935.5
+  - category: electrical_energy
+    properties:
+    - category: consumption
+      value: 307.4
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Living Room Smart Outlet 2 #2'
+  category: outlet
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 975.3
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Living Room Smart Outlet 3 #2'
+  category: outlet
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Smart Outlet 4
+  category: outlet
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 878.8
+  - category: electrical_energy
+    properties:
+    - category: consumption
+      value: 856.6
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Speaker 1
+  category: speaker
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: speaker
+    properties:
+    - category: active
+      value: true
+    - category: volume
+      value: 35
+    - category: mute
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Speaker 2
+  category: speaker
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: speaker
+    properties:
+    - category: active
+      value: false
+    - category: volume
+      value: 26
+    - category: mute
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Window Covering 1
+  category: window_covering
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: window_covering
+    properties:
+    - category: position
+      value: 100
+    - category: type
+      value: curtain
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Window Covering 2
+  category: window_covering
+  room: living-room
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: window_covering
+    properties:
+    - category: position
+      value: 75
+    - category: type
+      value: curtain
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Family Room Main Light Zone #2'
+  category: lighting
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 75
+    - category: color_temperature
+      value: 3500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Family Room Task Light Zone #2'
+  category: lighting
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 90
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Family Room Ambient Light Zone #2'
+  category: lighting
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 25
+    - category: hue
+      value: 150
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Family Room Accent Light Zone #2'
+  category: lighting
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 35
+    - category: hue
+      value: 210
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Family Room Night Light Zone #2'
+  category: lighting
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 8
+    - category: color_temperature
+      value: 2200
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Family Room Other Light Zone #2'
+  category: lighting
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 50
+    - category: color_temperature
+      value: 4000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Family Room Smart Outlet 1 #2'
+  category: outlet
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Family Room Smart Outlet 2 #2'
+  category: outlet
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Family Room Smart Outlet 3 #2'
+  category: outlet
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 536.2
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Smart Outlet 4
+  category: outlet
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: electrical_energy
+    properties:
+    - category: consumption
+      value: 804.6
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Speaker 1
+  category: speaker
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: speaker
+    properties:
+    - category: active
+      value: true
+    - category: volume
+      value: 26
+    - category: mute
+      value: true
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Speaker 2
+  category: speaker
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: speaker
+    properties:
+    - category: active
+      value: true
+    - category: volume
+      value: 39
+    - category: mute
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Window Covering 1
+  category: window_covering
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: window_covering
+    properties:
+    - category: position
+      value: 50
+    - category: type
+      value: blind
+    - category: tilt
+      value: 45
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Window Covering 2
+  category: window_covering
+  room: family-room
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: window_covering
+    properties:
+    - category: position
+      value: 50
+    - category: type
+      value: blind
+    - category: tilt
+      value: 45
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Kitchen Main Light Zone #2'
+  category: lighting
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 75
+    - category: color_temperature
+      value: 3500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Kitchen Task Light Zone #2'
+  category: lighting
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 90
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Kitchen Ambient Light Zone #2'
+  category: lighting
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 25
+    - category: hue
+      value: 150
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Kitchen Accent Light Zone #2'
+  category: lighting
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 35
+    - category: hue
+      value: 210
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Kitchen Night Light Zone #2'
+  category: lighting
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 8
+    - category: color_temperature
+      value: 2200
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Kitchen Other Light Zone #2'
+  category: lighting
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 50
+    - category: color_temperature
+      value: 4000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Kitchen Smart Outlet 1 #2'
+  category: outlet
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Kitchen Smart Outlet 2 #2'
+  category: outlet
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Kitchen Smart Outlet 3 #2'
+  category: outlet
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: electrical_energy
+    properties:
+    - category: consumption
+      value: 611.5
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Smart Outlet 4
+  category: outlet
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 549.8
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Speaker 1
+  category: speaker
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: speaker
+    properties:
+    - category: active
+      value: false
+    - category: volume
+      value: 14
+    - category: mute
+      value: true
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Speaker 2
+  category: speaker
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: speaker
+    properties:
+    - category: active
+      value: true
+    - category: volume
+      value: 47
+    - category: mute
+      value: true
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Window Covering 1
+  category: window_covering
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: window_covering
+    properties:
+    - category: position
+      value: 50
+    - category: type
+      value: roller
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Window Covering 2
+  category: window_covering
+  room: kitchen
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: window_covering
+    properties:
+    - category: position
+      value: 100
+    - category: type
+      value: curtain
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Home Office Main Light Zone #2'
+  category: lighting
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 75
+    - category: color_temperature
+      value: 3500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Home Office Task Light Zone #2'
+  category: lighting
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 90
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Home Office Ambient Light Zone #2'
+  category: lighting
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 25
+    - category: hue
+      value: 150
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Home Office Accent Light Zone #2'
+  category: lighting
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 35
+    - category: hue
+      value: 210
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Home Office Night Light Zone #2'
+  category: lighting
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 8
+    - category: color_temperature
+      value: 2200
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Home Office Other Light Zone #2'
+  category: lighting
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 50
+    - category: color_temperature
+      value: 4000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Home Office Smart Outlet 1 #2'
+  category: outlet
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Home Office Smart Outlet 2 #2'
+  category: outlet
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Home Office Smart Outlet 3 #2'
+  category: outlet
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 488.9
+  - category: electrical_energy
+    properties:
+    - category: consumption
+      value: 337.4
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Home Office Smart Outlet 4
+  category: outlet
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 464.9
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Home Office Speaker 1
+  category: speaker
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: speaker
+    properties:
+    - category: active
+      value: true
+    - category: volume
+      value: 39
+    - category: mute
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Home Office Speaker 2
+  category: speaker
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: speaker
+    properties:
+    - category: active
+      value: false
+    - category: volume
+      value: 20
+    - category: mute
+      value: true
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Home Office Window Covering 1
+  category: window_covering
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: window_covering
+    properties:
+    - category: position
+      value: 50
+    - category: type
+      value: roller
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Home Office Window Covering 2
+  category: window_covering
+  room: home-office
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: window_covering
+    properties:
+    - category: position
+      value: 100
+    - category: type
+      value: roller
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Master Bedroom Main Light Zone #2'
+  category: lighting
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 75
+    - category: color_temperature
+      value: 3500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Master Bedroom Task Light Zone #2'
+  category: lighting
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 90
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Master Bedroom Ambient Light Zone #2'
+  category: lighting
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 25
+    - category: hue
+      value: 150
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Master Bedroom Accent Light Zone #2'
+  category: lighting
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 35
+    - category: hue
+      value: 210
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Master Bedroom Night Light Zone #2'
+  category: lighting
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 15000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 8
+    - category: color_temperature
+      value: 2200
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Master Bedroom Other Light Zone #2'
+  category: lighting
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 50
+    - category: color_temperature
+      value: 4000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Master Bedroom Smart Outlet 1 #2'
+  category: outlet
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 749.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Master Bedroom Smart Outlet 2 #2'
+  category: outlet
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 1242.4
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Master Bedroom Smart Outlet 3 #2'
+  category: outlet
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 1480.7
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Smart Outlet 4
+  category: outlet
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Speaker 1
+  category: speaker
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: speaker
+    properties:
+    - category: active
+      value: false
+    - category: volume
+      value: 1
+    - category: mute
+      value: true
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Speaker 2
+  category: speaker
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: speaker
+    properties:
+    - category: active
+      value: false
+    - category: volume
+      value: 13
+    - category: mute
+      value: true
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Window Covering 1
+  category: window_covering
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: window_covering
+    properties:
+    - category: position
+      value: 100
+    - category: type
+      value: blind
+    - category: tilt
+      value: 30
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Window Covering 2
+  category: window_covering
+  room: master-bedroom
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: window_covering
+    properties:
+    - category: position
+      value: 25
+    - category: type
+      value: roller
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Garage Main Light Zone #2'
+  category: lighting
+  room: garage
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 75
+    - category: color_temperature
+      value: 3500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Garage Task Light Zone #2'
+  category: lighting
+  room: garage
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 90
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Garage Ambient Light Zone #2'
+  category: lighting
+  room: garage
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 25
+    - category: hue
+      value: 150
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Garage Accent Light Zone #2'
+  category: lighting
+  room: garage
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 35
+    - category: hue
+      value: 210
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Garage Night Light Zone #2'
+  category: lighting
+  room: garage
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 8
+    - category: color_temperature
+      value: 2200
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Garage Other Light Zone #2'
+  category: lighting
+  room: garage
+  auto_simulate: true
+  simulate_interval: 15000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 50
+    - category: color_temperature
+      value: 4000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Garage Smart Outlet 1 #2'
+  category: outlet
+  room: garage
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Garage Smart Outlet 2 #2'
+  category: outlet
+  room: garage
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 1262.4
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Garage Smart Outlet 3 #2'
+  category: outlet
+  room: garage
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage Smart Outlet 4
+  category: outlet
+  room: garage
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: electrical_energy
+    properties:
+    - category: consumption
+      value: 109.5
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Backyard Main Light Zone #2'
+  category: lighting
+  room: backyard
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 75
+    - category: color_temperature
+      value: 3500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Backyard Task Light Zone #2'
+  category: lighting
+  room: backyard
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 90
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Backyard Ambient Light Zone #2'
+  category: lighting
+  room: backyard
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 25
+    - category: hue
+      value: 150
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Backyard Accent Light Zone #2'
+  category: lighting
+  room: backyard
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 35
+    - category: hue
+      value: 210
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Backyard Night Light Zone #2'
+  category: lighting
+  room: backyard
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 8
+    - category: color_temperature
+      value: 2200
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Backyard Other Light Zone #2'
+  category: lighting
+  room: backyard
+  auto_simulate: true
+  simulate_interval: 60000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 50
+    - category: color_temperature
+      value: 4000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Backyard Smart Outlet 1 #2'
+  category: outlet
+  room: backyard
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Backyard Smart Outlet 2 #2'
+  category: outlet
+  room: backyard
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Backyard Smart Outlet 3 #2'
+  category: outlet
+  room: backyard
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Backyard Smart Outlet 4
+  category: outlet
+  room: backyard
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 404.9
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Patio Main Light Zone #2'
+  category: lighting
+  room: patio
+  auto_simulate: true
+  simulate_interval: 15000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 75
+    - category: color_temperature
+      value: 3500
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Patio Task Light Zone #2'
+  category: lighting
+  room: patio
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 90
+    - category: color_temperature
+      value: 5000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Patio Ambient Light Zone #2'
+  category: lighting
+  room: patio
+  auto_simulate: true
+  simulate_interval: 10000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: true
+    - category: brightness
+      value: 25
+    - category: hue
+      value: 150
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Patio Accent Light Zone #2'
+  category: lighting
+  room: patio
+  auto_simulate: true
+  simulate_interval: 5000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 35
+    - category: hue
+      value: 210
+    - category: saturation
+      value: 60
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Patio Night Light Zone #2'
+  category: lighting
+  room: patio
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 8
+    - category: color_temperature
+      value: 2200
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Patio Other Light Zone #2'
+  category: lighting
+  room: patio
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: light
+    properties:
+    - category: 'on'
+      value: false
+    - category: brightness
+      value: 50
+    - category: color_temperature
+      value: 4000
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Patio Smart Outlet 1 #2'
+  category: outlet
+  room: patio
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: false
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 0.0
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Patio Smart Outlet 2 #2'
+  category: outlet
+  room: patio
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 451.7
+  - category: electrical_energy
+    properties:
+    - category: consumption
+      value: 231.9
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: 'Patio Smart Outlet 3 #2'
+  category: outlet
+  room: patio
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 1073.3
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio Smart Outlet 4
+  category: outlet
+  room: patio
+  auto_simulate: true
+  simulate_interval: 30000
+  channels:
+  - category: outlet
+    properties:
+    - category: 'on'
+      value: true
+  - category: electrical_power
+    properties:
+    - category: power
+      value: 397.2
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio Speaker 1
+  category: speaker
+  room: patio
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: speaker
+    properties:
+    - category: active
+      value: false
+    - category: volume
+      value: 28
+    - category: mute
+      value: true
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio Speaker 2
+  category: speaker
+  room: patio
+  auto_simulate: true
+  simulate_interval: 20000
+  channels:
+  - category: speaker
+    properties:
+    - category: active
+      value: true
+    - category: volume
+      value: 35
+    - category: mute
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garden Sprinkler Zone 3
+  category: sprinkler
+  room: backyard
+  channels:
+  - category: valve
+    properties:
+    - category: 'on'
+      value: false
+    - category: type
+      value: irrigation
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garden Sprinkler Zone 4
+  category: sprinkler
+  room: backyard
+  channels:
+  - category: valve
+    properties:
+    - category: 'on'
+      value: false
+    - category: type
+      value: irrigation
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garden Sprinkler Zone 5
+  category: sprinkler
+  room: backyard
+  channels:
+  - category: valve
+    properties:
+    - category: 'on'
+      value: false
+    - category: type
+      value: irrigation
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garden Sprinkler Zone 6
+  category: sprinkler
+  room: backyard
+  channels:
+  - category: valve
+    properties:
+    - category: 'on'
+      value: false
+    - category: type
+      value: irrigation
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garden Sprinkler Zone 7
+  category: sprinkler
+  room: backyard
+  channels:
+  - category: valve
+    properties:
+    - category: 'on'
+      value: false
+    - category: type
+      value: irrigation
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garden Sprinkler Zone 8
+  category: sprinkler
+  room: backyard
+  channels:
+  - category: valve
+    properties:
+    - category: 'on'
+      value: false
+    - category: type
+      value: irrigation
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garden Sprinkler Zone 9
+  category: sprinkler
+  room: backyard
+  channels:
+  - category: valve
+    properties:
+    - category: 'on'
+      value: false
+    - category: type
+      value: irrigation
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garden Sprinkler Zone 10
+  category: sprinkler
+  room: backyard
+  channels:
+  - category: valve
+    properties:
+    - category: 'on'
+      value: false
+    - category: type
+      value: irrigation
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Window Contact Sensor 1
+  category: sensor
+  room: living-room
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Window Contact Sensor 2
+  category: sensor
+  room: living-room
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Living Room Window Contact Sensor 3
+  category: sensor
+  room: living-room
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Window Contact Sensor 1
+  category: sensor
+  room: family-room
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Window Contact Sensor 2
+  category: sensor
+  room: family-room
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Window Contact Sensor 3
+  category: sensor
+  room: family-room
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Window Contact Sensor 1
+  category: sensor
+  room: kitchen
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Window Contact Sensor 2
+  category: sensor
+  room: kitchen
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Window Contact Sensor 3
+  category: sensor
+  room: kitchen
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Dining Room Window Contact Sensor 1
+  category: sensor
+  room: dining-room
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Dining Room Window Contact Sensor 2
+  category: sensor
+  room: dining-room
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Dining Room Window Contact Sensor 3
+  category: sensor
+  room: dining-room
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Window Contact Sensor 1
+  category: sensor
+  room: master-bedroom
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Window Contact Sensor 2
+  category: sensor
+  room: master-bedroom
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Master Bedroom Window Contact Sensor 3
+  category: sensor
+  room: master-bedroom
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 2 Window Contact Sensor 1
+  category: sensor
+  room: bedroom-2
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 2 Window Contact Sensor 2
+  category: sensor
+  room: bedroom-2
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 2 Window Contact Sensor 3
+  category: sensor
+  room: bedroom-2
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 3 Window Contact Sensor 1
+  category: sensor
+  room: bedroom-3
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 3 Window Contact Sensor 2
+  category: sensor
+  room: bedroom-3
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Bedroom 3 Window Contact Sensor 3
+  category: sensor
+  room: bedroom-3
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio Door Contact Sensor 1
+  category: sensor
+  room: patio
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio Door Contact Sensor 2
+  category: sensor
+  room: patio
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio Door Contact Sensor 3
+  category: sensor
+  room: patio
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage Side Door Contact Sensor 1
+  category: sensor
+  room: garage
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage Side Door Contact Sensor 2
+  category: sensor
+  room: garage
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage Side Door Contact Sensor 3
+  category: sensor
+  room: garage
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Front Door Contact Sensor 1
+  category: sensor
+  room: foyer
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Front Door Contact Sensor 2
+  category: sensor
+  room: foyer
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Front Door Contact Sensor 3
+  category: sensor
+  room: foyer
+  channels:
+  - category: contact
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Kitchen Smoke Detector (Extra)
+  category: sensor
+  room: kitchen
+  channels:
+  - category: smoke
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Hallway Smoke Detector (Extra)
+  category: sensor
+  room: hallway
+  channels:
+  - category: smoke
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage Smoke Detector (Extra)
+  category: sensor
+  room: garage
+  channels:
+  - category: smoke
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Laundry Room Smoke Detector (Extra)
+  category: sensor
+  room: laundry
+  channels:
+  - category: smoke
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Family Room Smoke Detector (Extra)
+  category: sensor
+  room: family-room
+  channels:
+  - category: smoke
+    properties:
+    - category: detected
+      value: false
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Patio Secondary Door Lock
+  category: lock
+  room: patio
+  channels:
+  - category: lock
+    properties:
+    - category: status
+      value: locked
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Garage Internal Door Lock
+  category: lock
+  room: garage
+  channels:
+  - category: lock
+    properties:
+    - category: status
+      value: locked
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird
+- name: Front Door Lock (Backup)
+  category: lock
+  room: foyer
+  channels:
+  - category: lock
+    properties:
+    - category: status
+      value: locked
+  - category: device_information
+    properties:
+    - category: manufacturer
+      value: FastyBird

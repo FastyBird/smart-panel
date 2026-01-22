@@ -1,0 +1,516 @@
+version: "1.0"
+name: "Luxury Penthouse"
+description: "High-end penthouse apartment with comprehensive smart home system"
+
+rooms:
+  - id: living-room
+    name: "Living Room"
+  - id: master-bedroom
+    name: "Master Bedroom"
+  - id: guest-bedroom
+    name: "Guest Bedroom"
+  - id: master-bathroom
+    name: "Master Bathroom"
+  - id: guest-bathroom
+    name: "Guest Bathroom"
+  - id: kitchen
+    name: "Kitchen"
+  - id: dining-room
+    name: "Dining Room"
+  - id: home-office
+    name: "Home Office"
+  - id: hallway
+    name: "Hallway"
+  - id: terrace
+    name: "Terrace"
+
+devices:
+  # Living Room
+  - name: "Living Room Main Lights"
+    category: lighting
+    room: living-room
+    auto_simulate: true
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: true
+          - category: brightness
+            value: 75
+          - category: color_temperature
+            value: 3500
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Living Room Accent Lights"
+    category: lighting
+    room: living-room
+    auto_simulate: true
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: true
+          - category: brightness
+            value: 50
+          - category: hue
+            value: 30
+          - category: saturation
+            value: 80
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Living Room Climate"
+    category: sensor
+    room: living-room
+    auto_simulate: true
+    simulate_interval: 30000
+    channels:
+      - category: temperature
+        properties:
+          - category: temperature
+            value: 23.0
+      - category: humidity
+        properties:
+          - category: humidity
+            value: 48
+      - category: air_quality
+        properties:
+          - category: level
+            value: "excellent"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Living Room AC"
+    category: air_conditioner
+    room: living-room
+    auto_simulate: true
+    channels:
+      - category: cooler
+        properties:
+          - category: on
+            value: false
+      - category: fan
+        properties:
+          - category: speed
+            value: "auto"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Living Room TV"
+    category: television
+    room: living-room
+    channels:
+      - category: television
+        properties:
+          - category: on
+            value: false
+      - category: speaker
+        properties:
+          - category: volume
+            value: 25
+          - category: active
+            value: true
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Living Room Blinds"
+    category: window_covering
+    room: living-room
+    auto_simulate: true
+    channels:
+      - category: window_covering
+        properties:
+          - category: position
+            value: 100
+          - category: tilt
+            value: 50
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # Master Bedroom
+  - name: "Master Bedroom Lights"
+    category: lighting
+    room: master-bedroom
+    auto_simulate: true
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 30
+          - category: color_temperature
+            value: 2700
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Master Bedroom Climate"
+    category: sensor
+    room: master-bedroom
+    auto_simulate: true
+    channels:
+      - category: temperature
+        properties:
+          - category: temperature
+            value: 21.0
+      - category: humidity
+        properties:
+          - category: humidity
+            value: 50
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Master Bedroom Blinds"
+    category: window_covering
+    room: master-bedroom
+    auto_simulate: true
+    channels:
+      - category: window_covering
+        properties:
+          - category: position
+            value: 0
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # Guest Bedroom
+  - name: "Guest Bedroom Light"
+    category: lighting
+    room: guest-bedroom
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 100
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Guest Bedroom Sensor"
+    category: sensor
+    room: guest-bedroom
+    auto_simulate: true
+    channels:
+      - category: temperature
+        properties:
+          - category: temperature
+            value: 22.0
+      - category: motion
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # Master Bathroom
+  - name: "Master Bathroom Lights"
+    category: lighting
+    room: master-bathroom
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 100
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Master Bathroom Fan"
+    category: fan
+    room: master-bathroom
+    channels:
+      - category: fan
+        properties:
+          - category: on
+            value: false
+          - category: speed
+            value: "low"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Master Bathroom Sensor"
+    category: sensor
+    room: master-bathroom
+    auto_simulate: true
+    channels:
+      - category: humidity
+        properties:
+          - category: humidity
+            value: 60
+      - category: leak
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # Guest Bathroom
+  - name: "Guest Bathroom Light"
+    category: lighting
+    room: guest-bathroom
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # Kitchen
+  - name: "Kitchen Lights"
+    category: lighting
+    room: kitchen
+    auto_simulate: true
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: true
+          - category: brightness
+            value: 100
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Kitchen Outlet 1"
+    category: outlet
+    room: kitchen
+    auto_simulate: true
+    channels:
+      - category: outlet
+        properties:
+          - category: on
+            value: true
+      - category: electrical_power
+        properties:
+          - category: power
+            value: 850.0
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Kitchen Outlet 2"
+    category: outlet
+    room: kitchen
+    auto_simulate: true
+    channels:
+      - category: outlet
+        properties:
+          - category: on
+            value: true
+      - category: electrical_power
+        properties:
+          - category: power
+            value: 120.5
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Kitchen Smoke Detector"
+    category: sensor
+    room: kitchen
+    channels:
+      - category: smoke
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # Dining Room
+  - name: "Dining Room Chandelier"
+    category: lighting
+    room: dining-room
+    auto_simulate: true
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 60
+          - category: color_temperature
+            value: 3000
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # Home Office
+  - name: "Office Desk Light"
+    category: lighting
+    room: home-office
+    auto_simulate: true
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: true
+          - category: brightness
+            value: 90
+          - category: color_temperature
+            value: 5000
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Office Climate"
+    category: sensor
+    room: home-office
+    auto_simulate: true
+    channels:
+      - category: temperature
+        properties:
+          - category: temperature
+            value: 22.5
+      - category: carbon_dioxide
+        properties:
+          - category: concentration
+            value: 580
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # Hallway
+  - name: "Hallway Lights"
+    category: lighting
+    room: hallway
+    auto_simulate: true
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: true
+          - category: brightness
+            value: 40
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Front Door Lock"
+    category: lock
+    room: hallway
+    channels:
+      - category: lock
+        properties:
+          - category: status
+            value: "locked"
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Hallway Motion"
+    category: sensor
+    room: hallway
+    auto_simulate: true
+    simulate_interval: 5000
+    channels:
+      - category: motion
+        properties:
+          - category: detected
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Main Thermostat"
+    category: thermostat
+    room: hallway
+    auto_simulate: true
+    simulate_interval: 60000
+    channels:
+      - category: temperature
+        properties:
+          - category: temperature
+            value: 22.0
+      - category: heater
+        properties:
+          - category: on
+            value: true
+          - category: temperature
+            value: 22.0
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  # Terrace
+  - name: "Terrace Lights"
+    category: lighting
+    room: terrace
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 100
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+
+  - name: "Terrace Weather"
+    category: sensor
+    room: terrace
+    auto_simulate: true
+    simulate_interval: 60000
+    channels:
+      - category: temperature
+        properties:
+          - category: temperature
+            value: 18.0
+      - category: humidity
+        properties:
+          - category: humidity
+            value: 65
+      - category: illuminance
+        properties:
+          - category: illuminance
+            value: 500
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"

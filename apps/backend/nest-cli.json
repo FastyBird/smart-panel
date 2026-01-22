@@ -32,6 +32,14 @@
       {
         "include": "plugins/devices-shelly-ng/mappings/definitions/**/*.yaml",
         "outDir": "dist"
+      },
+      {
+        "include": "plugins/devices-simulator/scenarios/schema/**/*.json",
+        "outDir": "dist"
+      },
+      {
+        "include": "plugins/devices-simulator/scenarios/definitions/**/*.yaml",
+        "outDir": "dist"
       }
     ]
   }

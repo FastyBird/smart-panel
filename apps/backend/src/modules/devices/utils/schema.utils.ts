@@ -400,6 +400,7 @@ function mapPropertyCategoryToSchemaKey(category: PropertyCategory): string | nu
 		[PropertyCategory.MANUFACTURER]: 'manufacturer',
 		[PropertyCategory.MODEL]: 'model',
 		[PropertyCategory.MODE]: 'mode',
+		[PropertyCategory.MUTE]: 'mute',
 		[PropertyCategory.OBSTRUCTION]: 'obstruction',
 		[PropertyCategory.ON]: 'on',
 		[PropertyCategory.OVER_CURRENT]: 'over_current',
