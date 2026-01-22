@@ -281,6 +281,23 @@ export class MediaIntentService extends SpaceIntentBaseService {
 		return Object.keys(value).length > 0 ? value : null;
 	}
 
+	/**
+	 * Get playback control properties from a device.
+	 *
+	 * This method supports two modes:
+	 * 1. With preferredChannel: Only checks that specific channel to prevent duplicate
+	 *    commands when a device has multiple media channels (e.g., TV with both
+	 *    TELEVISION and MEDIA_PLAYBACK channels)
+	 * 2. Without preferredChannel: Searches all channels for backward compatibility
+	 *
+	 * Property priority:
+	 * - Primary: MEDIA_PLAYBACK channel → COMMAND property (direct playback control)
+	 * - Fallback: TELEVISION channel → REMOTE_KEY property (simulated remote control)
+	 *
+	 * @param device - The device entity to search
+	 * @param preferredChannel - Optional channel to restrict the search to
+	 * @returns Channel and property references for playback control
+	 */
 	private getPlaybackProperties(
 		device: DeviceEntity,
 		preferredChannel?: ChannelEntity | null,
