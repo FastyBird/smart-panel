@@ -285,14 +285,14 @@ jobs:
         with:
           node-version: "${{ matrix.node-version }}"
 
-      - name: "Install ajv-cli"
+      - name: "Install validation dependencies"
+        run: "npm install ajv yaml"
+
+      - name: "Validate device/channel specifications (YAML)"
+        run: "node spec/devices/validate.mjs"
+
+      - name: "Install ajv-cli for JSON validation"
         run: "npm install -g ajv-cli"
-
-      - name: "Validate devices.json"
-        run: "ajv validate -s spec/devices/devices.schema.json -d spec/devices/devices.json"
-
-      - name: "Validate channels.json"
-        run: "ajv validate -s spec/devices/channels.schema.json -d spec/devices/channels.json"
 
       - name: "Validate OpenWeather city.list.json"
         run: "ajv validate -s spec/weather/city.list.schema.json -d spec/weather/city.list.json"
