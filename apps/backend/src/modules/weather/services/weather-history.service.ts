@@ -1,6 +1,6 @@
 import { FieldType, IPoint } from 'influx';
 
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnApplicationBootstrap, OnModuleInit } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { InfluxDbService } from '../../influxdb/services/influxdb.service';
@@ -37,41 +37,43 @@ export interface IWeatherHistoryQuery {
 }
 
 @Injectable()
-export class WeatherHistoryService implements OnModuleInit {
+export class WeatherHistoryService implements OnModuleInit, OnApplicationBootstrap {
 	private readonly logger = createExtensionLogger(WEATHER_MODULE_NAME, 'WeatherHistoryService');
 
 	constructor(private readonly influxDb: InfluxDbService) {}
 
-	async onModuleInit(): Promise<void> {
+	onModuleInit(): void {
+		// Register schema for weather measurements (no connection needed, just adds to array)
+		this.influxDb.registerSchema({
+			measurement: MEASUREMENT_NAME,
+			fields: {
+				temperature: FieldType.FLOAT,
+				temperature_min: FieldType.FLOAT,
+				temperature_max: FieldType.FLOAT,
+				feels_like: FieldType.FLOAT,
+				pressure: FieldType.INTEGER,
+				humidity: FieldType.INTEGER,
+				clouds: FieldType.INTEGER,
+				wind_speed: FieldType.FLOAT,
+				wind_deg: FieldType.INTEGER,
+				wind_gust: FieldType.FLOAT,
+				rain: FieldType.FLOAT,
+				snow: FieldType.FLOAT,
+				weather_code: FieldType.INTEGER,
+			},
+			tags: ['location_id', 'location_name', 'weather_main'],
+		});
+
+		this.logger.log('Weather history schema registered');
+	}
+
+	async onApplicationBootstrap(): Promise<void> {
+		// Create continuous query after InfluxDB connection is initialized
 		try {
-			// Register schema for weather measurements
-			this.influxDb.registerSchema({
-				measurement: MEASUREMENT_NAME,
-				fields: {
-					temperature: FieldType.FLOAT,
-					temperature_min: FieldType.FLOAT,
-					temperature_max: FieldType.FLOAT,
-					feels_like: FieldType.FLOAT,
-					pressure: FieldType.INTEGER,
-					humidity: FieldType.INTEGER,
-					clouds: FieldType.INTEGER,
-					wind_speed: FieldType.FLOAT,
-					wind_deg: FieldType.INTEGER,
-					wind_gust: FieldType.FLOAT,
-					rain: FieldType.FLOAT,
-					snow: FieldType.FLOAT,
-					weather_code: FieldType.INTEGER,
-				},
-				tags: ['location_id', 'location_name', 'weather_main'],
-			});
-
-			// Create continuous query for aggregated data (hourly averages)
 			await this.setupContinuousQueries();
-
-			this.logger.log('Weather history schema registered');
 		} catch (error) {
 			const err = error as Error;
-			this.logger.warn('Failed to register weather schema - InfluxDB may not be available', {
+			this.logger.warn('Failed to set up continuous queries', {
 				message: err.message,
 			});
 		}

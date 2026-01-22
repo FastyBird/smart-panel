@@ -675,7 +675,13 @@ mappings:
     channel:
       category: THERMOSTAT
     device_category: THERMOSTAT
-    property_bindings: []
+    property_bindings:
+      - ha_attribute: current_temperature
+        property_category: TEMPERATURE
+      - ha_attribute: hvac_mode
+        property_category: MODE
+      - ha_attribute: hvac_action
+        property_category: STATE
 
   # ============================================================================
   # COVER ENTITIES - Window Covering

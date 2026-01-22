@@ -97,7 +97,14 @@ export class AppModule {
 			module: AppModule,
 			imports: [
 				NestConfigModule.forRoot({
-					envFilePath: [path.resolve(process.cwd(), '.env.local'), path.resolve(process.cwd(), '.env')],
+					envFilePath: [
+						// Monorepo root (../../../ from src/ or dist/)
+						path.resolve(__dirname, '../../../.env.local'),
+						path.resolve(__dirname, '../../../.env'),
+						// Local backend .env (optional override)
+						path.resolve(__dirname, '../.env.local'),
+						path.resolve(__dirname, '../.env'),
+					],
 				}),
 				CacheModule.register({
 					isGlobal: true,
@@ -122,7 +129,7 @@ export class AppModule {
 							entities: [__dirname + '/**/*.entity{.ts,.js}'],
 							subscribers: [__dirname + '/**/*.subscriber{.ts,.js}'],
 							migrations: [__dirname + '/migrations/*{.ts,.js}'],
-							synchronize: true,
+							synchronize: getEnvValue<boolean>(configService, 'FB_DB_SYNC', false),
 							logging: getEnvValue<boolean>(configService, 'FB_DB_LOGGING', false),
 						};
 					},

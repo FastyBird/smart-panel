@@ -1,4 +1,4 @@
-import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
+import { Module, OnApplicationBootstrap, OnModuleInit, forwardRef } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.module';
 
 import { ConfigModule } from '../config/config.module';
@@ -64,7 +64,7 @@ import { SYSTEM_SWAGGER_EXTRA_MODELS } from './system.openapi';
 	controllers: [SystemController, LogsController],
 	exports: [SystemService, FactoryResetRegistryService, SystemLoggerService],
 })
-export class SystemModule implements OnModuleInit {
+export class SystemModule implements OnModuleInit, OnApplicationBootstrap {
 	constructor(
 		private readonly eventRegistry: CommandEventRegistryService,
 		private readonly systemCommandService: SystemCommandService,
@@ -107,11 +107,6 @@ export class SystemModule implements OnModuleInit {
 		);
 
 		this.statsRegistryService.register(SYSTEM_MODULE_NAME, this.systemStatsProvider);
-
-		// Get system config using module config endpoint
-		const moduleConfig = this.configService.getModuleConfig<SystemConfigModel>(SYSTEM_MODULE_NAME);
-
-		this.systemLoggerService.setAllowedTypes(moduleConfig.logLevels as unknown as LogEntryType[]);
 
 		for (const model of SYSTEM_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
@@ -163,5 +158,12 @@ Logs are stored in memory and can be viewed through the admin interface.`,
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});
+	}
+
+	onApplicationBootstrap() {
+		// Access config after all modules have registered their mappings
+		const moduleConfig = this.configService.getModuleConfig<SystemConfigModel>(SYSTEM_MODULE_NAME);
+
+		this.systemLoggerService.setAllowedTypes(moduleConfig.logLevels as unknown as LogEntryType[]);
 	}
 }

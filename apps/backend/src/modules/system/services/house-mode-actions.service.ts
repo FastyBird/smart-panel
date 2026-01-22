@@ -1,4 +1,4 @@
-import { Inject, Injectable, OnModuleInit, forwardRef } from '@nestjs/common';
+import { Inject, Injectable, OnApplicationBootstrap, forwardRef } from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
@@ -23,7 +23,7 @@ import { EventType, HouseMode, SYSTEM_MODULE_NAME } from '../system.constants';
  * the house mode actually changes, then executes the appropriate actions.
  */
 @Injectable()
-export class HouseModeActionsService implements OnModuleInit {
+export class HouseModeActionsService implements OnApplicationBootstrap {
 	private readonly logger = createExtensionLogger(SYSTEM_MODULE_NAME, 'HouseModeActionsService');
 	private previousMode: HouseMode | null = null;
 	private pendingAction: Promise<void> = Promise.resolve();
@@ -37,26 +37,19 @@ export class HouseModeActionsService implements OnModuleInit {
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
-	onModuleInit(): void {
-		// Initialize previous mode from current config
-		try {
-			const config = this.configService.getModuleConfig<SystemConfigModel>(SYSTEM_MODULE_NAME);
-			this.previousMode = config.houseMode;
-			this.logger.log(`Initialized house mode tracking, current mode=${this.previousMode}`);
-		} catch {
-			this.logger.warn('Could not read initial house mode, will execute actions on first detection');
-			this.previousMode = null;
-		}
+	onApplicationBootstrap(): void {
+		// Initialize previous mode from current config (after all mappings are registered)
+		const config = this.configService.getModuleConfig<SystemConfigModel>(SYSTEM_MODULE_NAME);
+		this.previousMode = config.houseMode;
+		this.logger.log(`Initialized house mode tracking, current mode=${this.previousMode}`);
 	}
 
 	/**
 	 * Listen for config updates and detect house mode changes.
 	 * When house mode changes, emit the specific event and execute actions.
 	 *
-	 * Handles two edge cases:
-	 * 1. First detection after init failure: executes actions for the detected mode
-	 * 2. Rapid mode changes: serializes action execution via pendingAction chain
-	 *    to prevent concurrent/interleaved lighting commands
+	 * Rapid mode changes are serialized via pendingAction chain to prevent
+	 * concurrent/interleaved lighting commands.
 	 */
 	@OnEvent(ConfigEventType.CONFIG_UPDATED)
 	async onConfigUpdated(): Promise<void> {
@@ -64,25 +57,18 @@ export class HouseModeActionsService implements OnModuleInit {
 			const config = this.configService.getModuleConfig<SystemConfigModel>(SYSTEM_MODULE_NAME);
 			const newMode = config.houseMode;
 
-			const isFirstDetection = this.previousMode === null;
-			const modeChanged = this.previousMode !== null && newMode !== this.previousMode;
-
-			if (isFirstDetection || modeChanged) {
+			if (newMode !== this.previousMode) {
 				const oldMode = this.previousMode;
 				// Update immediately to prevent duplicate detection from concurrent events
 				this.previousMode = newMode;
 
-				if (modeChanged) {
-					this.logger.log(`House mode changed from=${oldMode} to=${newMode}`);
+				this.logger.log(`House mode changed from=${oldMode} to=${newMode}`);
 
-					// Emit the specific house mode changed event
-					this.eventEmitter.emit(EventType.HOUSE_MODE_CHANGED, {
-						previousMode: oldMode,
-						newMode: newMode,
-					});
-				} else {
-					this.logger.log(`First house mode detection: mode=${newMode}`);
-				}
+				// Emit the specific house mode changed event
+				this.eventEmitter.emit(EventType.HOUSE_MODE_CHANGED, {
+					previousMode: oldMode,
+					newMode: newMode,
+				});
 
 				// Queue actions to serialize execution and prevent interleaving
 				// Each action waits for previous to complete before starting

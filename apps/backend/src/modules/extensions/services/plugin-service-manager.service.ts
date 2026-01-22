@@ -121,7 +121,8 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 
 	/**
 	 * Called by NestJS when application bootstrap is complete.
-	 * Starts all services for enabled plugins.
+	 * Starts all services for enabled plugins in parallel where possible.
+	 * Services are grouped by dependency levels and each level starts in parallel.
 	 */
 	async onApplicationBootstrap(): Promise<void> {
 		if (this.isCliMode) {
@@ -133,10 +134,19 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 
 		this.logger.log(`Starting ${this.services.size} registered services`);
 
-		const sorted = this.getSortedServices();
+		const levels = this.getServiceLevels();
 
-		for (const registration of sorted) {
-			await this.startServiceIfEnabled(registration);
+		for (let level = 0; level < levels.length; level++) {
+			const levelServices = levels[level];
+
+			if (levelServices.length === 0) {
+				continue;
+			}
+
+			this.logger.log(`Starting level ${level} services (${levelServices.length} services)`);
+
+			// Start all services at this level in parallel
+			await Promise.all(levelServices.map((registration) => this.startServiceIfEnabled(registration)));
 		}
 
 		this.startupComplete = true;
@@ -619,6 +629,82 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		}
 
 		return sorted;
+	}
+
+	/**
+	 * Groups services into dependency levels for parallel startup.
+	 * Level 0 contains services with no dependencies.
+	 * Level N contains services whose dependencies are all in levels < N.
+	 * Within each level, services are sorted by priority.
+	 */
+	private getServiceLevels(): ServiceRegistration[][] {
+		const levels: ServiceRegistration[][] = [];
+		const serviceLevels = new Map<string, number>();
+		const registrations = Array.from(this.services.values());
+
+		// Calculate level for each service based on dependencies
+		const calculateLevel = (reg: ServiceRegistration, visiting: Set<string>): number => {
+			const key = this.getServiceKey(reg.pluginName, reg.serviceId);
+
+			// Already calculated
+			if (serviceLevels.has(key)) {
+				return serviceLevels.get(key);
+			}
+
+			// Circular dependency detection
+			if (visiting.has(key)) {
+				this.logger.warn(`Circular dependency detected for ${key}, treating as level 0`);
+
+				return 0;
+			}
+
+			visiting.add(key);
+
+			const deps = reg.service.getDependencies?.() ?? [];
+			let maxDepLevel = -1;
+
+			for (const depKey of deps) {
+				const depReg = this.services.get(depKey);
+
+				if (depReg) {
+					const depLevel = calculateLevel(depReg, visiting);
+
+					maxDepLevel = Math.max(maxDepLevel, depLevel);
+				}
+			}
+
+			visiting.delete(key);
+
+			const level = maxDepLevel + 1;
+
+			serviceLevels.set(key, level);
+
+			return level;
+		};
+
+		// Calculate levels for all services
+		for (const reg of registrations) {
+			calculateLevel(reg, new Set());
+		}
+
+		// Group services by level
+		for (const reg of registrations) {
+			const key = this.getServiceKey(reg.pluginName, reg.serviceId);
+			const level = serviceLevels.get(key) ?? 0;
+
+			while (levels.length <= level) {
+				levels.push([]);
+			}
+
+			levels[level].push(reg);
+		}
+
+		// Sort each level by priority (lower first)
+		for (const level of levels) {
+			level.sort((a, b) => a.priority - b.priority);
+		}
+
+		return levels;
 	}
 
 	private getPluginConfig(pluginName: string): PluginConfigModel | null {
