@@ -25,7 +25,12 @@ export class GlobalErrorFilter implements ExceptionFilter {
 		if (exception instanceof Error) {
 			exceptionMessage = exception.message;
 		} else if (typeof exception === 'object' && exception !== null) {
-			exceptionMessage = JSON.stringify(exception);
+			try {
+				exceptionMessage = JSON.stringify(exception);
+			} catch {
+				// Handle circular references, BigInt, or other non-serializable values
+				exceptionMessage = Object.prototype.toString.call(exception);
+			}
 		} else if (typeof exception === 'string') {
 			exceptionMessage = exception;
 		} else {
