@@ -6,16 +6,16 @@ import { Callout } from 'nextra/components'
 	**Channel Category**: `humidifier`
 </Callout>
 
-Controls the humidifier, including on/off state, target humidity, mist settings, and operating modes.
+Controls humidifier devices, including on/off state, target humidity, mist settings, and operating modes.
 
 ---
 
 ## Required Properties
 
-| **Property** | **Data Type** | **Range**   | **Unit** | **Permissions**  |
-|--------------|---------------|-------------|----------|------------------|
-| `on`         | `Bool`        | `true/false`| -        | RW (Read/Write)  |
-| `humidity`   | `Uchar`       | `0–100`     | %        | RW (Read/Write)  |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `on` | Bool | - | - | RW (Read-Write) |
+| `humidity` | Uchar | 0–100 | % | RW (Read-Write) |
 
 ---
 
@@ -23,32 +23,25 @@ Controls the humidifier, including on/off state, target humidity, mist settings,
 
 #### `on`
 
-Turn the humidifier on or off:
-
-- `true`: The humidifier is on.
-- `false`: The humidifier is off.
+Turn the humidifier on or off
 
 #### `humidity`
 
-Target humidity level:
-
-- **Range**: `0–100%`
-- Set the desired humidity level for the humidifier to maintain.
-
----
+Target humidity level
 
 ## Optional Properties
 
-| **Property**       | **Data Type**           | **Range**                            | **Unit** | **Permissions** |
-|--------------------|-------------------------|--------------------------------------|----------|-----------------|
-| `mode`             | `Enum`                  | `auto/manual/sleep/baby`             | -        | RW (Read/Write) |
-| `status`           | `Enum`                  | `idle/humidifying`                   | -        | RO (Read-Only)  |
-| `mist_level`       | `Uchar` or `Enum`       | `0–100` or `off/low/medium/high`     | %        | RW (Read/Write) |
-| `warm_mist`        | `Bool`                  | `true/false`                         | -        | RW (Read/Write) |
-| `water_tank_empty` | `Bool`                  | `true/false`                         | -        | RO (Read-Only)  |
-| `water_tank_level` | `Uchar`                 | `0–100`                              | %        | RO (Read-Only)  |
-| `timer`            | `Ushort` or `Enum`      | `0–86400` or `off/30m/1h/2h/4h/8h/12h` | s        | RW (Read/Write) |
-| `fault`            | `Uchar`                 | `0–255`                              | -        | RO (Read-Only)  |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `mode` | Enum | `auto`, `manual`, `sleep`, `baby` | - | RW (Read-Write) |
+| `status` | Enum | `idle`, `humidifying` | - | RO (Read-Only) |
+| `mist_level` | Uchar | 0–100 | % | RW (Read-Write) |
+| `warm_mist` | Bool | - | - | RW (Read-Write) |
+| `water_tank_empty` | Bool | - | - | RO (Read-Only) |
+| `water_tank_level` | Uchar | 0–100 | % | RO (Read-Only) |
+| `timer` | Ushort | 0–86400 | s | RW (Read-Write) |
+| `locked` | Bool | - | - | RW (Read-Write) |
+| `fault` | Uchar | 0–255 | - | RO (Read-Only) |
 
 ---
 
@@ -56,73 +49,47 @@ Target humidity level:
 
 #### `mode`
 
-Operating mode of the humidifier:
-
-- `auto`: Automatic operation based on ambient conditions.
-- `manual`: Manual operation with user-defined settings.
-- `sleep`: Quiet operation optimized for sleeping.
-- `baby`: Gentle operation mode optimized for nurseries.
+Operating mode of the humidifier
 
 #### `status`
 
-Current operational status:
-
-- `idle`: The humidifier is not actively humidifying.
-- `humidifying`: The humidifier is actively adding moisture.
+Current operational status
 
 #### `mist_level`
 
-Mist output intensity level. This property supports multiple data types:
+Mist output intensity level
 
-**Option 1 - Percentage:**
-- **Data Type**: `Uchar`
-- **Range**: `0–100%`
-- Fine-grained control over mist output.
+This property supports multiple data type variants:
 
-**Option 2 - Discrete Levels:**
-- **Data Type**: `Enum`
-- **Values**: `off`, `low`, `medium`, `high`
-- Predefined mist intensity levels.
+- **percentage**: Uchar (0–100) in % - Mist level as percentage (0-100%)
+- **level**: Enum (`off`, `low`, `medium`, `high`) - Mist level as discrete levels
 
 #### `warm_mist`
 
-Enable warm mist feature:
-
-- `true`: Warm mist is enabled.
-- `false`: Cool mist only.
+Enable warm mist feature
 
 #### `water_tank_empty`
 
-Water tank empty indicator:
-
-- `true`: The water tank is empty and needs to be refilled.
-- `false`: The water tank has water available.
+Water tank empty indicator
 
 #### `water_tank_level`
 
-Water tank level as percentage:
-
-- **Range**: `0–100%`
-- Indicates how much water remains in the tank.
+Water tank level as percentage
 
 #### `timer`
 
-Auto-off timer for the humidifier. This property supports multiple data types:
+Auto-off timer - integrator can choose between duration or preset intervals
 
-**Option 1 - Duration:**
-- **Data Type**: `Ushort`
-- **Range**: `0–86400` seconds (0-24 hours)
-- `0`: Timer disabled.
-- Non-zero: Humidifier will turn off after specified seconds.
+This property supports multiple data type variants:
 
-**Option 2 - Preset Intervals:**
-- **Data Type**: `Enum`
-- **Values**: `off`, `30m`, `1h`, `2h`, `4h`, `8h`, `12h`
-- Predefined timer intervals.
+- **duration**: Ushort (0–86400) in s - Timer duration in seconds (0-86400)
+- **preset**: Enum (`off`, `30m`, `1h`, `2h`, `4h`, `8h`, `12h`) - Preset timer intervals
+
+#### `locked`
+
+Child lock or panel lock state
 
 #### `fault`
 
-Represents the fault state of the humidifier:
+Fault code or diagnostic indicator (0 = no fault)
 
-- `0`: No fault detected.
-- Non-zero: A fault has been detected, potentially affecting functionality.

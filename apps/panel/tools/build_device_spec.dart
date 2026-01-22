@@ -1,9 +1,10 @@
-import 'dart:convert';
 import 'dart:io';
+
+import 'package:yaml/yaml.dart';
 
 void main() async {
   final inputFile = File(Platform.script
-      .resolve('../../../spec/devices/devices.json')
+      .resolve('../../../spec/devices/devices.yaml')
       .toFilePath());
   final outputPath =
       Platform.script.resolve('../lib/spec/device_spec.g.dart').toFilePath();
@@ -19,8 +20,9 @@ void main() async {
   // Ensure the directory exists
   await Directory(outputFile.parent.path).create(recursive: true);
 
-  final json =
-      jsonDecode(await inputFile.readAsString()) as Map<String, dynamic>;
+  final yamlContent = await inputFile.readAsString();
+  final yamlData = loadYaml(yamlContent) as YamlMap;
+  final json = _yamlToMap(yamlData);
 
   final buffer = StringBuffer();
 
@@ -178,3 +180,25 @@ String _camelToEnum(String input) => input.replaceAllMapped(
       RegExp(r'_([a-z])'),
       (m) => m.group(1)!.toUpperCase(),
     );
+
+/// Converts YamlMap to regular Map<String, dynamic>
+Map<String, dynamic> _yamlToMap(YamlMap yamlMap) {
+  final result = <String, dynamic>{};
+  for (final entry in yamlMap.entries) {
+    final key = entry.key.toString();
+    final value = entry.value;
+    result[key] = _convertYamlValue(value);
+  }
+  return result;
+}
+
+/// Converts YAML values to Dart types
+dynamic _convertYamlValue(dynamic value) {
+  if (value is YamlMap) {
+    return _yamlToMap(value);
+  } else if (value is YamlList) {
+    return value.map(_convertYamlValue).toList();
+  } else {
+    return value;
+  }
+}

@@ -6,15 +6,15 @@ import { Callout } from 'nextra/components'
 	**Channel Category**: `media_input`
 </Callout>
 
-Manages the input sources of multimedia devices like TVs, projectors, or audio receivers.
+Manages the input sources of multimedia devices like TVs, receivers, or audio systems.
 
 ---
 
 ## Required Properties
 
-| **Property** | **Data Type** | **Range**                 | **Unit** | **Permissions** |
-|--------------|---------------|---------------------------|----------|-----------------|
-| `source`     | `Enum`        | `hdmi1/hdmi2/usb/optical` | -        | RW (Read-Write) |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `source` | Enum | `hdmi1`, `hdmi2`, `hdmi3`, `hdmi4`, `hdmi5`, `hdmi6`, `arc`, `earc`, `tv`, `cable`, `satellite`, `antenna`, `av1`, `av2`, `component`, `vga`, `dvi`, `usb`, `bluetooth`, `wifi`, `airplay`, `cast`, `dlna`, `miracast`, `app_netflix`, `app_youtube`, `app_spotify`, `app_prime_video`, `app_disney_plus`, `app_hbo_max`, `app_apple_tv`, `app_plex`, `app_kodi`, `other` | - | RW (Read-Write) |
 
 ---
 
@@ -22,17 +22,19 @@ Manages the input sources of multimedia devices like TVs, projectors, or audio r
 
 #### `source`
 
-- Represents the selected input source.
-- Example values:
-    - `hdmi1`, `hdmi2`, `usb`, `optical`, `streaming`.
+Select input/source using either a standardized identifier or an integration-specific value.
 
----
+This property supports multiple data type variants:
+
+- **standard**: Enum (`hdmi1`, `hdmi2`, `hdmi3`, `hdmi4`, `hdmi5`, `hdmi6`, `arc`, `earc`, `tv`, `cable`, `satellite`, `antenna`, `av1`, `av2`, `component`, `vga`, `dvi`, `usb`, `bluetooth`, `wifi`, `airplay`, `cast`, `dlna`, `miracast`, `app_netflix`, `app_youtube`, `app_spotify`, `app_prime_video`, `app_disney_plus`, `app_hbo_max`, `app_apple_tv`, `app_plex`, `app_kodi`, `other`) - Standardized input/source identifier (recommended for UI).
+- **custom**: String - Integration-specific input/source value (fallback).
 
 ## Optional Properties
 
-| **Property** | **Data Type** | **Range**    | **Unit** | **Permissions** |
-|--------------|---------------|--------------|----------|-----------------|
-| `active`     | `Bool`        | `true/false` | -        | RO (Read-Only)  |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `active` | Bool | - | - | RO (Read-Only) |
+| `source_label` | String | - | - | RO (Read-Only) |
 
 ---
 
@@ -40,4 +42,9 @@ Manages the input sources of multimedia devices like TVs, projectors, or audio r
 
 #### `active`
 
-- Indicates whether the selected input is actively in use.
+Indicates if the channel/sensor is currently active and functioning
+
+#### `source_label`
+
+Human-readable label for the current input/source.
+

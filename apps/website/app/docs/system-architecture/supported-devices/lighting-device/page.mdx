@@ -6,18 +6,18 @@ import { Callout } from 'nextra/components'
 	**Device Category**: `lighting`
 </Callout>
 
-The **Lighting** device represents a lighting system designed to provide illumination with optional features for energy tracking, brightness control, and adaptive lighting based on ambient conditions.
+The Lighting device represents a lighting system designed to provide illumination with optional features for energy tracking, brightness control, and adaptive lighting based on ambient conditions.
 
 ---
 
 ## Required Channels
 
-These channels are mandatory for the functionality of the lighting device:
+These channels are mandatory for the functionality of the lighting:
 
-| **Channel**          | **Description**                                                                       | **Multiple** | **Details**                                                                            |
-|----------------------|---------------------------------------------------------------------------------------|--------------|----------------------------------------------------------------------------------------|
-| `light`              | Controls the lighting functionality, including power, brightness, and color settings. | Yes          | [See details](/docs/system-architecture/supported-channels/light-channel)              |
-| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware.        | No           | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
+| **Channel** | **Description** | **Multiple** | **Details** |
+|-------------|-----------------|--------------|-------------|
+| `light` | Controls lighting devices, supporting brightness, color temperature, and color adjustments. | Yes | [See details](/docs/system-architecture/supported-channels/light-channel) |
+| `device_information` | Provides metadata about the device, including manufacturer details, model information, and operational statuses. | No | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
 
 ---
 
@@ -25,43 +25,30 @@ These channels are mandatory for the functionality of the lighting device:
 
 These channels are optional and provide additional features:
 
-| **Channel**         | **Description**                               | **Multiple** | **Details**                                                                           |
-|---------------------|-----------------------------------------------|--------------|---------------------------------------------------------------------------------------|
-| `electrical_energy` | Tracks total energy consumption over time.    | No           | [See details](/docs/system-architecture/supported-channels/electrical-energy-channel) |
-| `electrical_power`  | Provides real-time power usage information.   | No           | [See details](/docs/system-architecture/supported-channels/electrical-power-channel)  |
-| `illuminance`       | Measures the ambient light level in the room. | No           | [See details](/docs/system-architecture/supported-channels/illuminance-channel)       |
+| **Channel** | **Description** | **Multiple** | **Details** |
+|-------------|-----------------|--------------|-------------|
+| `electrical_energy` | Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh). | No | [See details](/docs/system-architecture/supported-channels/electrical-energy-channel) |
+| `electrical_power` | Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics. | No | [See details](/docs/system-architecture/supported-channels/electrical-power-channel) |
+| `illuminance` | Detects ambient light levels, typically measured in lux, to monitor brightness in a space. | No | [See details](/docs/system-architecture/supported-channels/illuminance-channel) |
 
 ---
 
 ## Use Case Scenarios
 
-1. **Lighting Control**:
-   - Turn the lights on or off and adjust brightness or color through the `light` channel.
-   - Support multiple lighting zones or fixtures with independent controls.
+1. **Illumination Control**:
+    - Control brightness, color temperature, and color using the light channel. Support for multiple light elements in a single fixture.
 
-2. **Environmental Monitoring**:
-   - Measure ambient light levels using the `illuminance` channel for adaptive lighting.
+2. **Adaptive Lighting**:
+    - Use the illuminance channel to automatically adjust lighting based on ambient light levels.
 
-3. **Energy Management**:
-   - Track energy usage in real-time with the `electrical_power` channel.
-   - Monitor long-term energy consumption with the `electrical_energy` channel.
+3. **Energy Monitoring**:
+    - Track lighting energy consumption for efficiency analysis.
 
 ---
 
 ## Developer Notes
 
-1. **Channel Implementation**:
-   - Implement all required channels for basic lighting functionality.
-   - Add optional channels for advanced features like energy tracking and light level monitoring.
+1. The light channel is required and supports multiple instances for multi-element fixtures.
+2. Illuminance sensor enables automatic brightness adjustment.
+3. Not all lights support color or color temperature - check device capabilities.
 
-2. **Integration**:
-   - Map the `light` channel to the physical or logical controls for the lighting device.
-   - Include the `device_information` channel for proper device identification.
-
-3. **Energy Tracking**:
-   - Use `electrical_energy` and `electrical_power` channels to offer energy usage insights.
-
-4. **Extensibility**:
-   - Add the `illuminance` channel for adaptive lighting based on room brightness.
-   - Customize the `light` channel for advanced lighting effects or modes.
-   - Support multiple `light` channels for complex lighting systems or multi-zone fixtures.

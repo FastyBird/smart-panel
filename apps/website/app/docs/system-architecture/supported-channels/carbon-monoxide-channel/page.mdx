@@ -1,6 +1,6 @@
 import { Callout } from 'nextra/components'
 
-# Carbon Monoxide Sensor Channel
+# Carbon Monoxide Channel
 
 <Callout type="info">
 	**Channel Category**: `carbon_monoxide`
@@ -8,20 +8,25 @@ import { Callout } from 'nextra/components'
 
 Detects the presence of carbon monoxide (CO) to ensure safety in enclosed spaces.
 
-<Callout type="warning">
-	At least one of `detected` or `density` must be provided.
-</Callout>
-
 ---
 
-## Required Properties
+## Property Constraints
 
-At least one of the following properties must be present:
+<Callout type="warning">
+At least one property from each of the following groups must be present:
+- `detected` or `concentration`
+</Callout>
 
-| **Property** | **Data Type** | **Range**    | **Unit** | **Permissions** |
-|--------------|---------------|--------------|----------|-----------------|
-| `detected`   | `Bool`        | `true/false` | -        | RO (Read-Only)  |
-| `density`    | `Float`       | `0.0–100.0`  | ppm      | RO (Read-Only)  |
+## Optional Properties
+
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `detected` | Bool | - | - | RO (Read-Only) |
+| `concentration` | Float | 0–100 | ppm | RO (Read-Only) |
+| `peak_level` | Float | 0–100 | ppm | RO (Read-Only) |
+| `active` | Bool | - | - | RO (Read-Only) |
+| `fault` | Uchar | 0–255 | - | RO (Read-Only) |
+| `tampered` | Bool | - | - | RO (Read-Only) |
 
 ---
 
@@ -29,57 +34,23 @@ At least one of the following properties must be present:
 
 #### `detected`
 
-Indicates whether the sensor detects abnormal levels of carbon monoxide:
+Binary detection state (true = detected)
 
-- `true`: Abnormal CO levels detected.
-- `false`: CO levels have returned to normal.
+#### `concentration`
 
-#### `density`
-
-Reports the current detected carbon monoxide (CO) level in parts per million (ppm).
-
-> [!Notes]:
-Either `detected` or `density` must be included, depending on the use case. If only `density` is provided, values
-of **9 ppm** or higher are considered poor air quality, and values exceeding **35 ppm** may indicate dangerous
-conditions requiring immediate attention. Value above provided thresholds will be displayed as warning and
-error respectively
-
----
-
-## Optional Properties
-
-| **Property**  | **Data Type** | **Range**    | **Unit** | **Permissions** |
-|---------------|---------------|--------------|----------|-----------------|
-| `peak_level`  | `Float`       | `0.0–100.0`  | ppm      | RO (Read-Only)  |
-| `active`      | `Bool`        | `true/false` | -        | RO (Read-Only)  |
-| `fault`       | `Uchar`       | `0–255`      | -        | RO (Read-Only)  |
-| `tampered`    | `Bool`        | `true/false` | -        | RO (Read-Only)  |
-
----
-
-### Property Details
+Measured concentration level
 
 #### `peak_level`
 
-Indicates the highest carbon monoxide (CO) level detected by the sensor, in parts per million (ppm).
-
 #### `active`
 
-Indicates the channel's current working status:
-
-- `true`: The sensor is active and functioning correctly.
-- `false`: The sensor is inactive or non-functional.
+Indicates if the channel/sensor is currently active and functioning
 
 #### `fault`
 
-Represents the fault state of the sensor:
-
-- `0`: No fault detected.
-- Non-zero: A fault has been detected, potentially affecting functionality.
+Fault code or diagnostic indicator (0 = no fault)
 
 #### `tampered`
 
-Indicates whether the channel has been tampered with:
+Indicates if the device has been tampered with
 
-- `true`: The channel has been tampered with.
-- `false`: The channel is in a normal, non-tampered state.

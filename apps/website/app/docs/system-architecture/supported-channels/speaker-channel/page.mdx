@@ -6,15 +6,15 @@ import { Callout } from 'nextra/components'
 	**Channel Category**: `speaker`
 </Callout>
 
-Controls speaker devices, including volume, mute state, and audio output modes.
+Controls speaker devices, including volume, mute state, balance, and audio equalization.
 
 ---
 
 ## Required Properties
 
-| **Property** | **Data Type** | **Range**    | **Unit** | **Permissions** |
-|--------------|---------------|--------------|----------|-----------------|
-| `active`     | `Bool`        | `true/false` | -        | RW (Read/Write) |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `active` | Bool | - | - | RW (Read-Write) |
 
 ---
 
@@ -22,19 +22,18 @@ Controls speaker devices, including volume, mute state, and audio output modes.
 
 #### `active`
 
-Indicates whether the speaker is muted:
-
-- `true`: Audio output is active.
-- `false`: Audio output is muted.
-
----
+Indicates if the channel/sensor is currently active and functioning
 
 ## Optional Properties
 
-| **Property** | **Data Type** | **Range**              | **Unit** | **Permissions** |
-|--------------|---------------|------------------------|----------|-----------------|
-| `volume`     | `Uchar` or `Enum` | `0–100` or `mute/low/medium/high/max` | %        | RW (Read/Write) |
-| `mode`       | `Enum`        | `stereo/mono/surround` | -        | RW (Read/Write) |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `volume` | Uchar | 0–100 | % | RW (Read-Write) |
+| `mode` | Enum | `stereo`, `mono`, `surround` | - | RW (Read-Write) |
+| `mute` | Bool | - | - | RW (Read-Write) |
+| `balance` | Float | -1–1 | - | RW (Read-Write) |
+| `bass` | Float | -10–10 | - | RW (Read-Write) |
+| `treble` | Float | -10–10 | - | RW (Read-Write) |
 
 ---
 
@@ -42,24 +41,30 @@ Indicates whether the speaker is muted:
 
 #### `volume`
 
-Represents the current volume level. This property supports multiple data types:
+Volume control - integrator can choose between percentage or discrete levels
 
-**Option 1 - Percentage:**
-- **Data Type**: `Uchar`
-- **Range**: `0–100%`
-- `0`: Minimum volume (silent).
-- `100`: Maximum volume (full audio output).
+This property supports multiple data type variants:
 
-**Option 2 - Discrete Levels:**
-- **Data Type**: `Enum`
-- **Values**: `mute`, `low`, `medium`, `high`, `max`
-- Predefined volume levels.
+- **percentage**: Uchar (0–100) in % - Volume as percentage (0-100%)
+- **level**: Enum (`mute`, `low`, `medium`, `high`, `max`) - Volume as discrete levels
 
 #### `mode`
 
-Represents the playback mode of the speaker.
+Operating mode selection
 
-Possible values:
-- `stereo`: Standard stereo output (left and right channels).
-- `mono`: Single-channel audio.
-- `surround`: Multi-channel surround sound (e.g., 5.1 or 7.1 configurations).
+#### `mute`
+
+Mute audio output.
+
+#### `balance`
+
+Left/right balance (-1.0..1.0).
+
+#### `bass`
+
+Bass adjustment.
+
+#### `treble`
+
+Treble adjustment.
+

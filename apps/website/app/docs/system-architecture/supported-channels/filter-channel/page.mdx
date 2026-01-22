@@ -6,16 +6,19 @@ import { Callout } from 'nextra/components'
 	**Channel Category**: `filter`
 </Callout>
 
-Monitors the filter status and remaining life, with option to reset after replacement.
+Monitors filter status and remaining life, with option to reset after replacement.
 
 ---
 
-## Required Properties
+## Optional Properties
 
-| **Property**    | **Data Type** | **Range**                           | **Unit** | **Permissions** |
-|-----------------|---------------|-------------------------------------|----------|-----------------|
-| `life_remaining`| `Uchar`       | `0–100`                             | %        | RO (Read-Only)  |
-| `status`        | `Enum`        | `good/replace_soon/replace_now`     | -        | RO (Read-Only)  |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `life_remaining` | Uchar | 0–100 | % | RO (Read-Only) |
+| `status` | Enum | `good`, `replace_soon`, `replace_now` | - | RO (Read-Only) |
+| `change_needed` | Bool | - | - | RO (Read-Only) |
+| `reset` | Bool | - | - | WO (Write-Only) |
+| `fault` | Uchar | 0–255 | - | RO (Read-Only) |
 
 ---
 
@@ -23,51 +26,21 @@ Monitors the filter status and remaining life, with option to reset after replac
 
 #### `life_remaining`
 
-Represents the remaining filter life as a percentage:
-
-- **Range**: `0–100%`
-- Higher values indicate more remaining filter life.
-- When this value approaches 0, the filter should be replaced.
+Remaining filter life as percentage
 
 #### `status`
 
-Indicates the current status of the filter:
-
-- `good`: The filter is in good condition and does not need replacement.
-- `replace_soon`: The filter life is running low and should be replaced soon.
-- `replace_now`: The filter needs immediate replacement.
-
----
-
-## Optional Properties
-
-| **Property**    | **Data Type** | **Range**     | **Unit** | **Permissions** |
-|-----------------|---------------|---------------|----------|-----------------|
-| `change_needed` | `Bool`        | `true/false`  | -        | RO (Read-Only)  |
-| `reset`         | `Bool`        | `true/false`  | -        | WO (Write-Only) |
-| `fault`         | `Uchar`       | `0–255`       | -        | RO (Read-Only)  |
-
----
-
-### Property Details
+Current filter status
 
 #### `change_needed`
 
-Indicates if filter change is needed:
-
-- `true`: The filter needs to be changed.
-- `false`: The filter does not need to be changed.
+Indicates if filter change is needed
 
 #### `reset`
 
-Reset filter life indicator after replacement:
-
-- Write `true` to reset the filter life indicator after replacing the filter.
-- This is a write-only property.
+Reset filter life indicator after replacement
 
 #### `fault`
 
-Represents the fault state of the filter:
+Fault code or diagnostic indicator (0 = no fault)
 
-- `0`: No fault detected.
-- Non-zero: A fault has been detected, potentially affecting functionality.

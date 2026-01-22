@@ -6,19 +6,18 @@ import { Callout } from 'nextra/components'
 	**Device Category**: `speaker`
 </Callout>
 
-The **Speaker** device represents an audio output system capable of producing sound and potentially
-supporting media playback and input functionality.
+The Speaker device represents an audio output system capable of producing sound and potentially supporting media playback and input functionality.
 
 ---
 
 ## Required Channels
 
-These channels are mandatory for the functionality of the speaker device:
+These channels are mandatory for the functionality of the speaker:
 
-| **Channel**          | **Description**                                                                      | **Multiple** | **Details**                                                                            |
-|----------------------|--------------------------------------------------------------------------------------|--------------|----------------------------------------------------------------------------------------|
-| `speaker`            | Manages the speaker's audio output capabilities, including volume and active status. | Yes          | [See details](/docs/system-architecture/supported-channels/speaker-channel)            |
-| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware.       | No           | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
+| **Channel** | **Description** | **Multiple** | **Details** |
+|-------------|-----------------|--------------|-------------|
+| `speaker` | Controls speaker devices, including volume, mute state, and audio output modes. | Yes | [See details](/docs/system-architecture/supported-channels/speaker-channel) |
+| `device_information` | Provides metadata about the device, including manufacturer details, model information, and operational statuses. | No | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
 
 ---
 
@@ -26,38 +25,32 @@ These channels are mandatory for the functionality of the speaker device:
 
 These channels are optional and provide additional features:
 
-| **Channel**         | **Description**                                                         | **Multiple** | **Details**                                                                           |
-|---------------------|-------------------------------------------------------------------------|--------------|---------------------------------------------------------------------------------------|
-| `electrical_energy` | Tracks total energy consumption over time.                              | No           | [See details](/docs/system-architecture/supported-channels/electrical-energy-channel) |
-| `electrical_power`  | Provides real-time power usage information.                             | No           | [See details](/docs/system-architecture/supported-channels/electrical-power-channel)  |
-| `media_input`       | Allows input of media data, such as audio streams, for playback.        | No           | [See details](/docs/system-architecture/supported-channels/media-input-channel)       |
-| `media_playback`    | Controls media playback functionality, including play, pause, and stop. | No           | [See details](/docs/system-architecture/supported-channels/media-playback-channel)    |
+| **Channel** | **Description** | **Multiple** | **Details** |
+|-------------|-----------------|--------------|-------------|
+| `switcher` | Optional power control for speakers/soundbars when supported (hard power / standby). | No | [See details](/docs/system-architecture/supported-channels/switcher-channel) |
+| `electrical_energy` | Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh). | No | [See details](/docs/system-architecture/supported-channels/electrical-energy-channel) |
+| `electrical_power` | Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics. | No | [See details](/docs/system-architecture/supported-channels/electrical-power-channel) |
+| `media_input` | Manages the input sources of multimedia devices like TVs, projectors, or audio receivers. | No | [See details](/docs/system-architecture/supported-channels/media-input-channel) |
+| `media_playback` | Provides playback controls for multimedia devices, excluding volume control. | No | [See details](/docs/system-architecture/supported-channels/media-playback-channel) |
 
 ---
 
 ## Use Case Scenarios
 
-1. **Audio Output Control**:
-    - Use the `speaker` channel to manage volume and toggle the speaker's active status.
+1. **Audio Output**:
+    - Control volume, mute state, and audio modes using the speaker channel. Support for multiple speaker zones.
 
-2. **Energy Monitoring**:
-    - Track power usage and energy consumption using the `electrical_power` and `electrical_energy` channels.
+2. **Media Playback**:
+    - Play audio content with optional media_playback channel. Switch between input sources with media_input.
 
-3. **Media Management**:
-    - Enable audio playback functionality through the `mediaPlayback` channel.
-    - Support external audio input using the `mediaInput` channel for a complete media experience.
+3. **Power Management**:
+    - Control speaker power state with optional switcher channel.
 
 ---
 
 ## Developer Notes
 
-1. **Channel Implementation**:
-    - Ensure the `device_information` channel is implemented for proper device identification.
-    - The `speaker` channel is essential for managing audio output features.
+1. The speaker channel is required and supports multiple instances.
+2. Media playback and input channels are optional for smart speakers.
+3. Switcher provides power control when available.
 
-2. **Integration**:
-    - Optional channels like `mediaPlayback` and `mediaInput` should be added to extend the device's functionality for advanced media handling.
-
-3. **Extensibility**:
-    - Use `electrical_energy` and `electrical_power` channels for tracking energy consumption, especially in high-use scenarios.
-    - The `mediaInput` and `mediaPlayback` channels can enhance the speaker's capabilities in entertainment systems.

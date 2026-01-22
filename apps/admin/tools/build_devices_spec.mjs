@@ -1,18 +1,41 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import YAML from 'yaml';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const inputPath = path.join(__dirname, '../../../spec/devices/devices.json');
+const inputPath = path.join(__dirname, '../../../spec/devices/devices.yaml');
 const outputPath = path.join(__dirname, '../src/spec/devices.ts');
 
 const raw = fs.readFileSync(inputPath, 'utf-8');
-const json = JSON.parse(raw);
+const yamlData = YAML.parse(raw);
+
+// Strip documentation-only fields to keep generated code lean
+function stripDocFields(obj) {
+	const result = {};
+
+	for (const [key, value] of Object.entries(obj)) {
+		// Skip documentation-only fields
+		if (['useCases', 'developerNotes', 'docGroup', 'name'].includes(key)) {
+			continue;
+		}
+
+		if (value && typeof value === 'object' && !Array.isArray(value)) {
+			result[key] = stripDocFields(value);
+		} else {
+			result[key] = value;
+		}
+	}
+
+	return result;
+}
+
+const json = stripDocFields(yamlData);
 
 const output = `
-// This file is generated from ${path.relative(path.dirname(outputPath), inputPath)}
+// This file is generated from devices.yaml
 // Do not edit manually!
 
 export const devicesSchema = ${JSON.stringify(json, null, 2)} as const;

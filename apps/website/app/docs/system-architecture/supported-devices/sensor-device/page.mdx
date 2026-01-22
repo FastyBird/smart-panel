@@ -6,18 +6,17 @@ import { Callout } from 'nextra/components'
 	**Device Category**: `sensor`
 </Callout>
 
-The **Sensor** device represents a versatile monitoring unit capable of tracking various environmental
-and safety parameters.
+The Sensor device represents a versatile monitoring unit capable of tracking various environmental and safety parameters.
 
 ---
 
 ## Required Channels
 
-These channels are mandatory for the functionality of the sensor device:
+These channels are mandatory for the functionality of the sensor:
 
-| **Channel**          | **Description**                                                                | **Multiple** | **Details**                                                                            |
-|----------------------|--------------------------------------------------------------------------------|--------------|----------------------------------------------------------------------------------------|
-| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
+| **Channel** | **Description** | **Multiple** | **Details** |
+|-------------|-----------------|--------------|-------------|
+| `device_information` | Provides metadata about the device, including manufacturer details, model information, and operational statuses. | No | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
 
 ---
 
@@ -25,60 +24,47 @@ These channels are mandatory for the functionality of the sensor device:
 
 These channels are optional and provide additional features:
 
-| **Channel**                  | **Description**                                               | **Multiple** | **Details**                                                                                    |
-|------------------------------|---------------------------------------------------------------|--------------|------------------------------------------------------------------------------------------------|
-| `air_particulate`            | Monitors air quality by tracking particulate matter levels.   | No           | [See details](/docs/system-architecture/supported-channels/air-particulate-channel)            |
-| `battery`                    | Monitors the battery level and status of the sensor.          | No           | [See details](/docs/system-architecture/supported-channels/battery-channel)                    |
-| `carbon_dioxide`             | Tracks carbon dioxide levels in the environment.              | No           | [See details](/docs/system-architecture/supported-channels/carbon-dioxide-channel)             |
-| `carbon_monoxide`            | Tracks carbon monoxide levels in the environment.             | No           | [See details](/docs/system-architecture/supported-channels/carbon-monoxide-channel)            |
-| `contact`                    | Detects the state of physical contact (e.g., open or closed). | No           | [See details](/docs/system-architecture/supported-channels/contact-channel)                    |
-| `gas`                        | Detects the presence of gas in the environment.               | No           | [See details](/docs/system-architecture/supported-channels/gas-channel)                        |
-| `humidity`                   | Monitors the ambient humidity level.                          | No           | [See details](/docs/system-architecture/supported-channels/humidity-channel)                   |
-| `illuminance`                | Measures the intensity of light in the environment.           | No           | [See details](/docs/system-architecture/supported-channels/illuminance-channel)                |
-| `leak`                       | Detects the presence of water or other liquid leaks.          | No           | [See details](/docs/system-architecture/supported-channels/leak-channel)                       |
-| `motion`                     | Detects motion within the sensor's range.                     | No           | [See details](/docs/system-architecture/supported-channels/motion-channel)                     |
-| `nitrogen_dioxide`           | Tracks levels of nitrogen dioxide in the air.                 | No           | [See details](/docs/system-architecture/supported-channels/nitrogen-dioxide-channel)           |
-| `occupancy`                  | Detects whether a space is occupied.                          | No           | [See details](/docs/system-architecture/supported-channels/occupancy-channel)                  |
-| `ozone`                      | Monitors ozone levels in the environment.                     | No           | [See details](/docs/system-architecture/supported-channels/ozone-channel)                      |
-| `pressure`                   | Tracks air or fluid pressure.                                 | No           | [See details](/docs/system-architecture/supported-channels/pressure-channel)                   |
-| `smoke`                      | Detects the presence of smoke in the environment.             | No           | [See details](/docs/system-architecture/supported-channels/smoke-channel)                      |
-| `sulphur_dioxide`            | Tracks levels of sulphur dioxide in the air.                  | No           | [See details](/docs/system-architecture/supported-channels/sulphur-dioxide-channel)            |
-| `temperature`                | Monitors the current ambient temperature.                     | No           | [See details](/docs/system-architecture/supported-channels/temperature-channel)                |
-| `volatile_prganic_compounds` | Tracks the presence of volatile organic compounds in the air. | No           | [See details](/docs/system-architecture/supported-channels/volatile-organic-compounds-channel) |
-| `electrical_energy`          | Tracks total energy consumption over time.                    | No           | [See details](/docs/system-architecture/supported-channels/electrical-energy-channel)          |
-| `electrical_power`           | Provides real-time power usage information.                   | No           | [See details](/docs/system-architecture/supported-channels/electrical-power-channel)           |
+| **Channel** | **Description** | **Multiple** | **Details** |
+|-------------|-----------------|--------------|-------------|
+| `air_particulate` | Monitors the concentration of particulate matter (e.g., PM2.5 and PM10) in the air, providing insights into air quality and pollution levels. | No | [See details](/docs/system-architecture/supported-channels/air-particulate-channel) |
+| `battery` | Reports the status of a device's battery, including level, charging state, and operational health. | No | [See details](/docs/system-architecture/supported-channels/battery-channel) |
+| `carbon_dioxide` | Monitors CO2 levels in the environment to track air quality and ventilation efficiency. | No | [See details](/docs/system-architecture/supported-channels/carbon-dioxide-channel) |
+| `carbon_monoxide` | Detects the presence of carbon monoxide (CO) to ensure safety in enclosed spaces. | No | [See details](/docs/system-architecture/supported-channels/carbon-monoxide-channel) |
+| `gas` | Detects combustible or toxic gas presence and related alarm states. | No | [See details](/docs/system-architecture/supported-channels/gas-channel) |
+| `contact` | Tracks the open or closed state of a contact point, such as a door, window, or cabinet. | No | [See details](/docs/system-architecture/supported-channels/contact-channel) |
+| `humidity` | Measures the relative humidity in the environment, reported as a percentage. | No | [See details](/docs/system-architecture/supported-channels/humidity-channel) |
+| `illuminance` | Detects ambient light levels, typically measured in lux, to monitor brightness in a space. | No | [See details](/docs/system-architecture/supported-channels/illuminance-channel) |
+| `leak` | Identifies the presence of water or other liquids to detect leaks and prevent damage. | No | [See details](/docs/system-architecture/supported-channels/leak-channel) |
+| `motion` | Detects motion in an area to trigger alerts or automate responses. | No | [See details](/docs/system-architecture/supported-channels/motion-channel) |
+| `nitrogen_dioxide` | Monitors the concentration of NO2 in the air, often used in environmental and industrial monitoring. | No | [See details](/docs/system-architecture/supported-channels/nitrogen-dioxide-channel) |
+| `occupancy` | Detects the presence of people in a space for automation or energy efficiency purposes. | No | [See details](/docs/system-architecture/supported-channels/occupancy-channel) |
+| `ozone` | Measures ozone (O3) levels in the air, often used in environmental quality assessments. | No | [See details](/docs/system-architecture/supported-channels/ozone-channel) |
+| `pressure` | Reports atmospheric or liquid pressure values, typically measured in pascals (kPa). | No | [See details](/docs/system-architecture/supported-channels/pressure-channel) |
+| `smoke` | Detects smoke in the environment, triggering alarms or alerts for safety. | No | [See details](/docs/system-architecture/supported-channels/smoke-channel) |
+| `sulphur_dioxide` | Measures sulphur dioxide (SO2) levels in the air for environmental monitoring. | No | [See details](/docs/system-architecture/supported-channels/sulphur-dioxide-channel) |
+| `temperature` | Measures the current temperature in an environment, reported in degrees Celsius. | No | [See details](/docs/system-architecture/supported-channels/temperature-channel) |
+| `volatile_organic_compounds` | Monitors the concentration of VOCs in the air to track pollution or air quality. | No | [See details](/docs/system-architecture/supported-channels/volatile-organic-compounds-channel) |
+| `electrical_energy` | Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh). | No | [See details](/docs/system-architecture/supported-channels/electrical-energy-channel) |
+| `electrical_power` | Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics. | No | [See details](/docs/system-architecture/supported-channels/electrical-power-channel) |
 
 ---
 
 ## Use Case Scenarios
 
 1. **Environmental Monitoring**:
-    - Use channels like `temperature`, `humidity`, and `airParticulate` to monitor environmental conditions.
+    - Track temperature, humidity, pressure, and air quality for comprehensive environmental awareness.
 
-2. **Safety Applications**:
-    - Track smoke, carbon monoxide, and carbon dioxide levels using their respective channels.
-    - Detect leaks with the `leak` channel for enhanced safety.
+2. **Safety Detection**:
+    - Detect smoke, gas leaks, carbon monoxide, and other safety hazards. Receive alerts for immediate action.
 
-3. **Occupancy and Motion Detection**:
-    - Utilize the `motion` and `occupancy` channels for presence detection in smart environments.
-
-4. **Energy Efficiency**:
-    - Monitor the battery status of wireless sensors using the `battery` channel.
-
-5. **Advanced Monitoring**:
-    - Track less common parameters like `nitrogenDioxide`, `ozone`, and `volatileOrganicCompounds` for specialized use cases.
+3. **Security Monitoring**:
+    - Detect motion, occupancy, and contact states for security automation.
 
 ---
 
 ## Developer Notes
 
-1. **Channel Implementation**:
-    - Include the `device_information` channel for proper device identification.
-    - Optional channels should be added based on the sensor's capabilities and intended use case.
+1. Only device_information is required - all sensor channels are optional.
+2. Combine multiple sensor types based on device capabilities.
+3. Battery channel is important for wireless sensors.
 
-2. **Integration**:
-    - Ensure the mapping of sensor channels to their respective functionalities.
-    - Use optional channels like `smoke`, `motion`, or `leak` for specific applications.
-
-3. **Extensibility**:
-    - The wide range of optional channels allows this device type to cover diverse use cases, from environmental monitoring to safety applications.

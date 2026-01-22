@@ -1,6 +1,6 @@
 import { Callout } from 'nextra/components'
 
-# Leak Sensor Channel
+# Leak Channel
 
 <Callout type="info">
 	**Channel Category**: `leak`
@@ -12,10 +12,10 @@ Identifies the presence of water or other liquids to detect leaks and prevent da
 
 ## Required Properties
 
-| **Property** | **Data Type** | **Range**                    | **Unit** | **Permissions** |
-|--------------|---------------|------------------------------|----------|-----------------|
-| `detected`   | `Bool`        | `true/false`                 | -        | RO (Read-Only)  |
-| `level`      | `Enum`        | `bright/moderate/dusky/dark` | -        | RO (Read-Only)  |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `detected` | Bool | - | - | RO (Read-Only) |
+| `level` | Enum | `low`, `medium`, `high` | - | RO (Read-Only) |
 
 ---
 
@@ -23,30 +23,19 @@ Identifies the presence of water or other liquids to detect leaks and prevent da
 
 #### `detected`
 
-Indicates whether the sensor detects a leak event:
-
-- `true`: Leak is detected.
-- `false`: Leak is not detected.
+Binary detection state (true = detected)
 
 #### `level`
 
-Provides a qualitative assessment of the leak severity:
-
-- Possible values:
-    - `bright`: Minimal leak detected.
-    - `moderate`: Moderate leak detected.
-    - `dusky`: Significant leak detected.
-    - `dark`: Severe leak detected.
-
----
+Value as discrete level (low/medium/high)
 
 ## Optional Properties
 
-| **Property** | **Data Type** | **Range**    | **Unit** | **Permissions** |
-|--------------|---------------|--------------|----------|-----------------|
-| `active`     | `Bool`        | `true/false` | -        | RO (Read-Only)  |
-| `fault`      | `Uchar`       | `0–255`      | -        | RO (Read-Only)  |
-| `tampered`   | `Bool`        | `true/false` | -        | RO (Read-Only)  |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `active` | Bool | - | - | RO (Read-Only) |
+| `fault` | Uchar | 0–255 | - | RO (Read-Only) |
+| `tampered` | Bool | - | - | RO (Read-Only) |
 
 ---
 
@@ -54,21 +43,13 @@ Provides a qualitative assessment of the leak severity:
 
 #### `active`
 
-Indicates the channel's current working status:
-
-- `true`: The sensor is active and functioning correctly.
-- `false`: The sensor is inactive or non-functional.
+Indicates if the channel/sensor is currently active and functioning
 
 #### `fault`
 
-Represents the fault state of the sensor:
-
-- `0`: No fault detected.
-- Non-zero: A fault has been detected, potentially affecting functionality.
+Fault code or diagnostic indicator (0 = no fault)
 
 #### `tampered`
 
-Indicates whether the channel has been tampered with:
+Indicates if the device has been tampered with
 
-- `true`: The channel has been tampered with.
-- `false`: The channel is in a normal, non-tampered state.

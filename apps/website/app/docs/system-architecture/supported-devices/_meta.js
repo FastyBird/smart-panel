@@ -2,22 +2,23 @@ export default {
   overview: "Overview",
   "climate-control": {
     type: "separator",
-    title: "Climate control",
+    title: "Climate Control",
   },
   "air-conditioner-device": "Air Conditioner",
   "air-dehumidifier-device": "Air Dehumidifier",
-  "air-humidifier-device": " Air Humidifier",
+  "air-humidifier-device": "Air Humidifier",
   "air-purifier-device": "Air Purifier",
   "thermostat-device": "Thermostat",
-  "security-monitoring": {
+  "security": {
     type: "separator",
     title: "Security & Monitoring",
   },
+  "alarm-device": "Alarm",
   "camera-device": "Camera",
-  "door-device": "Door",
   "doorbell-device": "Doorbell",
+  "door-device": "Door",
   "lock-device": "Lock",
-  "home-automation-utilities": {
+  "home-automation": {
     type: "separator",
     title: "Home Automation & Utilities",
   },
@@ -31,25 +32,26 @@ export default {
   "switcher-device": "Switcher",
   "valve-device": "Valve",
   "window-covering-device": "Window Covering",
-  "entertainment-media-devices": {
+  "entertainment": {
     type: "separator",
     title: "Entertainment & Media",
   },
   "media-device": "Media",
   "speaker-device": "Speaker",
   "television-device": "Television",
-  "robotics-specialized-devices": {
+  "projector-device": "Projector",
+  "av-receiver-device": "AV Receiver",
+  "set-top-box-device": "Set-top Box",
+  "game-console-device": "Game Console",
+  "streaming-service-device": "Streaming Service",
+  "robotics": {
     type: "separator",
     title: "Robotics & Specialized",
   },
   "robot-vacuum-device": "Robot Vacuum",
-  "sensors-environmental-monitoring": {
+  "sensors": {
     type: "separator",
     title: "Sensors & Environmental Monitoring",
   },
   "sensor-device": "Sensor",
-  "alarm-device": {
-    title: "Alarm",
-    display: "hidden",
-  },
 };

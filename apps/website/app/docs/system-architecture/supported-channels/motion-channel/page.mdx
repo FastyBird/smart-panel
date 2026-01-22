@@ -1,6 +1,6 @@
 import { Callout } from 'nextra/components'
 
-# Motion Sensor Channel
+# Motion Channel
 
 <Callout type="info">
 	**Channel Category**: `motion`
@@ -12,9 +12,9 @@ Detects motion in an area to trigger alerts or automate responses.
 
 ## Required Properties
 
-| **Property** | **Data Type** | **Range**    | **Unit** | **Permissions** |
-|--------------|---------------|--------------|----------|-----------------|
-| `detected`   | `Bool`        | `true/false` | -        | RO (Read-Only)  |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `detected` | Bool | - | - | RO (Read-Only) |
 
 ---
 
@@ -22,21 +22,16 @@ Detects motion in an area to trigger alerts or automate responses.
 
 #### `detected`
 
-Indicates whether the sensor detects a motion event:
-
-- `true`: Motion is detected.
-- `false`: Motion is not detected.
-
----
+Binary detection state (true = detected)
 
 ## Optional Properties
 
-| **Property** | **Data Type** | **Range**    | **Unit** | **Permissions** |
-|--------------|---------------|--------------|----------|-----------------|
-| `distance`   | `Float`       | `0.0–100.0`  | m        | RO (Read-Only)  |
-| `active`     | `Bool`        | `true/false` | -        | RO (Read-Only)  |
-| `fault`      | `Uchar`       | `0–255`      | -        | RO (Read-Only)  |
-| `tampered`   | `Bool`        | `true/false` | -        | RO (Read-Only)  |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `distance` | Float | 0–100 | m | RO (Read-Only) |
+| `active` | Bool | - | - | RO (Read-Only) |
+| `fault` | Uchar | 0–255 | - | RO (Read-Only) |
+| `tampered` | Bool | - | - | RO (Read-Only) |
 
 ---
 
@@ -44,27 +39,15 @@ Indicates whether the sensor detects a motion event:
 
 #### `distance`
 
-Represents the distance from the sensor to the detected object:
-
-- Measured in meters (m).
-
 #### `active`
 
-Indicates the channel's current working status:
-
-- `true`: The sensor is active and functioning correctly.
-- `false`: The sensor is inactive or non-functional.
+Indicates if the channel/sensor is currently active and functioning
 
 #### `fault`
 
-Represents the fault state of the sensor:
-
-- `0`: No fault detected.
-- Non-zero: A fault has been detected, potentially affecting functionality.
+Fault code or diagnostic indicator (0 = no fault)
 
 #### `tampered`
 
-Indicates whether the channel has been tampered with:
+Indicates if the device has been tampered with
 
-- `true`: The channel has been tampered with.
-- `false`: The channel is in a normal, non-tampered state.

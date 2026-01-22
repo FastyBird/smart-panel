@@ -5,3 +5,56 @@ import { Callout } from 'nextra/components'
 <Callout type="info">
 	**Channel Category**: `alarm`
 </Callout>
+
+Provides arm/disarm control, siren activation, and alarm status for security systems.
+
+---
+
+## Required Properties
+
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `state` | Enum | `disarmed`, `armed_home`, `armed_away`, `armed_night` | - | RW (Read-Write) |
+
+---
+
+### Property Details
+
+#### `state`
+
+Current arming state of the alarm system
+
+## Optional Properties
+
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `triggered` | Bool | - | - | RO (Read-Only) |
+| `siren` | Bool | - | - | RW (Read-Write) |
+| `active` | Bool | - | - | RO (Read-Only) |
+| `fault` | Uchar | 0–255 | - | RO (Read-Only) |
+| `tampered` | Bool | - | - | RO (Read-Only) |
+
+---
+
+### Property Details
+
+#### `triggered`
+
+Indicates whether the alarm is currently triggered
+
+#### `siren`
+
+Controls the audible siren output
+
+#### `active`
+
+Reports whether the alarm subsystem is operational
+
+#### `fault`
+
+Fault code or diagnostic indicator
+
+#### `tampered`
+
+Indicates if the device has been tampered with
+

@@ -6,8 +6,7 @@ import { Callout } from 'nextra/components'
 	**Device Category**: `air_humidifier`
 </Callout>
 
-The **Air Humidifier** device represents a system designed to increase humidity levels in the environment
-while providing additional monitoring and control capabilities.
+The Air Humidifier device represents a system designed to increase humidity levels in the environment while providing additional monitoring and control capabilities.
 
 ---
 
@@ -15,11 +14,11 @@ while providing additional monitoring and control capabilities.
 
 These channels are mandatory for the functionality of the air humidifier:
 
-| **Channel**          | **Description**                                                                              | **Multiple** | **Details**                                                                            |
-|----------------------|----------------------------------------------------------------------------------------------|--------------|----------------------------------------------------------------------------------------|
-| `humidifier`         | Controls the humidifier, including on/off state, target humidity, mist settings, and modes.  | No           | [See details](/docs/system-architecture/supported-channels/humidifier-channel)         |
-| `humidity`           | Measures the relative humidity in the environment, reported as a percentage.                 | No           | [See details](/docs/system-architecture/supported-channels/humidity-channel)           |
-| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware.               | No           | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
+| **Channel** | **Description** | **Multiple** | **Details** |
+|-------------|-----------------|--------------|-------------|
+| `humidifier` | Controls the humidifier, including on/off state, target humidity, mist settings, and operating modes. | No | [See details](/docs/system-architecture/supported-channels/humidifier-channel) |
+| `humidity` | Measures the relative humidity in the environment, reported as a percentage. | No | [See details](/docs/system-architecture/supported-channels/humidity-channel) |
+| `device_information` | Provides metadata about the device, including manufacturer details, model information, and operational statuses. | No | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
 
 ---
 
@@ -27,45 +26,32 @@ These channels are mandatory for the functionality of the air humidifier:
 
 These channels are optional and provide additional features:
 
-| **Channel**         | **Description**                                      | **Multiple** | **Details**                                                                           |
-|---------------------|------------------------------------------------------|--------------|---------------------------------------------------------------------------------------|
-| `electrical_energy` | Tracks total energy consumption over time.           | No           | [See details](/docs/system-architecture/supported-channels/electrical-energy-channel) |
-| `electrical_power`  | Provides real-time power usage information.          | No           | [See details](/docs/system-architecture/supported-channels/electrical-power-channel)  |
-| `fan`               | Manages fan settings, including speed and direction. | No           | [See details](/docs/system-architecture/supported-channels/fan-channel)               |
-| `leak`              | Detects water leaks or other potential issues.       | No           | [See details](/docs/system-architecture/supported-channels/leak-channel)              |
-| `temperature`       | Monitors the ambient temperature.                    | No           | [See details](/docs/system-architecture/supported-channels/temperature-channel)       |
+| **Channel** | **Description** | **Multiple** | **Details** |
+|-------------|-----------------|--------------|-------------|
+| `fan` | Controls fan devices, including speed, oscillation, and modes for air circulation. | No | [See details](/docs/system-architecture/supported-channels/fan-channel) |
+| `electrical_energy` | Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh). | No | [See details](/docs/system-architecture/supported-channels/electrical-energy-channel) |
+| `electrical_power` | Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics. | No | [See details](/docs/system-architecture/supported-channels/electrical-power-channel) |
+| `leak` | Identifies the presence of water or other liquids to detect leaks and prevent damage. | No | [See details](/docs/system-architecture/supported-channels/leak-channel) |
+| `temperature` | Measures the current temperature in an environment, reported in degrees Celsius. | No | [See details](/docs/system-architecture/supported-channels/temperature-channel) |
 
 ---
 
 ## Use Case Scenarios
 
-1. **Humidification Control**:
-    - Adjust humidity levels and mist settings using the `humidifier` channel.
-    - Monitor current humidity with the `humidity` channel.
+1. **Humidity Control**:
+    - Set target humidity levels and mist intensity using the humidifier channel. Monitor current humidity with the humidity channel.
 
 2. **Environmental Monitoring**:
-    - Monitor room humidity (`humidity`) and temperature (`temperature`) for optimal comfort.
-    - Detect leaks using the `leak` channel for safety.
+    - Track room temperature and humidity for optimal comfort and health.
 
-3. **Energy Management**:
-    - Track power usage and energy consumption using the `electrical_power` and `electrical_energy` channels.
+3. **Safety Features**:
+    - Detect water leaks to prevent overflow and water damage.
 
 ---
 
 ## Developer Notes
 
-1. **Channel Implementation**:
-    - Implement all required channels for core humidification functionality.
-    - Add optional channels based on the specific features of the device.
+1. The humidifier and humidity channels are required for core functionality.
+2. Optional fan channel allows independent mist/fan speed control.
+3. Leak detection is recommended to prevent water overflow incidents.
 
-2. **Integration**:
-    - Ensure proper mapping of channels to the device's physical or logical components.
-    - The `device_information` channel is mandatory for device identification.
-
-3. **Energy and Safety Monitoring**:
-    - Include `electrical_energy` and `electrical_power` for energy efficiency tracking.
-    - Use the `leak` channel for enhanced safety in environments prone to water-related issues.
-
-4. **Extensibility**:
-    - Add optional channels like `temperature` or `fan` to support additional features.
-    - Use the `humidifier` and `humidity` channels to manage environmental conditions effectively.

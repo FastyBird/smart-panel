@@ -6,15 +6,22 @@ import { Callout } from 'nextra/components'
 	**Channel Category**: `light`
 </Callout>
 
-Controls lighting devices, supporting brightness, color temperature, and color adjustments.
+Controls lighting devices, supporting on/off, brightness, color temperature, and full RGB/HSV color adjustments.
 
 ---
 
+## Property Constraints
+
+<Callout type="warning">
+The following property groups are mutually exclusive:
+- `color_red` + `color_green` + `color_blue` **OR** `hue` + `saturation`
+</Callout>
+
 ## Required Properties
 
-| **Property** | **Data Type** | **Range**    | **Unit** | **Permissions** |
-|--------------|---------------|--------------|----------|-----------------|
-| `on`         | `Bool`        | `true/false` | -        | RW (Read/Write) |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `on` | Bool | - | - | RW (Read-Write) |
 
 ---
 
@@ -22,25 +29,20 @@ Controls lighting devices, supporting brightness, color temperature, and color a
 
 #### `on`
 
-Indicates the on/off state of the light:
-
-- `true`: The light is on.
-- `false`: The light is off.
-
----
+Power state of the device (on/off)
 
 ## Optional Properties
 
-| **Property**          | **Data Type** | **Range**     | **Unit** | **Permissions** |
-|-----------------------|---------------|---------------|----------|-----------------|
-| `brightness`          | `Uchar` or `Enum` | `0–100` or `off/low/medium/high/full` | %        | RW (Read/Write) |
-| `color_red`           | `Uchar`       | `0–255`       | -        | RW (Read/Write) |
-| `color_green`         | `Uchar`       | `0–255`       | -        | RW (Read/Write) |
-| `color_blue`          | `Uchar`       | `0–255`       | -        | RW (Read/Write) |
-| `color_white`         | `Uchar`       | `0–255`       | -        | RW (Read/Write) |
-| `color_temperature`   | `Ushort`      | `2,700–6,500` | K        | RW (Read/Write) |
-| `hue`                 | `Ushort`      | `0–360`       | degrees  | RW (Read/Write) |
-| `saturation`          | `Uchar`       | `0–100`       | %        | RW (Read/Write) |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `brightness` | Uchar | 0–100 | % | RW (Read-Write) |
+| `color_red` | Uchar | 0–255 | - | RW (Read-Write) |
+| `color_green` | Uchar | 0–255 | - | RW (Read-Write) |
+| `color_blue` | Uchar | 0–255 | - | RW (Read-Write) |
+| `color_white` | Uchar | 0–255 | - | RW (Read-Write) |
+| `color_temperature` | Ushort | 2000–10000 | K | RW (Read-Write) |
+| `hue` | Ushort | 0–360 | deg | RW (Read-Write) |
+| `saturation` | Uchar | 0–100 | % | RW (Read-Write) |
 
 ---
 
@@ -48,49 +50,24 @@ Indicates the on/off state of the light:
 
 #### `brightness`
 
-Represents the perceived level of brightness. This property supports multiple data types:
+Brightness control - integrator can choose between percentage or discrete levels
 
-**Option 1 - Percentage:**
-- **Data Type**: `Uchar`
-- **Range**: `0–100%`
-- Expressed as a percentage of the maximum supported brightness.
+This property supports multiple data type variants:
 
-**Option 2 - Discrete Levels:**
-- **Data Type**: `Enum`
-- **Values**: `off`, `low`, `medium`, `high`, `full`
-- Predefined brightness levels.
+- **percentage**: Uchar (0–100) in % - Brightness as percentage (0-100%)
+- **level**: Enum (`off`, `low`, `medium`, `high`, `full`) - Brightness as discrete levels
 
-#### `color_red`, `color_green`, `color_blue`
+#### `color_red`
 
-Define the RGB color values:
+#### `color_green`
 
-- Must be defined together for accurate color selection.
+#### `color_blue`
 
 #### `color_white`
 
-Represents the intensity of white light in the RGB spectrum.
-
 #### `color_temperature`
-
-Describes the color temperature of the light:
-
-- Measured in Kelvin (`K`).
-- Range: `2,700–6,500` Kelvin.
 
 #### `hue`
 
-Represents the hue or shade of color:
-
-- Range: `0–360` degrees on the color wheel.
-
 #### `saturation`
 
-Indicates the color saturation:
-
-- Expressed as a percentage (`0–100%`).
-
----
-
-> [!Notes]:
-The `color_red`, `color_green`, and `color_blue` properties must be defined together to set the RGB color accurately.
-This channel also supports hue and saturation. Both `hue` and `saturation` must be configured together for proper operation.

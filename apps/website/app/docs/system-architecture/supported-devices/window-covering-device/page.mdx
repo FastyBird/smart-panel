@@ -6,18 +6,18 @@ import { Callout } from 'nextra/components'
 	**Device Category**: `window_covering`
 </Callout>
 
-The **Window Covering** device represents automated window treatments such as blinds, shades, or curtains.
+The Window Covering device represents automated window treatments such as blinds, shades, or curtains.
 
 ---
 
 ## Required Channels
 
-These channels are mandatory for the functionality of the window covering device:
+These channels are mandatory for the functionality of the window covering:
 
-| **Channel**          | **Description**                                                                | **Multiple** | **Details**                                                                            |
-|----------------------|--------------------------------------------------------------------------------|--------------|----------------------------------------------------------------------------------------|
-| `window_covering`    | Controls the position, tilt, and operational state of the window covering.     | No           | [See details](/docs/system-architecture/supported-channels/window-covering-channel)    |
-| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
+| **Channel** | **Description** | **Multiple** | **Details** |
+|-------------|-----------------|--------------|-------------|
+| `window_covering` | Controls coverings like blinds, curtains, and shutters, including position and tilt adjustments. | No | [See details](/docs/system-architecture/supported-channels/window-covering-channel) |
+| `device_information` | Provides metadata about the device, including manufacturer details, model information, and operational statuses. | No | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
 
 ---
 
@@ -25,36 +25,30 @@ These channels are mandatory for the functionality of the window covering device
 
 These channels are optional and provide additional features:
 
-| **Channel**         | **Description**                                                         | **Multiple** | **Details**                                                                           |
-|---------------------|-------------------------------------------------------------------------|--------------|---------------------------------------------------------------------------------------|
-| `battery`           | Monitors the battery status, if the window covering is battery-powered. | No           | [See details](/docs/system-architecture/supported-channels/battery-channel)           |
-| `electrical_energy` | Tracks total energy consumption over time.                              | No           | [See details](/docs/system-architecture/supported-channels/electrical-energy-channel) |
-| `electrical_power`  | Provides real-time power usage information.                             | No           | [See details](/docs/system-architecture/supported-channels/electrical-power-channel)  |
+| **Channel** | **Description** | **Multiple** | **Details** |
+|-------------|-----------------|--------------|-------------|
+| `battery` | Reports the status of a device's battery, including level, charging state, and operational health. | No | [See details](/docs/system-architecture/supported-channels/battery-channel) |
+| `electrical_energy` | Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh). | No | [See details](/docs/system-architecture/supported-channels/electrical-energy-channel) |
+| `electrical_power` | Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics. | No | [See details](/docs/system-architecture/supported-channels/electrical-power-channel) |
 
 ---
 
 ## Use Case Scenarios
 
-1. **Automation and Control**:
-    - Adjust the position and tilt of the window covering using the `windowCovering` channel.
+1. **Position Control**:
+    - Open, close, or set specific positions for blinds or curtains. Support for tilt adjustment where applicable.
 
-2. **Energy Management**:
-    - Monitor power usage and energy consumption with the `electrical_power` and `electrical_energy` channels.
+2. **Light Management**:
+    - Adjust window coverings based on time of day or light levels for comfort and energy efficiency.
 
-3. **Battery Monitoring**:
-    - For battery-powered window coverings, track battery status using the `battery` channel.
+3. **Privacy Control**:
+    - Quickly close all window coverings for privacy or security.
 
 ---
 
 ## Developer Notes
 
-1. **Channel Implementation**:
-    - The `device_information` and `windowCovering` channels are required for basic operation.
-    - Include optional channels for advanced features like energy tracking or battery monitoring.
+1. The window_covering channel is required for position control.
+2. Battery channel is important for wireless motorized coverings.
+3. Not all devices support tilt adjustment.
 
-2. **Integration**:
-    - Ensure seamless operation in automated home systems by implementing required and relevant optional channels.
-
-3. **Extensibility**:
-    - Add power monitoring features using `electrical_energy` and `electrical_power` as needed.
-    - For battery-operated systems, the `battery` channel provides critical status information.

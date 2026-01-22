@@ -12,9 +12,9 @@ Represents binary switches to control devices like lights, fans, or appliances.
 
 ## Required Properties
 
-| **Property** | **Data Type** | **Range**    | **Unit** | **Permissions** |
-|--------------|---------------|--------------|----------|-----------------|
-| `on`         | `Bool`        | `true/false` | -        | RW (Read/Write) |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `on` | Bool | - | - | RW (Read-Write) |
 
 ---
 
@@ -22,19 +22,14 @@ Represents binary switches to control devices like lights, fans, or appliances.
 
 #### `on`
 
-Indicates the operational state of the switch:
-
-- `true`: The switch is powered on.
-- `false`: The switch is powered off.
-
----
+Power state of the device (on/off)
 
 ## Optional Properties
 
-| **Property**  | **Data Type**        | **Range**                            | **Unit** | **Permissions** |
-|---------------|----------------------|--------------------------------------|----------|-----------------|
-| `child_lock`  | `Bool`               | `true/false`                         | -        | RW (Read/Write) |
-| `timer`       | `Ushort` or `Enum`   | `0–86400` or `off/30m/1h/2h/4h/8h/12h` | s        | RW (Read/Write) |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `child_lock` | Bool | - | - | RW (Read-Write) |
+| `timer` | Ushort | 0–86400 | s | RW (Read-Write) |
 
 ---
 
@@ -42,22 +37,14 @@ Indicates the operational state of the switch:
 
 #### `child_lock`
 
-Prevents accidental operation of the device:
-
-- `true`: Child lock is enabled, device controls are locked.
-- `false`: Child lock is disabled, device can be operated normally.
+Child lock to prevent accidental operation
 
 #### `timer`
 
-Auto-off timer for the device. This property supports multiple data types:
+Auto-off timer - integrator can choose between duration or preset intervals
 
-**Option 1 - Duration:**
-- **Data Type**: `Ushort`
-- **Range**: `0–86400` seconds (0-24 hours)
-- `0`: Timer disabled.
-- Non-zero: Device will turn off after specified seconds.
+This property supports multiple data type variants:
 
-**Option 2 - Preset Intervals:**
-- **Data Type**: `Enum`
-- **Values**: `off`, `30m`, `1h`, `2h`, `4h`, `8h`, `12h`
-- Predefined timer intervals.
+- **duration**: Ushort (0–86400) in s - Timer duration in seconds (0-86400)
+- **preset**: Enum (`off`, `30m`, `1h`, `2h`, `4h`, `8h`, `12h`) - Preset timer intervals
+

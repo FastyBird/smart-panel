@@ -6,9 +6,7 @@ import { Callout } from 'nextra/components'
 	**Device Category**: `heating_unit`
 </Callout>
 
-The **Heating Unit** device represents a space or room heating system designed to control and monitor
-environmental temperature, with optional features for energy and humidity management. This category
-includes radiators, wall heaters, floor heating systems, and other space heating devices.
+The Heating Unit device represents a space or room heating system designed to control and monitor environmental temperature, with optional features for energy and humidity management.
 
 ---
 
@@ -16,11 +14,11 @@ includes radiators, wall heaters, floor heating systems, and other space heating
 
 These channels are mandatory for the functionality of the heating unit:
 
-| **Channel**          | **Description**                                                                | **Multiple** | **Details**                                                                            |
-|----------------------|--------------------------------------------------------------------------------|--------------|----------------------------------------------------------------------------------------|
-| `heater`             | Controls the heating functionality, including activation and settings.         | No           | [See details](/docs/system-architecture/supported-channels/heater-channel)             |
-| `temperature`        | Measures the current temperature in an environment, reported in degrees Celsius. | No           | [See details](/docs/system-architecture/supported-channels/temperature-channel)        |
-| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
+| **Channel** | **Description** | **Multiple** | **Details** |
+|-------------|-----------------|--------------|-------------|
+| `heater` | Manages heating devices, allowing control of temperature settings and modes. | No | [See details](/docs/system-architecture/supported-channels/heater-channel) |
+| `temperature` | Measures the current temperature in an environment, reported in degrees Celsius. | No | [See details](/docs/system-architecture/supported-channels/temperature-channel) |
+| `device_information` | Provides metadata about the device, including manufacturer details, model information, and operational statuses. | No | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
 
 ---
 
@@ -28,43 +26,31 @@ These channels are mandatory for the functionality of the heating unit:
 
 These channels are optional and provide additional features:
 
-| **Channel**         | **Description**                                                             | **Multiple** | **Details**                                                                           |
-|---------------------|-----------------------------------------------------------------------------|--------------|---------------------------------------------------------------------------------------|
-| `electrical_energy` | Measures the total energy consumption over time, typically reported in kWh. | No           | [See details](/docs/system-architecture/supported-channels/electrical-energy-channel) |
-| `electrical_power`  | Reports real-time power metrics such as voltage, current, and wattage.      | No           | [See details](/docs/system-architecture/supported-channels/electrical-power-channel)  |
-| `humidity`          | Measures the relative humidity in the environment, reported as a percentage. | No           | [See details](/docs/system-architecture/supported-channels/humidity-channel)          |
+| **Channel** | **Description** | **Multiple** | **Details** |
+|-------------|-----------------|--------------|-------------|
+| `electrical_energy` | Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh). | No | [See details](/docs/system-architecture/supported-channels/electrical-energy-channel) |
+| `electrical_power` | Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics. | No | [See details](/docs/system-architecture/supported-channels/electrical-power-channel) |
+| `humidity` | Measures the relative humidity in the environment, reported as a percentage. | No | [See details](/docs/system-architecture/supported-channels/humidity-channel) |
+| `contact` | Tracks the open or closed state of a contact point, such as a door, window, or cabinet. | No | [See details](/docs/system-architecture/supported-channels/contact-channel) |
 
 ---
 
 ## Use Case Scenarios
 
-1. **Space Heating Control**:
-    - Set a target temperature and activate heating through the `heater` and `temperature` channels.
-    - Monitor room temperature in real-time using the `temperature` channel.
+1. **Temperature Control**:
+    - Set target temperatures and heating modes using the heater channel. Monitor current temperature with the temperature channel.
 
-2. **Environmental Monitoring**:
-    - Use the `humidity` channel for enhanced climate control and comfort optimization.
-    - Track ambient conditions alongside temperature for comprehensive room monitoring.
+2. **Energy Management**:
+    - Track heating energy consumption for cost analysis and efficiency optimization.
 
-3. **Energy Management**:
-    - Track power usage in real-time with the `electrical_power` channel.
-    - Use the `electrical_energy` channel for long-term energy consumption insights and cost optimization.
+3. **Window Detection**:
+    - Use contact sensors to detect open windows and automatically adjust heating.
 
 ---
 
 ## Developer Notes
 
-1. **Channel Implementation**:
-    - Implement all required channels for core heating functionality.
-    - Add optional channels for energy and humidity monitoring based on device capabilities.
+1. Heater and temperature channels are required for core functionality.
+2. Contact channel enables energy-saving automation when windows are open.
+3. Humidity monitoring helps maintain comfortable indoor conditions.
 
-2. **Integration**:
-    - Ensure the `heater` channel is mapped to the heating control mechanisms.
-    - Include the `device_information` channel for proper device identification.
-
-3. **Energy Tracking**:
-    - Use `electrical_energy` and `electrical_power` channels to provide energy efficiency metrics.
-
-4. **Extensibility**:
-    - Add the `humidity` channel to support combined heating and humidity regulation.
-    - Use the `temperature` channel for precise thermal management.

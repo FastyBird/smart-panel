@@ -1,0 +1,52 @@
+import { Callout } from 'nextra/components'
+
+# Game Console Device
+
+<Callout type="info">
+	**Device Category**: `game_console`
+</Callout>
+
+The Game Console device represents a gaming console that can be controlled for basic power/activity state and media playback where supported.
+
+---
+
+## Required Channels
+
+These channels are mandatory for the functionality of the game console:
+
+| **Channel** | **Description** | **Multiple** | **Details** |
+|-------------|-----------------|--------------|-------------|
+| `media_playback` | Represents activity/playback state and basic media controls exposed by the console integration. | No | [See details](/docs/system-architecture/supported-channels/media-playback-channel) |
+| `device_information` | Provides metadata about the device, including manufacturer details, model information, and operational statuses. | No | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
+
+---
+
+## Optional Channels
+
+These channels are optional and provide additional features:
+
+| **Channel** | **Description** | **Multiple** | **Details** |
+|-------------|-----------------|--------------|-------------|
+| `switcher` | Optional power control for game consoles (hard power / standby) when supported by the integration. | No | [See details](/docs/system-architecture/supported-channels/switcher-channel) |
+
+---
+
+## Use Case Scenarios
+
+1. **Power Control**:
+    - Turn the console on/off or put it in standby mode when supported.
+
+2. **Activity Monitoring**:
+    - View current activity state and basic playback information.
+
+3. **Media Control**:
+    - Control media playback for streaming apps on the console.
+
+---
+
+## Developer Notes
+
+1. The media_playback channel represents activity state and basic controls.
+2. Switcher provides optional power control.
+3. Capabilities depend on console integration support.
+

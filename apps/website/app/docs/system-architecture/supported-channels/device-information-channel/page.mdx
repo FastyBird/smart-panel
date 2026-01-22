@@ -6,17 +6,17 @@ import { Callout } from 'nextra/components'
 	**Channel Category**: `device_information`
 </Callout>
 
-This channel provides metadata about the device, including manufacturer details, model information, and operational statuses.
+Provides metadata about the device, including manufacturer details, model information, firmware version, and connection status.
 
 ---
 
 ## Required Properties
 
-| **Property**        | **Data Type** | **Range**    | **Unit** | **Permissions** |
-|---------------------|---------------|--------------|----------|-----------------|
-| `manufacturer`      | `String`      | -            | -        | RO (Read-Only)  |
-| `model`             | `String`      | -            | -        | RO (Read-Only)  |
-| `serial_number`     | `String`      | -            | -        | RO (Read-Only)  |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `manufacturer` | String | - | - | RO (Read-Only) |
+| `model` | String | - | - | RO (Read-Only) |
+| `serial_number` | String | - | - | RO (Read-Only) |
 
 ---
 
@@ -24,31 +24,26 @@ This channel provides metadata about the device, including manufacturer details,
 
 #### `manufacturer`
 
-- Represents the name of the company that manufactured the device.
-- Example: `Acme Devices Inc.`
+Device manufacturer name
 
 #### `model`
 
-- Specifies the model identifier of the device.
-- Example: `SmartPanel X100`.
+Device model identifier
 
 #### `serial_number`
 
-- Indicates the unique serial number assigned to the device by the manufacturer.
-- Example: `SN-12345-67890`.
-
----
+Device serial number
 
 ## Optional Properties
 
-| **Property**        | **Data Type** | **Range**                                                                       | **Unit** | **Permissions** |
-|---------------------|---------------|---------------------------------------------------------------------------------|----------|-----------------|
-| `firmware_revision` | `String`      | -                                                                               | -        | RO (Read-Only)  |
-| `hardware_revision` | `String`      | -                                                                               | -        | RO (Read-Only)  |
-| `link_quality`      | `Uchar`       | `0–100`                                                                         | %        | RO (Read-Only)  |
-| `connection_type`   | `Enum`        | `wired/wifi/zigbee/bluetooth`                                                   | -        | RO (Read-Only)  |
-| `status`            | `Enum`        | `connected/disconnected/init/ready/running/sleeping/stopped/lost/alert/unknown` | -        | RO (Read-Only)  |
-| `fault`             | `Uchar`       | `0–255`                                                                         | -        | RO (Read-Only)  |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `firmware_revision` | String | - | - | RO (Read-Only) |
+| `hardware_revision` | String | - | - | RO (Read-Only) |
+| `link_quality` | Uchar | 0–100 | % | RO (Read-Only) |
+| `connection_type` | Enum | `wired`, `wifi`, `zigbee`, `bluetooth` | - | RO (Read-Only) |
+| `status` | Enum | `connected`, `disconnected`, `init`, `ready`, `running`, `sleeping`, `stopped`, `lost`, `alert`, `unknown` | - | RO (Read-Only) |
+| `fault` | Uchar | 0–255 | - | RO (Read-Only) |
 
 ---
 
@@ -56,22 +51,21 @@ This channel provides metadata about the device, including manufacturer details,
 
 #### `firmware_revision`
 
-- Reports the version of the firmware installed on the device.
-- Example: `v1.2.3`.
+Firmware version
 
 #### `hardware_revision`
 
-- Represents the version of the device's hardware.
-- Example: `v3.1`.
+Hardware version
 
 #### `link_quality`
 
-- Indicates the signal quality or connection strength of the device.
-- Measured as a value between `0` (poor) and `100` (excellent).
+#### `connection_type`
+
+#### `status`
+
+Current operational status
 
 #### `fault`
 
-Represents the fault state of the sensor:
+Fault code or diagnostic indicator (0 = no fault)
 
-- `0`: No fault detected.
-- Non-zero: A fault has been detected, potentially affecting functionality.

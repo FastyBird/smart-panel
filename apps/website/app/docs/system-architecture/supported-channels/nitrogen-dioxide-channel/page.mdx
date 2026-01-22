@@ -1,27 +1,32 @@
 import { Callout } from 'nextra/components'
 
-# Nitrogen Dioxide Sensor Channel
+# Nitrogen Dioxide Channel
 
 <Callout type="info">
 	**Channel Category**: `nitrogen_dioxide`
 </Callout>
 
-Monitors the concentration of NO₂ in the air, often used in environmental and industrial monitoring.
-
-<Callout type="warning">
-	At least one of `detected` or `density` must be provided.
-</Callout>
+Monitors the concentration of NO2 in the air, often used in environmental and industrial monitoring.
 
 ---
 
-## Required Properties
+## Property Constraints
 
-At least one of the following properties must be present:
+<Callout type="warning">
+At least one property from each of the following groups must be present:
+- `detected` or `concentration`
+</Callout>
 
-| **Property** | **Data Type** | **Range**       | **Unit** | **Permissions** |
-|--------------|---------------|-----------------|----------|-----------------|
-| `detected`   | `Bool`        | `true/false`    | -        | RO (Read-Only)  |
-| `density`    | `Float`       | `0.0–100,000.0` | µg/m³    | RO (Read-Only)  |
+## Optional Properties
+
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `detected` | Bool | - | - | RO (Read-Only) |
+| `concentration` | Float | 0–100000 | µg/m³ | RO (Read-Only) |
+| `mode` | Enum | `annual`, `1_hour` | - | RO (Read-Only) |
+| `active` | Bool | - | - | RO (Read-Only) |
+| `fault` | Uchar | 0–255 | - | RO (Read-Only) |
+| `tampered` | Bool | - | - | RO (Read-Only) |
 
 ---
 
@@ -29,58 +34,25 @@ At least one of the following properties must be present:
 
 #### `detected`
 
-Indicates whether the sensor detects abnormal levels of nitrogen dioxide:
+Binary detection state (true = detected)
 
-- `true`: Abnormal NO₂ levels detected.
-- `false`: NO₂ levels are within normal limits.
+#### `concentration`
 
-#### `density`
-
-Reports the current detected nitrogen dioxide (NO₂) concentration:
-
-- Measured in micrograms per cubic meter (`µg/m³`).
-- Reflects real-time NO₂ levels in the environment.
-- Values exceeding **40 µg/m³** (annual mean) or **200 µg/m³** (1-hour mean) are considered poor air quality per WHO guidelines.
-
----
-
-## Optional Properties
-
-| **Property** | **Data Type** | **Range**       | **Unit** | **Permissions** |
-|--------------|---------------|-----------------|----------|-----------------|
-| `mode`       | `Enum`        | `annual/1_hour` | -        | RO (Read-Only)  |
-| `active`     | `Bool`        | `true/false`    | -        | RO (Read-Only)  |
-| `fault`      | `Uchar`       | `0–255`         | -        | RO (Read-Only)  |
-| `tampered`   | `Bool`        | `true/false`    | -        | RO (Read-Only)  |
-
----
-
-### Property Details
+Measured concentration level
 
 #### `mode`
 
-Specifies the type of measurement provided by the sensor:
-
-- `annual`: The sensor measures long-term average NO₂ levels over a year.
-- `1_hour`: The sensor measures short-term NO₂ levels as a 1-hour average.
+Operating mode selection
 
 #### `active`
 
-Indicates the channel's current working status:
-
-- `true`: The sensor is active and functioning correctly.
-- `false`: The sensor is inactive or non-functional.
+Indicates if the channel/sensor is currently active and functioning
 
 #### `fault`
 
-Represents the fault state of the sensor:
-
-- `0`: No fault detected.
-- Non-zero: A fault has been detected, potentially affecting functionality.
+Fault code or diagnostic indicator (0 = no fault)
 
 #### `tampered`
 
-Indicates whether the channel has been tampered with:
+Indicates if the device has been tampered with
 
-- `true`: The channel has been tampered with.
-- `false`: The channel is in a normal, non-tampered state.

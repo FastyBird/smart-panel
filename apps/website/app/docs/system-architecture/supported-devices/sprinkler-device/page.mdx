@@ -6,19 +6,18 @@ import { Callout } from 'nextra/components'
 	**Device Category**: `sprinkler`
 </Callout>
 
-The **Sprinkler** device represents an irrigation system designed to control water flow and monitor
-environmental conditions to optimize watering.
+The Sprinkler device represents an irrigation system designed to control water flow and monitor environmental conditions to optimize watering.
 
 ---
 
 ## Required Channels
 
-These channels are mandatory for the functionality of the sprinkler device:
+These channels are mandatory for the functionality of the sprinkler:
 
-| **Channel**          | **Description**                                                                | **Multiple** | **Details**                                                                            |
-|----------------------|--------------------------------------------------------------------------------|--------------|----------------------------------------------------------------------------------------|
-| `valve`              | Controls the water flow through the sprinkler system.                          | No           | [See details](/docs/system-architecture/supported-channels/valve-channel)              |
-| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
+| **Channel** | **Description** | **Multiple** | **Details** |
+|-------------|-----------------|--------------|-------------|
+| `valve` | Controls fluid or gas valves, managing open/close states or flow rates. | No | [See details](/docs/system-architecture/supported-channels/valve-channel) |
+| `device_information` | Provides metadata about the device, including manufacturer details, model information, and operational statuses. | No | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
 
 ---
 
@@ -26,40 +25,33 @@ These channels are mandatory for the functionality of the sprinkler device:
 
 These channels are optional and provide additional features:
 
-| **Channel**         | **Description**                                                      | **Multiple** | **Details**                                                                           |
-|---------------------|----------------------------------------------------------------------|--------------|---------------------------------------------------------------------------------------|
-| `electrical_energy` | Tracks total energy consumption over time.                           | No           | [See details](/docs/system-architecture/supported-channels/electrical-energy-channel) |
-| `electrical_power`  | Provides real-time power usage information.                          | No           | [See details](/docs/system-architecture/supported-channels/electrical-power-channel)  |
-| `flow`              | Monitors the water flow rate in the sprinkler system.                | No           | [See details](/docs/system-architecture/supported-channels/flow-channel)              |
-| `humidity`          | Measures the ambient humidity level to optimize watering schedules.  | No           | [See details](/docs/system-architecture/supported-channels/humidity-channel)          |
-| `leak`              | Detects water leaks to prevent waste and damage.                     | No           | [See details](/docs/system-architecture/supported-channels/leak-channel)              |
-| `pressure`          | Monitors water pressure to ensure proper operation of the sprinkler. | No           | [See details](/docs/system-architecture/supported-channels/pressure-channel)          |
+| **Channel** | **Description** | **Multiple** | **Details** |
+|-------------|-----------------|--------------|-------------|
+| `electrical_energy` | Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh). | No | [See details](/docs/system-architecture/supported-channels/electrical-energy-channel) |
+| `electrical_power` | Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics. | No | [See details](/docs/system-architecture/supported-channels/electrical-power-channel) |
+| `flow` | Monitors the rate of fluid or air flow, typically measured in cubic meters per hour (m3/h). | No | [See details](/docs/system-architecture/supported-channels/flow-channel) |
+| `humidity` | Measures the relative humidity in the environment, reported as a percentage. | No | [See details](/docs/system-architecture/supported-channels/humidity-channel) |
+| `leak` | Identifies the presence of water or other liquids to detect leaks and prevent damage. | No | [See details](/docs/system-architecture/supported-channels/leak-channel) |
+| `pressure` | Reports atmospheric or liquid pressure values, typically measured in pascals (kPa). | No | [See details](/docs/system-architecture/supported-channels/pressure-channel) |
 
 ---
 
 ## Use Case Scenarios
 
 1. **Irrigation Control**:
-    - Use the `valve` channel to start, stop, or adjust water flow through the sprinkler system.
+    - Open and close water valves to control watering zones. Schedule watering times based on needs.
 
 2. **Environmental Monitoring**:
-    - Measure ambient humidity with the `humidity` channel to determine if watering is needed.
-    - Monitor water pressure and flow using the `pressure` and `flow` channels to maintain efficient irrigation.
+    - Monitor soil humidity and adjust watering based on conditions.
 
-3. **Energy and Safety Monitoring**:
-    - Track energy consumption and real-time power usage using the `electrical_energy` and `electrical_power` channels.
-    - Detect leaks with the `leak` channel to prevent water wastage and potential damage.
+3. **Water Management**:
+    - Track water flow and pressure for efficient water usage.
 
 ---
 
 ## Developer Notes
 
-1. **Channel Implementation**:
-    - Ensure the `device_information` and `valve` channels are implemented for core irrigation functionality.
+1. The valve channel is required for water flow control.
+2. Humidity sensors can measure soil moisture for smart irrigation.
+3. Flow monitoring helps detect leaks or blockages.
 
-2. **Integration**:
-    - Optional channels like `humidity` and `flow` can be added to enhance the system's environmental monitoring capabilities.
-
-3. **Extensibility**:
-    - Use the `electrical_energy` and `electrical_power` channels to provide energy tracking features.
-    - The `leak` and `pressure` channels improve safety and system reliability.

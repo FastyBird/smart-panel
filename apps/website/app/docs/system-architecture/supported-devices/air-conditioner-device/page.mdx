@@ -3,11 +3,10 @@ import { Callout } from 'nextra/components'
 # Air Conditioner Device
 
 <Callout type="info">
-	**Device Category**: <code>air_conditioner</code>
+	**Device Category**: `air_conditioner`
 </Callout>
 
-The **Air Conditioner** is a smart cooling system that can monitor temperature and humidity, adjust fan speed, and optionally
-track energy usage or detect leaks. It’s ideal for climate control setups where precise regulation and efficiency are key.
+The Air Conditioner device represents a cooling system with additional features for environmental monitoring and energy management.
 
 ---
 
@@ -15,12 +14,12 @@ track energy usage or detect leaks. It’s ideal for climate control setups wher
 
 These channels are mandatory for the functionality of the air conditioner:
 
-| **Channel**          | **Description**                                                                | **Multiple** | **Details**                                                                            |
-|----------------------|--------------------------------------------------------------------------------|--------------|----------------------------------------------------------------------------------------|
-| `cooler`             | Controls the cooling functionality of the air conditioner.                     | No           | [See details](/docs/system-architecture/supported-channels/cooler-channel)             |
-| `fan`                | Manages fan settings, including speed and direction.                           | No           | [See details](/docs/system-architecture/supported-channels/fan-channel)                |
-| `temperature`        | Monitors and controls the target and current temperature.                      | No           | [See details](/docs/system-architecture/supported-channels/temperature-channel)        |
-| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
+| **Channel** | **Description** | **Multiple** | **Details** |
+|-------------|-----------------|--------------|-------------|
+| `cooler` | Controls devices that lower air or liquid temperatures, such as air conditioners or refrigeration systems. | No | [See details](/docs/system-architecture/supported-channels/cooler-channel) |
+| `fan` | Controls fan devices, including speed, oscillation, and modes for air circulation. | No | [See details](/docs/system-architecture/supported-channels/fan-channel) |
+| `temperature` | Measures the current temperature in an environment, reported in degrees Celsius. | No | [See details](/docs/system-architecture/supported-channels/temperature-channel) |
+| `device_information` | Provides metadata about the device, including manufacturer details, model information, and operational statuses. | No | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
 
 ---
 
@@ -28,46 +27,36 @@ These channels are mandatory for the functionality of the air conditioner:
 
 These channels are optional and provide additional features:
 
-| **Channel**         | **Description**                                | **Multiple** | **Details**                                                                           |
-|---------------------|------------------------------------------------|--------------|---------------------------------------------------------------------------------------|
-| `electrical_energy` | Tracks total energy consumption over time.     | No           | [See details](/docs/system-architecture/supported-channels/electrical-energy-channel) |
-| `electrical_power`  | Provides real-time power usage information.    | No           | [See details](/docs/system-architecture/supported-channels/electrical-power-channel)  |
-| `heater`            | Adds heating capability to the device.         | No           | [See details](/docs/system-architecture/supported-channels/heater-channel)            |
-| `humidity`          | Monitors the ambient humidity level.           | No           | [See details](/docs/system-architecture/supported-channels/humidity-channel)          |
-| `leak`              | Detects water leaks or other potential issues. | No           | [See details](/docs/system-architecture/supported-channels/leak-channel)              |
-| `filter`            | Monitors filter status and remaining life.     | No           | [See details](/docs/system-architecture/supported-channels/filter-channel)            |
+| **Channel** | **Description** | **Multiple** | **Details** |
+|-------------|-----------------|--------------|-------------|
+| `electrical_energy` | Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh). | No | [See details](/docs/system-architecture/supported-channels/electrical-energy-channel) |
+| `electrical_power` | Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics. | No | [See details](/docs/system-architecture/supported-channels/electrical-power-channel) |
+| `heater` | Manages heating devices, allowing control of temperature settings and modes. | No | [See details](/docs/system-architecture/supported-channels/heater-channel) |
+| `humidity` | Measures the relative humidity in the environment, reported as a percentage. | No | [See details](/docs/system-architecture/supported-channels/humidity-channel) |
+| `contact` | Tracks the open or closed state of a contact point, such as a door, window, or cabinet. | No | [See details](/docs/system-architecture/supported-channels/contact-channel) |
+| `leak` | Identifies the presence of water or other liquids to detect leaks and prevent damage. | No | [See details](/docs/system-architecture/supported-channels/leak-channel) |
+| `filter` | Monitors the filter status and remaining life, with option to reset after replacement. | No | [See details](/docs/system-architecture/supported-channels/filter-channel) |
 
 ---
 
 ## Use Case Scenarios
 
 1. **Cooling and Fan Control**:
-    - Set a target temperature using the `cooler` and `temperature` channels.
-    - Adjust fan speed and direction via the `fan` channel.
+    - Set a target temperature using the cooler and temperature channels. Adjust fan speed and direction via the fan channel.
 
 2. **Environmental Monitoring**:
-    - Monitor room temperature (`temperature`) and humidity (`humidity`) for better climate control.
-    - Detect leaks using the `leak` channel to ensure safety.
+    - Monitor room temperature and humidity for better climate control. Detect leaks using the leak channel to ensure safety.
 
 3. **Energy Management**:
-    - Track power usage and energy consumption using the `electrical_power` and `electrical_energy` channels.
+    - Track power usage and energy consumption using the electrical_power and electrical_energy channels.
 
 ---
 
 ## Developer Notes
 
-1. **Channel Implementation**:
-   - Implement all required channels for core air conditioning functionality.
-   - Add optional channels based on the specific features of the device.
+1. Implement all required channels for core air conditioning functionality.
+2. Add optional channels based on the specific features of the device.
+3. The device_information channel is mandatory for device identification.
+4. Include electrical_energy and electrical_power for energy efficiency tracking.
+5. Use the leak channel for enhanced safety in environments prone to water-related issues.
 
-2. **Integration**:
-   - Ensure proper mapping of channels to the device's physical or logical components.
-   - The `device_information` channel is mandatory for device identification.
-
-3. **Energy and Safety Monitoring**:
-   - Include `electrical_energy` and `electrical_power` for energy efficiency tracking.
-   - Use the `leak` channel for enhanced safety in environments prone to water-related issues.
-
-4. **Extensibility**:
-   - Add optional channels like `heater` or `humidity` to support additional features.
-   - Use `temperature` and `cooler` channels to manage thermal conditions effectively.

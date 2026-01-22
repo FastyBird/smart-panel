@@ -6,15 +6,15 @@ import { Callout } from 'nextra/components'
 	**Channel Category**: `media_playback`
 </Callout>
 
-Provides playback controls for multimedia devices, excluding volume control (handled by **Speaker** and **Microphone** channels).
+Provides playback controls for multimedia devices, including play/pause, track info, and progress.
 
 ---
 
 ## Required Properties
 
-| **Property** | **Data Type** | **Range**                 | **Unit** | **Permissions** |
-|--------------|---------------|---------------------------|----------|-----------------|
-| `status`     | `Enum`        | `playing/paused/stopped`  | -        | RW (Read-Write) |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `status` | Enum | `playing`, `paused`, `stopped` | - | RW (Read-Write) |
 
 ---
 
@@ -22,20 +22,23 @@ Provides playback controls for multimedia devices, excluding volume control (han
 
 #### `status`
 
-- Represents the current playback state:
-    - `playing`: Media is playing.
-    - `paused`: Media is paused.
-    - `stopped`: Media is stopped.
-
----
+Current operational status
 
 ## Optional Properties
 
-| **Property** | **Data Type** | **Range**    | **Unit** | **Permissions** |
-|--------------|---------------|--------------|----------|-----------------|
-| `track`      | `String`      | -            | -        | RO (Read-Only)  |
-| `duration`   | `Uint`        | `0–86400`    | seconds  | RO (Read-Only)  |
-| `position`   | `Uint`        | `0–86400`    | seconds  | RW (Read-Write) |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `track` | String | - | - | RO (Read-Only) |
+| `duration` | Uint | 0–86400 | s | RO (Read-Only) |
+| `position` | Uint | 0–86400 | s | RW (Read-Write) |
+| `shuffle` | Bool | - | - | RW (Read-Write) |
+| `repeat` | Enum | `off`, `one`, `all` | - | RW (Read-Write) |
+| `command` | Enum | `play`, `pause`, `stop`, `next`, `previous`, `rewind`, `fast_forward` | - | WO (Write-Only) |
+| `title` | String | - | - | RO (Read-Only) |
+| `artist` | String | - | - | RO (Read-Only) |
+| `album` | String | - | - | RO (Read-Only) |
+| `artwork_url` | String | - | - | RO (Read-Only) |
+| `media_type` | Enum | `music`, `tvshow`, `movie`, `video`, `playlist`, `podcast`, `audiobook`, `radio`, `unknown` | - | RO (Read-Only) |
 
 ---
 
@@ -43,12 +46,41 @@ Provides playback controls for multimedia devices, excluding volume control (han
 
 #### `track`
 
-- Displays the name or identifier of the currently playing media.
-
 #### `duration`
-
-- Total duration of the media in seconds.
 
 #### `position`
 
-- Current playback position in seconds.
+Position value
+
+#### `shuffle`
+
+Shuffle mode.
+
+#### `repeat`
+
+Repeat mode.
+
+#### `command`
+
+One-shot playback command.
+
+#### `title`
+
+Track title.
+
+#### `artist`
+
+Track artist.
+
+#### `album`
+
+Album name.
+
+#### `artwork_url`
+
+Artwork/cover URL.
+
+#### `media_type`
+
+Media type classification.
+

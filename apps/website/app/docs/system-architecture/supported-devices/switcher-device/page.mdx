@@ -6,30 +6,17 @@ import { Callout } from 'nextra/components'
 	**Device Category**: `switcher`
 </Callout>
 
-The **Switcher** device represents a controllable outlet or switch that can toggle the power supply to connected devices and monitor energy usage. It supports either multiple outlets or multiple switches for power control.
+The Switcher device represents a controllable outlet or switch that can toggle the power supply to connected devices and monitor energy usage. It supports multiple outlets or switches for power control.
 
 ---
 
 ## Required Channels
 
-These channels are mandatory for the functionality of the switcher device:
+These channels are mandatory for the functionality of the switcher:
 
-| **Channel**          | **Description**                                                                | **Multiple** | **Details**                                                                            |
-|----------------------|--------------------------------------------------------------------------------|--------------|----------------------------------------------------------------------------------------|
-| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
-
----
-
-## Conditional Channels
-
-<Callout type="warning">
-	**At least one** of the following channels must be present. The `outlet` and `switcher` channels are **mutually exclusive** — a device can have either outlets or switchers, but not both.
-</Callout>
-
-| **Channel** | **Description**                                  | **Multiple** | **Details**                                                                |
-|-------------|--------------------------------------------------|--------------|----------------------------------------------------------------------------|
-| `outlet`    | Controls and monitors electrical outlets.        | Yes          | [See details](/docs/system-architecture/supported-channels/outlet-channel) |
-| `switcher`  | Controls and monitors electrical switches.       | Yes          | [See details](/docs/system-architecture/supported-channels/switcher-channel) |
+| **Channel** | **Description** | **Multiple** | **Details** |
+|-------------|-----------------|--------------|-------------|
+| `device_information` | Provides metadata about the device, including manufacturer details, model information, and operational statuses. | No | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
 
 ---
 
@@ -37,41 +24,44 @@ These channels are mandatory for the functionality of the switcher device:
 
 These channels are optional and provide additional features:
 
-| **Channel**         | **Description**                             | **Multiple** | **Details**                                                                           |
-|---------------------|---------------------------------------------|--------------|---------------------------------------------------------------------------------------|
-| `electrical_energy` | Tracks total energy consumption over time.  | No           | [See details](/docs/system-architecture/supported-channels/electrical-energy-channel) |
-| `electrical_power`  | Provides real-time power usage information. | No           | [See details](/docs/system-architecture/supported-channels/electrical-power-channel)  |
+| **Channel** | **Description** | **Multiple** | **Details** |
+|-------------|-----------------|--------------|-------------|
+| `outlet` | Controls and monitors electrical outlets. | Yes | [See details](/docs/system-architecture/supported-channels/outlet-channel) |
+| `switcher` | Controls and monitors electrical switches. | Yes | [See details](/docs/system-architecture/supported-channels/switcher-channel) |
+| `electrical_energy` | Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh). | No | [See details](/docs/system-architecture/supported-channels/electrical-energy-channel) |
+| `electrical_power` | Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics. | No | [See details](/docs/system-architecture/supported-channels/electrical-power-channel) |
+
+---
+
+## Channel Constraints
+
+### One or More Required
+
+At least one channel from each of the following groups must be present:
+
+- `outlet` or `switcher`
+
+### Mutually Exclusive
+
+The following channel groups cannot be used together:
+
+- `outlet` **OR** `switcher`
 
 ---
 
 ## Use Case Scenarios
 
-1. **Power Control with Outlets**:
-   - Use the `outlet` channel to toggle the power supply on or off for connected devices.
-   - For multi-outlet devices, control each outlet independently.
+1. **Power Switching**:
+    - Toggle power to connected devices using outlet or switcher channels. Support for multiple independent switches.
 
-2. **Power Control with Switches**:
-   - Use the `switcher` channel for simple on/off toggle control.
-   - Ideal for wall switches or basic relay controls.
-
-3. **Energy Monitoring**:
-   - Track energy consumption with the `electrical_energy` channel for billing or usage optimization.
-   - Monitor real-time power usage with the `electrical_power` channel to identify energy-hungry devices.
+2. **Energy Monitoring**:
+    - Track power consumption across all connected devices.
 
 ---
 
 ## Developer Notes
 
-1. **Channel Implementation**:
-   - The `device_information` channel is required for identifying the device and providing basic metadata.
-   - Choose either `outlet` or `switcher` channels based on the device type — they cannot be mixed.
-   - Implement multiple channels of the chosen type for devices with multiple controllable switches or sockets.
+1. Device must have either outlet OR switcher channels (mutually exclusive).
+2. Multiple channels of the same type are supported.
+3. Energy monitoring is optional but recommended.
 
-2. **Integration**:
-   - Add the `electrical_energy` and `electrical_power` channels to enable energy monitoring features.
-
-3. **Extensibility**:
-   - This device can be further enhanced by adding custom features for specific hardware, like timers or schedules for each outlet or switch.
-
-4. **Handling Multiple Channels**:
-   - Ensure that each `outlet` or `switcher` channel is uniquely identified and managed within the device for seamless user control.

@@ -6,17 +6,17 @@ import { Callout } from 'nextra/components'
 	**Channel Category**: `heater`
 </Callout>
 
-Manages heating devices, allowing control of temperature settings and modes.
+Manages heating devices, allowing control of temperature settings, modes, and valve position.
 
 ---
 
 ## Required Properties
 
-| **Property**  | **Data Type** | **Range**    | **Unit** | **Permissions** |
-|---------------|---------------|--------------|----------|-----------------|
-| `on`          | `Bool`        | `true/false` | -        | RW (Read/Write) |
-| `temperature` | `Float`       | `0.0–100.0`  | °C       | RW (Read/Write) |
-| `status`      | `Bool`        | `true/false` | -        | RO (Read-Only)  |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `on` | Bool | - | - | RW (Read-Write) |
+| `temperature` | Float | 0–100 | °C | RW (Read-Write) |
+| `status` | Bool | - | - | RO (Read-Only) |
 
 ---
 
@@ -24,35 +24,21 @@ Manages heating devices, allowing control of temperature settings and modes.
 
 #### `on`
 
-Indicates the on/off state of the heater:
-
-- `true`: The heater is on.
-- `false`: The heater is off.
+Power state of the device (on/off)
 
 #### `temperature`
 
-Defines the heating threshold in Celsius:
-
-- Specifies the maximum temperature before the heating mechanism activates.
-
-> [!Example]:
-If the current temperature goes below the minimum temperature, then the heating mechanism should turn on to increase
-the current temperature until the minimum temperature is reached.
+Temperature reading or setpoint
 
 #### `status`
 
-Indicates the current state of the heater:
-
-- `true`: The heater is heating.
-- `false`: The heater is inactive.
-
----
+Current operational status
 
 ## Optional Properties
 
-| **Property** | **Data Type**     | **Range**                                     | **Unit** | **Permissions** |
-|--------------|-------------------|-----------------------------------------------|----------|-----------------|
-| `position`   | `Uchar` or `Enum` | `0–100` or `closed/quarter/half/three_quarter/open` | %  | RW (Read/Write) |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `position` | Uchar | 0–100 | % | RW (Read-Write) |
 
 ---
 
@@ -60,18 +46,10 @@ Indicates the current state of the heater:
 
 #### `position`
 
-Represents the current openness of the valve. This property supports multiple data types:
+Heater valve position - integrator can choose between percentage or discrete states
 
-**Option 1 - Percentage:**
-- **Data Type**: `Uchar`
-- **Range**: `0–100%`
-- `0%`: Fully closed
-- `100%`: Fully open
-- Intermediate values indicate partial opening
+This property supports multiple data type variants:
 
-**Option 2 - Discrete States:**
-- **Data Type**: `Enum`
-- **Values**: `closed`, `quarter`, `half`, `three_quarter`, `open`
-- Predefined valve positions.
+- **percentage**: Uchar (0–100) in % - Position as percentage (0-100%)
+- **state**: Enum (`closed`, `quarter`, `half`, `three_quarter`, `open`) - Position as discrete states
 
-Used to monitor or set the effective opening level for thermostatic radiator valves.

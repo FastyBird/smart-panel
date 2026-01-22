@@ -6,23 +6,27 @@ import { Callout } from 'nextra/components'
 	**Channel Category**: `air_particulate`
 </Callout>
 
-Monitors the concentration of particulate matter (e.g., PM2.5 and PM10) in the air, providing insights into air quality
-and pollution levels.
-
-<Callout type="warning">
-	At least one of `detected` or `density` must be provided.
-</Callout>
+Monitors the concentration of particulate matter (PM1, PM2.5, PM10) in the air, providing insights into air quality and pollution levels.
 
 ---
 
-## Required Properties
+## Property Constraints
 
-At least one of the following properties must be present:
+<Callout type="warning">
+At least one property from each of the following groups must be present:
+- `detected` or `concentration`
+</Callout>
 
-| **Property** | **Data Type** | **Range**      | **Unit** | **Permissions** |
-|--------------|---------------|----------------|----------|-----------------|
-| `detected`   | `Bool`        | `true/false`   | -        | RO (Read-Only)  |
-| `density`    | `Float`       | `0.0–1,000.0`  | µg/m³    | RO (Read-Only)  |
+## Optional Properties
+
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `detected` | Bool | - | - | RO (Read-Only) |
+| `concentration` | Float | 0–1000 | µg/m³ | RO (Read-Only) |
+| `mode` | Enum | `pm1`, `pm2_5`, `pm10` | - | RO (Read-Only) |
+| `active` | Bool | - | - | RO (Read-Only) |
+| `fault` | Uchar | 0–255 | - | RO (Read-Only) |
+| `tampered` | Bool | - | - | RO (Read-Only) |
 
 ---
 
@@ -30,60 +34,25 @@ At least one of the following properties must be present:
 
 #### `detected`
 
-Indicates whether the sensor detects abnormal levels of particulate matter in the air:
+Binary detection state (true = detected)
 
-- `true`: Abnormal particulate matter in the air levels detected.
-- `false`: Particulate matter in the air levels have returned to normal.
+#### `concentration`
 
-#### `density`
-
-Indicates the current density of particulate matter:
-
-- Measured in micrograms per cubic meter (`µg/m³`).
-- Represents either PM2.5 or PM10 particles, depending on the `mode` property.
-
----
-
-## Optional Properties
-
-| **Property** | **Data Type** | **Range**        | **Unit** | **Permissions** |
-|--------------|---------------|------------------|----------|-----------------|
-| `mode`       | `Enum`        | `pm1/pm2_5/pm10` | -        | RO (Read-Only)  |
-| `active`     | `Bool`        | `true/false`     | -        | RO (Read-Only)  |
-| `fault`      | `Uchar`       | `0–255`          | -        | RO (Read-Only)  |
-| `tampered`   | `Bool`        | `true/false`     | -        | RO (Read-Only)  |
-
----
-
-### Property Details
+Measured concentration level
 
 #### `mode`
 
-Specifies the type of particulate matter being measured:
-
-- Possible values:
-    - `pm1`: Measures particulate matter smaller than 1 µm.
-    - `pm2_5`: Measures particulate matter smaller than 2.5 µm.
-    - `pm10`: Measures particulate matter smaller than 10 µm.
-- Determines how the `density` property is interpreted.
+Operating mode selection
 
 #### `active`
 
-Indicates the channel's current working status:
-
-- `true`: The sensor is active and functioning correctly.
-- `false`: The sensor is inactive or non-functional.
+Indicates if the channel/sensor is currently active and functioning
 
 #### `fault`
 
-Represents the fault state of the sensor:
-
-- `0`: No fault detected.
-- Non-zero: A fault has been detected, potentially affecting functionality.
+Fault code or diagnostic indicator (0 = no fault)
 
 #### `tampered`
 
-Indicates whether the channel has been tampered with:
+Indicates if the device has been tampered with
 
-- `true`: The channel has been tampered with.
-- `false`: The channel is in a normal, non-tampered state.

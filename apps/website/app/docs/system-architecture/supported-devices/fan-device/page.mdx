@@ -6,8 +6,7 @@ import { Callout } from 'nextra/components'
 	**Device Category**: `fan`
 </Callout>
 
-The **Fan** device represents a standalone or integrated fan system with features for speed control,
-direction adjustment, and energy monitoring.
+The Fan device represents a standalone or integrated fan system with features for speed control, direction adjustment, oscillation, and energy monitoring.
 
 ---
 
@@ -15,10 +14,10 @@ direction adjustment, and energy monitoring.
 
 These channels are mandatory for the functionality of the fan:
 
-| **Channel**          | **Description**                                                                | **Multiple** | **Details**                                                                            |
-|----------------------|--------------------------------------------------------------------------------|--------------|----------------------------------------------------------------------------------------|
-| `fan`                | Manages the fan's operation, including speed, direction, and activation.       | No           | [See details](/docs/system-architecture/supported-channels/fan-channel)                |
-| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
+| **Channel** | **Description** | **Multiple** | **Details** |
+|-------------|-----------------|--------------|-------------|
+| `fan` | Controls fan devices, including speed, oscillation, direction, and modes for air circulation. | No | [See details](/docs/system-architecture/supported-channels/fan-channel) |
+| `device_information` | Provides metadata about the device, including manufacturer details, model information, and operational statuses. | No | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
 
 ---
 
@@ -26,38 +25,25 @@ These channels are mandatory for the functionality of the fan:
 
 These channels are optional and provide additional features:
 
-| **Channel**         | **Description**                             | **Multiple** | **Details**                                                                           |
-|---------------------|---------------------------------------------|--------------|---------------------------------------------------------------------------------------|
-| `electrical_energy` | Tracks total energy consumption over time.  | No           | [See details](/docs/system-architecture/supported-channels/electrical-energy-channel) |
-| `electrical_power`  | Provides real-time power usage information. | No           | [See details](/docs/system-architecture/supported-channels/electrical-power-channel)  |
+| **Channel** | **Description** | **Multiple** | **Details** |
+|-------------|-----------------|--------------|-------------|
+| `electrical_energy` | Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh). | No | [See details](/docs/system-architecture/supported-channels/electrical-energy-channel) |
+| `electrical_power` | Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics. | No | [See details](/docs/system-architecture/supported-channels/electrical-power-channel) |
 
 ---
 
 ## Use Case Scenarios
 
-1. **Fan Operation and Control**:
-    - Activate or deactivate the fan using the `fan` channel.
-    - Adjust speed and direction settings through the `fan` channel.
+1. **Air Circulation**:
+    - Control fan speed and direction for optimal air circulation. Enable oscillation for wider coverage.
 
 2. **Energy Monitoring**:
-    - Use the `electrical_power` channel to monitor real-time power usage.
-    - Track long-term energy consumption with the `electrical_energy` channel.
+    - Track power consumption for energy efficiency analysis.
 
 ---
 
 ## Developer Notes
 
-1. **Channel Implementation**:
-    - Implement all required channels for core fan functionality.
-    - Add optional channels for energy monitoring if the fan supports these features.
+1. The fan channel is required for all fan control operations.
+2. Energy monitoring channels are optional but useful for smart home analytics.
 
-2. **Integration**:
-    - Map the `fan` channel to the fan's speed and direction control mechanisms.
-    - Include the `device_information` channel for device identification.
-
-3. **Energy Tracking**:
-    - Use the `electrical_energy` and `electrical_power` channels to enhance energy efficiency features.
-
-4. **Use Cases**:
-    - Suitable for standalone fans, ceiling fans, or integrated HVAC systems.
-    - Provides energy management capabilities when combined with optional channels.

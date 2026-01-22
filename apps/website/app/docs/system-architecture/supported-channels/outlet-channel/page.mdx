@@ -6,15 +6,15 @@ import { Callout } from 'nextra/components'
 	**Channel Category**: `outlet`
 </Callout>
 
-Controls and monitors electrical outlets.
+Controls and monitors electrical outlets, including on/off state and in-use detection.
 
 ---
 
 ## Required Properties
 
-| **Property** | **Data Type** | **Range**    | **Unit** | **Permissions** |
-|--------------|---------------|--------------|----------|-----------------|
-| `on`         | `Bool`        | `true/false` | -        | RW (Read/Write) |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `on` | Bool | - | - | RW (Read-Write) |
 
 ---
 
@@ -22,18 +22,13 @@ Controls and monitors electrical outlets.
 
 #### `on`
 
-Indicates the operational state of the outlet:
-
-- `true`: The outlet is powered on.
-- `false`: The outlet is powered off.
-
----
+Power state of the device (on/off)
 
 ## Optional Properties
 
-| **Property** | **Data Type** | **Range**    | **Unit** | **Permissions** |
-|--------------|---------------|--------------|----------|-----------------|
-| `in_use`     | `Bool`        | `true/false` | -        | RO (Read-Only)  |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `in_use` | Bool | - | - | RO (Read-Only) |
 
 ---
 
@@ -41,7 +36,3 @@ Indicates the operational state of the outlet:
 
 #### `in_use`
 
-Indicates whether the outlet is actively being used:
-
-- `true`: A device is connected and drawing power.
-- `false`: No device is currently using the outlet.

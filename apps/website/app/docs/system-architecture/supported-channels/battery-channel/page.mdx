@@ -6,16 +6,16 @@ import { Callout } from 'nextra/components'
 	**Channel Category**: `battery`
 </Callout>
 
-Reports the status of a device's battery, including level, charging state, and operational health.
+Reports the status of a device's battery, including charge level, charging state, and operational health.
 
 ---
 
 ## Required Properties
 
-| **Property** | **Data Type**       | **Range**                               | **Unit** | **Permissions** |
-|--------------|---------------------|-----------------------------------------|----------|-----------------|
-| `percentage` | `Uchar` or `Enum`   | `0–100` or `critical/low/medium/high/full` | %     | RO (Read-Only)  |
-| `status`     | `Enum`              | `ok/low/charging`                       | -        | RO (Read-Only)  |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `percentage` | Uchar | 0–100 | % | RO (Read-Only) |
+| `status` | Enum | `ok`, `low`, `charging` | - | RO (Read-Only) |
 
 ---
 
@@ -23,33 +23,22 @@ Reports the status of a device's battery, including level, charging state, and o
 
 #### `percentage`
 
-Represents the current battery level. This property supports multiple data types:
+Battery level - integrator can choose between percentage or discrete levels
 
-**Option 1 - Percentage:**
-- **Data Type**: `Uchar`
-- **Range**: `0–100%`
-- Fine-grained battery level as a percentage.
+This property supports multiple data type variants:
 
-**Option 2 - Discrete Levels:**
-- **Data Type**: `Enum`
-- **Values**: `critical`, `low`, `medium`, `high`, `full`
-- Predefined battery level categories.
+- **percentage**: Uchar (0–100) in % - Battery as percentage (0-100%)
+- **level**: Enum (`critical`, `low`, `medium`, `high`, `full`) - Battery as discrete levels
 
 #### `status`
 
-Indicates the current status of the battery:
-
-- `ok`: The battery level is sufficient.
-- `low`: The battery level is critically low and may require recharging or replacement.
-- `charging`: The battery is currently charging.
-
----
+Current operational status
 
 ## Optional Properties
 
-| **Property** | **Data Type** | **Range** | **Unit** | **Permissions** |
-|--------------|---------------|-----------|----------|-----------------|
-| `fault`      | `Uchar`       | `0–255`   | -        | RO (Read-Only)  |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `fault` | Uchar | 0–255 | - | RO (Read-Only) |
 
 ---
 
@@ -57,7 +46,5 @@ Indicates the current status of the battery:
 
 #### `fault`
 
-Represents the fault state of the battery:
+Fault code or diagnostic indicator (0 = no fault)
 
-- `0`: No fault detected.
-- Non-zero: A fault has been detected, potentially affecting functionality.

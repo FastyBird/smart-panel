@@ -6,36 +6,15 @@ import { Callout } from 'nextra/components'
 	**Channel Category**: `thermostat`
 </Callout>
 
-Manages climate control systems, allowing adjustments of heating, cooling, and fan settings.
-
----
-
-## Required Properties
-
-| **Property** | **Data Type** | **Range**               | **Unit** | **Permissions** |
-|--------------|---------------|-------------------------|----------|-----------------|
-| `active`     | `Bool`        | `true/false`            | -        | RW (Read/Write) |
-| `mode`       | `Enum`        | `heat/cool/auto/manual` | -        | RW (Read/Write) |
-
----
-
-### Property Details
-
-#### `active`
-
-Indicates whether the thermostat channel is currently active:
-
-- `true`: The thermostat is active.
-- `false`: The thermostat is inactive.
+Manages climate control systems, allowing adjustments of heating, cooling, and HVAC settings.
 
 ---
 
 ## Optional Properties
 
-| **Property** | **Data Type** | **Range**            | **Unit** | **Permissions** |
-|--------------|---------------|----------------------|----------|-----------------|
-| `locked`     | `Bool`        | `true/false`         | -        | RW (Read/Write) |
-| `units`      | `Enum`        | `celsius/fahrenheit` | -        | RO (Read-Only)  |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `locked` | Bool | - | - | RW (Read-Write) |
 
 ---
 
@@ -43,15 +22,5 @@ Indicates whether the thermostat channel is currently active:
 
 #### `locked`
 
-Specifies whether the physical controls of the device are locked:
+Child lock or panel lock state
 
-- `true`: Controls are locked (e.g., child lock enabled).
-- `false`: Controls are unlocked.
-
-#### `units`
-
-Describes the temperature units used for display and presentation:
-
-- Possible values:
-    - `celsius`
-    - `fahrenheit`

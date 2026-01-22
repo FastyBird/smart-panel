@@ -6,9 +6,7 @@ import { Callout } from 'nextra/components'
 	**Device Category**: `water_heater`
 </Callout>
 
-The **Water Heater** device represents a water heating system designed to heat and maintain water
-temperature, with optional features for energy monitoring and leak detection. This category includes
-tankless water heaters, storage tank water heaters, and hybrid water heating systems.
+The Water Heater device represents a water heating system designed to heat and maintain water temperature, with optional features for energy monitoring and leak detection.
 
 ---
 
@@ -16,11 +14,11 @@ tankless water heaters, storage tank water heaters, and hybrid water heating sys
 
 These channels are mandatory for the functionality of the water heater:
 
-| **Channel**          | **Description**                                                                | **Multiple** | **Details**                                                                            |
-|----------------------|--------------------------------------------------------------------------------|--------------|----------------------------------------------------------------------------------------|
-| `heater`             | Controls the heating functionality, including activation and settings.         | No           | [See details](/docs/system-architecture/supported-channels/heater-channel)             |
-| `temperature`        | Measures the current water temperature, reported in degrees Celsius.           | No           | [See details](/docs/system-architecture/supported-channels/temperature-channel)        |
-| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
+| **Channel** | **Description** | **Multiple** | **Details** |
+|-------------|-----------------|--------------|-------------|
+| `heater` | Manages heating devices, allowing control of temperature settings and modes. | No | [See details](/docs/system-architecture/supported-channels/heater-channel) |
+| `temperature` | Measures the current water temperature, reported in degrees Celsius. | No | [See details](/docs/system-architecture/supported-channels/temperature-channel) |
+| `device_information` | Provides metadata about the device, including manufacturer details, model information, and operational statuses. | No | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
 
 ---
 
@@ -28,44 +26,30 @@ These channels are mandatory for the functionality of the water heater:
 
 These channels are optional and provide additional features:
 
-| **Channel**         | **Description**                                                             | **Multiple** | **Details**                                                                           |
-|---------------------|-----------------------------------------------------------------------------|--------------|---------------------------------------------------------------------------------------|
-| `electrical_energy` | Measures the total energy consumption over time, typically reported in kWh. | No           | [See details](/docs/system-architecture/supported-channels/electrical-energy-channel) |
-| `electrical_power`  | Reports real-time power metrics such as voltage, current, and wattage.      | No           | [See details](/docs/system-architecture/supported-channels/electrical-power-channel)  |
-| `leak`              | Identifies the presence of water leaks to prevent damage.                   | No           | [See details](/docs/system-architecture/supported-channels/leak-channel)              |
+| **Channel** | **Description** | **Multiple** | **Details** |
+|-------------|-----------------|--------------|-------------|
+| `electrical_energy` | Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh). | No | [See details](/docs/system-architecture/supported-channels/electrical-energy-channel) |
+| `electrical_power` | Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics. | No | [See details](/docs/system-architecture/supported-channels/electrical-power-channel) |
+| `leak` | Identifies the presence of water leaks to prevent damage. | No | [See details](/docs/system-architecture/supported-channels/leak-channel) |
 
 ---
 
 ## Use Case Scenarios
 
 1. **Water Temperature Control**:
-    - Set a target water temperature and activate heating through the `heater` and `temperature` channels.
-    - Monitor water temperature in real-time using the `temperature` channel.
+    - Set target water temperature using the heater channel. Monitor current water temperature with the temperature channel.
 
-2. **Safety Monitoring**:
-    - Use the `leak` channel to detect water leaks early and prevent property damage.
-    - Receive alerts when water is detected outside the tank or pipes.
+2. **Energy Efficiency**:
+    - Track energy consumption to optimize heating schedules and reduce costs.
 
-3. **Energy Management**:
-    - Track power usage in real-time with the `electrical_power` channel.
-    - Use the `electrical_energy` channel for long-term energy consumption analysis and cost optimization.
+3. **Leak Prevention**:
+    - Detect water leaks early to prevent damage and water waste.
 
 ---
 
 ## Developer Notes
 
-1. **Channel Implementation**:
-    - Implement all required channels for core water heating functionality.
-    - Add optional channels for energy monitoring and leak detection based on device capabilities.
+1. Heater and temperature channels are required for core functionality.
+2. Leak detection is highly recommended for safety.
+3. Energy monitoring helps optimize heating schedules.
 
-2. **Integration**:
-    - Ensure the `heater` channel is mapped to the water heating control mechanisms.
-    - Include the `device_information` channel for proper device identification.
-
-3. **Safety Features**:
-    - Implement the `leak` channel to provide early warning of potential water damage.
-    - Consider integrating with home automation systems for automatic shutoff capabilities.
-
-4. **Energy Tracking**:
-    - Use `electrical_energy` and `electrical_power` channels to provide energy efficiency metrics.
-    - Water heaters are significant energy consumers, making energy tracking valuable for users.

@@ -6,15 +6,15 @@ import { Callout } from 'nextra/components'
 	**Channel Category**: `flow`
 </Callout>
 
-Monitors the rate of fluid or air flow, typically measured in cubic meters per hour (m³/h).
+Monitors the rate of fluid or air flow, typically measured in cubic meters per hour (m3/h).
 
 ---
 
 ## Required Properties
 
-| **Property** | **Data Type** | **Range**      | **Unit** | **Permissions** |
-|--------------|---------------|----------------|----------|-----------------|
-| `rate`       | `Float`       | `0.0–65,533.0` | m³/h     | RO (Read-Only)  |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `rate` | Float | 0–65533 | m³/h | RO (Read-Only) |
 
 ---
 
@@ -22,19 +22,12 @@ Monitors the rate of fluid or air flow, typically measured in cubic meters per h
 
 #### `rate`
 
-Represents the current flow rate:
-
-- Measured in cubic meters per hour (`m³/h`).
-- Reflects the real-time value provided by the flow sensor.
-
----
-
 ## Optional Properties
 
-| **Property** | **Data Type** | **Range**    | **Unit** | **Permissions** |
-|--------------|---------------|--------------|----------|-----------------|
-| `active`     | `Bool`        | `true/false` | -        | RO (Read-Only)  |
-| `fault`      | `Uchar`       | `0–255`      | -        | RO (Read-Only)  |
+| **Property** | **Data Type** | **Range/Values** | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `active` | Bool | - | - | RO (Read-Only) |
+| `fault` | Uchar | 0–255 | - | RO (Read-Only) |
 
 ---
 
@@ -42,14 +35,9 @@ Represents the current flow rate:
 
 #### `active`
 
-Indicates the channel's current working status:
-
-- `true`: The sensor is active and functioning correctly.
-- `false`: The sensor is inactive or non-functional.
+Indicates if the channel/sensor is currently active and functioning
 
 #### `fault`
 
-Represents the fault state of the sensor:
+Fault code or diagnostic indicator (0 = no fault)
 
-- `0`: No fault detected.
-- Non-zero: A fault has been detected, potentially affecting functionality.
