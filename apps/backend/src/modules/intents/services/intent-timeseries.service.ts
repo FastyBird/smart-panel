@@ -177,9 +177,10 @@ export class IntentTimeseriesService {
 
 	/**
 	 * Query the last applied media mode for a space.
+	 * Note: Uses full intent type 'space.media.setMode' to match what storeMediaStateChange stores.
 	 */
 	async getLastMediaMode(spaceId: string): Promise<LastAppliedMode | null> {
-		return this.getLastAppliedModeByType(spaceId, 'media.setMode');
+		return this.getLastAppliedModeByType(spaceId, 'space.media.setMode');
 	}
 
 	/**
