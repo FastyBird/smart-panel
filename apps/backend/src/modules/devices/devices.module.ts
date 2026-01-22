@@ -262,58 +262,47 @@ The module uses a flexible type mapping system that allows plugins to register t
 	}
 
 	async onApplicationBootstrap() {
-		try {
-			await this.influxDbService.createContinuousQuery(
-				'cq_prop_counts_1m',
-				`SELECT COUNT("numberValue") AS cn, COUNT("stringValue") AS cs
+		// Create all continuous queries in parallel for faster startup
+		const queries = [
+			{
+				name: 'cq_prop_counts_1m',
+				body: `SELECT COUNT("numberValue") AS cn, COUNT("stringValue") AS cs
            INTO "min_14d"."property_value_counts_1m"
            FROM "raw_24h"."property_value"
            GROUP BY time(1m)`,
-				undefined,
-				'RESAMPLE EVERY 1m FOR 24h',
-			);
-		} catch (error) {
-			const err = error as Error;
-
-			this.logger.warn('[INFLUXDB] Failed to create continuous query cq_prop_counts_1m', {
-				message: err.message,
-			});
-		}
-
-		try {
-			await this.influxDbService.createContinuousQuery(
-				'cq_dev_state_1m',
-				`SELECT LAST("onlineI") AS onlineI, LAST("status") AS status
+				resample: 'RESAMPLE EVERY 1m FOR 24h',
+			},
+			{
+				name: 'cq_dev_state_1m',
+				body: `SELECT LAST("onlineI") AS onlineI, LAST("status") AS status
            INTO "min_14d"."device_status_1m"
            FROM "raw_24h"."device_status"
            GROUP BY time(1m), "deviceId" fill(previous)`,
-				undefined,
-				'RESAMPLE EVERY 1m FOR 24h',
-			);
-		} catch (error) {
-			const err = error as Error;
-
-			this.logger.warn('[INFLUXDB] Failed to create continuous query cq_dev_state_1m', {
-				message: err.message,
-			});
-		}
-
-		try {
-			await this.influxDbService.createContinuousQuery(
-				'cq_online_count_1m',
-				`SELECT SUM("onlineI") AS online_count
+				resample: 'RESAMPLE EVERY 1m FOR 24h',
+			},
+			{
+				name: 'cq_online_count_1m',
+				body: `SELECT SUM("onlineI") AS online_count
            INTO "min_14d"."online_count_1m"
            FROM "min_14d"."device_status_1m"
            GROUP BY time(1m) fill(previous)`,
-				undefined,
-				'RESAMPLE EVERY 1m FOR 24h',
-			);
-		} catch (error) {
-			const err = error as Error;
+				resample: 'RESAMPLE EVERY 1m FOR 24h',
+			},
+		];
 
-			this.logger.warn('[INFLUXDB] Failed to create continuous query cq_online_count_1m', {
-				message: err.message,
-			});
-		}
+		const results = await Promise.allSettled(
+			queries.map((q) => this.influxDbService.createContinuousQuery(q.name, q.body, undefined, q.resample)),
+		);
+
+		// Log any failures
+		results.forEach((result, index) => {
+			if (result.status === 'rejected') {
+				const err = result.reason as Error;
+
+				this.logger.warn(`[INFLUXDB] Failed to create continuous query ${queries[index].name}`, {
+					message: err?.message ?? 'Unknown error',
+				});
+			}
+		});
 	}
 }

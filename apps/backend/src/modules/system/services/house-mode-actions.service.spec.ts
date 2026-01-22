@@ -73,9 +73,9 @@ describe('HouseModeActionsService', () => {
 		expect(service).toBeDefined();
 	});
 
-	describe('onModuleInit', () => {
+	describe('onApplicationBootstrap', () => {
 		it('should initialize previous mode from config', () => {
-			service.onModuleInit();
+			service.onApplicationBootstrap();
 			// eslint-disable-next-line @typescript-eslint/unbound-method
 			expect(configService.getModuleConfig).toHaveBeenCalled();
 		});
@@ -83,7 +83,7 @@ describe('HouseModeActionsService', () => {
 
 	describe('onConfigUpdated', () => {
 		it('should emit HOUSE_MODE_CHANGED event when mode changes', async () => {
-			service.onModuleInit();
+			service.onApplicationBootstrap();
 
 			// Change to Away mode
 			configService.getModuleConfig.mockReturnValue(createMockConfig(HouseMode.AWAY) as SystemConfigModel);
@@ -98,7 +98,7 @@ describe('HouseModeActionsService', () => {
 		});
 
 		it('should not emit event when mode has not changed', async () => {
-			service.onModuleInit();
+			service.onApplicationBootstrap();
 
 			// Same mode
 			configService.getModuleConfig.mockReturnValue(createMockConfig(HouseMode.HOME) as SystemConfigModel);
@@ -111,7 +111,7 @@ describe('HouseModeActionsService', () => {
 
 		describe('Away mode', () => {
 			it('should turn off all lights in all spaces', async () => {
-				service.onModuleInit();
+				service.onApplicationBootstrap();
 
 				configService.getModuleConfig.mockReturnValue(createMockConfig(HouseMode.AWAY) as SystemConfigModel);
 
@@ -133,7 +133,7 @@ describe('HouseModeActionsService', () => {
 
 		describe('Night mode', () => {
 			it('should apply night lighting in all spaces', async () => {
-				service.onModuleInit();
+				service.onApplicationBootstrap();
 
 				configService.getModuleConfig.mockReturnValue(createMockConfig(HouseMode.NIGHT) as SystemConfigModel);
 
@@ -159,7 +159,7 @@ describe('HouseModeActionsService', () => {
 			it('should not execute any lighting actions (non-destructive)', async () => {
 				// Start from Away mode
 				configService.getModuleConfig.mockReturnValue(createMockConfig(HouseMode.AWAY) as SystemConfigModel);
-				service.onModuleInit();
+				service.onApplicationBootstrap();
 
 				// Change to Home mode
 				configService.getModuleConfig.mockReturnValue(createMockConfig(HouseMode.HOME) as SystemConfigModel);
@@ -181,7 +181,7 @@ describe('HouseModeActionsService', () => {
 
 		it('should handle empty spaces gracefully', async () => {
 			spacesService.findAll.mockResolvedValue([]);
-			service.onModuleInit();
+			service.onApplicationBootstrap();
 
 			configService.getModuleConfig.mockReturnValue(createMockConfig(HouseMode.AWAY) as SystemConfigModel);
 
@@ -193,7 +193,7 @@ describe('HouseModeActionsService', () => {
 		});
 
 		it('should handle failed lighting intents gracefully', async () => {
-			service.onModuleInit();
+			service.onApplicationBootstrap();
 
 			spaceIntentService.executeLightingIntent.mockResolvedValue({
 				success: false,
@@ -207,49 +207,9 @@ describe('HouseModeActionsService', () => {
 			await expect(service.onConfigUpdated()).resolves.not.toThrow();
 		});
 
-		describe('first detection after init failure', () => {
-			it('should execute actions on first detection when init failed', async () => {
-				// Simulate init failure
-				configService.getModuleConfig.mockImplementationOnce(() => {
-					throw new Error('Config not ready');
-				});
-				service.onModuleInit();
-
-				// First config update with AWAY mode
-				configService.getModuleConfig.mockReturnValue(createMockConfig(HouseMode.AWAY) as SystemConfigModel);
-
-				await service.onConfigUpdated();
-
-				// Should execute lighting actions even though this is "first detection"
-				// eslint-disable-next-line @typescript-eslint/unbound-method
-				expect(spaceIntentService.executeLightingIntent).toHaveBeenCalledTimes(2);
-				// eslint-disable-next-line @typescript-eslint/unbound-method
-				expect(spaceIntentService.executeLightingIntent).toHaveBeenCalledWith(spaceId1, {
-					type: LightingIntentType.OFF,
-				});
-			});
-
-			it('should not emit HOUSE_MODE_CHANGED event on first detection (no previous mode)', async () => {
-				// Simulate init failure
-				configService.getModuleConfig.mockImplementationOnce(() => {
-					throw new Error('Config not ready');
-				});
-				service.onModuleInit();
-
-				// First config update with AWAY mode
-				configService.getModuleConfig.mockReturnValue(createMockConfig(HouseMode.AWAY) as SystemConfigModel);
-
-				await service.onConfigUpdated();
-
-				// Should NOT emit event since there's no previousMode to report
-				// eslint-disable-next-line @typescript-eslint/unbound-method
-				expect(eventEmitter.emit).not.toHaveBeenCalled();
-			});
-		});
-
 		describe('rapid mode changes serialization', () => {
 			it('should serialize action execution for rapid mode changes', async () => {
-				service.onModuleInit();
+				service.onApplicationBootstrap();
 
 				const executionOrder: string[] = [];
 

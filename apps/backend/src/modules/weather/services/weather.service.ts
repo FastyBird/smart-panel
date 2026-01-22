@@ -2,7 +2,7 @@ import { Cache } from 'cache-manager';
 import { CronJob } from 'cron';
 
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { CronExpression, SchedulerRegistry } from '@nestjs/schedule';
 
@@ -22,7 +22,7 @@ import { WeatherHistoryService } from './weather-history.service';
 import { WeatherProviderRegistryService } from './weather-provider-registry.service';
 
 @Injectable()
-export class WeatherService {
+export class WeatherService implements OnApplicationBootstrap {
 	private readonly logger = createExtensionLogger(WEATHER_MODULE_NAME, 'WeatherService');
 	private readonly refreshJob: CronJob;
 
@@ -47,6 +47,10 @@ export class WeatherService {
 		});
 
 		this.schedulerRegistry.addCronJob('refreshWeather', this.refreshJob);
+	}
+
+	onApplicationBootstrap() {
+		// Start cron job after all weather providers are registered
 		this.refreshJob.start();
 	}
 
