@@ -29,7 +29,7 @@ export class GlobalErrorFilter implements ExceptionFilter {
 				exceptionMessage = JSON.stringify(exception);
 			} catch {
 				// Handle circular references, BigInt, or other non-serializable values
-				exceptionMessage = Object.prototype.toString.call(exception);
+				exceptionMessage = Object.prototype.toString.call(exception) as string;
 			}
 		} else if (typeof exception === 'string') {
 			exceptionMessage = exception;
