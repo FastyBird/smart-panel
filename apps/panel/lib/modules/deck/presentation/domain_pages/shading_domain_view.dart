@@ -393,13 +393,16 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     final List<_CoverDeviceData> devices = [];
     final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
 
+    // Filter out hidden targets
+    final visibleTargets = targets.where((t) => t.role != CoversTargetRole.hidden).toList();
+
     // Count channels per device to determine naming strategy
     final channelsPerDevice = <String, int>{};
-    for (final target in targets) {
+    for (final target in visibleTargets) {
       channelsPerDevice[target.deviceId] = (channelsPerDevice[target.deviceId] ?? 0) + 1;
     }
 
-    for (final target in targets) {
+    for (final target in visibleTargets) {
       final device = _devicesService?.getDevice(target.deviceId);
       if (device is! WindowCoveringDeviceView) continue;
 
