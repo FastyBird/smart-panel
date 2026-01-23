@@ -7,8 +7,10 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
+import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -1643,66 +1645,58 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     // Auxiliary layout: same as "other lights" - 2 cols, aspect ratio based on screen size
     final auxiliaryAspectRatio = isAtLeastMedium ? 3.0 : 2.5;
 
-    return Column(
-      children: [
-        Expanded(
-          child: SingleChildScrollView(
-            padding: AppSpacings.paddingLg,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildPrimaryControlCard(context, dialSize: _scale(200)),
-                AppSpacings.spacingLgVertical,
-                if (hasSensors) ...[
-                  SectionTitle(title: 'Sensors', icon: MdiIcons.eyeSettings),
-                  AppSpacings.spacingMdVertical,
-                  if (isSmallScreen)
-                    // Small: horizontal scroll with horizontal tiles (original behavior)
-                    SizedBox(
-                      height: _scale(50),
-                      child: _buildSensorsScrollRow(
-                        context,
-                        columns: sensorColumns,
-                        useVerticalTiles: false,
-                      ),
-                    )
-                  else if (hasAuxiliary)
-                    // Medium/Large with auxiliary: horizontal scroll with vertical tiles
-                    SizedBox(
-                      height: _scale(100),
-                      child: _buildSensorsScrollRow(
-                        context,
-                        columns: sensorColumns,
-                        useVerticalTiles: true,
-                        statusFontSize: AppFontSize.extraSmall,
-                      ),
-                    )
-                  else
-                    // Medium/Large without auxiliary: grid with vertical tiles
-                    _buildSensorsGrid(
-                      context,
-                      crossAxisCount: sensorColumns,
-                      aspectRatio: 1.0,
-                      statusFontSize: AppFontSize.extraSmall,
-                    ),
-                  AppSpacings.spacingLgVertical,
-                ],
-                if (hasAuxiliary) ...[
-                  SectionTitle(title: 'Auxiliary', icon: MdiIcons.devices),
-                  AppSpacings.spacingMdVertical,
-                  _buildAuxiliaryGrid(
-                    context,
-                    crossAxisCount: 2,
-                    aspectRatio: auxiliaryAspectRatio,
-                  ),
-                ],
-              ],
+    return PortraitViewLayout(
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildPrimaryControlCard(context, dialSize: _scale(200)),
+          AppSpacings.spacingLgVertical,
+          if (hasSensors) ...[
+            SectionTitle(title: 'Sensors', icon: MdiIcons.eyeSettings),
+            AppSpacings.spacingMdVertical,
+            if (isSmallScreen)
+              // Small: horizontal scroll with horizontal tiles (original behavior)
+              SizedBox(
+                height: _scale(50),
+                child: _buildSensorsScrollRow(
+                  context,
+                  columns: sensorColumns,
+                  useVerticalTiles: false,
+                ),
+              )
+            else if (hasAuxiliary)
+              // Medium/Large with auxiliary: horizontal scroll with vertical tiles
+              SizedBox(
+                height: _scale(100),
+                child: _buildSensorsScrollRow(
+                  context,
+                  columns: sensorColumns,
+                  useVerticalTiles: true,
+                  statusFontSize: AppFontSize.extraSmall,
+                ),
+              )
+            else
+              // Medium/Large without auxiliary: grid with vertical tiles
+              _buildSensorsGrid(
+                context,
+                crossAxisCount: sensorColumns,
+                aspectRatio: 1.0,
+                statusFontSize: AppFontSize.extraSmall,
+              ),
+            AppSpacings.spacingLgVertical,
+          ],
+          if (hasAuxiliary) ...[
+            SectionTitle(title: 'Auxiliary', icon: MdiIcons.devices),
+            AppSpacings.spacingMdVertical,
+            _buildAuxiliaryGrid(
+              context,
+              crossAxisCount: 2,
+              aspectRatio: auxiliaryAspectRatio,
             ),
-          ),
-        ),
-        // Fixed space at bottom for swipe dots
-        AppSpacings.spacingLgVertical,
-      ],
+          ],
+        ],
+      ),
+      // No mode selector - climate uses integrated mode control in dial
     );
   }
 
@@ -1711,179 +1705,83 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   // --------------------------------------------------------------------------
 
   Widget _buildLandscapeLayout(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
-    final isLargeScreen = _screenService.isLargeScreen;
-
     final hasSensors = _state.sensors.isNotEmpty;
     final hasAuxiliary = _state.auxiliaryDevices.isNotEmpty;
+    final hasAdditionalContent = hasSensors || hasAuxiliary;
 
-    // For large screens: standard layout with dial card
-    // For small/medium: compact layout with dial + icon-only mode selector
+    return LandscapeViewLayout(
+      mainContent: _buildLandscapeMainContent(context),
+      additionalContent: hasAdditionalContent
+          ? _buildLandscapeAdditionalColumn(context)
+          : null,
+    );
+  }
+
+  Widget _buildLandscapeMainContent(BuildContext context) {
+    final isLargeScreen = _screenService.isLargeScreen;
+
     if (isLargeScreen) {
-      return _buildLargeLandscapeLayout(
-        context,
-        isDark: isDark,
-        borderColor: borderColor,
-        hasSensors: hasSensors,
-        hasAuxiliary: hasAuxiliary,
+      // Large screen: centered dial card
+      final dialSize = _scale(200);
+      return Center(
+        child: SingleChildScrollView(
+          child: _buildPrimaryControlCard(context, dialSize: dialSize),
+        ),
       );
     }
 
-    // Small/medium landscape: compact layout
-    return _buildCompactLandscapeLayout(
-      context,
-      isDark: isDark,
-      borderColor: borderColor,
-      hasSensors: hasSensors,
-      hasAuxiliary: hasAuxiliary,
-    );
+    // Small/medium: compact dial with integrated mode selector
+    return _buildCompactDialWithModes(context);
   }
 
-  /// Large landscape layout: standard two-column with full dial card
-  Widget _buildLargeLandscapeLayout(
-    BuildContext context, {
-    required bool isDark,
-    required Color borderColor,
-    required bool hasSensors,
-    required bool hasAuxiliary,
-  }) {
-    final dialSize = _scale(200);
+  Widget _buildLandscapeAdditionalColumn(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final hasSensors = _state.sensors.isNotEmpty;
+    final hasAuxiliary = _state.auxiliaryDevices.isNotEmpty;
+    final isLargeScreen = _screenService.isLargeScreen;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Left column: dial (1/2 screen)
-        Expanded(
-          flex: 1,
-          child: Center(
-            child: SingleChildScrollView(
-              padding: AppSpacings.paddingLg,
-              child: _buildPrimaryControlCard(context, dialSize: dialSize),
-            ),
-          ),
-        ),
-        Container(width: _scale(1), color: borderColor),
-        // Right column: sensors + auxiliary (1/2 screen) - same layout as "scenes"
-        Expanded(
-          flex: 1,
-          child: Container(
-            color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-            child: SingleChildScrollView(
-              padding: AppSpacings.paddingLg,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (hasSensors) ...[
-                    SectionTitle(title: 'Sensors', icon: MdiIcons.eyeSettings),
-                    AppSpacings.spacingMdVertical,
-                    _buildSensorsGrid(context,
-                        crossAxisCount: 2,
-                        aspectRatio: 2.5,
-                        showInactiveBorder: true),
-                    if (hasAuxiliary) AppSpacings.spacingLgVertical,
-                  ],
-                  if (hasAuxiliary) ...[
-                    SectionTitle(title: 'Auxiliary', icon: MdiIcons.devices),
-                    AppSpacings.spacingMdVertical,
-                    _buildAuxiliaryGrid(context,
-                        crossAxisCount: 2,
-                        aspectRatio: 2.5,
-                        showInactiveBorder: true),
-                  ],
-                  if (!hasSensors && !hasAuxiliary)
-                    Center(
-                      child: Padding(
-                        padding: EdgeInsets.only(top: AppSpacings.pLg * 2),
-                        child: Text(
-                          'No devices',
-                          style: TextStyle(
-                            color: isDark
-                                ? AppTextColorDark.secondary
-                                : AppTextColorLight.secondary,
-                            fontSize: AppFontSize.small,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
+    // Responsive grid settings
+    final crossAxisCount = isLargeScreen ? 2 : 1;
+    final aspectRatio = isLargeScreen ? 2.5 : 3.0;
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (hasSensors) ...[
+            SectionTitle(title: 'Sensors', icon: MdiIcons.eyeSettings),
+            AppSpacings.spacingMdVertical,
+            _buildSensorsGrid(context,
+                crossAxisCount: crossAxisCount,
+                aspectRatio: aspectRatio,
+                showInactiveBorder: true),
+            if (hasAuxiliary) AppSpacings.spacingLgVertical,
+          ],
+          if (hasAuxiliary) ...[
+            SectionTitle(title: 'Auxiliary', icon: MdiIcons.devices),
+            AppSpacings.spacingMdVertical,
+            _buildAuxiliaryGrid(context,
+                crossAxisCount: crossAxisCount,
+                aspectRatio: aspectRatio,
+                showInactiveBorder: true),
+          ],
+          if (!hasSensors && !hasAuxiliary)
+            Center(
+              child: Padding(
+                padding: EdgeInsets.only(top: AppSpacings.pLg * 2),
+                child: Text(
+                  'No devices',
+                  style: TextStyle(
+                    color: isDark
+                        ? AppTextColorDark.secondary
+                        : AppTextColorLight.secondary,
+                    fontSize: AppFontSize.small,
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Compact landscape layout for small/medium: dial with side icons, smaller right column
-  Widget _buildCompactLandscapeLayout(
-    BuildContext context, {
-    required bool isDark,
-    required Color borderColor,
-    required bool hasSensors,
-    required bool hasAuxiliary,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Left column: dial + mode icons (larger - 2/3 of screen)
-        Expanded(
-          flex: 2,
-          child: Padding(
-            padding: AppSpacings.paddingLg,
-            child: _buildCompactDialWithModes(context),
-          ),
-        ),
-        Container(width: _scale(1), color: borderColor),
-        // Right column: sensors + auxiliary (smaller - 1/3 of screen) - same layout as "scenes"
-        Expanded(
-          flex: 1,
-          child: Container(
-            color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-            child: SingleChildScrollView(
-              padding: AppSpacings.paddingLg,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (hasSensors) ...[
-                    SectionTitle(title: 'Sensors', icon: MdiIcons.eyeSettings),
-                    AppSpacings.spacingMdVertical,
-                    _buildSensorsGrid(context,
-                        crossAxisCount: 1,
-                        aspectRatio: 3.0,
-                        showInactiveBorder: true),
-                    if (hasAuxiliary) AppSpacings.spacingLgVertical,
-                  ],
-                  if (hasAuxiliary) ...[
-                    SectionTitle(title: 'Auxiliary', icon: MdiIcons.devices),
-                    AppSpacings.spacingMdVertical,
-                    _buildAuxiliaryGrid(context,
-                        crossAxisCount: 1,
-                        aspectRatio: 3.0,
-                        showInactiveBorder: true),
-                  ],
-                  if (!hasSensors && !hasAuxiliary)
-                    Center(
-                      child: Padding(
-                        padding: EdgeInsets.only(top: AppSpacings.pLg * 2),
-                        child: Text(
-                          'No devices',
-                          style: TextStyle(
-                            color: isDark
-                                ? AppTextColorDark.secondary
-                                : AppTextColorLight.secondary,
-                            fontSize: AppFontSize.small,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

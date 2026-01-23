@@ -5,8 +5,10 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/intent_mode_selector.dart';
+import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -501,99 +503,77 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     List<_CoverRoleData> roleDataList,
     List<_CoverDeviceData> deviceDataList,
   ) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
     final primaryRole = roleDataList.isNotEmpty ? roleDataList.first : null;
     final secondaryRoles = roleDataList.length > 1 ? roleDataList.skip(1).toList() : [];
     final hasDevices = deviceDataList.isNotEmpty;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Left column: Main Control
-        Expanded(
-          flex: 2,
-          child: Padding(
-            padding: EdgeInsets.all(AppSpacings.pLg),
-            child: Column(
-              children: [
-                // Primary Role Card (with slider and actions)
-                if (primaryRole != null)
-                  Expanded(
-                    child: _buildRoleCard(
-                      context,
-                      roleData: primaryRole,
-                      showSlider: true,
-                      showActions: true,
-                    ),
-                  ),
-                // Secondary Role Cards
-                for (final role in secondaryRoles) ...[
-                  AppSpacings.spacingMdVertical,
-                  _buildRoleCard(
-                    context,
-                    roleData: role,
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-
-        // Middle column: Vertical Mode Selector
-        Container(
-          padding: EdgeInsets.symmetric(
-            vertical: AppSpacings.pLg,
-            horizontal: AppSpacings.pMd,
-          ),
-          child: Center(
-            child: _buildLandscapeModeSelector(context, localizations),
-          ),
-        ),
-
-        // Right column: Devices
-        if (hasDevices)
-          Expanded(
-            flex: 1,
-            child: Container(
-              color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-              child: Padding(
-                padding: EdgeInsets.all(AppSpacings.pLg),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildSectionTitle(context, localizations.shading_devices_title, MdiIcons.viewGrid),
-                    AppSpacings.spacingMdVertical,
-                    Expanded(
-                      child: ListView.separated(
-                        itemCount: deviceDataList.length,
-                        separatorBuilder: (_, __) => AppSpacings.spacingMdVertical,
-                        itemBuilder: (context, index) {
-                          final device = deviceDataList[index];
-                          final isActive = device.isOnline && device.position > 0;
-                          final status = _getDeviceStatus(device, localizations);
-
-                          return UniversalTile(
-                            layout: TileLayout.horizontal,
-                            icon: device.position > 0
-                                ? MdiIcons.blindsHorizontal
-                                : MdiIcons.blindsHorizontalClosed,
-                            name: device.name,
-                            status: status,
-                            isActive: isActive,
-                            isOffline: !device.isOnline,
-                            showWarningBadge: true,
-                            showInactiveBorder: true,
-                            onTileTap: () => _openDeviceDetail(context, device),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
+    return LandscapeViewLayout(
+      mainContent: Column(
+        children: [
+          // Primary Role Card (with slider and actions)
+          if (primaryRole != null)
+            Expanded(
+              child: _buildRoleCard(
+                context,
+                roleData: primaryRole,
+                showSlider: true,
+                showActions: true,
               ),
             ),
+          // Secondary Role Cards
+          for (final role in secondaryRoles) ...[
+            AppSpacings.spacingMdVertical,
+            _buildRoleCard(
+              context,
+              roleData: role,
+            ),
+          ],
+        ],
+      ),
+      modeSelector: _buildLandscapeModeSelector(context, localizations),
+      additionalContent: hasDevices
+          ? _buildLandscapeDevicesColumn(context, deviceDataList, localizations)
+          : null,
+    );
+  }
+
+  Widget _buildLandscapeDevicesColumn(
+    BuildContext context,
+    List<_CoverDeviceData> deviceDataList,
+    AppLocalizations localizations,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle(
+            context, localizations.shading_devices_title, MdiIcons.viewGrid),
+        AppSpacings.spacingMdVertical,
+        Expanded(
+          child: ListView.separated(
+            itemCount: deviceDataList.length,
+            separatorBuilder: (_, __) => AppSpacings.spacingMdVertical,
+            itemBuilder: (context, index) {
+              final device = deviceDataList[index];
+              final isActive = device.isOnline && device.position > 0;
+              final status = _getDeviceStatus(device, localizations);
+
+              return UniversalTile(
+                layout: TileLayout.horizontal,
+                icon: device.position > 0
+                    ? MdiIcons.blindsHorizontal
+                    : MdiIcons.blindsHorizontalClosed,
+                name: device.name,
+                status: status,
+                isActive: isActive,
+                isOffline: !device.isOnline,
+                showWarningBadge: true,
+                showInactiveBorder: true,
+                onTileTap: () => _openDeviceDetail(context, device),
+              );
+            },
           ),
+        ),
       ],
     );
   }
@@ -607,7 +587,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     List<_CoverRoleData> roleDataList,
     List<_CoverDeviceData> deviceDataList,
   ) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
     final primaryRole = roleDataList.isNotEmpty ? roleDataList.first : null;
     final secondaryRoles = roleDataList.length > 1 ? roleDataList.skip(1).toList() : [];
@@ -617,71 +596,44 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     final isAtLeastMedium = _screenService.isAtLeastMedium;
     final devicesAspectRatio = isAtLeastMedium ? 3.0 : 2.5;
 
-    return Column(
-      children: [
-        // Scrollable content
-        Expanded(
-          child: SingleChildScrollView(
-            padding: AppSpacings.paddingLg,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Primary Role Card (with slider and actions)
-                if (primaryRole != null)
-                  _buildRoleCard(
-                    context,
-                    roleData: primaryRole,
-                    showSlider: true,
-                    showActions: true,
-                  ),
-                // Secondary Role Cards
-                for (final role in secondaryRoles) ...[
-                  AppSpacings.spacingMdVertical,
-                  _buildRoleCard(
-                    context,
-                    roleData: role,
-                  ),
-                ],
+    return PortraitViewLayout(
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Primary Role Card (with slider and actions)
+          if (primaryRole != null)
+            _buildRoleCard(
+              context,
+              roleData: primaryRole,
+              showSlider: true,
+              showActions: true,
+            ),
+          // Secondary Role Cards
+          for (final role in secondaryRoles) ...[
+            AppSpacings.spacingMdVertical,
+            _buildRoleCard(
+              context,
+              roleData: role,
+            ),
+          ],
 
-                // Devices Section
-                if (deviceDataList.isNotEmpty) ...[
-                  AppSpacings.spacingLgVertical,
-                  _buildSectionTitle(context, localizations.shading_devices_title, MdiIcons.viewGrid),
-                  AppSpacings.spacingMdVertical,
-                  _buildDevicesGrid(
-                    context,
-                    deviceDataList,
-                    localizations,
-                    crossAxisCount: 2,
-                    aspectRatio: devicesAspectRatio,
-                  ),
-                ],
-              ],
+          // Devices Section
+          if (deviceDataList.isNotEmpty) ...[
+            AppSpacings.spacingLgVertical,
+            _buildSectionTitle(
+                context, localizations.shading_devices_title, MdiIcons.viewGrid),
+            AppSpacings.spacingMdVertical,
+            _buildDevicesGrid(
+              context,
+              deviceDataList,
+              localizations,
+              crossAxisCount: 2,
+              aspectRatio: devicesAspectRatio,
             ),
-          ),
-        ),
-        // Sticky Mode Selector at bottom
-        if (hasCovers)
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: isDark ? AppBgColorDark.page : AppBgColorLight.page,
-              border: Border(
-                top: BorderSide(
-                  color: isDark ? AppBorderColorDark.light : AppBorderColorLight.base,
-                  width: 1,
-                ),
-              ),
-            ),
-            padding: EdgeInsets.only(
-              left: AppSpacings.pLg,
-              right: AppSpacings.pLg,
-              top: AppSpacings.pMd,
-              bottom: AppSpacings.pLg,
-            ),
-            child: _buildModeSelector(context, localizations),
-          ),
-      ],
+          ],
+        ],
+      ),
+      modeSelector: hasCovers ? _buildModeSelector(context, localizations) : null,
     );
   }
 

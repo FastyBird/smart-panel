@@ -6,8 +6,10 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/intent_mode_selector.dart';
+import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -1078,7 +1080,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     DevicesService devicesService,
     AppLocalizations localizations,
   ) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasRoles = roles.isNotEmpty;
     final hasOtherLights = otherLights.isNotEmpty;
     final hasScenes = _lightingScenes.isNotEmpty;
@@ -1093,76 +1094,52 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final isAtLeastMedium = _screenService.isAtLeastMedium;
     final otherLightsAspectRatio = isAtLeastMedium ? 3.0 : 2.5;
 
-    return Column(
-      children: [
-        // Scrollable content
-        Expanded(
-          child: SingleChildScrollView(
-            padding: AppSpacings.paddingLg,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Roles Grid
-                if (hasRoles)
-                  _buildRolesGrid(context, roles, devicesService, crossAxisCount: 3),
+    return PortraitViewLayout(
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Roles Grid
+          if (hasRoles)
+            _buildRolesGrid(context, roles, devicesService, crossAxisCount: 3),
 
-                // Quick Scenes Section
-                if (hasScenes) ...[
-                  if (hasRoles) AppSpacings.spacingLgVertical,
-                  SectionTitle(title: localizations.space_scenes_title, icon: Icons.auto_awesome),
-                  AppSpacings.spacingMdVertical,
-                  // Use horizontal scroll when other lights present (less vertical space)
-                  if (hasOtherLights)
-                    SizedBox(
-                      height: _scale(70),
-                      child: _buildPortraitScenesRow(
-                        context,
-                        tilesPerRow: scenesPerRow,
-                      ),
-                    )
-                  else
-                    _buildScenesGrid(context, crossAxisCount: scenesPerRow),
-                ],
-
-                // Other Lights Section
-                if (hasOtherLights) ...[
-                  if (hasRoles || hasScenes) AppSpacings.spacingLgVertical,
-                  _buildOtherLightsTitle(otherLights, otherTargets, localizations),
-                  AppSpacings.spacingMdVertical,
-                  _buildLightsGrid(
-                    context,
-                    otherLights,
-                    localizations,
-                    crossAxisCount: 2,
-                    aspectRatio: otherLightsAspectRatio,
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-        // Sticky Mode Selector at bottom
-        if (LightingConstants.useBackendIntents && hasLights)
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: isDark ? AppBgColorDark.page : AppBgColorLight.page,
-              border: Border(
-                top: BorderSide(
-                  color: isDark ? AppBorderColorDark.light : AppBorderColorLight.base,
-                  width: 1,
+          // Quick Scenes Section
+          if (hasScenes) ...[
+            if (hasRoles) AppSpacings.spacingLgVertical,
+            SectionTitle(
+                title: localizations.space_scenes_title,
+                icon: Icons.auto_awesome),
+            AppSpacings.spacingMdVertical,
+            // Use horizontal scroll when other lights present (less vertical space)
+            if (hasOtherLights)
+              SizedBox(
+                height: _scale(70),
+                child: _buildPortraitScenesRow(
+                  context,
+                  tilesPerRow: scenesPerRow,
                 ),
-              ),
+              )
+            else
+              _buildScenesGrid(context, crossAxisCount: scenesPerRow),
+          ],
+
+          // Other Lights Section
+          if (hasOtherLights) ...[
+            if (hasRoles || hasScenes) AppSpacings.spacingLgVertical,
+            _buildOtherLightsTitle(otherLights, otherTargets, localizations),
+            AppSpacings.spacingMdVertical,
+            _buildLightsGrid(
+              context,
+              otherLights,
+              localizations,
+              crossAxisCount: 2,
+              aspectRatio: otherLightsAspectRatio,
             ),
-            padding: EdgeInsets.only(
-              left: AppSpacings.pLg,
-              right: AppSpacings.pLg,
-              top: AppSpacings.pMd,
-              bottom: AppSpacings.pLg,
-            ),
-            child: _buildModeSelector(context, localizations),
-          ),
-      ],
+          ],
+        ],
+      ),
+      modeSelector: LightingConstants.useBackendIntents && hasLights
+          ? _buildModeSelector(context, localizations)
+          : null,
     );
   }
 
@@ -1270,7 +1247,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     DevicesService devicesService,
     AppLocalizations localizations,
   ) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasRoles = roles.isNotEmpty;
     final hasOtherLights = otherLights.isNotEmpty;
     final hasScenes = _lightingScenes.isNotEmpty;
@@ -1279,125 +1255,127 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     // Use ScreenService breakpoints for responsive layout
     // Landscape breakpoints: small ≤800, medium ≤1150, large >1150
     final isLargeScreen = _screenService.isLargeScreen;
+
+    return LandscapeViewLayout(
+      mainContent: _buildLandscapeMainContent(
+        context,
+        roles,
+        otherLights,
+        otherTargets,
+        devicesService,
+        localizations,
+      ),
+      modeSelector: LightingConstants.useBackendIntents && hasLights
+          ? _buildLandscapeModeSelector(
+              context,
+              localizations,
+              showLabels: !hasScenes && isLargeScreen,
+            )
+          : null,
+      modeSelectorShowLabels: !hasScenes && isLargeScreen,
+      additionalContent: hasScenes
+          ? _buildLandscapeScenesColumn(context, localizations)
+          : null,
+    );
+  }
+
+  Widget _buildLandscapeMainContent(
+    BuildContext context,
+    List<LightingRoleData> roles,
+    List<LightDeviceData> otherLights,
+    List<LightTargetView> otherTargets,
+    DevicesService devicesService,
+    AppLocalizations localizations,
+  ) {
+    final hasRoles = roles.isNotEmpty;
+    final hasOtherLights = otherLights.isNotEmpty;
+    final isLargeScreen = _screenService.isLargeScreen;
     final tilesPerRow = isLargeScreen ? 4 : 3;
-    // Scenes: 1 column on small/medium, 2 columns on large
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Roles + Other Lights layout
+        if (hasRoles && hasOtherLights) ...[
+          // Roles grid - 1 row
+          Flexible(
+            flex: 1,
+            child: _buildLandscapeRolesRow(
+              context,
+              roles,
+              devicesService,
+              tilesPerRow: tilesPerRow,
+            ),
+          ),
+          AppSpacings.spacingLgVertical,
+          // Other Lights header
+          _buildOtherLightsTitle(otherLights, otherTargets, localizations),
+          AppSpacings.spacingMdVertical,
+          // Other Lights grid - fills remaining space
+          Flexible(
+            flex: isLargeScreen ? 2 : 1,
+            child: _buildLandscapeLightsGrid(
+              context,
+              otherLights,
+              localizations,
+              tilesPerRow: tilesPerRow,
+              maxRows: isLargeScreen ? 2 : 1,
+            ),
+          ),
+        ] else if (hasRoles) ...[
+          // Only roles, no other lights - grid layout
+          Expanded(
+            child: _buildRolesGrid(
+              context,
+              roles,
+              devicesService,
+              crossAxisCount: tilesPerRow,
+              aspectRatio: 1.0,
+            ),
+          ),
+        ] else if (hasOtherLights) ...[
+          // Only other lights, no roles
+          _buildOtherLightsTitle(otherLights, otherTargets, localizations),
+          AppSpacings.spacingMdVertical,
+          Expanded(
+            child: _buildLandscapeLightsGrid(
+              context,
+              otherLights,
+              localizations,
+              tilesPerRow: tilesPerRow,
+              maxRows: isLargeScreen ? 2 : 1,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildLandscapeScenesColumn(
+    BuildContext context,
+    AppLocalizations localizations,
+  ) {
+    final isLargeScreen = _screenService.isLargeScreen;
     final scenesPerRow = isLargeScreen ? 2 : 1;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Left column: Roles + Other Lights
+        SectionTitle(
+            title: localizations.space_scenes_title, icon: Icons.auto_awesome),
+        AppSpacings.spacingMdVertical,
+        // Vertical scroll with responsive columns, no limit
+        // 1 column = horizontal tiles, 2+ columns = vertical tiles
         Expanded(
-          flex: 2,
-          child: Padding(
-            padding: EdgeInsets.all(AppSpacings.pLg),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Roles + Other Lights layout
-                if (hasRoles && hasOtherLights) ...[
-                  // Roles grid - 1 row
-                  Flexible(
-                    flex: 1,
-                    child: _buildLandscapeRolesRow(
-                      context,
-                      roles,
-                      devicesService,
-                      tilesPerRow: tilesPerRow,
-                    ),
-                  ),
-                  AppSpacings.spacingLgVertical,
-                  // Other Lights header
-                  _buildOtherLightsTitle(otherLights, otherTargets, localizations),
-                  AppSpacings.spacingMdVertical,
-                  // Other Lights grid - fills remaining space
-                  Flexible(
-                    flex: isLargeScreen ? 2 : 1,
-                    child: _buildLandscapeLightsGrid(
-                      context,
-                      otherLights,
-                      localizations,
-                      tilesPerRow: tilesPerRow,
-                      maxRows: isLargeScreen ? 2 : 1,
-                    ),
-                  ),
-                ] else if (hasRoles) ...[
-                  // Only roles, no other lights - grid layout
-                  Expanded(
-                    child: _buildRolesGrid(
-                      context,
-                      roles,
-                      devicesService,
-                      crossAxisCount: tilesPerRow,
-                      aspectRatio: 1.0,
-                    ),
-                  ),
-                ] else if (hasOtherLights) ...[
-                  // Only other lights, no roles
-                  _buildOtherLightsTitle(otherLights, otherTargets, localizations),
-                  AppSpacings.spacingMdVertical,
-                  Expanded(
-                    child: _buildLandscapeLightsGrid(
-                      context,
-                      otherLights,
-                      localizations,
-                      tilesPerRow: tilesPerRow,
-                      maxRows: isLargeScreen ? 2 : 1,
-                    ),
-                  ),
-                ],
-              ],
-            ),
+          child: _buildScenesGrid(
+            context,
+            crossAxisCount: scenesPerRow,
+            scrollable: true,
+            tileLayout:
+                scenesPerRow == 1 ? TileLayout.horizontal : TileLayout.vertical,
+            showInactiveBorder: true,
           ),
         ),
-
-        // Middle column: Vertical Mode Selector (only if backend intents enabled)
-        // Show labels only on large screens when no scenes
-        if (LightingConstants.useBackendIntents && hasLights)
-          Container(
-            // More horizontal padding when labels are shown
-            padding: EdgeInsets.symmetric(
-              vertical: AppSpacings.pLg,
-              horizontal: !hasScenes && isLargeScreen ? AppSpacings.pLg : AppSpacings.pMd,
-            ),
-            child: Center(
-              child: _buildLandscapeModeSelector(
-                context,
-                localizations,
-                showLabels: !hasScenes && isLargeScreen,
-              ),
-            ),
-          ),
-
-        // Right column: Scenes (or empty space if no scenes)
-        if (hasScenes)
-          Expanded(
-            flex: 1,
-            child: Container(
-              color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-              child: Padding(
-                padding: EdgeInsets.all(AppSpacings.pLg),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SectionTitle(title: localizations.space_scenes_title, icon: Icons.auto_awesome),
-                    AppSpacings.spacingMdVertical,
-                    // Vertical scroll with responsive columns, no limit
-                    // 1 column = horizontal tiles, 2+ columns = vertical tiles
-                    Expanded(
-                      child: _buildScenesGrid(
-                        context,
-                        crossAxisCount: scenesPerRow,
-                        scrollable: true,
-                        tileLayout: scenesPerRow == 1 ? TileLayout.horizontal : TileLayout.vertical,
-                        showInactiveBorder: true,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
       ],
     );
   }
