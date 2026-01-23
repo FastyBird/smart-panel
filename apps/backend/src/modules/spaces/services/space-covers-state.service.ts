@@ -102,6 +102,10 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 	/**
 	 * Get the current covers state for a space.
 	 * Returns null if space doesn't exist (controller should throw 404).
+	 *
+	 * Note: This method has a side effect - it invalidates mode validity in InfluxDB
+	 * when the detected mode diverges from the last applied intent mode. This is
+	 * necessary to accurately compute `isModeFromIntent` and track user manual changes.
 	 */
 	async getCoversState(spaceId: string): Promise<CoversState | null> {
 		const defaultState: CoversState = {
@@ -324,15 +328,11 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 	 */
 	private detectMode(
 		roleStates: Partial<Record<CoversRole, RoleCoversState>>,
-		covers: CoverDevice[],
+		_covers: CoverDevice[],
 		lastAppliedMode: CoversMode | null = null,
 	): CoversModeMatch | null {
-		const hasAnyRoles = Object.keys(roleStates).length > 0;
-
-		// If no roles configured, check for MVP fallback mode matching
-		if (!hasAnyRoles) {
-			return this.detectMvpMode(covers, lastAppliedMode);
-		}
+		// Note: Unlike lighting, covers always have a role (defaults to PRIMARY at line 149),
+		// so roleStates always has entries when covers exist. No MVP fallback needed.
 
 		// Get all available modes from YAML spec
 		const allModes = this.intentSpecLoaderService.getAllCoversModeOrchestrations();
@@ -363,77 +363,6 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 		}
 
 		return bestMatch;
-	}
-
-	/**
-	 * Detect mode in MVP scenario (no roles configured).
-	 * Uses mvpPosition values from YAML mode specifications.
-	 * When multiple modes match equally, prefer lastAppliedMode as tie-breaker.
-	 */
-	private detectMvpMode(covers: CoverDevice[], lastAppliedMode: CoversMode | null = null): CoversModeMatch | null {
-		if (covers.length === 0) {
-			return null;
-		}
-
-		// Get all position values
-		const positionValues = covers
-			.map((c) => this.getPropertyNumericValue(c.positionProperty))
-			.filter((v): v is number => v !== null);
-
-		if (positionValues.length === 0) {
-			return null;
-		}
-
-		const avgPosition = positionValues.reduce((a, b) => a + b, 0) / positionValues.length;
-
-		// Build MVP position lookup from YAML spec
-		const allModes = this.intentSpecLoaderService.getAllCoversModeOrchestrations();
-		const mvpModes: Array<{ mode: CoversMode; position: number }> = [];
-
-		for (const [modeId, config] of allModes) {
-			// Only match built-in CoversMode values
-			if (!Object.values(CoversMode).includes(modeId as CoversMode)) {
-				continue;
-			}
-
-			mvpModes.push({
-				mode: modeId as CoversMode,
-				position: config.mvpPosition,
-			});
-		}
-
-		// Find all matching modes and their match quality
-		const matches: CoversModeMatch[] = [];
-
-		for (const { mode, position } of mvpModes) {
-			const diff = Math.abs(avgPosition - position);
-
-			if (diff <= 15) {
-				// Within 15% tolerance
-				matches.push({
-					mode,
-					confidence: diff <= 5 ? 'exact' : 'approximate',
-					matchPercentage: 100 - diff,
-				});
-			}
-		}
-
-		if (matches.length === 0) {
-			return null;
-		}
-
-		// Sort by match percentage descending, then prefer lastAppliedMode as tie-breaker
-		matches.sort((a, b) => {
-			if (b.matchPercentage !== a.matchPercentage) {
-				return b.matchPercentage - a.matchPercentage;
-			}
-			// Tie-breaker: prefer lastAppliedMode
-			if (a.mode === lastAppliedMode) return -1;
-			if (b.mode === lastAppliedMode) return 1;
-			return 0;
-		});
-
-		return matches[0];
 	}
 
 	/**

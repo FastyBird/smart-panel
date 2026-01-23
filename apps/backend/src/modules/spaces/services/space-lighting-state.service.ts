@@ -139,6 +139,10 @@ export class SpaceLightingStateService {
 	/**
 	 * Get the complete aggregated lighting state for a space.
 	 * Includes per-role state, mode detection, and summary.
+	 *
+	 * Note: This method has a side effect - it invalidates mode validity in InfluxDB
+	 * when the detected mode diverges from the last applied intent mode. This is
+	 * necessary to accurately compute `isModeFromIntent` and track user manual changes.
 	 */
 	async getLightingState(spaceId: string): Promise<SpaceLightingState | null> {
 		// Verify space exists
