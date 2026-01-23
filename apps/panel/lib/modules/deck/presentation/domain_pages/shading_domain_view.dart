@@ -6,6 +6,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
@@ -524,9 +525,25 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                     Expanded(
                       child: ListView.separated(
                         itemCount: deviceDataList.length,
-                        separatorBuilder: (_, __) => AppSpacings.spacingSmVertical,
+                        separatorBuilder: (_, __) => AppSpacings.spacingMdVertical,
                         itemBuilder: (context, index) {
-                          return _buildDeviceTile(context, deviceDataList[index]);
+                          final device = deviceDataList[index];
+                          final isActive = device.isOnline && device.position > 0;
+                          final status = _getDeviceStatus(device, localizations);
+
+                          return UniversalTile(
+                            layout: TileLayout.horizontal,
+                            icon: device.position > 0
+                                ? MdiIcons.blindsHorizontal
+                                : MdiIcons.blindsHorizontalClosed,
+                            name: device.name,
+                            status: status,
+                            isActive: isActive,
+                            isOffline: !device.isOnline,
+                            showWarningBadge: true,
+                            showInactiveBorder: true,
+                            onTileTap: () => _openDeviceDetail(context, device),
+                          );
                         },
                       ),
                     ),
@@ -553,6 +570,10 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     final primaryRole = roleDataList.isNotEmpty ? roleDataList.first : null;
     final secondaryRoles = roleDataList.length > 1 ? roleDataList.skip(1).toList() : [];
     final hasCovers = roleDataList.isNotEmpty;
+
+    // Devices layout: same as climate auxiliary - 2 cols, aspect ratio based on screen size
+    final isAtLeastMedium = _screenService.isAtLeastMedium;
+    final devicesAspectRatio = isAtLeastMedium ? 3.0 : 2.5;
 
     return Column(
       children: [
@@ -586,8 +607,14 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                 if (deviceDataList.isNotEmpty) ...[
                   AppSpacings.spacingLgVertical,
                   _buildSectionTitle(context, localizations.shading_devices_title, MdiIcons.viewGrid),
-                  AppSpacings.spacingSmVertical,
-                  _buildDevicesGrid(context, deviceDataList, localizations),
+                  AppSpacings.spacingMdVertical,
+                  _buildDevicesGrid(
+                    context,
+                    deviceDataList,
+                    localizations,
+                    crossAxisCount: 2,
+                    aspectRatio: devicesAspectRatio,
+                  ),
                 ],
               ],
             ),
@@ -1101,212 +1128,68 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   // DEVICES
   // ===========================================================================
 
+  /// Builds a grid of device tiles that fill the available width.
   Widget _buildDevicesGrid(
     BuildContext context,
     List<_CoverDeviceData> deviceDataList,
-    AppLocalizations localizations,
-  ) {
-    return GridView.count(
-      crossAxisCount: 2,
+    AppLocalizations localizations, {
+    int crossAxisCount = 2,
+    double? aspectRatio,
+  }) {
+    // Use horizontal layout for single column or wide aspect ratio
+    final useHorizontalLayout =
+        crossAxisCount == 1 || (aspectRatio != null && aspectRatio > 1.5);
+    final tileLayout =
+        useHorizontalLayout ? TileLayout.horizontal : TileLayout.vertical;
+
+    final items = _buildDeviceItems(context, deviceDataList, localizations, tileLayout);
+
+    return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: AppSpacings.pSm,
-      crossAxisSpacing: AppSpacings.pSm,
-      childAspectRatio: 1.4,
-      children: deviceDataList.map((device) {
-        return _buildDeviceTileCompact(context, device);
-      }).toList(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        crossAxisSpacing: AppSpacings.pMd,
+        mainAxisSpacing: AppSpacings.pMd,
+        childAspectRatio: aspectRatio ?? 1.0,
+      ),
+      itemCount: items.length,
+      itemBuilder: (context, index) => items[index],
     );
   }
 
-  Widget _buildDeviceTile(BuildContext context, _CoverDeviceData device) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final Color stateColor = device.isOnline
-        ? _getPositionColor(device.position, isLight)
-        : (isLight ? AppTextColorLight.disabled : AppTextColorDark.disabled);
-    final Color stateColorLight = stateColor.withValues(alpha: 0.15);
-    final primaryColor =
-        isLight ? AppColorsLight.primary : AppColorsDark.primary;
+  /// Builds list of device tile widgets
+  List<Widget> _buildDeviceItems(
+    BuildContext context,
+    List<_CoverDeviceData> deviceDataList,
+    AppLocalizations localizations,
+    TileLayout layout,
+  ) {
+    return deviceDataList.map((device) {
+      final isActive = device.isOnline && device.position > 0;
+      final status = _getDeviceStatus(device, localizations);
 
-    return GestureDetector(
-      onTap: () => _openDeviceDetail(context, device),
-      child: Container(
-        padding: EdgeInsets.all(AppSpacings.pSm),
-        decoration: BoxDecoration(
-          color: isLight
-              ? AppFillColorLight.base
-              : AppFillColorDark.base,
-          borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          border: isLight
-              ? Border.all(color: AppBorderColorLight.base)
-              : null,
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: _screenService.scale(
-                40,
-                density: _visualDensityService.density,
-              ),
-              height: _screenService.scale(
-                40,
-                density: _visualDensityService.density,
-              ),
-              decoration: BoxDecoration(
-                color: stateColorLight,
-                borderRadius: BorderRadius.circular(AppBorderRadius.small),
-              ),
-              child: Icon(
-                device.typeIcon,
-                color: stateColor,
-                size: _screenService.scale(
-                  20,
-                  density: _visualDensityService.density,
-                ),
-              ),
-            ),
-            AppSpacings.spacingMdHorizontal,
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    device.name,
-                    style: TextStyle(
-                      fontSize: AppFontSize.small,
-                      fontWeight: FontWeight.w500,
-                      color: isLight
-                          ? AppTextColorLight.regular
-                          : AppTextColorDark.regular,
-                    ),
-                  ),
-                  Text(
-                    '${device.typeName} - ${device.statusText}',
-                    style: TextStyle(
-                      fontSize: AppFontSize.extraSmall,
-                      color: isLight
-                          ? AppTextColorLight.placeholder
-                          : AppTextColorDark.placeholder,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Text(
-              device.isOnline ? '${device.position}%' : '-',
-              style: TextStyle(
-                fontSize: AppFontSize.base,
-                fontWeight: FontWeight.w600,
-                color: device.isOnline && device.position > 0
-                    ? primaryColor
-                    : (isLight
-                        ? AppTextColorLight.placeholder
-                        : AppTextColorDark.placeholder),
-              ),
-            ),
-            AppSpacings.spacingXsHorizontal,
-            Icon(
-              MdiIcons.chevronRight,
-              color: isLight
-                  ? AppTextColorLight.placeholder
-                  : AppTextColorDark.placeholder,
-              size: _screenService.scale(
-                20,
-                density: _visualDensityService.density,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+      return UniversalTile(
+        layout: layout,
+        icon: device.position > 0
+            ? MdiIcons.blindsHorizontal
+            : MdiIcons.blindsHorizontalClosed,
+        name: device.name,
+        status: status,
+        isActive: isActive,
+        isOffline: !device.isOnline,
+        showWarningBadge: true,
+        onTileTap: () => _openDeviceDetail(context, device),
+      );
+    }).toList();
   }
 
-  Widget _buildDeviceTileCompact(BuildContext context, _CoverDeviceData device) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final Color stateColor = device.isOnline
-        ? _getPositionColor(device.position, isLight)
-        : (isLight ? AppTextColorLight.disabled : AppTextColorDark.disabled);
-    final Color stateColorLight = stateColor.withValues(alpha: 0.15);
-    final primaryColor =
-        isLight ? AppColorsLight.primary : AppColorsDark.primary;
-
-    return GestureDetector(
-      onTap: () => _openDeviceDetail(context, device),
-      child: Container(
-        padding: EdgeInsets.all(AppSpacings.pSm),
-        decoration: BoxDecoration(
-          color: isLight
-              ? AppFillColorLight.base
-              : AppFillColorDark.base,
-          borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          border: isLight
-              ? Border.all(color: AppBorderColorLight.base)
-              : null,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: _screenService.scale(
-                36,
-                density: _visualDensityService.density,
-              ),
-              height: _screenService.scale(
-                36,
-                density: _visualDensityService.density,
-              ),
-              decoration: BoxDecoration(
-                color: stateColorLight,
-                borderRadius: BorderRadius.circular(AppBorderRadius.small),
-              ),
-              child: Icon(
-                device.typeIcon,
-                color: stateColor,
-                size: _screenService.scale(
-                  20,
-                  density: _visualDensityService.density,
-                ),
-              ),
-            ),
-            const Spacer(),
-            Text(
-              device.name,
-              style: TextStyle(
-                fontSize: AppFontSize.small,
-                fontWeight: FontWeight.w500,
-                color: isLight
-                    ? AppTextColorLight.regular
-                    : AppTextColorDark.regular,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            Text(
-              device.typeName,
-              style: TextStyle(
-                fontSize: AppFontSize.extraSmall,
-                color: isLight
-                    ? AppTextColorLight.placeholder
-                    : AppTextColorDark.placeholder,
-              ),
-            ),
-            const Spacer(),
-            Text(
-              device.isOnline ? '${device.position}%' : '-',
-              style: TextStyle(
-                fontSize: AppFontSize.large,
-                fontWeight: FontWeight.w600,
-                color: device.isOnline && device.position > 0
-                    ? primaryColor
-                    : (isLight
-                        ? AppTextColorLight.placeholder
-                        : AppTextColorDark.placeholder),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  /// Get localized status text for a device
+  String _getDeviceStatus(_CoverDeviceData device, AppLocalizations localizations) {
+    if (!device.isOnline) return localizations.device_status_offline;
+    if (device.position == 100) return localizations.shading_state_open;
+    if (device.position == 0) return localizations.shading_state_closed;
+    return '${device.position}%';
   }
 
   // ===========================================================================
