@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:flutter/material.dart';
 
 /// A reusable speed/level slider widget with labeled steps.
@@ -134,22 +135,8 @@ class _SpeedSliderState extends State<SpeedSlider> {
         isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
     final secondaryColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-    final mutedColor =
-        isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled;
-    final trackColor =
-        isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
-    final thumbFillColor =
-        isDark ? AppFillColorDark.darker : AppColors.white;
-
-    // For discrete mode, calculate divisions based on steps
-    // divisions must be null or > 0, so use null if steps has fewer than 2 items
-    final divisions = widget.discrete && widget.steps.length > 1 ? widget.steps.length - 1 : null;
 
     final displayLabel = widget.enabled ? widget.label : (widget.disabledLabel ?? widget.label);
-
-    // When disabled, use track color for both active track and thumb border
-    final sliderActiveColor = widget.enabled ? effectiveActiveColor : trackColor;
-    final thumbBorderColor = widget.enabled ? effectiveActiveColor : trackColor;
 
     return AnimatedOpacity(
       opacity: widget.enabled ? 1.0 : 0.5,
@@ -186,44 +173,14 @@ class _SpeedSliderState extends State<SpeedSlider> {
               ],
             ),
             AppSpacings.spacingMdVertical,
-            SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                activeTrackColor: sliderActiveColor,
-                inactiveTrackColor: trackColor,
-                thumbColor: thumbFillColor,
-                overlayColor: widget.overlayColor ??
-                    (isDark ? AppColorsDark.infoLight7 : AppColorsLight.infoLight7),
-                trackHeight: _scale(8),
-                thumbShape: _SliderThumbWithBorder(
-                  thumbRadius: _scale(12),
-                  fillColor: thumbFillColor,
-                  borderColor: thumbBorderColor,
-                  borderWidth: _scale(2),
-                ),
-              ),
-              child: IgnorePointer(
-                ignoring: !widget.enabled,
-                child: Slider(
-                  value: _displayValue,
-                  divisions: divisions,
-                  // Pass null when disabled so accessibility services correctly
-                  // report the slider as non-interactive
-                  onChanged: widget.enabled ? widget.onChanged : null,
-                ),
-              ),
-            ),
-            AppSpacings.spacingXsVertical,
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: widget.steps
-                  .map((s) => Text(
-                        s,
-                        style: TextStyle(
-                          color: mutedColor,
-                          fontSize: AppFontSize.extraSmall,
-                        ),
-                      ))
-                  .toList(),
+            SliderWithSteps(
+              value: _displayValue,
+              activeColor: effectiveActiveColor,
+              overlayColor: widget.overlayColor,
+              steps: widget.steps,
+              enabled: widget.enabled,
+              discrete: widget.discrete,
+              onChanged: widget.onChanged,
             ),
             if (widget.footer != null) ...[
               AppSpacings.spacingMdVertical,
@@ -233,56 +190,5 @@ class _SpeedSliderState extends State<SpeedSlider> {
         ),
       ),
     );
-  }
-}
-
-/// Custom slider thumb shape with colored border for better contrast
-class _SliderThumbWithBorder extends SliderComponentShape {
-  final double thumbRadius;
-  final Color fillColor;
-  final Color borderColor;
-  final double borderWidth;
-
-  const _SliderThumbWithBorder({
-    required this.thumbRadius,
-    required this.fillColor,
-    required this.borderColor,
-    required this.borderWidth,
-  });
-
-  @override
-  Size getPreferredSize(bool isEnabled, bool isDiscrete) {
-    return Size.fromRadius(thumbRadius);
-  }
-
-  @override
-  void paint(
-    PaintingContext context,
-    Offset center, {
-    required Animation<double> activationAnimation,
-    required Animation<double> enableAnimation,
-    required bool isDiscrete,
-    required TextPainter labelPainter,
-    required RenderBox parentBox,
-    required SliderThemeData sliderTheme,
-    required TextDirection textDirection,
-    required double value,
-    required double textScaleFactor,
-    required Size sizeWithOverflow,
-  }) {
-    final Canvas canvas = context.canvas;
-
-    // Draw fill
-    final fillPaint = Paint()
-      ..color = fillColor
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(center, thumbRadius, fillPaint);
-
-    // Draw colored border
-    final borderPaint = Paint()
-      ..color = borderColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = borderWidth;
-    canvas.drawCircle(center, thumbRadius - borderWidth / 2, borderPaint);
   }
 }

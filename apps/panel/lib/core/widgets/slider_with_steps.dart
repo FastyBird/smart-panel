@@ -76,13 +76,10 @@ class SliderWithSteps extends StatelessWidget {
 
     final clampedValue = value.clamp(0.0, 1.0);
 
-    return AnimatedOpacity(
-      opacity: enabled ? 1.0 : 0.5,
-      duration: const Duration(milliseconds: 200),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SliderTheme(
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SliderTheme(
             data: SliderTheme.of(context).copyWith(
               activeTrackColor: sliderActiveColor,
               inactiveTrackColor: trackColor,
@@ -120,8 +117,7 @@ class SliderWithSteps extends StatelessWidget {
                 .toList(),
           ),
         ],
-      ),
-    );
+      );
   }
 }
 
