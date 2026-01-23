@@ -3299,6 +3299,18 @@ abstract class AppLocalizations {
   /// **'Position'**
   String get shading_position;
 
+  /// Text to show expandable controls on role card
+  ///
+  /// In en, this message translates to:
+  /// **'Tap for controls'**
+  String get shading_tap_for_controls;
+
+  /// Text to hide expanded controls on role card
+  ///
+  /// In en, this message translates to:
+  /// **'Hide controls'**
+  String get shading_hide_controls;
+
   /// Covers mode for fully open blinds
   ///
   /// In en, this message translates to:

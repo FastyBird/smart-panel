@@ -104,6 +104,9 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   // Optimistic UI state for slider interaction (per role)
   final Map<CoversTargetRole, int> _pendingPositions = {};
 
+  // Track which secondary role cards have expanded controls
+  final Set<CoversTargetRole> _expandedRoles = {};
+
   String get _roomId => widget.viewItem.roomId;
 
   /// Get covers state from backend (cached)
@@ -704,6 +707,13 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     final Color stateColorLight = stateColor.withValues(alpha: 0.15);
     final localizations = AppLocalizations.of(context)!;
 
+    // Determine if this card is expandable (secondary roles without forced controls)
+    final bool isExpandable = !showSlider && !showActions;
+    final bool isExpanded = _expandedRoles.contains(roleData.role);
+
+    // Show controls if forced OR expanded
+    final bool shouldShowControls = showSlider || showActions || isExpanded;
+
     return Container(
       padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
@@ -800,17 +810,71 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
               ),
             ],
           ),
-          // Slider
-          if (showSlider) ...[
+          // Expandable Controls (Slider + Quick Actions)
+          if (shouldShowControls) ...[
             AppSpacings.spacingMdVertical,
             _buildPositionSlider(context, roleData),
-          ],
-          // Quick Actions
-          if (showActions) ...[
             AppSpacings.spacingMdVertical,
             _buildQuickActions(context, roleData),
           ],
+          // Expand/Collapse Toggle for secondary roles
+          if (isExpandable) ...[
+            AppSpacings.spacingSmVertical,
+            _buildExpandToggle(context, roleData, isExpanded, localizations),
+          ],
         ],
+      ),
+    );
+  }
+
+  /// Build the expand/collapse toggle for secondary role cards
+  Widget _buildExpandToggle(
+    BuildContext context,
+    _CoverRoleData roleData,
+    bool isExpanded,
+    AppLocalizations localizations,
+  ) {
+    final bool isLight = Theme.of(context).brightness == Brightness.light;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (isExpanded) {
+            _expandedRoles.remove(roleData.role);
+          } else {
+            _expandedRoles.add(roleData.role);
+          }
+        });
+      },
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: AppSpacings.pXs),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              isExpanded
+                  ? localizations.shading_hide_controls
+                  : localizations.shading_tap_for_controls,
+              style: TextStyle(
+                fontSize: AppFontSize.small,
+                color: isLight
+                    ? AppTextColorLight.secondary
+                    : AppTextColorDark.secondary,
+              ),
+            ),
+            AppSpacings.spacingXsHorizontal,
+            Icon(
+              isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+              size: _screenService.scale(
+                16,
+                density: _visualDensityService.density,
+              ),
+              color: isLight
+                  ? AppTextColorLight.secondary
+                  : AppTextColorDark.secondary,
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1655,6 +1655,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shading_position => 'Position';
 
   @override
+  String get shading_tap_for_controls => 'Tap for controls';
+
+  @override
+  String get shading_hide_controls => 'Hide controls';
+
+  @override
   String get covers_mode_open => 'Open';
 
   @override

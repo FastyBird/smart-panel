@@ -1657,6 +1657,12 @@ class AppLocalizationsCs extends AppLocalizations {
   String get shading_position => 'Pozice';
 
   @override
+  String get shading_tap_for_controls => 'Klepněte pro ovládání';
+
+  @override
+  String get shading_hide_controls => 'Skrýt ovládání';
+
+  @override
   String get covers_mode_open => 'Otevřeno';
 
   @override

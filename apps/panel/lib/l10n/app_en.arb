@@ -2248,6 +2248,14 @@
   "@shading_position": {
     "description": "Label for the position slider"
   },
+  "shading_tap_for_controls": "Tap for controls",
+  "@shading_tap_for_controls": {
+    "description": "Text to show expandable controls on role card"
+  },
+  "shading_hide_controls": "Hide controls",
+  "@shading_hide_controls": {
+    "description": "Text to hide expanded controls on role card"
+  },
   "covers_mode_open": "Open",
   "@covers_mode_open": {
     "description": "Covers mode for fully open blinds"
