@@ -1,6 +1,6 @@
 import { Expose, Type } from 'class-transformer';
 
-import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
+import { ApiExtraModels, ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 import { ChannelCategory, DeviceCategory } from '../../devices/devices.constants';
@@ -2100,6 +2100,7 @@ export class LightingRoleBrightnessRuleDataModel {
  * Lighting mode orchestration data model
  */
 @ApiSchema({ name: 'SpacesModuleDataLightingModeOrchestration' })
+@ApiExtraModels(LightingRoleBrightnessRuleDataModel)
 export class LightingModeOrchestrationDataModel {
 	@ApiProperty({
 		description: 'Mode identifier',
@@ -2145,7 +2146,7 @@ export class LightingModeOrchestrationDataModel {
 	@ApiProperty({
 		description: 'Role-specific brightness rules for this mode',
 		type: 'object',
-		additionalProperties: { $ref: '#/components/schemas/SpacesModuleDataLightingRoleBrightnessRule' },
+		additionalProperties: { $ref: getSchemaPath(LightingRoleBrightnessRuleDataModel) },
 		example: { main: { on: true, brightness: 100 }, task: { on: true, brightness: 100 } },
 	})
 	@Expose()
@@ -2196,6 +2197,7 @@ export class CoversRolePositionRuleDataModel {
  * Covers mode orchestration data model
  */
 @ApiSchema({ name: 'SpacesModuleDataCoversModeOrchestration' })
+@ApiExtraModels(CoversRolePositionRuleDataModel)
 export class CoversModeOrchestrationDataModel {
 	@ApiProperty({
 		description: 'Mode identifier',
@@ -2241,7 +2243,7 @@ export class CoversModeOrchestrationDataModel {
 	@ApiProperty({
 		description: 'Role-specific position rules for this mode',
 		type: 'object',
-		additionalProperties: { $ref: '#/components/schemas/SpacesModuleDataCoversRolePositionRule' },
+		additionalProperties: { $ref: getSchemaPath(CoversRolePositionRuleDataModel) },
 		example: { primary: { position: 100 }, blackout: { position: 100 } },
 	})
 	@Expose()
