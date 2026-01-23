@@ -99,8 +99,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   EventBus? _eventBus;
   bool _isLoading = true;
 
-  // Optimistic UI state for slider interaction
-  int? _pendingPosition;
+  // Optimistic UI state for slider interaction (per role)
+  final Map<CoversTargetRole, int> _pendingPositions = {};
 
   String get _roomId => widget.viewItem.roomId;
 
@@ -111,10 +111,30 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   List<CoversTargetView> get _coversTargets =>
       _spacesService?.getCoversTargetsForSpace(_roomId) ?? [];
 
-  /// Get current aggregated position (pending or actual)
-  int get _aggregatedPosition {
-    if (_pendingPosition != null) return _pendingPosition!;
-    return _coversState?.averagePosition ?? 0;
+  /// Get position for a specific role (pending or actual)
+  int _getRolePosition(_CoverRoleData roleData) {
+    // Check for pending position first
+    if (_pendingPositions.containsKey(roleData.role)) {
+      return _pendingPositions[roleData.role]!;
+    }
+    // Return actual average position from devices
+    return roleData.averagePosition;
+  }
+
+  /// Convert CoversTargetRole to CoversStateRole for backend calls
+  CoversStateRole? _toStateRole(CoversTargetRole role) {
+    switch (role) {
+      case CoversTargetRole.primary:
+        return CoversStateRole.primary;
+      case CoversTargetRole.blackout:
+        return CoversStateRole.blackout;
+      case CoversTargetRole.sheer:
+        return CoversStateRole.sheer;
+      case CoversTargetRole.outdoor:
+        return CoversStateRole.outdoor;
+      case CoversTargetRole.hidden:
+        return CoversStateRole.hidden;
+    }
   }
 
   @override
@@ -194,12 +214,23 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     // Use addPostFrameCallback to avoid "setState during build" errors
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        // Clear pending position when data converges
-        if (_pendingPosition != null) {
-          final actualPosition = _coversState?.averagePosition ?? 0;
-          // Consider converged if within 5% tolerance
-          if ((actualPosition - _pendingPosition!).abs() <= 5) {
-            _pendingPosition = null;
+        // Clear pending positions when data converges (per role)
+        if (_pendingPositions.isNotEmpty) {
+          final targets = _coversTargets;
+          final roleDataList = _buildRoleDataList(targets);
+
+          final rolesToRemove = <CoversTargetRole>[];
+          for (final entry in _pendingPositions.entries) {
+            final roleData = roleDataList.where((r) => r.role == entry.key).firstOrNull;
+            if (roleData != null) {
+              // Consider converged if within 5% tolerance
+              if ((roleData.averagePosition - entry.value).abs() <= 5) {
+                rolesToRemove.add(entry.key);
+              }
+            }
+          }
+          for (final role in rolesToRemove) {
+            _pendingPositions.remove(role);
           }
         }
         setState(() {});
@@ -272,7 +303,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   Widget _buildHeader(BuildContext context, int totalDevices) {
     final localizations = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final position = _aggregatedPosition;
+    final position = _coversState?.averagePosition ?? 0;
 
     // Determine state color based on position
     final stateColor = _getPositionColor(position, !isDark);
@@ -479,7 +510,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                     child: _buildRoleCard(
                       context,
                       roleData: primaryRole,
-                      position: _aggregatedPosition,
                       showSlider: true,
                       showActions: true,
                     ),
@@ -490,7 +520,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                   _buildRoleCard(
                     context,
                     roleData: role,
-                    position: role.averagePosition,
                   ),
                 ],
               ],
@@ -589,7 +618,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                   _buildRoleCard(
                     context,
                     roleData: primaryRole,
-                    position: _aggregatedPosition,
                     showSlider: true,
                     showActions: true,
                   ),
@@ -599,7 +627,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                   _buildRoleCard(
                     context,
                     roleData: role,
-                    position: role.averagePosition,
                   ),
                 ],
 
@@ -652,11 +679,11 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   Widget _buildRoleCard(
     BuildContext context, {
     required _CoverRoleData roleData,
-    required int position,
     bool showSlider = false,
     bool showActions = false,
   }) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final position = _getRolePosition(roleData);
     final Color stateColor = _getPositionColor(position, isLight);
     final Color stateColorLight = stateColor.withValues(alpha: 0.15);
     final localizations = AppLocalizations.of(context)!;
@@ -760,20 +787,21 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
           // Slider
           if (showSlider) ...[
             AppSpacings.spacingMdVertical,
-            _buildPositionSlider(context, position),
+            _buildPositionSlider(context, roleData),
           ],
           // Quick Actions
           if (showActions) ...[
             AppSpacings.spacingMdVertical,
-            _buildQuickActions(context),
+            _buildQuickActions(context, roleData),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildPositionSlider(BuildContext context, int position) {
+  Widget _buildPositionSlider(BuildContext context, _CoverRoleData roleData) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final position = _getRolePosition(roleData);
 
     return SliderTheme(
       data: SliderThemeData(
@@ -796,23 +824,24 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
             .withValues(alpha: 0.15),
       ),
       child: Slider(
-        value: _aggregatedPosition.toDouble(),
+        value: position.toDouble(),
         min: 0,
         max: 100,
         onChanged: (value) {
-          // Optimistic UI update
-          setState(() => _pendingPosition = value.round());
+          // Optimistic UI update for this role
+          setState(() => _pendingPositions[roleData.role] = value.round());
         },
         onChangeEnd: (value) {
           // Send actual intent when slider is released
-          _setCoversPosition(value.round());
+          _setRolePosition(roleData.role, value.round());
         },
       ),
     );
   }
 
-  Widget _buildQuickActions(BuildContext context) {
+  Widget _buildQuickActions(BuildContext context, _CoverRoleData roleData) {
     final localizations = AppLocalizations.of(context)!;
+    final position = _getRolePosition(roleData);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -822,8 +851,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
             context,
             label: localizations.shading_action_open,
             icon: MdiIcons.chevronUp,
-            isActive: _aggregatedPosition == 100,
-            onTap: _openCovers,
+            isActive: position == 100,
+            onTap: () => _setRolePosition(roleData.role, 100),
           ),
         ),
         AppSpacings.spacingSmHorizontal,
@@ -842,8 +871,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
             context,
             label: localizations.shading_action_close,
             icon: MdiIcons.chevronDown,
-            isActive: _aggregatedPosition == 0,
-            onTap: _closeCovers,
+            isActive: position == 0,
+            onTap: () => _setRolePosition(roleData.role, 0),
           ),
         ),
       ],
@@ -854,51 +883,34 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   // INTENT METHODS
   // ===========================================================================
 
-  /// Open all covers in the space
-  Future<void> _openCovers() async {
-    setState(() => _pendingPosition = 100);
+  /// Set position for covers with a specific role
+  Future<void> _setRolePosition(CoversTargetRole role, int position) async {
+    setState(() => _pendingPositions[role] = position);
 
     try {
-      final result = await _spacesService?.openCovers(_roomId);
+      final stateRole = _toStateRole(role);
+      if (stateRole == null) {
+        if (kDebugMode) {
+          debugPrint('[ShadingDomainView] Invalid role: $role');
+        }
+        return;
+      }
+
+      final result = await _spacesService?.setRolePosition(_roomId, stateRole, position);
       if (result == null && mounted) {
         final localizations = AppLocalizations.of(context);
         AlertBar.showError(context, message: localizations?.action_failed ?? 'Failed');
-        _pendingPosition = null;
+        _pendingPositions.remove(role);
         setState(() {});
       }
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('[ShadingDomainView] Failed to open covers: $e');
+        debugPrint('[ShadingDomainView] Failed to set role position: $e');
       }
       if (mounted) {
         final localizations = AppLocalizations.of(context);
         AlertBar.showError(context, message: localizations?.action_failed ?? 'Failed');
-        _pendingPosition = null;
-        setState(() {});
-      }
-    }
-  }
-
-  /// Close all covers in the space
-  Future<void> _closeCovers() async {
-    setState(() => _pendingPosition = 0);
-
-    try {
-      final result = await _spacesService?.closeCovers(_roomId);
-      if (result == null && mounted) {
-        final localizations = AppLocalizations.of(context);
-        AlertBar.showError(context, message: localizations?.action_failed ?? 'Failed');
-        _pendingPosition = null;
-        setState(() {});
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[ShadingDomainView] Failed to close covers: $e');
-      }
-      if (mounted) {
-        final localizations = AppLocalizations.of(context);
-        AlertBar.showError(context, message: localizations?.action_failed ?? 'Failed');
-        _pendingPosition = null;
+        _pendingPositions.remove(role);
         setState(() {});
       }
     }
@@ -910,31 +922,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     // For now, this is a placeholder that shows current behavior
     if (kDebugMode) {
       debugPrint('[ShadingDomainView] Stop covers - not yet implemented in backend');
-    }
-  }
-
-  /// Set covers position to a specific value
-  Future<void> _setCoversPosition(int position) async {
-    setState(() => _pendingPosition = position);
-
-    try {
-      final result = await _spacesService?.setCoversPosition(_roomId, position);
-      if (result == null && mounted) {
-        final localizations = AppLocalizations.of(context);
-        AlertBar.showError(context, message: localizations?.action_failed ?? 'Failed');
-        _pendingPosition = null;
-        setState(() {});
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[ShadingDomainView] Failed to set covers position: $e');
-      }
-      if (mounted) {
-        final localizations = AppLocalizations.of(context);
-        AlertBar.showError(context, message: localizations?.action_failed ?? 'Failed');
-        _pendingPosition = null;
-        setState(() {});
-      }
     }
   }
 
