@@ -243,6 +243,8 @@ String volumeDeltaToString(VolumeDelta delta) {
 /// Convert LightingMode to API string
 String lightingModeToString(LightingMode mode) {
   switch (mode) {
+    case LightingMode.off:
+      return 'off';
     case LightingMode.work:
       return 'work';
     case LightingMode.relax:
