@@ -152,9 +152,8 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 			}
 			roleGroups.get(role)?.push(cover);
 
-			// Count by role
-			const roleKey = cover.role ?? 'unassigned';
-			coversByRole[roleKey] = (coversByRole[roleKey] ?? 0) + 1;
+			// Count by role (use same fallback as roleGroups for consistency)
+			coversByRole[role] = (coversByRole[role] ?? 0) + 1;
 		}
 
 		// Calculate per-role state

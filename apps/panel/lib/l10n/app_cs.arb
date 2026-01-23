@@ -558,7 +558,7 @@
   "shading_action_stop": "Zastavit",
   "shading_state_open": "Otevřeno",
   "shading_state_closed": "Zavřeno",
-  "shading_state_partial": "Částečně",
+  "shading_state_partial": "{position}% otevřeno",
   "shading_position": "Pozice",
   "shading_tap_for_controls": "Klepněte pro ovládání",
   "shading_hide_controls": "Skrýt ovládání",

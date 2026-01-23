@@ -1650,7 +1650,7 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String shading_state_partial(int position) {
-    return 'Částečně';
+    return '$position% otevřeno';
   }
 
   @override
