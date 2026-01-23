@@ -1257,18 +1257,18 @@ export class SpacesController {
 		// Transform roles to proper data models for serialization
 		stateData.roles = Object.fromEntries(
 			Object.entries(state.roles).map(([roleKey, roleState]) => {
-				const roleModel = new RoleCoversStateDataModel();
-				roleModel.role = roleState.role;
-				roleModel.position = roleState.position;
-				roleModel.isPositionMixed = roleState.isPositionMixed;
-				roleModel.tilt = roleState.tilt;
-				roleModel.isTiltMixed = roleState.isTiltMixed;
-				roleModel.hasTilt = roleState.hasTilt;
-				roleModel.isOpen = roleState.isOpen;
-				roleModel.isClosed = roleState.isClosed;
-				roleModel.devicesCount = roleState.devicesCount;
-				roleModel.devicesOpen = roleState.devicesOpen;
-				return [roleKey, roleModel];
+				const roleStateData = new RoleCoversStateDataModel();
+				roleStateData.role = roleState.role;
+				roleStateData.position = roleState.position;
+				roleStateData.isPositionMixed = roleState.isPositionMixed;
+				roleStateData.tilt = roleState.tilt;
+				roleStateData.isTiltMixed = roleState.isTiltMixed;
+				roleStateData.hasTilt = roleState.hasTilt;
+				roleStateData.isOpen = roleState.isOpen;
+				roleStateData.isClosed = roleState.isClosed;
+				roleStateData.devicesCount = roleState.devicesCount;
+				roleStateData.devicesOpen = roleState.devicesOpen;
+				return [roleKey, roleStateData];
 			}),
 		);
 		stateData.coversByRole = state.coversByRole;
