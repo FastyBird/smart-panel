@@ -1088,6 +1088,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     DevicesService devicesService,
     AppLocalizations localizations,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasRoles = roles.isNotEmpty;
     final hasOtherLights = otherLights.isNotEmpty;
     final hasScenes = _lightingScenes.isNotEmpty;
@@ -1104,18 +1105,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     return Column(
       children: [
+        // Scrollable content
         Expanded(
           child: SingleChildScrollView(
             padding: AppSpacings.paddingLg,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Mode Selector (only show if backend intents enabled and there are lights)
-                if (LightingConstants.useBackendIntents && hasLights) ...[
-                  _buildModeSelector(context, localizations),
-                  AppSpacings.spacingLgVertical,
-                ],
-
                 // Roles Grid
                 if (hasRoles)
                   _buildRolesGrid(context, roles, devicesService, crossAxisCount: 3),
@@ -1155,8 +1151,27 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             ),
           ),
         ),
-        // Fixed space at bottom for swipe dots
-        AppSpacings.spacingLgVertical,
+        // Sticky Mode Selector at bottom
+        if (LightingConstants.useBackendIntents && hasLights)
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+              border: Border(
+                top: BorderSide(
+                  color: isDark ? AppBorderColorDark.light : AppBorderColorLight.base,
+                  width: 1,
+                ),
+              ),
+            ),
+            padding: EdgeInsets.only(
+              left: AppSpacings.pLg,
+              right: AppSpacings.pLg,
+              top: AppSpacings.pMd,
+              bottom: AppSpacings.pLg,
+            ),
+            child: _buildModeSelector(context, localizations),
+          ),
       ],
     );
   }

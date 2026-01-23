@@ -548,6 +548,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     List<_CoverRoleData> roleDataList,
     List<_CoverDeviceData> deviceDataList,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
     final primaryRole = roleDataList.isNotEmpty ? roleDataList.first : null;
     final secondaryRoles = roleDataList.length > 1 ? roleDataList.skip(1).toList() : [];
@@ -555,18 +556,13 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
     return Column(
       children: [
+        // Scrollable content
         Expanded(
           child: SingleChildScrollView(
             padding: AppSpacings.paddingLg,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Mode Selector at top (only show if there are covers)
-                if (hasCovers) ...[
-                  _buildModeSelector(context, localizations),
-                  AppSpacings.spacingLgVertical,
-                ],
-
                 // Primary Role Card (with slider and actions)
                 if (primaryRole != null)
                   _buildRoleCard(
@@ -597,8 +593,27 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
             ),
           ),
         ),
-        // Fixed space at bottom for swipe dots
-        AppSpacings.spacingLgVertical,
+        // Sticky Mode Selector at bottom
+        if (hasCovers)
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+              border: Border(
+                top: BorderSide(
+                  color: isDark ? AppBorderColorDark.light : AppBorderColorLight.base,
+                  width: 1,
+                ),
+              ),
+            ),
+            padding: EdgeInsets.only(
+              left: AppSpacings.pLg,
+              right: AppSpacings.pLg,
+              top: AppSpacings.pMd,
+              bottom: AppSpacings.pLg,
+            ),
+            child: _buildModeSelector(context, localizations),
+          ),
       ],
     );
   }
