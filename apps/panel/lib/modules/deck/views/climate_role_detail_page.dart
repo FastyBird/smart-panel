@@ -954,34 +954,8 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
     required bool hasDevices,
   }) {
     final dialSize = _scale(200);
-    final tileHeight = _scale(70);
-
-    // Build rows of 2 tiles like lighting control panel
-    final rows = <Widget>[];
-    for (var i = 0; i < _state.climateDevices.length; i += 2) {
-      final rowDevices = _state.climateDevices.skip(i).take(2).toList();
-      rows.add(
-        Padding(
-          padding: EdgeInsets.only(bottom: AppSpacings.pMd),
-          child: SizedBox(
-            height: tileHeight,
-            child: Row(
-              children: [
-                for (var j = 0; j < 2; j++) ...[
-                  if (j > 0) AppSpacings.spacingMdHorizontal,
-                  Expanded(
-                    child: j < rowDevices.length
-                        ? _buildDeviceTile(context, rowDevices[j],
-                            isVertical: false)
-                        : const SizedBox.shrink(),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      );
-    }
+    const columns = 2;
+    const aspectRatio = 1.0; // Square tiles
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1011,12 +985,54 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
                   count: _state.climateDevices.length,
                 ),
                 Expanded(
-                  child: ListView(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: AppSpacings.pMd,
-                      vertical: AppSpacings.pMd,
-                    ),
-                    children: rows,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      // Calculate tile width from available space
+                      final horizontalPadding = AppSpacings.pMd * 2;
+                      final totalSpacing = AppSpacings.pMd * (columns - 1);
+                      final availableWidth =
+                          constraints.maxWidth - horizontalPadding - totalSpacing;
+                      final tileWidth = availableWidth / columns;
+                      // Derive tile height from width using aspect ratio
+                      final tileHeight = tileWidth / aspectRatio;
+
+                      // Build rows of 2 tiles
+                      final rows = <Widget>[];
+                      for (var i = 0; i < _state.climateDevices.length; i += columns) {
+                        final rowDevices =
+                            _state.climateDevices.skip(i).take(columns).toList();
+                        rows.add(
+                          Padding(
+                            padding: EdgeInsets.only(bottom: AppSpacings.pMd),
+                            child: SizedBox(
+                              height: tileHeight,
+                              child: Row(
+                                children: [
+                                  for (var j = 0; j < columns; j++) ...[
+                                    if (j > 0) AppSpacings.spacingMdHorizontal,
+                                    SizedBox(
+                                      width: tileWidth,
+                                      child: j < rowDevices.length
+                                          ? _buildDeviceTile(context, rowDevices[j],
+                                              isVertical: true)
+                                          : const SizedBox.shrink(),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+
+                      return ListView(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppSpacings.pMd,
+                          vertical: AppSpacings.pMd,
+                        ),
+                        children: rows,
+                      );
+                    },
                   ),
                 ),
               ],
@@ -1047,25 +1063,8 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
     required Color borderColor,
     required bool hasDevices,
   }) {
-    final tileHeight = _scale(70);
-
-    // Build rows of 1 tile for narrow panel (matching lighting pattern)
-    final rows = <Widget>[];
-    for (var i = 0; i < _state.climateDevices.length; i++) {
-      rows.add(
-        Padding(
-          padding: EdgeInsets.only(bottom: AppSpacings.pMd),
-          child: SizedBox(
-            height: tileHeight,
-            child: _buildDeviceTile(
-              context,
-              _state.climateDevices[i],
-              isVertical: false,
-            ),
-          ),
-        ),
-      );
-    }
+    const columns = 1;
+    const aspectRatio = 2.0; // Horizontal tiles (wider than tall)
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1093,12 +1092,42 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
                   count: _state.climateDevices.length,
                 ),
                 Expanded(
-                  child: ListView(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: AppSpacings.pMd,
-                      vertical: AppSpacings.pMd,
-                    ),
-                    children: rows,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      // Calculate tile width from available space
+                      final horizontalPadding = AppSpacings.pMd * 2;
+                      final availableWidth =
+                          constraints.maxWidth - horizontalPadding;
+                      final tileWidth = availableWidth / columns;
+                      // Derive tile height from width using aspect ratio
+                      final tileHeight = tileWidth / aspectRatio;
+
+                      // Build rows of 1 tile
+                      final rows = <Widget>[];
+                      for (var i = 0; i < _state.climateDevices.length; i++) {
+                        rows.add(
+                          Padding(
+                            padding: EdgeInsets.only(bottom: AppSpacings.pMd),
+                            child: SizedBox(
+                              height: tileHeight,
+                              child: _buildDeviceTile(
+                                context,
+                                _state.climateDevices[i],
+                                isVertical: false,
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+
+                      return ListView(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppSpacings.pMd,
+                          vertical: AppSpacings.pMd,
+                        ),
+                        children: rows,
+                      );
+                    },
                   ),
                 ),
               ],

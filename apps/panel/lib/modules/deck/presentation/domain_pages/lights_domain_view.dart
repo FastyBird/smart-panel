@@ -1297,30 +1297,24 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       children: [
         // Roles + Other Lights layout
         if (hasRoles && hasOtherLights) ...[
-          // Roles grid - 1 row
-          Flexible(
-            flex: 1,
-            child: _buildLandscapeRolesRow(
-              context,
-              roles,
-              devicesService,
-              tilesPerRow: tilesPerRow,
-            ),
+          // Roles row
+          _buildLandscapeRolesRow(
+            context,
+            roles,
+            devicesService,
+            tilesPerRow: tilesPerRow,
           ),
           AppSpacings.spacingLgVertical,
           // Other Lights header
           _buildOtherLightsTitle(otherLights, otherTargets, localizations),
           AppSpacings.spacingMdVertical,
-          // Other Lights grid - fills remaining space
-          Flexible(
-            flex: isLargeScreen ? 2 : 1,
-            child: _buildLandscapeLightsGrid(
-              context,
-              otherLights,
-              localizations,
-              tilesPerRow: tilesPerRow,
-              maxRows: isLargeScreen ? 2 : 1,
-            ),
+          // Other Lights grid
+          _buildLandscapeLightsGrid(
+            context,
+            otherLights,
+            localizations,
+            tilesPerRow: tilesPerRow,
+            maxRows: isLargeScreen ? 2 : 1,
           ),
         ] else if (hasRoles) ...[
           // Only roles, no other lights - grid layout
@@ -1337,14 +1331,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           // Only other lights, no roles
           _buildOtherLightsTitle(otherLights, otherTargets, localizations),
           AppSpacings.spacingMdVertical,
-          Expanded(
-            child: _buildLandscapeLightsGrid(
-              context,
-              otherLights,
-              localizations,
-              tilesPerRow: tilesPerRow,
-              maxRows: isLargeScreen ? 2 : 1,
-            ),
+          _buildLandscapeLightsGrid(
+            context,
+            otherLights,
+            localizations,
+            tilesPerRow: tilesPerRow,
+            maxRows: isLargeScreen ? 2 : 1,
           ),
         ],
       ],
@@ -1465,31 +1457,38 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     List<LightingRoleData> roles,
     DevicesService devicesService, {
     required int tilesPerRow,
+    double aspectRatio = 1.0, // width / height ratio
   }) {
     final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Calculate tile width to fit exactly tilesPerRow tiles
+        // Calculate tile width from available horizontal space
         final totalSpacing = AppSpacings.pMd * (tilesPerRow - 1);
         final tileWidth = (constraints.maxWidth - totalSpacing) / tilesPerRow;
 
-        return ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: roles.length,
-          separatorBuilder: (context, index) => AppSpacings.spacingMdHorizontal,
-          itemBuilder: (context, index) {
-            return SizedBox(
-              width: tileWidth,
-              child: _RoleCard(
-                role: roles[index],
-                onTap: () => _openRoleDetail(context, roles[index]),
-                onIconTap: () => _toggleRoleViaIntent(roles[index]),
-                isLoading: isModeLocked,
-                pendingState: _getRolePendingState(roles[index].role),
-              ),
-            );
-          },
+        // Derive tile height from width using aspect ratio
+        final tileHeight = tileWidth / aspectRatio;
+
+        return SizedBox(
+          height: tileHeight,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: roles.length,
+            separatorBuilder: (context, index) => AppSpacings.spacingMdHorizontal,
+            itemBuilder: (context, index) {
+              return SizedBox(
+                width: tileWidth,
+                child: _RoleCard(
+                  role: roles[index],
+                  onTap: () => _openRoleDetail(context, roles[index]),
+                  onIconTap: () => _toggleRoleViaIntent(roles[index]),
+                  isLoading: isModeLocked,
+                  pendingState: _getRolePendingState(roles[index].role),
+                ),
+              );
+            },
+          ),
         );
       },
     );
@@ -1532,52 +1531,59 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     AppLocalizations localizations, {
     required int tilesPerRow,
     required int maxRows,
+    double aspectRatio = 1.0, // width / height ratio
   }) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Calculate tile size to fit exactly tilesPerRow tiles
+        // Calculate tile width from available horizontal space
         final totalHSpacing = AppSpacings.pMd * (tilesPerRow - 1);
         final tileWidth = (constraints.maxWidth - totalHSpacing) / tilesPerRow;
 
-        // For 2 rows, calculate height per row
+        // Derive tile height from width using aspect ratio
+        final tileHeight = tileWidth / aspectRatio;
+
+        // Calculate total grid height
         final totalVSpacing = maxRows > 1 ? AppSpacings.pMd * (maxRows - 1) : 0.0;
-        final tileHeight = (constraints.maxHeight - totalVSpacing) / maxRows;
+        final gridHeight = tileHeight * maxRows + totalVSpacing;
 
         // Build columns of tiles (each column has maxRows tiles stacked)
         final columnCount = (lights.length / maxRows).ceil();
 
-        return ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: columnCount,
-          separatorBuilder: (context, index) => AppSpacings.spacingMdHorizontal,
-          itemBuilder: (context, colIndex) {
-            return SizedBox(
-              width: tileWidth,
-              child: Column(
-                children: [
-                  for (var row = 0; row < maxRows; row++) ...[
-                    if (row > 0) AppSpacings.spacingMdVertical,
-                    SizedBox(
-                      height: tileHeight,
-                      child: () {
-                        final index = colIndex * maxRows + row;
-                        if (index < lights.length) {
-                          return _LightTile(
-                            light: lights[index],
-                            localizations: localizations,
-                            onTap: () => _openDeviceDetail(context, lights[index]),
-                            onIconTap: () => _toggleLight(lights[index]),
-                            isVertical: true,
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      }(),
-                    ),
+        return SizedBox(
+          height: gridHeight,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: columnCount,
+            separatorBuilder: (context, index) => AppSpacings.spacingMdHorizontal,
+            itemBuilder: (context, colIndex) {
+              return SizedBox(
+                width: tileWidth,
+                child: Column(
+                  children: [
+                    for (var row = 0; row < maxRows; row++) ...[
+                      if (row > 0) AppSpacings.spacingMdVertical,
+                      SizedBox(
+                        height: tileHeight,
+                        child: () {
+                          final index = colIndex * maxRows + row;
+                          if (index < lights.length) {
+                            return _LightTile(
+                              light: lights[index],
+                              localizations: localizations,
+                              onTap: () => _openDeviceDetail(context, lights[index]),
+                              onIconTap: () => _toggleLight(lights[index]),
+                              isVertical: true,
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        }(),
+                      ),
+                    ],
                   ],
-                ],
-              ),
-            );
-          },
+                ),
+              );
+            },
+          ),
         );
       },
     );
