@@ -295,8 +295,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       return !state.anyOn;
     }
 
-    // For other modes, check detectedMode matches
-    final backendMode = state.detectedMode ?? state.lastAppliedMode;
+    // For other modes, check detectedMode matches AND isModeFromIntent is true.
+    // This ensures we stay in optimistic mode until the backend confirms the intent
+    // was applied. Without this check, we'd show "matched" (info color) briefly
+    // before the websocket update arrives with isModeFromIntent = true.
+    final backendMode = state.detectedMode;
     if (backendMode == null) {
       // No mode info available yet, consider not converged
       return false;
@@ -305,7 +308,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       backendMode,
       state.anyOn,
     );
-    return actualMode == desiredMode;
+    return actualMode == desiredMode && state.isModeFromIntent;
   }
 
   /// Check if space has an active intent lock.
