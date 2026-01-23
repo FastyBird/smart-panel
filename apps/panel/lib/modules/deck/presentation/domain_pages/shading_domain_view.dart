@@ -11,6 +11,7 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/window_covering.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/window_covering.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/covers_state/covers_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/service.dart';
@@ -384,16 +385,35 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   }
 
   /// Build device data list from covers targets
+  ///
+  /// Each target represents a channel. If a device has multiple window covering
+  /// channels, each becomes a separate tile with the channel name. If a device
+  /// has only one channel, the device name is used instead.
   List<_CoverDeviceData> _buildDeviceDataList(List<CoversTargetView> targets) {
     final List<_CoverDeviceData> devices = [];
     final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
+
+    // Count channels per device to determine naming strategy
+    final channelsPerDevice = <String, int>{};
+    for (final target in targets) {
+      channelsPerDevice[target.deviceId] = (channelsPerDevice[target.deviceId] ?? 0) + 1;
+    }
 
     for (final target in targets) {
       final device = _devicesService?.getDevice(target.deviceId);
       if (device is! WindowCoveringDeviceView) continue;
 
-      // Strip room name from device name using shared utility
-      final name = stripRoomNameFromDevice(target.displayName, roomName);
+      // Find the specific channel for this target
+      final channel = device.channels
+          .whereType<WindowCoveringChannelView>()
+          .where((c) => c.id == target.channelId)
+          .firstOrNull;
+      if (channel == null) continue;
+
+      // Use channel name if device has multiple channels, device name otherwise
+      final hasMultipleChannels = (channelsPerDevice[target.deviceId] ?? 1) > 1;
+      final rawName = hasMultipleChannels ? target.channelName : target.deviceName;
+      final name = stripRoomNameFromDevice(rawName, roomName);
 
       devices.add(_CoverDeviceData(
         deviceId: target.deviceId,
@@ -401,7 +421,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         name: name,
         typeName: _getCoverTypeName(target.coverType),
         typeIcon: _getCoverTypeIcon(target.coverType),
-        position: device.isWindowCoveringPercentage,
+        position: channel.position,
         isOnline: device.isOnline,
       ));
     }
