@@ -29,8 +29,8 @@ void main() {
   });
 
   group('LightingModeUIExtension.toBackendMode()', () {
-    test('off mode should return null (backend has no off mode)', () {
-      expect(LightingModeUI.off.toBackendMode(), isNull);
+    test('off mode should return LightingMode.off', () {
+      expect(LightingModeUI.off.toBackendMode(), LightingMode.off);
     });
 
     test('work mode should return LightingMode.work', () {
@@ -121,20 +121,20 @@ void main() {
         }
       });
 
-      test('off mode round-trip requires lights to be off', () {
-        // off -> null backend mode -> off (only when anyLightsOn is false)
+      test('off mode round-trip works correctly', () {
+        // off -> LightingMode.off backend mode
         final backendMode = LightingModeUI.off.toBackendMode();
-        expect(backendMode, isNull);
+        expect(backendMode, LightingMode.off);
 
         // With lights off, should return off
         final roundTrip =
             LightingModeUIExtension.fromBackendMode(backendMode, false);
         expect(roundTrip, LightingModeUI.off);
 
-        // With lights on and null mode, should default to work
+        // With lights on and off mode, should still return off (mode takes precedence)
         final roundTripWithLightsOn =
             LightingModeUIExtension.fromBackendMode(backendMode, true);
-        expect(roundTripWithLightsOn, LightingModeUI.work);
+        expect(roundTripWithLightsOn, LightingModeUI.off);
       });
     });
   });

@@ -92,7 +92,7 @@ enum LightingModeUI { off, work, relax, night }
 /// Extension to convert between UI mode and backend mode.
 ///
 /// Provides bidirectional conversion:
-/// - [toBackendMode]: Converts UI mode to backend mode (returns null for 'off')
+/// - [toBackendMode]: Converts UI mode to backend mode
 /// - [fromBackendMode]: Converts backend mode + light state to UI mode
 extension LightingModeUIExtension on LightingModeUI {
   /// Converts UI mode to backend [LightingMode].
