@@ -6,7 +6,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
-import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
+import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
@@ -821,9 +821,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     final position = _getRolePosition(roleData);
     final normalizedValue = position / 100.0;
 
-    return SpeedSlider(
+    return SliderWithSteps(
       value: normalizedValue,
-      label: localizations.shading_position,
       activeColor: isLight ? AppColorsLight.primary : AppColorsDark.primary,
       steps: [
         localizations.shading_state_closed,
