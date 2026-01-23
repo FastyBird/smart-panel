@@ -70,6 +70,7 @@ enum IntentType {
   // Space covers operations
   spaceCoversOpen,
   spaceCoversClose,
+  spaceCoversStop,
   spaceCoversSetPosition,
   spaceCoversPositionDelta,
   spaceCoversRolePosition,
@@ -216,6 +217,8 @@ IntentType parseIntentType(String type) {
       return IntentType.spaceCoversOpen;
     case 'space.covers.close':
       return IntentType.spaceCoversClose;
+    case 'space.covers.stop':
+      return IntentType.spaceCoversStop;
     case 'space.covers.setPosition':
       return IntentType.spaceCoversSetPosition;
     case 'space.covers.positionDelta':

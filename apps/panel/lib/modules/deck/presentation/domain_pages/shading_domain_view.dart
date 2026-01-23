@@ -861,6 +861,16 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         Expanded(
           child: _buildQuickActionButton(
             context,
+            label: localizations.shading_action_stop,
+            icon: MdiIcons.stop,
+            isActive: false,
+            onTap: _stopCovers,
+          ),
+        ),
+        AppSpacings.spacingSmHorizontal,
+        Expanded(
+          child: _buildQuickActionButton(
+            context,
             label: localizations.shading_action_close,
             icon: MdiIcons.chevronDown,
             isActive: position == 0,
@@ -904,6 +914,25 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         AlertBar.showError(context, message: localizations?.action_failed ?? 'Failed');
         _pendingPositions.remove(role);
         setState(() {});
+      }
+    }
+  }
+
+  /// Stop all covers movement in the space
+  Future<void> _stopCovers() async {
+    try {
+      final result = await _spacesService?.stopCovers(_roomId);
+      if (result == null && mounted) {
+        final localizations = AppLocalizations.of(context);
+        AlertBar.showError(context, message: localizations?.action_failed ?? 'Failed');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[ShadingDomainView] Failed to stop covers: $e');
+      }
+      if (mounted) {
+        final localizations = AppLocalizations.of(context);
+        AlertBar.showError(context, message: localizations?.action_failed ?? 'Failed');
       }
     }
   }

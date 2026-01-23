@@ -100,6 +100,7 @@ enum VolumeDelta {
 /// Each type corresponds to a specific covers action:
 /// - [open]: Open all covers
 /// - [close]: Close all covers
+/// - [stop]: Stop all covers movement
 /// - [setPosition]: Set covers to a specific position (0-100)
 /// - [positionDelta]: Adjust position by a relative amount
 /// - [rolePosition]: Set position for covers with a specific role
@@ -107,6 +108,7 @@ enum VolumeDelta {
 enum CoversIntentType {
   open,
   close,
+  stop,
   setPosition,
   positionDelta,
   rolePosition,
@@ -275,6 +277,8 @@ String coversIntentTypeToString(CoversIntentType type) {
       return 'open';
     case CoversIntentType.close:
       return 'close';
+    case CoversIntentType.stop:
+      return 'stop';
     case CoversIntentType.setPosition:
       return 'set_position';
     case CoversIntentType.positionDelta:

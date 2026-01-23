@@ -551,6 +551,11 @@ class SpacesService extends ChangeNotifier {
     return _spaceStateRepository.closeCovers(spaceId);
   }
 
+  /// Stop all covers movement in a space
+  Future<CoversIntentResult?> stopCovers(String spaceId) {
+    return _spaceStateRepository.stopCovers(spaceId);
+  }
+
   /// Set covers position
   Future<CoversIntentResult?> setCoversPosition(String spaceId, int position) {
     return _spaceStateRepository.setCoversPosition(spaceId, position);

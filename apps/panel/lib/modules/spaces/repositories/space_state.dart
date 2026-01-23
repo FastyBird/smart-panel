@@ -1185,6 +1185,14 @@ class SpaceStateRepository extends ChangeNotifier {
     );
   }
 
+  /// Stop all covers movement in a space
+  Future<CoversIntentResult?> stopCovers(String spaceId) {
+    return executeCoversIntent(
+      spaceId: spaceId,
+      type: CoversIntentType.stop,
+    );
+  }
+
   /// Set covers position
   Future<CoversIntentResult?> setCoversPosition(
     String spaceId,
@@ -1567,6 +1575,8 @@ class SpaceStateRepository extends ChangeNotifier {
         return IntentType.spaceCoversOpen;
       case CoversIntentType.close:
         return IntentType.spaceCoversClose;
+      case CoversIntentType.stop:
+        return IntentType.spaceCoversStop;
       case CoversIntentType.setPosition:
         return IntentType.spaceCoversSetPosition;
       case CoversIntentType.positionDelta:
