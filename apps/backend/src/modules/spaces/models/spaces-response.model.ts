@@ -2074,6 +2074,181 @@ export class LightingRoleMetaDataModel {
 }
 
 /**
+ * Role brightness rule for lighting mode orchestration
+ */
+@ApiSchema({ name: 'SpacesModuleDataLightingRoleBrightnessRule' })
+export class LightingRoleBrightnessRuleDataModel {
+	@ApiProperty({
+		description: 'Whether lights with this role should be on',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	on: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Brightness level (0-100), null if light should be off',
+		type: 'number',
+		nullable: true,
+		example: 100,
+	})
+	@Expose()
+	brightness: number | null;
+}
+
+/**
+ * Lighting mode orchestration data model
+ */
+@ApiSchema({ name: 'SpacesModuleDataLightingModeOrchestration' })
+export class LightingModeOrchestrationDataModel {
+	@ApiProperty({
+		description: 'Mode identifier',
+		enum: LightingMode,
+		example: LightingMode.WORK,
+	})
+	@Expose()
+	mode: LightingMode;
+
+	@ApiProperty({
+		description: 'Human-readable label for the mode',
+		type: 'string',
+		example: 'Work',
+	})
+	@Expose()
+	label: string;
+
+	@ApiProperty({
+		description: 'Description of the mode',
+		type: 'string',
+		example: 'Bright lighting for focus and productivity',
+	})
+	@Expose()
+	description: string;
+
+	@ApiPropertyOptional({
+		description: 'Icon identifier for the mode',
+		type: 'string',
+		example: 'mdi:briefcase',
+	})
+	@Expose()
+	icon?: string;
+
+	@ApiProperty({
+		name: 'mvp_brightness',
+		description: 'Brightness level when no roles are configured (0-100)',
+		type: 'number',
+		example: 100,
+	})
+	@Expose({ name: 'mvp_brightness' })
+	mvpBrightness: number;
+
+	@ApiProperty({
+		description: 'Role-specific brightness rules for this mode',
+		type: 'object',
+		additionalProperties: { $ref: '#/components/schemas/SpacesModuleDataLightingRoleBrightnessRule' },
+		example: { main: { on: true, brightness: 100 }, task: { on: true, brightness: 100 } },
+	})
+	@Expose()
+	roles: Record<string, LightingRoleBrightnessRuleDataModel>;
+
+	@ApiPropertyOptional({
+		name: 'fallback_roles',
+		description: 'Roles to use as fallback if primary roles have no lights',
+		type: [String],
+		example: ['main'],
+	})
+	@Expose({ name: 'fallback_roles' })
+	fallbackRoles?: string[];
+
+	@ApiPropertyOptional({
+		name: 'fallback_brightness',
+		description: 'Brightness level for fallback roles',
+		type: 'number',
+		example: 20,
+	})
+	@Expose({ name: 'fallback_brightness' })
+	fallbackBrightness?: number;
+}
+
+/**
+ * Role position rule for covers mode orchestration
+ */
+@ApiSchema({ name: 'SpacesModuleDataCoversRolePositionRule' })
+export class CoversRolePositionRuleDataModel {
+	@ApiProperty({
+		description: 'Position percentage (0=closed, 100=open)',
+		type: 'number',
+		example: 100,
+	})
+	@Expose()
+	position: number;
+
+	@ApiPropertyOptional({
+		description: 'Tilt angle (0-100), if supported',
+		type: 'number',
+		example: 50,
+	})
+	@Expose()
+	tilt?: number;
+}
+
+/**
+ * Covers mode orchestration data model
+ */
+@ApiSchema({ name: 'SpacesModuleDataCoversModeOrchestration' })
+export class CoversModeOrchestrationDataModel {
+	@ApiProperty({
+		description: 'Mode identifier',
+		enum: CoversMode,
+		example: CoversMode.OPEN,
+	})
+	@Expose()
+	mode: CoversMode;
+
+	@ApiProperty({
+		description: 'Human-readable label for the mode',
+		type: 'string',
+		example: 'Open',
+	})
+	@Expose()
+	label: string;
+
+	@ApiProperty({
+		description: 'Description of the mode',
+		type: 'string',
+		example: 'All covers fully open',
+	})
+	@Expose()
+	description: string;
+
+	@ApiPropertyOptional({
+		description: 'Icon identifier for the mode',
+		type: 'string',
+		example: 'mdi:blinds-open',
+	})
+	@Expose()
+	icon?: string;
+
+	@ApiProperty({
+		name: 'mvp_position',
+		description: 'Position when no roles are configured (0-100)',
+		type: 'number',
+		example: 100,
+	})
+	@Expose({ name: 'mvp_position' })
+	mvpPosition: number;
+
+	@ApiProperty({
+		description: 'Role-specific position rules for this mode',
+		type: 'object',
+		additionalProperties: { $ref: '#/components/schemas/SpacesModuleDataCoversRolePositionRule' },
+		example: { primary: { position: 100 }, blackout: { position: 100 } },
+	})
+	@Expose()
+	roles: Record<string, CoversRolePositionRuleDataModel>;
+}
+
+/**
  * Complete intent catalog data model
  */
 @ApiSchema({ name: 'SpacesModuleDataIntentCatalog' })
@@ -2103,6 +2278,24 @@ export class IntentCatalogDataModel {
 	@Expose({ name: 'lighting_roles' })
 	@Type(() => LightingRoleMetaDataModel)
 	lightingRoles: LightingRoleMetaDataModel[];
+
+	@ApiProperty({
+		name: 'lighting_modes',
+		description: 'Lighting mode orchestration definitions',
+		type: () => [LightingModeOrchestrationDataModel],
+	})
+	@Expose({ name: 'lighting_modes' })
+	@Type(() => LightingModeOrchestrationDataModel)
+	lightingModes: LightingModeOrchestrationDataModel[];
+
+	@ApiProperty({
+		name: 'covers_modes',
+		description: 'Covers mode orchestration definitions',
+		type: () => [CoversModeOrchestrationDataModel],
+	})
+	@Expose({ name: 'covers_modes' })
+	@Type(() => CoversModeOrchestrationDataModel)
+	coversModes: CoversModeOrchestrationDataModel[];
 }
 
 /**
