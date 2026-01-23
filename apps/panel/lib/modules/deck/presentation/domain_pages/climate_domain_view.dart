@@ -1740,9 +1740,13 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     final hasAuxiliary = _state.auxiliaryDevices.isNotEmpty;
     final isLargeScreen = _screenService.isLargeScreen;
 
-    // Responsive grid settings
-    final crossAxisCount = isLargeScreen ? 2 : 1;
-    final aspectRatio = isLargeScreen ? 2.5 : 3.0;
+    // Sensors: large = 2 columns vertical, medium/small = 1 column horizontal
+    final sensorsCrossAxisCount = isLargeScreen ? 2 : 1;
+    final sensorsAspectRatio = isLargeScreen ? 1.0 : 3.0;
+
+    // Auxiliary: always 1 column horizontal
+    const auxiliaryCrossAxisCount = 1;
+    const auxiliaryAspectRatio = 3.0;
 
     return SingleChildScrollView(
       child: Column(
@@ -1752,8 +1756,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             SectionTitle(title: 'Sensors', icon: MdiIcons.eyeSettings),
             AppSpacings.spacingMdVertical,
             _buildSensorsGrid(context,
-                crossAxisCount: crossAxisCount,
-                aspectRatio: aspectRatio,
+                crossAxisCount: sensorsCrossAxisCount,
+                aspectRatio: sensorsAspectRatio,
                 showInactiveBorder: true),
             if (hasAuxiliary) AppSpacings.spacingLgVertical,
           ],
@@ -1761,8 +1765,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             SectionTitle(title: 'Auxiliary', icon: MdiIcons.devices),
             AppSpacings.spacingMdVertical,
             _buildAuxiliaryGrid(context,
-                crossAxisCount: crossAxisCount,
-                aspectRatio: aspectRatio,
+                crossAxisCount: auxiliaryCrossAxisCount,
+                aspectRatio: auxiliaryAspectRatio,
                 showInactiveBorder: true),
           ],
           if (!hasSensors && !hasAuxiliary)
