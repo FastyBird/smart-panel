@@ -203,8 +203,8 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 				: null
 			: null;
 
-		// Detect current mode
-		const modeMatch = this.detectMode(roles, covers);
+		// Detect current mode (prefer lastAppliedMode as tie-breaker)
+		const modeMatch = this.detectMode(roles, covers, lastAppliedMode);
 
 		// Determine if mode was set by intent using mode validity tracking
 		const detectedMode = modeMatch?.mode ?? null;
@@ -320,17 +320,19 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 	}
 
 	/**
-	 * Detect which mode the current state matches (if any)
+	 * Detect which mode the current state matches (if any).
+	 * When multiple modes have equal match percentages, prefer lastAppliedMode as tie-breaker.
 	 */
 	private detectMode(
 		roleStates: Partial<Record<CoversRole, RoleCoversState>>,
 		covers: CoverDevice[],
+		lastAppliedMode: CoversMode | null = null,
 	): CoversModeMatch | null {
 		const hasAnyRoles = Object.keys(roleStates).length > 0;
 
 		// If no roles configured, check for MVP fallback mode matching
 		if (!hasAnyRoles) {
-			return this.detectMvpMode(covers);
+			return this.detectMvpMode(covers, lastAppliedMode);
 		}
 
 		// Get all available modes from YAML spec
@@ -345,8 +347,19 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 
 			const match = this.matchMode(modeId as CoversMode, roleStates);
 
-			if (match && (!bestMatch || match.matchPercentage > bestMatch.matchPercentage)) {
-				bestMatch = match;
+			if (match) {
+				// Prefer this match if:
+				// 1. No best match yet
+				// 2. Higher match percentage
+				// 3. Same percentage but this is the lastAppliedMode (tie-breaker)
+				const isBetterMatch =
+					!bestMatch ||
+					match.matchPercentage > bestMatch.matchPercentage ||
+					(match.matchPercentage === bestMatch.matchPercentage && match.mode === lastAppliedMode);
+
+				if (isBetterMatch) {
+					bestMatch = match;
+				}
 			}
 		}
 
@@ -356,8 +369,9 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 	/**
 	 * Detect mode in MVP scenario (no roles configured).
 	 * Uses mvpPosition values from YAML mode specifications.
+	 * When multiple modes match equally, prefer lastAppliedMode as tie-breaker.
 	 */
-	private detectMvpMode(covers: CoverDevice[]): CoversModeMatch | null {
+	private detectMvpMode(covers: CoverDevice[], lastAppliedMode: CoversMode | null = null): CoversModeMatch | null {
 		if (covers.length === 0) {
 			return null;
 		}
@@ -389,23 +403,38 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 			});
 		}
 
-		// Sort by position descending (open first, then daylight, privacy, closed)
-		mvpModes.sort((a, b) => b.position - a.position);
+		// Find all matching modes and their match quality
+		const matches: CoversModeMatch[] = [];
 
 		for (const { mode, position } of mvpModes) {
 			const diff = Math.abs(avgPosition - position);
 
 			if (diff <= 15) {
 				// Within 15% tolerance
-				return {
+				matches.push({
 					mode,
 					confidence: diff <= 5 ? 'exact' : 'approximate',
 					matchPercentage: 100 - diff,
-				};
+				});
 			}
 		}
 
-		return null;
+		if (matches.length === 0) {
+			return null;
+		}
+
+		// Sort by match percentage descending, then prefer lastAppliedMode as tie-breaker
+		matches.sort((a, b) => {
+			if (b.matchPercentage !== a.matchPercentage) {
+				return b.matchPercentage - a.matchPercentage;
+			}
+			// Tie-breaker: prefer lastAppliedMode
+			if (a.mode === lastAppliedMode) return -1;
+			if (b.mode === lastAppliedMode) return 1;
+			return 0;
+		});
+
+		return matches[0];
 	}
 
 	/**
