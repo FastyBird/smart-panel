@@ -4,6 +4,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/intent_mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
@@ -995,7 +996,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   }
 
   /// Get current covers mode from backend state
-  CoversMode? get _currentMode => _coversState?.lastAppliedMode;
+  /// Uses detectedMode (current state) with fallback to lastAppliedMode (last intent)
+  CoversMode? get _currentMode => _coversState?.detectedMode ?? _coversState?.lastAppliedMode;
 
   /// Set covers mode via backend intent
   Future<void> _setCoversMode(CoversMode mode) async {
@@ -1091,6 +1093,40 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     final mode = _currentMode;
     final modeColor = _getModeColor(context, mode);
 
+    // Determine activeValue, matchedValue, and lastIntentValue based on state:
+    // - activeValue: mode explicitly set by intent AND still matches (2px border, mode color)
+    // - matchedValue: mode detected by user manually setting devices (1px border, mode color)
+    // - lastIntentValue: last applied intent when no mode matches (1px border, neutral color)
+    final CoversMode? activeValue;
+    final CoversMode? matchedValue;
+    final CoversMode? lastIntentValue;
+
+    final detectedMode = _coversState?.detectedMode;
+    final lastAppliedMode = _coversState?.lastAppliedMode;
+    final isModeFromIntent = _coversState?.isModeFromIntent ?? false;
+
+    if (detectedMode != null && isModeFromIntent) {
+      // Mode was set by intent and still matches: show as active
+      activeValue = detectedMode;
+      matchedValue = null;
+      lastIntentValue = null;
+    } else if (detectedMode != null && !isModeFromIntent) {
+      // Mode detected but not from intent (user manually matched): show as matched
+      activeValue = null;
+      matchedValue = detectedMode;
+      lastIntentValue = null;
+    } else if (lastAppliedMode != null) {
+      // No mode matches, but we have a last applied intent: show as last intent
+      activeValue = null;
+      matchedValue = null;
+      lastIntentValue = lastAppliedMode;
+    } else {
+      // No mode at all
+      activeValue = null;
+      matchedValue = null;
+      lastIntentValue = null;
+    }
+
     return Container(
       padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
@@ -1103,9 +1139,11 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
           width: 1,
         ),
       ),
-      child: ModeSelector<CoversMode>(
+      child: IntentModeSelector<CoversMode>(
         modes: _getCoversModeOptions(localizations),
-        selectedValue: mode,
+        activeValue: activeValue,
+        matchedValue: matchedValue,
+        lastIntentValue: lastIntentValue,
         onChanged: _setCoversMode,
         orientation: ModeSelectorOrientation.horizontal,
         iconPlacement: ModeSelectorIconPlacement.top,
@@ -1115,11 +1153,45 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
   /// Build vertical mode selector for landscape layout
   Widget _buildLandscapeModeSelector(BuildContext context, AppLocalizations localizations) {
-    final mode = _currentMode;
+    // Determine activeValue, matchedValue, and lastIntentValue based on state:
+    // - activeValue: mode explicitly set by intent AND still matches (2px border, mode color)
+    // - matchedValue: mode detected by user manually setting devices (1px border, mode color)
+    // - lastIntentValue: last applied intent when no mode matches (1px border, neutral color)
+    final CoversMode? activeValue;
+    final CoversMode? matchedValue;
+    final CoversMode? lastIntentValue;
 
-    return ModeSelector<CoversMode>(
+    final detectedMode = _coversState?.detectedMode;
+    final lastAppliedMode = _coversState?.lastAppliedMode;
+    final isModeFromIntent = _coversState?.isModeFromIntent ?? false;
+
+    if (detectedMode != null && isModeFromIntent) {
+      // Mode was set by intent and still matches: show as active
+      activeValue = detectedMode;
+      matchedValue = null;
+      lastIntentValue = null;
+    } else if (detectedMode != null && !isModeFromIntent) {
+      // Mode detected but not from intent (user manually matched): show as matched
+      activeValue = null;
+      matchedValue = detectedMode;
+      lastIntentValue = null;
+    } else if (lastAppliedMode != null) {
+      // No mode matches, but we have a last applied intent: show as last intent
+      activeValue = null;
+      matchedValue = null;
+      lastIntentValue = lastAppliedMode;
+    } else {
+      // No mode at all
+      activeValue = null;
+      matchedValue = null;
+      lastIntentValue = null;
+    }
+
+    return IntentModeSelector<CoversMode>(
       modes: _getCoversModeOptions(localizations),
-      selectedValue: mode,
+      activeValue: activeValue,
+      matchedValue: matchedValue,
+      lastIntentValue: lastIntentValue,
       onChanged: _setCoversMode,
       orientation: ModeSelectorOrientation.vertical,
       iconPlacement: ModeSelectorIconPlacement.top,

@@ -93,6 +93,7 @@ import {
 	ProposedSpacesResponseModel,
 	QuickActionDataModel,
 	RoleAggregatedStateDataModel,
+	RoleCoversStateDataModel,
 	RoleLastIntentDataModel,
 	RolesStateMapDataModel,
 	SafetyAlertDataModel,
@@ -723,14 +724,17 @@ export class SpacesController {
 		}
 
 		const stateData = new LightingStateDataModel();
+		stateData.hasLights = state.hasLights;
 		stateData.detectedMode = state.detectedMode;
 		stateData.modeConfidence = state.modeConfidence;
 		stateData.modeMatchPercentage = state.modeMatchPercentage;
+		stateData.isModeFromIntent = state.isModeFromIntent;
 		stateData.lastAppliedMode = state.lastAppliedMode;
 		stateData.lastAppliedAt = state.lastAppliedAt;
 		stateData.totalLights = state.totalLights;
 		stateData.lightsOn = state.lightsOn;
 		stateData.averageBrightness = state.averageBrightness;
+		stateData.lightsByRole = state.lightsByRole;
 
 		// Map roles
 		const rolesMap = new RolesStateMapDataModel();
@@ -1180,10 +1184,35 @@ export class SpacesController {
 
 		const stateData = new CoversStateDataModel();
 		stateData.hasCovers = state.hasCovers;
+		stateData.detectedMode = state.detectedMode;
+		stateData.modeConfidence = state.modeConfidence;
+		stateData.modeMatchPercentage = state.modeMatchPercentage;
+		stateData.isModeFromIntent = state.isModeFromIntent;
 		stateData.averagePosition = state.averagePosition;
+		stateData.isPositionMixed = state.isPositionMixed;
+		stateData.averageTilt = state.averageTilt;
+		stateData.isTiltMixed = state.isTiltMixed;
+		stateData.hasTilt = state.hasTilt;
 		stateData.anyOpen = state.anyOpen;
 		stateData.allClosed = state.allClosed;
 		stateData.devicesCount = state.devicesCount;
+		// Transform roles to proper data models for serialization
+		stateData.roles = Object.fromEntries(
+			Object.entries(state.roles).map(([roleKey, roleState]) => {
+				const roleModel = new RoleCoversStateDataModel();
+				roleModel.role = roleState.role;
+				roleModel.position = roleState.position;
+				roleModel.isPositionMixed = roleState.isPositionMixed;
+				roleModel.tilt = roleState.tilt;
+				roleModel.isTiltMixed = roleState.isTiltMixed;
+				roleModel.hasTilt = roleState.hasTilt;
+				roleModel.isOpen = roleState.isOpen;
+				roleModel.isClosed = roleState.isClosed;
+				roleModel.devicesCount = roleState.devicesCount;
+				roleModel.devicesOpen = roleState.devicesOpen;
+				return [roleKey, roleModel];
+			}),
+		);
 		stateData.coversByRole = state.coversByRole;
 		stateData.lastAppliedMode = state.lastAppliedMode;
 		stateData.lastAppliedAt = state.lastAppliedAt;

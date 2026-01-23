@@ -103,6 +103,11 @@ class ModeSelector<T> extends StatelessWidget {
   /// and vertical scroll for vertical orientation
   final bool scrollable;
 
+  /// Optional status icons to display in the top-right corner of mode buttons.
+  /// Maps mode values to (icon, color) pairs. If a mode's value is in this map,
+  /// the icon will be shown with the specified color.
+  final Map<T, (IconData, Color)>? statusIcons;
+
   ModeSelector({
     super.key,
     required this.modes,
@@ -114,6 +119,7 @@ class ModeSelector<T> extends StatelessWidget {
     this.showLabels,
     this.minButtonWidth = 80.0,
     this.scrollable = false,
+    this.statusIcons,
   });
 
   double _scale(double value) =>
@@ -153,6 +159,7 @@ class ModeSelector<T> extends StatelessWidget {
           final isSelected = selectedValue == mode.value;
           final modeColor = mode.color ?? color;
           final colors = _getColors(isDark, modeColor);
+          final statusIcon = statusIcons?[mode.value];
 
           final button = _buildModeButton(
             context,
@@ -163,6 +170,7 @@ class ModeSelector<T> extends StatelessWidget {
             showLabel: shouldShowLabels,
             useTopIcon: iconPlacement == ModeSelectorIconPlacement.top,
             isScrollable: scrollable,
+            statusIcon: statusIcon,
           );
 
           if (scrollable) {
@@ -195,6 +203,7 @@ class ModeSelector<T> extends StatelessWidget {
       final isSelected = selectedValue == mode.value;
       final modeColor = mode.color ?? color;
       final colors = _getColors(isDark, modeColor);
+      final statusIcon = statusIcons?[mode.value];
 
       return Padding(
         padding: EdgeInsets.only(
@@ -209,6 +218,7 @@ class ModeSelector<T> extends StatelessWidget {
           showLabel: showLabels ?? false,
           useTopIcon: true,
           isVerticalLayout: true,
+          statusIcon: statusIcon,
         ),
       );
     }).toList();
@@ -238,9 +248,16 @@ class ModeSelector<T> extends StatelessWidget {
     required bool useTopIcon,
     bool isVerticalLayout = false,
     bool isScrollable = false,
+    (IconData, Color)? statusIcon,
   }) {
     final secondaryColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+
+    // Determine the content color based on selection state
+    final Color contentColor = isSelected ? colors.active : secondaryColor;
+
+    // Determine font weight based on state
+    final fontWeight = isSelected ? FontWeight.w600 : FontWeight.w500;
 
     Widget content;
 
@@ -249,7 +266,7 @@ class ModeSelector<T> extends StatelessWidget {
       content = Center(
         child: Icon(
           mode.icon,
-          color: isSelected ? colors.active : secondaryColor,
+          color: contentColor,
           size: _scale(20),
         ),
       );
@@ -261,7 +278,7 @@ class ModeSelector<T> extends StatelessWidget {
         children: [
           Icon(
             mode.icon,
-            color: isSelected ? colors.active : secondaryColor,
+            color: contentColor,
             size: _scale(18),
           ),
           AppSpacings.spacingXsVertical,
@@ -269,9 +286,9 @@ class ModeSelector<T> extends StatelessWidget {
             child: Text(
               mode.label,
               style: TextStyle(
-                color: isSelected ? colors.active : secondaryColor,
+                color: contentColor,
                 fontSize: AppFontSize.extraSmall,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                fontWeight: fontWeight,
               ),
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
@@ -285,9 +302,9 @@ class ModeSelector<T> extends StatelessWidget {
       final textWidget = Text(
         mode.label,
         style: TextStyle(
-          color: isSelected ? colors.active : secondaryColor,
+          color: contentColor,
           fontSize: AppFontSize.small,
-          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+          fontWeight: fontWeight,
         ),
         overflow: TextOverflow.ellipsis,
         maxLines: 1,
@@ -299,7 +316,7 @@ class ModeSelector<T> extends StatelessWidget {
         children: [
           Icon(
             mode.icon,
-            color: isSelected ? colors.active : secondaryColor,
+            color: contentColor,
             size: _scale(18),
           ),
           AppSpacings.spacingSmHorizontal,
@@ -324,6 +341,17 @@ class ModeSelector<T> extends StatelessWidget {
         ? AppColors.blank
         : AppColors.white.withValues(alpha: 0);
 
+    // Determine background and border colors based on selection state
+    final Color backgroundColor;
+    final Color borderColor;
+    if (isSelected) {
+      backgroundColor = colors.background;
+      borderColor = colors.active;
+    } else {
+      backgroundColor = transparentColor;
+      borderColor = transparentColor;
+    }
+
     // Padding based on layout mode
     EdgeInsetsGeometry? buttonPadding;
     if (isVerticalLayout) {
@@ -339,6 +367,27 @@ class ModeSelector<T> extends StatelessWidget {
       );
     }
 
+    // Build the final content with optional status icon
+    Widget finalContent = content;
+    if (statusIcon != null) {
+      finalContent = Stack(
+        clipBehavior: Clip.none,
+        fit: StackFit.passthrough,
+        children: [
+          content,
+          Positioned(
+            top: -_scale(5),
+            right: _scale(0),
+            child: Icon(
+              statusIcon.$1,
+              color: statusIcon.$2,
+              size: _scale(12),
+            ),
+          ),
+        ],
+      );
+    }
+
     return GestureDetector(
       onTap: () => onChanged(mode.value),
       child: AnimatedContainer(
@@ -347,14 +396,14 @@ class ModeSelector<T> extends StatelessWidget {
         height: buttonSize,
         padding: buttonPadding,
         decoration: BoxDecoration(
-          color: isSelected ? colors.background : transparentColor,
+          color: backgroundColor,
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: Border.all(
-            color: isSelected ? colors.active : transparentColor,
+            color: borderColor,
             width: _scale(2),
           ),
         ),
-        child: content,
+        child: finalContent,
       ),
     );
   }

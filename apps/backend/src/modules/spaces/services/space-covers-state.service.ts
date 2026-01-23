@@ -5,6 +5,7 @@ import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
 import { CoversMode, CoversRole, SPACES_MODULE_NAME } from '../spaces.constants';
+import { IntentSpecLoaderService } from '../spec';
 
 import { SpaceCoversRoleService } from './space-covers-role.service';
 import { SpaceIntentBaseService } from './space-intent-base.service';
@@ -45,10 +46,25 @@ export interface RoleCoversState {
 }
 
 /**
+ * Mode match result for covers
+ */
+export interface CoversModeMatch {
+	mode: CoversMode;
+	confidence: 'exact' | 'approximate';
+	matchPercentage: number;
+}
+
+/**
  * State information for covers in a space.
  */
 export interface CoversState {
 	hasCovers: boolean;
+	// Mode detection
+	detectedMode: CoversMode | null;
+	modeConfidence: 'exact' | 'approximate' | 'none';
+	modeMatchPercentage: number | null;
+	// Whether the current mode was set by intent (true) or achieved by manual adjustments (false)
+	isModeFromIntent: boolean;
 	// Overall summary
 	averagePosition: number | null;
 	isPositionMixed: boolean;
@@ -78,6 +94,7 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 		private readonly coversRoleService: SpaceCoversRoleService,
 		@Inject(forwardRef(() => IntentTimeseriesService))
 		private readonly intentTimeseriesService: IntentTimeseriesService,
+		private readonly intentSpecLoaderService: IntentSpecLoaderService,
 	) {
 		super();
 	}
@@ -89,6 +106,10 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 	async getCoversState(spaceId: string): Promise<CoversState | null> {
 		const defaultState: CoversState = {
 			hasCovers: false,
+			detectedMode: null,
+			modeConfidence: 'none',
+			modeMatchPercentage: null,
+			isModeFromIntent: false,
 			averagePosition: null,
 			isPositionMixed: false,
 			averageTilt: null,
@@ -182,8 +203,33 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 				: null
 			: null;
 
+		// Detect current mode
+		const modeMatch = this.detectMode(roles, covers);
+
+		// Determine if mode was set by intent using mode validity tracking
+		const detectedMode = modeMatch?.mode ?? null;
+
+		// Get current mode validity from InfluxDB
+		const modeValidity = await this.intentTimeseriesService.getModeValidity(spaceId, 'covers');
+		let modeValid = modeValidity?.modeValid ?? false;
+
+		// If detected mode diverges from last applied mode, invalidate the mode
+		// This ensures that once user manually changes settings, intent mode is no longer valid
+		if (detectedMode !== lastAppliedMode && modeValid) {
+			await this.intentTimeseriesService.storeModeValidity(spaceId, 'covers', false);
+			modeValid = false;
+		}
+
+		// Mode is "from intent" only if detected mode matches last applied AND mode is still valid
+		// This prevents scenario 4: manually adjusting back to mode position still shows as intent
+		const isModeFromIntent = detectedMode !== null && detectedMode === lastAppliedMode && modeValid;
+
 		return {
 			hasCovers: true,
+			detectedMode,
+			modeConfidence: modeMatch ? modeMatch.confidence : 'none',
+			modeMatchPercentage: modeMatch?.matchPercentage ?? null,
+			isModeFromIntent,
 			averagePosition: positionResult.value !== null ? Math.round(positionResult.value) : null,
 			isPositionMixed: positionResult.isMixed,
 			averageTilt: tiltResult.value !== null ? Math.round(tiltResult.value) : null,
@@ -271,6 +317,181 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 		// Values differ - return average but mark as mixed
 		const avg = values.reduce((a, b) => a + b, 0) / values.length;
 		return { value: avg, isMixed: true };
+	}
+
+	/**
+	 * Detect which mode the current state matches (if any)
+	 */
+	private detectMode(
+		roleStates: Partial<Record<CoversRole, RoleCoversState>>,
+		covers: CoverDevice[],
+	): CoversModeMatch | null {
+		const hasAnyRoles = Object.keys(roleStates).length > 0;
+
+		// If no roles configured, check for MVP fallback mode matching
+		if (!hasAnyRoles) {
+			return this.detectMvpMode(covers);
+		}
+
+		// Get all available modes from YAML spec
+		const allModes = this.intentSpecLoaderService.getAllCoversModeOrchestrations();
+		let bestMatch: CoversModeMatch | null = null;
+
+		for (const modeId of allModes.keys()) {
+			// Only match built-in CoversMode values
+			if (!Object.values(CoversMode).includes(modeId as CoversMode)) {
+				continue;
+			}
+
+			const match = this.matchMode(modeId as CoversMode, roleStates);
+
+			if (match && (!bestMatch || match.matchPercentage > bestMatch.matchPercentage)) {
+				bestMatch = match;
+			}
+		}
+
+		return bestMatch;
+	}
+
+	/**
+	 * Detect mode in MVP scenario (no roles configured).
+	 * Uses mvpPosition values from YAML mode specifications.
+	 */
+	private detectMvpMode(covers: CoverDevice[]): CoversModeMatch | null {
+		if (covers.length === 0) {
+			return null;
+		}
+
+		// Get all position values
+		const positionValues = covers
+			.map((c) => this.getPropertyNumericValue(c.positionProperty))
+			.filter((v): v is number => v !== null);
+
+		if (positionValues.length === 0) {
+			return null;
+		}
+
+		const avgPosition = positionValues.reduce((a, b) => a + b, 0) / positionValues.length;
+
+		// Build MVP position lookup from YAML spec
+		const allModes = this.intentSpecLoaderService.getAllCoversModeOrchestrations();
+		const mvpModes: Array<{ mode: CoversMode; position: number }> = [];
+
+		for (const [modeId, config] of allModes) {
+			// Only match built-in CoversMode values
+			if (!Object.values(CoversMode).includes(modeId as CoversMode)) {
+				continue;
+			}
+
+			mvpModes.push({
+				mode: modeId as CoversMode,
+				position: config.mvpPosition,
+			});
+		}
+
+		// Sort by position descending (open first, then daylight, privacy, closed)
+		mvpModes.sort((a, b) => b.position - a.position);
+
+		for (const { mode, position } of mvpModes) {
+			const diff = Math.abs(avgPosition - position);
+
+			if (diff <= 15) {
+				// Within 15% tolerance
+				return {
+					mode,
+					confidence: diff <= 5 ? 'exact' : 'approximate',
+					matchPercentage: 100 - diff,
+				};
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Match current state against a specific mode's rules.
+	 */
+	private matchMode(
+		mode: CoversMode,
+		roleStates: Partial<Record<CoversRole, RoleCoversState>>,
+	): CoversModeMatch | null {
+		const config = this.intentSpecLoaderService.getCoversModeOrchestration(mode);
+
+		if (!config) {
+			return null;
+		}
+
+		const rules = config.roles;
+
+		let matchingRoles = 0;
+		let totalRoles = 0;
+		let exactMatches = 0;
+
+		for (const [roleStr, rule] of Object.entries(rules)) {
+			const role = roleStr as CoversRole;
+			const roleState = roleStates[role];
+
+			// Skip roles that don't exist in current space
+			if (!roleState) {
+				continue;
+			}
+
+			totalRoles++;
+
+			const matches = this.matchRoleRule(roleState, rule.position);
+
+			if (matches.matches) {
+				matchingRoles++;
+
+				if (matches.exact) {
+					exactMatches++;
+				}
+			}
+		}
+
+		if (totalRoles === 0) {
+			return null;
+		}
+
+		const matchPercentage = Math.round((matchingRoles / totalRoles) * 100);
+
+		// Require at least 70% match to consider it a mode
+		if (matchPercentage < 70) {
+			return null;
+		}
+
+		return {
+			mode,
+			confidence: exactMatches === totalRoles ? 'exact' : 'approximate',
+			matchPercentage,
+		};
+	}
+
+	/**
+	 * Check if a role's current state matches a rule's expected position.
+	 * Accounts for mixed positions - partial position is not considered a match.
+	 */
+	private matchRoleRule(roleState: RoleCoversState, expectedPosition: number): { matches: boolean; exact: boolean } {
+		// Handle mixed position state - this is never a full match
+		if (roleState.isPositionMixed) {
+			return { matches: false, exact: false };
+		}
+
+		// Position unknown - treat as approximate match to avoid false negatives
+		if (roleState.position === null) {
+			return { matches: true, exact: false };
+		}
+
+		// Compare position values
+		const diff = Math.abs(expectedPosition - roleState.position);
+
+		if (diff <= 5) {
+			return { matches: true, exact: true };
+		} else if (diff <= 15) {
+			return { matches: true, exact: false };
+		} else {
+			return { matches: false, exact: false };
+		}
 	}
 
 	/**

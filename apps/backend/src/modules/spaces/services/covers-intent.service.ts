@@ -2,7 +2,6 @@ import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { toInstance } from '../../../common/utils/transform.utils';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { DEFAULT_TTL_SPACE_COMMAND, IntentTargetStatus, IntentType } from '../../intents/intents.constants';
@@ -10,7 +9,7 @@ import { IntentTarget, IntentTargetResult } from '../../intents/models/intent.mo
 import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
 import { IntentsService } from '../../intents/services/intents.service';
 import { CoversIntentDto } from '../dto/covers-intent.dto';
-import { CoversStateDataModel } from '../models/spaces-response.model';
+import { CoversStateDataModel, RoleCoversStateDataModel } from '../models/spaces-response.model';
 import {
 	COVERS_MODE_ORCHESTRATION,
 	CoversIntentType,
@@ -614,6 +613,8 @@ export class CoversIntentService extends SpaceIntentBaseService {
 				affectedDevices,
 				failedDevices,
 			);
+			// Mark mode as valid (set by intent, not manual adjustment)
+			void this.intentTimeseriesService.storeModeValidity(spaceId, 'covers', true);
 		}
 
 		return { success: overallSuccess, affectedDevices, failedDevices, newPosition: averagePosition };
@@ -670,6 +671,8 @@ export class CoversIntentService extends SpaceIntentBaseService {
 				affectedDevices,
 				failedDevices,
 			);
+			// Mark mode as valid (set by intent, not manual adjustment)
+			void this.intentTimeseriesService.storeModeValidity(spaceId, 'covers', true);
 		}
 
 		return { success: overallSuccess, affectedDevices, failedDevices, newPosition: averagePosition };
@@ -832,7 +835,40 @@ export class CoversIntentService extends SpaceIntentBaseService {
 
 			if (state) {
 				// Convert to CoversStateDataModel for proper snake_case serialization via WebSocket
-				const stateModel = toInstance(CoversStateDataModel, state);
+				const stateModel = new CoversStateDataModel();
+				stateModel.hasCovers = state.hasCovers;
+				stateModel.detectedMode = state.detectedMode;
+				stateModel.modeConfidence = state.modeConfidence;
+				stateModel.modeMatchPercentage = state.modeMatchPercentage;
+				stateModel.isModeFromIntent = state.isModeFromIntent;
+				stateModel.averagePosition = state.averagePosition;
+				stateModel.isPositionMixed = state.isPositionMixed;
+				stateModel.averageTilt = state.averageTilt;
+				stateModel.isTiltMixed = state.isTiltMixed;
+				stateModel.hasTilt = state.hasTilt;
+				stateModel.anyOpen = state.anyOpen;
+				stateModel.allClosed = state.allClosed;
+				stateModel.devicesCount = state.devicesCount;
+				// Transform roles to proper data models for serialization
+				stateModel.roles = Object.fromEntries(
+					Object.entries(state.roles).map(([roleKey, roleState]) => {
+						const roleModel = new RoleCoversStateDataModel();
+						roleModel.role = roleState.role;
+						roleModel.position = roleState.position;
+						roleModel.isPositionMixed = roleState.isPositionMixed;
+						roleModel.tilt = roleState.tilt;
+						roleModel.isTiltMixed = roleState.isTiltMixed;
+						roleModel.hasTilt = roleState.hasTilt;
+						roleModel.isOpen = roleState.isOpen;
+						roleModel.isClosed = roleState.isClosed;
+						roleModel.devicesCount = roleState.devicesCount;
+						roleModel.devicesOpen = roleState.devicesOpen;
+						return [roleKey, roleModel];
+					}),
+				);
+				stateModel.coversByRole = state.coversByRole;
+				stateModel.lastAppliedMode = state.lastAppliedMode;
+				stateModel.lastAppliedAt = state.lastAppliedAt;
 
 				this.eventEmitter.emit(EventType.COVERS_STATE_CHANGED, {
 					space_id: spaceId,

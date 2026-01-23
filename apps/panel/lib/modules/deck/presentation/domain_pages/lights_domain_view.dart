@@ -5,6 +5,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/intent_mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
@@ -465,10 +466,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       if (kDebugMode) debugPrint('[LightsDomainView] Failed to get IntentsRepository: $e');
     }
 
-    try {
+    if (locator.isRegistered<IntentOverlayService>()) {
       _intentOverlayService = locator<IntentOverlayService>();
-    } catch (e) {
-      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get IntentOverlayService: $e');
     }
 
     try {
@@ -1189,6 +1188,61 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final modeColor = _getModeColor(context, mode);
     final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
 
+    // Determine activeValue, matchedValue, and lastIntentValue based on state:
+    // - activeValue: mode explicitly set by intent AND still matches (2px border, mode color)
+    // - matchedValue: mode detected by user manually setting devices (1px border, mode color)
+    // - lastIntentValue: last applied intent when no mode matches (1px border, neutral color)
+    final LightingModeUI? activeValue;
+    final LightingModeUI? matchedValue;
+    final LightingModeUI? lastIntentValue;
+
+    if (isModeLocked) {
+      // Optimistic UI: show pending mode as active
+      activeValue = mode;
+      matchedValue = null;
+      lastIntentValue = null;
+    } else {
+      final detectedMode = _lightingState?.detectedMode;
+      final lastAppliedMode = _lightingState?.lastAppliedMode;
+      final isModeFromIntent = _lightingState?.isModeFromIntent ?? false;
+
+      // Convert backend LightingMode to UI LightingModeUI
+      final LightingModeUI? detectedModeUI = detectedMode != null
+          ? LightingModeUI.values.firstWhere(
+              (m) => m.name == detectedMode.name,
+              orElse: () => LightingModeUI.off,
+            )
+          : null;
+      final LightingModeUI? lastAppliedModeUI = lastAppliedMode != null
+          ? LightingModeUI.values.firstWhere(
+              (m) => m.name == lastAppliedMode.name,
+              orElse: () => LightingModeUI.off,
+            )
+          : null;
+
+      if (detectedModeUI != null && isModeFromIntent) {
+        // Mode was set by intent and still matches: show as active
+        activeValue = detectedModeUI;
+        matchedValue = null;
+        lastIntentValue = null;
+      } else if (detectedModeUI != null && !isModeFromIntent) {
+        // Mode detected but not from intent (user manually matched): show as matched
+        activeValue = null;
+        matchedValue = detectedModeUI;
+        lastIntentValue = null;
+      } else if (lastAppliedModeUI != null) {
+        // No mode matches, but we have a last applied intent: show as last intent
+        activeValue = null;
+        matchedValue = null;
+        lastIntentValue = lastAppliedModeUI;
+      } else {
+        // No mode at all - check if all lights are off
+        activeValue = mode == LightingModeUI.off ? LightingModeUI.off : null;
+        matchedValue = null;
+        lastIntentValue = null;
+      }
+    }
+
     return Container(
       padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
@@ -1203,9 +1257,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       ),
       child: IgnorePointer(
         ignoring: isModeLocked,
-        child: ModeSelector<LightingModeUI>(
+        child: IntentModeSelector<LightingModeUI>(
           modes: _getLightingModeOptions(localizations),
-          selectedValue: mode,
+          activeValue: activeValue,
+          matchedValue: matchedValue,
+          lastIntentValue: lastIntentValue,
           onChanged: _setLightingMode,
           orientation: ModeSelectorOrientation.horizontal,
           iconPlacement: ModeSelectorIconPlacement.top,
@@ -1367,11 +1423,68 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final mode = _currentMode;
     final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
 
+    // Determine activeValue, matchedValue, and lastIntentValue based on state:
+    // - activeValue: mode explicitly set by intent AND still matches (2px border, mode color)
+    // - matchedValue: mode detected by user manually setting devices (1px border, mode color)
+    // - lastIntentValue: last applied intent when no mode matches (1px border, neutral color)
+    final LightingModeUI? activeValue;
+    final LightingModeUI? matchedValue;
+    final LightingModeUI? lastIntentValue;
+
+    if (isModeLocked) {
+      // Optimistic UI: show pending mode as active
+      activeValue = mode;
+      matchedValue = null;
+      lastIntentValue = null;
+    } else {
+      final detectedMode = _lightingState?.detectedMode;
+      final lastAppliedMode = _lightingState?.lastAppliedMode;
+      final isModeFromIntent = _lightingState?.isModeFromIntent ?? false;
+
+      // Convert backend LightingMode to UI LightingModeUI
+      final LightingModeUI? detectedModeUI = detectedMode != null
+          ? LightingModeUI.values.firstWhere(
+              (m) => m.name == detectedMode.name,
+              orElse: () => LightingModeUI.off,
+            )
+          : null;
+      final LightingModeUI? lastAppliedModeUI = lastAppliedMode != null
+          ? LightingModeUI.values.firstWhere(
+              (m) => m.name == lastAppliedMode.name,
+              orElse: () => LightingModeUI.off,
+            )
+          : null;
+
+      if (detectedModeUI != null && isModeFromIntent) {
+        // Mode was set by intent and still matches: show as active
+        activeValue = detectedModeUI;
+        matchedValue = null;
+        lastIntentValue = null;
+      } else if (detectedModeUI != null && !isModeFromIntent) {
+        // Mode detected but not from intent (user manually matched): show as matched
+        activeValue = null;
+        matchedValue = detectedModeUI;
+        lastIntentValue = null;
+      } else if (lastAppliedModeUI != null) {
+        // No mode matches, but we have a last applied intent: show as last intent
+        activeValue = null;
+        matchedValue = null;
+        lastIntentValue = lastAppliedModeUI;
+      } else {
+        // No mode at all - check if all lights are off
+        activeValue = mode == LightingModeUI.off ? LightingModeUI.off : null;
+        matchedValue = null;
+        lastIntentValue = null;
+      }
+    }
+
     return IgnorePointer(
       ignoring: isModeLocked,
-      child: ModeSelector<LightingModeUI>(
+      child: IntentModeSelector<LightingModeUI>(
         modes: _getLightingModeOptions(localizations),
-        selectedValue: mode,
+        activeValue: activeValue,
+        matchedValue: matchedValue,
+        lastIntentValue: lastIntentValue,
         onChanged: _setLightingMode,
         orientation: ModeSelectorOrientation.vertical,
         iconPlacement: ModeSelectorIconPlacement.top,
