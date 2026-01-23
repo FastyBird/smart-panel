@@ -392,16 +392,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       final device = _devicesService?.getDevice(target.deviceId);
       if (device is! WindowCoveringDeviceView) continue;
 
-      // Strip room name from device name if present
-      String name = target.displayName;
-      if (roomName.isNotEmpty && name.toLowerCase().startsWith(roomName.toLowerCase())) {
-        name = name.substring(roomName.length).trim();
-        // Remove leading separator if present
-        if (name.startsWith('-') || name.startsWith(':')) {
-          name = name.substring(1).trim();
-        }
-      }
-      if (name.isEmpty) name = target.displayName;
+      // Strip room name from device name using shared utility
+      final name = stripRoomNameFromDevice(target.displayName, roomName);
 
       devices.add(_CoverDeviceData(
         deviceId: target.deviceId,
