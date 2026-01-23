@@ -243,6 +243,18 @@ export class LightingIntentService extends SpaceIntentBaseService {
 				`Lighting intent completed spaceId=${spaceId} affected=${affectedDevices} failed=${failedDevices}`,
 			);
 
+			// When turning off all lights, store "off" as the mode
+			if (intent.type === LightingIntentType.OFF && overallSuccess) {
+				void this.intentTimeseriesService.storeLightingModeChange(
+					spaceId,
+					LightingMode.OFF,
+					lights.length,
+					affectedDevices,
+					failedDevices,
+				);
+				void this.intentTimeseriesService.storeModeValidity(spaceId, 'lighting', true);
+			}
+
 			result = { success: overallSuccess, affectedDevices, failedDevices };
 		}
 
@@ -419,6 +431,8 @@ export class LightingIntentService extends SpaceIntentBaseService {
 				affectedDevices,
 				failedDevices,
 			);
+			// Mark mode as valid (set by intent, not manual adjustment)
+			void this.intentTimeseriesService.storeModeValidity(spaceId, 'lighting', true);
 		}
 
 		return { success: overallSuccess, affectedDevices, failedDevices };
@@ -492,6 +506,8 @@ export class LightingIntentService extends SpaceIntentBaseService {
 				affectedDevices,
 				failedDevices,
 			);
+			// Mark mode as valid (set by intent, not manual adjustment)
+			void this.intentTimeseriesService.storeModeValidity(spaceId, 'lighting', true);
 		}
 
 		return { success: overallSuccess, affectedDevices, failedDevices };

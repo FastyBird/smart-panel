@@ -585,6 +585,16 @@ export class SpaceLightingStateService {
 		lights: LightState[],
 		lastAppliedMode: LightingMode | null = null,
 	): ModeMatch | null {
+		// Check if all lights are off - detect "off" mode
+		const anyLightOn = lights.some((l) => l.isOn);
+		if (!anyLightOn) {
+			return {
+				mode: LightingMode.OFF,
+				confidence: 'exact',
+				matchPercentage: 100,
+			};
+		}
+
 		const hasAnyRoles = Object.keys(roleStates).length > 0;
 
 		// If no roles configured, check for MVP fallback mode matching
@@ -627,7 +637,12 @@ export class SpaceLightingStateService {
 		const onLights = lights.filter((l) => l.isOn);
 
 		if (onLights.length === 0) {
-			return null; // All off - no mode
+			// All lights off - detect "off" mode
+			return {
+				mode: LightingMode.OFF,
+				confidence: 'exact',
+				matchPercentage: 100,
+			};
 		}
 
 		// Check if all ON lights have similar brightness

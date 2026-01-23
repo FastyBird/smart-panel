@@ -94,13 +94,10 @@ enum LightingModeUI { off, work, relax, night }
 /// - [fromBackendMode]: Converts backend mode + light state to UI mode
 extension LightingModeUIExtension on LightingModeUI {
   /// Converts UI mode to backend [LightingMode].
-  ///
-  /// Returns `null` for [LightingModeUI.off] since the backend doesn't have
-  /// an 'off' mode - turning lights off is handled via a separate intent.
-  LightingMode? toBackendMode() {
+  LightingMode toBackendMode() {
     switch (this) {
       case LightingModeUI.off:
-        return null;
+        return LightingMode.off;
       case LightingModeUI.work:
         return LightingMode.work;
       case LightingModeUI.relax:
@@ -120,6 +117,8 @@ extension LightingModeUIExtension on LightingModeUI {
     if (!anyLightsOn) return LightingModeUI.off;
     if (mode == null) return LightingModeUI.work;
     switch (mode) {
+      case LightingMode.off:
+        return LightingModeUI.off;
       case LightingMode.work:
         return LightingModeUI.work;
       case LightingMode.relax:
@@ -1690,10 +1689,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       } else {
         // Set the mode - backend handles turning on appropriate lights
         final backendMode = mode.toBackendMode();
-        if (backendMode != null) {
-          final result = await _spacesService?.setLightingMode(_roomId, backendMode);
-          success = result != null;
-        }
+        final result = await _spacesService?.setLightingMode(_roomId, backendMode);
+        success = result != null;
       }
 
       if (success && mounted) {

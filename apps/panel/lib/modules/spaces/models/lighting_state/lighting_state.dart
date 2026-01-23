@@ -1,10 +1,12 @@
 /// Predefined lighting modes that can be applied to a space.
 ///
 /// Each mode represents a different lighting ambiance:
+/// - [off]: All lights off
 /// - [work]: Bright, focused lighting for productivity
 /// - [relax]: Warm, dimmed lighting for relaxation
 /// - [night]: Minimal lighting for nighttime
 enum LightingMode {
+  off,
   work,
   relax,
   night,
@@ -44,6 +46,8 @@ enum LightingStateRole {
 LightingMode? parseLightingMode(String? mode) {
   if (mode == null) return null;
   switch (mode) {
+    case 'off':
+      return LightingMode.off;
     case 'work':
       return LightingMode.work;
     case 'relax':
@@ -235,38 +239,45 @@ class OtherLightsState {
 /// Complete lighting state for a space.
 ///
 /// Contains all aggregated information about lights in the space including:
+/// - Whether the space has any lights
 /// - Detected lighting mode with confidence level
+/// - Whether the mode was set by intent or manual adjustments
 /// - Total light counts and on/off status
 /// - Per-role breakdowns for granular control
 /// - State of uncategorized lights
 class LightingStateModel {
   final String spaceId;
+  final bool hasLights;
   final LightingMode? detectedMode;
   final ModeConfidence modeConfidence;
   final double? modeMatchPercentage;
+  final bool isModeFromIntent;
   final LightingMode? lastAppliedMode;
   final DateTime? lastAppliedAt;
   final int totalLights;
   final int lightsOn;
   final double? averageBrightness;
   final Map<LightingStateRole, RoleAggregatedState> roles;
+  final Map<LightingStateRole, int> lightsByRole;
   final OtherLightsState other;
 
   LightingStateModel({
     required this.spaceId,
+    required this.hasLights,
     this.detectedMode,
     required this.modeConfidence,
     this.modeMatchPercentage,
+    required this.isModeFromIntent,
     this.lastAppliedMode,
     this.lastAppliedAt,
     required this.totalLights,
     required this.lightsOn,
     this.averageBrightness,
     required this.roles,
+    required this.lightsByRole,
     required this.other,
   });
 
-  bool get hasLights => totalLights > 0;
   bool get anyOn => lightsOn > 0;
   bool get allOn => totalLights > 0 && lightsOn == totalLights;
   bool get allOff => totalLights > 0 && lightsOn == 0;
@@ -292,11 +303,24 @@ class LightingStateModel {
       }
     }
 
+    // Parse lights by role map
+    Map<LightingStateRole, int> lightsByRoleMap = {};
+    final lightsByRoleJson = json['lights_by_role'] as Map<String, dynamic>? ?? {};
+
+    for (final entry in lightsByRoleJson.entries) {
+      final role = parseLightingStateRole(entry.key);
+      if (role != null && entry.value is int) {
+        lightsByRoleMap[role] = entry.value as int;
+      }
+    }
+
     return LightingStateModel(
       spaceId: spaceId,
+      hasLights: json['has_lights'] as bool? ?? false,
       detectedMode: parseLightingMode(json['detected_mode'] as String?),
       modeConfidence: parseModeConfidence(json['mode_confidence'] as String? ?? 'none'),
       modeMatchPercentage: (json['mode_match_percentage'] as num?)?.toDouble(),
+      isModeFromIntent: json['is_mode_from_intent'] as bool? ?? false,
       lastAppliedMode: parseLightingMode(json['last_applied_mode'] as String?),
       lastAppliedAt: json['last_applied_at'] != null
           ? DateTime.parse(json['last_applied_at'] as String)
@@ -305,6 +329,7 @@ class LightingStateModel {
       lightsOn: json['lights_on'] as int? ?? 0,
       averageBrightness: (json['average_brightness'] as num?)?.toDouble(),
       roles: rolesMap,
+      lightsByRole: lightsByRoleMap,
       other: OtherLightsState.fromJson(
         json['other'] as Map<String, dynamic>? ?? {},
       ),
@@ -315,10 +340,13 @@ class LightingStateModel {
   factory LightingStateModel.empty(String spaceId) {
     return LightingStateModel(
       spaceId: spaceId,
+      hasLights: false,
       modeConfidence: ModeConfidence.none,
+      isModeFromIntent: false,
       totalLights: 0,
       lightsOn: 0,
       roles: {},
+      lightsByRole: {},
       other: OtherLightsState(
         isOn: false,
         isOnMixed: false,

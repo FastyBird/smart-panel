@@ -398,6 +398,7 @@ export enum LightingIntentType {
 }
 
 export enum LightingMode {
+	OFF = 'off',
 	WORK = 'work',
 	RELAX = 'relax',
 	NIGHT = 'night',
@@ -411,6 +412,7 @@ export enum BrightnessDelta {
 
 // Brightness mappings for modes (percentage 0-100)
 export const LIGHTING_MODE_BRIGHTNESS: Record<LightingMode, number> = {
+	[LightingMode.OFF]: 0,
 	[LightingMode.WORK]: 100,
 	[LightingMode.RELAX]: 50,
 	[LightingMode.NIGHT]: 20,
