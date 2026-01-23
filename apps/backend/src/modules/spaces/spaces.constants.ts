@@ -1329,6 +1329,7 @@ export enum CoversRole {
 export enum CoversIntentType {
 	OPEN = 'open', // Open all covers (position=100)
 	CLOSE = 'close', // Close all covers (position=0)
+	STOP = 'stop', // Stop all covers movement
 	SET_POSITION = 'set_position', // Set all covers to a specific position
 	POSITION_DELTA = 'position_delta', // Adjust position by a delta
 	ROLE_POSITION = 'role_position', // Set position for a specific role
@@ -1510,6 +1511,13 @@ export const COVERS_INTENT_CATALOG: IntentTypeMeta[] = [
 		label: 'Close All',
 		description: 'Close all covers in the space',
 		icon: 'mdi:blinds',
+		params: [],
+	},
+	{
+		type: CoversIntentType.STOP,
+		label: 'Stop',
+		description: 'Stop all covers movement',
+		icon: 'mdi:stop',
 		params: [],
 	},
 	{

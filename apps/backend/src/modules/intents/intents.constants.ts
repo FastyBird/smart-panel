@@ -72,6 +72,7 @@ export enum IntentType {
 	// Space covers operations
 	SPACE_COVERS_OPEN = 'space.covers.open',
 	SPACE_COVERS_CLOSE = 'space.covers.close',
+	SPACE_COVERS_STOP = 'space.covers.stop',
 	SPACE_COVERS_SET_POSITION = 'space.covers.setPosition',
 	SPACE_COVERS_POSITION_DELTA = 'space.covers.positionDelta',
 	SPACE_COVERS_ROLE_POSITION = 'space.covers.rolePosition',
