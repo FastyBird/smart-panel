@@ -249,7 +249,14 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
           children: [
             _buildHeader(context, totalDevices),
             Expanded(
-              child: _buildContent(context, roleDataList, deviceDataList),
+              child: OrientationBuilder(
+                builder: (context, orientation) {
+                  final isLandscape = orientation == Orientation.landscape;
+                  return isLandscape
+                      ? _buildLandscapeLayout(context, roleDataList, deviceDataList)
+                      : _buildPortraitLayout(context, roleDataList, deviceDataList);
+                },
+              ),
             ),
           ],
         ),
@@ -293,27 +300,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       trailing: HeaderHomeButton(
         onTap: _navigateToHome,
       ),
-    );
-  }
-
-  Widget _buildContent(
-    BuildContext context,
-    List<_CoverRoleData> roleDataList,
-    List<_CoverDeviceData> deviceDataList,
-  ) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isLandscape = constraints.maxWidth > constraints.maxHeight;
-
-        if (isLandscape) {
-          return Padding(
-            padding: AppSpacings.paddingMd,
-            child: _buildLandscapeLayout(context, roleDataList, deviceDataList),
-          );
-        } else {
-          return _buildPortraitLayout(context, roleDataList, deviceDataList);
-        }
-      },
     );
   }
 
@@ -470,56 +456,85 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     List<_CoverRoleData> roleDataList,
     List<_CoverDeviceData> deviceDataList,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
     final primaryRole = roleDataList.isNotEmpty ? roleDataList.first : null;
     final secondaryRoles = roleDataList.length > 1 ? roleDataList.skip(1).toList() : [];
+    final hasDevices = deviceDataList.isNotEmpty;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Left: Main Control
+        // Left column: Main Control
         Expanded(
           flex: 2,
-          child: Column(
-            children: [
-              // Primary Role Card (with slider and actions)
-              if (primaryRole != null)
-                Expanded(
-                  child: _buildRoleCard(
-                    context,
-                    roleData: primaryRole,
-                    position: _aggregatedPosition,
-                    showSlider: true,
-                    showActions: true,
+          child: Padding(
+            padding: EdgeInsets.all(AppSpacings.pLg),
+            child: Column(
+              children: [
+                // Primary Role Card (with slider and actions)
+                if (primaryRole != null)
+                  Expanded(
+                    child: _buildRoleCard(
+                      context,
+                      roleData: primaryRole,
+                      position: _aggregatedPosition,
+                      showSlider: true,
+                      showActions: true,
+                    ),
                   ),
-                ),
-              // Secondary Role Cards
-              for (final role in secondaryRoles) ...[
-                AppSpacings.spacingMdVertical,
-                _buildRoleCard(
-                  context,
-                  roleData: role,
-                  position: role.averagePosition,
-                ),
+                // Secondary Role Cards
+                for (final role in secondaryRoles) ...[
+                  AppSpacings.spacingMdVertical,
+                  _buildRoleCard(
+                    context,
+                    roleData: role,
+                    position: role.averagePosition,
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
-        AppSpacings.spacingMdHorizontal,
-        // Right: Mode Selector & Devices
-        SizedBox(
-          width: _screenService.scale(
-            280,
-            density: _visualDensityService.density,
+
+        // Middle column: Vertical Mode Selector
+        Container(
+          padding: EdgeInsets.symmetric(
+            vertical: AppSpacings.pLg,
+            horizontal: AppSpacings.pMd,
           ),
-          child: Column(
-            children: [
-              _buildModeCard(context),
-              AppSpacings.spacingMdVertical,
-              Expanded(child: _buildDevicesCard(context, deviceDataList, localizations)),
-            ],
+          child: Center(
+            child: _buildLandscapeModeSelector(context, localizations),
           ),
         ),
+
+        // Right column: Devices
+        if (hasDevices)
+          Expanded(
+            flex: 1,
+            child: Container(
+              color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
+              child: Padding(
+                padding: EdgeInsets.all(AppSpacings.pLg),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionTitle(context, localizations.shading_devices_title, MdiIcons.viewGrid),
+                    AppSpacings.spacingMdVertical,
+                    Expanded(
+                      child: ListView.separated(
+                        itemCount: deviceDataList.length,
+                        separatorBuilder: (_, __) => AppSpacings.spacingSmVertical,
+                        itemBuilder: (context, index) {
+                          return _buildDeviceTile(context, deviceDataList[index]);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -534,19 +549,24 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     List<_CoverDeviceData> deviceDataList,
   ) {
     final localizations = AppLocalizations.of(context)!;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryRole = roleDataList.isNotEmpty ? roleDataList.first : null;
     final secondaryRoles = roleDataList.length > 1 ? roleDataList.skip(1).toList() : [];
+    final hasCovers = roleDataList.isNotEmpty;
 
     return Column(
       children: [
-        // Scrollable content (roles + devices) with padding
         Expanded(
           child: SingleChildScrollView(
-            padding: AppSpacings.paddingMd,
+            padding: AppSpacings.paddingLg,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Mode Selector at top (only show if there are covers)
+                if (hasCovers) ...[
+                  _buildModeSelector(context, localizations),
+                  AppSpacings.spacingLgVertical,
+                ],
+
                 // Primary Role Card (with slider and actions)
                 if (primaryRole != null)
                   _buildRoleCard(
@@ -565,35 +585,20 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                     position: role.averagePosition,
                   ),
                 ],
-                AppSpacings.spacingLgVertical,
+
                 // Devices Section
-                _buildSectionTitle(context, localizations.shading_devices_title, MdiIcons.viewGrid),
-                AppSpacings.spacingSmVertical,
-                _buildDevicesGrid(context, deviceDataList, localizations),
+                if (deviceDataList.isNotEmpty) ...[
+                  AppSpacings.spacingLgVertical,
+                  _buildSectionTitle(context, localizations.shading_devices_title, MdiIcons.viewGrid),
+                  AppSpacings.spacingSmVertical,
+                  _buildDevicesGrid(context, deviceDataList, localizations),
+                ],
               ],
             ),
           ),
         ),
-        // Sticky Mode Selector at bottom (full width, no parent padding)
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: isDark ? AppBgColorDark.page : AppBgColorLight.page,
-            border: Border(
-              top: BorderSide(
-                color: isDark ? AppBorderColorDark.light : AppBorderColorLight.base,
-                width: 1,
-              ),
-            ),
-          ),
-          padding: EdgeInsets.only(
-            left: AppSpacings.pLg,
-            right: AppSpacings.pLg,
-            top: AppSpacings.pMd,
-            bottom: AppSpacings.pLg,
-          ),
-          child: _buildModeSelector(context),
-        ),
+        // Fixed space at bottom for swipe dots
+        AppSpacings.spacingLgVertical,
       ],
     );
   }
@@ -988,48 +993,14 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   // MODE SELECTOR
   // ===========================================================================
 
-  /// Build the mode selector card for landscape layout
-  Widget _buildModeCard(BuildContext context) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final localizations = AppLocalizations.of(context)!;
-    final mode = _currentMode;
-
-    return Container(
-      padding: AppSpacings.paddingMd,
-      decoration: BoxDecoration(
-        color: isLight ? AppFillColorLight.light : AppFillColorDark.light,
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-        border: isLight ? Border.all(color: AppBorderColorLight.base) : null,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildCardTitle(
-            context,
-            localizations.shading_modes_title,
-            MdiIcons.tune,
-          ),
-          AppSpacings.spacingMdVertical,
-          ModeSelector<CoversMode>(
-            modes: _getCoversModeOptions(localizations),
-            selectedValue: mode,
-            onChanged: _setCoversMode,
-            orientation: ModeSelectorOrientation.vertical,
-            iconPlacement: ModeSelectorIconPlacement.left,
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Build the mode selector for portrait layout (horizontal)
-  Widget _buildModeSelector(BuildContext context) {
+  /// Build the mode selector widget for portrait/horizontal layout.
+  Widget _buildModeSelector(BuildContext context, AppLocalizations localizations) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final localizations = AppLocalizations.of(context)!;
     final mode = _currentMode;
     final modeColor = _getModeColor(context, mode);
 
     return Container(
+      padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
         color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
         borderRadius: BorderRadius.circular(AppBorderRadius.medium),
@@ -1047,6 +1018,19 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         orientation: ModeSelectorOrientation.horizontal,
         iconPlacement: ModeSelectorIconPlacement.top,
       ),
+    );
+  }
+
+  /// Build vertical mode selector for landscape layout
+  Widget _buildLandscapeModeSelector(BuildContext context, AppLocalizations localizations) {
+    final mode = _currentMode;
+
+    return ModeSelector<CoversMode>(
+      modes: _getCoversModeOptions(localizations),
+      selectedValue: mode,
+      onChanged: _setCoversMode,
+      orientation: ModeSelectorOrientation.vertical,
+      iconPlacement: ModeSelectorIconPlacement.top,
     );
   }
 
@@ -1101,41 +1085,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   // ===========================================================================
   // DEVICES
   // ===========================================================================
-
-  Widget _buildDevicesCard(
-    BuildContext context,
-    List<_CoverDeviceData> deviceDataList,
-    AppLocalizations localizations,
-  ) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-
-    return Container(
-      padding: AppSpacings.paddingMd,
-      decoration: BoxDecoration(
-        color: isLight ? AppFillColorLight.light : AppFillColorDark.light,
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-        border: isLight
-            ? Border.all(color: AppBorderColorLight.base)
-            : null,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildCardTitle(context, localizations.shading_devices_title, MdiIcons.viewGrid),
-          AppSpacings.spacingMdVertical,
-          Expanded(
-            child: ListView.separated(
-              itemCount: deviceDataList.length,
-              separatorBuilder: (_, __) => AppSpacings.spacingSmVertical,
-              itemBuilder: (context, index) {
-                return _buildDeviceTile(context, deviceDataList[index]);
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildDevicesGrid(
     BuildContext context,
@@ -1364,37 +1313,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   // ===========================================================================
   // COMMON WIDGETS
   // ===========================================================================
-
-  Widget _buildCardTitle(BuildContext context, String title, IconData icon) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-
-    return Row(
-      children: [
-        Icon(
-          icon,
-          color: isLight
-              ? AppTextColorLight.secondary
-              : AppTextColorDark.secondary,
-          size: _screenService.scale(
-            18,
-            density: _visualDensityService.density,
-          ),
-        ),
-        AppSpacings.spacingSmHorizontal,
-        Text(
-          title.toUpperCase(),
-          style: TextStyle(
-            fontSize: AppFontSize.small,
-            fontWeight: FontWeight.w600,
-            color: isLight
-                ? AppTextColorLight.secondary
-                : AppTextColorDark.secondary,
-            letterSpacing: 0.5,
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildSectionTitle(BuildContext context, String title, IconData icon) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
