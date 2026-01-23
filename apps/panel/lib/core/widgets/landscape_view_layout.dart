@@ -92,9 +92,8 @@ class LandscapeViewLayout extends StatelessWidget {
           ),
         ),
 
-        // Middle column: Mode selector (optional)
-        if (modeSelector != null) ...[
-          if (showDivider) Container(width: 1, color: borderColor),
+        // Middle column: Mode selector (optional) - no border on left
+        if (modeSelector != null)
           Container(
             padding: modeSelectorPadding ??
                 EdgeInsets.symmetric(
@@ -103,12 +102,10 @@ class LandscapeViewLayout extends StatelessWidget {
                 ),
             child: Center(child: modeSelector),
           ),
-        ],
 
-        // Right column: Additional content (optional)
+        // Right column: Additional content (optional) - always has border on left
         if (additionalContent != null) ...[
-          if (showDivider && modeSelector == null)
-            Container(width: 1, color: borderColor),
+          if (showDivider) Container(width: 1, color: borderColor),
           Expanded(
             flex: additionalContentFlex,
             child: Container(
