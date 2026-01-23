@@ -1185,7 +1185,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   Widget _buildModeSelector(BuildContext context, AppLocalizations localizations) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final mode = _currentMode;
-    final modeColor = _getModeColor(context, mode);
     final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
 
     // Determine activeValue, matchedValue, and lastIntentValue based on state:
@@ -1249,9 +1248,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
         borderRadius: BorderRadius.circular(AppBorderRadius.medium),
         border: Border.all(
-          color: mode != LightingModeUI.off
-              ? modeColor.withValues(alpha: 0.3)
-              : (isDark ? AppBorderColorDark.light : AppBorderColorLight.light),
+          color: isDark ? AppFillColorDark.light : AppBorderColorLight.light,
           width: 1,
         ),
       ),

@@ -995,10 +995,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     }
   }
 
-  /// Get current covers mode from backend state
-  /// Uses detectedMode (current state) with fallback to lastAppliedMode (last intent)
-  CoversMode? get _currentMode => _coversState?.detectedMode ?? _coversState?.lastAppliedMode;
-
   /// Set covers mode via backend intent
   Future<void> _setCoversMode(CoversMode mode) async {
     try {
@@ -1090,8 +1086,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   /// Build the mode selector widget for portrait/horizontal layout.
   Widget _buildModeSelector(BuildContext context, AppLocalizations localizations) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final mode = _currentMode;
-    final modeColor = _getModeColor(context, mode);
 
     // Determine activeValue, matchedValue, and lastIntentValue based on state:
     // - activeValue: mode explicitly set by intent AND still matches (2px border, mode color)
@@ -1133,9 +1127,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
         borderRadius: BorderRadius.circular(AppBorderRadius.medium),
         border: Border.all(
-          color: mode != null
-              ? modeColor.withValues(alpha: 0.3)
-              : (isDark ? AppBorderColorDark.light : AppBorderColorLight.light),
+          color: isDark ? AppFillColorDark.light : AppBorderColorLight.light,
           width: 1,
         ),
       ),
@@ -1228,22 +1220,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         color: ModeSelectorColor.neutral,
       ),
     ];
-  }
-
-  /// Get color for covers mode
-  Color _getModeColor(BuildContext context, CoversMode? mode) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    switch (mode) {
-      case CoversMode.open:
-        return isDark ? AppColorsDark.primary : AppColorsLight.primary;
-      case CoversMode.daylight:
-        return isDark ? AppColorsDark.warning : AppColorsLight.warning;
-      case CoversMode.privacy:
-        return isDark ? AppColorsDark.info : AppColorsLight.info;
-      case CoversMode.closed:
-      case null:
-        return isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-    }
   }
 
   // ===========================================================================
