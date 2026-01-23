@@ -1718,19 +1718,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   }
 
   Widget _buildLandscapeMainContent(BuildContext context) {
-    final isLargeScreen = _screenService.isLargeScreen;
-
-    if (isLargeScreen) {
-      // Large screen: centered dial card
-      final dialSize = _scale(200);
-      return Center(
-        child: SingleChildScrollView(
-          child: _buildPrimaryControlCard(context, dialSize: dialSize),
-        ),
-      );
-    }
-
-    // Small/medium: compact dial with integrated mode selector
+    // All sizes: compact dial with integrated mode selector that fills space
     return _buildCompactDialWithModes(context);
   }
 
@@ -1831,13 +1819,13 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                 : _scale(16) + AppSpacings.pXs;
             final maxDialHeight = constraints.maxHeight - hintHeight;
             final dialSize =
-                math.min(availableForDial, maxDialHeight).clamp(120.0, 400.0);
+                math.min(availableForDial, maxDialHeight).clamp(120.0, 500.0);
 
             final hintSpacing =
                 _screenService.isLargeScreen ? AppSpacings.pSm : AppSpacings.pXs;
 
             return Column(
-              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1977,6 +1965,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           border: Border.all(color: borderColor, width: _scale(1)),
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             CircularControlDial(
               value: _state.targetTemp,
