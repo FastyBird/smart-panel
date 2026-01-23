@@ -375,13 +375,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       }
     }
 
-    try {
+    if (locator.isRegistered<IntentOverlayService>()) {
       _intentOverlayService = locator<IntentOverlayService>();
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-            '[ClimateDomainViewPage] Failed to get IntentOverlayService: $e');
-      }
     }
 
     try {

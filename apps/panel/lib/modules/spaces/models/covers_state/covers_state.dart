@@ -29,6 +29,25 @@ CoversMode? parseCoversMode(String? mode) {
   }
 }
 
+/// Confidence level of mode detection.
+enum CoversModeConfidence {
+  exact,
+  approximate,
+  none,
+}
+
+/// Parse CoversModeConfidence from string
+CoversModeConfidence parseCoversModeConfidence(String? confidence) {
+  switch (confidence) {
+    case 'exact':
+      return CoversModeConfidence.exact;
+    case 'approximate':
+      return CoversModeConfidence.approximate;
+    default:
+      return CoversModeConfidence.none;
+  }
+}
+
 /// Role assigned to covers for grouped control.
 ///
 /// Roles allow controlling specific categories of window coverings:
@@ -116,6 +135,7 @@ class RoleCoversState {
 ///
 /// Contains all aggregated information about window coverings in the space including:
 /// - Whether the space has any covers
+/// - Mode detection (detected mode, confidence, match percentage)
 /// - Average position across all covers (with mixed flag)
 /// - Average tilt across all covers with tilt support (with mixed flag)
 /// - Open/closed status
@@ -125,6 +145,10 @@ class RoleCoversState {
 class CoversStateModel {
   final String spaceId;
   final bool hasCovers;
+  final CoversMode? detectedMode;
+  final CoversModeConfidence modeConfidence;
+  final int? modeMatchPercentage;
+  final bool isModeFromIntent;
   final int? averagePosition;
   final bool isPositionMixed;
   final int? averageTilt;
@@ -140,6 +164,10 @@ class CoversStateModel {
   CoversStateModel({
     required this.spaceId,
     required this.hasCovers,
+    this.detectedMode,
+    required this.modeConfidence,
+    this.modeMatchPercentage,
+    required this.isModeFromIntent,
     this.averagePosition,
     required this.isPositionMixed,
     this.averageTilt,
@@ -191,6 +219,10 @@ class CoversStateModel {
     return CoversStateModel(
       spaceId: spaceId,
       hasCovers: json['has_covers'] as bool? ?? false,
+      detectedMode: parseCoversMode(json['detected_mode'] as String?),
+      modeConfidence: parseCoversModeConfidence(json['mode_confidence'] as String?),
+      modeMatchPercentage: json['mode_match_percentage'] as int?,
+      isModeFromIntent: json['is_mode_from_intent'] as bool? ?? false,
       averagePosition: json['average_position'] as int?,
       isPositionMixed: json['is_position_mixed'] as bool? ?? false,
       averageTilt: json['average_tilt'] as int?,
@@ -210,6 +242,8 @@ class CoversStateModel {
     return CoversStateModel(
       spaceId: spaceId,
       hasCovers: false,
+      modeConfidence: CoversModeConfidence.none,
+      isModeFromIntent: false,
       isPositionMixed: false,
       isTiltMixed: false,
       hasTilt: false,

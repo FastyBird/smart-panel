@@ -32,6 +32,20 @@ import { SpaceMediaStateService } from './space-media-state.service';
 
 // Mock mode orchestration configs matching YAML structure
 const mockModeConfigs: Record<LightingMode, ResolvedModeOrchestration> = {
+	[LightingMode.OFF]: {
+		label: 'Off',
+		description: 'All lights off',
+		icon: 'mdi:lightbulb-off',
+		mvpBrightness: 0,
+		roles: {
+			[LightingRole.MAIN]: { on: false, brightness: null },
+			[LightingRole.TASK]: { on: false, brightness: null },
+			[LightingRole.AMBIENT]: { on: false, brightness: null },
+			[LightingRole.ACCENT]: { on: false, brightness: null },
+			[LightingRole.NIGHT]: { on: false, brightness: null },
+			[LightingRole.OTHER]: { on: false, brightness: null },
+		},
+	},
 	[LightingMode.WORK]: {
 		label: 'Work',
 		description: 'Bright lighting for focus and productivity',

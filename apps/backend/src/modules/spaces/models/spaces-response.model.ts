@@ -1164,6 +1164,44 @@ export class CoversStateDataModel {
 	hasCovers: boolean;
 
 	@ApiPropertyOptional({
+		name: 'detected_mode',
+		description: 'The covers mode detected from current device states, null if no mode matches',
+		enum: CoversMode,
+		nullable: true,
+		example: CoversMode.OPEN,
+	})
+	@Expose({ name: 'detected_mode' })
+	detectedMode: CoversMode | null;
+
+	@ApiProperty({
+		name: 'mode_confidence',
+		description: 'Confidence level of mode detection: exact (100% match), approximate (70-99% match), none (no match)',
+		enum: ['exact', 'approximate', 'none'],
+		example: 'exact',
+	})
+	@Expose({ name: 'mode_confidence' })
+	modeConfidence: 'exact' | 'approximate' | 'none';
+
+	@ApiPropertyOptional({
+		name: 'mode_match_percentage',
+		description: 'Percentage of role rules that match the detected mode (0-100), null if no mode detected',
+		type: 'number',
+		nullable: true,
+		example: 100,
+	})
+	@Expose({ name: 'mode_match_percentage' })
+	modeMatchPercentage: number | null;
+
+	@ApiProperty({
+		name: 'is_mode_from_intent',
+		description: 'Whether the current mode was set by intent (true) or achieved by manual adjustments (false)',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'is_mode_from_intent' })
+	isModeFromIntent: boolean;
+
+	@ApiPropertyOptional({
 		name: 'average_position',
 		description: 'Average position of all covers (0-100, null if no covers)',
 		type: 'integer',
@@ -2761,6 +2799,15 @@ export class RolesStateMapDataModel {
  */
 @ApiSchema({ name: 'SpacesModuleDataLightingState' })
 export class LightingStateDataModel {
+	@ApiProperty({
+		name: 'has_lights',
+		description: 'Whether the space has any controllable lights',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'has_lights' })
+	hasLights: boolean;
+
 	@ApiPropertyOptional({
 		name: 'detected_mode',
 		description: 'The lighting mode detected from current device states, null if no mode matches',
@@ -2789,6 +2836,15 @@ export class LightingStateDataModel {
 	})
 	@Expose({ name: 'mode_match_percentage' })
 	modeMatchPercentage: number | null;
+
+	@ApiProperty({
+		name: 'is_mode_from_intent',
+		description: 'Whether the current mode was set by intent (true) or achieved by manual adjustments (false)',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'is_mode_from_intent' })
+	isModeFromIntent: boolean;
 
 	@ApiPropertyOptional({
 		name: 'last_applied_mode',
@@ -2845,6 +2901,16 @@ export class LightingStateDataModel {
 	@Expose()
 	@Type(() => RolesStateMapDataModel)
 	roles: RolesStateMapDataModel;
+
+	@ApiProperty({
+		name: 'lights_by_role',
+		description: 'Count of lights grouped by role',
+		type: 'object',
+		additionalProperties: { type: 'integer' },
+		example: { main: 2, task: 1, ambient: 2 },
+	})
+	@Expose({ name: 'lights_by_role' })
+	lightsByRole: Record<string, number>;
 
 	@ApiProperty({
 		description: 'Aggregated state for lights without role assignment',

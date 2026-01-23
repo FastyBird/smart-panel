@@ -663,6 +663,16 @@ export const SUGGESTION_COOLDOWN_MS = 30 * 60 * 1000;
 export const BEDROOM_SPACE_PATTERNS = ['bedroom', 'schlafzimmer', 'ložnice', 'chambre'];
 
 export const LIGHTING_MODE_ORCHESTRATION: Record<LightingMode, ModeOrchestrationConfig> = {
+	[LightingMode.OFF]: {
+		roles: {
+			[LightingRole.MAIN]: { on: false, brightness: null },
+			[LightingRole.TASK]: { on: false, brightness: null },
+			[LightingRole.AMBIENT]: { on: false, brightness: null },
+			[LightingRole.ACCENT]: { on: false, brightness: null },
+			[LightingRole.NIGHT]: { on: false, brightness: null },
+			[LightingRole.OTHER]: { on: false, brightness: null },
+		},
+	},
 	[LightingMode.WORK]: {
 		roles: {
 			[LightingRole.MAIN]: { on: true, brightness: 100 },
@@ -784,6 +794,12 @@ export interface QuickActionMeta {
  * Metadata for lighting modes
  */
 export const LIGHTING_MODE_META: Record<LightingMode, IntentEnumValueMeta> = {
+	[LightingMode.OFF]: {
+		value: LightingMode.OFF,
+		label: 'Off',
+		description: 'All lights off',
+		icon: 'mdi:lightbulb-off',
+	},
 	[LightingMode.WORK]: {
 		value: LightingMode.WORK,
 		label: 'Work',
