@@ -509,27 +509,27 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     final hasDevices = deviceDataList.isNotEmpty;
 
     return LandscapeViewLayout(
-      mainContent: Column(
-        children: [
-          // Primary Role Card (with slider and actions)
-          if (primaryRole != null)
-            Expanded(
-              child: _buildRoleCard(
+      mainContent: SingleChildScrollView(
+        child: Column(
+          children: [
+            // Primary Role Card (with slider and actions)
+            if (primaryRole != null)
+              _buildRoleCard(
                 context,
                 roleData: primaryRole,
                 showSlider: true,
                 showActions: true,
               ),
-            ),
-          // Secondary Role Cards
-          for (final role in secondaryRoles) ...[
-            AppSpacings.spacingMdVertical,
-            _buildRoleCard(
-              context,
-              roleData: role,
-            ),
+            // Secondary Role Cards
+            for (final role in secondaryRoles) ...[
+              AppSpacings.spacingMdVertical,
+              _buildRoleCard(
+                context,
+                roleData: role,
+              ),
+            ],
           ],
-        ],
+        ),
       ),
       modeSelector: _buildLandscapeModeSelector(context, localizations),
       additionalContent: hasDevices
