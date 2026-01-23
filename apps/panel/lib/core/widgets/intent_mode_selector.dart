@@ -27,9 +27,9 @@ enum IntentModeState {
 /// - Last intent: last applied intent when no mode currently matches
 ///
 /// Visual distinction:
-/// - Active: mode's color, 2px border
-/// - Matched: mode's color, 1px border
-/// - Last intent: neutral color, 1px border
+/// - Active: primary color, status icon with check
+/// - Matched: info color, status icon with approximately-equal
+/// - Last intent: neutral color, status icon with history
 class IntentModeSelector<T> extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
@@ -236,13 +236,13 @@ class IntentModeSelector<T> extends StatelessWidget {
         contentColor = infoColor;
         backgroundColor = infoBgColor;
         borderColor = infoColor;
-        borderWidth = _scale(1);
+        borderWidth = _scale(2);
         break;
       case IntentModeState.lastIntent:
         contentColor = neutralColor;
         backgroundColor = neutralBgColor;
         borderColor = neutralColor;
-        borderWidth = _scale(1);
+        borderWidth = _scale(2);
         break;
       case IntentModeState.none:
         contentColor = secondaryColor;
@@ -341,13 +341,13 @@ class IntentModeSelector<T> extends StatelessWidget {
     }
 
     // Determine status icon based on state
-    // - Active: check-circle
+    // - Active: check
     // - Matched: approximately-equal
     // - Last intent: history
     IconData? statusIconData;
     switch (state) {
       case IntentModeState.active:
-        statusIconData = MdiIcons.checkCircle;
+        statusIconData = MdiIcons.check;
         break;
       case IntentModeState.matched:
         statusIconData = MdiIcons.approximatelyEqual;
@@ -363,19 +363,51 @@ class IntentModeSelector<T> extends StatelessWidget {
     // Build the final content with optional status icon
     Widget finalContent = content;
     if (statusIconData != null) {
+      // For icon-only mode, position in corner and add circular background
+      final isIconOnly = !showLabel;
+      final needsBackground = isIconOnly && state != IntentModeState.none;
+
+      final iconSize = _scale(12);
+
+      // Wrap icon in fixed-size container to ensure consistent sizing across different icons
+      Widget statusIcon = SizedBox(
+        width: iconSize,
+        height: iconSize,
+        child: Center(
+          child: Icon(
+            statusIconData,
+            color: needsBackground ? backgroundColor : contentColor,
+            size: iconSize,
+          ),
+        ),
+      );
+
+      // Wrap with circular background for icon-only mode
+      if (needsBackground) {
+        final containerSize = iconSize + _scale(4);
+        statusIcon = Container(
+          width: containerSize,
+          height: containerSize,
+          decoration: BoxDecoration(
+            color: borderColor,
+            shape: BoxShape.circle,
+          ),
+          child: Center(child: statusIcon),
+        );
+      }
+
+      final topOffset = -_scale(5);
+      final rightOffset = isIconOnly ? -_scale(5) : _scale(0);
+
       finalContent = Stack(
         clipBehavior: Clip.none,
         fit: StackFit.passthrough,
         children: [
           content,
           Positioned(
-            top: -_scale(5),
-            right: _scale(0),
-            child: Icon(
-              statusIconData,
-              color: contentColor,
-              size: _scale(12),
-            ),
+            top: topOffset,
+            right: rightOffset,
+            child: statusIcon,
           ),
         ],
       );
