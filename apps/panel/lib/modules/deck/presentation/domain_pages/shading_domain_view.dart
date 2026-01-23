@@ -430,18 +430,18 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   }
 
   String _getRoleName(CoversTargetRole role) {
-    final localizations = AppLocalizations.of(context);
+    final localizations = AppLocalizations.of(context)!;
     switch (role) {
       case CoversTargetRole.primary:
-        return localizations?.covers_role_primary ?? 'Primary';
+        return localizations.covers_role_primary;
       case CoversTargetRole.blackout:
-        return localizations?.covers_role_blackout ?? 'Blackout';
+        return localizations.covers_role_blackout;
       case CoversTargetRole.sheer:
-        return localizations?.covers_role_sheer ?? 'Sheer';
+        return localizations.covers_role_sheer;
       case CoversTargetRole.outdoor:
-        return localizations?.covers_role_outdoor ?? 'Outdoor';
+        return localizations.covers_role_outdoor;
       case CoversTargetRole.hidden:
-        return localizations?.covers_role_hidden ?? 'Hidden';
+        return localizations.covers_role_hidden;
     }
   }
 
@@ -461,18 +461,18 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   }
 
   String _getCoverTypeName(String? coverType) {
-    final localizations = AppLocalizations.of(context);
+    final localizations = AppLocalizations.of(context)!;
     switch (coverType) {
       case 'curtain':
-        return localizations?.cover_type_curtain ?? 'Curtain';
+        return localizations.cover_type_curtain;
       case 'blind':
-        return localizations?.cover_type_blind ?? 'Blind';
+        return localizations.cover_type_blind;
       case 'roller':
-        return localizations?.cover_type_roller ?? 'Roller';
+        return localizations.cover_type_roller;
       case 'outdoorBlind':
-        return localizations?.cover_type_outdoor_blind ?? 'Outdoor Blind';
+        return localizations.cover_type_outdoor_blind;
       default:
-        return localizations?.cover_type_cover ?? 'Cover';
+        return localizations.cover_type_cover;
     }
   }
 
@@ -957,8 +957,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
       final result = await _spacesService?.setRolePosition(_roomId, stateRole, position);
       if (result == null && mounted) {
-        final localizations = AppLocalizations.of(context);
-        AlertBar.showError(context, message: localizations?.action_failed ?? 'Failed');
+        final localizations = AppLocalizations.of(context)!;
+        AlertBar.showError(context, message: localizations.action_failed);
         _pendingPositions.remove(role);
         setState(() {});
       }
@@ -967,8 +967,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         debugPrint('[ShadingDomainView] Failed to set role position: $e');
       }
       if (mounted) {
-        final localizations = AppLocalizations.of(context);
-        AlertBar.showError(context, message: localizations?.action_failed ?? 'Failed');
+        final localizations = AppLocalizations.of(context)!;
+        AlertBar.showError(context, message: localizations.action_failed);
         _pendingPositions.remove(role);
         setState(() {});
       }
@@ -980,16 +980,16 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     try {
       final result = await _spacesService?.stopCovers(_roomId);
       if (result == null && mounted) {
-        final localizations = AppLocalizations.of(context);
-        AlertBar.showError(context, message: localizations?.action_failed ?? 'Failed');
+        final localizations = AppLocalizations.of(context)!;
+        AlertBar.showError(context, message: localizations.action_failed);
       }
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[ShadingDomainView] Failed to stop covers: $e');
       }
       if (mounted) {
-        final localizations = AppLocalizations.of(context);
-        AlertBar.showError(context, message: localizations?.action_failed ?? 'Failed');
+        final localizations = AppLocalizations.of(context)!;
+        AlertBar.showError(context, message: localizations.action_failed);
       }
     }
   }
@@ -1004,11 +1004,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
       if (result == null || result.failedDevices > 0) {
         if (mounted) {
-          final localizations = AppLocalizations.of(context);
-          AlertBar.showError(
-            context,
-            message: localizations?.action_failed ?? 'Failed',
-          );
+          final localizations = AppLocalizations.of(context)!;
+          AlertBar.showError(context, message: localizations.action_failed);
         }
       }
     } catch (e) {
@@ -1016,11 +1013,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         debugPrint('[ShadingDomainView] Failed to set covers mode: $e');
       }
       if (mounted) {
-        final localizations = AppLocalizations.of(context);
-        AlertBar.showError(
-          context,
-          message: localizations?.action_failed ?? 'Failed',
-        );
+        final localizations = AppLocalizations.of(context)!;
+        AlertBar.showError(context, message: localizations.action_failed);
       }
     }
   }
