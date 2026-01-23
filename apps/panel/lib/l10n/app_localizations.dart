@@ -3293,6 +3293,12 @@ abstract class AppLocalizations {
   /// **'{position}% open'**
   String shading_state_partial(int position);
 
+  /// Label for the position slider
+  ///
+  /// In en, this message translates to:
+  /// **'Position'**
+  String get shading_position;
+
   /// Covers mode for fully open blinds
   ///
   /// In en, this message translates to:

@@ -2244,6 +2244,10 @@
       }
     }
   },
+  "shading_position": "Position",
+  "@shading_position": {
+    "description": "Label for the position slider"
+  },
   "covers_mode_open": "Open",
   "@covers_mode_open": {
     "description": "Covers mode for fully open blinds"

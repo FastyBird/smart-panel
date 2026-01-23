@@ -6,6 +6,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
@@ -815,42 +816,29 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   }
 
   Widget _buildPositionSlider(BuildContext context, _CoverRoleData roleData) {
+    final localizations = AppLocalizations.of(context)!;
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final position = _getRolePosition(roleData);
+    final normalizedValue = position / 100.0;
 
-    return SliderTheme(
-      data: SliderThemeData(
-        trackHeight: _screenService.scale(
-          8,
-          density: _visualDensityService.density,
-        ),
-        thumbShape: RoundSliderThumbShape(
-          enabledThumbRadius: _screenService.scale(
-            10,
-            density: _visualDensityService.density,
-          ),
-        ),
-        activeTrackColor:
-            isLight ? AppColorsLight.primary : AppColorsDark.primary,
-        inactiveTrackColor:
-            isLight ? AppBorderColorLight.base : AppBorderColorDark.base,
-        thumbColor: isLight ? AppColorsLight.primary : AppColorsDark.primary,
-        overlayColor: (isLight ? AppColorsLight.primary : AppColorsDark.primary)
-            .withValues(alpha: 0.15),
-      ),
-      child: Slider(
-        value: position.toDouble(),
-        min: 0,
-        max: 100,
-        onChanged: (value) {
-          // Optimistic UI update for this role
-          setState(() => _pendingPositions[roleData.role] = value.round());
-        },
-        onChangeEnd: (value) {
-          // Send actual intent when slider is released
-          _setRolePosition(roleData.role, value.round());
-        },
-      ),
+    return SpeedSlider(
+      value: normalizedValue,
+      label: localizations.shading_position,
+      activeColor: isLight ? AppColorsLight.primary : AppColorsDark.primary,
+      steps: [
+        localizations.shading_state_closed,
+        '25%',
+        '50%',
+        '75%',
+        localizations.shading_state_open,
+      ],
+      onChanged: (value) {
+        final newPosition = (value * 100).round();
+        // Optimistic UI update for this role
+        setState(() => _pendingPositions[roleData.role] = newPosition);
+        // Send actual intent
+        _setRolePosition(roleData.role, newPosition);
+      },
     );
   }
 

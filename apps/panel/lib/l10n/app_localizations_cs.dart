@@ -1654,6 +1654,9 @@ class AppLocalizationsCs extends AppLocalizations {
   }
 
   @override
+  String get shading_position => 'Pozice';
+
+  @override
   String get covers_mode_open => 'Otevřeno';
 
   @override

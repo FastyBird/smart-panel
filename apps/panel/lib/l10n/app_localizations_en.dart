@@ -1652,6 +1652,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get shading_position => 'Position';
+
+  @override
   String get covers_mode_open => 'Open';
 
   @override
