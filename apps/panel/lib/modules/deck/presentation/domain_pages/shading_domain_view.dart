@@ -861,16 +861,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         Expanded(
           child: _buildQuickActionButton(
             context,
-            label: localizations.shading_action_stop,
-            icon: MdiIcons.stop,
-            isActive: false,
-            onTap: _stopCovers,
-          ),
-        ),
-        AppSpacings.spacingSmHorizontal,
-        Expanded(
-          child: _buildQuickActionButton(
-            context,
             label: localizations.shading_action_close,
             icon: MdiIcons.chevronDown,
             isActive: position == 0,
@@ -915,15 +905,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         _pendingPositions.remove(role);
         setState(() {});
       }
-    }
-  }
-
-  /// Stop all covers in the space (currently no backend support, placeholder)
-  Future<void> _stopCovers() async {
-    // Note: Stop intent may not be supported in the backend yet
-    // For now, this is a placeholder that shows current behavior
-    if (kDebugMode) {
-      debugPrint('[ShadingDomainView] Stop covers - not yet implemented in backend');
     }
   }
 
