@@ -63,13 +63,6 @@ class _CoverDeviceData {
     required this.position,
     this.isOnline = true,
   });
-
-  String get statusText {
-    if (!isOnline) return 'Offline';
-    if (position == 100) return 'Open';
-    if (position == 0) return 'Closed';
-    return '$position% open';
-  }
 }
 
 // ============================================================================
