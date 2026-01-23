@@ -1001,12 +1001,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   ) {
     final localizations = AppLocalizations.of(context)!;
 
-    // Get mode-aware colors
-    final mode = _currentMode;
-    final modeColor = _getModeColor(context, mode);
-    final modeBgColor = _getModeBgColor(context, mode);
+    // Get state-based colors (consistent with shading domain)
+    final stateColor = _getLightStateColor(context, lightsOn, totalLights);
+    final stateBgColor = stateColor.withValues(alpha: 0.15);
 
     // Build subtitle based on mode and lights state
+    final mode = _currentMode;
     String subtitle;
     if (mode == LightingModeUI.off || lightsOn == 0) {
       subtitle = '$lightsOn of $totalLights on';
@@ -1021,12 +1021,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     return PageHeader(
       title: localizations.domain_lights,
       subtitle: subtitle,
-      subtitleColor: mode != LightingModeUI.off ? modeColor : null,
+      subtitleColor: hasLightsOn ? stateColor : null,
       backgroundColor: AppColors.blank,
       leading: HeaderDeviceIcon(
         icon: hasLightsOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline,
-        backgroundColor: modeBgColor,
-        iconColor: modeColor,
+        backgroundColor: stateBgColor,
+        iconColor: stateColor,
       ),
       trailing: HeaderHomeButton(
         onTap: _navigateToHome,
@@ -1034,34 +1034,23 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
   }
 
-  /// Get color for lighting mode
-  Color _getModeColor(BuildContext context, LightingModeUI mode) {
+  /// Get color based on lights on/off state (consistent with shading domain).
+  ///
+  /// - All lights on: Success/Green
+  /// - All lights off: Info/Blue
+  /// - Some lights on (mixed): Warning/Yellow
+  Color _getLightStateColor(BuildContext context, int lightsOn, int totalLights) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    switch (mode) {
-      case LightingModeUI.off:
-        return isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-      case LightingModeUI.work:
-        return isDark ? AppColorsDark.primary : AppColorsLight.primary;
-      case LightingModeUI.relax:
-        return isDark ? AppColorsDark.warning : AppColorsLight.warning;
-      case LightingModeUI.night:
-        return isDark ? AppColorsDark.info : AppColorsLight.info;
+    if (lightsOn == totalLights && totalLights > 0) {
+      // All on
+      return isDark ? AppColorsDark.success : AppColorsLight.success;
     }
-  }
-
-  /// Get background color for lighting mode
-  Color _getModeBgColor(BuildContext context, LightingModeUI mode) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    switch (mode) {
-      case LightingModeUI.off:
-        return isDark ? AppFillColorDark.light : AppFillColorLight.light;
-      case LightingModeUI.work:
-        return isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight5;
-      case LightingModeUI.relax:
-        return isDark ? AppColorsDark.warningLight5 : AppColorsLight.warningLight5;
-      case LightingModeUI.night:
-        return isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight5;
+    if (lightsOn == 0) {
+      // All off
+      return isDark ? AppColorsDark.info : AppColorsLight.info;
     }
+    // Mixed (some on, some off)
+    return isDark ? AppColorsDark.warning : AppColorsLight.warning;
   }
 
   /// Get localized name for lighting mode
