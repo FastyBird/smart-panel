@@ -1056,6 +1056,100 @@ export class BulkClimateRolesResponseModel extends BaseSuccessResponseModel<Bulk
 // ================================
 
 /**
+ * Per-role covers state data model
+ */
+@ApiSchema({ name: 'SpacesModuleDataRoleCoversState' })
+export class RoleCoversStateDataModel {
+	@ApiProperty({
+		description: 'The role for this state',
+		enum: CoversRole,
+	})
+	@Expose()
+	role: CoversRole;
+
+	@ApiPropertyOptional({
+		description: 'Average position for this role (0-100, null if mixed or no data)',
+		type: 'integer',
+		nullable: true,
+		example: 75,
+	})
+	@Expose()
+	position: number | null;
+
+	@ApiProperty({
+		name: 'is_position_mixed',
+		description: 'Whether covers in this role have different positions',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'is_position_mixed' })
+	isPositionMixed: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Average tilt for this role (0-100, null if no tilt or mixed)',
+		type: 'integer',
+		nullable: true,
+		example: null,
+	})
+	@Expose()
+	tilt: number | null;
+
+	@ApiProperty({
+		name: 'is_tilt_mixed',
+		description: 'Whether covers in this role have different tilt values',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'is_tilt_mixed' })
+	isTiltMixed: boolean;
+
+	@ApiProperty({
+		name: 'has_tilt',
+		description: 'Whether any covers in this role support tilt',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'has_tilt' })
+	hasTilt: boolean;
+
+	@ApiProperty({
+		name: 'is_open',
+		description: 'Whether any covers in this role are open (position > 0)',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'is_open' })
+	isOpen: boolean;
+
+	@ApiProperty({
+		name: 'is_closed',
+		description: 'Whether all covers in this role are closed (position = 0)',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'is_closed' })
+	isClosed: boolean;
+
+	@ApiProperty({
+		name: 'devices_count',
+		description: 'Number of devices in this role',
+		type: 'integer',
+		example: 1,
+	})
+	@Expose({ name: 'devices_count' })
+	devicesCount: number;
+
+	@ApiProperty({
+		name: 'devices_open',
+		description: 'Number of devices that are open in this role',
+		type: 'integer',
+		example: 1,
+	})
+	@Expose({ name: 'devices_open' })
+	devicesOpen: number;
+}
+
+/**
  * Covers state data model (aggregated covers state for a space)
  */
 @ApiSchema({ name: 'SpacesModuleDataCoversState' })
@@ -1078,6 +1172,43 @@ export class CoversStateDataModel {
 	})
 	@Expose({ name: 'average_position' })
 	averagePosition: number | null;
+
+	@ApiProperty({
+		name: 'is_position_mixed',
+		description: 'Whether covers have different positions (not uniform)',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'is_position_mixed' })
+	isPositionMixed: boolean;
+
+	@ApiPropertyOptional({
+		name: 'average_tilt',
+		description: 'Average tilt of all covers with tilt support (0-100, null if none)',
+		type: 'integer',
+		nullable: true,
+		example: null,
+	})
+	@Expose({ name: 'average_tilt' })
+	averageTilt: number | null;
+
+	@ApiProperty({
+		name: 'is_tilt_mixed',
+		description: 'Whether covers have different tilt values (not uniform)',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'is_tilt_mixed' })
+	isTiltMixed: boolean;
+
+	@ApiProperty({
+		name: 'has_tilt',
+		description: 'Whether any covers support tilt',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'has_tilt' })
+	hasTilt: boolean;
 
 	@ApiProperty({
 		name: 'any_open',
@@ -1105,6 +1236,29 @@ export class CoversStateDataModel {
 	})
 	@Expose({ name: 'devices_count' })
 	devicesCount: number;
+
+	@ApiProperty({
+		description: 'Per-role aggregated state',
+		type: 'object',
+		additionalProperties: { type: 'object' },
+		example: {
+			primary: {
+				role: 'primary',
+				position: 75,
+				is_position_mixed: false,
+				tilt: null,
+				is_tilt_mixed: false,
+				has_tilt: false,
+				is_open: true,
+				is_closed: false,
+				devices_count: 1,
+				devices_open: 1,
+			},
+		},
+	})
+	@Expose()
+	@Type(() => RoleCoversStateDataModel)
+	roles: Record<string, RoleCoversStateDataModel>;
 
 	@ApiProperty({
 		name: 'covers_by_role',

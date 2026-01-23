@@ -64,21 +64,76 @@ CoversStateRole? parseCoversStateRole(String? role) {
   }
 }
 
+/// Aggregated state for a single covers role.
+///
+/// Contains state information for all covers with a specific role:
+/// - Position (uniform value or null if mixed)
+/// - Tilt (for covers with tilt support)
+/// - Open/closed status
+/// - Device counts
+class RoleCoversState {
+  final CoversStateRole role;
+  final int? position;
+  final bool isPositionMixed;
+  final int? tilt;
+  final bool isTiltMixed;
+  final bool hasTilt;
+  final bool isOpen;
+  final bool isClosed;
+  final int devicesCount;
+  final int devicesOpen;
+
+  const RoleCoversState({
+    required this.role,
+    this.position,
+    required this.isPositionMixed,
+    this.tilt,
+    required this.isTiltMixed,
+    required this.hasTilt,
+    required this.isOpen,
+    required this.isClosed,
+    required this.devicesCount,
+    required this.devicesOpen,
+  });
+
+  factory RoleCoversState.fromJson(Map<String, dynamic> json, CoversStateRole role) {
+    return RoleCoversState(
+      role: role,
+      position: json['position'] as int?,
+      isPositionMixed: json['is_position_mixed'] as bool? ?? false,
+      tilt: json['tilt'] as int?,
+      isTiltMixed: json['is_tilt_mixed'] as bool? ?? false,
+      hasTilt: json['has_tilt'] as bool? ?? false,
+      isOpen: json['is_open'] as bool? ?? false,
+      isClosed: json['is_closed'] as bool? ?? true,
+      devicesCount: json['devices_count'] as int? ?? 0,
+      devicesOpen: json['devices_open'] as int? ?? 0,
+    );
+  }
+}
+
 /// Aggregated covers state for a space.
 ///
 /// Contains all aggregated information about window coverings in the space including:
 /// - Whether the space has any covers
-/// - Average position across all covers
+/// - Average position across all covers (with mixed flag)
+/// - Average tilt across all covers with tilt support (with mixed flag)
 /// - Open/closed status
+/// - Per-role aggregated state
 /// - Device counts by role
 /// - Last applied mode (if any)
 class CoversStateModel {
   final String spaceId;
   final bool hasCovers;
   final int? averagePosition;
+  final bool isPositionMixed;
+  final int? averageTilt;
+  final bool isTiltMixed;
+  final bool hasTilt;
   final bool anyOpen;
   final bool allClosed;
   final int devicesCount;
+  final Map<CoversStateRole, RoleCoversState> roles;
   final Map<CoversStateRole, int> coversByRole;
   final CoversMode? lastAppliedMode;
 
@@ -86,9 +141,14 @@ class CoversStateModel {
     required this.spaceId,
     required this.hasCovers,
     this.averagePosition,
+    required this.isPositionMixed,
+    this.averageTilt,
+    required this.isTiltMixed,
+    required this.hasTilt,
     required this.anyOpen,
     required this.allClosed,
     required this.devicesCount,
+    required this.roles,
     required this.coversByRole,
     this.lastAppliedMode,
   });
@@ -99,18 +159,32 @@ class CoversStateModel {
   /// Get count of covers with a specific role
   int getCountForRole(CoversStateRole role) => coversByRole[role] ?? 0;
 
+  /// Get state for a specific role
+  RoleCoversState? getRoleState(CoversStateRole role) => roles[role];
+
   factory CoversStateModel.fromJson(
     Map<String, dynamic> json, {
     required String spaceId,
   }) {
     // Parse covers by role map
-    Map<CoversStateRole, int> rolesMap = {};
-    final rolesJson = json['covers_by_role'] as Map<String, dynamic>? ?? {};
+    Map<CoversStateRole, int> coversByRoleMap = {};
+    final coversByRoleJson = json['covers_by_role'] as Map<String, dynamic>? ?? {};
+
+    for (final entry in coversByRoleJson.entries) {
+      final role = parseCoversStateRole(entry.key);
+      if (role != null && entry.value is int) {
+        coversByRoleMap[role] = entry.value as int;
+      }
+    }
+
+    // Parse per-role state
+    Map<CoversStateRole, RoleCoversState> rolesMap = {};
+    final rolesJson = json['roles'] as Map<String, dynamic>? ?? {};
 
     for (final entry in rolesJson.entries) {
       final role = parseCoversStateRole(entry.key);
-      if (role != null && entry.value is int) {
-        rolesMap[role] = entry.value as int;
+      if (role != null && entry.value is Map<String, dynamic>) {
+        rolesMap[role] = RoleCoversState.fromJson(entry.value, role);
       }
     }
 
@@ -118,10 +192,15 @@ class CoversStateModel {
       spaceId: spaceId,
       hasCovers: json['has_covers'] as bool? ?? false,
       averagePosition: json['average_position'] as int?,
+      isPositionMixed: json['is_position_mixed'] as bool? ?? false,
+      averageTilt: json['average_tilt'] as int?,
+      isTiltMixed: json['is_tilt_mixed'] as bool? ?? false,
+      hasTilt: json['has_tilt'] as bool? ?? false,
       anyOpen: json['any_open'] as bool? ?? false,
       allClosed: json['all_closed'] as bool? ?? true,
       devicesCount: json['devices_count'] as int? ?? 0,
-      coversByRole: rolesMap,
+      roles: rolesMap,
+      coversByRole: coversByRoleMap,
       lastAppliedMode: parseCoversMode(json['last_applied_mode'] as String?),
     );
   }
@@ -131,9 +210,13 @@ class CoversStateModel {
     return CoversStateModel(
       spaceId: spaceId,
       hasCovers: false,
+      isPositionMixed: false,
+      isTiltMixed: false,
+      hasTilt: false,
       anyOpen: false,
       allClosed: true,
       devicesCount: 0,
+      roles: {},
       coversByRole: {},
     );
   }
