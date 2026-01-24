@@ -301,24 +301,19 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       _screenService.scale(value, density: _visualDensityService.density);
 
   String _getStatusLabel(BuildContext context) {
-    final localizations = AppLocalizations.of(context);
-    if (localizations == null) return '';
+    final localizations = AppLocalizations.of(context)!;
 
-    try {
-      switch (_device.windowCoveringStatus) {
-        case WindowCoveringStatusValue.opened:
-          return localizations.window_covering_status_open;
-        case WindowCoveringStatusValue.closed:
-          return localizations.window_covering_status_closed;
-        case WindowCoveringStatusValue.opening:
-          return localizations.window_covering_status_opening;
-        case WindowCoveringStatusValue.closing:
-          return localizations.window_covering_status_closing;
-        case WindowCoveringStatusValue.stopped:
-          return localizations.window_covering_status_stopped;
-      }
-    } catch (_) {
-      return localizations.window_covering_status_stopped;
+    switch (_device.windowCoveringStatus) {
+      case WindowCoveringStatusValue.opened:
+        return localizations.window_covering_status_open;
+      case WindowCoveringStatusValue.closed:
+        return localizations.window_covering_status_closed;
+      case WindowCoveringStatusValue.opening:
+        return localizations.window_covering_status_opening;
+      case WindowCoveringStatusValue.closing:
+        return localizations.window_covering_status_closing;
+      case WindowCoveringStatusValue.stopped:
+        return localizations.window_covering_status_stopped;
     }
   }
 
