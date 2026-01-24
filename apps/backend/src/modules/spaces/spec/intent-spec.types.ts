@@ -124,6 +124,32 @@ export interface YamlLightingModesConfig {
 	modes: Record<string, YamlModeOrchestration>;
 }
 
+/**
+ * Role position rule for covers from YAML
+ */
+export interface YamlRolePositionRule {
+	position: number;
+	tilt?: number;
+}
+
+/**
+ * Covers mode orchestration definition from YAML
+ */
+export interface YamlCoversModeOrchestration {
+	label: string;
+	description: string;
+	icon: string;
+	mvp_position?: number; // Position when no roles are configured
+	roles: Record<string, YamlRolePositionRule>;
+}
+
+/**
+ * Covers modes configuration from YAML
+ */
+export interface YamlCoversModesConfig {
+	modes: Record<string, YamlCoversModeOrchestration>;
+}
+
 // ========================
 // Resolved Types (after processing)
 // ========================
@@ -193,6 +219,25 @@ export interface ResolvedModeOrchestration {
 	roles: Record<string, ResolvedRoleBrightnessRule>;
 	fallbackRoles?: string[];
 	fallbackBrightness?: number;
+}
+
+/**
+ * Resolved role position rule for covers
+ */
+export interface ResolvedRolePositionRule {
+	position: number;
+	tilt?: number;
+}
+
+/**
+ * Resolved covers mode orchestration config
+ */
+export interface ResolvedCoversModeOrchestration {
+	label: string;
+	description: string;
+	icon: string;
+	mvpPosition: number; // Position when no roles are configured (default 100)
+	roles: Record<string, ResolvedRolePositionRule>;
 }
 
 /**

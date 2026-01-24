@@ -398,6 +398,7 @@ export enum LightingIntentType {
 }
 
 export enum LightingMode {
+	OFF = 'off',
 	WORK = 'work',
 	RELAX = 'relax',
 	NIGHT = 'night',
@@ -411,6 +412,7 @@ export enum BrightnessDelta {
 
 // Brightness mappings for modes (percentage 0-100)
 export const LIGHTING_MODE_BRIGHTNESS: Record<LightingMode, number> = {
+	[LightingMode.OFF]: 0,
 	[LightingMode.WORK]: 100,
 	[LightingMode.RELAX]: 50,
 	[LightingMode.NIGHT]: 20,
@@ -661,6 +663,16 @@ export const SUGGESTION_COOLDOWN_MS = 30 * 60 * 1000;
 export const BEDROOM_SPACE_PATTERNS = ['bedroom', 'schlafzimmer', 'ložnice', 'chambre'];
 
 export const LIGHTING_MODE_ORCHESTRATION: Record<LightingMode, ModeOrchestrationConfig> = {
+	[LightingMode.OFF]: {
+		roles: {
+			[LightingRole.MAIN]: { on: false, brightness: null },
+			[LightingRole.TASK]: { on: false, brightness: null },
+			[LightingRole.AMBIENT]: { on: false, brightness: null },
+			[LightingRole.ACCENT]: { on: false, brightness: null },
+			[LightingRole.NIGHT]: { on: false, brightness: null },
+			[LightingRole.OTHER]: { on: false, brightness: null },
+		},
+	},
 	[LightingMode.WORK]: {
 		roles: {
 			[LightingRole.MAIN]: { on: true, brightness: 100 },
@@ -782,6 +794,12 @@ export interface QuickActionMeta {
  * Metadata for lighting modes
  */
 export const LIGHTING_MODE_META: Record<LightingMode, IntentEnumValueMeta> = {
+	[LightingMode.OFF]: {
+		value: LightingMode.OFF,
+		label: 'Off',
+		description: 'All lights off',
+		icon: 'mdi:lightbulb-off',
+	},
 	[LightingMode.WORK]: {
 		value: LightingMode.WORK,
 		label: 'Work',
@@ -1329,6 +1347,7 @@ export enum CoversRole {
 export enum CoversIntentType {
 	OPEN = 'open', // Open all covers (position=100)
 	CLOSE = 'close', // Close all covers (position=0)
+	STOP = 'stop', // Stop all covers movement
 	SET_POSITION = 'set_position', // Set all covers to a specific position
 	POSITION_DELTA = 'position_delta', // Adjust position by a delta
 	ROLE_POSITION = 'role_position', // Set position for a specific role
@@ -1510,6 +1529,13 @@ export const COVERS_INTENT_CATALOG: IntentTypeMeta[] = [
 		label: 'Close All',
 		description: 'Close all covers in the space',
 		icon: 'mdi:blinds',
+		params: [],
+	},
+	{
+		type: CoversIntentType.STOP,
+		label: 'Stop',
+		description: 'Stop all covers movement',
+		icon: 'mdi:stop',
 		params: [],
 	},
 	{

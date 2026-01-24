@@ -1,6 +1,6 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Type, instanceToPlain } from 'class-transformer';
 
-import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
+import { ApiExtraModels, ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 import { ChannelCategory, DeviceCategory } from '../../devices/devices.constants';
@@ -10,6 +10,12 @@ import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity'
 import { SpaceMediaRoleEntity } from '../entities/space-media-role.entity';
 import { SpaceSensorRoleEntity } from '../entities/space-sensor-role.entity';
 import { SpaceEntity } from '../entities/space.entity';
+import type { CoversState, RoleCoversState } from '../services/space-covers-state.service';
+import type {
+	OtherLightsState,
+	RoleAggregatedState,
+	SpaceLightingState,
+} from '../services/space-lighting-state.service';
 import {
 	ClimateMode,
 	ClimateRole,
@@ -1056,6 +1062,119 @@ export class BulkClimateRolesResponseModel extends BaseSuccessResponseModel<Bulk
 // ================================
 
 /**
+ * Per-role covers state data model
+ */
+@ApiSchema({ name: 'SpacesModuleDataRoleCoversState' })
+export class RoleCoversStateDataModel {
+	@ApiProperty({
+		description: 'The role for this state',
+		enum: CoversRole,
+	})
+	@Expose()
+	role: CoversRole;
+
+	@ApiPropertyOptional({
+		description: 'Average position for this role (0-100, null if mixed or no data)',
+		type: 'integer',
+		nullable: true,
+		example: 75,
+	})
+	@Expose()
+	position: number | null;
+
+	@ApiProperty({
+		name: 'is_position_mixed',
+		description: 'Whether covers in this role have different positions',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'is_position_mixed' })
+	isPositionMixed: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Average tilt for this role (0-100, null if no tilt or mixed)',
+		type: 'integer',
+		nullable: true,
+		example: null,
+	})
+	@Expose()
+	tilt: number | null;
+
+	@ApiProperty({
+		name: 'is_tilt_mixed',
+		description: 'Whether covers in this role have different tilt values',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'is_tilt_mixed' })
+	isTiltMixed: boolean;
+
+	@ApiProperty({
+		name: 'has_tilt',
+		description: 'Whether any covers in this role support tilt',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'has_tilt' })
+	hasTilt: boolean;
+
+	@ApiProperty({
+		name: 'is_open',
+		description: 'Whether any covers in this role are open (position > 0)',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'is_open' })
+	isOpen: boolean;
+
+	@ApiProperty({
+		name: 'is_closed',
+		description: 'Whether all covers in this role are closed (position = 0)',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'is_closed' })
+	isClosed: boolean;
+
+	@ApiProperty({
+		name: 'devices_count',
+		description: 'Number of devices in this role',
+		type: 'integer',
+		example: 1,
+	})
+	@Expose({ name: 'devices_count' })
+	devicesCount: number;
+
+	@ApiProperty({
+		name: 'devices_open',
+		description: 'Number of devices that are open in this role',
+		type: 'integer',
+		example: 1,
+	})
+	@Expose({ name: 'devices_open' })
+	devicesOpen: number;
+
+	/**
+	 * Create a RoleCoversStateDataModel from a RoleCoversState service object.
+	 */
+	static fromState(roleState: RoleCoversState): RoleCoversStateDataModel {
+		const model = new RoleCoversStateDataModel();
+		model.role = roleState.role;
+		model.position = roleState.position;
+		model.isPositionMixed = roleState.isPositionMixed;
+		model.tilt = roleState.tilt;
+		model.isTiltMixed = roleState.isTiltMixed;
+		model.hasTilt = roleState.hasTilt;
+		model.isOpen = roleState.isOpen;
+		model.isClosed = roleState.isClosed;
+		model.devicesCount = roleState.devicesCount;
+		model.devicesOpen = roleState.devicesOpen;
+
+		return model;
+	}
+}
+
+/**
  * Covers state data model (aggregated covers state for a space)
  */
 @ApiSchema({ name: 'SpacesModuleDataCoversState' })
@@ -1070,6 +1189,44 @@ export class CoversStateDataModel {
 	hasCovers: boolean;
 
 	@ApiPropertyOptional({
+		name: 'detected_mode',
+		description: 'The covers mode detected from current device states, null if no mode matches',
+		enum: CoversMode,
+		nullable: true,
+		example: CoversMode.OPEN,
+	})
+	@Expose({ name: 'detected_mode' })
+	detectedMode: CoversMode | null;
+
+	@ApiProperty({
+		name: 'mode_confidence',
+		description: 'Confidence level of mode detection: exact (100% match), approximate (70-99% match), none (no match)',
+		enum: ['exact', 'approximate', 'none'],
+		example: 'exact',
+	})
+	@Expose({ name: 'mode_confidence' })
+	modeConfidence: 'exact' | 'approximate' | 'none';
+
+	@ApiPropertyOptional({
+		name: 'mode_match_percentage',
+		description: 'Percentage of role rules that match the detected mode (0-100), null if no mode detected',
+		type: 'number',
+		nullable: true,
+		example: 100,
+	})
+	@Expose({ name: 'mode_match_percentage' })
+	modeMatchPercentage: number | null;
+
+	@ApiProperty({
+		name: 'is_mode_from_intent',
+		description: 'Whether the current mode was set by intent (true) or achieved by manual adjustments (false)',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'is_mode_from_intent' })
+	isModeFromIntent: boolean;
+
+	@ApiPropertyOptional({
 		name: 'average_position',
 		description: 'Average position of all covers (0-100, null if no covers)',
 		type: 'integer',
@@ -1078,6 +1235,43 @@ export class CoversStateDataModel {
 	})
 	@Expose({ name: 'average_position' })
 	averagePosition: number | null;
+
+	@ApiProperty({
+		name: 'is_position_mixed',
+		description: 'Whether covers have different positions (not uniform)',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'is_position_mixed' })
+	isPositionMixed: boolean;
+
+	@ApiPropertyOptional({
+		name: 'average_tilt',
+		description: 'Average tilt of all covers with tilt support (0-100, null if none)',
+		type: 'integer',
+		nullable: true,
+		example: null,
+	})
+	@Expose({ name: 'average_tilt' })
+	averageTilt: number | null;
+
+	@ApiProperty({
+		name: 'is_tilt_mixed',
+		description: 'Whether covers have different tilt values (not uniform)',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'is_tilt_mixed' })
+	isTiltMixed: boolean;
+
+	@ApiProperty({
+		name: 'has_tilt',
+		description: 'Whether any covers support tilt',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'has_tilt' })
+	hasTilt: boolean;
 
 	@ApiProperty({
 		name: 'any_open',
@@ -1105,6 +1299,28 @@ export class CoversStateDataModel {
 	})
 	@Expose({ name: 'devices_count' })
 	devicesCount: number;
+
+	@ApiProperty({
+		description: 'Per-role aggregated state',
+		type: 'object',
+		additionalProperties: { type: 'object' },
+		example: {
+			primary: {
+				role: 'primary',
+				position: 75,
+				is_position_mixed: false,
+				tilt: null,
+				is_tilt_mixed: false,
+				has_tilt: false,
+				is_open: true,
+				is_closed: false,
+				devices_count: 1,
+				devices_open: 1,
+			},
+		},
+	})
+	@Expose()
+	roles: Record<string, object>;
 
 	@ApiProperty({
 		name: 'covers_by_role',
@@ -1135,6 +1351,41 @@ export class CoversStateDataModel {
 	})
 	@Expose({ name: 'last_applied_at' })
 	lastAppliedAt: Date | null;
+
+	/**
+	 * Create a CoversStateDataModel from a CoversState service object.
+	 */
+	static fromState(state: CoversState): CoversStateDataModel {
+		const model = new CoversStateDataModel();
+		model.hasCovers = state.hasCovers;
+		model.detectedMode = state.detectedMode;
+		model.modeConfidence = state.modeConfidence;
+		model.modeMatchPercentage = state.modeMatchPercentage;
+		model.isModeFromIntent = state.isModeFromIntent;
+		model.averagePosition = state.averagePosition;
+		model.isPositionMixed = state.isPositionMixed;
+		model.averageTilt = state.averageTilt;
+		model.isTiltMixed = state.isTiltMixed;
+		model.hasTilt = state.hasTilt;
+		model.anyOpen = state.anyOpen;
+		model.allClosed = state.allClosed;
+		model.devicesCount = state.devicesCount;
+		// Pre-serialize role values to plain objects
+		// Unlike lighting (which uses a class with explicit @Expose properties for each role),
+		// covers uses a dynamic Record where keys aren't decorated. Without @Type on the property,
+		// class-transformer will include the pre-serialized plain objects as-is.
+		const rolesRecord: Record<string, object> = {};
+		for (const [roleKey, roleState] of Object.entries(state.roles)) {
+			const roleModel = RoleCoversStateDataModel.fromState(roleState);
+			rolesRecord[roleKey] = instanceToPlain(roleModel, { excludeExtraneousValues: true });
+		}
+		model.roles = rolesRecord;
+		model.coversByRole = { ...state.coversByRole };
+		model.lastAppliedMode = state.lastAppliedMode;
+		model.lastAppliedAt = state.lastAppliedAt;
+
+		return model;
+	}
 }
 
 /**
@@ -1882,6 +2133,183 @@ export class LightingRoleMetaDataModel {
 }
 
 /**
+ * Role brightness rule for lighting mode orchestration
+ */
+@ApiSchema({ name: 'SpacesModuleDataLightingRoleBrightnessRule' })
+export class LightingRoleBrightnessRuleDataModel {
+	@ApiProperty({
+		description: 'Whether lights with this role should be on',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	on: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Brightness level (0-100), null if light should be off',
+		type: 'number',
+		nullable: true,
+		example: 100,
+	})
+	@Expose()
+	brightness: number | null;
+}
+
+/**
+ * Lighting mode orchestration data model
+ */
+@ApiSchema({ name: 'SpacesModuleDataLightingModeOrchestration' })
+@ApiExtraModels(LightingRoleBrightnessRuleDataModel)
+export class LightingModeOrchestrationDataModel {
+	@ApiProperty({
+		description: 'Mode identifier',
+		enum: LightingMode,
+		example: LightingMode.WORK,
+	})
+	@Expose()
+	mode: LightingMode;
+
+	@ApiProperty({
+		description: 'Human-readable label for the mode',
+		type: 'string',
+		example: 'Work',
+	})
+	@Expose()
+	label: string;
+
+	@ApiProperty({
+		description: 'Description of the mode',
+		type: 'string',
+		example: 'Bright lighting for focus and productivity',
+	})
+	@Expose()
+	description: string;
+
+	@ApiPropertyOptional({
+		description: 'Icon identifier for the mode',
+		type: 'string',
+		example: 'mdi:briefcase',
+	})
+	@Expose()
+	icon?: string;
+
+	@ApiProperty({
+		name: 'mvp_brightness',
+		description: 'Brightness level when no roles are configured (0-100)',
+		type: 'number',
+		example: 100,
+	})
+	@Expose({ name: 'mvp_brightness' })
+	mvpBrightness: number;
+
+	@ApiProperty({
+		description: 'Role-specific brightness rules for this mode',
+		type: 'object',
+		additionalProperties: { $ref: getSchemaPath(LightingRoleBrightnessRuleDataModel) },
+		example: { main: { on: true, brightness: 100 }, task: { on: true, brightness: 100 } },
+	})
+	@Expose()
+	roles: Record<string, LightingRoleBrightnessRuleDataModel>;
+
+	@ApiPropertyOptional({
+		name: 'fallback_roles',
+		description: 'Roles to use as fallback if primary roles have no lights',
+		type: [String],
+		example: ['main'],
+	})
+	@Expose({ name: 'fallback_roles' })
+	fallbackRoles?: string[];
+
+	@ApiPropertyOptional({
+		name: 'fallback_brightness',
+		description: 'Brightness level for fallback roles',
+		type: 'number',
+		example: 20,
+	})
+	@Expose({ name: 'fallback_brightness' })
+	fallbackBrightness?: number;
+}
+
+/**
+ * Role position rule for covers mode orchestration
+ */
+@ApiSchema({ name: 'SpacesModuleDataCoversRolePositionRule' })
+export class CoversRolePositionRuleDataModel {
+	@ApiProperty({
+		description: 'Position percentage (0=closed, 100=open)',
+		type: 'number',
+		example: 100,
+	})
+	@Expose()
+	position: number;
+
+	@ApiPropertyOptional({
+		description: 'Tilt angle (0-100), if supported',
+		type: 'number',
+		example: 50,
+	})
+	@Expose()
+	tilt?: number;
+}
+
+/**
+ * Covers mode orchestration data model
+ */
+@ApiSchema({ name: 'SpacesModuleDataCoversModeOrchestration' })
+@ApiExtraModels(CoversRolePositionRuleDataModel)
+export class CoversModeOrchestrationDataModel {
+	@ApiProperty({
+		description: 'Mode identifier',
+		enum: CoversMode,
+		example: CoversMode.OPEN,
+	})
+	@Expose()
+	mode: CoversMode;
+
+	@ApiProperty({
+		description: 'Human-readable label for the mode',
+		type: 'string',
+		example: 'Open',
+	})
+	@Expose()
+	label: string;
+
+	@ApiProperty({
+		description: 'Description of the mode',
+		type: 'string',
+		example: 'All covers fully open',
+	})
+	@Expose()
+	description: string;
+
+	@ApiPropertyOptional({
+		description: 'Icon identifier for the mode',
+		type: 'string',
+		example: 'mdi:blinds-open',
+	})
+	@Expose()
+	icon?: string;
+
+	@ApiProperty({
+		name: 'mvp_position',
+		description: 'Position when no roles are configured (0-100)',
+		type: 'number',
+		example: 100,
+	})
+	@Expose({ name: 'mvp_position' })
+	mvpPosition: number;
+
+	@ApiProperty({
+		description: 'Role-specific position rules for this mode',
+		type: 'object',
+		additionalProperties: { $ref: getSchemaPath(CoversRolePositionRuleDataModel) },
+		example: { primary: { position: 100 }, blackout: { position: 100 } },
+	})
+	@Expose()
+	roles: Record<string, CoversRolePositionRuleDataModel>;
+}
+
+/**
  * Complete intent catalog data model
  */
 @ApiSchema({ name: 'SpacesModuleDataIntentCatalog' })
@@ -1911,6 +2339,24 @@ export class IntentCatalogDataModel {
 	@Expose({ name: 'lighting_roles' })
 	@Type(() => LightingRoleMetaDataModel)
 	lightingRoles: LightingRoleMetaDataModel[];
+
+	@ApiProperty({
+		name: 'lighting_modes',
+		description: 'Lighting mode orchestration definitions',
+		type: () => [LightingModeOrchestrationDataModel],
+	})
+	@Expose({ name: 'lighting_modes' })
+	@Type(() => LightingModeOrchestrationDataModel)
+	lightingModes: LightingModeOrchestrationDataModel[];
+
+	@ApiProperty({
+		name: 'covers_modes',
+		description: 'Covers mode orchestration definitions',
+		type: () => [CoversModeOrchestrationDataModel],
+	})
+	@Expose({ name: 'covers_modes' })
+	@Type(() => CoversModeOrchestrationDataModel)
+	coversModes: CoversModeOrchestrationDataModel[];
 }
 
 /**
@@ -2423,6 +2869,29 @@ export class RoleAggregatedStateDataModel {
 	})
 	@Expose({ name: 'devices_on' })
 	devicesOn: number;
+
+	/**
+	 * Create a RoleAggregatedStateDataModel from a RoleAggregatedState service object.
+	 */
+	static fromState(state: RoleAggregatedState): RoleAggregatedStateDataModel {
+		const model = new RoleAggregatedStateDataModel();
+		model.role = state.role;
+		model.isOn = state.isOn;
+		model.isOnMixed = state.isOnMixed;
+		model.brightness = state.brightness;
+		model.colorTemperature = state.colorTemperature;
+		model.color = state.color;
+		model.white = state.white;
+		model.isBrightnessMixed = state.isBrightnessMixed;
+		model.isColorTemperatureMixed = state.isColorTemperatureMixed;
+		model.isColorMixed = state.isColorMixed;
+		model.isWhiteMixed = state.isWhiteMixed;
+		model.lastIntent = state.lastIntent ? { brightness: state.lastIntent.brightness } : null;
+		model.devicesCount = state.devicesCount;
+		model.devicesOn = state.devicesOn;
+
+		return model;
+	}
 }
 
 /**
@@ -2540,6 +3009,27 @@ export class OtherLightsStateDataModel {
 	})
 	@Expose({ name: 'devices_on' })
 	devicesOn: number;
+
+	/**
+	 * Create an OtherLightsStateDataModel from an OtherLightsState service object.
+	 */
+	static fromState(state: OtherLightsState): OtherLightsStateDataModel {
+		const model = new OtherLightsStateDataModel();
+		model.isOn = state.isOn;
+		model.isOnMixed = state.isOnMixed;
+		model.brightness = state.brightness;
+		model.colorTemperature = state.colorTemperature;
+		model.color = state.color;
+		model.white = state.white;
+		model.isBrightnessMixed = state.isBrightnessMixed;
+		model.isColorTemperatureMixed = state.isColorTemperatureMixed;
+		model.isColorMixed = state.isColorMixed;
+		model.isWhiteMixed = state.isWhiteMixed;
+		model.devicesCount = state.devicesCount;
+		model.devicesOn = state.devicesOn;
+
+		return model;
+	}
 }
 
 /**
@@ -2600,6 +3090,35 @@ export class RolesStateMapDataModel {
 	@Expose()
 	@Type(() => RoleAggregatedStateDataModel)
 	other?: RoleAggregatedStateDataModel;
+
+	/**
+	 * Create a RolesStateMapDataModel from a roles state record.
+	 * Stores class instances - the WebSocket gateway's transformPayload will serialize them.
+	 */
+	static fromState(roles: Partial<Record<LightingRole, RoleAggregatedState>>): RolesStateMapDataModel {
+		const model = new RolesStateMapDataModel();
+
+		if (roles[LightingRole.MAIN]) {
+			model.main = RoleAggregatedStateDataModel.fromState(roles[LightingRole.MAIN]);
+		}
+		if (roles[LightingRole.TASK]) {
+			model.task = RoleAggregatedStateDataModel.fromState(roles[LightingRole.TASK]);
+		}
+		if (roles[LightingRole.AMBIENT]) {
+			model.ambient = RoleAggregatedStateDataModel.fromState(roles[LightingRole.AMBIENT]);
+		}
+		if (roles[LightingRole.ACCENT]) {
+			model.accent = RoleAggregatedStateDataModel.fromState(roles[LightingRole.ACCENT]);
+		}
+		if (roles[LightingRole.NIGHT]) {
+			model.night = RoleAggregatedStateDataModel.fromState(roles[LightingRole.NIGHT]);
+		}
+		if (roles[LightingRole.OTHER]) {
+			model.other = RoleAggregatedStateDataModel.fromState(roles[LightingRole.OTHER]);
+		}
+
+		return model;
+	}
 }
 
 /**
@@ -2607,6 +3126,15 @@ export class RolesStateMapDataModel {
  */
 @ApiSchema({ name: 'SpacesModuleDataLightingState' })
 export class LightingStateDataModel {
+	@ApiProperty({
+		name: 'has_lights',
+		description: 'Whether the space has any controllable lights',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'has_lights' })
+	hasLights: boolean;
+
 	@ApiPropertyOptional({
 		name: 'detected_mode',
 		description: 'The lighting mode detected from current device states, null if no mode matches',
@@ -2635,6 +3163,15 @@ export class LightingStateDataModel {
 	})
 	@Expose({ name: 'mode_match_percentage' })
 	modeMatchPercentage: number | null;
+
+	@ApiProperty({
+		name: 'is_mode_from_intent',
+		description: 'Whether the current mode was set by intent (true) or achieved by manual adjustments (false)',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'is_mode_from_intent' })
+	isModeFromIntent: boolean;
 
 	@ApiPropertyOptional({
 		name: 'last_applied_mode',
@@ -2693,12 +3230,48 @@ export class LightingStateDataModel {
 	roles: RolesStateMapDataModel;
 
 	@ApiProperty({
+		name: 'lights_by_role',
+		description: 'Count of lights grouped by role',
+		type: 'object',
+		additionalProperties: { type: 'integer' },
+		example: { main: 2, task: 1, ambient: 2 },
+	})
+	@Expose({ name: 'lights_by_role' })
+	lightsByRole: Record<string, number>;
+
+	@ApiProperty({
 		description: 'Aggregated state for lights without role assignment',
 		type: () => OtherLightsStateDataModel,
 	})
 	@Expose()
 	@Type(() => OtherLightsStateDataModel)
 	other: OtherLightsStateDataModel;
+
+	/**
+	 * Create a LightingStateDataModel from a SpaceLightingState service object.
+	 */
+	static fromState(state: SpaceLightingState): LightingStateDataModel {
+		const model = new LightingStateDataModel();
+		model.hasLights = state.hasLights;
+		model.detectedMode = state.detectedMode;
+		model.modeConfidence = state.modeConfidence;
+		model.modeMatchPercentage = state.modeMatchPercentage;
+		model.isModeFromIntent = state.isModeFromIntent;
+		model.lastAppliedMode = state.lastAppliedMode;
+		model.lastAppliedAt = state.lastAppliedAt;
+		model.totalLights = state.totalLights;
+		model.lightsOn = state.lightsOn;
+		model.averageBrightness = state.averageBrightness;
+		// Store class instances - the WebSocket gateway's transformPayload will serialize them
+		// Using class instances ensures @Expose decorators are respected during serialization
+		model.roles = RolesStateMapDataModel.fromState(state.roles);
+		// Copy lightsByRole as plain object
+		model.lightsByRole = { ...state.lightsByRole };
+		// Store class instance for other lights state
+		model.other = OtherLightsStateDataModel.fromState(state.other);
+
+		return model;
+	}
 }
 
 /**

@@ -76,10 +76,15 @@ export interface ModeMatch {
  * Complete lighting state for a space
  */
 export interface SpaceLightingState {
+	// Whether the space has any lights
+	hasLights: boolean;
+
 	// Mode detection
 	detectedMode: LightingMode | null;
 	modeConfidence: 'exact' | 'approximate' | 'none';
 	modeMatchPercentage: number | null;
+	// Whether the current mode was set by intent (true) or achieved by manual adjustments (false)
+	isModeFromIntent: boolean;
 
 	// Last applied mode (from storage)
 	lastAppliedMode: LightingMode | null;
@@ -92,6 +97,8 @@ export interface SpaceLightingState {
 
 	// Per-role state
 	roles: Partial<Record<LightingRole, RoleAggregatedState>>;
+	// Count of lights by role
+	lightsByRole: Record<string, number>;
 
 	// Lights without role
 	other: OtherLightsState;
@@ -132,8 +139,18 @@ export class SpaceLightingStateService {
 	/**
 	 * Get the complete aggregated lighting state for a space.
 	 * Includes per-role state, mode detection, and summary.
+	 *
+	 * @param spaceId - The space ID to get lighting state for
+	 * @param options.synchronizeModeValidity - If true (default), invalidates mode validity
+	 *        in InfluxDB when detected mode diverges from last applied mode. This ensures
+	 *        accurate `isModeFromIntent` tracking. Set to false for read-only operations
+	 *        where the side effect is not needed (e.g., internal state broadcasts).
 	 */
-	async getLightingState(spaceId: string): Promise<SpaceLightingState | null> {
+	async getLightingState(
+		spaceId: string,
+		options: { synchronizeModeValidity?: boolean } = {},
+	): Promise<SpaceLightingState | null> {
+		const { synchronizeModeValidity = true } = options;
 		// Verify space exists
 		const space = await this.spacesService.findOne(spaceId);
 
@@ -167,13 +184,41 @@ export class SpaceLightingStateService {
 		// Calculate summary
 		const summary = this.calculateSummary(lights);
 
-		// Detect current mode
-		const modeMatch = this.detectMode(roleStates, otherState, lights);
+		// Detect current mode (prefer lastAppliedMode as tie-breaker)
+		const modeMatch = this.detectMode(roleStates, otherState, lights, lastAppliedMode);
+
+		// Calculate lights by role count
+		const lightsByRole: Record<string, number> = {};
+		for (const light of lights) {
+			const roleKey = light.role ?? 'unassigned';
+			lightsByRole[roleKey] = (lightsByRole[roleKey] ?? 0) + 1;
+		}
+
+		// Determine if mode was set by intent using mode validity tracking
+		const detectedMode = modeMatch?.mode ?? null;
+
+		// Get current mode validity from InfluxDB
+		const modeValidity = await this.intentTimeseriesService.getModeValidity(spaceId, 'lighting');
+		let modeValid = modeValidity?.modeValid ?? false;
+
+		// If detected mode diverges from last applied mode, invalidate the mode
+		// This ensures that once user manually changes settings, intent mode is no longer valid
+		// Only perform this write operation when synchronizeModeValidity is enabled
+		if (synchronizeModeValidity && detectedMode !== lastAppliedMode && modeValid) {
+			await this.intentTimeseriesService.storeModeValidity(spaceId, 'lighting', false);
+			modeValid = false;
+		}
+
+		// Mode is "from intent" only if detected mode matches last applied AND mode is still valid
+		// This prevents scenario 4: manually adjusting back to mode position still shows as intent
+		const isModeFromIntent = detectedMode !== null && detectedMode === lastAppliedMode && modeValid;
 
 		return {
-			detectedMode: modeMatch?.mode ?? null,
+			hasLights: true,
+			detectedMode,
 			modeConfidence: modeMatch ? modeMatch.confidence : 'none',
 			modeMatchPercentage: modeMatch?.matchPercentage ?? null,
+			isModeFromIntent,
 
 			lastAppliedMode,
 			lastAppliedAt: lastApplied?.appliedAt ?? null,
@@ -183,6 +228,7 @@ export class SpaceLightingStateService {
 			averageBrightness: summary.averageBrightness,
 
 			roles: roleStates,
+			lightsByRole,
 			other: otherState,
 		};
 	}
@@ -400,19 +446,22 @@ export class SpaceLightingStateService {
 	 * Get uniform value from array of values.
 	 * Returns the value if all non-null values are the same (within tolerance),
 	 * null if values differ (mixed).
+	 *
+	 * Uses range-based check (max - min <= tolerance) which is order-independent.
 	 */
 	private getUniformValue(values: (number | null)[]): { value: number | null; isMixed: boolean } {
+		const TOLERANCE = 5;
 		const nonNullValues = values.filter((v): v is number => v !== null);
 
 		if (nonNullValues.length === 0) {
 			return { value: null, isMixed: false };
 		}
 
-		// Check if all values are within tolerance (±5)
-		const first = nonNullValues[0];
-		const allSame = nonNullValues.every((v) => Math.abs(v - first) <= 5);
+		const min = Math.min(...nonNullValues);
+		const max = Math.max(...nonNullValues);
 
-		if (allSame) {
+		// Values are uniform if the range (max - min) is within tolerance
+		if (max - min <= TOLERANCE) {
 			// Return the rounded average when uniform
 			const avg = Math.round(nonNullValues.reduce((a, b) => a + b, 0) / nonNullValues.length);
 
@@ -541,18 +590,20 @@ export class SpaceLightingStateService {
 	}
 
 	/**
-	 * Detect which mode the current state matches (if any)
+	 * Detect which mode the current state matches (if any).
+	 * When multiple modes have equal match percentages, prefer lastAppliedMode as tie-breaker.
 	 */
 	private detectMode(
 		roleStates: Partial<Record<LightingRole, RoleAggregatedState>>,
 		otherState: OtherLightsState,
 		lights: LightState[],
+		lastAppliedMode: LightingMode | null = null,
 	): ModeMatch | null {
 		const hasAnyRoles = Object.keys(roleStates).length > 0;
 
 		// If no roles configured, check for MVP fallback mode matching
 		if (!hasAnyRoles) {
-			return this.detectMvpMode(lights);
+			return this.detectMvpMode(lights, lastAppliedMode);
 		}
 
 		// Get all available modes from YAML spec (includes user-defined custom modes)
@@ -560,10 +611,26 @@ export class SpaceLightingStateService {
 		let bestMatch: ModeMatch | null = null;
 
 		for (const modeId of allModes.keys()) {
+			// Only match built-in LightingMode values (custom mode IDs are not detected in MVP)
+			if (!Object.values(LightingMode).includes(modeId as LightingMode)) {
+				continue;
+			}
+
 			const match = this.matchMode(modeId as LightingMode, roleStates, otherState);
 
-			if (match && (!bestMatch || match.matchPercentage > bestMatch.matchPercentage)) {
-				bestMatch = match;
+			if (match) {
+				// Prefer this match if:
+				// 1. No best match yet
+				// 2. Higher match percentage
+				// 3. Same percentage but this is the lastAppliedMode (tie-breaker)
+				const isBetterMatch =
+					!bestMatch ||
+					match.matchPercentage > bestMatch.matchPercentage ||
+					(match.matchPercentage === bestMatch.matchPercentage && match.mode === lastAppliedMode);
+
+				if (isBetterMatch) {
+					bestMatch = match;
+				}
 			}
 		}
 
@@ -573,12 +640,18 @@ export class SpaceLightingStateService {
 	/**
 	 * Detect mode in MVP scenario (no roles configured).
 	 * Uses mvpBrightness values from YAML mode specifications.
+	 * When multiple modes match equally, prefer lastAppliedMode as tie-breaker.
 	 */
-	private detectMvpMode(lights: LightState[]): ModeMatch | null {
+	private detectMvpMode(lights: LightState[], lastAppliedMode: LightingMode | null = null): ModeMatch | null {
 		const onLights = lights.filter((l) => l.isOn);
 
+		// All lights off - detect "off" mode (defined in YAML with mvp_brightness: 0)
 		if (onLights.length === 0) {
-			return null; // All off - no mode
+			return {
+				mode: LightingMode.OFF,
+				confidence: 'exact',
+				matchPercentage: 100,
+			};
 		}
 
 		// Check if all ON lights have similar brightness
@@ -595,6 +668,17 @@ export class SpaceLightingStateService {
 		const mvpModes: Array<{ mode: LightingMode; brightness: number }> = [];
 
 		for (const [modeId, config] of allModes) {
+			// Only match built-in LightingMode values (custom mode IDs are not detected in MVP)
+			if (!Object.values(LightingMode).includes(modeId as LightingMode)) {
+				continue;
+			}
+
+			// Skip OFF mode - lights that are ON should never match OFF regardless of brightness.
+			// The OFF case is handled by the early return above when all lights are off.
+			if ((modeId as LightingMode) === LightingMode.OFF) {
+				continue;
+			}
+
 			if (config.mvpBrightness !== undefined && config.mvpBrightness !== null) {
 				mvpModes.push({
 					mode: modeId as LightingMode,
@@ -603,21 +687,38 @@ export class SpaceLightingStateService {
 			}
 		}
 
-		// Sort by brightness descending to match highest first (WORK before RELAX before NIGHT)
-		mvpModes.sort((a, b) => b.brightness - a.brightness);
+		// Find all matching modes and their match quality
+		const matches: ModeMatch[] = [];
 
 		for (const { mode, brightness } of mvpModes) {
-			if (Math.abs(avgBrightness - brightness) <= 15) {
+			const diff = Math.abs(avgBrightness - brightness);
+
+			if (diff <= 15) {
 				// Within 15% tolerance
-				return {
+				matches.push({
 					mode,
-					confidence: Math.abs(avgBrightness - brightness) <= 5 ? 'exact' : 'approximate',
-					matchPercentage: 100 - Math.abs(avgBrightness - brightness),
-				};
+					confidence: diff <= 5 ? 'exact' : 'approximate',
+					matchPercentage: 100 - diff,
+				});
 			}
 		}
 
-		return null;
+		if (matches.length === 0) {
+			return null;
+		}
+
+		// Sort by match percentage descending, then prefer lastAppliedMode as tie-breaker
+		matches.sort((a, b) => {
+			if (b.matchPercentage !== a.matchPercentage) {
+				return b.matchPercentage - a.matchPercentage;
+			}
+			// Tie-breaker: prefer lastAppliedMode
+			if (a.mode === lastAppliedMode) return -1;
+			if (b.mode === lastAppliedMode) return 1;
+			return 0;
+		});
+
+		return matches[0];
 	}
 
 	/**
@@ -946,15 +1047,18 @@ export class SpaceLightingStateService {
 	 */
 	private buildEmptyState(): SpaceLightingState {
 		return {
+			hasLights: false,
 			detectedMode: null,
 			modeConfidence: 'none',
 			modeMatchPercentage: null,
+			isModeFromIntent: false,
 			lastAppliedMode: null,
 			lastAppliedAt: null,
 			totalLights: 0,
 			lightsOn: 0,
 			averageBrightness: null,
 			roles: {},
+			lightsByRole: {},
 			other: {
 				isOn: false,
 				isOnMixed: false,

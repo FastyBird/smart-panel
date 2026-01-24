@@ -467,6 +467,8 @@ describe('SpacesController', () => {
 							},
 						]),
 						getLightingModeOrchestration: jest.fn().mockReturnValue(null),
+						getAllLightingModeOrchestrations: jest.fn().mockReturnValue(new Map()),
+						getAllCoversModeOrchestrations: jest.fn().mockReturnValue(new Map()),
 						getBrightnessDeltaStep: jest.fn().mockReturnValue(25),
 						getSetpointDeltaStep: jest.fn().mockReturnValue(1.0),
 					},

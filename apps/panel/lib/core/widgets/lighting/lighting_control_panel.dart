@@ -683,51 +683,11 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
     final isWideScreen = _screenService.isLargeScreen;
     final useWideLayout = isWideScreen;
     final columns = useWideLayout ? 2 : 1;
-    final tileLayout = useWideLayout ? TileLayout.vertical : TileLayout.horizontal;
-    final tileHeight = _scale(useWideLayout ? 70 : 56);
+    final tileLayout =
+        useWideLayout ? TileLayout.vertical : TileLayout.horizontal;
     final panelWidth = _scale(useWideLayout ? 240 : 180);
-
-    final rows = <Widget>[];
-
-    for (var i = 0; i < widget.channels.length; i += columns) {
-      final rowChannels = widget.channels.skip(i).take(columns).toList();
-      rows.add(
-        Padding(
-          padding: EdgeInsets.only(bottom: AppSpacings.pMd),
-          child: SizedBox(
-            height: tileHeight,
-            child: Row(
-              children: [
-                for (var j = 0; j < columns; j++) ...[
-                  if (j > 0) AppSpacings.spacingMdHorizontal,
-                  Expanded(
-                    child: j < rowChannels.length
-                        ?                           UniversalTile(
-                            layout: tileLayout,
-                            icon: Icons.lightbulb_outline,
-                            activeIcon: Icons.lightbulb,
-                            name: rowChannels[j].name,
-                            status: rowChannels[j].statusText,
-                            isActive: rowChannels[j].isOn && rowChannels[j].isOnline,
-                            isOffline: !rowChannels[j].isOnline,
-                            isSelected: rowChannels[j].isSelected,
-                            onTileTap: () => widget.onChannelTileTap
-                                ?.call(rowChannels[j]),
-                            // Disable icon tap (toggle) when device is offline
-                            onIconTap: rowChannels[j].isOnline
-                                ? () => widget.onChannelIconTap?.call(rowChannels[j])
-                                : null,
-                            showSelectionIndicator: true,
-                          )
-                        : const SizedBox.shrink(),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      );
-    }
+    // Aspect ratio: width / height - vertical tiles are taller, horizontal are wider
+    final aspectRatio = useWideLayout ? 1.0 : 2.0;
 
     return Container(
       width: panelWidth,
@@ -740,12 +700,71 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
         children: [
           _buildChannelsPanelHeader(context, isDark, isLandscape: true),
           Expanded(
-            child: ListView(
-              padding: EdgeInsets.symmetric(
-                horizontal: AppSpacings.pMd,
-                vertical: AppSpacings.pMd,
-              ),
-              children: rows,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // Calculate tile width from available space
+                final horizontalPadding = AppSpacings.pMd * 2;
+                final totalSpacing = AppSpacings.pMd * (columns - 1);
+                final availableWidth =
+                    constraints.maxWidth - horizontalPadding - totalSpacing;
+                final tileWidth = availableWidth / columns;
+                // Derive tile height from width using aspect ratio
+                final tileHeight = tileWidth / aspectRatio;
+
+                final rows = <Widget>[];
+
+                for (var i = 0; i < widget.channels.length; i += columns) {
+                  final rowChannels =
+                      widget.channels.skip(i).take(columns).toList();
+                  rows.add(
+                    Padding(
+                      padding: EdgeInsets.only(bottom: AppSpacings.pMd),
+                      child: SizedBox(
+                        height: tileHeight,
+                        child: Row(
+                          children: [
+                            for (var j = 0; j < columns; j++) ...[
+                              if (j > 0) AppSpacings.spacingMdHorizontal,
+                              SizedBox(
+                                width: tileWidth,
+                                child: j < rowChannels.length
+                                    ? UniversalTile(
+                                        layout: tileLayout,
+                                        icon: Icons.lightbulb_outline,
+                                        activeIcon: Icons.lightbulb,
+                                        name: rowChannels[j].name,
+                                        status: rowChannels[j].statusText,
+                                        isActive: rowChannels[j].isOn &&
+                                            rowChannels[j].isOnline,
+                                        isOffline: !rowChannels[j].isOnline,
+                                        isSelected: rowChannels[j].isSelected,
+                                        onTileTap: () => widget.onChannelTileTap
+                                            ?.call(rowChannels[j]),
+                                        // Disable icon tap (toggle) when device is offline
+                                        onIconTap: rowChannels[j].isOnline
+                                            ? () => widget.onChannelIconTap
+                                                ?.call(rowChannels[j])
+                                            : null,
+                                        showSelectionIndicator: true,
+                                      )
+                                    : const SizedBox.shrink(),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }
+
+                return ListView(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppSpacings.pMd,
+                    vertical: AppSpacings.pMd,
+                  ),
+                  children: rows,
+                );
+              },
             ),
           ),
         ],

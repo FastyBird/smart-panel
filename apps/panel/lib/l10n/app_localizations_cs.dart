@@ -1605,4 +1605,102 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get climate_devices_section => 'Klimatizační zařízení';
+
+  @override
+  String get domain_shading => 'Stínění';
+
+  @override
+  String get domain_shading_empty_title => 'Žádné stínění';
+
+  @override
+  String get domain_shading_empty_description => 'V této místnosti nebylo nalezeno žádné stínění';
+
+  @override
+  String get shading_modes_title => 'Režimy';
+
+  @override
+  String get shading_devices_title => 'Zařízení';
+
+  @override
+  String shading_devices_count(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count zařízení',
+      few: '$count zařízení',
+      one: '1 zařízení',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get shading_action_open => 'Otevřít';
+
+  @override
+  String get shading_action_close => 'Zavřít';
+
+  @override
+  String get shading_action_stop => 'Zastavit';
+
+  @override
+  String get shading_state_open => 'Otevřeno';
+
+  @override
+  String get shading_state_closed => 'Zavřeno';
+
+  @override
+  String shading_state_partial(int position) {
+    return '$position% otevřeno';
+  }
+
+  @override
+  String get shading_position => 'Pozice';
+
+  @override
+  String get shading_tap_for_controls => 'Klepněte pro ovládání';
+
+  @override
+  String get shading_hide_controls => 'Skrýt ovládání';
+
+  @override
+  String get covers_mode_open => 'Otevřeno';
+
+  @override
+  String get covers_mode_closed => 'Zavřeno';
+
+  @override
+  String get covers_mode_privacy => 'Soukromí';
+
+  @override
+  String get covers_mode_daylight => 'Denní světlo';
+
+  @override
+  String get covers_role_primary => 'Hlavní';
+
+  @override
+  String get covers_role_blackout => 'Zatemnění';
+
+  @override
+  String get covers_role_sheer => 'Záclony';
+
+  @override
+  String get covers_role_outdoor => 'Venkovní';
+
+  @override
+  String get covers_role_hidden => 'Skryté';
+
+  @override
+  String get cover_type_curtain => 'Záclona';
+
+  @override
+  String get cover_type_blind => 'Žaluzie';
+
+  @override
+  String get cover_type_roller => 'Roleta';
+
+  @override
+  String get cover_type_outdoor_blind => 'Venkovní žaluzie';
+
+  @override
+  String get cover_type_cover => 'Krytina';
 }

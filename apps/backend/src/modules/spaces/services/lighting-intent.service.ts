@@ -2,7 +2,6 @@ import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { toInstance } from '../../../common/utils/transform.utils';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
@@ -243,6 +242,18 @@ export class LightingIntentService extends SpaceIntentBaseService {
 				`Lighting intent completed spaceId=${spaceId} affected=${affectedDevices} failed=${failedDevices}`,
 			);
 
+			// When turning off all lights, store "off" as the mode
+			if (intent.type === LightingIntentType.OFF && overallSuccess) {
+				void this.intentTimeseriesService.storeLightingModeChange(
+					spaceId,
+					LightingMode.OFF,
+					lights.length,
+					affectedDevices,
+					failedDevices,
+				);
+				void this.intentTimeseriesService.storeModeValidity(spaceId, 'lighting', true);
+			}
+
 			result = { success: overallSuccess, affectedDevices, failedDevices };
 		}
 
@@ -339,11 +350,14 @@ export class LightingIntentService extends SpaceIntentBaseService {
 	 */
 	private async emitLightingStateChange(spaceId: string): Promise<void> {
 		try {
-			const state = await this.lightingStateService.getLightingState(spaceId);
+			// Skip mode validity synchronization - we're just broadcasting current state
+			const state = await this.lightingStateService.getLightingState(spaceId, {
+				synchronizeModeValidity: false,
+			});
 
 			if (state) {
 				// Convert to LightingStateDataModel for proper snake_case serialization via WebSocket
-				const stateModel = toInstance(LightingStateDataModel, state);
+				const stateModel = LightingStateDataModel.fromState(state);
 
 				this.eventEmitter.emit(EventType.LIGHTING_STATE_CHANGED, {
 					space_id: spaceId,
@@ -419,6 +433,8 @@ export class LightingIntentService extends SpaceIntentBaseService {
 				affectedDevices,
 				failedDevices,
 			);
+			// Mark mode as valid (set by intent, not manual adjustment)
+			void this.intentTimeseriesService.storeModeValidity(spaceId, 'lighting', true);
 		}
 
 		return { success: overallSuccess, affectedDevices, failedDevices };
@@ -492,6 +508,8 @@ export class LightingIntentService extends SpaceIntentBaseService {
 				affectedDevices,
 				failedDevices,
 			);
+			// Mark mode as valid (set by intent, not manual adjustment)
+			void this.intentTimeseriesService.storeModeValidity(spaceId, 'lighting', true);
 		}
 
 		return { success: overallSuccess, affectedDevices, failedDevices };

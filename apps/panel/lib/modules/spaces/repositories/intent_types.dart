@@ -1,4 +1,5 @@
-import 'package:fastybird_smart_panel/modules/spaces/models/covers_state/covers_state.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/covers_state/covers_state.dart'
+    show CoversMode, CoversStateRole;
 import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
 
 /// Types of lighting intents that can be executed on a space.
@@ -99,6 +100,7 @@ enum VolumeDelta {
 /// Each type corresponds to a specific covers action:
 /// - [open]: Open all covers
 /// - [close]: Close all covers
+/// - [stop]: Stop all covers movement
 /// - [setPosition]: Set covers to a specific position (0-100)
 /// - [positionDelta]: Adjust position by a relative amount
 /// - [rolePosition]: Set position for covers with a specific role
@@ -106,6 +108,7 @@ enum VolumeDelta {
 enum CoversIntentType {
   open,
   close,
+  stop,
   setPosition,
   positionDelta,
   rolePosition,
@@ -240,6 +243,8 @@ String volumeDeltaToString(VolumeDelta delta) {
 /// Convert LightingMode to API string
 String lightingModeToString(LightingMode mode) {
   switch (mode) {
+    case LightingMode.off:
+      return 'off';
     case LightingMode.work:
       return 'work';
     case LightingMode.relax:
@@ -274,6 +279,8 @@ String coversIntentTypeToString(CoversIntentType type) {
       return 'open';
     case CoversIntentType.close:
       return 'close';
+    case CoversIntentType.stop:
+      return 'stop';
     case CoversIntentType.setPosition:
       return 'set_position';
     case CoversIntentType.positionDelta:
@@ -310,5 +317,19 @@ String coversRoleToString(CoversStateRole role) {
       return 'outdoor';
     case CoversStateRole.hidden:
       return 'hidden';
+  }
+}
+
+/// Convert CoversMode to API string
+String coversModeToString(CoversMode mode) {
+  switch (mode) {
+    case CoversMode.open:
+      return 'open';
+    case CoversMode.closed:
+      return 'closed';
+    case CoversMode.privacy:
+      return 'privacy';
+    case CoversMode.daylight:
+      return 'daylight';
   }
 }

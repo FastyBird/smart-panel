@@ -159,11 +159,9 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       if (kDebugMode) debugPrint('[LightRoleDetail] Failed to get DevicesService: $e');
     }
 
-    try {
+    if (locator.isRegistered<IntentOverlayService>()) {
       _intentOverlayService = locator<IntentOverlayService>();
       _intentOverlayService?.addListener(_onIntentChanged);
-    } catch (e) {
-      if (kDebugMode) debugPrint('[LightRoleDetail] Failed to get IntentOverlayService: $e');
     }
 
     try {

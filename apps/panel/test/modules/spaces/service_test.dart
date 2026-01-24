@@ -109,10 +109,13 @@ void main() {
         const spaceId = 'space-123';
         final mockState = LightingStateModel(
           spaceId: spaceId,
+          hasLights: true,
           modeConfidence: ModeConfidence.none,
+          isModeFromIntent: false,
           totalLights: 3,
           lightsOn: 1,
           roles: {},
+          lightsByRole: {},
           other: OtherLightsState(
             isOn: true,
             isOnMixed: false,
@@ -218,10 +221,13 @@ void main() {
         const spaceId = 'space-123';
         final mockState = LightingStateModel(
           spaceId: spaceId,
+          hasLights: true,
           modeConfidence: ModeConfidence.exact,
+          isModeFromIntent: false,
           totalLights: 5,
           lightsOn: 3,
           roles: {},
+          lightsByRole: {},
           other: OtherLightsState(
             isOn: true,
             isOnMixed: false,

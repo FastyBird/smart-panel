@@ -14,14 +14,18 @@ import { ExtensionLoggerService, createExtensionLogger } from '../../../common/l
 import { LightingMode, LightingRole, SPACES_MODULE_NAME } from '../spaces.constants';
 
 import {
+	ResolvedCoversModeOrchestration,
 	ResolvedEnumValue,
 	ResolvedIntent,
 	ResolvedIntentCategory,
 	ResolvedIntentParam,
 	ResolvedModeOrchestration,
 	ResolvedRoleBrightnessRule,
+	ResolvedRolePositionRule,
 	SpecLoadResult,
 	SpecSource,
+	YamlCoversModeOrchestration,
+	YamlCoversModesConfig,
 	YamlEnumsConfig,
 	YamlIntentConfig,
 	YamlIntentDefinition,
@@ -30,6 +34,7 @@ import {
 	YamlLimitsConfig,
 	YamlModeOrchestration,
 	YamlRoleBrightnessRule,
+	YamlRolePositionRule,
 } from './intent-spec.types';
 
 @Injectable()
@@ -42,6 +47,7 @@ export class IntentSpecLoaderService implements OnModuleInit {
 	private climateIntents: ResolvedIntentCategory | null = null;
 	private mediaIntents: ResolvedIntentCategory | null = null;
 	private lightingModes: Map<string, ResolvedModeOrchestration> = new Map();
+	private coversModes: Map<string, ResolvedCoversModeOrchestration> = new Map();
 	private loadResults: SpecLoadResult[] = [];
 
 	// Delta step mappings (derived from enums)
@@ -67,6 +73,7 @@ export class IntentSpecLoaderService implements OnModuleInit {
 		this.climateIntents = null;
 		this.mediaIntents = null;
 		this.lightingModes.clear();
+		this.coversModes.clear();
 		this.brightnessDeltas.clear();
 		this.setpointDeltas.clear();
 		this.volumeDeltas.clear();
@@ -79,14 +86,16 @@ export class IntentSpecLoaderService implements OnModuleInit {
 		this.loadClimateIntents();
 		this.loadMediaIntents();
 
-		// Step 3: Load lighting modes
+		// Step 3: Load mode orchestrations
 		this.loadLightingModes();
+		this.loadCoversModes();
 
 		this.logger.log(
 			`Loaded specs: ${this.lightingIntents?.intents.length ?? 0} lighting intents, ` +
 				`${this.climateIntents?.intents.length ?? 0} climate intents, ` +
 				`${this.mediaIntents?.intents.length ?? 0} media intents, ` +
-				`${this.lightingModes.size} lighting modes`,
+				`${this.lightingModes.size} lighting modes, ` +
+				`${this.coversModes.size} covers modes`,
 		);
 	}
 
@@ -302,21 +311,122 @@ export class IntentSpecLoaderService implements OnModuleInit {
 		}
 
 		// Resolve builtin modes
-		for (const [modeId, modeDef] of Object.entries(builtinConfig.modes)) {
-			this.lightingModes.set(modeId, this.resolveModeOrchestration(modeDef, modeId));
+		if (builtinConfig.modes && typeof builtinConfig.modes === 'object') {
+			for (const [modeId, modeDef] of Object.entries(builtinConfig.modes)) {
+				if (modeDef) {
+					this.lightingModes.set(modeId, this.resolveModeOrchestration(modeDef, modeId));
+				}
+			}
 		}
 
 		// Load and merge user modes
 		if (existsSync(userPath)) {
 			const userConfig = this.loadYamlFile<YamlLightingModesConfig>(userPath, 'user');
 
-			if (userConfig) {
+			if (userConfig?.modes && typeof userConfig.modes === 'object') {
 				for (const [modeId, modeDef] of Object.entries(userConfig.modes)) {
-					// User modes override builtin modes with same ID
-					this.lightingModes.set(modeId, this.resolveModeOrchestration(modeDef, modeId));
+					if (modeDef) {
+						// User modes override builtin modes with same ID
+						this.lightingModes.set(modeId, this.resolveModeOrchestration(modeDef, modeId));
+					}
 				}
 			}
 		}
+	}
+
+	/**
+	 * Load and merge covers modes
+	 */
+	private loadCoversModes(): void {
+		const builtinPath = join(this.builtinSpecPath, 'covers-modes.yaml');
+		const userPath = join(this.userSpecPath, 'covers-modes.yaml');
+
+		// Load builtin
+		const builtinConfig = this.loadYamlFile<YamlCoversModesConfig>(builtinPath, 'builtin');
+
+		if (!builtinConfig) {
+			this.logger.error('Failed to load builtin covers modes');
+
+			return;
+		}
+
+		// Resolve builtin modes
+		if (builtinConfig.modes && typeof builtinConfig.modes === 'object') {
+			for (const [modeId, modeDef] of Object.entries(builtinConfig.modes)) {
+				if (modeDef) {
+					this.coversModes.set(modeId, this.resolveCoversModeOrchestration(modeDef, modeId));
+				}
+			}
+		}
+
+		// Load and merge user modes
+		if (existsSync(userPath)) {
+			const userConfig = this.loadYamlFile<YamlCoversModesConfig>(userPath, 'user');
+
+			if (userConfig?.modes && typeof userConfig.modes === 'object') {
+				for (const [modeId, modeDef] of Object.entries(userConfig.modes)) {
+					if (modeDef) {
+						// User modes override builtin modes with same ID
+						this.coversModes.set(modeId, this.resolveCoversModeOrchestration(modeDef, modeId));
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * Resolve YAML covers mode orchestration to ResolvedCoversModeOrchestration
+	 */
+	private resolveCoversModeOrchestration(
+		modeDef: YamlCoversModeOrchestration,
+		modeId?: string,
+	): ResolvedCoversModeOrchestration {
+		const roles: Record<string, ResolvedRolePositionRule> = {};
+
+		// Safely iterate over roles if defined
+		if (modeDef.roles && typeof modeDef.roles === 'object') {
+			for (const [role, rule] of Object.entries(modeDef.roles)) {
+				if (rule) {
+					roles[role] = this.resolveRolePositionRule(rule);
+				}
+			}
+		}
+
+		return {
+			label: modeDef.label,
+			description: modeDef.description,
+			icon: modeDef.icon,
+			mvpPosition: modeDef.mvp_position ?? this.getDefaultMvpPosition(modeId),
+			roles,
+		};
+	}
+
+	/**
+	 * Get default MVP position for a covers mode
+	 */
+	private getDefaultMvpPosition(modeId?: string): number {
+		switch (modeId) {
+			case 'open':
+				return 100;
+			case 'closed':
+				return 0;
+			case 'privacy':
+				return 50;
+			case 'daylight':
+				return 75;
+			default:
+				return 100;
+		}
+	}
+
+	/**
+	 * Resolve a YAML role position rule for covers
+	 */
+	private resolveRolePositionRule(rule: YamlRolePositionRule): ResolvedRolePositionRule {
+		return {
+			position: rule.position,
+			tilt: rule.tilt,
+		};
 	}
 
 	/**
@@ -481,8 +591,13 @@ export class IntentSpecLoaderService implements OnModuleInit {
 	private resolveModeOrchestration(modeDef: YamlModeOrchestration, modeId?: string): ResolvedModeOrchestration {
 		const roles: Record<string, ResolvedRoleBrightnessRule> = {};
 
-		for (const [role, rule] of Object.entries(modeDef.roles)) {
-			roles[role] = this.resolveRoleBrightnessRule(rule);
+		// Safely iterate over roles if defined
+		if (modeDef.roles && typeof modeDef.roles === 'object') {
+			for (const [role, rule] of Object.entries(modeDef.roles)) {
+				if (rule) {
+					roles[role] = this.resolveRoleBrightnessRule(rule);
+				}
+			}
 		}
 
 		const resolved: ResolvedModeOrchestration = {
@@ -583,6 +698,31 @@ export class IntentSpecLoaderService implements OnModuleInit {
 	 */
 	getAllLightingModeOrchestrations(): Map<string, ResolvedModeOrchestration> {
 		return this.lightingModes;
+	}
+
+	/**
+	 * Get a specific covers mode orchestration config
+	 */
+	getCoversModeOrchestration(mode: string): ResolvedCoversModeOrchestration | null {
+		return this.coversModes.get(mode) ?? null;
+	}
+
+	/**
+	 * Get all covers mode orchestrations
+	 */
+	getAllCoversModeOrchestrations(): Map<string, ResolvedCoversModeOrchestration> {
+		return this.coversModes;
+	}
+
+	/**
+	 * Get covers mode orchestration for a specific role
+	 */
+	getCoversModeRoleConfig(mode: string, role: string): ResolvedRolePositionRule | null {
+		const modeConfig = this.coversModes.get(mode);
+
+		if (!modeConfig) return null;
+
+		return modeConfig.roles[role] ?? null;
 	}
 
 	/**

@@ -2,7 +2,6 @@ import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { toInstance } from '../../../common/utils/transform.utils';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { DEFAULT_TTL_SPACE_COMMAND, IntentTargetStatus, IntentType } from '../../intents/intents.constants';
@@ -187,6 +186,10 @@ export class CoversIntentService extends SpaceIntentBaseService {
 				result = await this.executePositionIntentWithResults(covers, 0, targetResults);
 				break;
 
+			case CoversIntentType.STOP:
+				result = await this.executeStopIntentWithResults(covers, targetResults);
+				break;
+
 			case CoversIntentType.SET_POSITION:
 				result = await this.executePositionIntentWithResults(covers, intent.position ?? 0, targetResults);
 				break;
@@ -254,6 +257,8 @@ export class CoversIntentService extends SpaceIntentBaseService {
 				return IntentType.SPACE_COVERS_OPEN;
 			case CoversIntentType.CLOSE:
 				return IntentType.SPACE_COVERS_CLOSE;
+			case CoversIntentType.STOP:
+				return IntentType.SPACE_COVERS_STOP;
 			case CoversIntentType.SET_POSITION:
 				return IntentType.SPACE_COVERS_SET_POSITION;
 			case CoversIntentType.POSITION_DELTA:
@@ -526,6 +531,39 @@ export class CoversIntentService extends SpaceIntentBaseService {
 	}
 
 	/**
+	 * Execute a stop intent with per-target results tracking.
+	 */
+	private async executeStopIntentWithResults(
+		covers: CoverDevice[],
+		targetResults: IntentTargetResult[],
+	): Promise<CoversIntentResult> {
+		let affectedDevices = 0;
+		let failedDevices = 0;
+
+		for (const cover of covers) {
+			const success = await this.stopCover(cover);
+
+			targetResults.push({
+				deviceId: cover.device.id,
+				channelId: cover.coverChannel.id,
+				status: success ? IntentTargetStatus.SUCCESS : IntentTargetStatus.FAILED,
+			});
+
+			if (success) {
+				affectedDevices++;
+			} else {
+				failedDevices++;
+			}
+		}
+
+		const overallSuccess = failedDevices === 0 || affectedDevices > 0;
+
+		this.logger.debug(`Stop intent completed affected=${affectedDevices} failed=${failedDevices}`);
+
+		return { success: overallSuccess, affectedDevices, failedDevices, newPosition: null };
+	}
+
+	/**
 	 * Execute a mode-based covers intent using role-based orchestration.
 	 */
 	private async executeModeIntent(
@@ -575,6 +613,8 @@ export class CoversIntentService extends SpaceIntentBaseService {
 				affectedDevices,
 				failedDevices,
 			);
+			// Mark mode as valid (set by intent, not manual adjustment)
+			void this.intentTimeseriesService.storeModeValidity(spaceId, 'covers', true);
 		}
 
 		return { success: overallSuccess, affectedDevices, failedDevices, newPosition: averagePosition };
@@ -631,6 +671,8 @@ export class CoversIntentService extends SpaceIntentBaseService {
 				affectedDevices,
 				failedDevices,
 			);
+			// Mark mode as valid (set by intent, not manual adjustment)
+			void this.intentTimeseriesService.storeModeValidity(spaceId, 'covers', true);
 		}
 
 		return { success: overallSuccess, affectedDevices, failedDevices, newPosition: averagePosition };
@@ -696,6 +738,48 @@ export class CoversIntentService extends SpaceIntentBaseService {
 	}
 
 	/**
+	 * Stop movement on a single cover device.
+	 */
+	private async stopCover(cover: CoverDevice): Promise<boolean> {
+		const platform = this.platformRegistryService.get(cover.device);
+
+		if (!platform) {
+			this.logger.warn(`No platform registered for device id=${cover.device.id} type=${cover.device.type}`);
+			return false;
+		}
+
+		// Stop command requires the command property
+		if (!cover.commandProperty) {
+			this.logger.debug(`No command property for device id=${cover.device.id}, cannot stop`);
+			return true; // Consider success if device doesn't support stop
+		}
+
+		const commands: IDevicePropertyData[] = [
+			{
+				device: cover.device,
+				channel: cover.coverChannel,
+				property: cover.commandProperty,
+				value: 'stop',
+			},
+		];
+
+		try {
+			const success = await platform.processBatch(commands);
+
+			if (!success) {
+				this.logger.error(`Stop command execution failed for device id=${cover.device.id}`);
+				return false;
+			}
+
+			this.logger.debug(`Successfully stopped device id=${cover.device.id}`);
+			return true;
+		} catch (error) {
+			this.logger.error(`Error executing stop command for device id=${cover.device.id}: ${error}`);
+			return false;
+		}
+	}
+
+	/**
 	 * Capture a snapshot for undo before executing a covers intent.
 	 */
 	private async captureUndoSnapshot(spaceId: string, intent: CoversIntentDto): Promise<void> {
@@ -726,6 +810,8 @@ export class CoversIntentService extends SpaceIntentBaseService {
 				return 'Open all covers';
 			case CoversIntentType.CLOSE:
 				return 'Close all covers';
+			case CoversIntentType.STOP:
+				return 'Stop all covers';
 			case CoversIntentType.SET_POSITION:
 				return `Set covers to ${intent.position ?? 0}%`;
 			case CoversIntentType.POSITION_DELTA:
@@ -745,11 +831,14 @@ export class CoversIntentService extends SpaceIntentBaseService {
 	 */
 	private async emitCoversStateChange(spaceId: string): Promise<void> {
 		try {
-			const state = await this.coversStateService.getCoversState(spaceId);
+			// Skip mode validity synchronization - we're just broadcasting current state
+			const state = await this.coversStateService.getCoversState(spaceId, {
+				synchronizeModeValidity: false,
+			});
 
 			if (state) {
 				// Convert to CoversStateDataModel for proper snake_case serialization via WebSocket
-				const stateModel = toInstance(CoversStateDataModel, state);
+				const stateModel = CoversStateDataModel.fromState(state);
 
 				this.eventEmitter.emit(EventType.COVERS_STATE_CHANGED, {
 					space_id: spaceId,

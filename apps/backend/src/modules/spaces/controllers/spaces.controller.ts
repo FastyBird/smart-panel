@@ -56,6 +56,8 @@ import {
 	ContextSnapshotResponseModel,
 	CoversIntentResponseModel,
 	CoversIntentResultDataModel,
+	CoversModeOrchestrationDataModel,
+	CoversRolePositionRuleDataModel,
 	CoversRoleResponseModel,
 	CoversStateDataModel,
 	CoversStateResponseModel,
@@ -74,6 +76,8 @@ import {
 	LightingContextDataModel,
 	LightingIntentResponseModel,
 	LightingIntentResultDataModel,
+	LightingModeOrchestrationDataModel,
+	LightingRoleBrightnessRuleDataModel,
 	LightingRoleMetaDataModel,
 	LightingRoleResponseModel,
 	LightingStateDataModel,
@@ -128,7 +132,9 @@ import { SpaceSuggestionService } from '../services/space-suggestion.service';
 import { SpaceUndoHistoryService } from '../services/space-undo-history.service';
 import { SpacesService } from '../services/spaces.service';
 import {
+	CoversMode,
 	IntentCategory,
+	LightingMode,
 	LightingRole,
 	MediaRole,
 	QUICK_ACTION_CATALOG,
@@ -338,10 +344,62 @@ export class SpacesController {
 			return roleData;
 		});
 
+		// Get lighting mode orchestrations from YAML spec loader
+		const lightingModesMap = this.intentSpecLoaderService.getAllLightingModeOrchestrations();
+		const lightingModes: LightingModeOrchestrationDataModel[] = [];
+		for (const [modeKey, modeConfig] of lightingModesMap) {
+			const modeData = new LightingModeOrchestrationDataModel();
+			modeData.mode = modeKey as LightingMode;
+			modeData.label = modeConfig.label;
+			modeData.description = modeConfig.description;
+			modeData.icon = modeConfig.icon;
+			modeData.mvpBrightness = modeConfig.mvpBrightness;
+			modeData.fallbackRoles = modeConfig.fallbackRoles;
+			modeData.fallbackBrightness = modeConfig.fallbackBrightness;
+
+			// Transform role rules
+			const roles: Record<string, LightingRoleBrightnessRuleDataModel> = {};
+			for (const [roleKey, roleRule] of Object.entries(modeConfig.roles)) {
+				const ruleData = new LightingRoleBrightnessRuleDataModel();
+				ruleData.on = roleRule.on;
+				ruleData.brightness = roleRule.brightness;
+				roles[roleKey] = ruleData;
+			}
+			modeData.roles = roles;
+
+			lightingModes.push(modeData);
+		}
+
+		// Get covers mode orchestrations from YAML spec loader
+		const coversModesMap = this.intentSpecLoaderService.getAllCoversModeOrchestrations();
+		const coversModes: CoversModeOrchestrationDataModel[] = [];
+		for (const [modeKey, modeConfig] of coversModesMap) {
+			const modeData = new CoversModeOrchestrationDataModel();
+			modeData.mode = modeKey as CoversMode;
+			modeData.label = modeConfig.label;
+			modeData.description = modeConfig.description;
+			modeData.icon = modeConfig.icon;
+			modeData.mvpPosition = modeConfig.mvpPosition;
+
+			// Transform role rules
+			const roles: Record<string, CoversRolePositionRuleDataModel> = {};
+			for (const [roleKey, roleRule] of Object.entries(modeConfig.roles)) {
+				const ruleData = new CoversRolePositionRuleDataModel();
+				ruleData.position = roleRule.position;
+				ruleData.tilt = roleRule.tilt;
+				roles[roleKey] = ruleData;
+			}
+			modeData.roles = roles;
+
+			coversModes.push(modeData);
+		}
+
 		const catalogData = new IntentCatalogDataModel();
 		catalogData.categories = categories;
 		catalogData.quickActions = quickActions;
 		catalogData.lightingRoles = lightingRoles;
+		catalogData.lightingModes = lightingModes;
+		catalogData.coversModes = coversModes;
 
 		const response = new IntentCatalogResponseModel();
 		response.data = catalogData;
@@ -723,14 +781,17 @@ export class SpacesController {
 		}
 
 		const stateData = new LightingStateDataModel();
+		stateData.hasLights = state.hasLights;
 		stateData.detectedMode = state.detectedMode;
 		stateData.modeConfidence = state.modeConfidence;
 		stateData.modeMatchPercentage = state.modeMatchPercentage;
+		stateData.isModeFromIntent = state.isModeFromIntent;
 		stateData.lastAppliedMode = state.lastAppliedMode;
 		stateData.lastAppliedAt = state.lastAppliedAt;
 		stateData.totalLights = state.totalLights;
 		stateData.lightsOn = state.lightsOn;
 		stateData.averageBrightness = state.averageBrightness;
+		stateData.lightsByRole = state.lightsByRole;
 
 		// Map roles
 		const rolesMap = new RolesStateMapDataModel();
@@ -1178,18 +1239,8 @@ export class SpacesController {
 			throw new SpacesNotFoundException('Space not found');
 		}
 
-		const stateData = new CoversStateDataModel();
-		stateData.hasCovers = state.hasCovers;
-		stateData.averagePosition = state.averagePosition;
-		stateData.anyOpen = state.anyOpen;
-		stateData.allClosed = state.allClosed;
-		stateData.devicesCount = state.devicesCount;
-		stateData.coversByRole = state.coversByRole;
-		stateData.lastAppliedMode = state.lastAppliedMode;
-		stateData.lastAppliedAt = state.lastAppliedAt;
-
 		const response = new CoversStateResponseModel();
-		response.data = stateData;
+		response.data = CoversStateDataModel.fromState(state);
 
 		return response;
 	}

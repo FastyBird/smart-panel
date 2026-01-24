@@ -5,8 +5,11 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/intent_mode_selector.dart';
+import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -89,17 +92,14 @@ enum LightingModeUI { off, work, relax, night }
 /// Extension to convert between UI mode and backend mode.
 ///
 /// Provides bidirectional conversion:
-/// - [toBackendMode]: Converts UI mode to backend mode (returns null for 'off')
+/// - [toBackendMode]: Converts UI mode to backend mode
 /// - [fromBackendMode]: Converts backend mode + light state to UI mode
 extension LightingModeUIExtension on LightingModeUI {
   /// Converts UI mode to backend [LightingMode].
-  ///
-  /// Returns `null` for [LightingModeUI.off] since the backend doesn't have
-  /// an 'off' mode - turning lights off is handled via a separate intent.
-  LightingMode? toBackendMode() {
+  LightingMode toBackendMode() {
     switch (this) {
       case LightingModeUI.off:
-        return null;
+        return LightingMode.off;
       case LightingModeUI.work:
         return LightingMode.work;
       case LightingModeUI.relax:
@@ -119,6 +119,8 @@ extension LightingModeUIExtension on LightingModeUI {
     if (!anyLightsOn) return LightingModeUI.off;
     if (mode == null) return LightingModeUI.work;
     switch (mode) {
+      case LightingMode.off:
+        return LightingModeUI.off;
       case LightingMode.work:
         return LightingModeUI.work;
       case LightingMode.relax:
@@ -294,8 +296,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       return !state.anyOn;
     }
 
-    // For other modes, check detectedMode matches
-    final backendMode = state.detectedMode ?? state.lastAppliedMode;
+    // For other modes, check detectedMode matches AND isModeFromIntent is true.
+    // This ensures we stay in optimistic mode until the backend confirms the intent
+    // was applied. Without this check, we'd show "matched" (info color) briefly
+    // before the websocket update arrives with isModeFromIntent = true.
+    final backendMode = state.detectedMode;
     if (backendMode == null) {
       // No mode info available yet, consider not converged
       return false;
@@ -304,7 +309,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       backendMode,
       state.anyOn,
     );
-    return actualMode == desiredMode;
+    return actualMode == desiredMode && state.isModeFromIntent;
   }
 
   /// Check if space has an active intent lock.
@@ -465,10 +470,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       if (kDebugMode) debugPrint('[LightsDomainView] Failed to get IntentsRepository: $e');
     }
 
-    try {
+    if (locator.isRegistered<IntentOverlayService>()) {
       _intentOverlayService = locator<IntentOverlayService>();
-    } catch (e) {
-      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get IntentOverlayService: $e');
     }
 
     try {
@@ -999,12 +1002,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   ) {
     final localizations = AppLocalizations.of(context)!;
 
-    // Get mode-aware colors
-    final mode = _currentMode;
-    final modeColor = _getModeColor(context, mode);
-    final modeBgColor = _getModeBgColor(context, mode);
+    // Get state-based colors (consistent with shading domain)
+    final stateColor = _getLightStateColor(context, lightsOn, totalLights);
+    final stateBgColor = stateColor.withValues(alpha: 0.15);
 
     // Build subtitle based on mode and lights state
+    final mode = _currentMode;
     String subtitle;
     if (mode == LightingModeUI.off || lightsOn == 0) {
       subtitle = '$lightsOn of $totalLights on';
@@ -1019,12 +1022,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     return PageHeader(
       title: localizations.domain_lights,
       subtitle: subtitle,
-      subtitleColor: mode != LightingModeUI.off ? modeColor : null,
+      subtitleColor: hasLightsOn ? stateColor : null,
       backgroundColor: AppColors.blank,
       leading: HeaderDeviceIcon(
         icon: hasLightsOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline,
-        backgroundColor: modeBgColor,
-        iconColor: modeColor,
+        backgroundColor: stateBgColor,
+        iconColor: stateColor,
       ),
       trailing: HeaderHomeButton(
         onTap: _navigateToHome,
@@ -1032,34 +1035,23 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
   }
 
-  /// Get color for lighting mode
-  Color _getModeColor(BuildContext context, LightingModeUI mode) {
+  /// Get color based on lights on/off state (consistent with shading domain).
+  ///
+  /// - All lights on: Success/Green
+  /// - All lights off: Info/Blue
+  /// - Some lights on (mixed): Warning/Yellow
+  Color _getLightStateColor(BuildContext context, int lightsOn, int totalLights) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    switch (mode) {
-      case LightingModeUI.off:
-        return isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-      case LightingModeUI.work:
-        return isDark ? AppColorsDark.primary : AppColorsLight.primary;
-      case LightingModeUI.relax:
-        return isDark ? AppColorsDark.warning : AppColorsLight.warning;
-      case LightingModeUI.night:
-        return isDark ? AppColorsDark.info : AppColorsLight.info;
+    if (lightsOn == totalLights && totalLights > 0) {
+      // All on
+      return isDark ? AppColorsDark.success : AppColorsLight.success;
     }
-  }
-
-  /// Get background color for lighting mode
-  Color _getModeBgColor(BuildContext context, LightingModeUI mode) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    switch (mode) {
-      case LightingModeUI.off:
-        return isDark ? AppFillColorDark.light : AppFillColorLight.light;
-      case LightingModeUI.work:
-        return isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight5;
-      case LightingModeUI.relax:
-        return isDark ? AppColorsDark.warningLight5 : AppColorsLight.warningLight5;
-      case LightingModeUI.night:
-        return isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight5;
+    if (lightsOn == 0) {
+      // All off
+      return isDark ? AppColorsDark.info : AppColorsLight.info;
     }
+    // Mixed (some on, some off)
+    return isDark ? AppColorsDark.warning : AppColorsLight.warning;
   }
 
   /// Get localized name for lighting mode
@@ -1102,62 +1094,52 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final isAtLeastMedium = _screenService.isAtLeastMedium;
     final otherLightsAspectRatio = isAtLeastMedium ? 3.0 : 2.5;
 
-    return Column(
-      children: [
-        Expanded(
-          child: SingleChildScrollView(
-            padding: AppSpacings.paddingLg,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Mode Selector (only show if backend intents enabled and there are lights)
-                if (LightingConstants.useBackendIntents && hasLights) ...[
-                  _buildModeSelector(context, localizations),
-                  AppSpacings.spacingLgVertical,
-                ],
+    return PortraitViewLayout(
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Roles Grid
+          if (hasRoles)
+            _buildRolesGrid(context, roles, devicesService, crossAxisCount: 3),
 
-                // Roles Grid
-                if (hasRoles)
-                  _buildRolesGrid(context, roles, devicesService, crossAxisCount: 3),
+          // Quick Scenes Section
+          if (hasScenes) ...[
+            if (hasRoles) AppSpacings.spacingLgVertical,
+            SectionTitle(
+                title: localizations.space_scenes_title,
+                icon: Icons.auto_awesome),
+            AppSpacings.spacingMdVertical,
+            // Use horizontal scroll when other lights present (less vertical space)
+            if (hasOtherLights)
+              SizedBox(
+                height: _scale(70),
+                child: _buildPortraitScenesRow(
+                  context,
+                  tilesPerRow: scenesPerRow,
+                ),
+              )
+            else
+              _buildScenesGrid(context, crossAxisCount: scenesPerRow),
+          ],
 
-                // Quick Scenes Section
-                if (hasScenes) ...[
-                  if (hasRoles) AppSpacings.spacingLgVertical,
-                  SectionTitle(title: localizations.space_scenes_title, icon: Icons.auto_awesome),
-                  AppSpacings.spacingMdVertical,
-                  // Use horizontal scroll when other lights present (less vertical space)
-                  if (hasOtherLights)
-                    SizedBox(
-                      height: _scale(70),
-                      child: _buildPortraitScenesRow(
-                        context,
-                        tilesPerRow: scenesPerRow,
-                      ),
-                    )
-                  else
-                    _buildScenesGrid(context, crossAxisCount: scenesPerRow),
-                ],
-
-                // Other Lights Section
-                if (hasOtherLights) ...[
-                  if (hasRoles || hasScenes) AppSpacings.spacingLgVertical,
-                  _buildOtherLightsTitle(otherLights, otherTargets, localizations),
-                  AppSpacings.spacingMdVertical,
-                  _buildLightsGrid(
-                    context,
-                    otherLights,
-                    localizations,
-                    crossAxisCount: 2,
-                    aspectRatio: otherLightsAspectRatio,
-                  ),
-                ],
-              ],
+          // Other Lights Section
+          if (hasOtherLights) ...[
+            if (hasRoles || hasScenes) AppSpacings.spacingLgVertical,
+            _buildOtherLightsTitle(otherLights, otherTargets, localizations),
+            AppSpacings.spacingMdVertical,
+            _buildLightsGrid(
+              context,
+              otherLights,
+              localizations,
+              crossAxisCount: 2,
+              aspectRatio: otherLightsAspectRatio,
             ),
-          ),
-        ),
-        // Fixed space at bottom for swipe dots
-        AppSpacings.spacingLgVertical,
-      ],
+          ],
+        ],
+      ),
+      modeSelector: LightingConstants.useBackendIntents && hasLights
+          ? _buildModeSelector(context, localizations)
+          : null,
     );
   }
 
@@ -1171,8 +1153,62 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   Widget _buildModeSelector(BuildContext context, AppLocalizations localizations) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final mode = _currentMode;
-    final modeColor = _getModeColor(context, mode);
     final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
+
+    // Determine activeValue, matchedValue, and lastIntentValue based on state:
+    // - activeValue: mode explicitly set by intent AND still matches (2px border, mode color)
+    // - matchedValue: mode detected by user manually setting devices (1px border, mode color)
+    // - lastIntentValue: last applied intent when no mode matches (1px border, neutral color)
+    final LightingModeUI? activeValue;
+    final LightingModeUI? matchedValue;
+    final LightingModeUI? lastIntentValue;
+
+    if (isModeLocked) {
+      // Optimistic UI: show pending mode as active
+      activeValue = mode;
+      matchedValue = null;
+      lastIntentValue = null;
+    } else {
+      final detectedMode = _lightingState?.detectedMode;
+      final lastAppliedMode = _lightingState?.lastAppliedMode;
+      final isModeFromIntent = _lightingState?.isModeFromIntent ?? false;
+
+      // Convert backend LightingMode to UI LightingModeUI
+      final LightingModeUI? detectedModeUI = detectedMode != null
+          ? LightingModeUI.values.firstWhere(
+              (m) => m.name == detectedMode.name,
+              orElse: () => LightingModeUI.off,
+            )
+          : null;
+      final LightingModeUI? lastAppliedModeUI = lastAppliedMode != null
+          ? LightingModeUI.values.firstWhere(
+              (m) => m.name == lastAppliedMode.name,
+              orElse: () => LightingModeUI.off,
+            )
+          : null;
+
+      if (detectedModeUI != null && isModeFromIntent) {
+        // Mode was set by intent and still matches: show as active
+        activeValue = detectedModeUI;
+        matchedValue = null;
+        lastIntentValue = null;
+      } else if (detectedModeUI != null && !isModeFromIntent) {
+        // Mode detected but not from intent (user manually matched): show as matched
+        activeValue = null;
+        matchedValue = detectedModeUI;
+        lastIntentValue = null;
+      } else if (lastAppliedModeUI != null) {
+        // No mode matches, but we have a last applied intent: show as last intent
+        activeValue = null;
+        matchedValue = null;
+        lastIntentValue = lastAppliedModeUI;
+      } else {
+        // No mode at all - check if all lights are off
+        activeValue = mode == LightingModeUI.off ? LightingModeUI.off : null;
+        matchedValue = null;
+        lastIntentValue = null;
+      }
+    }
 
     return Container(
       padding: AppSpacings.paddingMd,
@@ -1180,17 +1216,17 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
         borderRadius: BorderRadius.circular(AppBorderRadius.medium),
         border: Border.all(
-          color: mode != LightingModeUI.off
-              ? modeColor.withValues(alpha: 0.3)
-              : (isDark ? AppBorderColorDark.light : AppBorderColorLight.light),
+          color: isDark ? AppFillColorDark.light : AppBorderColorLight.light,
           width: 1,
         ),
       ),
       child: IgnorePointer(
         ignoring: isModeLocked,
-        child: ModeSelector<LightingModeUI>(
+        child: IntentModeSelector<LightingModeUI>(
           modes: _getLightingModeOptions(localizations),
-          selectedValue: mode,
+          activeValue: activeValue,
+          matchedValue: matchedValue,
+          lastIntentValue: lastIntentValue,
           onChanged: _setLightingMode,
           orientation: ModeSelectorOrientation.horizontal,
           iconPlacement: ModeSelectorIconPlacement.top,
@@ -1211,7 +1247,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     DevicesService devicesService,
     AppLocalizations localizations,
   ) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasRoles = roles.isNotEmpty;
     final hasOtherLights = otherLights.isNotEmpty;
     final hasScenes = _lightingScenes.isNotEmpty;
@@ -1220,125 +1255,119 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     // Use ScreenService breakpoints for responsive layout
     // Landscape breakpoints: small ≤800, medium ≤1150, large >1150
     final isLargeScreen = _screenService.isLargeScreen;
+
+    return LandscapeViewLayout(
+      mainContent: _buildLandscapeMainContent(
+        context,
+        roles,
+        otherLights,
+        otherTargets,
+        devicesService,
+        localizations,
+      ),
+      modeSelector: LightingConstants.useBackendIntents && hasLights
+          ? _buildLandscapeModeSelector(
+              context,
+              localizations,
+              showLabels: !hasScenes && isLargeScreen,
+            )
+          : null,
+      modeSelectorShowLabels: !hasScenes && isLargeScreen,
+      additionalContent: hasScenes
+          ? _buildLandscapeScenesColumn(context, localizations)
+          : null,
+    );
+  }
+
+  Widget _buildLandscapeMainContent(
+    BuildContext context,
+    List<LightingRoleData> roles,
+    List<LightDeviceData> otherLights,
+    List<LightTargetView> otherTargets,
+    DevicesService devicesService,
+    AppLocalizations localizations,
+  ) {
+    final hasRoles = roles.isNotEmpty;
+    final hasOtherLights = otherLights.isNotEmpty;
+    final isLargeScreen = _screenService.isLargeScreen;
     final tilesPerRow = isLargeScreen ? 4 : 3;
-    // Scenes: 1 column on small/medium, 2 columns on large
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Roles + Other Lights layout
+        if (hasRoles && hasOtherLights) ...[
+          // Roles row
+          _buildLandscapeRolesRow(
+            context,
+            roles,
+            devicesService,
+            tilesPerRow: tilesPerRow,
+          ),
+          AppSpacings.spacingLgVertical,
+          // Other Lights header
+          _buildOtherLightsTitle(otherLights, otherTargets, localizations),
+          AppSpacings.spacingMdVertical,
+          // Other Lights grid
+          _buildLandscapeLightsGrid(
+            context,
+            otherLights,
+            localizations,
+            tilesPerRow: tilesPerRow,
+            maxRows: isLargeScreen ? 2 : 1,
+          ),
+        ] else if (hasRoles) ...[
+          // Only roles, no other lights - grid layout
+          Expanded(
+            child: _buildRolesGrid(
+              context,
+              roles,
+              devicesService,
+              crossAxisCount: tilesPerRow,
+              aspectRatio: 1.0,
+            ),
+          ),
+        ] else if (hasOtherLights) ...[
+          // Only other lights, no roles
+          _buildOtherLightsTitle(otherLights, otherTargets, localizations),
+          AppSpacings.spacingMdVertical,
+          _buildLandscapeLightsGrid(
+            context,
+            otherLights,
+            localizations,
+            tilesPerRow: tilesPerRow,
+            maxRows: isLargeScreen ? 2 : 1,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildLandscapeScenesColumn(
+    BuildContext context,
+    AppLocalizations localizations,
+  ) {
+    final isLargeScreen = _screenService.isLargeScreen;
     final scenesPerRow = isLargeScreen ? 2 : 1;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Left column: Roles + Other Lights
+        SectionTitle(
+            title: localizations.space_scenes_title, icon: Icons.auto_awesome),
+        AppSpacings.spacingMdVertical,
+        // Vertical scroll with responsive columns, no limit
+        // 1 column = horizontal tiles, 2+ columns = vertical tiles
         Expanded(
-          flex: 2,
-          child: Padding(
-            padding: EdgeInsets.all(AppSpacings.pLg),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Roles + Other Lights layout
-                if (hasRoles && hasOtherLights) ...[
-                  // Roles grid - 1 row
-                  Flexible(
-                    flex: 1,
-                    child: _buildLandscapeRolesRow(
-                      context,
-                      roles,
-                      devicesService,
-                      tilesPerRow: tilesPerRow,
-                    ),
-                  ),
-                  AppSpacings.spacingLgVertical,
-                  // Other Lights header
-                  _buildOtherLightsTitle(otherLights, otherTargets, localizations),
-                  AppSpacings.spacingMdVertical,
-                  // Other Lights grid - fills remaining space
-                  Flexible(
-                    flex: isLargeScreen ? 2 : 1,
-                    child: _buildLandscapeLightsGrid(
-                      context,
-                      otherLights,
-                      localizations,
-                      tilesPerRow: tilesPerRow,
-                      maxRows: isLargeScreen ? 2 : 1,
-                    ),
-                  ),
-                ] else if (hasRoles) ...[
-                  // Only roles, no other lights - grid layout
-                  Expanded(
-                    child: _buildRolesGrid(
-                      context,
-                      roles,
-                      devicesService,
-                      crossAxisCount: tilesPerRow,
-                      aspectRatio: 1.0,
-                    ),
-                  ),
-                ] else if (hasOtherLights) ...[
-                  // Only other lights, no roles
-                  _buildOtherLightsTitle(otherLights, otherTargets, localizations),
-                  AppSpacings.spacingMdVertical,
-                  Expanded(
-                    child: _buildLandscapeLightsGrid(
-                      context,
-                      otherLights,
-                      localizations,
-                      tilesPerRow: tilesPerRow,
-                      maxRows: isLargeScreen ? 2 : 1,
-                    ),
-                  ),
-                ],
-              ],
-            ),
+          child: _buildScenesGrid(
+            context,
+            crossAxisCount: scenesPerRow,
+            scrollable: true,
+            tileLayout:
+                scenesPerRow == 1 ? TileLayout.horizontal : TileLayout.vertical,
+            showInactiveBorder: true,
           ),
         ),
-
-        // Middle column: Vertical Mode Selector (only if backend intents enabled)
-        // Show labels only on large screens when no scenes
-        if (LightingConstants.useBackendIntents && hasLights)
-          Container(
-            // More horizontal padding when labels are shown
-            padding: EdgeInsets.symmetric(
-              vertical: AppSpacings.pLg,
-              horizontal: !hasScenes && isLargeScreen ? AppSpacings.pLg : AppSpacings.pMd,
-            ),
-            child: Center(
-              child: _buildLandscapeModeSelector(
-                context,
-                localizations,
-                showLabels: !hasScenes && isLargeScreen,
-              ),
-            ),
-          ),
-
-        // Right column: Scenes (or empty space if no scenes)
-        if (hasScenes)
-          Expanded(
-            flex: 1,
-            child: Container(
-              color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-              child: Padding(
-                padding: EdgeInsets.all(AppSpacings.pLg),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SectionTitle(title: localizations.space_scenes_title, icon: Icons.auto_awesome),
-                    AppSpacings.spacingMdVertical,
-                    // Vertical scroll with responsive columns, no limit
-                    // 1 column = horizontal tiles, 2+ columns = vertical tiles
-                    Expanded(
-                      child: _buildScenesGrid(
-                        context,
-                        crossAxisCount: scenesPerRow,
-                        scrollable: true,
-                        tileLayout: scenesPerRow == 1 ? TileLayout.horizontal : TileLayout.vertical,
-                        showInactiveBorder: true,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
       ],
     );
   }
@@ -1352,11 +1381,68 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final mode = _currentMode;
     final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
 
+    // Determine activeValue, matchedValue, and lastIntentValue based on state:
+    // - activeValue: mode explicitly set by intent AND still matches (2px border, mode color)
+    // - matchedValue: mode detected by user manually setting devices (1px border, mode color)
+    // - lastIntentValue: last applied intent when no mode matches (1px border, neutral color)
+    final LightingModeUI? activeValue;
+    final LightingModeUI? matchedValue;
+    final LightingModeUI? lastIntentValue;
+
+    if (isModeLocked) {
+      // Optimistic UI: show pending mode as active
+      activeValue = mode;
+      matchedValue = null;
+      lastIntentValue = null;
+    } else {
+      final detectedMode = _lightingState?.detectedMode;
+      final lastAppliedMode = _lightingState?.lastAppliedMode;
+      final isModeFromIntent = _lightingState?.isModeFromIntent ?? false;
+
+      // Convert backend LightingMode to UI LightingModeUI
+      final LightingModeUI? detectedModeUI = detectedMode != null
+          ? LightingModeUI.values.firstWhere(
+              (m) => m.name == detectedMode.name,
+              orElse: () => LightingModeUI.off,
+            )
+          : null;
+      final LightingModeUI? lastAppliedModeUI = lastAppliedMode != null
+          ? LightingModeUI.values.firstWhere(
+              (m) => m.name == lastAppliedMode.name,
+              orElse: () => LightingModeUI.off,
+            )
+          : null;
+
+      if (detectedModeUI != null && isModeFromIntent) {
+        // Mode was set by intent and still matches: show as active
+        activeValue = detectedModeUI;
+        matchedValue = null;
+        lastIntentValue = null;
+      } else if (detectedModeUI != null && !isModeFromIntent) {
+        // Mode detected but not from intent (user manually matched): show as matched
+        activeValue = null;
+        matchedValue = detectedModeUI;
+        lastIntentValue = null;
+      } else if (lastAppliedModeUI != null) {
+        // No mode matches, but we have a last applied intent: show as last intent
+        activeValue = null;
+        matchedValue = null;
+        lastIntentValue = lastAppliedModeUI;
+      } else {
+        // No mode at all - check if all lights are off
+        activeValue = mode == LightingModeUI.off ? LightingModeUI.off : null;
+        matchedValue = null;
+        lastIntentValue = null;
+      }
+    }
+
     return IgnorePointer(
       ignoring: isModeLocked,
-      child: ModeSelector<LightingModeUI>(
+      child: IntentModeSelector<LightingModeUI>(
         modes: _getLightingModeOptions(localizations),
-        selectedValue: mode,
+        activeValue: activeValue,
+        matchedValue: matchedValue,
+        lastIntentValue: lastIntentValue,
         onChanged: _setLightingMode,
         orientation: ModeSelectorOrientation.vertical,
         iconPlacement: ModeSelectorIconPlacement.top,
@@ -1371,31 +1457,38 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     List<LightingRoleData> roles,
     DevicesService devicesService, {
     required int tilesPerRow,
+    double aspectRatio = 1.0, // width / height ratio
   }) {
     final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Calculate tile width to fit exactly tilesPerRow tiles
+        // Calculate tile width from available horizontal space
         final totalSpacing = AppSpacings.pMd * (tilesPerRow - 1);
         final tileWidth = (constraints.maxWidth - totalSpacing) / tilesPerRow;
 
-        return ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: roles.length,
-          separatorBuilder: (context, index) => AppSpacings.spacingMdHorizontal,
-          itemBuilder: (context, index) {
-            return SizedBox(
-              width: tileWidth,
-              child: _RoleCard(
-                role: roles[index],
-                onTap: () => _openRoleDetail(context, roles[index]),
-                onIconTap: () => _toggleRoleViaIntent(roles[index]),
-                isLoading: isModeLocked,
-                pendingState: _getRolePendingState(roles[index].role),
-              ),
-            );
-          },
+        // Derive tile height from width using aspect ratio
+        final tileHeight = tileWidth / aspectRatio;
+
+        return SizedBox(
+          height: tileHeight,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: roles.length,
+            separatorBuilder: (context, index) => AppSpacings.spacingMdHorizontal,
+            itemBuilder: (context, index) {
+              return SizedBox(
+                width: tileWidth,
+                child: _RoleCard(
+                  role: roles[index],
+                  onTap: () => _openRoleDetail(context, roles[index]),
+                  onIconTap: () => _toggleRoleViaIntent(roles[index]),
+                  isLoading: isModeLocked,
+                  pendingState: _getRolePendingState(roles[index].role),
+                ),
+              );
+            },
+          ),
         );
       },
     );
@@ -1438,52 +1531,59 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     AppLocalizations localizations, {
     required int tilesPerRow,
     required int maxRows,
+    double aspectRatio = 1.0, // width / height ratio
   }) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Calculate tile size to fit exactly tilesPerRow tiles
+        // Calculate tile width from available horizontal space
         final totalHSpacing = AppSpacings.pMd * (tilesPerRow - 1);
         final tileWidth = (constraints.maxWidth - totalHSpacing) / tilesPerRow;
 
-        // For 2 rows, calculate height per row
+        // Derive tile height from width using aspect ratio
+        final tileHeight = tileWidth / aspectRatio;
+
+        // Calculate total grid height
         final totalVSpacing = maxRows > 1 ? AppSpacings.pMd * (maxRows - 1) : 0.0;
-        final tileHeight = (constraints.maxHeight - totalVSpacing) / maxRows;
+        final gridHeight = tileHeight * maxRows + totalVSpacing;
 
         // Build columns of tiles (each column has maxRows tiles stacked)
         final columnCount = (lights.length / maxRows).ceil();
 
-        return ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: columnCount,
-          separatorBuilder: (context, index) => AppSpacings.spacingMdHorizontal,
-          itemBuilder: (context, colIndex) {
-            return SizedBox(
-              width: tileWidth,
-              child: Column(
-                children: [
-                  for (var row = 0; row < maxRows; row++) ...[
-                    if (row > 0) AppSpacings.spacingMdVertical,
-                    SizedBox(
-                      height: tileHeight,
-                      child: () {
-                        final index = colIndex * maxRows + row;
-                        if (index < lights.length) {
-                          return _LightTile(
-                            light: lights[index],
-                            localizations: localizations,
-                            onTap: () => _openDeviceDetail(context, lights[index]),
-                            onIconTap: () => _toggleLight(lights[index]),
-                            isVertical: true,
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      }(),
-                    ),
+        return SizedBox(
+          height: gridHeight,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: columnCount,
+            separatorBuilder: (context, index) => AppSpacings.spacingMdHorizontal,
+            itemBuilder: (context, colIndex) {
+              return SizedBox(
+                width: tileWidth,
+                child: Column(
+                  children: [
+                    for (var row = 0; row < maxRows; row++) ...[
+                      if (row > 0) AppSpacings.spacingMdVertical,
+                      SizedBox(
+                        height: tileHeight,
+                        child: () {
+                          final index = colIndex * maxRows + row;
+                          if (index < lights.length) {
+                            return _LightTile(
+                              light: lights[index],
+                              localizations: localizations,
+                              onTap: () => _openDeviceDetail(context, lights[index]),
+                              onIconTap: () => _toggleLight(lights[index]),
+                              isVertical: true,
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        }(),
+                      ),
+                    ],
                   ],
-                ],
-              ),
-            );
-          },
+                ),
+              );
+            },
+          ),
         );
       },
     );
@@ -1573,10 +1673,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       } else {
         // Set the mode - backend handles turning on appropriate lights
         final backendMode = mode.toBackendMode();
-        if (backendMode != null) {
-          final result = await _spacesService?.setLightingMode(_roomId, backendMode);
-          success = result != null;
-        }
+        final result = await _spacesService?.setLightingMode(_roomId, backendMode);
+        success = result != null;
       }
 
       if (success && mounted) {

@@ -32,6 +32,15 @@ export interface LastAppliedMode {
 	status: IntentStatus;
 }
 
+/**
+ * Mode validity status for a space domain (lighting/covers)
+ * Used to track if the current state was achieved via intent or manual changes
+ */
+export interface ModeValidityStatus {
+	modeValid: boolean;
+	timestamp: Date;
+}
+
 export interface LastAppliedMediaState {
 	mode: string | null;
 	volume: number | null;
@@ -714,18 +723,152 @@ export class IntentTimeseriesService {
 	}
 
 	/**
-	 * Check if an intent type is a space-level intent (lighting/climate mode).
+	 * Store mode validity status for a space domain.
+	 * Called when an intent is applied (modeValid = true) or when state diverges (modeValid = false).
+	 *
+	 * @param spaceId - The space ID
+	 * @param domain - The domain (lighting/covers)
+	 * @param modeValid - Whether the mode is still valid from intent (false = manually changed)
+	 */
+	async storeModeValidity(spaceId: string, domain: 'lighting' | 'covers', modeValid: boolean): Promise<void> {
+		if (!this.influxDbService.isConnected()) {
+			this.logger.debug(`InfluxDB not connected - mode validity not stored spaceId=${spaceId}`);
+			return;
+		}
+
+		if (!isValidUuid(spaceId)) {
+			this.logger.warn(`Invalid spaceId format rejected spaceId=${spaceId}`);
+			return;
+		}
+
+		try {
+			await this.influxDbService.writePoints([
+				{
+					measurement: 'space_mode_validity',
+					tags: {
+						spaceId,
+						domain,
+					},
+					fields: {
+						modeValid,
+					},
+					timestamp: new Date(),
+				},
+			]);
+
+			this.logger.debug(`Mode validity stored spaceId=${spaceId} domain=${domain} modeValid=${modeValid}`);
+		} catch (error) {
+			const err = error as Error;
+			this.logger.error(
+				`Failed to store mode validity spaceId=${spaceId} domain=${domain} error=${err.message}`,
+				err.stack,
+			);
+		}
+	}
+
+	/**
+	 * Query the current mode validity status for a space domain.
+	 * Returns true if the mode was set by intent and hasn't been manually changed.
+	 */
+	async getModeValidity(spaceId: string, domain: 'lighting' | 'covers'): Promise<ModeValidityStatus | null> {
+		if (!this.influxDbService.isConnected()) {
+			this.logger.debug(`InfluxDB not connected - cannot query mode validity spaceId=${spaceId}`);
+			return null;
+		}
+
+		if (!isValidUuid(spaceId)) {
+			this.logger.warn(`Invalid spaceId format rejected spaceId=${spaceId}`);
+			return null;
+		}
+
+		const safeSpaceId = sanitizeInfluxString(spaceId);
+		const safeDomain = sanitizeInfluxString(domain);
+
+		const query = `
+			SELECT modeValid
+			FROM space_mode_validity
+			WHERE spaceId = '${safeSpaceId}'
+			AND domain = '${safeDomain}'
+			ORDER BY time DESC
+			LIMIT 1
+		`
+			.trim()
+			.replace(/\s+/g, ' ');
+
+		try {
+			const result = await this.influxDbService.query<{
+				time: { _nanoISO: string };
+				modeValid: boolean;
+			}>(query);
+
+			if (!result.length) {
+				return null;
+			}
+
+			const row = result[0];
+
+			return {
+				modeValid: row.modeValid,
+				timestamp: new Date(row.time._nanoISO),
+			};
+		} catch (error) {
+			const err = error as Error;
+			this.logger.error(
+				`Failed to query mode validity spaceId=${spaceId} domain=${domain} error=${err.message}`,
+				err.stack,
+			);
+			return null;
+		}
+	}
+
+	/**
+	 * Check if an intent type is a space-level intent.
+	 * These intents operate on spaces (rooms) rather than individual devices,
+	 * and their completions are stored in InfluxDB for historical tracking.
 	 */
 	private isSpaceLevelIntent(type: IntentType): boolean {
-		// These are the intent types used for space-level operations
 		return [
-			IntentType.LIGHT_TOGGLE,
-			IntentType.LIGHT_SET_BRIGHTNESS,
-			IntentType.LIGHT_SET_COLOR,
-			IntentType.LIGHT_SET_COLOR_TEMP,
-			IntentType.LIGHT_SET_WHITE,
-			IntentType.DEVICE_SET_PROPERTY,
+			// Lighting domain - space-level operations
+			IntentType.SPACE_LIGHTING_ON,
+			IntentType.SPACE_LIGHTING_OFF,
+			IntentType.SPACE_LIGHTING_SET_MODE,
+			IntentType.SPACE_LIGHTING_BRIGHTNESS_DELTA,
+			IntentType.SPACE_LIGHTING_ROLE_ON,
+			IntentType.SPACE_LIGHTING_ROLE_OFF,
+			IntentType.SPACE_LIGHTING_ROLE_BRIGHTNESS,
+			IntentType.SPACE_LIGHTING_ROLE_COLOR,
+			IntentType.SPACE_LIGHTING_ROLE_COLOR_TEMP,
+			IntentType.SPACE_LIGHTING_ROLE_WHITE,
+			IntentType.SPACE_LIGHTING_ROLE_SET,
+			// Climate domain - space-level operations
+			IntentType.SPACE_CLIMATE_SET_MODE,
+			IntentType.SPACE_CLIMATE_SETPOINT_SET,
+			IntentType.SPACE_CLIMATE_SETPOINT_DELTA,
+			IntentType.SPACE_CLIMATE_SET,
+			// Covers domain - space-level operations
+			IntentType.SPACE_COVERS_OPEN,
+			IntentType.SPACE_COVERS_CLOSE,
+			IntentType.SPACE_COVERS_STOP,
+			IntentType.SPACE_COVERS_SET_POSITION,
+			IntentType.SPACE_COVERS_POSITION_DELTA,
+			IntentType.SPACE_COVERS_ROLE_POSITION,
+			IntentType.SPACE_COVERS_SET_MODE,
+			// Media domain - space-level operations
+			IntentType.SPACE_MEDIA_POWER_ON,
+			IntentType.SPACE_MEDIA_POWER_OFF,
+			IntentType.SPACE_MEDIA_VOLUME_SET,
+			IntentType.SPACE_MEDIA_VOLUME_DELTA,
+			IntentType.SPACE_MEDIA_MUTE,
+			IntentType.SPACE_MEDIA_UNMUTE,
+			IntentType.SPACE_MEDIA_ROLE_POWER,
+			IntentType.SPACE_MEDIA_ROLE_VOLUME,
 			IntentType.SPACE_MEDIA_SET_MODE,
+			IntentType.SPACE_MEDIA_PLAY,
+			IntentType.SPACE_MEDIA_PAUSE,
+			IntentType.SPACE_MEDIA_STOP,
+			IntentType.SPACE_MEDIA_NEXT,
+			IntentType.SPACE_MEDIA_PREVIOUS,
+			IntentType.SPACE_MEDIA_INPUT_SET,
 		].includes(type);
 	}
 

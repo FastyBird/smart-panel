@@ -1604,4 +1604,101 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get climate_devices_section => 'Climate Devices';
+
+  @override
+  String get domain_shading => 'Shading';
+
+  @override
+  String get domain_shading_empty_title => 'No Window Coverings';
+
+  @override
+  String get domain_shading_empty_description => 'No window covering devices found in this room';
+
+  @override
+  String get shading_modes_title => 'Modes';
+
+  @override
+  String get shading_devices_title => 'Devices';
+
+  @override
+  String shading_devices_count(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count devices',
+      one: '1 device',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get shading_action_open => 'Open';
+
+  @override
+  String get shading_action_close => 'Close';
+
+  @override
+  String get shading_action_stop => 'Stop';
+
+  @override
+  String get shading_state_open => 'Open';
+
+  @override
+  String get shading_state_closed => 'Closed';
+
+  @override
+  String shading_state_partial(int position) {
+    return '$position% open';
+  }
+
+  @override
+  String get shading_position => 'Position';
+
+  @override
+  String get shading_tap_for_controls => 'Tap for controls';
+
+  @override
+  String get shading_hide_controls => 'Hide controls';
+
+  @override
+  String get covers_mode_open => 'Open';
+
+  @override
+  String get covers_mode_closed => 'Closed';
+
+  @override
+  String get covers_mode_privacy => 'Privacy';
+
+  @override
+  String get covers_mode_daylight => 'Daylight';
+
+  @override
+  String get covers_role_primary => 'Primary';
+
+  @override
+  String get covers_role_blackout => 'Blackout';
+
+  @override
+  String get covers_role_sheer => 'Sheer';
+
+  @override
+  String get covers_role_outdoor => 'Outdoor';
+
+  @override
+  String get covers_role_hidden => 'Hidden';
+
+  @override
+  String get cover_type_curtain => 'Curtain';
+
+  @override
+  String get cover_type_blind => 'Blind';
+
+  @override
+  String get cover_type_roller => 'Roller';
+
+  @override
+  String get cover_type_outdoor_blind => 'Outdoor Blind';
+
+  @override
+  String get cover_type_cover => 'Cover';
 }

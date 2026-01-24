@@ -551,6 +551,11 @@ class SpacesService extends ChangeNotifier {
     return _spaceStateRepository.closeCovers(spaceId);
   }
 
+  /// Stop all covers movement in a space
+  Future<CoversIntentResult?> stopCovers(String spaceId) {
+    return _spaceStateRepository.stopCovers(spaceId);
+  }
+
   /// Set covers position
   Future<CoversIntentResult?> setCoversPosition(String spaceId, int position) {
     return _spaceStateRepository.setCoversPosition(spaceId, position);
@@ -576,6 +581,11 @@ class SpacesService extends ChangeNotifier {
     int position,
   ) {
     return _spaceStateRepository.setRolePosition(spaceId, role, position);
+  }
+
+  /// Set covers mode (open, closed, privacy, daylight)
+  Future<CoversIntentResult?> setCoversMode(String spaceId, CoversMode mode) {
+    return _spaceStateRepository.setCoversMode(spaceId, mode);
   }
 
   // ============================================
