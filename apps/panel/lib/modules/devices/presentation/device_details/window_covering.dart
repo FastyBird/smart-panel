@@ -799,7 +799,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
               Expanded(
                 child: UniversalTile(
                   layout: TileLayout.horizontal,
-                  icon: MdiIcons.clock,
+                  icon: _getStatusIcon(),
                   name: 'Status',
                   status: _getStatusLabel(context),
                   isActive: false,
@@ -837,10 +837,32 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   Color _getStatusColor(BuildContext context) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
 
-    if (_device.isWindowCoveringOpening || _device.isWindowCoveringClosing) {
-      return isLight ? AppColorsLight.info : AppColorsDark.info;
+    switch (_device.windowCoveringStatus) {
+      case WindowCoveringStatusValue.opened:
+        return isLight ? AppColorsLight.success : AppColorsDark.success;
+      case WindowCoveringStatusValue.closed:
+        return isLight ? AppTextColorLight.secondary : AppTextColorDark.secondary;
+      case WindowCoveringStatusValue.opening:
+      case WindowCoveringStatusValue.closing:
+        return isLight ? AppColorsLight.info : AppColorsDark.info;
+      case WindowCoveringStatusValue.stopped:
+        return isLight ? AppColorsLight.warning : AppColorsDark.warning;
     }
-    return isLight ? AppColorsLight.warning : AppColorsDark.warning;
+  }
+
+  IconData _getStatusIcon() {
+    switch (_device.windowCoveringStatus) {
+      case WindowCoveringStatusValue.opened:
+        return MdiIcons.blindsOpen;
+      case WindowCoveringStatusValue.closed:
+        return MdiIcons.blinds;
+      case WindowCoveringStatusValue.opening:
+        return MdiIcons.arrowUpBold;
+      case WindowCoveringStatusValue.closing:
+        return MdiIcons.arrowDownBold;
+      case WindowCoveringStatusValue.stopped:
+        return MdiIcons.pauseCircle;
+    }
   }
 
   Widget _buildInfoRow(BuildContext context) {
@@ -851,7 +873,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         Expanded(
           child: UniversalTile(
             layout: TileLayout.horizontal,
-            icon: MdiIcons.clock,
+            icon: _getStatusIcon(),
             name: 'Status',
             status: _getStatusLabel(context),
             isActive: false,
