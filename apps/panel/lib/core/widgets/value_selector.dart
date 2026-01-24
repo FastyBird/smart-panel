@@ -106,6 +106,8 @@ class ValueSelectorRow<T> extends StatelessWidget {
         isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
     final secondaryColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+    final iconBgColor =
+        isDark ? AppFillColorDark.darker : AppFillColorLight.light;
     final iconColor =
         isDark ? AppTextColorDark.regular : AppTextColorLight.regular;
 
@@ -123,7 +125,9 @@ class ValueSelectorRow<T> extends StatelessWidget {
         child: Container(
           padding: EdgeInsets.symmetric(
             horizontal: AppSpacings.pMd,
-            vertical: AppSpacings.pMd,
+            vertical: layout == ValueSelectorRowLayout.compact
+                ? AppSpacings.pSm
+                : AppSpacings.pMd,
           ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppBorderRadius.medium),
@@ -134,12 +138,21 @@ class ValueSelectorRow<T> extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(
-                icon,
-                color: iconColor,
-                size: _scale(20),
+              // Icon with background container (matching UniversalTile style)
+              Container(
+                width: _scale(32),
+                height: _scale(32),
+                decoration: BoxDecoration(
+                  color: iconBgColor,
+                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
+                ),
+                child: Icon(
+                  icon,
+                  color: iconColor,
+                  size: _scale(18),
+                ),
               ),
-              AppSpacings.spacingSmHorizontal,
+              AppSpacings.spacingMdHorizontal,
               Expanded(
                 child: layout == ValueSelectorRowLayout.compact
                     ? Column(
@@ -150,18 +163,20 @@ class ValueSelectorRow<T> extends StatelessWidget {
                             label,
                             style: TextStyle(
                               color: textColor,
-                              fontSize: AppFontSize.small,
-                              fontWeight: FontWeight.w400,
+                              fontSize: AppFontSize.base,
+                              fontWeight: FontWeight.w600,
                             ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
-                          AppSpacings.spacingXsVertical,
                           Text(
                             _displayValue,
                             style: TextStyle(
                               color: secondaryColor,
                               fontSize: AppFontSize.extraSmall,
-                              fontWeight: FontWeight.w500,
                             ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
                         ],
                       )
