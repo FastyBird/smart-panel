@@ -592,7 +592,10 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
       final range = fanChannel.maxSpeed - fanChannel.minSpeed;
       if (range <= 0) return const SizedBox.shrink();
 
-      if (useVerticalLayout) {
+      final isLandscape = _screenService.isLandscape;
+
+      // Landscape (all sizes): Use ValueSelectorRow button
+      if (isLandscape) {
         return ValueSelectorRow<double>(
           currentValue: _speed,
           label: localizations.device_fan_speed,
@@ -607,6 +610,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
           onChanged: _device.isOn ? (v) => _setSpeedValue(v ?? 0) : null,
         );
       } else {
+        // Portrait (all sizes): Use SpeedSlider
         return SpeedSlider(
           value: _speed,
           activeColor: fanColor,
