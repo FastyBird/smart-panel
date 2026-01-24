@@ -125,7 +125,6 @@ class ValueSelectorRow<T> extends StatelessWidget {
       onTap: onChanged != null ? () => _showSelectorSheet(context, isDark) : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        margin: EdgeInsets.symmetric(vertical: AppSpacings.pSm),
         padding: EdgeInsets.symmetric(
           horizontal: AppSpacings.pMd,
           vertical: AppSpacings.pMd,

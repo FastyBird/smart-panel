@@ -875,12 +875,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         isLight ? AppColorsLight.primary : AppColorsDark.primary;
     final localizations = AppLocalizations.of(context);
 
-    // Calculate tile dimensions
-    final tileWidth = _screenService.scale(
-      AppTileWidth.horizontalMedium,
-      density: _visualDensityService.density,
-    );
-    final tileHeight = tileWidth / AppTileAspectRatio.wide;
+    // Use consistent tile dimensions
+    final tileWidth = _scale(AppTileWidth.horizontalMedium);
+    final tileHeight = _scale(AppTileHeight.horizontal);
 
     return HorizontalScrollWithGradient(
       height: tileHeight,
@@ -1553,39 +1550,46 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   Widget _buildInfoCard(BuildContext context) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final localizations = AppLocalizations.of(context)!;
+    final tileHeight = _scale(AppTileHeight.horizontal);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        UniversalTile(
-          layout: TileLayout.horizontal,
-          icon: _getStatusIcon(),
-          name: localizations.window_covering_info_status,
-          status: _getStatusLabel(context),
-          isActive: false,
-          iconAccentColor: _getStatusColor(context),
-          showGlow: false,
-          showWarningBadge: false,
-          showInactiveBorder: isLight,
-        ),
-        if (_device.hasWindowCoveringObstruction) ...[
-          AppSpacings.spacingSmVertical,
-          UniversalTile(
+        SizedBox(
+          height: tileHeight,
+          child: UniversalTile(
             layout: TileLayout.horizontal,
-            icon: _device.windowCoveringObstruction
-                ? MdiIcons.alertCircle
-                : MdiIcons.checkCircle,
-            name: localizations.window_covering_info_obstruction,
-            status: _device.windowCoveringObstruction
-                ? localizations.window_covering_obstruction_detected
-                : localizations.window_covering_obstruction_clear,
+            icon: _getStatusIcon(),
+            name: localizations.window_covering_info_status,
+            status: _getStatusLabel(context),
             isActive: false,
-            iconAccentColor: _device.windowCoveringObstruction
-                ? (isLight ? AppColorsLight.warning : AppColorsDark.warning)
-                : (isLight ? AppColorsLight.success : AppColorsDark.success),
+            iconAccentColor: _getStatusColor(context),
             showGlow: false,
             showWarningBadge: false,
             showInactiveBorder: isLight,
+          ),
+        ),
+        if (_device.hasWindowCoveringObstruction) ...[
+          AppSpacings.spacingSmVertical,
+          SizedBox(
+            height: tileHeight,
+            child: UniversalTile(
+              layout: TileLayout.horizontal,
+              icon: _device.windowCoveringObstruction
+                  ? MdiIcons.alertCircle
+                  : MdiIcons.checkCircle,
+              name: localizations.window_covering_info_obstruction,
+              status: _device.windowCoveringObstruction
+                  ? localizations.window_covering_obstruction_detected
+                  : localizations.window_covering_obstruction_clear,
+              isActive: false,
+              iconAccentColor: _device.windowCoveringObstruction
+                  ? (isLight ? AppColorsLight.warning : AppColorsDark.warning)
+                  : (isLight ? AppColorsLight.success : AppColorsDark.success),
+              showGlow: false,
+              showWarningBadge: false,
+              showInactiveBorder: isLight,
+            ),
           ),
         ],
       ],
@@ -1626,49 +1630,53 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   Widget _buildInfoRow(BuildContext context) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final localizations = AppLocalizations.of(context)!;
+    final tileHeight = _scale(AppTileHeight.horizontal);
 
-    return Row(
-      children: [
-        Expanded(
-          child: UniversalTile(
-            layout: TileLayout.horizontal,
-            icon: _getStatusIcon(),
-            name: localizations.window_covering_info_status,
-            status: _getStatusLabel(context),
-            isActive: false,
-            activeColor: _getStatusColor(context),
-            iconAccentColor: _getStatusColor(context),
-            showGlow: false,
-            showWarningBadge: false,
-            showInactiveBorder: isLight,
-          ),
-        ),
-        if (_device.hasWindowCoveringObstruction) ...[
-          AppSpacings.spacingSmHorizontal,
+    return SizedBox(
+      height: tileHeight,
+      child: Row(
+        children: [
           Expanded(
             child: UniversalTile(
               layout: TileLayout.horizontal,
-              icon: _device.windowCoveringObstruction
-                  ? MdiIcons.alertCircle
-                  : MdiIcons.checkCircle,
-              name: localizations.window_covering_info_obstruction,
-              status: _device.windowCoveringObstruction
-                  ? localizations.window_covering_obstruction_detected
-                  : localizations.window_covering_obstruction_clear,
+              icon: _getStatusIcon(),
+              name: localizations.window_covering_info_status,
+              status: _getStatusLabel(context),
               isActive: false,
-              activeColor: _device.windowCoveringObstruction
-                  ? (isLight ? AppColorsLight.warning : AppColorsDark.warning)
-                  : (isLight ? AppColorsLight.success : AppColorsDark.success),
-              iconAccentColor: _device.windowCoveringObstruction
-                  ? (isLight ? AppColorsLight.warning : AppColorsDark.warning)
-                  : (isLight ? AppColorsLight.success : AppColorsDark.success),
+              activeColor: _getStatusColor(context),
+              iconAccentColor: _getStatusColor(context),
               showGlow: false,
               showWarningBadge: false,
               showInactiveBorder: isLight,
             ),
           ),
+          if (_device.hasWindowCoveringObstruction) ...[
+            AppSpacings.spacingSmHorizontal,
+            Expanded(
+              child: UniversalTile(
+                layout: TileLayout.horizontal,
+                icon: _device.windowCoveringObstruction
+                    ? MdiIcons.alertCircle
+                    : MdiIcons.checkCircle,
+                name: localizations.window_covering_info_obstruction,
+                status: _device.windowCoveringObstruction
+                    ? localizations.window_covering_obstruction_detected
+                    : localizations.window_covering_obstruction_clear,
+                isActive: false,
+                activeColor: _device.windowCoveringObstruction
+                    ? (isLight ? AppColorsLight.warning : AppColorsDark.warning)
+                    : (isLight ? AppColorsLight.success : AppColorsDark.success),
+                iconAccentColor: _device.windowCoveringObstruction
+                    ? (isLight ? AppColorsLight.warning : AppColorsDark.warning)
+                    : (isLight ? AppColorsLight.success : AppColorsDark.success),
+                showGlow: false,
+                showWarningBadge: false,
+                showInactiveBorder: isLight,
+              ),
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 
@@ -1684,34 +1692,64 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     final localizations = AppLocalizations.of(context);
     final isLargeScreen = _screenService.isLargeScreen;
 
-    // Large screens: 2 vertical tiles per row, small/medium: 1 horizontal tile per row
-    final tileLayout = isLargeScreen ? TileLayout.vertical : TileLayout.horizontal;
-    final aspectRatio = isLargeScreen ? AppTileAspectRatio.square : AppTileAspectRatio.extraWide;
-    final crossAxisCount = isLargeScreen ? 2 : 1;
+    // Large screens: 2 vertical tiles per row (square)
+    // Small/medium: 1 horizontal tile per row with fixed height
+    if (isLargeScreen) {
+      return GridView.count(
+        crossAxisCount: 2,
+        mainAxisSpacing: AppSpacings.pSm,
+        crossAxisSpacing: AppSpacings.pSm,
+        childAspectRatio: AppTileAspectRatio.square,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        children: _presets.asMap().entries.map((entry) {
+          final index = entry.key;
+          final preset = entry.value;
+          final bool isActive = _isPresetActive(index);
 
-    return GridView.count(
-      crossAxisCount: crossAxisCount,
-      mainAxisSpacing: AppSpacings.pSm,
-      crossAxisSpacing: AppSpacings.pSm,
-      childAspectRatio: aspectRatio,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+          return UniversalTile(
+            layout: TileLayout.vertical,
+            icon: preset.icon,
+            name: preset.getName(localizations),
+            status: '${preset.position}%',
+            isActive: isActive,
+            activeColor: primaryColor,
+            onTileTap: () => _applyPreset(index),
+            showGlow: false,
+            showWarningBadge: false,
+            showInactiveBorder: isLight,
+          );
+        }).toList(),
+      );
+    }
+
+    // Small/medium: Column of fixed-height horizontal tiles
+    final tileHeight = _scale(AppTileHeight.horizontal);
+
+    return Column(
       children: _presets.asMap().entries.map((entry) {
         final index = entry.key;
         final preset = entry.value;
         final bool isActive = _isPresetActive(index);
+        final isLast = index == _presets.length - 1;
 
-        return UniversalTile(
-          layout: tileLayout,
-          icon: preset.icon,
-          name: preset.getName(localizations),
-          status: '${preset.position}%',
-          isActive: isActive,
-          activeColor: primaryColor,
-          onTileTap: () => _applyPreset(index),
-          showGlow: false,
-          showWarningBadge: false,
-          showInactiveBorder: isLight,
+        return Padding(
+          padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pSm),
+          child: SizedBox(
+            height: tileHeight,
+            child: UniversalTile(
+              layout: TileLayout.horizontal,
+              icon: preset.icon,
+              name: preset.getName(localizations),
+              status: '${preset.position}%',
+              isActive: isActive,
+              activeColor: primaryColor,
+              onTileTap: () => _applyPreset(index),
+              showGlow: false,
+              showWarningBadge: false,
+              showInactiveBorder: isLight,
+            ),
+          ),
         );
       }).toList(),
     );

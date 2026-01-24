@@ -664,6 +664,14 @@ class AppTileWidth {
   static const double verticalLarge = 120.0;
 }
 
+/// Standard tile heights for consistent tile sizing.
+/// Use for horizontal tiles where height should be fixed regardless of width.
+class AppTileHeight {
+  /// Standard height for horizontal tiles (status, info, presets)
+  /// Matches horizontalMedium (140) / wide aspect ratio (2.5) = 56
+  static const double horizontal = 56.0;
+}
+
 class AppFilledButtonsLightThemes {
   static FilledButtonThemeData get base => FilledButtonThemeData(
     style: createButtonTheme(
