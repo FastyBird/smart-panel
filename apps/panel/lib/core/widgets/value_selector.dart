@@ -99,17 +99,26 @@ class ValueSelectorRow<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
+    final isDisabled = onChanged == null;
+
+    // Use disabled colors when onChanged is null
+    final cardColor = isDisabled
+        ? (isDark ? AppFillColorDark.darker : AppFillColorLight.darker)
+        : (isDark ? AppFillColorDark.light : AppFillColorLight.blank);
     final borderColor =
         isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
-    final textColor =
-        isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
-    final secondaryColor =
-        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-    final iconBgColor =
-        isDark ? AppFillColorDark.darker : AppFillColorLight.light;
-    final iconColor =
-        isDark ? AppTextColorDark.regular : AppTextColorLight.regular;
+    final textColor = isDisabled
+        ? (isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled)
+        : (isDark ? AppTextColorDark.primary : AppTextColorLight.primary);
+    final secondaryColor = isDisabled
+        ? (isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled)
+        : (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary);
+    final iconBgColor = isDisabled
+        ? (isDark ? AppFillColorDark.light : AppFillColorLight.light)
+        : (isDark ? AppFillColorDark.darker : AppFillColorLight.light);
+    final iconColor = isDisabled
+        ? (isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled)
+        : (isDark ? AppTextColorDark.regular : AppTextColorLight.regular);
 
     return Material(
       color: cardColor,
