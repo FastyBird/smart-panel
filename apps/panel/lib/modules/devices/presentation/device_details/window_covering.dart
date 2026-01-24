@@ -194,6 +194,34 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   // Get current tilt (local value takes precedence for smooth slider)
   int get _tiltAngle => _localTilt ?? _controller?.tilt ?? _device.isWindowCoveringTilt;
 
+  // ===========================================================================
+  // ACTION HANDLERS
+  // ===========================================================================
+
+  void _handleOpen() {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.open();
+    setState(() {});
+  }
+
+  void _handleClose() {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.close();
+    setState(() {});
+  }
+
+  void _handleStop() {
+    final controller = _controller;
+    if (controller == null) return;
+
+    controller.stop();
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -709,30 +737,50 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   }
   /// Smaller vertical action buttons for small/medium screens
   Widget _buildCompactVerticalActionButtons(BuildContext context) {
+    final controller = _controller;
+    // Hide if no commands available
+    if (controller == null || !controller.hasCommand) {
+      return const SizedBox.shrink();
+    }
+
+    final buttons = <Widget>[];
+
+    if (controller.hasOpenCommand) {
+      buttons.add(_buildCompactActionIconButton(
+        context,
+        icon: MdiIcons.chevronUp,
+        isActive: false,
+        onTap: _handleOpen,
+      ));
+    }
+
+    if (controller.hasStopCommand) {
+      if (buttons.isNotEmpty) buttons.add(AppSpacings.spacingXsVertical);
+      buttons.add(_buildCompactActionIconButton(
+        context,
+        icon: MdiIcons.stop,
+        isActive: _device.isWindowCoveringStopped,
+        onTap: _handleStop,
+      ));
+    }
+
+    if (controller.hasCloseCommand) {
+      if (buttons.isNotEmpty) buttons.add(AppSpacings.spacingXsVertical);
+      buttons.add(_buildCompactActionIconButton(
+        context,
+        icon: MdiIcons.chevronDown,
+        isActive: false,
+        onTap: _handleClose,
+      ));
+    }
+
+    if (buttons.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        _buildCompactActionIconButton(
-          context,
-          icon: MdiIcons.chevronUp,
-          isActive: false,
-          onTap: () => _controller?.open(),
-        ),
-        AppSpacings.spacingXsVertical,
-        _buildCompactActionIconButton(
-          context,
-          icon: MdiIcons.stop,
-          isActive: _device.isWindowCoveringStopped,
-          onTap: () => _controller?.stop(),
-        ),
-        AppSpacings.spacingXsVertical,
-        _buildCompactActionIconButton(
-          context,
-          icon: MdiIcons.chevronDown,
-          isActive: false,
-          onTap: () => _controller?.close(),
-        ),
-      ],
+      children: buttons,
     );
   }
 
@@ -1252,46 +1300,66 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       () {
         if (!mounted) return;
         _controller?.setPosition(intValue);
+        setState(() {});
       },
     );
   }
 
   Widget _buildQuickActions(BuildContext context) {
+    final controller = _controller;
+    // Hide if no commands available
+    if (controller == null || !controller.hasCommand) {
+      return const SizedBox.shrink();
+    }
+
     final localizations = AppLocalizations.of(context)!;
+    final buttons = <Widget>[];
+
+    if (controller.hasOpenCommand) {
+      buttons.add(Expanded(
+        child: _buildQuickActionButton(
+          context,
+          label: localizations.window_covering_command_open,
+          icon: MdiIcons.chevronUp,
+          isActive: false,
+          onTap: _handleOpen,
+        ),
+      ));
+    }
+
+    if (controller.hasStopCommand) {
+      if (buttons.isNotEmpty) buttons.add(AppSpacings.spacingSmHorizontal);
+      buttons.add(Expanded(
+        child: _buildQuickActionButton(
+          context,
+          label: localizations.window_covering_command_stop,
+          icon: MdiIcons.stop,
+          isActive: _device.isWindowCoveringStopped,
+          onTap: _handleStop,
+        ),
+      ));
+    }
+
+    if (controller.hasCloseCommand) {
+      if (buttons.isNotEmpty) buttons.add(AppSpacings.spacingSmHorizontal);
+      buttons.add(Expanded(
+        child: _buildQuickActionButton(
+          context,
+          label: localizations.window_covering_command_close,
+          icon: MdiIcons.chevronDown,
+          isActive: false,
+          onTap: _handleClose,
+        ),
+      ));
+    }
+
+    if (buttons.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Expanded(
-          child: _buildQuickActionButton(
-            context,
-            label: localizations.window_covering_command_open,
-            icon: MdiIcons.chevronUp,
-            isActive: false,
-            onTap: () => _controller?.open(),
-          ),
-        ),
-        AppSpacings.spacingSmHorizontal,
-        Expanded(
-          child: _buildQuickActionButton(
-            context,
-            label: localizations.window_covering_command_stop,
-            icon: MdiIcons.stop,
-            isActive: _device.isWindowCoveringStopped,
-            onTap: () => _controller?.stop(),
-          ),
-        ),
-        AppSpacings.spacingSmHorizontal,
-        Expanded(
-          child: _buildQuickActionButton(
-            context,
-            label: localizations.window_covering_command_close,
-            icon: MdiIcons.chevronDown,
-            isActive: false,
-            onTap: () => _controller?.close(),
-          ),
-        ),
-      ],
+      children: buttons,
     );
   }
 
@@ -1442,6 +1510,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       () {
         if (!mounted) return;
         _controller?.setTilt(intValue);
+        setState(() {});
       },
     );
   }
@@ -1618,17 +1687,21 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   }
 
   void _applyPreset(int index) {
+    final controller = _controller;
+    if (controller == null) return;
+
     final preset = _presets[index];
 
-    // Store selected preset index
+    // Store selected preset index and apply preset
     setState(() {
       _selectedPresetIndex = index;
     });
 
-    _controller?.setPosition(preset.position);
+    controller.setPosition(preset.position);
     if (preset.tiltAngle != null && _device.hasWindowCoveringTilt) {
-      _controller?.setTilt(preset.tiltAngle!);
+      controller.setTilt(preset.tiltAngle!);
     }
+    setState(() {});
   }
 
   /// Check if a preset is active (selected AND values match)

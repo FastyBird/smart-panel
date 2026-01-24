@@ -102,6 +102,22 @@ class WindowCoveringDeviceController {
   /// Whether covering is stopped.
   bool get isStopped => _windowCoveringController.isStopped;
 
+  /// Whether command property is available.
+  bool get hasCommand => _windowCoveringController.hasCommand;
+
+  /// Available commands for this window covering.
+  List<WindowCoveringCommandValue> get availableCommands =>
+      _windowCoveringController.availableCommands;
+
+  /// Whether open command is available.
+  bool get hasOpenCommand => _windowCoveringController.hasOpenCommand;
+
+  /// Whether close command is available.
+  bool get hasCloseCommand => _windowCoveringController.hasCloseCommand;
+
+  /// Whether stop command is available.
+  bool get hasStopCommand => _windowCoveringController.hasStopCommand;
+
   // ===========================================================================
   // DEVICE-LEVEL COMMANDS
   // ===========================================================================

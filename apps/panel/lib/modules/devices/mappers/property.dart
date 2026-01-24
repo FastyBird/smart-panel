@@ -10,6 +10,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/angle.dar
 import 'package:fastybird_smart_panel/modules/devices/views/properties/aqi.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/change_needed.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/child_lock.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/command.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/brightness.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/color_blue.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/color_green.dart';
@@ -174,6 +175,8 @@ ChannelPropertyView buildChannelPropertyView(ChannelPropertyModel property) {
           property, ColorTemperatureChannelPropertyView.new);
     case DevicesModulePropertyCategory.colorWhite:
       return _createPropertyView(property, ColorWhiteChannelPropertyView.new);
+    case DevicesModulePropertyCategory.command:
+      return _createPropertyView(property, CommandChannelPropertyView.new);
     case DevicesModulePropertyCategory.connectionType:
       return _createPropertyView(
           property, ConnectionTypeChannelPropertyView.new);
