@@ -5,3 +5,4 @@ export 'package:fastybird_smart_panel/modules/devices/controllers/channels/heate
 export 'package:fastybird_smart_panel/modules/devices/controllers/channels/humidifier.dart';
 export 'package:fastybird_smart_panel/modules/devices/controllers/channels/light.dart';
 export 'package:fastybird_smart_panel/modules/devices/controllers/channels/thermostat.dart';
+export 'package:fastybird_smart_panel/modules/devices/controllers/channels/window_covering.dart';

@@ -1473,7 +1473,7 @@ window_covering:
     window_covering:
       category: window_covering
       required: true
-      multiple: false
+      multiple: true
       description:
         en: Controls coverings like blinds, curtains, and shutters, including position and tilt adjustments.
     device_information:

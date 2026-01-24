@@ -27,7 +27,7 @@ export const ChannelPropertySchema = z.object({
 	type: z.string().trim().nonempty(),
 	channel: ItemIdSchema,
 	category: z.nativeEnum(DevicesModuleChannelPropertyCategory).default(DevicesModuleChannelPropertyCategory.generic),
-	identifier: z.string().trim().nonempty().nullable(),
+	identifier: z.string().trim().nonempty().nullable().default(null),
 	name: z.string().trim().nullable(),
 	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
 	dataType: z.nativeEnum(DevicesModuleChannelPropertyDataType),

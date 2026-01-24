@@ -989,6 +989,18 @@ class AppLocalizationsCs extends AppLocalizations {
   String get window_covering_type_outdoor_blind => 'Venkovní žaluzie';
 
   @override
+  String get window_covering_type_venetian_blind => 'Benátské žaluzie';
+
+  @override
+  String get window_covering_type_vertical_blind => 'Vertikální žaluzie';
+
+  @override
+  String get window_covering_type_shutter => 'Okenice';
+
+  @override
+  String get window_covering_type_awning => 'Markýza';
+
+  @override
   String get window_covering_command_open => 'Otevřít';
 
   @override
@@ -1014,6 +1026,41 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get window_covering_fault_warning => 'Zjištěna závada';
+
+  @override
+  String get window_covering_preset_morning => 'Ráno';
+
+  @override
+  String get window_covering_preset_day => 'Den';
+
+  @override
+  String get window_covering_preset_evening => 'Večer';
+
+  @override
+  String get window_covering_preset_night => 'Noc';
+
+  @override
+  String get window_covering_preset_privacy => 'Soukromí';
+
+  @override
+  String get window_covering_preset_away => 'Pryč';
+
+  @override
+  String get window_covering_info_status => 'Stav';
+
+  @override
+  String get window_covering_info_obstruction => 'Překážka';
+
+  @override
+  String get window_covering_obstruction_detected => 'Zjištěna';
+
+  @override
+  String get window_covering_obstruction_clear => 'Volno';
+
+  @override
+  String window_covering_position_open_percent(int position) {
+    return '$position% Otevřeno';
+  }
 
   @override
   String get battery_title => 'Baterie';

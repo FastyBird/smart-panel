@@ -15,7 +15,10 @@ import 'package:provider/provider.dart';
 
 /// Device categories that provide their own header/Scaffold
 const Set<DevicesModuleDeviceCategory> _devicesWithCustomHeader = {
+  DevicesModuleDeviceCategory.airPurifier,
+  DevicesModuleDeviceCategory.fan,
   DevicesModuleDeviceCategory.lighting,
+  DevicesModuleDeviceCategory.windowCovering,
 };
 
 class DeviceDetailPage extends StatelessWidget {

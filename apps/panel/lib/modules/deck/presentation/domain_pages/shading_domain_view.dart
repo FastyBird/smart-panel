@@ -11,6 +11,7 @@ import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
@@ -535,6 +536,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       additionalContent: hasDevices
           ? _buildLandscapeDevicesColumn(context, deviceDataList, localizations)
           : null,
+      additionalContentPadding: EdgeInsets.zero,
     );
   }
 
@@ -543,38 +545,53 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     List<_CoverDeviceData> deviceDataList,
     AppLocalizations localizations,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionTitle(
-            context, localizations.shading_devices_title, MdiIcons.viewGrid),
-        AppSpacings.spacingMdVertical,
-        Expanded(
-          child: ListView.separated(
-            itemCount: deviceDataList.length,
-            separatorBuilder: (_, __) => AppSpacings.spacingMdVertical,
-            itemBuilder: (context, index) {
-              final device = deviceDataList[index];
-              final isActive = device.isOnline && device.position > 0;
-              final status = _getDeviceStatus(device, localizations);
+    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final secondaryBgColor =
+        isLight ? AppFillColorLight.light : AppFillColorDark.light;
+    final tileHeight = _screenService.scale(
+      AppTileHeight.horizontal,
+      density: _visualDensityService.density,
+    );
 
-              return UniversalTile(
-                layout: TileLayout.horizontal,
-                icon: device.position > 0
-                    ? MdiIcons.blindsHorizontal
-                    : MdiIcons.blindsHorizontalClosed,
-                name: device.name,
-                status: status,
-                isActive: isActive,
-                isOffline: !device.isOnline,
-                showWarningBadge: true,
-                showInactiveBorder: true,
-                onTileTap: () => _openDeviceDetail(context, device),
-              );
-            },
-          ),
+    // Build list of device tile widgets
+    final deviceWidgets = deviceDataList.map((device) {
+      final isActive = device.isOnline && device.position > 0;
+      final status = _getDeviceStatus(device, localizations);
+
+      return SizedBox(
+        height: tileHeight,
+        child: UniversalTile(
+          layout: TileLayout.horizontal,
+          icon: device.position > 0
+              ? MdiIcons.blindsHorizontal
+              : MdiIcons.blindsHorizontalClosed,
+          name: device.name,
+          status: status,
+          isActive: isActive,
+          isOffline: !device.isOnline,
+          showWarningBadge: true,
+          showInactiveBorder: true,
+          onTileTap: () => _openDeviceDetail(context, device),
         ),
-      ],
+      );
+    }).toList();
+
+    return VerticalScrollWithGradient(
+      gradientHeight: AppSpacings.pLg,
+      itemCount: deviceWidgets.length + 1, // +1 for header
+      separatorHeight: AppSpacings.pMd,
+      padding: AppSpacings.paddingLg,
+      backgroundColor: secondaryBgColor,
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return _buildSectionTitle(
+            context,
+            localizations.shading_devices_title,
+            MdiIcons.viewGrid,
+          );
+        }
+        return deviceWidgets[index - 1];
+      },
     );
   }
 
@@ -591,10 +608,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     final primaryRole = roleDataList.isNotEmpty ? roleDataList.first : null;
     final secondaryRoles = roleDataList.length > 1 ? roleDataList.skip(1).toList() : [];
     final hasCovers = roleDataList.isNotEmpty;
-
-    // Devices layout: same as climate auxiliary - 2 cols, aspect ratio based on screen size
-    final isAtLeastMedium = _screenService.isAtLeastMedium;
-    final devicesAspectRatio = isAtLeastMedium ? 3.0 : 2.5;
 
     return PortraitViewLayout(
       content: Column(
@@ -628,7 +641,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
               deviceDataList,
               localizations,
               crossAxisCount: 2,
-              aspectRatio: devicesAspectRatio,
             ),
           ],
         ],
@@ -1184,28 +1196,41 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     List<_CoverDeviceData> deviceDataList,
     AppLocalizations localizations, {
     int crossAxisCount = 2,
-    double? aspectRatio,
   }) {
-    // Use horizontal layout for single column or wide aspect ratio
-    final useHorizontalLayout =
-        crossAxisCount == 1 || (aspectRatio != null && aspectRatio > 1.5);
-    final tileLayout =
-        useHorizontalLayout ? TileLayout.horizontal : TileLayout.vertical;
-
-    final items = _buildDeviceItems(context, deviceDataList, localizations, tileLayout);
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        crossAxisSpacing: AppSpacings.pMd,
-        mainAxisSpacing: AppSpacings.pMd,
-        childAspectRatio: aspectRatio ?? 1.0,
-      ),
-      itemCount: items.length,
-      itemBuilder: (context, index) => items[index],
+    final tileHeight = _screenService.scale(
+      AppTileHeight.horizontal,
+      density: _visualDensityService.density,
     );
+
+    final items = _buildDeviceItems(
+      context,
+      deviceDataList,
+      localizations,
+      TileLayout.horizontal,
+    );
+
+    // Build rows of tiles
+    final List<Widget> rows = [];
+    for (var i = 0; i < items.length; i += crossAxisCount) {
+      final rowItems = <Widget>[];
+      for (var j = 0; j < crossAxisCount; j++) {
+        final index = i + j;
+        if (index < items.length) {
+          rowItems.add(Expanded(child: SizedBox(height: tileHeight, child: items[index])));
+        } else {
+          rowItems.add(const Expanded(child: SizedBox()));
+        }
+        if (j < crossAxisCount - 1) {
+          rowItems.add(SizedBox(width: AppSpacings.pMd));
+        }
+      }
+      if (rows.isNotEmpty) {
+        rows.add(SizedBox(height: AppSpacings.pMd));
+      }
+      rows.add(Row(children: rowItems));
+    }
+
+    return Column(children: rows);
   }
 
   /// Builds list of device tile widgets

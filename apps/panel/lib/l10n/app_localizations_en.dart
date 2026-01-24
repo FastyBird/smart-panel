@@ -989,6 +989,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get window_covering_type_outdoor_blind => 'Outdoor Blind';
 
   @override
+  String get window_covering_type_venetian_blind => 'Venetian Blind';
+
+  @override
+  String get window_covering_type_vertical_blind => 'Vertical Blind';
+
+  @override
+  String get window_covering_type_shutter => 'Shutter';
+
+  @override
+  String get window_covering_type_awning => 'Awning';
+
+  @override
   String get window_covering_command_open => 'Open';
 
   @override
@@ -1014,6 +1026,41 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get window_covering_fault_warning => 'Fault detected';
+
+  @override
+  String get window_covering_preset_morning => 'Morning';
+
+  @override
+  String get window_covering_preset_day => 'Day';
+
+  @override
+  String get window_covering_preset_evening => 'Evening';
+
+  @override
+  String get window_covering_preset_night => 'Night';
+
+  @override
+  String get window_covering_preset_privacy => 'Privacy';
+
+  @override
+  String get window_covering_preset_away => 'Away';
+
+  @override
+  String get window_covering_info_status => 'Status';
+
+  @override
+  String get window_covering_info_obstruction => 'Obstruction';
+
+  @override
+  String get window_covering_obstruction_detected => 'Detected';
+
+  @override
+  String get window_covering_obstruction_clear => 'Clear';
+
+  @override
+  String window_covering_position_open_percent(int position) {
+    return '$position% Open';
+  }
 
   @override
   String get battery_title => 'Battery';

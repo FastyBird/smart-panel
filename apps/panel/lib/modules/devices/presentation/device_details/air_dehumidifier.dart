@@ -1013,8 +1013,6 @@ class _AirDehumidifierDeviceDetailState
         displayFormatter: (level) => level != null
             ? FanUtils.getSpeedLevelLabel(localizations, level)
             : localizations.fan_speed_off,
-        isActiveValue: (level) =>
-            level != null && level != FanSpeedLevelValue.off,
         columns: availableLevels.length > 4 ? 3 : availableLevels.length,
         layout: useVerticalLayout
             ? ValueSelectorRowLayout.compact
@@ -1062,7 +1060,6 @@ class _AirDehumidifierDeviceDetailState
           activeColor: humidityColor,
           options: _getFanSpeedOptions(localizations),
           displayFormatter: (v) => _formatFanSpeed(localizations, v),
-          isActiveValue: (v) => v != null && v > 0,
           columns: 4,
           layout: ValueSelectorRowLayout.compact,
           onChanged: _device.isOn ? (v) => _setFanSpeed(v ?? 0) : null,
@@ -1140,7 +1137,6 @@ class _AirDehumidifierDeviceDetailState
         displayFormatter: (mode) => mode != null
             ? FanUtils.getModeLabel(localizations, mode)
             : '-',
-        isActiveValue: (mode) => mode != null,
         columns: availableModes.length > 4 ? 3 : availableModes.length,
         layout: ValueSelectorRowLayout.compact,
         onChanged: _device.isOn
@@ -1285,8 +1281,6 @@ class _AirDehumidifierDeviceDetailState
         displayFormatter: (p) => p != null
             ? DehumidifierUtils.getTimerPresetLabel(localizations, p)
             : localizations.dehumidifier_timer_off,
-        isActiveValue: (preset) =>
-            preset != null && preset != DehumidifierTimerPresetValue.off,
         columns: options.length > 4 ? 4 : options.length,
         layout: useCompactLayout
             ? ValueSelectorRowLayout.compact
@@ -1311,7 +1305,6 @@ class _AirDehumidifierDeviceDetailState
         options: options,
         displayFormatter: (s) =>
             DehumidifierUtils.formatSeconds(localizations, s ?? 0),
-        isActiveValue: (seconds) => seconds != null && seconds > 0,
         columns: options.length > 4 ? 4 : options.length,
         layout: useCompactLayout
             ? ValueSelectorRowLayout.compact
