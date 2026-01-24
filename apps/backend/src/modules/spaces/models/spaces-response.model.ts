@@ -1,4 +1,4 @@
-import { Expose, instanceToPlain, Type } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 
 import { ApiExtraModels, ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
@@ -1371,15 +1371,11 @@ export class CoversStateDataModel {
 		model.anyOpen = state.anyOpen;
 		model.allClosed = state.allClosed;
 		model.devicesCount = state.devicesCount;
-		// Transform roles - convert to plain objects for proper WebSocket serialization
-		// instanceToPlain doesn't recursively serialize class instances in plain object containers
+		// Store class instances - the WebSocket gateway's transformPayload will serialize them
+		// Using class instances ensures @Expose decorators are respected during serialization
 		const rolesRecord: Record<string, RoleCoversStateDataModel> = {};
 		for (const [roleKey, roleState] of Object.entries(state.roles)) {
-			const roleModel = RoleCoversStateDataModel.fromState(roleState);
-			// Convert to plain object for proper serialization
-			rolesRecord[roleKey] = instanceToPlain(roleModel, {
-				excludeExtraneousValues: true,
-			}) as RoleCoversStateDataModel;
+			rolesRecord[roleKey] = RoleCoversStateDataModel.fromState(roleState);
 		}
 		model.roles = rolesRecord;
 		model.coversByRole = { ...state.coversByRole };
@@ -2888,9 +2884,7 @@ export class RoleAggregatedStateDataModel {
 		model.isColorTemperatureMixed = state.isColorTemperatureMixed;
 		model.isColorMixed = state.isColorMixed;
 		model.isWhiteMixed = state.isWhiteMixed;
-		model.lastIntent = state.lastIntent
-			? { brightness: state.lastIntent.brightness }
-			: null;
+		model.lastIntent = state.lastIntent ? { brightness: state.lastIntent.brightness } : null;
 		model.devicesCount = state.devicesCount;
 		model.devicesOn = state.devicesOn;
 
@@ -3097,45 +3091,28 @@ export class RolesStateMapDataModel {
 
 	/**
 	 * Create a RolesStateMapDataModel from a roles state record.
+	 * Stores class instances - the WebSocket gateway's transformPayload will serialize them.
 	 */
 	static fromState(roles: Partial<Record<LightingRole, RoleAggregatedState>>): RolesStateMapDataModel {
 		const model = new RolesStateMapDataModel();
 
 		if (roles[LightingRole.MAIN]) {
-			model.main = instanceToPlain(
-				RoleAggregatedStateDataModel.fromState(roles[LightingRole.MAIN]),
-				{ excludeExtraneousValues: true },
-			) as RoleAggregatedStateDataModel;
+			model.main = RoleAggregatedStateDataModel.fromState(roles[LightingRole.MAIN]);
 		}
 		if (roles[LightingRole.TASK]) {
-			model.task = instanceToPlain(
-				RoleAggregatedStateDataModel.fromState(roles[LightingRole.TASK]),
-				{ excludeExtraneousValues: true },
-			) as RoleAggregatedStateDataModel;
+			model.task = RoleAggregatedStateDataModel.fromState(roles[LightingRole.TASK]);
 		}
 		if (roles[LightingRole.AMBIENT]) {
-			model.ambient = instanceToPlain(
-				RoleAggregatedStateDataModel.fromState(roles[LightingRole.AMBIENT]),
-				{ excludeExtraneousValues: true },
-			) as RoleAggregatedStateDataModel;
+			model.ambient = RoleAggregatedStateDataModel.fromState(roles[LightingRole.AMBIENT]);
 		}
 		if (roles[LightingRole.ACCENT]) {
-			model.accent = instanceToPlain(
-				RoleAggregatedStateDataModel.fromState(roles[LightingRole.ACCENT]),
-				{ excludeExtraneousValues: true },
-			) as RoleAggregatedStateDataModel;
+			model.accent = RoleAggregatedStateDataModel.fromState(roles[LightingRole.ACCENT]);
 		}
 		if (roles[LightingRole.NIGHT]) {
-			model.night = instanceToPlain(
-				RoleAggregatedStateDataModel.fromState(roles[LightingRole.NIGHT]),
-				{ excludeExtraneousValues: true },
-			) as RoleAggregatedStateDataModel;
+			model.night = RoleAggregatedStateDataModel.fromState(roles[LightingRole.NIGHT]);
 		}
 		if (roles[LightingRole.OTHER]) {
-			model.other = instanceToPlain(
-				RoleAggregatedStateDataModel.fromState(roles[LightingRole.OTHER]),
-				{ excludeExtraneousValues: true },
-			) as RoleAggregatedStateDataModel;
+			model.other = RoleAggregatedStateDataModel.fromState(roles[LightingRole.OTHER]);
 		}
 
 		return model;
@@ -3283,18 +3260,13 @@ export class LightingStateDataModel {
 		model.totalLights = state.totalLights;
 		model.lightsOn = state.lightsOn;
 		model.averageBrightness = state.averageBrightness;
-		// Transform roles using the RolesStateMapDataModel factory
-		model.roles = instanceToPlain(
-			RolesStateMapDataModel.fromState(state.roles),
-			{ excludeExtraneousValues: true },
-		) as RolesStateMapDataModel;
+		// Store class instances - the WebSocket gateway's transformPayload will serialize them
+		// Using class instances ensures @Expose decorators are respected during serialization
+		model.roles = RolesStateMapDataModel.fromState(state.roles);
 		// Copy lightsByRole as plain object
 		model.lightsByRole = { ...state.lightsByRole };
-		// Transform other lights state
-		model.other = instanceToPlain(
-			OtherLightsStateDataModel.fromState(state.other),
-			{ excludeExtraneousValues: true },
-		) as OtherLightsStateDataModel;
+		// Store class instance for other lights state
+		model.other = OtherLightsStateDataModel.fromState(state.other);
 
 		return model;
 	}
