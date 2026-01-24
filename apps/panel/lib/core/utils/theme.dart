@@ -630,6 +630,40 @@ class AppAnimation {
   static const Duration slow = Duration(milliseconds: 300);
 }
 
+/// Standard aspect ratios for tiles across the app.
+/// Aspect ratio = width / height (higher value = shorter tile)
+class AppTileAspectRatio {
+  /// Square tiles (1:1)
+  /// Used for: sensor tiles, settings buttons, main device tiles
+  static const double square = 1.0;
+
+  /// Standard horizontal tiles (2:1)
+  /// Used for: basic horizontal layouts
+  static const double horizontal = 2.0;
+
+  /// Wide horizontal tiles (2.5:1)
+  /// Used for: device tiles in domain views, preset tiles
+  static const double wide = 2.5;
+
+  /// Extra wide horizontal tiles (3:1)
+  /// Used for: auxiliary tiles, secondary info tiles
+  static const double extraWide = 3.0;
+}
+
+/// Standard tile widths for fixed-width tile layouts.
+/// Use with AppTileAspectRatio to calculate tile heights.
+class AppTileWidth {
+  // Horizontal layout tiles (wider than tall, aspect ratio > 1)
+  static const double horizontalSmall = 100.0;
+  static const double horizontalMedium = 140.0;
+  static const double horizontalLarge = 180.0;
+
+  // Vertical layout tiles (taller than wide, aspect ratio < 1)
+  static const double verticalSmall = 80.0;
+  static const double verticalMedium = 100.0;
+  static const double verticalLarge = 120.0;
+}
+
 class AppFilledButtonsLightThemes {
   static FilledButtonThemeData get base => FilledButtonThemeData(
     style: createButtonTheme(

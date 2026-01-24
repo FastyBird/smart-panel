@@ -383,10 +383,10 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
     // Calculate tile dimensions
     final tileWidth = _screenService.scale(
-      _presetTileWidth,
+      AppTileWidth.horizontalMedium,
       density: _visualDensityService.density,
     );
-    final tileHeight = tileWidth / _presetTileAspectRatio;
+    final tileHeight = tileWidth / AppTileAspectRatio.wide;
 
     return HorizontalScrollWithGradient(
       height: tileHeight,
@@ -1140,12 +1140,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   // PRESETS
   // ===========================================================================
 
-  /// Fixed width for preset tiles in horizontal scroll.
-  static const double _presetTileWidth = 140.0;
-
-  /// Aspect ratio for preset tiles (width / height).
-  /// Used consistently across portrait and landscape layouts.
-  static const double _presetTileAspectRatio = 2.2;
 
   Widget _buildPresetsCard(BuildContext context) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
@@ -1163,7 +1157,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         crossAxisCount: 3,
         mainAxisSpacing: AppSpacings.pSm,
         crossAxisSpacing: AppSpacings.pSm,
-        childAspectRatio: _presetTileAspectRatio,
+        childAspectRatio: AppTileAspectRatio.wide,
         children: _presets.asMap().entries.map((entry) {
           final index = entry.key;
           final preset = entry.value;
