@@ -618,7 +618,6 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
         displayFormatter: (level) => level != null
             ? FanUtils.getSpeedLevelLabel(localizations, level)
             : localizations.fan_speed_off,
-        isActiveValue: (level) => level != null && level != FanSpeedLevelValue.off,
         columns: availableLevels.length > 4 ? 3 : availableLevels.length,
         layout: useVerticalLayout
             ? ValueSelectorRowLayout.compact
@@ -643,7 +642,6 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
           activeColor: fanColor,
           options: _getSpeedOptions(localizations),
           displayFormatter: (v) => _formatSpeed(localizations, v),
-          isActiveValue: (v) => v != null && v > 0,
           columns: 4,
           layout: ValueSelectorRowLayout.compact,
           onChanged: _device.isOn ? (v) => _setSpeedValue(v ?? 0) : null,
@@ -855,8 +853,6 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
         activeColor: fanColor,
         options: options,
         displayFormatter: (p) => _formatTimerPreset(localizations, p),
-        isActiveValue: (preset) =>
-            preset != null && preset != FanTimerPresetValue.off,
         columns: options.length > 4 ? 4 : options.length,
         layout: useCompactLayout
             ? ValueSelectorRowLayout.compact
@@ -879,7 +875,6 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
         activeColor: fanColor,
         options: options,
         displayFormatter: (m) => _formatNumericTimer(localizations, m),
-        isActiveValue: (minutes) => minutes != null && minutes > 0,
         columns: options.length > 4 ? 4 : options.length,
         layout: useCompactLayout
             ? ValueSelectorRowLayout.compact

@@ -1475,7 +1475,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         activeColor: primaryColor,
         options: _getTiltOptions(minTilt, maxTilt),
         displayFormatter: (v) => '${v ?? 0}°',
-        isActiveValue: (v) => v != null,
         columns: 3,
         layout: ValueSelectorRowLayout.compact,
         onChanged: (value) {

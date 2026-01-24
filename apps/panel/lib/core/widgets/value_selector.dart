@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Layout options for ValueSelectorRow
 enum ValueSelectorRowLayout {
@@ -64,9 +65,6 @@ class ValueSelectorRow<T> extends StatelessWidget {
   /// Function to format the display value (if not provided, uses option label)
   final String Function(T? value)? displayFormatter;
 
-  /// Whether the current value is considered "active" (affects styling)
-  final bool Function(T? value)? isActiveValue;
-
   /// Number of columns in the selector grid (default: 4)
   final int columns;
 
@@ -83,7 +81,6 @@ class ValueSelectorRow<T> extends StatelessWidget {
     required this.sheetTitle,
     this.onChanged,
     this.displayFormatter,
-    this.isActiveValue,
     this.columns = 4,
     this.layout = ValueSelectorRowLayout.horizontal,
   });
@@ -99,18 +96,9 @@ class ValueSelectorRow<T> extends StatelessWidget {
     return option?.label ?? 'Off';
   }
 
-  bool get _isActive {
-    if (isActiveValue != null) {
-      return isActiveValue!(currentValue);
-    }
-    return currentValue != null;
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final effectiveActiveColor =
-        activeColor ?? (isDark ? AppColorsDark.primary : AppColorsLight.primary);
     final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
     final borderColor =
         isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
@@ -118,90 +106,92 @@ class ValueSelectorRow<T> extends StatelessWidget {
         isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
     final secondaryColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-    final mutedColor =
-        isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled;
+    final iconColor =
+        isDark ? AppTextColorDark.regular : AppTextColorLight.regular;
 
-    return GestureDetector(
-      onTap: onChanged != null ? () => _showSelectorSheet(context, isDark) : null,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: EdgeInsets.symmetric(
-          horizontal: AppSpacings.pMd,
-          vertical: AppSpacings.pMd,
-        ),
-        decoration: BoxDecoration(
-          color: _isActive
-              ? effectiveActiveColor.withValues(alpha: 0.1)
-              : cardColor,
-          borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-          border: Border.all(
-            color: _isActive
-                ? effectiveActiveColor.withValues(alpha: 0.3)
-                : borderColor,
-            width: _scale(1),
+    return Material(
+      color: cardColor,
+      borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+      child: InkWell(
+        onTap: onChanged != null
+            ? () {
+                HapticFeedback.lightImpact();
+                _showSelectorSheet(context, isDark);
+              }
+            : null,
+        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacings.pMd,
+            vertical: AppSpacings.pMd,
           ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              color: _isActive ? effectiveActiveColor : mutedColor,
-              size: _scale(20),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+            border: Border.all(
+              color: borderColor,
+              width: _scale(1),
             ),
-            AppSpacings.spacingSmHorizontal,
-            Expanded(
-              child: layout == ValueSelectorRowLayout.compact
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          label,
-                          style: TextStyle(
-                            color: _isActive ? effectiveActiveColor : textColor,
-                            fontSize: AppFontSize.small,
-                            fontWeight: _isActive ? FontWeight.w500 : FontWeight.w400,
-                          ),
-                        ),
-                        AppSpacings.spacingXsVertical,
-                        Text(
-                          _displayValue,
-                          style: TextStyle(
-                            color: _isActive ? effectiveActiveColor : secondaryColor,
-                            fontSize: AppFontSize.extraSmall,
-                            fontWeight: _isActive ? FontWeight.w600 : FontWeight.w400,
-                          ),
-                        ),
-                      ],
-                    )
-                  : Text(
-                      label,
-                      style: TextStyle(
-                        color: _isActive ? effectiveActiveColor : textColor,
-                        fontSize: AppFontSize.base,
-                        fontWeight: _isActive ? FontWeight.w500 : FontWeight.w400,
-                      ),
-                    ),
-            ),
-            if (layout == ValueSelectorRowLayout.horizontal) ...[
-              Text(
-                _displayValue,
-                style: TextStyle(
-                  color: _isActive ? effectiveActiveColor : secondaryColor,
-                  fontSize: AppFontSize.base,
-                  fontWeight: _isActive ? FontWeight.w600 : FontWeight.w400,
-                ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                color: iconColor,
+                size: _scale(20),
               ),
-              AppSpacings.spacingXsHorizontal,
+              AppSpacings.spacingSmHorizontal,
+              Expanded(
+                child: layout == ValueSelectorRowLayout.compact
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            label,
+                            style: TextStyle(
+                              color: textColor,
+                              fontSize: AppFontSize.small,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                          AppSpacings.spacingXsVertical,
+                          Text(
+                            _displayValue,
+                            style: TextStyle(
+                              color: secondaryColor,
+                              fontSize: AppFontSize.extraSmall,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Text(
+                        label,
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: AppFontSize.base,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+              ),
+              if (layout == ValueSelectorRowLayout.horizontal) ...[
+                Text(
+                  _displayValue,
+                  style: TextStyle(
+                    color: secondaryColor,
+                    fontSize: AppFontSize.base,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                AppSpacings.spacingXsHorizontal,
+              ],
+              Icon(
+                Icons.chevron_right,
+                color: secondaryColor,
+                size: _scale(20),
+              ),
             ],
-            Icon(
-              Icons.chevron_right,
-              color: _isActive
-                  ? effectiveActiveColor.withValues(alpha: 0.5)
-                  : mutedColor,
-              size: _scale(20),
-            ),
-          ],
+          ),
         ),
       ),
     );

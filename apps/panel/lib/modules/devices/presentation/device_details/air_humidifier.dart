@@ -1087,8 +1087,6 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       displayFormatter: (l) => l != null
           ? HumidifierUtils.getMistLevelLabel(localizations, l)
           : localizations.humidifier_mist_level_off,
-      isActiveValue: (level) =>
-          level != null && level != HumidifierMistLevelLevelValue.off,
       columns: options.length > 4 ? 4 : options.length,
       layout: useCompactLayout
           ? ValueSelectorRowLayout.compact
@@ -1128,7 +1126,6 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         ValueOption(value: 1.0, label: localizations.humidifier_mist_level_high),
       ],
       displayFormatter: (v) => _formatMistLevel(localizations, v),
-      isActiveValue: (v) => v != null && v > 0,
       columns: 3,
       layout: useCompactLayout
           ? ValueSelectorRowLayout.compact
@@ -1251,8 +1248,6 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         displayFormatter: (level) => level != null
             ? FanUtils.getSpeedLevelLabel(localizations, level)
             : localizations.fan_speed_off,
-        isActiveValue: (level) =>
-            level != null && level != FanSpeedLevelValue.off,
         columns: availableLevels.length > 4 ? 3 : availableLevels.length,
         layout: useVerticalLayout
             ? ValueSelectorRowLayout.compact
@@ -1300,7 +1295,6 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
           activeColor: humidityColor,
           options: _getFanSpeedOptions(localizations),
           displayFormatter: (v) => _formatFanSpeed(localizations, v),
-          isActiveValue: (v) => v != null && v > 0,
           columns: 4,
           layout: ValueSelectorRowLayout.compact,
           onChanged: _device.isOn ? (v) => _setFanSpeed(v ?? 0) : null,
@@ -1378,7 +1372,6 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         displayFormatter: (mode) => mode != null
             ? FanUtils.getModeLabel(localizations, mode)
             : '-',
-        isActiveValue: (mode) => mode != null,
         columns: availableModes.length > 4 ? 3 : availableModes.length,
         layout: ValueSelectorRowLayout.compact,
         onChanged: _device.isOn
@@ -1531,8 +1524,6 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         displayFormatter: (p) => p != null
             ? HumidifierUtils.getTimerPresetLabel(localizations, p)
             : localizations.humidifier_timer_off,
-        isActiveValue: (preset) =>
-            preset != null && preset != HumidifierTimerPresetValue.off,
         columns: options.length > 4 ? 4 : options.length,
         layout: useCompactLayout
             ? ValueSelectorRowLayout.compact
@@ -1557,7 +1548,6 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         options: options,
         displayFormatter: (s) =>
             HumidifierUtils.formatSeconds(localizations, s ?? 0),
-        isActiveValue: (seconds) => seconds != null && seconds > 0,
         columns: options.length > 4 ? 4 : options.length,
         layout: useCompactLayout
             ? ValueSelectorRowLayout.compact
