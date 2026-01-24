@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Type, instanceToPlain } from 'class-transformer';
 
 import { ApiExtraModels, ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
@@ -1320,8 +1320,7 @@ export class CoversStateDataModel {
 		},
 	})
 	@Expose()
-	@Type(() => RoleCoversStateDataModel)
-	roles: Record<string, RoleCoversStateDataModel>;
+	roles: Record<string, object>;
 
 	@ApiProperty({
 		name: 'covers_by_role',
@@ -1371,11 +1370,14 @@ export class CoversStateDataModel {
 		model.anyOpen = state.anyOpen;
 		model.allClosed = state.allClosed;
 		model.devicesCount = state.devicesCount;
-		// Store class instances - the WebSocket gateway's transformPayload will serialize them
-		// Using class instances ensures @Expose decorators are respected during serialization
-		const rolesRecord: Record<string, RoleCoversStateDataModel> = {};
+		// Pre-serialize role values to plain objects
+		// Unlike lighting (which uses a class with explicit @Expose properties for each role),
+		// covers uses a dynamic Record where keys aren't decorated. Without @Type on the property,
+		// class-transformer will include the pre-serialized plain objects as-is.
+		const rolesRecord: Record<string, object> = {};
 		for (const [roleKey, roleState] of Object.entries(state.roles)) {
-			rolesRecord[roleKey] = RoleCoversStateDataModel.fromState(roleState);
+			const roleModel = RoleCoversStateDataModel.fromState(roleState);
+			rolesRecord[roleKey] = instanceToPlain(roleModel, { excludeExtraneousValues: true });
 		}
 		model.roles = rolesRecord;
 		model.coversByRole = { ...state.coversByRole };
