@@ -57,6 +57,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   int? _localPosition;
   int? _localTilt;
 
+  // Selected preset index (null = no preset selected)
+  int? _selectedPresetIndex;
+
   // Presets configuration
   static const _presets = [
     _Preset(name: 'Morning', icon: Icons.wb_sunny, position: 100),
@@ -386,7 +389,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       separatorWidth: AppSpacings.pSm,
       itemBuilder: (context, index) {
         final preset = _presets[index];
-        final bool isActive = _position == preset.position;
+        final bool isActive = _isPresetActive(index);
 
         return SizedBox(
           width: tileWidth,
@@ -398,7 +401,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
             status: '${preset.position}%',
             isActive: isActive,
             activeColor: primaryColor,
-            onTileTap: () => _applyPreset(preset),
+            onTileTap: () => _applyPreset(index),
             showGlow: false,
             showWarningBadge: false,
             showInactiveBorder: isLight,
@@ -585,8 +588,10 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     final intValue = value.round();
 
     // Update local value immediately for smooth slider feedback
+    // Clear selected preset when user manually changes position
     setState(() {
       _localPosition = intValue;
+      _selectedPresetIndex = null;
     });
 
     // Debounce the actual command
@@ -737,8 +742,10 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     final intValue = value.round();
 
     // Update local value immediately for smooth slider feedback
+    // Clear selected preset when user manually changes tilt
     setState(() {
       _localTilt = intValue;
+      _selectedPresetIndex = null;
     });
 
     // Debounce the actual command
@@ -910,8 +917,10 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         mainAxisSpacing: AppSpacings.pSm,
         crossAxisSpacing: AppSpacings.pSm,
         childAspectRatio: _presetTileAspectRatio,
-        children: _presets.map((preset) {
-          final bool isActive = _position == preset.position;
+        children: _presets.asMap().entries.map((entry) {
+          final index = entry.key;
+          final preset = entry.value;
+          final bool isActive = _isPresetActive(index);
 
           return UniversalTile(
             layout: TileLayout.horizontal,
@@ -920,7 +929,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
             status: '${preset.position}%',
             isActive: isActive,
             activeColor: primaryColor,
-            onTileTap: () => _applyPreset(preset),
+            onTileTap: () => _applyPreset(index),
             showGlow: false,
             showWarningBadge: false,
             showInactiveBorder: isLight,
@@ -930,11 +939,35 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     );
   }
 
-  void _applyPreset(_Preset preset) {
+  void _applyPreset(int index) {
+    final preset = _presets[index];
+
+    // Store selected preset index
+    setState(() {
+      _selectedPresetIndex = index;
+    });
+
     _controller?.setPosition(preset.position);
     if (preset.tiltAngle != null && _device.hasWindowCoveringTilt) {
       _controller?.setTilt(preset.tiltAngle!);
     }
+  }
+
+  /// Check if a preset is active (selected AND values match)
+  bool _isPresetActive(int index) {
+    if (_selectedPresetIndex != index) return false;
+
+    final preset = _presets[index];
+
+    // Check position matches
+    if (_position != preset.position) return false;
+
+    // Check tilt matches if device supports it and preset has tilt
+    if (_device.hasWindowCoveringTilt && preset.tiltAngle != null) {
+      if (_tiltAngle != preset.tiltAngle) return false;
+    }
+
+    return true;
   }
 
   // ===========================================================================
