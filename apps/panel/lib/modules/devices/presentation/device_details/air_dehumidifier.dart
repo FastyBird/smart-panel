@@ -512,7 +512,6 @@ class _AirDehumidifierDeviceDetailState
     final isLargeScreen = _screenService.isLargeScreen;
 
     return DeviceDetailLandscapeLayout(
-      largeSecondaryColumn: isLargeScreen,
       secondaryScrollable: false,
       secondaryContentPadding: EdgeInsets.zero,
       mainContent: isLargeScreen
