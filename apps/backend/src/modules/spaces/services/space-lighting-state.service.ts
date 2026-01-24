@@ -673,6 +673,12 @@ export class SpaceLightingStateService {
 				continue;
 			}
 
+			// Skip OFF mode - lights that are ON should never match OFF regardless of brightness.
+			// The OFF case is handled by the early return above when all lights are off.
+			if ((modeId as LightingMode) === LightingMode.OFF) {
+				continue;
+			}
+
 			if (config.mvpBrightness !== undefined && config.mvpBrightness !== null) {
 				mvpModes.push({
 					mode: modeId as LightingMode,
