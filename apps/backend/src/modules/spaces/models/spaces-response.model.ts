@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, instanceToPlain, Type } from 'class-transformer';
 
 import { ApiExtraModels, ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
@@ -11,6 +11,11 @@ import { SpaceMediaRoleEntity } from '../entities/space-media-role.entity';
 import { SpaceSensorRoleEntity } from '../entities/space-sensor-role.entity';
 import { SpaceEntity } from '../entities/space.entity';
 import type { CoversState, RoleCoversState } from '../services/space-covers-state.service';
+import type {
+	OtherLightsState,
+	RoleAggregatedState,
+	SpaceLightingState,
+} from '../services/space-lighting-state.service';
 import {
 	ClimateMode,
 	ClimateRole,
@@ -1366,13 +1371,18 @@ export class CoversStateDataModel {
 		model.anyOpen = state.anyOpen;
 		model.allClosed = state.allClosed;
 		model.devicesCount = state.devicesCount;
-		model.roles = Object.fromEntries(
-			Object.entries(state.roles).map(([roleKey, roleState]) => [
-				roleKey,
-				RoleCoversStateDataModel.fromState(roleState),
-			]),
-		);
-		model.coversByRole = state.coversByRole;
+		// Transform roles - convert to plain objects for proper WebSocket serialization
+		// instanceToPlain doesn't recursively serialize class instances in plain object containers
+		const rolesRecord: Record<string, RoleCoversStateDataModel> = {};
+		for (const [roleKey, roleState] of Object.entries(state.roles)) {
+			const roleModel = RoleCoversStateDataModel.fromState(roleState);
+			// Convert to plain object for proper serialization
+			rolesRecord[roleKey] = instanceToPlain(roleModel, {
+				excludeExtraneousValues: true,
+			}) as RoleCoversStateDataModel;
+		}
+		model.roles = rolesRecord;
+		model.coversByRole = { ...state.coversByRole };
 		model.lastAppliedMode = state.lastAppliedMode;
 		model.lastAppliedAt = state.lastAppliedAt;
 
@@ -2861,6 +2871,31 @@ export class RoleAggregatedStateDataModel {
 	})
 	@Expose({ name: 'devices_on' })
 	devicesOn: number;
+
+	/**
+	 * Create a RoleAggregatedStateDataModel from a RoleAggregatedState service object.
+	 */
+	static fromState(state: RoleAggregatedState): RoleAggregatedStateDataModel {
+		const model = new RoleAggregatedStateDataModel();
+		model.role = state.role;
+		model.isOn = state.isOn;
+		model.isOnMixed = state.isOnMixed;
+		model.brightness = state.brightness;
+		model.colorTemperature = state.colorTemperature;
+		model.color = state.color;
+		model.white = state.white;
+		model.isBrightnessMixed = state.isBrightnessMixed;
+		model.isColorTemperatureMixed = state.isColorTemperatureMixed;
+		model.isColorMixed = state.isColorMixed;
+		model.isWhiteMixed = state.isWhiteMixed;
+		model.lastIntent = state.lastIntent
+			? { brightness: state.lastIntent.brightness }
+			: null;
+		model.devicesCount = state.devicesCount;
+		model.devicesOn = state.devicesOn;
+
+		return model;
+	}
 }
 
 /**
@@ -2978,6 +3013,27 @@ export class OtherLightsStateDataModel {
 	})
 	@Expose({ name: 'devices_on' })
 	devicesOn: number;
+
+	/**
+	 * Create an OtherLightsStateDataModel from an OtherLightsState service object.
+	 */
+	static fromState(state: OtherLightsState): OtherLightsStateDataModel {
+		const model = new OtherLightsStateDataModel();
+		model.isOn = state.isOn;
+		model.isOnMixed = state.isOnMixed;
+		model.brightness = state.brightness;
+		model.colorTemperature = state.colorTemperature;
+		model.color = state.color;
+		model.white = state.white;
+		model.isBrightnessMixed = state.isBrightnessMixed;
+		model.isColorTemperatureMixed = state.isColorTemperatureMixed;
+		model.isColorMixed = state.isColorMixed;
+		model.isWhiteMixed = state.isWhiteMixed;
+		model.devicesCount = state.devicesCount;
+		model.devicesOn = state.devicesOn;
+
+		return model;
+	}
 }
 
 /**
@@ -3038,6 +3094,52 @@ export class RolesStateMapDataModel {
 	@Expose()
 	@Type(() => RoleAggregatedStateDataModel)
 	other?: RoleAggregatedStateDataModel;
+
+	/**
+	 * Create a RolesStateMapDataModel from a roles state record.
+	 */
+	static fromState(roles: Partial<Record<LightingRole, RoleAggregatedState>>): RolesStateMapDataModel {
+		const model = new RolesStateMapDataModel();
+
+		if (roles[LightingRole.MAIN]) {
+			model.main = instanceToPlain(
+				RoleAggregatedStateDataModel.fromState(roles[LightingRole.MAIN]),
+				{ excludeExtraneousValues: true },
+			) as RoleAggregatedStateDataModel;
+		}
+		if (roles[LightingRole.TASK]) {
+			model.task = instanceToPlain(
+				RoleAggregatedStateDataModel.fromState(roles[LightingRole.TASK]),
+				{ excludeExtraneousValues: true },
+			) as RoleAggregatedStateDataModel;
+		}
+		if (roles[LightingRole.AMBIENT]) {
+			model.ambient = instanceToPlain(
+				RoleAggregatedStateDataModel.fromState(roles[LightingRole.AMBIENT]),
+				{ excludeExtraneousValues: true },
+			) as RoleAggregatedStateDataModel;
+		}
+		if (roles[LightingRole.ACCENT]) {
+			model.accent = instanceToPlain(
+				RoleAggregatedStateDataModel.fromState(roles[LightingRole.ACCENT]),
+				{ excludeExtraneousValues: true },
+			) as RoleAggregatedStateDataModel;
+		}
+		if (roles[LightingRole.NIGHT]) {
+			model.night = instanceToPlain(
+				RoleAggregatedStateDataModel.fromState(roles[LightingRole.NIGHT]),
+				{ excludeExtraneousValues: true },
+			) as RoleAggregatedStateDataModel;
+		}
+		if (roles[LightingRole.OTHER]) {
+			model.other = instanceToPlain(
+				RoleAggregatedStateDataModel.fromState(roles[LightingRole.OTHER]),
+				{ excludeExtraneousValues: true },
+			) as RoleAggregatedStateDataModel;
+		}
+
+		return model;
+	}
 }
 
 /**
@@ -3165,6 +3267,37 @@ export class LightingStateDataModel {
 	@Expose()
 	@Type(() => OtherLightsStateDataModel)
 	other: OtherLightsStateDataModel;
+
+	/**
+	 * Create a LightingStateDataModel from a SpaceLightingState service object.
+	 */
+	static fromState(state: SpaceLightingState): LightingStateDataModel {
+		const model = new LightingStateDataModel();
+		model.hasLights = state.hasLights;
+		model.detectedMode = state.detectedMode;
+		model.modeConfidence = state.modeConfidence;
+		model.modeMatchPercentage = state.modeMatchPercentage;
+		model.isModeFromIntent = state.isModeFromIntent;
+		model.lastAppliedMode = state.lastAppliedMode;
+		model.lastAppliedAt = state.lastAppliedAt;
+		model.totalLights = state.totalLights;
+		model.lightsOn = state.lightsOn;
+		model.averageBrightness = state.averageBrightness;
+		// Transform roles using the RolesStateMapDataModel factory
+		model.roles = instanceToPlain(
+			RolesStateMapDataModel.fromState(state.roles),
+			{ excludeExtraneousValues: true },
+		) as RolesStateMapDataModel;
+		// Copy lightsByRole as plain object
+		model.lightsByRole = { ...state.lightsByRole };
+		// Transform other lights state
+		model.other = instanceToPlain(
+			OtherLightsStateDataModel.fromState(state.other),
+			{ excludeExtraneousValues: true },
+		) as OtherLightsStateDataModel;
+
+		return model;
+	}
 }
 
 /**
