@@ -311,18 +311,24 @@ export class IntentSpecLoaderService implements OnModuleInit {
 		}
 
 		// Resolve builtin modes
-		for (const [modeId, modeDef] of Object.entries(builtinConfig.modes)) {
-			this.lightingModes.set(modeId, this.resolveModeOrchestration(modeDef, modeId));
+		if (builtinConfig.modes && typeof builtinConfig.modes === 'object') {
+			for (const [modeId, modeDef] of Object.entries(builtinConfig.modes)) {
+				if (modeDef) {
+					this.lightingModes.set(modeId, this.resolveModeOrchestration(modeDef, modeId));
+				}
+			}
 		}
 
 		// Load and merge user modes
 		if (existsSync(userPath)) {
 			const userConfig = this.loadYamlFile<YamlLightingModesConfig>(userPath, 'user');
 
-			if (userConfig) {
+			if (userConfig?.modes && typeof userConfig.modes === 'object') {
 				for (const [modeId, modeDef] of Object.entries(userConfig.modes)) {
-					// User modes override builtin modes with same ID
-					this.lightingModes.set(modeId, this.resolveModeOrchestration(modeDef, modeId));
+					if (modeDef) {
+						// User modes override builtin modes with same ID
+						this.lightingModes.set(modeId, this.resolveModeOrchestration(modeDef, modeId));
+					}
 				}
 			}
 		}
@@ -345,18 +351,24 @@ export class IntentSpecLoaderService implements OnModuleInit {
 		}
 
 		// Resolve builtin modes
-		for (const [modeId, modeDef] of Object.entries(builtinConfig.modes)) {
-			this.coversModes.set(modeId, this.resolveCoversModeOrchestration(modeDef, modeId));
+		if (builtinConfig.modes && typeof builtinConfig.modes === 'object') {
+			for (const [modeId, modeDef] of Object.entries(builtinConfig.modes)) {
+				if (modeDef) {
+					this.coversModes.set(modeId, this.resolveCoversModeOrchestration(modeDef, modeId));
+				}
+			}
 		}
 
 		// Load and merge user modes
 		if (existsSync(userPath)) {
 			const userConfig = this.loadYamlFile<YamlCoversModesConfig>(userPath, 'user');
 
-			if (userConfig) {
+			if (userConfig?.modes && typeof userConfig.modes === 'object') {
 				for (const [modeId, modeDef] of Object.entries(userConfig.modes)) {
-					// User modes override builtin modes with same ID
-					this.coversModes.set(modeId, this.resolveCoversModeOrchestration(modeDef, modeId));
+					if (modeDef) {
+						// User modes override builtin modes with same ID
+						this.coversModes.set(modeId, this.resolveCoversModeOrchestration(modeDef, modeId));
+					}
 				}
 			}
 		}
@@ -371,8 +383,13 @@ export class IntentSpecLoaderService implements OnModuleInit {
 	): ResolvedCoversModeOrchestration {
 		const roles: Record<string, ResolvedRolePositionRule> = {};
 
-		for (const [role, rule] of Object.entries(modeDef.roles)) {
-			roles[role] = this.resolveRolePositionRule(rule);
+		// Safely iterate over roles if defined
+		if (modeDef.roles && typeof modeDef.roles === 'object') {
+			for (const [role, rule] of Object.entries(modeDef.roles)) {
+				if (rule) {
+					roles[role] = this.resolveRolePositionRule(rule);
+				}
+			}
 		}
 
 		return {
@@ -574,8 +591,13 @@ export class IntentSpecLoaderService implements OnModuleInit {
 	private resolveModeOrchestration(modeDef: YamlModeOrchestration, modeId?: string): ResolvedModeOrchestration {
 		const roles: Record<string, ResolvedRoleBrightnessRule> = {};
 
-		for (const [role, rule] of Object.entries(modeDef.roles)) {
-			roles[role] = this.resolveRoleBrightnessRule(rule);
+		// Safely iterate over roles if defined
+		if (modeDef.roles && typeof modeDef.roles === 'object') {
+			for (const [role, rule] of Object.entries(modeDef.roles)) {
+				if (rule) {
+					roles[role] = this.resolveRoleBrightnessRule(rule);
+				}
+			}
 		}
 
 		const resolved: ResolvedModeOrchestration = {
