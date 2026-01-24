@@ -63,12 +63,12 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
   // Presets configuration
   static const _presets = [
-    _Preset(name: 'Morning', icon: Icons.wb_sunny, position: 100),
-    _Preset(name: 'Day', icon: Icons.light_mode, position: 75),
-    _Preset(name: 'Evening', icon: Icons.nights_stay, position: 30),
-    _Preset(name: 'Night', icon: Icons.bedtime, position: 0),
-    _Preset(name: 'Privacy', icon: Icons.lock, position: 0, tiltAngle: 45),
-    _Preset(name: 'Away', icon: Icons.home, position: 0),
+    _Preset(type: _PresetType.morning, icon: Icons.wb_sunny, position: 100),
+    _Preset(type: _PresetType.day, icon: Icons.light_mode, position: 75),
+    _Preset(type: _PresetType.evening, icon: Icons.nights_stay, position: 30),
+    _Preset(type: _PresetType.night, icon: Icons.bedtime, position: 0),
+    _Preset(type: _PresetType.privacy, icon: Icons.lock, position: 0, tiltAngle: 45),
+    _Preset(type: _PresetType.away, icon: Icons.home, position: 0),
   ];
 
   @override
@@ -205,17 +205,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           children: [
             _buildHeader(context, isDark),
             Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final isLandscape = constraints.maxWidth > constraints.maxHeight;
-
-                  if (isLandscape) {
-                    return _buildLandscapeLayout(context);
-                  } else {
-                    return _buildPortraitLayout(context);
-                  }
-                },
-              ),
+              child: _screenService.isLandscape
+                  ? _buildLandscapeLayout(context)
+                  : _buildPortraitLayout(context),
             ),
           ],
         ),
@@ -277,33 +269,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   // HELPERS
   // ===========================================================================
 
-  String _getWindowCoveringTypeName(BuildContext context) {
-    final localizations = AppLocalizations.of(context);
-    if (localizations == null) return '';
-
-    try {
-      switch (_device.windowCoveringType) {
-        case WindowCoveringTypeValue.curtain:
-          return localizations.window_covering_type_curtain;
-        case WindowCoveringTypeValue.blind:
-          return localizations.window_covering_type_blind;
-        case WindowCoveringTypeValue.venetianBlind:
-          return localizations.window_covering_type_venetian_blind;
-        case WindowCoveringTypeValue.verticalBlind:
-          return localizations.window_covering_type_vertical_blind;
-        case WindowCoveringTypeValue.roller:
-          return localizations.window_covering_type_roller;
-        case WindowCoveringTypeValue.shutter:
-          return localizations.window_covering_type_shutter;
-        case WindowCoveringTypeValue.outdoorBlind:
-          return localizations.window_covering_type_outdoor_blind;
-        case WindowCoveringTypeValue.awning:
-          return localizations.window_covering_type_awning;
-      }
-    } catch (_) {
-      return localizations.window_covering_type_blind;
-    }
-  }
+  double _scale(double value) =>
+      _screenService.scale(value, density: _visualDensityService.density);
 
   String _getStatusLabel(BuildContext context) {
     final localizations = AppLocalizations.of(context);
@@ -398,7 +365,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
     final visualizationAspectRatio = 180.0 / 160.0;
     // Allow larger visualization on big screens (up to 280px height)
-    var visualizationHeight = maxVisualizationHeight.clamp(80.0, 280.0);
+    var visualizationHeight = maxVisualizationHeight.clamp(_scale(80), _scale(280));
     var visualizationWidth = visualizationHeight * visualizationAspectRatio;
 
     return Padding(
@@ -437,7 +404,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     // Window takes 2/3 of width, buttons take 1/3
     final visualizationWidth = (availableWidth - spacing) * 2 / 3;
     final visualizationAspectRatio = 180.0 / 160.0;
-    var visualizationHeight = (visualizationWidth / visualizationAspectRatio).clamp(60.0, maxVisualizationHeight);
+    var visualizationHeight = (visualizationWidth / visualizationAspectRatio).clamp(_scale(60), maxVisualizationHeight);
 
     return Padding(
       padding: AppSpacings.paddingLg,
@@ -453,8 +420,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                   child: Center(
                     child: _buildWindowVisualizationSized(
                       context,
-                      visualizationWidth.clamp(120.0, 280.0),
-                      visualizationHeight.clamp(100.0, 240.0),
+                      visualizationWidth.clamp(_scale(120), _scale(280)),
+                      visualizationHeight.clamp(_scale(100), _scale(240)),
                     ),
                   ),
                 ),
@@ -495,13 +462,13 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: isLight
-              ? [const Color(0xFF87CEEB), const Color(0xFFE0F7FA)]
-              : [const Color(0xFF1E3A5F), const Color(0xFF0D1B2A)],
+              ? [_VisualizationColorsLight.skyTop, _VisualizationColorsLight.skyBottom]
+              : [_VisualizationColorsDark.skyTop, _VisualizationColorsDark.skyBottom],
         ),
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(
           color: isLight ? AppBorderColorLight.base : AppBorderColorDark.base,
-          width: 4,
+          width: _scale(4),
         ),
       ),
       child: Stack(
@@ -549,7 +516,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     double containerHeight,
   ) {
     // Account for border (4px on each side)
-    final innerHeight = containerHeight - 8;
+    final innerHeight = containerHeight - _scale(8);
 
     try {
       switch (_device.windowCoveringType) {
@@ -573,8 +540,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
   Widget _buildBlindVisualizationScaled(BuildContext context, double coverHeight, double containerHeight) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final slatHeight = 8.0;
-    final slatMargin = 2.0;
+    final slatHeight = _scale(8);
+    final slatMargin = _scale(2);
     final slatTotal = slatHeight + slatMargin;
     final maxSlats = (containerHeight / slatTotal).floor();
     final slatCount = (_position < 90 ? (maxSlats * coverHeight).floor() : 0);
@@ -595,15 +562,15 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
             alignment: Alignment.center,
             child: Container(
               height: slatHeight,
-              margin: EdgeInsets.only(bottom: slatMargin, left: 2, right: 2),
+              margin: EdgeInsets.only(bottom: slatMargin, left: _scale(2), right: _scale(2)),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(1),
+                borderRadius: BorderRadius.circular(_scale(1)),
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: isLight
-                      ? [const Color(0xFFE8E8E8), const Color(0xFFBDBDBD)]
-                      : [const Color(0xFF505050), const Color(0xFF383838)],
+                      ? [_VisualizationColorsLight.metalSlatTop, _VisualizationColorsLight.metalSlatBottom]
+                      : [_VisualizationColorsDark.metalSlatTop, _VisualizationColorsDark.metalSlatBottom],
                 ),
               ),
             ),
@@ -616,8 +583,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   Widget _buildCurtainVisualizationScaled(BuildContext context, double containerWidth, double containerHeight) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final panelWidth = (100 - _position) / 100 * 0.5;
-    final innerWidth = containerWidth - 8;
-    final innerHeight = containerHeight - 8;
+    final innerWidth = containerWidth - _scale(8);
+    final innerHeight = containerHeight - _scale(8);
 
     return SizedBox(
       width: innerWidth,
@@ -634,8 +601,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
                 colors: isLight
-                    ? [const Color(0xFFD7CCC8), const Color(0xFFBCAAA4), const Color(0xFFA1887F)]
-                    : [const Color(0xFF5D4037), const Color(0xFF4E342E), const Color(0xFF3E2723)],
+                    ? [_VisualizationColorsLight.fabricLight, _VisualizationColorsLight.fabricMedium, _VisualizationColorsLight.fabricDark]
+                    : [_VisualizationColorsDark.fabricLight, _VisualizationColorsDark.fabricMedium, _VisualizationColorsDark.fabricDark],
               ),
             ),
             child: _buildCurtainFolds(isLight),
@@ -649,8 +616,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                 begin: Alignment.centerRight,
                 end: Alignment.centerLeft,
                 colors: isLight
-                    ? [const Color(0xFFD7CCC8), const Color(0xFFBCAAA4), const Color(0xFFA1887F)]
-                    : [const Color(0xFF5D4037), const Color(0xFF4E342E), const Color(0xFF3E2723)],
+                    ? [_VisualizationColorsLight.fabricLight, _VisualizationColorsLight.fabricMedium, _VisualizationColorsLight.fabricDark]
+                    : [_VisualizationColorsDark.fabricLight, _VisualizationColorsDark.fabricMedium, _VisualizationColorsDark.fabricDark],
               ),
             ),
             child: _buildCurtainFolds(isLight),
@@ -662,7 +629,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
   Widget _buildRollerVisualizationScaled(BuildContext context, double coverHeight, double containerHeight) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final tubeHeight = 12.0;
+    final tubeHeight = _scale(12);
     final shadeMaxHeight = containerHeight - tubeHeight;
 
     return Column(
@@ -670,28 +637,28 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         Container(
           height: tubeHeight,
           decoration: BoxDecoration(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(_scale(4))),
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: isLight
-                  ? [const Color(0xFF9E9E9E), const Color(0xFF757575)]
-                  : [const Color(0xFF616161), const Color(0xFF424242)],
+                  ? [_VisualizationColorsLight.metalTubeTop, _VisualizationColorsLight.metalTubeBottom]
+                  : [_VisualizationColorsDark.metalTubeTop, _VisualizationColorsDark.metalTubeBottom],
             ),
           ),
         ),
         AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           height: (shadeMaxHeight * coverHeight).clamp(0.0, shadeMaxHeight),
-          margin: const EdgeInsets.symmetric(horizontal: 2),
+          margin: EdgeInsets.symmetric(horizontal: _scale(2)),
           decoration: BoxDecoration(
-            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(4)),
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(_scale(4))),
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: isLight
-                  ? [const Color(0xFFECEFF1), const Color(0xFFCFD8DC)]
-                  : [const Color(0xFF455A64), const Color(0xFF37474F)],
+                  ? [_VisualizationColorsLight.shadeFabricTop, _VisualizationColorsLight.shadeFabricBottom]
+                  : [_VisualizationColorsDark.shadeFabricTop, _VisualizationColorsDark.shadeFabricBottom],
             ),
           ),
         ),
@@ -701,8 +668,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
   Widget _buildOutdoorBlindVisualizationScaled(BuildContext context, double coverHeight, double containerHeight) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final slatHeight = 10.0;
-    final slatMargin = 3.0;
+    final slatHeight = _scale(10);
+    final slatMargin = _scale(3);
     final slatTotal = slatHeight + slatMargin;
     final maxSlats = (containerHeight / slatTotal).floor();
     final slatCount = (_position < 90 ? (maxSlats * coverHeight).floor() : 0);
@@ -723,15 +690,15 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
             alignment: Alignment.center,
             child: Container(
               height: slatHeight,
-              margin: EdgeInsets.only(bottom: slatMargin, left: 3, right: 3),
+              margin: EdgeInsets.only(bottom: slatMargin, left: _scale(3), right: _scale(3)),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(2),
+                borderRadius: BorderRadius.circular(_scale(2)),
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: isLight
-                      ? [const Color(0xFFA1887F), const Color(0xFF8D6E63)]
-                      : [const Color(0xFF6D4C41), const Color(0xFF5D4037)],
+                      ? [_VisualizationColorsLight.woodSlatTop, _VisualizationColorsLight.woodSlatBottom]
+                      : [_VisualizationColorsDark.woodSlatTop, _VisualizationColorsDark.woodSlatBottom],
                 ),
               ),
             ),
@@ -740,36 +707,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       ),
     );
   }
-
-  /// Vertical icon-only action buttons for compact landscape layout
-  Widget _buildVerticalActionButtons(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        _buildActionIconButton(
-          context,
-          icon: MdiIcons.chevronUp,
-          isActive: false,
-          onTap: () => _controller?.open(),
-        ),
-        AppSpacings.spacingSmVertical,
-        _buildActionIconButton(
-          context,
-          icon: MdiIcons.stop,
-          isActive: _device.isWindowCoveringStopped,
-          onTap: () => _controller?.stop(),
-        ),
-        AppSpacings.spacingSmVertical,
-        _buildActionIconButton(
-          context,
-          icon: MdiIcons.chevronDown,
-          isActive: false,
-          onTap: () => _controller?.close(),
-        ),
-      ],
-    );
-  }
-
   /// Smaller vertical action buttons for small/medium screens
   Widget _buildCompactVerticalActionButtons(BuildContext context) {
     return Column(
@@ -835,42 +772,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     );
   }
 
-  Widget _buildActionIconButton(
-    BuildContext context, {
-    required IconData icon,
-    required bool isActive,
-    required VoidCallback onTap,
-  }) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final primaryColor = isLight ? AppColorsLight.primary : AppColorsDark.primary;
-    final iconSize = _screenService.scale(24, density: _visualDensityService.density);
-    final buttonSize = _screenService.scale(44, density: _visualDensityService.density);
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: buttonSize,
-        height: buttonSize,
-        decoration: BoxDecoration(
-          color: isActive
-              ? primaryColor
-              : (isLight ? AppFillColorLight.base : AppFillColorDark.base),
-          borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          border: isActive || !isLight
-              ? null
-              : Border.all(color: AppBorderColorLight.base),
-        ),
-        child: Icon(
-          icon,
-          size: iconSize,
-          color: isActive
-              ? AppColors.white
-              : (isLight ? AppTextColorLight.regular : AppTextColorDark.regular),
-        ),
-      ),
-    );
-  }
-
   // ===========================================================================
   // PORTRAIT LAYOUT
   // ===========================================================================
@@ -900,6 +801,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final primaryColor =
         isLight ? AppColorsLight.primary : AppColorsDark.primary;
+    final localizations = AppLocalizations.of(context);
 
     // Calculate tile dimensions
     final tileWidth = _screenService.scale(
@@ -923,7 +825,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           child: UniversalTile(
             layout: TileLayout.horizontal,
             icon: preset.icon,
-            name: preset.name,
+            name: preset.getName(localizations),
             status: '${preset.position}%',
             isActive: isActive,
             activeColor: primaryColor,
@@ -969,6 +871,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
   Widget _buildWindowVisualization(BuildContext context) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final localizations = AppLocalizations.of(context);
     final coverHeight = (100 - _position) / 100;
 
     return Container(
@@ -985,13 +888,13 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: isLight
-              ? [const Color(0xFF87CEEB), const Color(0xFFE0F7FA)]
-              : [const Color(0xFF1E3A5F), const Color(0xFF0D1B2A)],
+              ? [_VisualizationColorsLight.skyTop, _VisualizationColorsLight.skyBottom]
+              : [_VisualizationColorsDark.skyTop, _VisualizationColorsDark.skyBottom],
         ),
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(
           color: isLight ? AppBorderColorLight.base : AppBorderColorDark.base,
-          width: 4,
+          width: _scale(4),
         ),
       ),
       child: Stack(
@@ -1016,7 +919,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                   borderRadius: BorderRadius.circular(AppBorderRadius.small),
                 ),
                 child: Text(
-                  '$_position% Open',
+                  localizations!.window_covering_position_open_percent(_position),
                   style: TextStyle(
                     fontSize: AppFontSize.extraSmall,
                     fontWeight: FontWeight.w500,
@@ -1084,25 +987,25 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                 density: _visualDensityService.density,
               ),
               margin: EdgeInsets.only(
-                bottom: 2,
-                left: 2,
-                right: 2,
+                bottom: _scale(2),
+                left: _scale(2),
+                right: _scale(2),
               ),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(1),
+                borderRadius: BorderRadius.circular(_scale(1)),
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: isLight
-                      ? [const Color(0xFFE8E8E8), const Color(0xFFBDBDBD)]
-                      : [const Color(0xFF505050), const Color(0xFF383838)],
+                      ? [_VisualizationColorsLight.metalSlatTop, _VisualizationColorsLight.metalSlatBottom]
+                      : [_VisualizationColorsDark.metalSlatTop, _VisualizationColorsDark.metalSlatBottom],
                 ),
                 boxShadow: [
                   BoxShadow(
                     color:
                         AppColors.black.withValues(alpha: isLight ? 0.1 : 0.3),
-                    offset: const Offset(0, 1),
-                    blurRadius: 2,
+                    offset: Offset(0, _scale(1)),
+                    blurRadius: _scale(2),
                   ),
                 ],
               ),
@@ -1134,7 +1037,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           // Left panel
           AnimatedContainer(
             duration: const Duration(milliseconds: 300),
-            width: (containerWidth - 8) * panelWidth,
+            width: (containerWidth - _scale(8)) * panelWidth,
             height: containerHeight,
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -1142,14 +1045,14 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                 end: Alignment.centerRight,
                 colors: isLight
                     ? [
-                        const Color(0xFFD7CCC8),
-                        const Color(0xFFBCAAA4),
-                        const Color(0xFFA1887F)
+                        _VisualizationColorsLight.fabricLight,
+                        _VisualizationColorsLight.fabricMedium,
+                        _VisualizationColorsLight.fabricDark,
                       ]
                     : [
-                        const Color(0xFF5D4037),
-                        const Color(0xFF4E342E),
-                        const Color(0xFF3E2723)
+                        _VisualizationColorsDark.fabricLight,
+                        _VisualizationColorsDark.fabricMedium,
+                        _VisualizationColorsDark.fabricDark,
                       ],
               ),
             ),
@@ -1158,7 +1061,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           // Right panel
           AnimatedContainer(
             duration: const Duration(milliseconds: 300),
-            width: (containerWidth - 8) * panelWidth,
+            width: (containerWidth - _scale(8)) * panelWidth,
             height: containerHeight,
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -1166,14 +1069,14 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                 end: Alignment.centerLeft,
                 colors: isLight
                     ? [
-                        const Color(0xFFD7CCC8),
-                        const Color(0xFFBCAAA4),
-                        const Color(0xFFA1887F)
+                        _VisualizationColorsLight.fabricLight,
+                        _VisualizationColorsLight.fabricMedium,
+                        _VisualizationColorsLight.fabricDark,
                       ]
                     : [
-                        const Color(0xFF5D4037),
-                        const Color(0xFF4E342E),
-                        const Color(0xFF3E2723)
+                        _VisualizationColorsDark.fabricLight,
+                        _VisualizationColorsDark.fabricMedium,
+                        _VisualizationColorsDark.fabricDark,
                       ],
               ),
             ),
@@ -1186,7 +1089,10 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
   Widget _buildCurtainFolds(bool isLight) {
     return CustomPaint(
-      painter: _CurtainFoldsPainter(isLight: isLight),
+      painter: _CurtainFoldsPainter(
+        isLight: isLight,
+        scaleFactor: _scale(1),
+      ),
       size: Size.infinite,
     );
   }
@@ -1210,13 +1116,13 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         Container(
           height: tubeHeight,
           decoration: BoxDecoration(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(_scale(4))),
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: isLight
-                  ? [const Color(0xFF9E9E9E), const Color(0xFF757575)]
-                  : [const Color(0xFF616161), const Color(0xFF424242)],
+                  ? [_VisualizationColorsLight.metalTubeTop, _VisualizationColorsLight.metalTubeBottom]
+                  : [_VisualizationColorsDark.metalTubeTop, _VisualizationColorsDark.metalTubeBottom],
             ),
           ),
         ),
@@ -1224,22 +1130,22 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           height: (shadeMaxHeight * coverHeight).clamp(0.0, shadeMaxHeight),
-          margin: const EdgeInsets.symmetric(horizontal: 2),
+          margin: EdgeInsets.symmetric(horizontal: _scale(2)),
           decoration: BoxDecoration(
             borderRadius:
-                const BorderRadius.vertical(bottom: Radius.circular(4)),
+                BorderRadius.vertical(bottom: Radius.circular(_scale(4))),
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: isLight
-                  ? [const Color(0xFFECEFF1), const Color(0xFFCFD8DC)]
-                  : [const Color(0xFF455A64), const Color(0xFF37474F)],
+                  ? [_VisualizationColorsLight.shadeFabricTop, _VisualizationColorsLight.shadeFabricBottom]
+                  : [_VisualizationColorsDark.shadeFabricTop, _VisualizationColorsDark.shadeFabricBottom],
             ),
             boxShadow: [
               BoxShadow(
                 color: AppColors.black.withValues(alpha: isLight ? 0.15 : 0.3),
-                offset: const Offset(0, 2),
-                blurRadius: 8,
+                offset: Offset(0, _scale(2)),
+                blurRadius: _scale(8),
               ),
             ],
           ),
@@ -1278,25 +1184,25 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                   density: _visualDensityService.density,
                 ),
                 margin: EdgeInsets.only(
-                  bottom: 3,
-                  left: 3,
-                  right: 3,
+                  bottom: _scale(3),
+                  left: _scale(3),
+                  right: _scale(3),
                 ),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: BorderRadius.circular(_scale(2)),
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: isLight
-                        ? [const Color(0xFFA1887F), const Color(0xFF8D6E63)]
-                        : [const Color(0xFF6D4C41), const Color(0xFF5D4037)],
+                        ? [_VisualizationColorsLight.woodSlatTop, _VisualizationColorsLight.woodSlatBottom]
+                        : [_VisualizationColorsDark.woodSlatTop, _VisualizationColorsDark.woodSlatBottom],
                   ),
                   boxShadow: [
                     BoxShadow(
                       color:
                           AppColors.black.withValues(alpha: isLight ? 0.15 : 0.3),
-                      offset: const Offset(0, 1),
-                      blurRadius: 3,
+                      offset: Offset(0, _scale(1)),
+                      blurRadius: _scale(3),
                     ),
                   ],
                 ),
@@ -1316,11 +1222,11 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       value: normalizedValue,
       activeColor: isLight ? AppColorsLight.primary : AppColorsDark.primary,
       steps: [
-        localizations?.window_covering_status_closed ?? 'Closed',
+        localizations!.window_covering_status_closed,
         '25%',
         '50%',
         '75%',
-        localizations?.window_covering_status_open ?? 'Open',
+        localizations.window_covering_status_open,
       ],
       onChanged: (value) {
         final newPosition = (value * 100).round();
@@ -1351,7 +1257,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   }
 
   Widget _buildQuickActions(BuildContext context) {
-    final localizations = AppLocalizations.of(context);
+    final localizations = AppLocalizations.of(context)!;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -1359,7 +1265,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         Expanded(
           child: _buildQuickActionButton(
             context,
-            label: localizations?.window_covering_command_open ?? 'Open',
+            label: localizations.window_covering_command_open,
             icon: MdiIcons.chevronUp,
             isActive: false,
             onTap: () => _controller?.open(),
@@ -1369,7 +1275,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         Expanded(
           child: _buildQuickActionButton(
             context,
-            label: localizations?.window_covering_command_stop ?? 'Stop',
+            label: localizations.window_covering_command_stop,
             icon: MdiIcons.stop,
             isActive: _device.isWindowCoveringStopped,
             onTap: () => _controller?.stop(),
@@ -1379,7 +1285,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         Expanded(
           child: _buildQuickActionButton(
             context,
-            label: localizations?.window_covering_command_close ?? 'Close',
+            label: localizations.window_covering_command_close,
             icon: MdiIcons.chevronDown,
             isActive: false,
             onTap: () => _controller?.close(),
@@ -1459,7 +1365,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final primaryColor =
         isLight ? AppColorsLight.primary : AppColorsDark.primary;
-    final localizations = AppLocalizations.of(context);
+    final localizations = AppLocalizations.of(context)!;
 
     final minTilt = _device.windowCoveringMinTilt;
     final maxTilt = _device.windowCoveringMaxTilt;
@@ -1469,9 +1375,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       // Compact layout: button that opens a value selector sheet
       return ValueSelectorRow<int>(
         currentValue: _tiltAngle,
-        label: localizations?.window_covering_tilt_label ?? 'Tilt Angle',
+        label: localizations.window_covering_tilt_label,
         icon: MdiIcons.angleAcute,
-        sheetTitle: localizations?.window_covering_tilt_label ?? 'Tilt Angle',
+        sheetTitle: localizations.window_covering_tilt_label,
         activeColor: primaryColor,
         options: _getTiltOptions(minTilt, maxTilt),
         displayFormatter: (v) => '${v ?? 0}°',
@@ -1492,7 +1398,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     return _TiltSlider(
       value: normalizedValue.clamp(0.0, 1.0),
       activeColor: primaryColor,
-      label: localizations?.window_covering_tilt_label ?? 'Tilt Angle',
+      label: localizations.window_covering_tilt_label,
       valueLabel: '$_tiltAngle°',
       steps: [
         '$minTilt°',
@@ -1546,6 +1452,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
   Widget _buildInfoCard(BuildContext context) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final localizations = AppLocalizations.of(context)!;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1553,7 +1460,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         UniversalTile(
           layout: TileLayout.horizontal,
           icon: _getStatusIcon(),
-          name: 'Status',
+          name: localizations.window_covering_info_status,
           status: _getStatusLabel(context),
           isActive: false,
           iconAccentColor: _getStatusColor(context),
@@ -1568,8 +1475,10 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
             icon: _device.windowCoveringObstruction
                 ? MdiIcons.alertCircle
                 : MdiIcons.checkCircle,
-            name: 'Obstruction',
-            status: _device.windowCoveringObstruction ? 'Detected' : 'Clear',
+            name: localizations.window_covering_info_obstruction,
+            status: _device.windowCoveringObstruction
+                ? localizations.window_covering_obstruction_detected
+                : localizations.window_covering_obstruction_clear,
             isActive: false,
             iconAccentColor: _device.windowCoveringObstruction
                 ? (isLight ? AppColorsLight.warning : AppColorsDark.warning)
@@ -1616,6 +1525,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
   Widget _buildInfoRow(BuildContext context) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final localizations = AppLocalizations.of(context)!;
 
     return Row(
       children: [
@@ -1623,7 +1533,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           child: UniversalTile(
             layout: TileLayout.horizontal,
             icon: _getStatusIcon(),
-            name: 'Status',
+            name: localizations.window_covering_info_status,
             status: _getStatusLabel(context),
             isActive: false,
             activeColor: _getStatusColor(context),
@@ -1641,8 +1551,10 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
               icon: _device.windowCoveringObstruction
                   ? MdiIcons.alertCircle
                   : MdiIcons.checkCircle,
-              name: 'Obstruction',
-              status: _device.windowCoveringObstruction ? 'Detected' : 'Clear',
+              name: localizations.window_covering_info_obstruction,
+              status: _device.windowCoveringObstruction
+                  ? localizations.window_covering_obstruction_detected
+                  : localizations.window_covering_obstruction_clear,
               isActive: false,
               activeColor: _device.windowCoveringObstruction
                   ? (isLight ? AppColorsLight.warning : AppColorsDark.warning)
@@ -1669,6 +1581,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final primaryColor =
         isLight ? AppColorsLight.primary : AppColorsDark.primary;
+    final localizations = AppLocalizations.of(context);
     final isLargeScreen = _screenService.isLargeScreen;
 
     // Large screens: 2 vertical tiles per row, small/medium: 1 horizontal tile per row
@@ -1691,7 +1604,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         return UniversalTile(
           layout: tileLayout,
           icon: preset.icon,
-          name: preset.name,
+          name: preset.getName(localizations),
           status: '${preset.position}%',
           isActive: isActive,
           activeColor: primaryColor,
@@ -1733,41 +1646,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     }
 
     return true;
-  }
-
-  // ===========================================================================
-  // COMMON WIDGETS
-  // ===========================================================================
-
-  Widget _buildCardTitle(BuildContext context, String title, IconData icon) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-
-    return Row(
-      children: [
-        Icon(
-          icon,
-          color: isLight
-              ? AppTextColorLight.secondary
-              : AppTextColorDark.secondary,
-          size: _screenService.scale(
-            18,
-            density: _visualDensityService.density,
-          ),
-        ),
-        AppSpacings.spacingSmHorizontal,
-        Text(
-          title.toUpperCase(),
-          style: TextStyle(
-            fontSize: AppFontSize.small,
-            fontWeight: FontWeight.w600,
-            color: isLight
-                ? AppTextColorLight.secondary
-                : AppTextColorDark.secondary,
-            letterSpacing: 0.5,
-          ),
-        ),
-      ],
-    );
   }
 
 }
@@ -1863,18 +1741,38 @@ class _TiltSlider extends StatelessWidget {
 // PRESET DATA MODEL
 // ===========================================================================
 
+enum _PresetType { morning, day, evening, night, privacy, away }
+
 class _Preset {
-  final String name;
+  final _PresetType type;
   final IconData icon;
   final int position;
   final int? tiltAngle;
 
   const _Preset({
-    required this.name,
+    required this.type,
     required this.icon,
     required this.position,
     this.tiltAngle,
   });
+
+  String getName(AppLocalizations? localizations) {
+    if (localizations == null) return type.name;
+    switch (type) {
+      case _PresetType.morning:
+        return localizations.window_covering_preset_morning;
+      case _PresetType.day:
+        return localizations.window_covering_preset_day;
+      case _PresetType.evening:
+        return localizations.window_covering_preset_evening;
+      case _PresetType.night:
+        return localizations.window_covering_preset_night;
+      case _PresetType.privacy:
+        return localizations.window_covering_preset_privacy;
+      case _PresetType.away:
+        return localizations.window_covering_preset_away;
+    }
+  }
 }
 
 // ===========================================================================
@@ -1884,18 +1782,20 @@ class _Preset {
 /// CustomPainter that draws vertical fold lines for curtain visualization.
 class _CurtainFoldsPainter extends CustomPainter {
   final bool isLight;
+  final double scaleFactor;
 
-  _CurtainFoldsPainter({required this.isLight});
+  _CurtainFoldsPainter({required this.isLight, required this.scaleFactor});
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = AppColors.black.withValues(alpha: isLight ? 0.05 : 0.15)
-      ..strokeWidth = 1
+      ..strokeWidth = scaleFactor
       ..style = PaintingStyle.stroke;
 
     // Draw vertical fold lines
-    for (double x = 4; x < size.width; x += 8) {
+    final spacing = 8 * scaleFactor;
+    for (double x = 4 * scaleFactor; x < size.width; x += spacing) {
       canvas.drawLine(
         Offset(x, 0),
         Offset(x, size.height),
@@ -1905,5 +1805,44 @@ class _CurtainFoldsPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _CurtainFoldsPainter oldDelegate) =>
+      oldDelegate.isLight != isLight || oldDelegate.scaleFactor != scaleFactor;
+}
+
+// ===========================================================================
+// VISUALIZATION COLORS
+// ===========================================================================
+
+/// Visualization colors for window covering animations.
+/// These represent physical materials like sky, metal, fabric, and wood.
+class _VisualizationColorsLight {
+  static const Color skyTop = Color(0xFF87CEEB);
+  static const Color skyBottom = Color(0xFFE0F7FA);
+  static const Color metalSlatTop = Color(0xFFE8E8E8);
+  static const Color metalSlatBottom = Color(0xFFBDBDBD);
+  static const Color fabricLight = Color(0xFFD7CCC8);
+  static const Color fabricMedium = Color(0xFFBCAAA4);
+  static const Color fabricDark = Color(0xFFA1887F);
+  static const Color metalTubeTop = Color(0xFF9E9E9E);
+  static const Color metalTubeBottom = Color(0xFF757575);
+  static const Color shadeFabricTop = Color(0xFFECEFF1);
+  static const Color shadeFabricBottom = Color(0xFFCFD8DC);
+  static const Color woodSlatTop = Color(0xFFA1887F);
+  static const Color woodSlatBottom = Color(0xFF8D6E63);
+}
+
+class _VisualizationColorsDark {
+  static const Color skyTop = Color(0xFF1E3A5F);
+  static const Color skyBottom = Color(0xFF0D1B2A);
+  static const Color metalSlatTop = Color(0xFF505050);
+  static const Color metalSlatBottom = Color(0xFF383838);
+  static const Color fabricLight = Color(0xFF5D4037);
+  static const Color fabricMedium = Color(0xFF4E342E);
+  static const Color fabricDark = Color(0xFF3E2723);
+  static const Color metalTubeTop = Color(0xFF616161);
+  static const Color metalTubeBottom = Color(0xFF424242);
+  static const Color shadeFabricTop = Color(0xFF455A64);
+  static const Color shadeFabricBottom = Color(0xFF37474F);
+  static const Color woodSlatTop = Color(0xFF6D4C41);
+  static const Color woodSlatBottom = Color(0xFF5D4037);
 }

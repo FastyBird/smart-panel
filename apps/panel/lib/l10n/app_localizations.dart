@@ -2105,6 +2105,72 @@ abstract class AppLocalizations {
   /// **'Fault detected'**
   String get window_covering_fault_warning;
 
+  /// Morning preset name for window covering
+  ///
+  /// In en, this message translates to:
+  /// **'Morning'**
+  String get window_covering_preset_morning;
+
+  /// Day preset name for window covering
+  ///
+  /// In en, this message translates to:
+  /// **'Day'**
+  String get window_covering_preset_day;
+
+  /// Evening preset name for window covering
+  ///
+  /// In en, this message translates to:
+  /// **'Evening'**
+  String get window_covering_preset_evening;
+
+  /// Night preset name for window covering
+  ///
+  /// In en, this message translates to:
+  /// **'Night'**
+  String get window_covering_preset_night;
+
+  /// Privacy preset name for window covering
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy'**
+  String get window_covering_preset_privacy;
+
+  /// Away preset name for window covering
+  ///
+  /// In en, this message translates to:
+  /// **'Away'**
+  String get window_covering_preset_away;
+
+  /// Status label in window covering info card
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get window_covering_info_status;
+
+  /// Obstruction label in window covering info card
+  ///
+  /// In en, this message translates to:
+  /// **'Obstruction'**
+  String get window_covering_info_obstruction;
+
+  /// Obstruction detected status
+  ///
+  /// In en, this message translates to:
+  /// **'Detected'**
+  String get window_covering_obstruction_detected;
+
+  /// No obstruction status
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get window_covering_obstruction_clear;
+
+  /// Position display showing percentage open
+  ///
+  /// In en, this message translates to:
+  /// **'{position}% Open'**
+  String window_covering_position_open_percent(int position);
+
   /// Title label for battery level display
   ///
   /// In en, this message translates to:

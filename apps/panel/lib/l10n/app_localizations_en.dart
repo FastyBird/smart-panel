@@ -1028,6 +1028,41 @@ class AppLocalizationsEn extends AppLocalizations {
   String get window_covering_fault_warning => 'Fault detected';
 
   @override
+  String get window_covering_preset_morning => 'Morning';
+
+  @override
+  String get window_covering_preset_day => 'Day';
+
+  @override
+  String get window_covering_preset_evening => 'Evening';
+
+  @override
+  String get window_covering_preset_night => 'Night';
+
+  @override
+  String get window_covering_preset_privacy => 'Privacy';
+
+  @override
+  String get window_covering_preset_away => 'Away';
+
+  @override
+  String get window_covering_info_status => 'Status';
+
+  @override
+  String get window_covering_info_obstruction => 'Obstruction';
+
+  @override
+  String get window_covering_obstruction_detected => 'Detected';
+
+  @override
+  String get window_covering_obstruction_clear => 'Clear';
+
+  @override
+  String window_covering_position_open_percent(int position) {
+    return '$position% Open';
+  }
+
+  @override
   String get battery_title => 'Battery';
 
   @override

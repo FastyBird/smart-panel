@@ -1386,6 +1386,56 @@
   "@window_covering_fault_warning": {
     "description": "Warning message when a fault is detected"
   },
+  "window_covering_preset_morning": "Morning",
+  "@window_covering_preset_morning": {
+    "description": "Morning preset name for window covering"
+  },
+  "window_covering_preset_day": "Day",
+  "@window_covering_preset_day": {
+    "description": "Day preset name for window covering"
+  },
+  "window_covering_preset_evening": "Evening",
+  "@window_covering_preset_evening": {
+    "description": "Evening preset name for window covering"
+  },
+  "window_covering_preset_night": "Night",
+  "@window_covering_preset_night": {
+    "description": "Night preset name for window covering"
+  },
+  "window_covering_preset_privacy": "Privacy",
+  "@window_covering_preset_privacy": {
+    "description": "Privacy preset name for window covering"
+  },
+  "window_covering_preset_away": "Away",
+  "@window_covering_preset_away": {
+    "description": "Away preset name for window covering"
+  },
+  "window_covering_info_status": "Status",
+  "@window_covering_info_status": {
+    "description": "Status label in window covering info card"
+  },
+  "window_covering_info_obstruction": "Obstruction",
+  "@window_covering_info_obstruction": {
+    "description": "Obstruction label in window covering info card"
+  },
+  "window_covering_obstruction_detected": "Detected",
+  "@window_covering_obstruction_detected": {
+    "description": "Obstruction detected status"
+  },
+  "window_covering_obstruction_clear": "Clear",
+  "@window_covering_obstruction_clear": {
+    "description": "No obstruction status"
+  },
+  "window_covering_position_open_percent": "{position}% Open",
+  "@window_covering_position_open_percent": {
+    "description": "Position display showing percentage open",
+    "placeholders": {
+      "position": {
+        "type": "int",
+        "example": "75"
+      }
+    }
+  },
   "battery_title": "Battery",
   "@battery_title": {
     "description": "Title label for battery level display"
