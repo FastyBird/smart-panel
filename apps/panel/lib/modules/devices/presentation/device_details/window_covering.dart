@@ -369,7 +369,13 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
             _buildTiltCard(context),
             AppSpacings.spacingMdVertical,
           ],
-          _buildPresetsHorizontalScroll(context),
+          SizedBox(
+            height: _screenService.scale(
+              72,
+              density: _visualDensityService.density,
+            ),
+            child: _buildPresetsHorizontalScroll(context),
+          ),
           AppSpacings.spacingMdVertical,
           _buildInfoRow(context),
         ],
@@ -855,6 +861,10 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   // PRESETS
   // ===========================================================================
 
+  /// Aspect ratio for preset tiles (width / height).
+  /// Used consistently across portrait and landscape layouts.
+  static const double _presetTileAspectRatio = 2.2;
+
   Widget _buildPresetsCard(BuildContext context) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final primaryColor =
@@ -871,12 +881,12 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         crossAxisCount: 3,
         mainAxisSpacing: AppSpacings.pSm,
         crossAxisSpacing: AppSpacings.pSm,
-        childAspectRatio: 0.9,
+        childAspectRatio: _presetTileAspectRatio,
         children: _presets.map((preset) {
           final bool isActive = _position == preset.position;
 
           return UniversalTile(
-            layout: TileLayout.vertical,
+            layout: TileLayout.horizontal,
             icon: preset.icon,
             name: preset.name,
             status: '${preset.position}%',
@@ -897,39 +907,42 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     final primaryColor =
         isLight ? AppColorsLight.primary : AppColorsDark.primary;
 
-    return SizedBox(
-      height: _screenService.scale(
-        72,
-        density: _visualDensityService.density,
-      ),
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: _presets.length,
-        separatorBuilder: (_, __) => AppSpacings.spacingSmHorizontal,
-        itemBuilder: (context, index) {
-          final preset = _presets[index];
-          final bool isActive = _position == preset.position;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Use available height or fallback to scaled default
+        final availableHeight = constraints.maxHeight > 0
+            ? constraints.maxHeight
+            : _screenService.scale(72, density: _visualDensityService.density);
 
-          return SizedBox(
-            width: _screenService.scale(
-              140,
-              density: _visualDensityService.density,
-            ),
-            child: UniversalTile(
-              layout: TileLayout.horizontal,
-              icon: preset.icon,
-              name: preset.name,
-              status: '${preset.position}%',
-              isActive: isActive,
-              activeColor: primaryColor,
-              onTileTap: () => _applyPreset(preset),
-              showGlow: false,
-              showWarningBadge: false,
-              showInactiveBorder: isLight,
-            ),
-          );
-        },
-      ),
+        return SizedBox(
+          height: availableHeight,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: _presets.length,
+            separatorBuilder: (_, __) => AppSpacings.spacingSmHorizontal,
+            itemBuilder: (context, index) {
+              final preset = _presets[index];
+              final bool isActive = _position == preset.position;
+
+              return AspectRatio(
+                aspectRatio: _presetTileAspectRatio,
+                child: UniversalTile(
+                  layout: TileLayout.horizontal,
+                  icon: preset.icon,
+                  name: preset.name,
+                  status: '${preset.position}%',
+                  isActive: isActive,
+                  activeColor: primaryColor,
+                  onTileTap: () => _applyPreset(preset),
+                  showGlow: false,
+                  showWarningBadge: false,
+                  showInactiveBorder: isLight,
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
