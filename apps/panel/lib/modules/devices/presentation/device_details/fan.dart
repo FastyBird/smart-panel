@@ -434,7 +434,6 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     ];
 
     return DeviceDetailLandscapeLayout(
-      largeSecondaryColumn: isLargeScreen,
       secondaryScrollable: false,
       secondaryContentPadding: EdgeInsets.zero,
       mainContent: isLargeScreen
