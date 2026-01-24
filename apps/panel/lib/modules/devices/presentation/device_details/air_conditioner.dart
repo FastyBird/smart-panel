@@ -8,8 +8,11 @@ import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
+import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/info_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
@@ -837,9 +840,9 @@ class _AirConditionerDeviceDetailState
     final localizations = AppLocalizations.of(context)!;
     final modeColor = _getModeColor(isDark);
 
-    return SingleChildScrollView(
-      padding: AppSpacings.paddingLg,
-      child: Column(
+    return DeviceDetailPortraitLayout(
+      contentPadding: AppSpacings.paddingLg,
+      content: Column(
         children: [
           _buildPrimaryControlCard(context, isDark, dialSize: _scale(200)),
           AppSpacings.spacingMdVertical,
@@ -857,77 +860,33 @@ class _AirConditionerDeviceDetailState
 
   Widget _buildLandscapeLayout(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
-    final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
-    final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.light;
+    final secondaryBgColor =
+        isDark ? AppFillColorDark.light : AppFillColorLight.light;
     final isLargeScreen = _screenService.isLargeScreen;
     final modeColor = _getModeColor(isDark);
 
-    // Large screen: equal columns
-    if (isLargeScreen) {
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            flex: 1,
-            child: Padding(
-              padding: AppSpacings.paddingLg,
-              child: _buildPrimaryControlCard(context, isDark,
-                  dialSize: _scale(200)),
-            ),
-          ),
-          Container(width: _scale(1), color: borderColor),
-          Expanded(
-            flex: 1,
-            child: Container(
-              color: cardColor,
-              padding: AppSpacings.paddingLg,
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildStatusSection(localizations, isDark, modeColor),
-                    AppSpacings.spacingMdVertical,
-                    _buildFanControls(localizations, isDark, modeColor, false),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    // Small/medium: 2:1 ratio with stretched dial
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          flex: 2,
-          child: Padding(
-            padding: AppSpacings.paddingLg,
-            child: _buildCompactDialWithModes(context, isDark),
-          ),
+    return DeviceDetailLandscapeLayout(
+      largeSecondaryColumn: isLargeScreen,
+      secondaryScrollable: false,
+      secondaryContentPadding: EdgeInsets.zero,
+      mainContent: isLargeScreen
+          ? _buildPrimaryControlCard(context, isDark, dialSize: _scale(200))
+          : _buildCompactDialWithModes(context, isDark),
+      secondaryContent: VerticalScrollWithGradient(
+        gradientHeight: AppSpacings.pLg,
+        itemCount: 1,
+        separatorHeight: 0,
+        padding: AppSpacings.paddingLg,
+        backgroundColor: secondaryBgColor,
+        itemBuilder: (context, index) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildStatusSection(localizations, isDark, modeColor),
+            AppSpacings.spacingMdVertical,
+            _buildFanControls(localizations, isDark, modeColor, !isLargeScreen),
+          ],
         ),
-        Container(width: _scale(1), color: borderColor),
-        Expanded(
-          flex: 1,
-          child: Container(
-            color: cardColor,
-            padding: AppSpacings.paddingLg,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildStatusSection(localizations, isDark, modeColor),
-                  AppSpacings.spacingMdVertical,
-                  _buildFanControls(localizations, isDark, modeColor, true),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
@@ -1029,7 +988,7 @@ class _AirConditionerDeviceDetailState
           ...infoTiles
               .expand((tile) => [
                     SizedBox(width: double.infinity, child: tile),
-                    AppSpacings.spacingSmVertical,
+                    AppSpacings.spacingMdVertical,
                   ])
               .take(infoTiles.length * 2 - 1)
         else
@@ -1057,14 +1016,14 @@ class _AirConditionerDeviceDetailState
       for (var j = 0; j < rowTiles.length; j++) {
         rowChildren.add(Expanded(child: rowTiles[j]));
         if (j < rowTiles.length - 1) {
-          rowChildren.add(AppSpacings.spacingSmHorizontal);
+          rowChildren.add(AppSpacings.spacingMdHorizontal);
         }
       }
 
       // Add empty spacers if row is not full (to maintain consistent sizing)
       final emptySlots = tilesPerRow - rowTiles.length;
       for (var j = 0; j < emptySlots; j++) {
-        rowChildren.add(AppSpacings.spacingSmHorizontal);
+        rowChildren.add(AppSpacings.spacingMdHorizontal);
         rowChildren.add(const Expanded(child: SizedBox.shrink()));
       }
 
@@ -1072,7 +1031,7 @@ class _AirConditionerDeviceDetailState
 
       // Add spacing between rows
       if (i + tilesPerRow < tiles.length) {
-        rows.add(AppSpacings.spacingSmVertical);
+        rows.add(AppSpacings.spacingMdVertical);
       }
     }
 
@@ -1469,7 +1428,7 @@ class _AirConditionerDeviceDetailState
         showDoubleBorder: false,
         showInactiveBorder: true,
       ));
-      options.add(AppSpacings.spacingSmVertical);
+      options.add(AppSpacings.spacingMdVertical);
     }
 
     // Direction
@@ -1494,7 +1453,7 @@ class _AirConditionerDeviceDetailState
         showDoubleBorder: false,
         showInactiveBorder: true,
       ));
-      options.add(AppSpacings.spacingSmVertical);
+      options.add(AppSpacings.spacingMdVertical);
     }
 
     // Natural Breeze
@@ -1513,7 +1472,7 @@ class _AirConditionerDeviceDetailState
         showDoubleBorder: false,
         showInactiveBorder: true,
       ));
-      options.add(AppSpacings.spacingSmVertical);
+      options.add(AppSpacings.spacingMdVertical);
     }
 
     // Child Lock
@@ -1532,7 +1491,7 @@ class _AirConditionerDeviceDetailState
         showDoubleBorder: false,
         showInactiveBorder: true,
       ));
-      options.add(AppSpacings.spacingSmVertical);
+      options.add(AppSpacings.spacingMdVertical);
     }
 
     // Timer
@@ -1541,7 +1500,7 @@ class _AirConditionerDeviceDetailState
     }
 
     // Remove trailing spacer
-    if (options.isNotEmpty && options.last == AppSpacings.spacingSmVertical) {
+    if (options.isNotEmpty && options.last == AppSpacings.spacingMdVertical) {
       options.removeLast();
     }
 

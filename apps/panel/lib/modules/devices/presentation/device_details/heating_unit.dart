@@ -8,8 +8,11 @@ import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
+import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/info_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
@@ -439,9 +442,9 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     final localizations = AppLocalizations.of(context)!;
     final modeColor = _getModeColor(isDark);
 
-    return SingleChildScrollView(
-      padding: AppSpacings.paddingLg,
-      child: Column(
+    return DeviceDetailPortraitLayout(
+      contentPadding: AppSpacings.paddingLg,
+      content: Column(
         children: [
           _buildPrimaryControlCard(context, isDark, dialSize: _scale(200)),
           AppSpacings.spacingMdVertical,
@@ -457,63 +460,27 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
 
   Widget _buildLandscapeLayout(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
-    final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
-    final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.light;
+    final secondaryBgColor =
+        isDark ? AppFillColorDark.light : AppFillColorLight.light;
     final isLargeScreen = _screenService.isLargeScreen;
     final modeColor = _getModeColor(isDark);
 
-    // Large screen: equal columns
-    if (isLargeScreen) {
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            flex: 1,
-            child: Padding(
-              padding: AppSpacings.paddingLg,
-              child: _buildPrimaryControlCard(context, isDark,
-                  dialSize: _scale(200)),
-            ),
-          ),
-          Container(width: _scale(1), color: borderColor),
-          Expanded(
-            flex: 1,
-            child: Container(
-              color: cardColor,
-              padding: AppSpacings.paddingLg,
-              child: SingleChildScrollView(
-                child: _buildStatusSection(localizations, isDark, modeColor),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    // Small/medium: 2:1 ratio with stretched dial
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          flex: 2,
-          child: Padding(
-            padding: AppSpacings.paddingLg,
-            child: _buildCompactDialWithModes(context, isDark),
-          ),
-        ),
-        Container(width: _scale(1), color: borderColor),
-        Expanded(
-          flex: 1,
-          child: Container(
-            color: cardColor,
-            padding: AppSpacings.paddingLg,
-            child: SingleChildScrollView(
-              child: _buildStatusSection(localizations, isDark, modeColor),
-            ),
-          ),
-        ),
-      ],
+    return DeviceDetailLandscapeLayout(
+      largeSecondaryColumn: isLargeScreen,
+      secondaryScrollable: false,
+      secondaryContentPadding: EdgeInsets.zero,
+      mainContent: isLargeScreen
+          ? _buildPrimaryControlCard(context, isDark, dialSize: _scale(200))
+          : _buildCompactDialWithModes(context, isDark),
+      secondaryContent: VerticalScrollWithGradient(
+        gradientHeight: AppSpacings.pLg,
+        itemCount: 1,
+        separatorHeight: 0,
+        padding: AppSpacings.paddingLg,
+        backgroundColor: secondaryBgColor,
+        itemBuilder: (context, index) =>
+            _buildStatusSection(localizations, isDark, modeColor),
+      ),
     );
   }
 
@@ -565,7 +532,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
           ...infoTiles
               .expand((tile) => [
                     SizedBox(width: double.infinity, child: tile),
-                    AppSpacings.spacingSmVertical,
+                    AppSpacings.spacingMdVertical,
                   ])
               .take(infoTiles.length * 2 - 1)
         else
@@ -589,14 +556,14 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
       for (var j = 0; j < rowTiles.length; j++) {
         rowChildren.add(Expanded(child: rowTiles[j]));
         if (j < rowTiles.length - 1) {
-          rowChildren.add(AppSpacings.spacingSmHorizontal);
+          rowChildren.add(AppSpacings.spacingMdHorizontal);
         }
       }
 
       // Add empty spacers if row is not full (to maintain consistent sizing)
       final emptySlots = tilesPerRow - rowTiles.length;
       for (var j = 0; j < emptySlots; j++) {
-        rowChildren.add(AppSpacings.spacingSmHorizontal);
+        rowChildren.add(AppSpacings.spacingMdHorizontal);
         rowChildren.add(const Expanded(child: SizedBox.shrink()));
       }
 
@@ -604,7 +571,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
 
       // Add spacing between rows
       if (i + tilesPerRow < tiles.length) {
-        rows.add(AppSpacings.spacingSmVertical);
+        rows.add(AppSpacings.spacingMdVertical);
       }
     }
 

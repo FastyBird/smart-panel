@@ -342,8 +342,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     ];
 
     return DeviceDetailLandscapeLayout(
-      mainContentFlex: 2,
-      secondaryContentFlex: 1,
       mainContent: _buildLandscapeMainControl(context),
       secondaryContent: VerticalScrollWithGradient(
         gradientHeight: AppSpacings.pLg,
@@ -1569,7 +1567,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           ),
         ),
         if (_device.hasWindowCoveringObstruction) ...[
-          AppSpacings.spacingSmVertical,
+          AppSpacings.spacingMdVertical,
           SizedBox(
             height: tileHeight,
             child: UniversalTile(
@@ -1696,8 +1694,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     if (isLargeScreen) {
       return GridView.count(
         crossAxisCount: 2,
-        mainAxisSpacing: AppSpacings.pSm,
-        crossAxisSpacing: AppSpacings.pSm,
+        mainAxisSpacing: AppSpacings.pMd,
+        crossAxisSpacing: AppSpacings.pMd,
         childAspectRatio: AppTileAspectRatio.square,
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
@@ -1733,7 +1731,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         final isLast = index == _presets.length - 1;
 
         return Padding(
-          padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pSm),
+          padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
           child: SizedBox(
             height: tileHeight,
             child: UniversalTile(

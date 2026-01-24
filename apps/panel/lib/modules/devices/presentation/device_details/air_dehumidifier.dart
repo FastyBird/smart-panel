@@ -8,8 +8,11 @@ import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
+import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/info_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
@@ -479,60 +482,25 @@ class _AirDehumidifierDeviceDetailState
 
   Widget _buildLandscape(BuildContext context, bool isDark) {
     final humidityColor = DeviceColors.humidity(isDark);
-    final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
-    final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.light;
+    final secondaryBgColor =
+        isDark ? AppFillColorDark.light : AppFillColorLight.light;
     final isLargeScreen = _screenService.isLargeScreen;
 
-    if (isLargeScreen) {
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            flex: 1,
-            child: Padding(
-              padding: AppSpacings.paddingLg,
-              child: _buildControlCard(isDark, humidityColor),
-            ),
-          ),
-          Container(width: _scale(1), color: borderColor),
-          Expanded(
-            flex: 1,
-            child: Container(
-              color: cardColor,
-              padding: AppSpacings.paddingLg,
-              child: SingleChildScrollView(
-                child: _buildStatus(isDark),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    // Compact layout for small/medium screens
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          flex: 2,
-          child: Padding(
-            padding: AppSpacings.paddingLg,
-            child: _buildCompactControlCard(context, isDark, humidityColor),
-          ),
-        ),
-        Container(width: _scale(1), color: borderColor),
-        Expanded(
-          flex: 1,
-          child: Container(
-            color: cardColor,
-            padding: AppSpacings.paddingLg,
-            child: SingleChildScrollView(
-              child: _buildStatus(isDark),
-            ),
-          ),
-        ),
-      ],
+    return DeviceDetailLandscapeLayout(
+      largeSecondaryColumn: isLargeScreen,
+      secondaryScrollable: false,
+      secondaryContentPadding: EdgeInsets.zero,
+      mainContent: isLargeScreen
+          ? _buildControlCard(isDark, humidityColor)
+          : _buildCompactControlCard(context, isDark, humidityColor),
+      secondaryContent: VerticalScrollWithGradient(
+        gradientHeight: AppSpacings.pLg,
+        itemCount: 1,
+        separatorHeight: 0,
+        padding: AppSpacings.paddingLg,
+        backgroundColor: secondaryBgColor,
+        itemBuilder: (context, index) => _buildStatus(isDark),
+      ),
     );
   }
 
@@ -661,9 +629,8 @@ class _AirDehumidifierDeviceDetailState
     final controlBorderColor =
         isOn ? DeviceColors.humidityLight7(isDark) : borderColor;
 
-    return SingleChildScrollView(
-      padding: AppSpacings.paddingMd,
-      child: Column(
+    return DeviceDetailPortraitLayout(
+      content: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
@@ -853,7 +820,7 @@ class _AirDehumidifierDeviceDetailState
             ...infoTiles
                 .expand((tile) => [
                       SizedBox(width: double.infinity, child: tile),
-                      AppSpacings.spacingSmVertical,
+                      AppSpacings.spacingMdVertical,
                     ])
                 .take(infoTiles.length * 2 - 1)
           else
@@ -879,7 +846,7 @@ class _AirDehumidifierDeviceDetailState
             showDoubleBorder: false,
             showInactiveBorder: true,
           ),
-          AppSpacings.spacingSmVertical,
+          AppSpacings.spacingMdVertical,
         ],
         // Direction tile - only show if fan has direction property
         if (fanChannel != null && fanChannel.hasDirection) ...[
@@ -904,7 +871,7 @@ class _AirDehumidifierDeviceDetailState
             showDoubleBorder: false,
             showInactiveBorder: true,
           ),
-          AppSpacings.spacingSmVertical,
+          AppSpacings.spacingMdVertical,
         ],
         // Natural breeze tile - only show if fan has natural_breeze property
         if (fanChannel != null && fanChannel.hasNaturalBreeze) ...[
@@ -922,7 +889,7 @@ class _AirDehumidifierDeviceDetailState
             showDoubleBorder: false,
             showInactiveBorder: true,
           ),
-          AppSpacings.spacingSmVertical,
+          AppSpacings.spacingMdVertical,
         ],
         // Child Lock
         if (channel != null && channel.hasLocked) ...[
@@ -940,7 +907,7 @@ class _AirDehumidifierDeviceDetailState
             showDoubleBorder: false,
             showInactiveBorder: true,
           ),
-          AppSpacings.spacingSmVertical,
+          AppSpacings.spacingMdVertical,
         ],
         // Timer
         if (channel != null && channel.hasTimer)
@@ -956,7 +923,7 @@ class _AirDehumidifierDeviceDetailState
     if (tiles.length <= 3) {
       return Row(
         children: tiles
-            .expand((tile) => [Expanded(child: tile), AppSpacings.spacingSmHorizontal])
+            .expand((tile) => [Expanded(child: tile), AppSpacings.spacingMdHorizontal])
             .take(tiles.length * 2 - 1)
             .toList(),
       );
@@ -968,12 +935,12 @@ class _AirDehumidifierDeviceDetailState
       final rowTiles = tiles.skip(i).take(3).toList();
       rows.add(Row(
         children: rowTiles
-            .expand((tile) => [Expanded(child: tile), AppSpacings.spacingSmHorizontal])
+            .expand((tile) => [Expanded(child: tile), AppSpacings.spacingMdHorizontal])
             .take(rowTiles.length * 2 - 1)
             .toList(),
       ));
       if (i + 3 < tiles.length) {
-        rows.add(AppSpacings.spacingSmVertical);
+        rows.add(AppSpacings.spacingMdVertical);
       }
     }
 
@@ -1034,6 +1001,7 @@ class _AirDehumidifierDeviceDetailState
             speedWidget,
             AppSpacings.spacingMdVertical,
             _buildFanModeControl(localizations, humidityColor, true),
+            AppSpacings.spacingMdVertical,
           ],
         );
       }
@@ -1041,7 +1009,7 @@ class _AirDehumidifierDeviceDetailState
       return Column(
         children: [
           speedWidget,
-          AppSpacings.spacingSmVertical,
+          AppSpacings.spacingMdVertical,
         ],
       );
     } else {
@@ -1073,6 +1041,7 @@ class _AirDehumidifierDeviceDetailState
               speedWidget,
               AppSpacings.spacingMdVertical,
               _buildFanModeControl(localizations, humidityColor, useVerticalLayout),
+              AppSpacings.spacingMdVertical,
             ],
           );
         }
@@ -1080,26 +1049,31 @@ class _AirDehumidifierDeviceDetailState
         return Column(
           children: [
             speedWidget,
-            AppSpacings.spacingSmVertical,
+            AppSpacings.spacingMdVertical,
           ],
         );
       } else {
         // Use SpeedSlider widget for landscape layout
         // Mode selector goes inside the slider's bordered box as footer
-        return SpeedSlider(
-          value: _normalizedFanSpeed,
-          activeColor: humidityColor,
-          enabled: _device.isOn,
-          steps: [
-            localizations.fan_speed_off,
-            localizations.fan_speed_low,
-            localizations.fan_speed_medium,
-            localizations.fan_speed_high,
+        return Column(
+          children: [
+            SpeedSlider(
+              value: _normalizedFanSpeed,
+              activeColor: humidityColor,
+              enabled: _device.isOn,
+              steps: [
+                localizations.fan_speed_off,
+                localizations.fan_speed_low,
+                localizations.fan_speed_medium,
+                localizations.fan_speed_high,
+              ],
+              onChanged: _setFanSpeed,
+              footer: hasMode
+                  ? _buildFanModeControl(localizations, humidityColor, false)
+                  : null,
+            ),
+            AppSpacings.spacingMdVertical,
           ],
-          onChanged: _setFanSpeed,
-          footer: hasMode
-              ? _buildFanModeControl(localizations, humidityColor, false)
-              : null,
         );
       }
     }

@@ -7,8 +7,11 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/info_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
@@ -582,80 +585,34 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
 
   Widget _buildLandscape(BuildContext context, bool isDark) {
     final airColor = DeviceColors.air(isDark);
-    final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
-    final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.light;
+    final secondaryBgColor =
+        isDark ? AppFillColorDark.light : AppFillColorLight.light;
     final isLargeScreen = _screenService.isLargeScreen;
 
-    // Large screen: control card only in left column
-    if (isLargeScreen) {
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            flex: 1,
-            child: Padding(
-              padding: AppSpacings.paddingLg,
-              child: _buildControlCard(context, isDark, airColor),
-            ),
-          ),
-          Container(width: _scale(1), color: borderColor),
-          Expanded(
-            flex: 1,
-            child: Container(
-              color: cardColor,
-              padding: AppSpacings.paddingLg,
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildStatus(context, isDark),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    // Small/medium: compact layout with stretch (like climate domain)
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          flex: 2,
-          child: Padding(
-            padding: AppSpacings.paddingLg,
-            child: _buildCompactControlCard(context, isDark, airColor),
-          ),
-        ),
-        Container(width: _scale(1), color: borderColor),
-        Expanded(
-          flex: 1,
-          child: Container(
-            color: cardColor,
-            padding: AppSpacings.paddingLg,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildStatus(context, isDark),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
+    return DeviceDetailLandscapeLayout(
+      largeSecondaryColumn: isLargeScreen,
+      secondaryScrollable: false,
+      secondaryContentPadding: EdgeInsets.zero,
+      mainContent: isLargeScreen
+          ? _buildControlCard(context, isDark, airColor)
+          : _buildCompactControlCard(context, isDark, airColor),
+      secondaryContent: VerticalScrollWithGradient(
+        gradientHeight: AppSpacings.pLg,
+        itemCount: 1,
+        separatorHeight: 0,
+        padding: AppSpacings.paddingLg,
+        backgroundColor: secondaryBgColor,
+        itemBuilder: (context, index) => _buildStatus(context, isDark),
+      ),
     );
   }
 
   Widget _buildPortrait(BuildContext context, bool isDark) {
     final airColor = DeviceColors.air(isDark);
 
-    return SingleChildScrollView(
-      padding: AppSpacings.paddingMd,
-      child: Column(
+    return DeviceDetailPortraitLayout(
+      contentPadding: AppSpacings.paddingMd,
+      content: Column(
         children: [
           _buildControlCard(context, isDark, airColor),
           AppSpacings.spacingMdVertical,
@@ -1030,14 +987,14 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       for (var j = 0; j < rowTiles.length; j++) {
         rowChildren.add(Expanded(child: rowTiles[j]));
         if (j < rowTiles.length - 1) {
-          rowChildren.add(AppSpacings.spacingSmHorizontal);
+          rowChildren.add(AppSpacings.spacingMdHorizontal);
         }
       }
 
       // Add empty spacers if row is not full (to maintain consistent sizing)
       final emptySlots = tilesPerRow - rowTiles.length;
       for (var j = 0; j < emptySlots; j++) {
-        rowChildren.add(AppSpacings.spacingSmHorizontal);
+        rowChildren.add(AppSpacings.spacingMdHorizontal);
         rowChildren.add(const Expanded(child: SizedBox.shrink()));
       }
 
@@ -1045,7 +1002,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
 
       // Add spacing between rows
       if (i + tilesPerRow < tiles.length) {
-        rows.add(AppSpacings.spacingSmVertical);
+        rows.add(AppSpacings.spacingMdVertical);
       }
     }
 
@@ -1333,7 +1290,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             ...infoTiles
                 .expand((tile) => [
                       SizedBox(width: double.infinity, child: tile),
-                      AppSpacings.spacingSmVertical,
+                      AppSpacings.spacingMdVertical,
                     ])
                 .take(infoTiles.length * 2 - 1)
           else
@@ -1361,7 +1318,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             showDoubleBorder: false,
             showInactiveBorder: true,
           ),
-          AppSpacings.spacingSmVertical,
+          AppSpacings.spacingMdVertical,
         ],
         // Direction tile - only show if fan has direction property
         if (_device.fanChannel.hasDirection) ...[
@@ -1385,7 +1342,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             showDoubleBorder: false,
             showInactiveBorder: true,
           ),
-          AppSpacings.spacingSmVertical,
+          AppSpacings.spacingMdVertical,
         ],
         // Natural Breeze tile - only show if fan has natural breeze property
         if (_device.fanChannel.hasNaturalBreeze) ...[
@@ -1403,7 +1360,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             showDoubleBorder: false,
             showInactiveBorder: true,
           ),
-          AppSpacings.spacingSmVertical,
+          AppSpacings.spacingMdVertical,
         ],
         // Child Lock tile - only show if fan has locked property
         if (_device.fanChannel.hasLocked) ...[
@@ -1421,7 +1378,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             showDoubleBorder: false,
             showInactiveBorder: true,
           ),
-          AppSpacings.spacingSmVertical,
+          AppSpacings.spacingMdVertical,
         ],
         // Timer - only show if fan has timer property
         if (_device.fanChannel.hasTimer)

@@ -12,6 +12,7 @@ import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/constants.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
@@ -1090,10 +1091,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final isSmallScreen = _screenService.isSmallScreen;
     final scenesPerRow = isSmallScreen ? 3 : 4;
 
-    // Use higher aspect ratio (shorter tiles) on medium+ portrait displays
-    final isAtLeastMedium = _screenService.isAtLeastMedium;
-    final otherLightsAspectRatio = isAtLeastMedium ? 3.0 : 2.5;
-
     return PortraitViewLayout(
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1132,7 +1129,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
               otherLights,
               localizations,
               crossAxisCount: 2,
-              aspectRatio: otherLightsAspectRatio,
             ),
           ],
         ],
@@ -1276,6 +1272,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       additionalContent: hasScenes
           ? _buildLandscapeScenesColumn(context, localizations)
           : null,
+      additionalContentPadding: EdgeInsets.zero,
     );
   }
 
@@ -1347,28 +1344,94 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     BuildContext context,
     AppLocalizations localizations,
   ) {
+    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final secondaryBgColor =
+        isLight ? AppFillColorLight.light : AppFillColorDark.light;
+
+    // Build content widgets: header + scenes card
+    final contentWidgets = <Widget>[
+      SectionTitle(
+        title: localizations.space_scenes_title,
+        icon: Icons.auto_awesome,
+      ),
+      _buildLandscapeScenesCard(context),
+    ];
+
+    return VerticalScrollWithGradient(
+      gradientHeight: AppSpacings.pLg,
+      itemCount: contentWidgets.length,
+      separatorHeight: AppSpacings.pMd,
+      padding: AppSpacings.paddingLg,
+      backgroundColor: secondaryBgColor,
+      itemBuilder: (context, index) => contentWidgets[index],
+    );
+  }
+
+  /// Build scenes card matching the presets pattern from window_covering.dart.
+  /// Large screens: 2 vertical tiles per row (square).
+  /// Small/medium screens: Column of fixed-height horizontal tiles.
+  Widget _buildLandscapeScenesCard(BuildContext context) {
+    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final primaryColor =
+        isLight ? AppColorsLight.primary : AppColorsDark.primary;
     final isLargeScreen = _screenService.isLargeScreen;
-    final scenesPerRow = isLargeScreen ? 2 : 1;
+    final scenes = _lightingScenes;
+
+    // Large screens: 2 vertical tiles per row (square)
+    if (isLargeScreen) {
+      return GridView.count(
+        crossAxisCount: 2,
+        mainAxisSpacing: AppSpacings.pSm,
+        crossAxisSpacing: AppSpacings.pSm,
+        childAspectRatio: AppTileAspectRatio.square,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        children: scenes.map((scene) {
+          return UniversalTile(
+            layout: TileLayout.vertical,
+            icon: _getSceneIcon(scene),
+            name: scene.name,
+            isActive: false,
+            activeColor: primaryColor,
+            onTileTap: () => _activateScene(scene),
+            showGlow: false,
+            showWarningBadge: false,
+            showInactiveBorder: true,
+          );
+        }).toList(),
+      );
+    }
+
+    // Small/medium: Column of fixed-height horizontal tiles
+    final tileHeight = _screenService.scale(
+      AppTileHeight.horizontal,
+      density: _visualDensityService.density,
+    );
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionTitle(
-            title: localizations.space_scenes_title, icon: Icons.auto_awesome),
-        AppSpacings.spacingMdVertical,
-        // Vertical scroll with responsive columns, no limit
-        // 1 column = horizontal tiles, 2+ columns = vertical tiles
-        Expanded(
-          child: _buildScenesGrid(
-            context,
-            crossAxisCount: scenesPerRow,
-            scrollable: true,
-            tileLayout:
-                scenesPerRow == 1 ? TileLayout.horizontal : TileLayout.vertical,
-            showInactiveBorder: true,
+      children: scenes.asMap().entries.map((entry) {
+        final index = entry.key;
+        final scene = entry.value;
+        final isLast = index == scenes.length - 1;
+
+        return Padding(
+          padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pSm),
+          child: SizedBox(
+            height: tileHeight,
+            child: UniversalTile(
+              layout: TileLayout.horizontal,
+              icon: _getSceneIcon(scene),
+              name: scene.name,
+              isActive: false,
+              activeColor: primaryColor,
+              onTileTap: () => _activateScene(scene),
+              showGlow: false,
+              showWarningBadge: false,
+              showInactiveBorder: true,
+            ),
           ),
-        ),
-      ],
+        );
+      }).toList(),
     );
   }
 
@@ -1981,32 +2044,51 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   // LIGHTS GRID
   // --------------------------------------------------------------------------
 
+  /// Builds a grid of light tiles that fill the available width.
+  /// Uses fixed tile height (AppTileHeight.horizontal) for consistency
+  /// with other domain views (e.g., shading domain devices grid).
   Widget _buildLightsGrid(
     BuildContext context,
     List<LightDeviceData> lights,
     AppLocalizations localizations, {
-    required int crossAxisCount,
-    double aspectRatio = 2.5,
+    int crossAxisCount = 2,
   }) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        crossAxisSpacing: AppSpacings.pMd,
-        mainAxisSpacing: AppSpacings.pMd,
-        childAspectRatio: aspectRatio,
-      ),
-      itemCount: lights.length,
-      itemBuilder: (context, index) {
-        return _LightTile(
-          light: lights[index],
-          localizations: localizations,
-          onTap: () => _openDeviceDetail(context, lights[index]),
-          onIconTap: () => _toggleLight(lights[index]),
-        );
-      },
+    final tileHeight = _screenService.scale(
+      AppTileHeight.horizontal,
+      density: _visualDensityService.density,
     );
+
+    final items = lights.map((light) {
+      return _LightTile(
+        light: light,
+        localizations: localizations,
+        onTap: () => _openDeviceDetail(context, light),
+        onIconTap: () => _toggleLight(light),
+      );
+    }).toList();
+
+    // Build rows of tiles
+    final List<Widget> rows = [];
+    for (var i = 0; i < items.length; i += crossAxisCount) {
+      final rowItems = <Widget>[];
+      for (var j = 0; j < crossAxisCount; j++) {
+        final index = i + j;
+        if (index < items.length) {
+          rowItems.add(Expanded(child: SizedBox(height: tileHeight, child: items[index])));
+        } else {
+          rowItems.add(const Expanded(child: SizedBox()));
+        }
+        if (j < crossAxisCount - 1) {
+          rowItems.add(SizedBox(width: AppSpacings.pMd));
+        }
+      }
+      if (rows.isNotEmpty) {
+        rows.add(SizedBox(height: AppSpacings.pMd));
+      }
+      rows.add(Row(children: rowItems));
+    }
+
+    return Column(children: rows);
   }
 
   // --------------------------------------------------------------------------

@@ -7,12 +7,14 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
+import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
@@ -1634,16 +1636,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   Widget _buildPortraitLayout(BuildContext context) {
     final hasAuxiliary = _state.auxiliaryDevices.isNotEmpty;
     final hasSensors = _state.sensors.isNotEmpty;
-    final isAtLeastMedium = _screenService.isAtLeastMedium;
-    final isSmallScreen = _screenService.isSmallScreen;
-
-    // Sensors layout:
-    // - Small: 2 columns, horizontal scroll, horizontal tiles (original)
-    // - Medium/Large: same as "quick scenes" - 3/4 columns, vertical tiles
-    final sensorColumns = isSmallScreen ? 2 : (isAtLeastMedium ? 4 : 3);
-
-    // Auxiliary layout: same as "other lights" - 2 cols, aspect ratio based on screen size
-    final auxiliaryAspectRatio = isAtLeastMedium ? 3.0 : 2.5;
 
     return PortraitViewLayout(
       content: Column(
@@ -1651,53 +1643,94 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         children: [
           _buildPrimaryControlCard(context, dialSize: _scale(200)),
           AppSpacings.spacingLgVertical,
+          // Sensors section - horizontal scroll like presets on window_covering.dart
           if (hasSensors) ...[
-            SectionTitle(title: 'Sensors', icon: MdiIcons.eyeSettings),
+            SectionTitle(
+              title: 'Sensors',
+              icon: MdiIcons.eyeSettings,
+            ),
             AppSpacings.spacingMdVertical,
-            if (isSmallScreen)
-              // Small: horizontal scroll with horizontal tiles (original behavior)
-              SizedBox(
-                height: _scale(50),
-                child: _buildSensorsScrollRow(
-                  context,
-                  columns: sensorColumns,
-                  useVerticalTiles: false,
-                ),
-              )
-            else if (hasAuxiliary)
-              // Medium/Large with auxiliary: horizontal scroll with vertical tiles
-              SizedBox(
-                height: _scale(100),
-                child: _buildSensorsScrollRow(
-                  context,
-                  columns: sensorColumns,
-                  useVerticalTiles: true,
-                  statusFontSize: AppFontSize.extraSmall,
-                ),
-              )
-            else
-              // Medium/Large without auxiliary: grid with vertical tiles
-              _buildSensorsGrid(
-                context,
-                crossAxisCount: sensorColumns,
-                aspectRatio: 1.0,
-                statusFontSize: AppFontSize.extraSmall,
-              ),
+            _buildSensorsWithGradient(context),
             AppSpacings.spacingLgVertical,
           ],
+          // Auxiliary section - same as devices on covering domain
           if (hasAuxiliary) ...[
-            SectionTitle(title: 'Auxiliary', icon: MdiIcons.devices),
-            AppSpacings.spacingMdVertical,
-            _buildAuxiliaryGrid(
-              context,
-              crossAxisCount: 2,
-              aspectRatio: auxiliaryAspectRatio,
+            SectionTitle(
+              title: 'Auxiliary',
+              icon: MdiIcons.devices,
             ),
+            AppSpacings.spacingMdVertical,
+            _buildPortraitAuxiliaryGrid(context),
           ],
         ],
       ),
       // No mode selector - climate uses integrated mode control in dial
     );
+  }
+
+  /// Builds the sensors horizontal scroll with edge gradients.
+  /// Matches the presets pattern from window_covering.dart.
+  Widget _buildSensorsWithGradient(BuildContext context) {
+    final tileWidth = _scale(AppTileWidth.horizontalMedium);
+    final tileHeight = _scale(AppTileHeight.horizontal);
+
+    return HorizontalScrollWithGradient(
+      height: tileHeight,
+      layoutPadding: AppSpacings.pLg,
+      itemCount: _state.sensors.length,
+      separatorWidth: AppSpacings.pSm,
+      itemBuilder: (context, index) {
+        final sensor = _state.sensors[index];
+
+        return SizedBox(
+          width: tileWidth,
+          height: tileHeight,
+          child: _buildSensorTile(
+            context,
+            sensor,
+            layout: TileLayout.horizontal,
+          ),
+        );
+      },
+    );
+  }
+
+  /// Builds a grid of auxiliary device tiles with fixed height.
+  /// Matches the devices pattern from covering domain view.
+  Widget _buildPortraitAuxiliaryGrid(BuildContext context) {
+    final tileHeight = _screenService.scale(
+      AppTileHeight.horizontal,
+      density: _visualDensityService.density,
+    );
+
+    final items = _buildAuxiliaryItems(
+      context,
+      TileLayout.horizontal,
+    );
+
+    // Build rows of tiles (2 columns)
+    const crossAxisCount = 2;
+    final List<Widget> rows = [];
+    for (var i = 0; i < items.length; i += crossAxisCount) {
+      final rowItems = <Widget>[];
+      for (var j = 0; j < crossAxisCount; j++) {
+        final index = i + j;
+        if (index < items.length) {
+          rowItems.add(Expanded(child: SizedBox(height: tileHeight, child: items[index])));
+        } else {
+          rowItems.add(const Expanded(child: SizedBox()));
+        }
+        if (j < crossAxisCount - 1) {
+          rowItems.add(SizedBox(width: AppSpacings.pMd));
+        }
+      }
+      if (rows.isNotEmpty) {
+        rows.add(SizedBox(height: AppSpacings.pMd));
+      }
+      rows.add(Row(children: rowItems));
+    }
+
+    return Column(children: rows);
   }
 
   // --------------------------------------------------------------------------
@@ -1714,6 +1747,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       additionalContent: hasAdditionalContent
           ? _buildLandscapeAdditionalColumn(context)
           : null,
+      additionalContentPadding: EdgeInsets.zero,
     );
   }
 
@@ -1723,57 +1757,109 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   }
 
   Widget _buildLandscapeAdditionalColumn(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final secondaryBgColor =
+        isLight ? AppFillColorLight.light : AppFillColorDark.light;
     final hasSensors = _state.sensors.isNotEmpty;
     final hasAuxiliary = _state.auxiliaryDevices.isNotEmpty;
+    final tileHeight = _screenService.scale(
+      AppTileHeight.horizontal,
+      density: _visualDensityService.density,
+    );
+
+    // Build content widgets: headers + cards/tiles
+    final contentWidgets = <Widget>[];
+
+    // Sensors section - displayed as a card (like presets on window_covering.dart)
+    if (hasSensors) {
+      contentWidgets.add(
+        SectionTitle(title: 'Sensors', icon: MdiIcons.eyeSettings),
+      );
+      contentWidgets.add(_buildLandscapeSensorsCard(context));
+    }
+
+    // Auxiliary section - displayed as individual tiles (like devices on covering domain)
+    if (hasAuxiliary) {
+      contentWidgets.add(
+        SectionTitle(title: 'Auxiliary', icon: MdiIcons.devices),
+      );
+
+      // Add each auxiliary device as an individual tile
+      final auxiliaryItems = _buildAuxiliaryItems(
+        context,
+        TileLayout.horizontal,
+        showInactiveBorder: true,
+      );
+      for (final item in auxiliaryItems) {
+        contentWidgets.add(SizedBox(height: tileHeight, child: item));
+      }
+    }
+
+    return VerticalScrollWithGradient(
+      gradientHeight: AppSpacings.pLg,
+      itemCount: contentWidgets.length,
+      separatorHeight: AppSpacings.pMd,
+      padding: AppSpacings.paddingLg,
+      backgroundColor: secondaryBgColor,
+      itemBuilder: (context, index) => contentWidgets[index],
+    );
+  }
+
+  /// Build sensors card matching the presets pattern from window_covering.dart.
+  /// Large screens: 2 vertical tiles per row (square).
+  /// Small/medium screens: Column of fixed-height horizontal tiles.
+  Widget _buildLandscapeSensorsCard(BuildContext context) {
+    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final primaryColor =
+        isLight ? AppColorsLight.primary : AppColorsDark.primary;
     final isLargeScreen = _screenService.isLargeScreen;
+    final sensors = _state.sensors;
 
-    // Sensors: large = 2 columns vertical, medium/small = 1 column horizontal
-    final sensorsCrossAxisCount = isLargeScreen ? 2 : 1;
-    final sensorsAspectRatio = isLargeScreen ? 1.0 : 3.0;
+    // Large screens: 2 vertical tiles per row (square)
+    if (isLargeScreen) {
+      return GridView.count(
+        crossAxisCount: 2,
+        mainAxisSpacing: AppSpacings.pMd,
+        crossAxisSpacing: AppSpacings.pMd,
+        childAspectRatio: AppTileAspectRatio.square,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        children: sensors.map((sensor) {
+          return _buildSensorTile(
+            context,
+            sensor,
+            layout: TileLayout.vertical,
+            showInactiveBorder: true,
+          );
+        }).toList(),
+      );
+    }
 
-    // Auxiliary: always 1 column horizontal
-    const auxiliaryCrossAxisCount = 1;
-    const auxiliaryAspectRatio = 3.0;
+    // Small/medium: Column of fixed-height horizontal tiles
+    final tileHeight = _screenService.scale(
+      AppTileHeight.horizontal,
+      density: _visualDensityService.density,
+    );
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (hasSensors) ...[
-            SectionTitle(title: 'Sensors', icon: MdiIcons.eyeSettings),
-            AppSpacings.spacingMdVertical,
-            _buildSensorsGrid(context,
-                crossAxisCount: sensorsCrossAxisCount,
-                aspectRatio: sensorsAspectRatio,
-                showInactiveBorder: true),
-            if (hasAuxiliary) AppSpacings.spacingLgVertical,
-          ],
-          if (hasAuxiliary) ...[
-            SectionTitle(title: 'Auxiliary', icon: MdiIcons.devices),
-            AppSpacings.spacingMdVertical,
-            _buildAuxiliaryGrid(context,
-                crossAxisCount: auxiliaryCrossAxisCount,
-                aspectRatio: auxiliaryAspectRatio,
-                showInactiveBorder: true),
-          ],
-          if (!hasSensors && !hasAuxiliary)
-            Center(
-              child: Padding(
-                padding: EdgeInsets.only(top: AppSpacings.pLg * 2),
-                child: Text(
-                  'No devices',
-                  style: TextStyle(
-                    color: isDark
-                        ? AppTextColorDark.secondary
-                        : AppTextColorLight.secondary,
-                    fontSize: AppFontSize.small,
-                  ),
-                ),
-              ),
+    return Column(
+      children: sensors.asMap().entries.map((entry) {
+        final index = entry.key;
+        final sensor = entry.value;
+        final isLast = index == sensors.length - 1;
+
+        return Padding(
+          padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
+          child: SizedBox(
+            height: tileHeight,
+            child: _buildSensorTile(
+              context,
+              sensor,
+              layout: TileLayout.horizontal,
+              showInactiveBorder: true,
             ),
-        ],
-      ),
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -2132,6 +2218,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       status: _translateSensorLabel(localizations, sensor),
       iconAccentColor: sensorColor,
       statusFontSize: statusFontSize,
+      showGlow: false,
       showDoubleBorder: false,
       showWarningBadge: false,
       showInactiveBorder: showInactiveBorder,

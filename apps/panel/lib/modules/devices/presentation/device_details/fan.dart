@@ -5,7 +5,10 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
@@ -420,74 +423,31 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
   Widget _buildLandscape(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
     final fanColor = DeviceColors.fan(isDark);
-    final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
-    final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.light;
     final isLargeScreen = _screenService.isLargeScreen;
+    final secondaryBgColor =
+        isDark ? AppFillColorDark.light : AppFillColorLight.light;
 
-    // Large screen: control card only in left column
-    if (isLargeScreen) {
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            flex: 1,
-            child: Padding(
-              padding: AppSpacings.paddingLg,
-              child: _buildControlCard(context, isDark, fanColor),
-            ),
-          ),
-          Container(width: _scale(1), color: borderColor),
-          Expanded(
-            flex: 1,
-            child: Container(
-              color: cardColor,
-              padding: AppSpacings.paddingLg,
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildSpeedControl(localizations, isDark, fanColor, false),
-                    AppSpacings.spacingMdVertical,
-                    _buildOptions(context, isDark),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
+    // Build list of secondary content widgets
+    final secondaryWidgets = <Widget>[
+      _buildSpeedControl(localizations, isDark, fanColor, !isLargeScreen),
+      _buildOptions(context, isDark),
+    ];
 
-    // Small/medium: compact layout with stretch
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          flex: 2,
-          child: Padding(
-            padding: AppSpacings.paddingLg,
-            child: _buildCompactControlCard(context, isDark, fanColor),
-          ),
-        ),
-        Container(width: _scale(1), color: borderColor),
-        Expanded(
-          flex: 1,
-          child: Container(
-            color: cardColor,
-            padding: AppSpacings.paddingLg,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildSpeedControl(localizations, isDark, fanColor, true),
-                  _buildOptions(context, isDark),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
+    return DeviceDetailLandscapeLayout(
+      largeSecondaryColumn: isLargeScreen,
+      secondaryScrollable: false,
+      secondaryContentPadding: EdgeInsets.zero,
+      mainContent: isLargeScreen
+          ? _buildControlCard(context, isDark, fanColor)
+          : _buildCompactControlCard(context, isDark, fanColor),
+      secondaryContent: VerticalScrollWithGradient(
+        gradientHeight: AppSpacings.pLg,
+        itemCount: secondaryWidgets.length,
+        separatorHeight: AppSpacings.pMd,
+        padding: AppSpacings.paddingLg,
+        backgroundColor: secondaryBgColor,
+        itemBuilder: (context, index) => secondaryWidgets[index],
+      ),
     );
   }
 
@@ -495,9 +455,8 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     final localizations = AppLocalizations.of(context)!;
     final fanColor = DeviceColors.fan(isDark);
 
-    return SingleChildScrollView(
-      padding: AppSpacings.paddingMd,
-      child: Column(
+    return DeviceDetailPortraitLayout(
+      content: Column(
         children: [
           _buildControlCard(context, isDark, fanColor),
           AppSpacings.spacingMdVertical,
@@ -767,7 +726,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
         showDoubleBorder: false,
         showInactiveBorder: true,
       ));
-      options.add(AppSpacings.spacingSmVertical);
+      options.add(AppSpacings.spacingMdVertical);
     }
 
     // Direction (reverse)
@@ -792,7 +751,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
         showDoubleBorder: false,
         showInactiveBorder: true,
       ));
-      options.add(AppSpacings.spacingSmVertical);
+      options.add(AppSpacings.spacingMdVertical);
     }
 
     // Child Lock
@@ -811,7 +770,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
         showDoubleBorder: false,
         showInactiveBorder: true,
       ));
-      options.add(AppSpacings.spacingSmVertical);
+      options.add(AppSpacings.spacingMdVertical);
     }
 
     // Timer
@@ -824,7 +783,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     }
 
     // Remove trailing spacer
-    if (options.isNotEmpty && options.last == AppSpacings.spacingSmVertical) {
+    if (options.isNotEmpty && options.last == AppSpacings.spacingMdVertical) {
       options.removeLast();
     }
 
