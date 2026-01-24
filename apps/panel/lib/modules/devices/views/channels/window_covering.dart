@@ -109,7 +109,7 @@ class WindowCoveringChannelView extends ChannelView
     final FormatType? format = statusProp.format;
 
     if (format is StringListFormatType) {
-      format.value
+      return format.value
           .map((item) => WindowCoveringStatusValue.fromValue(item))
           .whereType<WindowCoveringStatusValue>()
           .toList();

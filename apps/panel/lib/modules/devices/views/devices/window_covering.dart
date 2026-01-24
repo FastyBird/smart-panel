@@ -33,6 +33,12 @@ class WindowCoveringDeviceView extends DeviceView
   DeviceInformationChannelView get deviceInformationChannel =>
       channels.whereType<DeviceInformationChannelView>().first;
 
+  /// All window covering channels on this device.
+  List<WindowCoveringChannelView> get windowCoveringChannels =>
+      channels.whereType<WindowCoveringChannelView>().toList();
+
+  /// Primary window covering channel (first one).
+  /// TODO: UI currently only supports single channel; extend for multi-channel devices.
   WindowCoveringChannelView get windowCoveringChannel =>
       channels.whereType<WindowCoveringChannelView>().first;
 
