@@ -1,22 +1,33 @@
+import 'dart:async';
+
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/controllers/devices/window_covering.dart';
+import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/window_covering.dart';
+import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
-/// Window covering device detail page - mock implementation.
+/// Window covering device detail page.
 ///
 /// Shows a window covering control interface with position slider,
 /// tilt control (if supported), and quick action buttons.
 class WindowCoveringDeviceDetail extends StatefulWidget {
   final WindowCoveringDeviceView _device;
+  final VoidCallback? onBack;
 
   const WindowCoveringDeviceDetail({
     super.key,
     required WindowCoveringDeviceView device,
+    this.onBack,
   }) : _device = device;
 
   @override
@@ -29,54 +40,177 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
+  final DevicesService _devicesService = locator<DevicesService>();
+  DeviceControlStateService? _deviceControlStateService;
+  WindowCoveringDeviceController? _controller;
 
-  // Mock state
-  late int _position;
-  late int _tiltAngle;
-  late AnimationController _animationController;
+  // Debounce timers for sliders
+  Timer? _positionDebounceTimer;
+  Timer? _tiltDebounceTimer;
 
-  // Mock presets
-  static const _mockPresets = [
-    _MockPreset(name: 'Morning', icon: Icons.wb_sunny, position: 100),
-    _MockPreset(name: 'Day', icon: Icons.light_mode, position: 75),
-    _MockPreset(name: 'Evening', icon: Icons.nights_stay, position: 30),
-    _MockPreset(name: 'Night', icon: Icons.bedtime, position: 0),
-    _MockPreset(name: 'Privacy', icon: Icons.lock, position: 0, tiltAngle: 45),
-    _MockPreset(name: 'Away', icon: Icons.home, position: 0),
+  // Local position/tilt for immediate slider feedback
+  int? _localPosition;
+  int? _localTilt;
+
+  // Presets configuration
+  static const _presets = [
+    _Preset(name: 'Morning', icon: Icons.wb_sunny, position: 100),
+    _Preset(name: 'Day', icon: Icons.light_mode, position: 75),
+    _Preset(name: 'Evening', icon: Icons.nights_stay, position: 30),
+    _Preset(name: 'Night', icon: Icons.bedtime, position: 0),
+    _Preset(name: 'Privacy', icon: Icons.lock, position: 0, tiltAngle: 45),
+    _Preset(name: 'Away', icon: Icons.home, position: 0),
   ];
 
   @override
   void initState() {
     super.initState();
-    _position = widget._device.isWindowCoveringPercentage;
-    _tiltAngle = widget._device.hasWindowCoveringTilt
-        ? widget._device.isWindowCoveringTilt
-        : 0;
 
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    );
+    _devicesService.addListener(_onDeviceChanged);
+
+    try {
+      _deviceControlStateService = locator<DeviceControlStateService>();
+      _deviceControlStateService?.addListener(_onControlStateChanged);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+            '[WindowCoveringDeviceDetail] Failed to get DeviceControlStateService: $e');
+      }
+    }
+
+    _initController();
+  }
+
+  void _initController() {
+    final controlState = _deviceControlStateService;
+    if (controlState != null) {
+      _controller = WindowCoveringDeviceController(
+        device: _device,
+        controlState: controlState,
+        devicesService: _devicesService,
+        onError: _onControllerError,
+      );
+    }
+  }
+
+  void _onControllerError(String propertyId, Object error) {
+    if (kDebugMode) {
+      debugPrint(
+          '[WindowCoveringDeviceDetail] Controller error for $propertyId: $error');
+    }
+
+    final localizations = AppLocalizations.of(context);
+    if (mounted && localizations != null) {
+      AlertBar.showError(context, message: localizations.action_failed);
+    }
+
+    // Clear local values on error
+    _localPosition = null;
+    _localTilt = null;
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _positionDebounceTimer?.cancel();
+    _tiltDebounceTimer?.cancel();
+    _devicesService.removeListener(_onDeviceChanged);
+    _deviceControlStateService?.removeListener(_onControlStateChanged);
     super.dispose();
   }
 
+  void _onDeviceChanged() {
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _checkConvergence();
+        _initController();
+        setState(() {});
+      }
+    });
+  }
+
+  void _checkConvergence() {
+    final controlState = _deviceControlStateService;
+    if (controlState == null) return;
+
+    final deviceId = _device.id;
+    final channel = _device.windowCoveringChannel;
+    final channelId = channel.id;
+
+    // Check position property
+    controlState.checkPropertyConvergence(
+      deviceId,
+      channelId,
+      channel.positionProp.id,
+      channel.position,
+      tolerance: 1.0,
+    );
+
+    // Check tilt property (if available)
+    final tiltProp = channel.tiltProp;
+    if (tiltProp != null) {
+      controlState.checkPropertyConvergence(
+        deviceId,
+        channelId,
+        tiltProp.id,
+        channel.tilt,
+        tolerance: 1.0,
+      );
+    }
+
+    // Clear local values when converged
+    _localPosition = null;
+    _localTilt = null;
+  }
+
+  void _onControlStateChanged() {
+    if (mounted) setState(() {});
+  }
+
+  WindowCoveringDeviceView get _device {
+    final updated = _devicesService.getDevice(widget._device.id);
+    if (updated is WindowCoveringDeviceView) {
+      return updated;
+    }
+    return widget._device;
+  }
+
+  // Get current position (local value takes precedence for smooth slider)
+  int get _position => _localPosition ?? _controller?.position ?? _device.isWindowCoveringPercentage;
+
+  // Get current tilt (local value takes precedence for smooth slider)
+  int get _tiltAngle => _localTilt ?? _controller?.tilt ?? _device.isWindowCoveringTilt;
+
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isLandscape = constraints.maxWidth > constraints.maxHeight;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-        if (isLandscape) {
-          return _buildLandscapeLayout(context);
-        } else {
-          return _buildPortraitLayout(context);
-        }
-      },
+    return Scaffold(
+      backgroundColor: isDark ? AppBgColorDark.base : AppBgColorLight.page,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildHeader(context, isDark),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isLandscape = constraints.maxWidth > constraints.maxHeight;
+
+                  if (isLandscape) {
+                    return _buildLandscapeLayout(context);
+                  } else {
+                    return _buildPortraitLayout(context);
+                  }
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -84,23 +218,25 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   // HEADER
   // ===========================================================================
 
-  Widget _buildHeader(BuildContext context) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
+  Widget _buildHeader(BuildContext context, bool isDark) {
     final primaryColor =
-        isLight ? AppColorsLight.primary : AppColorsDark.primary;
+        isDark ? AppColorsDark.primary : AppColorsLight.primary;
     final primaryBgColor =
-        isLight ? AppColorsLight.primaryLight9 : AppColorsDark.primaryLight9;
+        isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9;
+    final secondaryColor =
+        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 
     return PageHeader(
       title: widget._device.name,
-      subtitle: widget._device.windowCoveringTypeName,
+      subtitle: _getWindowCoveringTypeName(context),
+      subtitleColor: secondaryColor,
       backgroundColor: AppColors.blank,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           HeaderIconButton(
             icon: Icons.arrow_back_ios_new,
-            onTap: () => Navigator.of(context).pop(),
+            onTap: widget.onBack ?? () => Navigator.of(context).pop(),
           ),
           AppSpacings.spacingMdHorizontal,
           Container(
@@ -131,48 +267,87 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   }
 
   // ===========================================================================
+  // HELPERS
+  // ===========================================================================
+
+  String _getWindowCoveringTypeName(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+    if (localizations == null) return '';
+
+    try {
+      switch (_device.windowCoveringType) {
+        case WindowCoveringTypeValue.curtain:
+          return localizations.window_covering_type_curtain;
+        case WindowCoveringTypeValue.blind:
+          return localizations.window_covering_type_blind;
+        case WindowCoveringTypeValue.roller:
+          return localizations.window_covering_type_roller;
+        case WindowCoveringTypeValue.outdoorBlind:
+          return localizations.window_covering_type_outdoor_blind;
+      }
+    } catch (_) {
+      return localizations.window_covering_type_blind;
+    }
+  }
+
+  String _getStatusLabel(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+    if (localizations == null) return '';
+
+    try {
+      switch (_device.windowCoveringStatus) {
+        case WindowCoveringStatusValue.opened:
+          return localizations.window_covering_status_open;
+        case WindowCoveringStatusValue.closed:
+          return localizations.window_covering_status_closed;
+        case WindowCoveringStatusValue.opening:
+          return localizations.window_covering_status_opening;
+        case WindowCoveringStatusValue.closing:
+          return localizations.window_covering_status_closing;
+        case WindowCoveringStatusValue.stopped:
+          return localizations.window_covering_status_stopped;
+      }
+    } catch (_) {
+      return localizations.window_covering_status_stopped;
+    }
+  }
+
+  // ===========================================================================
   // LANDSCAPE LAYOUT
   // ===========================================================================
 
   Widget _buildLandscapeLayout(BuildContext context) {
-    return Column(
-      children: [
-        _buildHeader(context),
-        Expanded(
-          child: Padding(
-            padding: AppSpacings.paddingMd,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Padding(
+      padding: AppSpacings.paddingMd,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Left: Main Control
+          Expanded(
+            flex: 2,
+            child: _buildMainControlCard(context),
+          ),
+          AppSpacings.spacingMdHorizontal,
+          // Right: Tilt, Info, Presets
+          SizedBox(
+            width: _screenService.scale(
+              280,
+              density: _visualDensityService.density,
+            ),
+            child: Column(
               children: [
-                // Left: Main Control
-                Expanded(
-                  flex: 2,
-                  child: _buildMainControlCard(context),
-                ),
-                AppSpacings.spacingMdHorizontal,
-                // Right: Tilt, Info, Presets
-                SizedBox(
-                  width: _screenService.scale(
-                    280,
-                    density: _visualDensityService.density,
-                  ),
-                  child: Column(
-                    children: [
-                      if (widget._device.hasWindowCoveringTilt) ...[
-                        _buildTiltCard(context),
-                        AppSpacings.spacingMdVertical,
-                      ],
-                      _buildInfoCard(context),
-                      AppSpacings.spacingMdVertical,
-                      Expanded(child: _buildPresetsCard(context)),
-                    ],
-                  ),
-                ),
+                if (_device.hasWindowCoveringTilt) ...[
+                  _buildTiltCard(context),
+                  AppSpacings.spacingMdVertical,
+                ],
+                _buildInfoCard(context),
+                AppSpacings.spacingMdVertical,
+                Expanded(child: _buildPresetsCard(context)),
               ],
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -181,31 +356,24 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   // ===========================================================================
 
   Widget _buildPortraitLayout(BuildContext context) {
-    return Column(
-      children: [
-        _buildHeader(context),
-        Expanded(
-          child: SingleChildScrollView(
-            padding: AppSpacings.paddingMd,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildMainControlCard(context),
-                AppSpacings.spacingMdVertical,
-                if (widget._device.hasWindowCoveringTilt) ...[
-                  _buildTiltCard(context),
-                  AppSpacings.spacingMdVertical,
-                ],
-                _buildSectionTitle(context, 'Presets', MdiIcons.tune),
-                AppSpacings.spacingSmVertical,
-                _buildPresetsHorizontalScroll(context),
-                AppSpacings.spacingLgVertical,
-                _buildInfoRow(context),
-              ],
-            ),
-          ),
-        ),
-      ],
+    return SingleChildScrollView(
+      padding: AppSpacings.paddingMd,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildMainControlCard(context),
+          AppSpacings.spacingMdVertical,
+          if (_device.hasWindowCoveringTilt) ...[
+            _buildTiltCard(context),
+            AppSpacings.spacingMdVertical,
+          ],
+          _buildSectionTitle(context, 'Presets', MdiIcons.tune),
+          AppSpacings.spacingSmVertical,
+          _buildPresetsHorizontalScroll(context),
+          AppSpacings.spacingLgVertical,
+          _buildInfoRow(context),
+        ],
+      ),
     );
   }
 
@@ -362,13 +530,14 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
   Widget _buildPositionSliderWithLabels(BuildContext context) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final localizations = AppLocalizations.of(context);
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
       child: Row(
         children: [
           Text(
-            'Closed',
+            localizations?.window_covering_status_closed ?? 'Closed',
             style: TextStyle(
               fontSize: AppFontSize.extraSmall,
               color: isLight
@@ -401,16 +570,14 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
               ),
               child: Slider(
                 value: _position.toDouble(),
-                min: 0,
-                max: 100,
-                onChanged: (value) {
-                  setState(() => _position = value.round());
-                },
+                min: _device.windowCoveringMinPercentage.toDouble(),
+                max: _device.windowCoveringMaxPercentage.toDouble(),
+                onChanged: _handlePositionChanged,
               ),
             ),
           ),
           Text(
-            'Open',
+            localizations?.window_covering_status_open ?? 'Open',
             style: TextStyle(
               fontSize: AppFontSize.extraSmall,
               color: isLight
@@ -423,37 +590,58 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     );
   }
 
+  void _handlePositionChanged(double value) {
+    final intValue = value.round();
+
+    // Update local value immediately for smooth slider feedback
+    setState(() {
+      _localPosition = intValue;
+    });
+
+    // Debounce the actual command
+    _positionDebounceTimer?.cancel();
+    _positionDebounceTimer = Timer(
+      const Duration(milliseconds: 150),
+      () {
+        if (!mounted) return;
+        _controller?.setPosition(intValue);
+      },
+    );
+  }
+
   Widget _buildQuickActions(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Expanded(
           child: _buildQuickActionButton(
             context,
-            label: 'Open',
+            label: localizations?.window_covering_command_open ?? 'Open',
             icon: MdiIcons.chevronUp,
             isActive: false,
-            onTap: () => setState(() => _position = 100),
+            onTap: () => _controller?.open(),
           ),
         ),
         AppSpacings.spacingSmHorizontal,
         Expanded(
           child: _buildQuickActionButton(
             context,
-            label: 'Stop',
+            label: localizations?.window_covering_command_stop ?? 'Stop',
             icon: MdiIcons.stop,
-            isActive: true,
-            onTap: () {},
+            isActive: _device.isWindowCoveringStopped,
+            onTap: () => _controller?.stop(),
           ),
         ),
         AppSpacings.spacingSmHorizontal,
         Expanded(
           child: _buildQuickActionButton(
             context,
-            label: 'Close',
+            label: localizations?.window_covering_command_close ?? 'Close',
             icon: MdiIcons.chevronDown,
             isActive: false,
-            onTap: () => setState(() => _position = 0),
+            onTap: () => _controller?.close(),
           ),
         ),
       ],
@@ -530,6 +718,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final primaryColor =
         isLight ? AppColorsLight.primary : AppColorsDark.primary;
+    final localizations = AppLocalizations.of(context);
 
     return Container(
       padding: AppSpacings.paddingMd,
@@ -541,7 +730,11 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildCardTitle(context, 'Tilt Angle', Icons.rotate_90_degrees_cw),
+          _buildCardTitle(
+            context,
+            localizations?.window_covering_tilt_label ?? 'Tilt Angle',
+            Icons.rotate_90_degrees_cw,
+          ),
           AppSpacings.spacingMdVertical,
           Container(
             padding: AppSpacings.paddingMd,
@@ -584,7 +777,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Tilt',
+                            localizations?.window_covering_tilt_label ?? 'Tilt',
                             style: TextStyle(
                               fontSize: AppFontSize.small,
                               color: isLight
@@ -623,11 +816,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                         ),
                         child: Slider(
                           value: _tiltAngle.toDouble(),
-                          min: -90,
-                          max: 90,
-                          onChanged: (value) {
-                            setState(() => _tiltAngle = value.round());
-                          },
+                          min: _device.windowCoveringMinTilt.toDouble(),
+                          max: _device.windowCoveringMaxTilt.toDouble(),
+                          onChanged: _handleTiltChanged,
                         ),
                       ),
                     ],
@@ -638,6 +829,25 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           ),
         ],
       ),
+    );
+  }
+
+  void _handleTiltChanged(double value) {
+    final intValue = value.round();
+
+    // Update local value immediately for smooth slider feedback
+    setState(() {
+      _localTilt = intValue;
+    });
+
+    // Debounce the actual command
+    _tiltDebounceTimer?.cancel();
+    _tiltDebounceTimer = Timer(
+      const Duration(milliseconds: 150),
+      () {
+        if (!mounted) return;
+        _controller?.setTilt(intValue);
+      },
     );
   }
 
@@ -666,7 +876,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                 child: _buildInfoTile(
                   context,
                   'Type',
-                  widget._device.windowCoveringTypeName,
+                  _getWindowCoveringTypeName(context),
                   isLight
                       ? AppTextColorLight.secondary
                       : AppTextColorDark.secondary,
@@ -677,32 +887,35 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                 child: _buildInfoTile(
                   context,
                   'Status',
-                  'Idle',
-                  isLight ? AppColorsLight.warning : AppColorsDark.warning,
+                  _getStatusLabel(context),
+                  _getStatusColor(context),
                 ),
               ),
             ],
           ),
-          AppSpacings.spacingSmVertical,
-          Row(
-            children: [
-              Expanded(
-                child: _buildInfoTile(
-                  context,
-                  'Connection',
-                  widget._device.isOnline ? 'Online' : 'Offline',
-                  widget._device.isOnline
-                      ? (isLight ? AppColorsLight.success : AppColorsDark.success)
-                      : (isLight ? AppColorsLight.danger : AppColorsDark.danger),
-                ),
-              ),
-              AppSpacings.spacingSmHorizontal,
-              const Expanded(child: SizedBox.shrink()),
-            ],
-          ),
+          if (_device.hasWindowCoveringObstruction) ...[
+            AppSpacings.spacingSmVertical,
+            _buildInfoTile(
+              context,
+              'Obstruction',
+              _device.windowCoveringObstruction ? 'Detected' : 'Clear',
+              _device.windowCoveringObstruction
+                  ? (isLight ? AppColorsLight.warning : AppColorsDark.warning)
+                  : (isLight ? AppColorsLight.success : AppColorsDark.success),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  Color _getStatusColor(BuildContext context) {
+    final bool isLight = Theme.of(context).brightness == Brightness.light;
+
+    if (_device.isWindowCoveringOpening || _device.isWindowCoveringClosing) {
+      return isLight ? AppColorsLight.info : AppColorsDark.info;
+    }
+    return isLight ? AppColorsLight.warning : AppColorsDark.warning;
   }
 
   Widget _buildInfoRow(BuildContext context) {
@@ -714,21 +927,23 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           child: _buildInfoTileCompact(
             context,
             'Status',
-            'Idle',
-            isLight ? AppColorsLight.warning : AppColorsDark.warning,
+            _getStatusLabel(context),
+            _getStatusColor(context),
           ),
         ),
-        AppSpacings.spacingSmHorizontal,
-        Expanded(
-          child: _buildInfoTileCompact(
-            context,
-            'Connection',
-            widget._device.isOnline ? 'Online' : 'Offline',
-            widget._device.isOnline
-                ? (isLight ? AppColorsLight.success : AppColorsDark.success)
-                : (isLight ? AppColorsLight.danger : AppColorsDark.danger),
+        if (_device.hasWindowCoveringObstruction) ...[
+          AppSpacings.spacingSmHorizontal,
+          Expanded(
+            child: _buildInfoTileCompact(
+              context,
+              'Obstruction',
+              _device.windowCoveringObstruction ? 'Detected' : 'Clear',
+              _device.windowCoveringObstruction
+                  ? (isLight ? AppColorsLight.warning : AppColorsDark.warning)
+                  : (isLight ? AppColorsLight.success : AppColorsDark.success),
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -749,6 +964,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           return MdiIcons.checkCircle;
         case 'Type':
           return MdiIcons.blindsHorizontal;
+        case 'Obstruction':
+          return MdiIcons.alertCircle;
         default:
           return MdiIcons.information;
       }
@@ -850,7 +1067,11 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
               borderRadius: BorderRadius.circular(AppBorderRadius.small),
             ),
             child: Icon(
-              label == 'Status' ? MdiIcons.clock : MdiIcons.checkCircle,
+              label == 'Status'
+                  ? MdiIcons.clock
+                  : label == 'Obstruction'
+                      ? MdiIcons.alertCircle
+                      : MdiIcons.checkCircle,
               color: color,
               size: _screenService.scale(
                 18,
@@ -915,7 +1136,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
               mainAxisSpacing: AppSpacings.pSm,
               crossAxisSpacing: AppSpacings.pSm,
               childAspectRatio: 0.9,
-              children: _mockPresets.map((preset) {
+              children: _presets.map((preset) {
                 return _buildPresetButton(context, preset);
               }).toList(),
             ),
@@ -933,7 +1154,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       ),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: _mockPresets.length,
+        itemCount: _presets.length,
         separatorBuilder: (_, __) => AppSpacings.spacingSmHorizontal,
         itemBuilder: (context, index) {
           return SizedBox(
@@ -941,26 +1162,21 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
               140,
               density: _visualDensityService.density,
             ),
-            child: _buildPresetCard(context, _mockPresets[index]),
+            child: _buildPresetCard(context, _presets[index]),
           );
         },
       ),
     );
   }
 
-  Widget _buildPresetButton(BuildContext context, _MockPreset preset) {
+  Widget _buildPresetButton(BuildContext context, _Preset preset) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final primaryColor =
         isLight ? AppColorsLight.primary : AppColorsDark.primary;
     final bool isActive = _position == preset.position;
 
     return GestureDetector(
-      onTap: () {
-        setState(() => _position = preset.position);
-        if (preset.tiltAngle != null) {
-          setState(() => _tiltAngle = preset.tiltAngle!);
-        }
-      },
+      onTap: () => _applyPreset(preset),
       child: Container(
         decoration: BoxDecoration(
           color: isActive
@@ -1007,19 +1223,14 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     );
   }
 
-  Widget _buildPresetCard(BuildContext context, _MockPreset preset) {
+  Widget _buildPresetCard(BuildContext context, _Preset preset) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final primaryColor =
         isLight ? AppColorsLight.primary : AppColorsDark.primary;
     final bool isActive = _position == preset.position;
 
     return GestureDetector(
-      onTap: () {
-        setState(() => _position = preset.position);
-        if (preset.tiltAngle != null) {
-          setState(() => _tiltAngle = preset.tiltAngle!);
-        }
-      },
+      onTap: () => _applyPreset(preset),
       child: Container(
         padding: EdgeInsets.all(AppSpacings.pSm),
         decoration: BoxDecoration(
@@ -1099,6 +1310,13 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     );
   }
 
+  void _applyPreset(_Preset preset) {
+    _controller?.setPosition(preset.position);
+    if (preset.tiltAngle != null && _device.hasWindowCoveringTilt) {
+      _controller?.setTilt(preset.tiltAngle!);
+    }
+  }
+
   // ===========================================================================
   // COMMON WIDGETS
   // ===========================================================================
@@ -1167,40 +1385,19 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 }
 
 // ===========================================================================
-// MOCK DATA MODEL
+// PRESET DATA MODEL
 // ===========================================================================
 
-class _MockPreset {
+class _Preset {
   final String name;
   final IconData icon;
   final int position;
   final int? tiltAngle;
 
-  const _MockPreset({
+  const _Preset({
     required this.name,
     required this.icon,
     required this.position,
     this.tiltAngle,
   });
-}
-
-// ===========================================================================
-// EXTENSION FOR DEVICE TYPE NAME
-// ===========================================================================
-
-extension _WindowCoveringDeviceViewExtension on WindowCoveringDeviceView {
-  String get windowCoveringTypeName {
-    switch (windowCoveringType.name) {
-      case 'curtain':
-        return 'Curtain';
-      case 'blind':
-        return 'Blind';
-      case 'roller':
-        return 'Roller Shade';
-      case 'outdoorBlind':
-        return 'Outdoor Blind';
-      default:
-        return 'Window Covering';
-    }
-  }
 }

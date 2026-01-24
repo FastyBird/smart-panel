@@ -287,7 +287,7 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 			}
 
 			const element = getPluginElement(payload.data.type);
-
+console.log(element?.schemas)
 			const parsedNewItem = (element?.schemas?.channelPropertySchema || ChannelPropertySchema).safeParse({
 				...payload.data,
 				id: parsedPayload.data.id,

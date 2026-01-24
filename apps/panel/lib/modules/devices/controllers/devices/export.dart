@@ -6,3 +6,4 @@ export 'package:fastybird_smart_panel/modules/devices/controllers/devices/fan.da
 export 'package:fastybird_smart_panel/modules/devices/controllers/devices/heating_unit.dart';
 export 'package:fastybird_smart_panel/modules/devices/controllers/devices/lighting.dart';
 export 'package:fastybird_smart_panel/modules/devices/controllers/devices/thermostat.dart';
+export 'package:fastybird_smart_panel/modules/devices/controllers/devices/window_covering.dart';
