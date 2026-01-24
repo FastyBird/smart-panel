@@ -10,6 +10,7 @@ import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity'
 import { SpaceMediaRoleEntity } from '../entities/space-media-role.entity';
 import { SpaceSensorRoleEntity } from '../entities/space-sensor-role.entity';
 import { SpaceEntity } from '../entities/space.entity';
+import type { CoversState, RoleCoversState } from '../services/space-covers-state.service';
 import {
 	ClimateMode,
 	ClimateRole,
@@ -1147,6 +1148,25 @@ export class RoleCoversStateDataModel {
 	})
 	@Expose({ name: 'devices_open' })
 	devicesOpen: number;
+
+	/**
+	 * Create a RoleCoversStateDataModel from a RoleCoversState service object.
+	 */
+	static fromState(roleState: RoleCoversState): RoleCoversStateDataModel {
+		const model = new RoleCoversStateDataModel();
+		model.role = roleState.role;
+		model.position = roleState.position;
+		model.isPositionMixed = roleState.isPositionMixed;
+		model.tilt = roleState.tilt;
+		model.isTiltMixed = roleState.isTiltMixed;
+		model.hasTilt = roleState.hasTilt;
+		model.isOpen = roleState.isOpen;
+		model.isClosed = roleState.isClosed;
+		model.devicesCount = roleState.devicesCount;
+		model.devicesOpen = roleState.devicesOpen;
+
+		return model;
+	}
 }
 
 /**
@@ -1327,6 +1347,37 @@ export class CoversStateDataModel {
 	})
 	@Expose({ name: 'last_applied_at' })
 	lastAppliedAt: Date | null;
+
+	/**
+	 * Create a CoversStateDataModel from a CoversState service object.
+	 */
+	static fromState(state: CoversState): CoversStateDataModel {
+		const model = new CoversStateDataModel();
+		model.hasCovers = state.hasCovers;
+		model.detectedMode = state.detectedMode;
+		model.modeConfidence = state.modeConfidence;
+		model.modeMatchPercentage = state.modeMatchPercentage;
+		model.isModeFromIntent = state.isModeFromIntent;
+		model.averagePosition = state.averagePosition;
+		model.isPositionMixed = state.isPositionMixed;
+		model.averageTilt = state.averageTilt;
+		model.isTiltMixed = state.isTiltMixed;
+		model.hasTilt = state.hasTilt;
+		model.anyOpen = state.anyOpen;
+		model.allClosed = state.allClosed;
+		model.devicesCount = state.devicesCount;
+		model.roles = Object.fromEntries(
+			Object.entries(state.roles).map(([roleKey, roleState]) => [
+				roleKey,
+				RoleCoversStateDataModel.fromState(roleState),
+			]),
+		);
+		model.coversByRole = state.coversByRole;
+		model.lastAppliedMode = state.lastAppliedMode;
+		model.lastAppliedAt = state.lastAppliedAt;
+
+		return model;
+	}
 }
 
 /**

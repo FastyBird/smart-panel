@@ -97,7 +97,6 @@ import {
 	ProposedSpacesResponseModel,
 	QuickActionDataModel,
 	RoleAggregatedStateDataModel,
-	RoleCoversStateDataModel,
 	RoleLastIntentDataModel,
 	RolesStateMapDataModel,
 	SafetyAlertDataModel,
@@ -1240,43 +1239,8 @@ export class SpacesController {
 			throw new SpacesNotFoundException('Space not found');
 		}
 
-		const stateData = new CoversStateDataModel();
-		stateData.hasCovers = state.hasCovers;
-		stateData.detectedMode = state.detectedMode;
-		stateData.modeConfidence = state.modeConfidence;
-		stateData.modeMatchPercentage = state.modeMatchPercentage;
-		stateData.isModeFromIntent = state.isModeFromIntent;
-		stateData.averagePosition = state.averagePosition;
-		stateData.isPositionMixed = state.isPositionMixed;
-		stateData.averageTilt = state.averageTilt;
-		stateData.isTiltMixed = state.isTiltMixed;
-		stateData.hasTilt = state.hasTilt;
-		stateData.anyOpen = state.anyOpen;
-		stateData.allClosed = state.allClosed;
-		stateData.devicesCount = state.devicesCount;
-		// Transform roles to proper data models for serialization
-		stateData.roles = Object.fromEntries(
-			Object.entries(state.roles).map(([roleKey, roleState]) => {
-				const roleStateData = new RoleCoversStateDataModel();
-				roleStateData.role = roleState.role;
-				roleStateData.position = roleState.position;
-				roleStateData.isPositionMixed = roleState.isPositionMixed;
-				roleStateData.tilt = roleState.tilt;
-				roleStateData.isTiltMixed = roleState.isTiltMixed;
-				roleStateData.hasTilt = roleState.hasTilt;
-				roleStateData.isOpen = roleState.isOpen;
-				roleStateData.isClosed = roleState.isClosed;
-				roleStateData.devicesCount = roleState.devicesCount;
-				roleStateData.devicesOpen = roleState.devicesOpen;
-				return [roleKey, roleStateData];
-			}),
-		);
-		stateData.coversByRole = state.coversByRole;
-		stateData.lastAppliedMode = state.lastAppliedMode;
-		stateData.lastAppliedAt = state.lastAppliedAt;
-
 		const response = new CoversStateResponseModel();
-		response.data = stateData;
+		response.data = CoversStateDataModel.fromState(state);
 
 		return response;
 	}
