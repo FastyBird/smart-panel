@@ -41,8 +41,7 @@ class WindowCoveringDeviceDetail extends StatefulWidget {
       _WindowCoveringDeviceDetailState();
 }
 
-class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
-    with SingleTickerProviderStateMixin {
+class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail> {
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
@@ -393,8 +392,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
     final visualizationAspectRatio = 180.0 / 160.0;
     // Allow larger visualization on big screens (up to 280px height)
-    var visualizationHeight = maxVisualizationHeight.clamp(_scale(80), _scale(280));
-    var visualizationWidth = visualizationHeight * visualizationAspectRatio;
+    final visualizationHeight = maxVisualizationHeight.clamp(_scale(80), _scale(280));
+    final visualizationWidth = visualizationHeight * visualizationAspectRatio;
 
     return Padding(
       padding: AppSpacings.paddingLg,
@@ -735,6 +734,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       ),
     );
   }
+
   /// Smaller vertical action buttons for small/medium screens
   Widget _buildCompactVerticalActionButtons(BuildContext context) {
     final controller = _controller;
