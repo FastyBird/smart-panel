@@ -170,9 +170,10 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       );
     }
 
-    // Clear local values when converged
-    _localPosition = null;
-    _localTilt = null;
+    // Note: Don't clear local values here - they should only be cleared when:
+    // 1. The debounce timer fires and command is sent (optimistic state takes over)
+    // 2. An error occurs (in _onControllerError)
+    // Clearing here during the debounce period causes visual glitches.
   }
 
   void _onControlStateChanged() {
@@ -1689,6 +1690,14 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     if (controller == null) return;
 
     final preset = _presets[index];
+
+    // Cancel any pending debounce timers to prevent them from overwriting preset values
+    _positionDebounceTimer?.cancel();
+    _tiltDebounceTimer?.cancel();
+
+    // Clear local values since we're applying preset values
+    _localPosition = null;
+    _localTilt = null;
 
     // Store selected preset index and apply preset
     setState(() {
