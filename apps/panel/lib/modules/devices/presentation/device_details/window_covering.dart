@@ -11,6 +11,7 @@ import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradie
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
+import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/devices/window_covering.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
@@ -339,15 +340,15 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (_device.hasWindowCoveringTilt) ...[
-            _buildTiltCard(context),
+            _buildTiltCard(context, useCompactLayout: true),
             AppSpacings.spacingMdVertical,
           ],
-          _buildInfoCard(context),
+          _buildPresetsCard(context),
           AppSpacings.spacingMdVertical,
-          Expanded(child: _buildPresetsCard(context)),
+          _buildInfoCard(context),
         ],
       ),
-      secondaryScrollable: false,
+      secondaryScrollable: true,
     );
   }
 
@@ -1454,7 +1455,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   // TILT CONTROL
   // ===========================================================================
 
-  Widget _buildTiltCard(BuildContext context) {
+  Widget _buildTiltCard(BuildContext context, {bool useCompactLayout = false}) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final primaryColor =
         isLight ? AppColorsLight.primary : AppColorsDark.primary;
@@ -1463,6 +1464,29 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     final minTilt = _device.windowCoveringMinTilt;
     final maxTilt = _device.windowCoveringMaxTilt;
     final tiltRange = maxTilt - minTilt;
+
+    if (useCompactLayout) {
+      // Compact layout: button that opens a value selector sheet
+      return ValueSelectorRow<int>(
+        currentValue: _tiltAngle,
+        label: localizations?.window_covering_tilt_label ?? 'Tilt Angle',
+        icon: MdiIcons.angleAcute,
+        sheetTitle: localizations?.window_covering_tilt_label ?? 'Tilt Angle',
+        activeColor: primaryColor,
+        options: _getTiltOptions(minTilt, maxTilt),
+        displayFormatter: (v) => '${v ?? 0}°',
+        isActiveValue: (v) => v != null,
+        columns: 3,
+        layout: ValueSelectorRowLayout.compact,
+        onChanged: (value) {
+          if (value != null) {
+            _handleTiltChanged(value.toDouble());
+          }
+        },
+      );
+    }
+
+    // Full layout: slider
     final normalizedValue = tiltRange > 0 ? (_tiltAngle - minTilt) / tiltRange : 0.5;
 
     return _TiltSlider(
@@ -1480,6 +1504,19 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         _handleTiltChanged(newTilt.toDouble());
       },
     );
+  }
+
+  List<ValueOption<int>> _getTiltOptions(int minTilt, int maxTilt) {
+    final options = <ValueOption<int>>[];
+    final range = maxTilt - minTilt;
+
+    // Create 5 evenly spaced options
+    for (int i = 0; i <= 4; i++) {
+      final value = minTilt + (range * i / 4).round();
+      options.add(ValueOption(value: value, label: '$value°'));
+    }
+
+    return options;
   }
 
   void _handleTiltChanged(double value) {
@@ -1509,72 +1546,40 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
   Widget _buildInfoCard(BuildContext context) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final secondaryColor =
-        isLight ? AppTextColorLight.secondary : AppTextColorDark.secondary;
 
-    return Container(
-      padding: AppSpacings.paddingMd,
-      decoration: BoxDecoration(
-        color: isLight ? AppFillColorLight.light : AppFillColorDark.light,
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-        border: isLight ? Border.all(color: AppBorderColorLight.base) : null,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildCardTitle(context, 'Device Info', MdiIcons.informationOutline),
-          AppSpacings.spacingMdVertical,
-          Row(
-            children: [
-              Expanded(
-                child: UniversalTile(
-                  layout: TileLayout.horizontal,
-                  icon: MdiIcons.blindsHorizontal,
-                  name: 'Type',
-                  status: _getWindowCoveringTypeName(context),
-                  isActive: false,
-                  iconAccentColor: secondaryColor,
-                  showGlow: false,
-                  showWarningBadge: false,
-                  showInactiveBorder: isLight,
-                ),
-              ),
-              AppSpacings.spacingSmHorizontal,
-              Expanded(
-                child: UniversalTile(
-                  layout: TileLayout.horizontal,
-                  icon: _getStatusIcon(),
-                  name: 'Status',
-                  status: _getStatusLabel(context),
-                  isActive: false,
-                  iconAccentColor: _getStatusColor(context),
-                  showGlow: false,
-                  showWarningBadge: false,
-                  showInactiveBorder: isLight,
-                ),
-              ),
-            ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        UniversalTile(
+          layout: TileLayout.horizontal,
+          icon: _getStatusIcon(),
+          name: 'Status',
+          status: _getStatusLabel(context),
+          isActive: false,
+          iconAccentColor: _getStatusColor(context),
+          showGlow: false,
+          showWarningBadge: false,
+          showInactiveBorder: isLight,
+        ),
+        if (_device.hasWindowCoveringObstruction) ...[
+          AppSpacings.spacingSmVertical,
+          UniversalTile(
+            layout: TileLayout.horizontal,
+            icon: _device.windowCoveringObstruction
+                ? MdiIcons.alertCircle
+                : MdiIcons.checkCircle,
+            name: 'Obstruction',
+            status: _device.windowCoveringObstruction ? 'Detected' : 'Clear',
+            isActive: false,
+            iconAccentColor: _device.windowCoveringObstruction
+                ? (isLight ? AppColorsLight.warning : AppColorsDark.warning)
+                : (isLight ? AppColorsLight.success : AppColorsDark.success),
+            showGlow: false,
+            showWarningBadge: false,
+            showInactiveBorder: isLight,
           ),
-          if (_device.hasWindowCoveringObstruction) ...[
-            AppSpacings.spacingSmVertical,
-            UniversalTile(
-              layout: TileLayout.horizontal,
-              icon: _device.windowCoveringObstruction
-                  ? MdiIcons.alertCircle
-                  : MdiIcons.checkCircle,
-              name: 'Obstruction',
-              status: _device.windowCoveringObstruction ? 'Detected' : 'Clear',
-              isActive: false,
-              iconAccentColor: _device.windowCoveringObstruction
-                  ? (isLight ? AppColorsLight.warning : AppColorsDark.warning)
-                  : (isLight ? AppColorsLight.success : AppColorsDark.success),
-              showGlow: false,
-              showWarningBadge: false,
-              showInactiveBorder: isLight,
-            ),
-          ],
         ],
-      ),
+      ],
     );
   }
 
@@ -1664,38 +1669,38 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final primaryColor =
         isLight ? AppColorsLight.primary : AppColorsDark.primary;
+    final isLargeScreen = _screenService.isLargeScreen;
 
-    return Container(
-      padding: AppSpacings.paddingMd,
-      decoration: BoxDecoration(
-        color: isLight ? AppFillColorLight.light : AppFillColorDark.light,
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-        border: isLight ? Border.all(color: AppBorderColorLight.base) : null,
-      ),
-      child: GridView.count(
-        crossAxisCount: 3,
-        mainAxisSpacing: AppSpacings.pSm,
-        crossAxisSpacing: AppSpacings.pSm,
-        childAspectRatio: AppTileAspectRatio.wide,
-        children: _presets.asMap().entries.map((entry) {
-          final index = entry.key;
-          final preset = entry.value;
-          final bool isActive = _isPresetActive(index);
+    // Large screens: 2 vertical tiles per row, small/medium: 1 horizontal tile per row
+    final tileLayout = isLargeScreen ? TileLayout.vertical : TileLayout.horizontal;
+    final aspectRatio = isLargeScreen ? AppTileAspectRatio.square : AppTileAspectRatio.extraWide;
+    final crossAxisCount = isLargeScreen ? 2 : 1;
 
-          return UniversalTile(
-            layout: TileLayout.horizontal,
-            icon: preset.icon,
-            name: preset.name,
-            status: '${preset.position}%',
-            isActive: isActive,
-            activeColor: primaryColor,
-            onTileTap: () => _applyPreset(index),
-            showGlow: false,
-            showWarningBadge: false,
-            showInactiveBorder: isLight,
-          );
-        }).toList(),
-      ),
+    return GridView.count(
+      crossAxisCount: crossAxisCount,
+      mainAxisSpacing: AppSpacings.pSm,
+      crossAxisSpacing: AppSpacings.pSm,
+      childAspectRatio: aspectRatio,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      children: _presets.asMap().entries.map((entry) {
+        final index = entry.key;
+        final preset = entry.value;
+        final bool isActive = _isPresetActive(index);
+
+        return UniversalTile(
+          layout: tileLayout,
+          icon: preset.icon,
+          name: preset.name,
+          status: '${preset.position}%',
+          isActive: isActive,
+          activeColor: primaryColor,
+          onTileTap: () => _applyPreset(index),
+          showGlow: false,
+          showWarningBadge: false,
+          showInactiveBorder: isLight,
+        );
+      }).toList(),
     );
   }
 
