@@ -20,6 +20,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/window_cover
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 /// Window covering device detail page.
@@ -754,7 +755,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       buttons.add(_buildCompactActionIconButton(
         context,
         icon: MdiIcons.stop,
-        isActive: _device.isWindowCoveringStopped,
+        isActive: false,
         onTap: _handleStop,
       ));
     }
@@ -787,29 +788,42 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   }) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final primaryColor = isLight ? AppColorsLight.primary : AppColorsDark.primary;
+    final baseColor = isLight ? AppFillColorLight.base : AppFillColorDark.base;
+    final textColor = isLight ? AppTextColorLight.regular : AppTextColorDark.regular;
     final iconSize = _screenService.scale(18, density: _visualDensityService.density);
     final buttonSize = _screenService.scale(36, density: _visualDensityService.density);
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: buttonSize,
-        height: buttonSize,
-        decoration: BoxDecoration(
-          color: isActive
-              ? primaryColor
-              : (isLight ? AppFillColorLight.base : AppFillColorDark.base),
+    return SizedBox(
+      width: buttonSize,
+      height: buttonSize,
+      child: Material(
+        color: isActive ? primaryColor : baseColor,
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            onTap();
+          },
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          border: isActive || !isLight
-              ? null
-              : Border.all(color: AppBorderColorLight.base),
-        ),
-        child: Icon(
-          icon,
-          size: iconSize,
-          color: isActive
-              ? AppColors.white
-              : (isLight ? AppTextColorLight.regular : AppTextColorDark.regular),
+          splashColor: isActive
+              ? AppColors.white.withValues(alpha: 0.2)
+              : primaryColor.withValues(alpha: 0.15),
+          highlightColor: isActive
+              ? AppColors.white.withValues(alpha: 0.1)
+              : primaryColor.withValues(alpha: 0.08),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppBorderRadius.base),
+              border: isActive || !isLight
+                  ? null
+                  : Border.all(color: AppBorderColorLight.base),
+            ),
+            child: Icon(
+              icon,
+              size: iconSize,
+              color: isActive ? AppColors.white : textColor,
+            ),
+          ),
         ),
       ),
     );
@@ -1330,7 +1344,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           context,
           label: localizations.window_covering_command_stop,
           icon: MdiIcons.stop,
-          isActive: _device.isWindowCoveringStopped,
+          isActive: false,
           onTap: _handleStop,
         ),
       ));
@@ -1367,55 +1381,59 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     required VoidCallback onTap,
   }) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final primaryColor = isLight ? AppColorsLight.primary : AppColorsDark.primary;
+    final baseColor = isLight ? AppFillColorLight.base : AppFillColorDark.base;
+    final textColor = isLight ? AppTextColorLight.regular : AppTextColorDark.regular;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: AppSpacings.pMd,
-          vertical: AppSpacings.pSm,
-        ),
-        decoration: BoxDecoration(
-          color: isActive
-              ? (isLight ? AppColorsLight.primary : AppColorsDark.primary)
-              : (isLight
-                  ? AppFillColorLight.base
-                  : AppFillColorDark.base),
-          borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          border: isActive || !isLight
-              ? null
-              : Border.all(color: AppBorderColorLight.base),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: _screenService.scale(
-                20,
-                density: _visualDensityService.density,
+    return Material(
+      color: isActive ? primaryColor : baseColor,
+      borderRadius: BorderRadius.circular(AppBorderRadius.base),
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
+        splashColor: isActive
+            ? AppColors.white.withValues(alpha: 0.2)
+            : primaryColor.withValues(alpha: 0.15),
+        highlightColor: isActive
+            ? AppColors.white.withValues(alpha: 0.1)
+            : primaryColor.withValues(alpha: 0.08),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacings.pMd,
+            vertical: AppSpacings.pSm,
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppBorderRadius.base),
+            border: isActive || !isLight
+                ? null
+                : Border.all(color: AppBorderColorLight.base),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: _screenService.scale(
+                  20,
+                  density: _visualDensityService.density,
+                ),
+                color: isActive ? AppColors.white : textColor,
               ),
-              color: isActive
-                  ? AppColors.white
-                  : (isLight
-                      ? AppTextColorLight.regular
-                      : AppTextColorDark.regular),
-            ),
-            AppSpacings.spacingXsHorizontal,
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: AppFontSize.small,
-                fontWeight: FontWeight.w500,
-                color: isActive
-                    ? AppColors.white
-                    : (isLight
-                        ? AppTextColorLight.regular
-                        : AppTextColorDark.regular),
+              AppSpacings.spacingXsHorizontal,
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: AppFontSize.small,
+                  fontWeight: FontWeight.w500,
+                  color: isActive ? AppColors.white : textColor,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
