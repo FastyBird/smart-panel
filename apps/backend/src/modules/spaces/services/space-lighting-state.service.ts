@@ -446,19 +446,22 @@ export class SpaceLightingStateService {
 	 * Get uniform value from array of values.
 	 * Returns the value if all non-null values are the same (within tolerance),
 	 * null if values differ (mixed).
+	 *
+	 * Uses range-based check (max - min <= tolerance) which is order-independent.
 	 */
 	private getUniformValue(values: (number | null)[]): { value: number | null; isMixed: boolean } {
+		const TOLERANCE = 5;
 		const nonNullValues = values.filter((v): v is number => v !== null);
 
 		if (nonNullValues.length === 0) {
 			return { value: null, isMixed: false };
 		}
 
-		// Check if all values are within tolerance (±5)
-		const first = nonNullValues[0];
-		const allSame = nonNullValues.every((v) => Math.abs(v - first) <= 5);
+		const min = Math.min(...nonNullValues);
+		const max = Math.max(...nonNullValues);
 
-		if (allSame) {
+		// Values are uniform if the range (max - min) is within tolerance
+		if (max - min <= TOLERANCE) {
 			// Return the rounded average when uniform
 			const avg = Math.round(nonNullValues.reduce((a, b) => a + b, 0) / nonNullValues.length);
 

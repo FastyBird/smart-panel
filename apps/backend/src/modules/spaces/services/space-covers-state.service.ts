@@ -307,25 +307,27 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 	/**
 	 * Get uniform value from array of values.
 	 * Returns the value if all values are the same (within tolerance),
-	 * null if values differ (mixed).
+	 * average marked as mixed if values differ.
+	 *
+	 * Uses range-based check (max - min <= tolerance) which is order-independent.
 	 */
 	private getUniformValue(values: number[]): { value: number | null; isMixed: boolean } {
+		const TOLERANCE = 5;
+
 		if (values.length === 0) {
 			return { value: null, isMixed: false };
 		}
 
-		// Check if all values are within tolerance (±5)
-		const first = values[0];
-		const allSame = values.every((v) => Math.abs(v - first) <= 5);
+		const min = Math.min(...values);
+		const max = Math.max(...values);
+		const avg = values.reduce((a, b) => a + b, 0) / values.length;
 
-		if (allSame) {
-			// Return average for small variations
-			const avg = values.reduce((a, b) => a + b, 0) / values.length;
+		// Values are uniform if the range (max - min) is within tolerance
+		if (max - min <= TOLERANCE) {
 			return { value: avg, isMixed: false };
 		}
 
 		// Values differ - return average but mark as mixed
-		const avg = values.reduce((a, b) => a + b, 0) / values.length;
 		return { value: avg, isMixed: true };
 	}
 
