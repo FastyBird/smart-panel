@@ -400,7 +400,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     final buttonsHeight = _screenService.scale(44, density: _visualDensityService.density);
     final sliderHeight = _screenService.scale(60, density: _visualDensityService.density);
     final maxVisualizationHeight =
-        availableHeight - sliderHeight - buttonsHeight - spacing * 4;
+        availableHeight - sliderHeight - buttonsHeight - spacing * 2;
 
     final visualizationAspectRatio = 180.0 / 160.0;
     // Allow larger visualization on big screens (up to 280px height)
