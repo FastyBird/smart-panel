@@ -611,6 +611,11 @@ export class SpaceLightingStateService {
 		let bestMatch: ModeMatch | null = null;
 
 		for (const modeId of allModes.keys()) {
+			// Only match built-in LightingMode values (custom mode IDs are not detected in MVP)
+			if (!Object.values(LightingMode).includes(modeId as LightingMode)) {
+				continue;
+			}
+
 			const match = this.matchMode(modeId as LightingMode, roleStates, otherState);
 
 			if (match) {
@@ -663,6 +668,11 @@ export class SpaceLightingStateService {
 		const mvpModes: Array<{ mode: LightingMode; brightness: number }> = [];
 
 		for (const [modeId, config] of allModes) {
+			// Only match built-in LightingMode values (custom mode IDs are not detected in MVP)
+			if (!Object.values(LightingMode).includes(modeId as LightingMode)) {
+				continue;
+			}
+
 			if (config.mvpBrightness !== undefined && config.mvpBrightness !== null) {
 				mvpModes.push({
 					mode: modeId as LightingMode,
