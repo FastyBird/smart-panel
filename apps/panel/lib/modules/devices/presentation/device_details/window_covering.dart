@@ -1300,6 +1300,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       () {
         if (!mounted) return;
         _controller?.setPosition(intValue);
+        // Clear local value so controller's optimistic state takes over
+        _localPosition = null;
         setState(() {});
       },
     );
@@ -1509,6 +1511,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       () {
         if (!mounted) return;
         _controller?.setTilt(intValue);
+        // Clear local value so controller's optimistic state takes over
+        _localTilt = null;
         setState(() {});
       },
     );
