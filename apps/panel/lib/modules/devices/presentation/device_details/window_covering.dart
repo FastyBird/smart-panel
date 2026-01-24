@@ -231,13 +231,11 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         isDark ? AppColorsDark.primary : AppColorsLight.primary;
     final primaryBgColor =
         isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9;
-    final secondaryColor =
-        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 
     return PageHeader(
       title: widget._device.name,
-      subtitle: _getWindowCoveringTypeName(context),
-      subtitleColor: secondaryColor,
+      subtitle: '${_getStatusLabel(context)} • $_position%',
+      subtitleColor: _getStatusColor(context),
       backgroundColor: AppColors.blank,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
