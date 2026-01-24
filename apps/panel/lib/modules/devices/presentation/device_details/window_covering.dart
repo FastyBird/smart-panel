@@ -7,6 +7,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
@@ -356,17 +357,54 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
             _buildTiltCard(context),
             AppSpacings.spacingMdVertical,
           ],
-          SizedBox(
-            height: _screenService.scale(
-              72,
-              density: _visualDensityService.density,
-            ),
-            child: _buildPresetsHorizontalScroll(context),
-          ),
+          _buildPresetsWithGradient(context),
           AppSpacings.spacingMdVertical,
           _buildInfoRow(context),
         ],
       ),
+    );
+  }
+
+  /// Builds the presets horizontal scroll with edge gradients that extend
+  /// over the layout padding to the screen edges.
+  Widget _buildPresetsWithGradient(BuildContext context) {
+    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final primaryColor =
+        isLight ? AppColorsLight.primary : AppColorsDark.primary;
+
+    // Calculate tile dimensions
+    final tileWidth = _screenService.scale(
+      _presetTileWidth,
+      density: _visualDensityService.density,
+    );
+    final tileHeight = tileWidth / _presetTileAspectRatio;
+
+    return HorizontalScrollWithGradient(
+      height: tileHeight,
+      layoutPadding: AppSpacings.pLg,
+      itemCount: _presets.length,
+      separatorWidth: AppSpacings.pSm,
+      itemBuilder: (context, index) {
+        final preset = _presets[index];
+        final bool isActive = _position == preset.position;
+
+        return SizedBox(
+          width: tileWidth,
+          height: tileHeight,
+          child: UniversalTile(
+            layout: TileLayout.horizontal,
+            icon: preset.icon,
+            name: preset.name,
+            status: '${preset.position}%',
+            isActive: isActive,
+            activeColor: primaryColor,
+            onTileTap: () => _applyPreset(preset),
+            showGlow: false,
+            showWarningBadge: false,
+            showInactiveBorder: isLight,
+          ),
+        );
+      },
     );
   }
 
@@ -848,6 +886,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   // PRESETS
   // ===========================================================================
 
+  /// Fixed width for preset tiles in horizontal scroll.
+  static const double _presetTileWidth = 140.0;
+
   /// Aspect ratio for preset tiles (width / height).
   /// Used consistently across portrait and landscape layouts.
   static const double _presetTileAspectRatio = 2.2;
@@ -886,50 +927,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           );
         }).toList(),
       ),
-    );
-  }
-
-  Widget _buildPresetsHorizontalScroll(BuildContext context) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final primaryColor =
-        isLight ? AppColorsLight.primary : AppColorsDark.primary;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Use available height or fallback to scaled default
-        final availableHeight = constraints.maxHeight > 0
-            ? constraints.maxHeight
-            : _screenService.scale(72, density: _visualDensityService.density);
-
-        return SizedBox(
-          height: availableHeight,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: _presets.length,
-            separatorBuilder: (_, __) => AppSpacings.spacingSmHorizontal,
-            itemBuilder: (context, index) {
-              final preset = _presets[index];
-              final bool isActive = _position == preset.position;
-
-              return AspectRatio(
-                aspectRatio: _presetTileAspectRatio,
-                child: UniversalTile(
-                  layout: TileLayout.horizontal,
-                  icon: preset.icon,
-                  name: preset.name,
-                  status: '${preset.position}%',
-                  isActive: isActive,
-                  activeColor: primaryColor,
-                  onTileTap: () => _applyPreset(preset),
-                  showGlow: false,
-                  showWarningBadge: false,
-                  showInactiveBorder: isLight,
-                ),
-              );
-            },
-          ),
-        );
-      },
     );
   }
 
