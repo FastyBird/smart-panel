@@ -234,9 +234,14 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           children: [
             _buildHeader(context, isDark),
             Expanded(
-              child: _screenService.isLandscape
-                  ? _buildLandscapeLayout(context)
-                  : _buildPortraitLayout(context),
+              child: OrientationBuilder(
+                builder: (context, orientation) {
+                  final isLandscape = orientation == Orientation.landscape;
+                  return isLandscape
+                      ? _buildLandscapeLayout(context)
+                      : _buildPortraitLayout(context);
+                },
+              ),
             ),
           ],
         ),
