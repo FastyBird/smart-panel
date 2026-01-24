@@ -5,6 +5,8 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
@@ -319,37 +321,23 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   // ===========================================================================
 
   Widget _buildLandscapeLayout(BuildContext context) {
-    return Padding(
-      padding: AppSpacings.paddingMd,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return DeviceDetailLandscapeLayout(
+      mainContentFlex: 2,
+      secondaryContentFlex: 1,
+      mainContent: _buildMainControlCard(context),
+      secondaryContent: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Left: Main Control
-          Expanded(
-            flex: 2,
-            child: _buildMainControlCard(context),
-          ),
-          AppSpacings.spacingMdHorizontal,
-          // Right: Tilt, Info, Presets
-          SizedBox(
-            width: _screenService.scale(
-              280,
-              density: _visualDensityService.density,
-            ),
-            child: Column(
-              children: [
-                if (_device.hasWindowCoveringTilt) ...[
-                  _buildTiltCard(context),
-                  AppSpacings.spacingMdVertical,
-                ],
-                _buildInfoCard(context),
-                AppSpacings.spacingMdVertical,
-                Expanded(child: _buildPresetsCard(context)),
-              ],
-            ),
-          ),
+          if (_device.hasWindowCoveringTilt) ...[
+            _buildTiltCard(context),
+            AppSpacings.spacingMdVertical,
+          ],
+          _buildInfoCard(context),
+          AppSpacings.spacingMdVertical,
+          Expanded(child: _buildPresetsCard(context)),
         ],
       ),
+      secondaryScrollable: false,
     );
   }
 
@@ -358,9 +346,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   // ===========================================================================
 
   Widget _buildPortraitLayout(BuildContext context) {
-    return SingleChildScrollView(
-      padding: AppSpacings.paddingMd,
-      child: Column(
+    return DeviceDetailPortraitLayout(
+      content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildMainControlCard(context),
