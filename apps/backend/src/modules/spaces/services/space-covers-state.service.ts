@@ -103,11 +103,17 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 	 * Get the current covers state for a space.
 	 * Returns null if space doesn't exist (controller should throw 404).
 	 *
-	 * Note: This method has a side effect - it invalidates mode validity in InfluxDB
-	 * when the detected mode diverges from the last applied intent mode. This is
-	 * necessary to accurately compute `isModeFromIntent` and track user manual changes.
+	 * @param spaceId - The space ID to get covers state for
+	 * @param options.synchronizeModeValidity - If true (default), invalidates mode validity
+	 *        in InfluxDB when detected mode diverges from last applied mode. This ensures
+	 *        accurate `isModeFromIntent` tracking. Set to false for read-only operations
+	 *        where the side effect is not needed (e.g., internal state broadcasts).
 	 */
-	async getCoversState(spaceId: string): Promise<CoversState | null> {
+	async getCoversState(
+		spaceId: string,
+		options: { synchronizeModeValidity?: boolean } = {},
+	): Promise<CoversState | null> {
+		const { synchronizeModeValidity = true } = options;
 		const defaultState: CoversState = {
 			hasCovers: false,
 			detectedMode: null,
@@ -218,7 +224,8 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 
 		// If detected mode diverges from last applied mode, invalidate the mode
 		// This ensures that once user manually changes settings, intent mode is no longer valid
-		if (detectedMode !== lastAppliedMode && modeValid) {
+		// Only perform this write operation when synchronizeModeValidity is enabled
+		if (synchronizeModeValidity && detectedMode !== lastAppliedMode && modeValid) {
 			await this.intentTimeseriesService.storeModeValidity(spaceId, 'covers', false);
 			modeValid = false;
 		}

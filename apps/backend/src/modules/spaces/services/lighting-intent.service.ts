@@ -351,7 +351,10 @@ export class LightingIntentService extends SpaceIntentBaseService {
 	 */
 	private async emitLightingStateChange(spaceId: string): Promise<void> {
 		try {
-			const state = await this.lightingStateService.getLightingState(spaceId);
+			// Skip mode validity synchronization - we're just broadcasting current state
+			const state = await this.lightingStateService.getLightingState(spaceId, {
+				synchronizeModeValidity: false,
+			});
 
 			if (state) {
 				// Convert to LightingStateDataModel for proper snake_case serialization via WebSocket

@@ -831,7 +831,10 @@ export class CoversIntentService extends SpaceIntentBaseService {
 	 */
 	private async emitCoversStateChange(spaceId: string): Promise<void> {
 		try {
-			const state = await this.coversStateService.getCoversState(spaceId);
+			// Skip mode validity synchronization - we're just broadcasting current state
+			const state = await this.coversStateService.getCoversState(spaceId, {
+				synchronizeModeValidity: false,
+			});
 
 			if (state) {
 				// Convert to CoversStateDataModel for proper snake_case serialization via WebSocket

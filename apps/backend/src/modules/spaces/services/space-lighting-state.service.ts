@@ -140,11 +140,17 @@ export class SpaceLightingStateService {
 	 * Get the complete aggregated lighting state for a space.
 	 * Includes per-role state, mode detection, and summary.
 	 *
-	 * Note: This method has a side effect - it invalidates mode validity in InfluxDB
-	 * when the detected mode diverges from the last applied intent mode. This is
-	 * necessary to accurately compute `isModeFromIntent` and track user manual changes.
+	 * @param spaceId - The space ID to get lighting state for
+	 * @param options.synchronizeModeValidity - If true (default), invalidates mode validity
+	 *        in InfluxDB when detected mode diverges from last applied mode. This ensures
+	 *        accurate `isModeFromIntent` tracking. Set to false for read-only operations
+	 *        where the side effect is not needed (e.g., internal state broadcasts).
 	 */
-	async getLightingState(spaceId: string): Promise<SpaceLightingState | null> {
+	async getLightingState(
+		spaceId: string,
+		options: { synchronizeModeValidity?: boolean } = {},
+	): Promise<SpaceLightingState | null> {
+		const { synchronizeModeValidity = true } = options;
 		// Verify space exists
 		const space = await this.spacesService.findOne(spaceId);
 
@@ -197,7 +203,8 @@ export class SpaceLightingStateService {
 
 		// If detected mode diverges from last applied mode, invalidate the mode
 		// This ensures that once user manually changes settings, intent mode is no longer valid
-		if (detectedMode !== lastAppliedMode && modeValid) {
+		// Only perform this write operation when synchronizeModeValidity is enabled
+		if (synchronizeModeValidity && detectedMode !== lastAppliedMode && modeValid) {
 			await this.intentTimeseriesService.storeModeValidity(spaceId, 'lighting', false);
 			modeValid = false;
 		}
