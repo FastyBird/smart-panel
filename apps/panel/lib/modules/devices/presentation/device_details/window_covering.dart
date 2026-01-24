@@ -334,7 +334,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     return DeviceDetailLandscapeLayout(
       mainContentFlex: 2,
       secondaryContentFlex: 1,
-      mainContent: _buildMainControlCard(context),
+      mainContent: _buildLandscapeMainControl(context),
       secondaryContent: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -348,6 +348,525 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         ],
       ),
       secondaryScrollable: false,
+    );
+  }
+
+  /// Landscape main control that fills available space with adaptive layout.
+  /// On large displays: uses portrait-style horizontal buttons below slider.
+  /// On small/medium displays: uses vertical icon-only buttons on the side.
+  Widget _buildLandscapeMainControl(BuildContext context) {
+    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final borderColor =
+        isLight ? AppBorderColorLight.base : AppBorderColorDark.base;
+    final cardColor =
+        isLight ? AppFillColorLight.light : AppFillColorDark.light;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+        border: isLight ? Border.all(color: borderColor) : null,
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Use screen service breakpoints for consistent behavior
+          final isLargeScreen = _screenService.isLargeScreen;
+
+          if (isLargeScreen) {
+            return _buildLandscapeLargeLayout(context, constraints);
+          } else {
+            return _buildLandscapeCompactLayout(context, constraints);
+          }
+        },
+      ),
+    );
+  }
+
+  /// Large display layout: visualization + slider + horizontal buttons (like portrait)
+  Widget _buildLandscapeLargeLayout(
+      BuildContext context, BoxConstraints constraints) {
+    final padding = AppSpacings.pLg;
+    final spacing = AppSpacings.pMd;
+    final availableHeight = constraints.maxHeight - padding * 2;
+
+    // Calculate visualization size - use most of available height
+    final buttonsHeight = _screenService.scale(44, density: _visualDensityService.density);
+    final sliderHeight = _screenService.scale(60, density: _visualDensityService.density);
+    final maxVisualizationHeight =
+        availableHeight - sliderHeight - buttonsHeight - spacing * 4;
+
+    final visualizationAspectRatio = 180.0 / 160.0;
+    // Allow larger visualization on big screens (up to 280px height)
+    var visualizationHeight = maxVisualizationHeight.clamp(80.0, 280.0);
+    var visualizationWidth = visualizationHeight * visualizationAspectRatio;
+
+    return Padding(
+      padding: AppSpacings.paddingLg,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Center(
+              child: _buildWindowVisualizationSized(context, visualizationWidth, visualizationHeight),
+            ),
+          ),
+          AppSpacings.spacingMdVertical,
+          _buildPositionSlider(context),
+          AppSpacings.spacingMdVertical,
+          _buildQuickActions(context),
+        ],
+      ),
+    );
+  }
+
+  /// Compact display layout: visualization + buttons on top, slider on bottom
+  /// Top row: 2/3 window visualization, 1/3 vertical icon buttons
+  /// Bottom row: full-width slider
+  Widget _buildLandscapeCompactLayout(
+      BuildContext context, BoxConstraints constraints) {
+    final padding = AppSpacings.pLg;
+    final spacing = AppSpacings.pMd;
+    final availableHeight = constraints.maxHeight - padding * 2;
+    final availableWidth = constraints.maxWidth - padding * 2;
+
+    // Calculate visualization size for compact layout
+    final sliderHeight = _screenService.scale(60, density: _visualDensityService.density);
+    final maxVisualizationHeight = availableHeight - sliderHeight - spacing;
+
+    // Window takes 2/3 of width, buttons take 1/3
+    final visualizationWidth = (availableWidth - spacing) * 2 / 3;
+    final visualizationAspectRatio = 180.0 / 160.0;
+    var visualizationHeight = (visualizationWidth / visualizationAspectRatio).clamp(60.0, maxVisualizationHeight);
+
+    return Padding(
+      padding: AppSpacings.paddingLg,
+      child: Column(
+        children: [
+          // Top row: visualization (3/4) + buttons (1/4)
+          Expanded(
+            child: Row(
+              children: [
+                // Window visualization - 3/4 width
+                Expanded(
+                  flex: 3,
+                  child: Center(
+                    child: _buildWindowVisualizationSized(
+                      context,
+                      visualizationWidth.clamp(120.0, 280.0),
+                      visualizationHeight.clamp(100.0, 240.0),
+                    ),
+                  ),
+                ),
+                SizedBox(width: spacing),
+                // Vertical action buttons - 1/4 width
+                Expanded(
+                  flex: 1,
+                  child: Center(
+                    child: _buildCompactVerticalActionButtons(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          AppSpacings.spacingMdVertical,
+          // Bottom row: full-width slider
+          _buildPositionSlider(context),
+        ],
+      ),
+    );
+  }
+
+  /// Window visualization with custom size for landscape layout
+  Widget _buildWindowVisualizationSized(
+    BuildContext context,
+    double width,
+    double height,
+  ) {
+    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final coverHeight = (100 - _position) / 100;
+
+    return Container(
+      width: width,
+      height: height,
+      clipBehavior: Clip.hardEdge,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: isLight
+              ? [const Color(0xFF87CEEB), const Color(0xFFE0F7FA)]
+              : [const Color(0xFF1E3A5F), const Color(0xFF0D1B2A)],
+        ),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
+        border: Border.all(
+          color: isLight ? AppBorderColorLight.base : AppBorderColorDark.base,
+          width: 4,
+        ),
+      ),
+      child: Stack(
+        children: [
+          _buildCoverVisualizationScaled(context, coverHeight, width, height),
+          Positioned(
+            bottom: AppSpacings.pSm,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacings.pSm,
+                  vertical: AppSpacings.pXs,
+                ),
+                decoration: BoxDecoration(
+                  color: isLight
+                      ? AppColors.white.withValues(alpha: 0.9)
+                      : AppColors.black.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(AppBorderRadius.small),
+                ),
+                child: Text(
+                  '$_position%',
+                  style: TextStyle(
+                    fontSize: AppFontSize.extraSmall,
+                    fontWeight: FontWeight.w500,
+                    color: isLight
+                        ? AppTextColorLight.regular
+                        : AppTextColorDark.regular,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Cover visualization that scales to the given container size
+  Widget _buildCoverVisualizationScaled(
+    BuildContext context,
+    double coverHeight,
+    double containerWidth,
+    double containerHeight,
+  ) {
+    // Account for border (4px on each side)
+    final innerHeight = containerHeight - 8;
+
+    try {
+      switch (_device.windowCoveringType) {
+        case WindowCoveringTypeValue.blind:
+        case WindowCoveringTypeValue.venetianBlind:
+          return _buildBlindVisualizationScaled(context, coverHeight, innerHeight);
+        case WindowCoveringTypeValue.curtain:
+        case WindowCoveringTypeValue.verticalBlind:
+          return _buildCurtainVisualizationScaled(context, containerWidth, containerHeight);
+        case WindowCoveringTypeValue.roller:
+        case WindowCoveringTypeValue.awning:
+          return _buildRollerVisualizationScaled(context, coverHeight, innerHeight);
+        case WindowCoveringTypeValue.shutter:
+        case WindowCoveringTypeValue.outdoorBlind:
+          return _buildOutdoorBlindVisualizationScaled(context, coverHeight, innerHeight);
+      }
+    } catch (_) {
+      return _buildBlindVisualizationScaled(context, coverHeight, innerHeight);
+    }
+  }
+
+  Widget _buildBlindVisualizationScaled(BuildContext context, double coverHeight, double containerHeight) {
+    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final slatHeight = 8.0;
+    final slatMargin = 2.0;
+    final slatTotal = slatHeight + slatMargin;
+    final maxSlats = (containerHeight / slatTotal).floor();
+    final slatCount = (_position < 90 ? (maxSlats * coverHeight).floor() : 0);
+    final tiltFactor = _tiltAngle / 90 * 0.5;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      clipBehavior: Clip.hardEdge,
+      decoration: const BoxDecoration(),
+      height: containerHeight * coverHeight,
+      child: Column(
+        children: List.generate(
+          slatCount.clamp(0, maxSlats),
+          (i) => Transform(
+            transform: Matrix4.identity()
+              ..setEntry(3, 2, 0.001)
+              ..rotateX(tiltFactor),
+            alignment: Alignment.center,
+            child: Container(
+              height: slatHeight,
+              margin: EdgeInsets.only(bottom: slatMargin, left: 2, right: 2),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(1),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: isLight
+                      ? [const Color(0xFFE8E8E8), const Color(0xFFBDBDBD)]
+                      : [const Color(0xFF505050), const Color(0xFF383838)],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCurtainVisualizationScaled(BuildContext context, double containerWidth, double containerHeight) {
+    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final panelWidth = (100 - _position) / 100 * 0.5;
+    final innerWidth = containerWidth - 8;
+    final innerHeight = containerHeight - 8;
+
+    return SizedBox(
+      width: innerWidth,
+      height: innerHeight,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            width: innerWidth * panelWidth,
+            height: innerHeight,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: isLight
+                    ? [const Color(0xFFD7CCC8), const Color(0xFFBCAAA4), const Color(0xFFA1887F)]
+                    : [const Color(0xFF5D4037), const Color(0xFF4E342E), const Color(0xFF3E2723)],
+              ),
+            ),
+            child: _buildCurtainFolds(isLight),
+          ),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            width: innerWidth * panelWidth,
+            height: innerHeight,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerRight,
+                end: Alignment.centerLeft,
+                colors: isLight
+                    ? [const Color(0xFFD7CCC8), const Color(0xFFBCAAA4), const Color(0xFFA1887F)]
+                    : [const Color(0xFF5D4037), const Color(0xFF4E342E), const Color(0xFF3E2723)],
+              ),
+            ),
+            child: _buildCurtainFolds(isLight),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRollerVisualizationScaled(BuildContext context, double coverHeight, double containerHeight) {
+    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final tubeHeight = 12.0;
+    final shadeMaxHeight = containerHeight - tubeHeight;
+
+    return Column(
+      children: [
+        Container(
+          height: tubeHeight,
+          decoration: BoxDecoration(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: isLight
+                  ? [const Color(0xFF9E9E9E), const Color(0xFF757575)]
+                  : [const Color(0xFF616161), const Color(0xFF424242)],
+            ),
+          ),
+        ),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          height: (shadeMaxHeight * coverHeight).clamp(0.0, shadeMaxHeight),
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          decoration: BoxDecoration(
+            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(4)),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: isLight
+                  ? [const Color(0xFFECEFF1), const Color(0xFFCFD8DC)]
+                  : [const Color(0xFF455A64), const Color(0xFF37474F)],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOutdoorBlindVisualizationScaled(BuildContext context, double coverHeight, double containerHeight) {
+    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final slatHeight = 10.0;
+    final slatMargin = 3.0;
+    final slatTotal = slatHeight + slatMargin;
+    final maxSlats = (containerHeight / slatTotal).floor();
+    final slatCount = (_position < 90 ? (maxSlats * coverHeight).floor() : 0);
+    final tiltFactor = _tiltAngle / 90 * 0.5;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      clipBehavior: Clip.hardEdge,
+      decoration: const BoxDecoration(),
+      height: containerHeight * coverHeight,
+      child: Column(
+        children: List.generate(
+          slatCount.clamp(0, maxSlats),
+          (i) => Transform(
+            transform: Matrix4.identity()
+              ..setEntry(3, 2, 0.001)
+              ..rotateX(tiltFactor),
+            alignment: Alignment.center,
+            child: Container(
+              height: slatHeight,
+              margin: EdgeInsets.only(bottom: slatMargin, left: 3, right: 3),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(2),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: isLight
+                      ? [const Color(0xFFA1887F), const Color(0xFF8D6E63)]
+                      : [const Color(0xFF6D4C41), const Color(0xFF5D4037)],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Vertical icon-only action buttons for compact landscape layout
+  Widget _buildVerticalActionButtons(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _buildActionIconButton(
+          context,
+          icon: MdiIcons.chevronUp,
+          isActive: false,
+          onTap: () => _controller?.open(),
+        ),
+        AppSpacings.spacingSmVertical,
+        _buildActionIconButton(
+          context,
+          icon: MdiIcons.stop,
+          isActive: _device.isWindowCoveringStopped,
+          onTap: () => _controller?.stop(),
+        ),
+        AppSpacings.spacingSmVertical,
+        _buildActionIconButton(
+          context,
+          icon: MdiIcons.chevronDown,
+          isActive: false,
+          onTap: () => _controller?.close(),
+        ),
+      ],
+    );
+  }
+
+  /// Smaller vertical action buttons for small/medium screens
+  Widget _buildCompactVerticalActionButtons(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _buildCompactActionIconButton(
+          context,
+          icon: MdiIcons.chevronUp,
+          isActive: false,
+          onTap: () => _controller?.open(),
+        ),
+        AppSpacings.spacingXsVertical,
+        _buildCompactActionIconButton(
+          context,
+          icon: MdiIcons.stop,
+          isActive: _device.isWindowCoveringStopped,
+          onTap: () => _controller?.stop(),
+        ),
+        AppSpacings.spacingXsVertical,
+        _buildCompactActionIconButton(
+          context,
+          icon: MdiIcons.chevronDown,
+          isActive: false,
+          onTap: () => _controller?.close(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCompactActionIconButton(
+    BuildContext context, {
+    required IconData icon,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final primaryColor = isLight ? AppColorsLight.primary : AppColorsDark.primary;
+    final iconSize = _screenService.scale(18, density: _visualDensityService.density);
+    final buttonSize = _screenService.scale(36, density: _visualDensityService.density);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: buttonSize,
+        height: buttonSize,
+        decoration: BoxDecoration(
+          color: isActive
+              ? primaryColor
+              : (isLight ? AppFillColorLight.base : AppFillColorDark.base),
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
+          border: isActive || !isLight
+              ? null
+              : Border.all(color: AppBorderColorLight.base),
+        ),
+        child: Icon(
+          icon,
+          size: iconSize,
+          color: isActive
+              ? AppColors.white
+              : (isLight ? AppTextColorLight.regular : AppTextColorDark.regular),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionIconButton(
+    BuildContext context, {
+    required IconData icon,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final primaryColor = isLight ? AppColorsLight.primary : AppColorsDark.primary;
+    final iconSize = _screenService.scale(24, density: _visualDensityService.density);
+    final buttonSize = _screenService.scale(44, density: _visualDensityService.density);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: buttonSize,
+        height: buttonSize,
+        decoration: BoxDecoration(
+          color: isActive
+              ? primaryColor
+              : (isLight ? AppFillColorLight.base : AppFillColorDark.base),
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
+          border: isActive || !isLight
+              ? null
+              : Border.all(color: AppBorderColorLight.base),
+        ),
+        child: Icon(
+          icon,
+          size: iconSize,
+          color: isActive
+              ? AppColors.white
+              : (isLight ? AppTextColorLight.regular : AppTextColorDark.regular),
+        ),
+      ),
     );
   }
 
