@@ -151,9 +151,6 @@ class WindowCoveringChannelController {
     _sendCommand(WindowCoveringCommandValue.stop);
   }
 
-  /// Whether command property is available.
-  bool get hasCommand => channel.hasCommand;
-
   /// Available commands for this window covering.
   List<WindowCoveringCommandValue> get availableCommands =>
       channel.availableCommands;
@@ -170,7 +167,6 @@ class WindowCoveringChannelController {
   /// Send a command to the window covering.
   void _sendCommand(WindowCoveringCommandValue command) {
     final prop = channel.commandProp;
-    if (prop == null) return;
 
     _devicesService.setPropertyValue(prop.id, command.value).then((success) {
       if (!success) {

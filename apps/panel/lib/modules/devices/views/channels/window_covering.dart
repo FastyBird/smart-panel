@@ -45,16 +45,11 @@ class WindowCoveringChannelView extends ChannelView
   TypeChannelPropertyView get typeProp =>
       properties.whereType<TypeChannelPropertyView>().first;
 
-  CommandChannelPropertyView? get commandProp =>
-      properties.whereType<CommandChannelPropertyView>().firstOrNull;
-
-  bool get hasCommand => commandProp != null;
+  CommandChannelPropertyView get commandProp =>
+      properties.whereType<CommandChannelPropertyView>().first;
 
   List<WindowCoveringCommandValue> get availableCommands {
-    final CommandChannelPropertyView? prop = commandProp;
-    if (prop == null) return [];
-
-    final FormatType? format = prop.format;
+    final FormatType? format = commandProp.format;
 
     if (format is StringListFormatType) {
       return format.value
@@ -63,18 +58,18 @@ class WindowCoveringChannelView extends ChannelView
           .toList();
     }
 
-    // Fallback: if command property exists but no format, assume all commands available
+    // Fallback: if no format specified, assume all commands available
     return WindowCoveringCommandValue.values.toList();
   }
 
   bool get hasOpenCommand =>
-      hasCommand && availableCommands.contains(WindowCoveringCommandValue.open);
+      availableCommands.contains(WindowCoveringCommandValue.open);
 
   bool get hasCloseCommand =>
-      hasCommand && availableCommands.contains(WindowCoveringCommandValue.close);
+      availableCommands.contains(WindowCoveringCommandValue.close);
 
   bool get hasStopCommand =>
-      hasCommand && availableCommands.contains(WindowCoveringCommandValue.stop);
+      availableCommands.contains(WindowCoveringCommandValue.stop);
 
   @override
   TiltChannelPropertyView? get tiltProp =>

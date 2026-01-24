@@ -738,8 +738,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   /// Smaller vertical action buttons for small/medium screens
   Widget _buildCompactVerticalActionButtons(BuildContext context) {
     final controller = _controller;
-    // Hide if no commands available
-    if (controller == null || !controller.hasCommand) {
+    if (controller == null) {
       return const SizedBox.shrink();
     }
 
@@ -1307,8 +1306,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
   Widget _buildQuickActions(BuildContext context) {
     final controller = _controller;
-    // Hide if no commands available
-    if (controller == null || !controller.hasCommand) {
+    if (controller == null) {
       return const SizedBox.shrink();
     }
 
