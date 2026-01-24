@@ -10,8 +10,9 @@ import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/info_tile.dart';
+import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
@@ -30,6 +31,30 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/air_dehumidi
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
+/// Internal sensor data structure for air dehumidifier device detail.
+class _SensorInfo {
+  final String id;
+  final String label;
+  final String value;
+  final String? unit;
+  final IconData icon;
+  final Color? valueColor;
+  final bool isWarning;
+
+  const _SensorInfo({
+    required this.id,
+    required this.label,
+    required this.value,
+    required this.icon,
+    this.unit,
+    this.valueColor,
+    this.isWarning = false,
+  });
+
+  /// Returns the formatted display value with unit
+  String get displayValue => unit != null ? '$value$unit' : value;
+}
 
 class AirDehumidifierDeviceDetail extends StatefulWidget {
   final AirDehumidifierDeviceView _device;
@@ -499,7 +524,7 @@ class _AirDehumidifierDeviceDetailState
         separatorHeight: 0,
         padding: AppSpacings.paddingLg,
         backgroundColor: secondaryBgColor,
-        itemBuilder: (context, index) => _buildStatus(isDark),
+        itemBuilder: (itemContext, index) => _buildStatus(itemContext, isDark),
       ),
     );
   }
@@ -649,7 +674,7 @@ class _AirDehumidifierDeviceDetailState
             ),
           ),
           AppSpacings.spacingMdVertical,
-          _buildStatus(isDark),
+          _buildStatus(context, isDark),
         ],
       ),
     );
@@ -709,16 +734,16 @@ class _AirDehumidifierDeviceDetailState
     );
   }
 
-  Widget _buildStatus(bool isDark) {
-    final localizations = AppLocalizations.of(context)!;
+  Widget _buildStatus(BuildContext statusContext, bool isDark) {
+    final localizations = AppLocalizations.of(statusContext)!;
     final humidityColor = DeviceColors.humidity(isDark);
     final channel = _dehumidifierChannel;
     final fanChannel = _device.fanChannel;
     final useVerticalLayout = _screenService.isLandscape &&
         (_screenService.isSmallScreen || _screenService.isMediumScreen);
 
-    // Build info tiles ordered by priority
-    final infoTiles = <Widget>[];
+    // Build sensor info ordered by priority
+    final sensors = <_SensorInfo>[];
 
     // ═══════════════════════════════════════════════════════════════════════
     // PRIORITY 1: SAFETY-CRITICAL
@@ -728,11 +753,13 @@ class _AirDehumidifierDeviceDetailState
     final leakChannel = _device.leakChannel;
     if (leakChannel != null) {
       final isLeaking = leakChannel.detected;
-      infoTiles.add(InfoTile(
+      sensors.add(_SensorInfo(
+        id: 'leak',
         label: localizations.leak_sensor_water,
         value: isLeaking
             ? localizations.leak_sensor_detected
             : localizations.leak_sensor_dry,
+        icon: MdiIcons.pipeLeak,
         isWarning: isLeaking,
       ));
     }
@@ -743,36 +770,44 @@ class _AirDehumidifierDeviceDetailState
 
     // Current humidity from humidity channel (required per spec)
     final currentHumidity = _device.humidityChannel.humidity;
-    infoTiles.add(InfoTile(
+    sensors.add(_SensorInfo(
+      id: 'humidity',
       label: localizations.device_current_humidity,
       value: NumberFormatUtils.defaultFormat.formatInteger(currentHumidity),
       unit: '%',
+      icon: MdiIcons.waterPercent,
       valueColor: humidityColor,
     ));
 
     // Water tank level
     if (channel != null && channel.hasWaterTankLevel) {
-      infoTiles.add(InfoTile(
+      sensors.add(_SensorInfo(
+        id: 'water_tank',
         label: localizations.dehumidifier_water_tank,
         value: NumberFormatUtils.defaultFormat.formatInteger(channel.waterTankLevel),
         unit: '%',
+        icon: MdiIcons.cup,
         isWarning: channel.waterTankWarning,
       ));
     } else if (channel != null && channel.hasWaterTankFull) {
-      infoTiles.add(InfoTile(
+      sensors.add(_SensorInfo(
+        id: 'water_tank',
         label: localizations.dehumidifier_water_tank,
         value: channel.waterTankFull
             ? localizations.on_state_on
             : localizations.on_state_off,
+        icon: MdiIcons.cup,
         isWarning: channel.waterTankFull,
       ));
     }
 
     // Defrost indicator (only show when defrosting is active)
     if (channel != null && channel.hasStatus && channel.isDefrosting) {
-      infoTiles.add(InfoTile(
+      sensors.add(_SensorInfo(
+        id: 'defrost',
         label: localizations.dehumidifier_defrost,
         value: localizations.dehumidifier_defrost_active,
+        icon: MdiIcons.snowflakeMelt,
         isWarning: true,
       ));
     }
@@ -788,9 +823,11 @@ class _AirDehumidifierDeviceDetailState
       } else {
         speedLabel = '${NumberFormatUtils.defaultFormat.formatInteger(fanChannel.speed.toInt())}%';
       }
-      infoTiles.add(InfoTile(
+      sensors.add(_SensorInfo(
+        id: 'fan_speed',
         label: localizations.device_fan_speed,
         value: speedLabel,
+        icon: MdiIcons.fan,
       ));
     }
 
@@ -802,29 +839,23 @@ class _AirDehumidifierDeviceDetailState
     final tempChannel = _device.temperatureChannel;
     final currentTemp = tempChannel?.temperature;
     if (currentTemp != null) {
-      infoTiles.add(InfoTile(
+      sensors.add(_SensorInfo(
+        id: 'temperature',
         label: localizations.device_current_temperature,
         value: NumberFormatUtils.defaultFormat.formatDecimal(
           currentTemp,
           decimalPlaces: 1,
         ),
         unit: '°C',
+        icon: MdiIcons.thermometer,
       ));
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (infoTiles.isNotEmpty) ...[
-          if (useVerticalLayout)
-            ...infoTiles
-                .expand((tile) => [
-                      SizedBox(width: double.infinity, child: tile),
-                      AppSpacings.spacingMdVertical,
-                    ])
-                .take(infoTiles.length * 2 - 1)
-          else
-            _buildInfoTilesRow(infoTiles),
+        if (sensors.isNotEmpty) ...[
+          _buildSensorsSection(isDark, sensors),
           AppSpacings.spacingMdVertical,
         ],
         // Fan speed control if available (includes fan mode if present)
@@ -857,7 +888,7 @@ class _AirDehumidifierDeviceDetailState
             status: fanChannel.direction != null
                 ? FanUtils.getDirectionLabel(localizations, fanChannel.direction!)
                 : '-',
-            isActive: fanChannel.direction != null,
+            isActive: fanChannel.direction == FanDirectionValue.counterClockwise,
             activeColor: humidityColor,
             onTileTap: () {
               // Toggle between clockwise and counter_clockwise
@@ -916,35 +947,93 @@ class _AirDehumidifierDeviceDetailState
     );
   }
 
-  Widget _buildInfoTilesRow(List<Widget> tiles) {
-    if (tiles.isEmpty) return const SizedBox.shrink();
+  /// Builds sensors section matching climate domain pattern:
+  /// - Portrait: HorizontalScrollWithGradient with UniversalTile (horizontal layout)
+  /// - Landscape large: GridView.count with 2 columns using UniversalTile (vertical layout)
+  /// - Landscape small/medium: Column with UniversalTile (horizontal layout)
+  Widget _buildSensorsSection(bool isDark, List<_SensorInfo> sensors) {
+    if (sensors.isEmpty) return const SizedBox.shrink();
 
-    // Max 3 tiles per row
-    if (tiles.length <= 3) {
-      return Row(
-        children: tiles
-            .expand((tile) => [Expanded(child: tile), AppSpacings.spacingMdHorizontal])
-            .take(tiles.length * 2 - 1)
+    final isLandscape = _screenService.isLandscape;
+    final isLargeScreen = _screenService.isLargeScreen;
+    final humidityColor = DeviceColors.humidity(isDark);
+
+    // Portrait: Horizontal scroll with gradient (edge-to-edge)
+    if (!isLandscape) {
+      final tileWidth = _scale(AppTileWidth.horizontalMedium);
+      final tileHeight = _scale(AppTileHeight.horizontal);
+
+      return HorizontalScrollWithGradient(
+        height: tileHeight,
+        layoutPadding: AppSpacings.pLg,
+        itemCount: sensors.length,
+        separatorWidth: AppSpacings.pMd,
+        itemBuilder: (context, index) {
+          final sensor = sensors[index];
+          return SizedBox(
+            width: tileWidth,
+            height: tileHeight,
+            child: _buildSensorTile(sensor, TileLayout.horizontal, humidityColor),
+          );
+        },
+      );
+    }
+
+    // Landscape large: GridView with 2 columns (vertical tile layout)
+    if (isLargeScreen) {
+      return GridView.count(
+        crossAxisCount: 2,
+        mainAxisSpacing: AppSpacings.pMd,
+        crossAxisSpacing: AppSpacings.pMd,
+        childAspectRatio: AppTileAspectRatio.square,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        children: sensors
+            .map((sensor) =>
+                _buildSensorTile(sensor, TileLayout.vertical, humidityColor))
             .toList(),
       );
     }
 
-    // Split into rows of 3
-    final rows = <Widget>[];
-    for (var i = 0; i < tiles.length; i += 3) {
-      final rowTiles = tiles.skip(i).take(3).toList();
-      rows.add(Row(
-        children: rowTiles
-            .expand((tile) => [Expanded(child: tile), AppSpacings.spacingMdHorizontal])
-            .take(rowTiles.length * 2 - 1)
-            .toList(),
-      ));
-      if (i + 3 < tiles.length) {
-        rows.add(AppSpacings.spacingMdVertical);
-      }
-    }
+    // Landscape small/medium: Column with fixed-height tiles (horizontal layout)
+    final tileHeight = _scale(AppTileHeight.horizontal);
 
-    return Column(children: rows);
+    return Column(
+      children: sensors.asMap().entries.map((entry) {
+        final index = entry.key;
+        final sensor = entry.value;
+        final isLast = index == sensors.length - 1;
+
+        return Padding(
+          padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
+          child: SizedBox(
+            height: tileHeight,
+            width: double.infinity,
+            child: _buildSensorTile(sensor, TileLayout.horizontal, humidityColor),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  /// Builds a single sensor tile using UniversalTile.
+  /// Matches the climate domain sensor tile pattern.
+  Widget _buildSensorTile(
+    _SensorInfo sensor,
+    TileLayout layout,
+    Color accentColor,
+  ) {
+    return UniversalTile(
+      layout: layout,
+      icon: sensor.icon,
+      name: sensor.displayValue,
+      status: sensor.label,
+      iconAccentColor: sensor.valueColor ?? accentColor,
+      showGlow: false,
+      showDoubleBorder: false,
+      showWarningBadge: sensor.isWarning,
+      showInactiveBorder: true,
+    );
   }
 
   Widget _buildFanSpeedControl(
@@ -1019,7 +1108,10 @@ class _AirDehumidifierDeviceDetailState
       final range = maxSpeed - minSpeed;
       if (range <= 0) return const SizedBox.shrink();
 
-      if (useVerticalLayout) {
+      final isLandscape = _screenService.isLandscape;
+
+      // Landscape (all sizes): Use ValueSelectorRow button
+      if (isLandscape) {
         final speedWidget = ValueSelectorRow<double>(
           currentValue: _normalizedFanSpeed,
           label: localizations.device_fan_speed,
@@ -1040,7 +1132,7 @@ class _AirDehumidifierDeviceDetailState
             children: [
               speedWidget,
               AppSpacings.spacingMdVertical,
-              _buildFanModeControl(localizations, humidityColor, useVerticalLayout),
+              _buildFanModeControl(localizations, humidityColor, true),
               AppSpacings.spacingMdVertical,
             ],
           );
@@ -1053,7 +1145,7 @@ class _AirDehumidifierDeviceDetailState
           ],
         );
       } else {
-        // Use SpeedSlider widget for landscape layout
+        // Portrait (all sizes): Use SpeedSlider
         // Mode selector goes inside the slider's bordered box as footer
         return Column(
           children: [
