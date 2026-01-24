@@ -901,7 +901,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
             onTileTap: () => _applyPreset(index),
             showGlow: false,
             showWarningBadge: false,
-            showInactiveBorder: isLight,
+            showInactiveBorder: true,
           ),
         );
       },
@@ -1565,7 +1565,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
             iconAccentColor: _getStatusColor(context),
             showGlow: false,
             showWarningBadge: false,
-            showInactiveBorder: isLight,
+            showInactiveBorder: true,
           ),
         ),
         if (_device.hasWindowCoveringObstruction) ...[
@@ -1587,7 +1587,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                   : (isLight ? AppColorsLight.success : AppColorsDark.success),
               showGlow: false,
               showWarningBadge: false,
-              showInactiveBorder: isLight,
+              showInactiveBorder: true,
             ),
           ),
         ],
@@ -1646,7 +1646,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
               iconAccentColor: _getStatusColor(context),
               showGlow: false,
               showWarningBadge: false,
-              showInactiveBorder: isLight,
+              showInactiveBorder: true,
             ),
           ),
           if (_device.hasWindowCoveringObstruction) ...[
@@ -1670,7 +1670,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                     : (isLight ? AppColorsLight.success : AppColorsDark.success),
                 showGlow: false,
                 showWarningBadge: false,
-                showInactiveBorder: isLight,
+                showInactiveBorder: true,
               ),
             ),
           ],
@@ -1716,7 +1716,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
             onTileTap: () => _applyPreset(index),
             showGlow: false,
             showWarningBadge: false,
-            showInactiveBorder: isLight,
+            showInactiveBorder: true,
           );
         }).toList(),
       );
@@ -1746,7 +1746,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
               onTileTap: () => _applyPreset(index),
               showGlow: false,
               showWarningBadge: false,
-              showInactiveBorder: isLight,
+              showInactiveBorder: true,
             ),
           ),
         );
