@@ -989,6 +989,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get window_covering_type_outdoor_blind => 'Outdoor Blind';
 
   @override
+  String get window_covering_type_venetian_blind => 'Venetian Blind';
+
+  @override
+  String get window_covering_type_vertical_blind => 'Vertical Blind';
+
+  @override
+  String get window_covering_type_shutter => 'Shutter';
+
+  @override
+  String get window_covering_type_awning => 'Awning';
+
+  @override
   String get window_covering_command_open => 'Open';
 
   @override

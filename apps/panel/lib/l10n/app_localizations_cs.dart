@@ -989,6 +989,18 @@ class AppLocalizationsCs extends AppLocalizations {
   String get window_covering_type_outdoor_blind => 'Venkovní žaluzie';
 
   @override
+  String get window_covering_type_venetian_blind => 'Benátské žaluzie';
+
+  @override
+  String get window_covering_type_vertical_blind => 'Vertikální žaluzie';
+
+  @override
+  String get window_covering_type_shutter => 'Okenice';
+
+  @override
+  String get window_covering_type_awning => 'Markýza';
+
+  @override
   String get window_covering_command_open => 'Otevřít';
 
   @override

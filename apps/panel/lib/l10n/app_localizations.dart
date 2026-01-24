@@ -2027,6 +2027,30 @@ abstract class AppLocalizations {
   /// **'Outdoor Blind'**
   String get window_covering_type_outdoor_blind;
 
+  /// Type label for venetian blind window covering
+  ///
+  /// In en, this message translates to:
+  /// **'Venetian Blind'**
+  String get window_covering_type_venetian_blind;
+
+  /// Type label for vertical blind window covering
+  ///
+  /// In en, this message translates to:
+  /// **'Vertical Blind'**
+  String get window_covering_type_vertical_blind;
+
+  /// Type label for shutter window covering
+  ///
+  /// In en, this message translates to:
+  /// **'Shutter'**
+  String get window_covering_type_shutter;
+
+  /// Type label for awning window covering
+  ///
+  /// In en, this message translates to:
+  /// **'Awning'**
+  String get window_covering_type_awning;
+
   /// Button label to open the window covering
   ///
   /// In en, this message translates to:

@@ -2213,7 +2213,7 @@ window_covering:
         - ro
       data_type: enum
       unit: null
-      format: ["curtain","blind","roller","outdoor_blind"]
+      format: ["curtain","roller","blind","venetian_blind","vertical_blind","shutter","outdoor_blind","awning"]
     command:
       category: command
       required: true

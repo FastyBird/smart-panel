@@ -288,10 +288,18 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           return localizations.window_covering_type_curtain;
         case WindowCoveringTypeValue.blind:
           return localizations.window_covering_type_blind;
+        case WindowCoveringTypeValue.venetianBlind:
+          return localizations.window_covering_type_venetian_blind;
+        case WindowCoveringTypeValue.verticalBlind:
+          return localizations.window_covering_type_vertical_blind;
         case WindowCoveringTypeValue.roller:
           return localizations.window_covering_type_roller;
+        case WindowCoveringTypeValue.shutter:
+          return localizations.window_covering_type_shutter;
         case WindowCoveringTypeValue.outdoorBlind:
           return localizations.window_covering_type_outdoor_blind;
+        case WindowCoveringTypeValue.awning:
+          return localizations.window_covering_type_awning;
       }
     } catch (_) {
       return localizations.window_covering_type_blind;
@@ -470,8 +478,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       ),
       child: Stack(
         children: [
-          // Blind slats visualization
-          _buildBlindVisualization(context, coverHeight),
+          // Type-specific visualization
+          _buildCoverVisualization(context, coverHeight),
           // Position Label
           Positioned(
             bottom: AppSpacings.pSm,
@@ -507,13 +515,38 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     );
   }
 
+  Widget _buildCoverVisualization(BuildContext context, double coverHeight) {
+    try {
+      switch (_device.windowCoveringType) {
+        case WindowCoveringTypeValue.blind:
+        case WindowCoveringTypeValue.venetianBlind:
+          return _buildBlindVisualization(context, coverHeight);
+        case WindowCoveringTypeValue.curtain:
+        case WindowCoveringTypeValue.verticalBlind:
+          return _buildCurtainVisualization(context);
+        case WindowCoveringTypeValue.roller:
+        case WindowCoveringTypeValue.awning:
+          return _buildRollerVisualization(context, coverHeight);
+        case WindowCoveringTypeValue.shutter:
+        case WindowCoveringTypeValue.outdoorBlind:
+          return _buildOutdoorBlindVisualization(context, coverHeight);
+      }
+    } catch (_) {
+      // Default to blind visualization if type is unknown
+      return _buildBlindVisualization(context, coverHeight);
+    }
+  }
+
   Widget _buildBlindVisualization(BuildContext context, double coverHeight) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final slatCount = (_position < 90 ? (160 * coverHeight / 12).floor() : 0);
+    // Each slat is 8px + 2px margin = 10px, need more slats to fill container
+    final slatCount = (_position < 90 ? (160 * coverHeight / 8).floor() : 0);
     final tiltFactor = _tiltAngle / 90 * 0.5;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
+      clipBehavior: Clip.hardEdge,
+      decoration: const BoxDecoration(),
       height: _screenService.scale(
             160,
             density: _visualDensityService.density,
@@ -521,7 +554,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           coverHeight,
       child: Column(
         children: List.generate(
-          slatCount.clamp(0, 12),
+          slatCount.clamp(0, 18),
           (i) => Transform(
             transform: Matrix4.identity()
               ..setEntry(3, 2, 0.001)
@@ -559,6 +592,200 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildCurtainVisualization(BuildContext context) {
+    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final panelWidth = (100 - _position) / 100 * 0.5;
+    final containerWidth = _screenService.scale(
+      180,
+      density: _visualDensityService.density,
+    );
+    final containerHeight = _screenService.scale(
+      160,
+      density: _visualDensityService.density,
+    );
+
+    return SizedBox(
+      width: containerWidth,
+      height: containerHeight,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Left panel
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            width: (containerWidth - 8) * panelWidth,
+            height: containerHeight,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: isLight
+                    ? [
+                        const Color(0xFFD7CCC8),
+                        const Color(0xFFBCAAA4),
+                        const Color(0xFFA1887F)
+                      ]
+                    : [
+                        const Color(0xFF5D4037),
+                        const Color(0xFF4E342E),
+                        const Color(0xFF3E2723)
+                      ],
+              ),
+            ),
+            child: _buildCurtainFolds(isLight),
+          ),
+          // Right panel
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            width: (containerWidth - 8) * panelWidth,
+            height: containerHeight,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerRight,
+                end: Alignment.centerLeft,
+                colors: isLight
+                    ? [
+                        const Color(0xFFD7CCC8),
+                        const Color(0xFFBCAAA4),
+                        const Color(0xFFA1887F)
+                      ]
+                    : [
+                        const Color(0xFF5D4037),
+                        const Color(0xFF4E342E),
+                        const Color(0xFF3E2723)
+                      ],
+              ),
+            ),
+            child: _buildCurtainFolds(isLight),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCurtainFolds(bool isLight) {
+    return CustomPaint(
+      painter: _CurtainFoldsPainter(isLight: isLight),
+      size: Size.infinite,
+    );
+  }
+
+  Widget _buildRollerVisualization(BuildContext context, double coverHeight) {
+    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    // Account for window border (4px on each side = 8px total)
+    final containerHeight = _screenService.scale(
+      152,
+      density: _visualDensityService.density,
+    );
+    final tubeHeight = _screenService.scale(
+      12,
+      density: _visualDensityService.density,
+    );
+    final shadeMaxHeight = containerHeight - tubeHeight;
+
+    return Column(
+      children: [
+        // Roller housing/cover at top
+        Container(
+          height: tubeHeight,
+          decoration: BoxDecoration(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: isLight
+                  ? [const Color(0xFF9E9E9E), const Color(0xFF757575)]
+                  : [const Color(0xFF616161), const Color(0xFF424242)],
+            ),
+          ),
+        ),
+        // Shade
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          height: (shadeMaxHeight * coverHeight).clamp(0.0, shadeMaxHeight),
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          decoration: BoxDecoration(
+            borderRadius:
+                const BorderRadius.vertical(bottom: Radius.circular(4)),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: isLight
+                  ? [const Color(0xFFECEFF1), const Color(0xFFCFD8DC)]
+                  : [const Color(0xFF455A64), const Color(0xFF37474F)],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.black.withValues(alpha: isLight ? 0.15 : 0.3),
+                offset: const Offset(0, 2),
+                blurRadius: 8,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOutdoorBlindVisualization(
+      BuildContext context, double coverHeight) {
+    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    // Each slat is 10px + 3px margin = 13px, but with scaling we need more
+    final slatCount = (_position < 90 ? (160 * coverHeight / 11).floor() : 0);
+    final tiltFactor = _tiltAngle / 90 * 0.5;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      clipBehavior: Clip.hardEdge,
+      decoration: const BoxDecoration(),
+      height: _screenService.scale(
+            160,
+            density: _visualDensityService.density,
+          ) *
+          coverHeight,
+      child: Column(
+          children: List.generate(
+            slatCount.clamp(0, 14),
+            (i) => Transform(
+              transform: Matrix4.identity()
+                ..setEntry(3, 2, 0.001)
+                ..rotateX(tiltFactor),
+              alignment: Alignment.center,
+              child: Container(
+                height: _screenService.scale(
+                  10,
+                  density: _visualDensityService.density,
+                ),
+                margin: EdgeInsets.only(
+                  bottom: 3,
+                  left: 3,
+                  right: 3,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(2),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: isLight
+                        ? [const Color(0xFFA1887F), const Color(0xFF8D6E63)]
+                        : [const Color(0xFF6D4C41), const Color(0xFF5D4037)],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color:
+                          AppColors.black.withValues(alpha: isLight ? 0.15 : 0.3),
+                      offset: const Offset(0, 1),
+                      blurRadius: 3,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
     );
   }
 
@@ -1132,4 +1359,35 @@ class _Preset {
     required this.position,
     this.tiltAngle,
   });
+}
+
+// ===========================================================================
+// CURTAIN FOLDS PAINTER
+// ===========================================================================
+
+/// CustomPainter that draws vertical fold lines for curtain visualization.
+class _CurtainFoldsPainter extends CustomPainter {
+  final bool isLight;
+
+  _CurtainFoldsPainter({required this.isLight});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = AppColors.black.withValues(alpha: isLight ? 0.05 : 0.15)
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+
+    // Draw vertical fold lines
+    for (double x = 4; x < size.width; x += 8) {
+      canvas.drawLine(
+        Offset(x, 0),
+        Offset(x, size.height),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
