@@ -6,6 +6,8 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
+import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/devices/window_covering.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
@@ -367,10 +369,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
             _buildTiltCard(context),
             AppSpacings.spacingMdVertical,
           ],
-          _buildSectionTitle(context, 'Presets', MdiIcons.tune),
-          AppSpacings.spacingSmVertical,
           _buildPresetsHorizontalScroll(context),
-          AppSpacings.spacingLgVertical,
+          AppSpacings.spacingMdVertical,
           _buildInfoRow(context),
         ],
       ),
@@ -385,7 +385,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     final bool isLight = Theme.of(context).brightness == Brightness.light;
 
     return Container(
-      padding: AppSpacings.paddingMd,
+      padding: AppSpacings.paddingLg,
       decoration: BoxDecoration(
         color: isLight ? AppFillColorLight.light : AppFillColorDark.light,
         borderRadius: BorderRadius.circular(AppBorderRadius.medium),
@@ -398,7 +398,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           _buildWindowVisualization(context),
           AppSpacings.spacingLgVertical,
           // Position Slider
-          _buildPositionSliderWithLabels(context),
+          _buildPositionSlider(context),
           AppSpacings.spacingLgVertical,
           // Quick Actions
           _buildQuickActions(context),
@@ -528,65 +528,25 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     );
   }
 
-  Widget _buildPositionSliderWithLabels(BuildContext context) {
+  Widget _buildPositionSlider(BuildContext context) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final localizations = AppLocalizations.of(context);
+    final normalizedValue = _position / 100.0;
 
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
-      child: Row(
-        children: [
-          Text(
-            localizations?.window_covering_status_closed ?? 'Closed',
-            style: TextStyle(
-              fontSize: AppFontSize.extraSmall,
-              color: isLight
-                  ? AppTextColorLight.placeholder
-                  : AppTextColorDark.placeholder,
-            ),
-          ),
-          Expanded(
-            child: SliderTheme(
-              data: SliderThemeData(
-                trackHeight: _screenService.scale(
-                  8,
-                  density: _visualDensityService.density,
-                ),
-                thumbShape: RoundSliderThumbShape(
-                  enabledThumbRadius: _screenService.scale(
-                    10,
-                    density: _visualDensityService.density,
-                  ),
-                ),
-                activeTrackColor:
-                    isLight ? AppColorsLight.primary : AppColorsDark.primary,
-                inactiveTrackColor:
-                    isLight ? AppBorderColorLight.base : AppBorderColorDark.base,
-                thumbColor:
-                    isLight ? AppColorsLight.primary : AppColorsDark.primary,
-                overlayColor:
-                    (isLight ? AppColorsLight.primary : AppColorsDark.primary)
-                        .withValues(alpha: 0.15),
-              ),
-              child: Slider(
-                value: _position.toDouble(),
-                min: _device.windowCoveringMinPercentage.toDouble(),
-                max: _device.windowCoveringMaxPercentage.toDouble(),
-                onChanged: _handlePositionChanged,
-              ),
-            ),
-          ),
-          Text(
-            localizations?.window_covering_status_open ?? 'Open',
-            style: TextStyle(
-              fontSize: AppFontSize.extraSmall,
-              color: isLight
-                  ? AppTextColorLight.placeholder
-                  : AppTextColorDark.placeholder,
-            ),
-          ),
-        ],
-      ),
+    return SliderWithSteps(
+      value: normalizedValue,
+      activeColor: isLight ? AppColorsLight.primary : AppColorsDark.primary,
+      steps: [
+        localizations?.window_covering_status_closed ?? 'Closed',
+        '25%',
+        '50%',
+        '75%',
+        localizations?.window_covering_status_open ?? 'Open',
+      ],
+      onChanged: (value) {
+        final newPosition = (value * 100).round();
+        _handlePositionChanged(newPosition.toDouble());
+      },
     );
   }
 
@@ -720,115 +680,25 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         isLight ? AppColorsLight.primary : AppColorsDark.primary;
     final localizations = AppLocalizations.of(context);
 
-    return Container(
-      padding: AppSpacings.paddingMd,
-      decoration: BoxDecoration(
-        color: isLight ? AppFillColorLight.light : AppFillColorDark.light,
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-        border: isLight ? Border.all(color: AppBorderColorLight.base) : null,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildCardTitle(
-            context,
-            localizations?.window_covering_tilt_label ?? 'Tilt Angle',
-            Icons.rotate_90_degrees_cw,
-          ),
-          AppSpacings.spacingMdVertical,
-          Container(
-            padding: AppSpacings.paddingMd,
-            decoration: BoxDecoration(
-              color: isLight
-                  ? AppFillColorLight.base
-                  : AppFillColorDark.base,
-              borderRadius: BorderRadius.circular(AppBorderRadius.base),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: _screenService.scale(
-                    40,
-                    density: _visualDensityService.density,
-                  ),
-                  height: _screenService.scale(
-                    40,
-                    density: _visualDensityService.density,
-                  ),
-                  decoration: BoxDecoration(
-                    color: primaryColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(AppBorderRadius.small),
-                  ),
-                  child: Icon(
-                    MdiIcons.rotateLeft,
-                    color: primaryColor,
-                    size: _screenService.scale(
-                      22,
-                      density: _visualDensityService.density,
-                    ),
-                  ),
-                ),
-                AppSpacings.spacingMdHorizontal,
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            localizations?.window_covering_tilt_label ?? 'Tilt',
-                            style: TextStyle(
-                              fontSize: AppFontSize.small,
-                              color: isLight
-                                  ? AppTextColorLight.secondary
-                                  : AppTextColorDark.secondary,
-                            ),
-                          ),
-                          Text(
-                            '$_tiltAngle°',
-                            style: TextStyle(
-                              fontSize: AppFontSize.small,
-                              fontWeight: FontWeight.w600,
-                              color: primaryColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                      AppSpacings.spacingXsVertical,
-                      SliderTheme(
-                        data: SliderThemeData(
-                          trackHeight: _screenService.scale(
-                            8,
-                            density: _visualDensityService.density,
-                          ),
-                          thumbShape: RoundSliderThumbShape(
-                            enabledThumbRadius: _screenService.scale(
-                              10,
-                              density: _visualDensityService.density,
-                            ),
-                          ),
-                          activeTrackColor: primaryColor,
-                          inactiveTrackColor: isLight
-                              ? AppBorderColorLight.base
-                              : AppBorderColorDark.base,
-                          thumbColor: primaryColor,
-                        ),
-                        child: Slider(
-                          value: _tiltAngle.toDouble(),
-                          min: _device.windowCoveringMinTilt.toDouble(),
-                          max: _device.windowCoveringMaxTilt.toDouble(),
-                          onChanged: _handleTiltChanged,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    final minTilt = _device.windowCoveringMinTilt;
+    final maxTilt = _device.windowCoveringMaxTilt;
+    final tiltRange = maxTilt - minTilt;
+    final normalizedValue = tiltRange > 0 ? (_tiltAngle - minTilt) / tiltRange : 0.5;
+
+    return _TiltSlider(
+      value: normalizedValue.clamp(0.0, 1.0),
+      activeColor: primaryColor,
+      label: localizations?.window_covering_tilt_label ?? 'Tilt Angle',
+      valueLabel: '$_tiltAngle°',
+      steps: [
+        '$minTilt°',
+        '${((maxTilt + minTilt) / 2).round()}°',
+        '$maxTilt°',
+      ],
+      onChanged: (value) {
+        final newTilt = (minTilt + value * tiltRange).round();
+        _handleTiltChanged(newTilt.toDouble());
+      },
     );
   }
 
@@ -857,6 +727,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
   Widget _buildInfoCard(BuildContext context) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final secondaryColor =
+        isLight ? AppTextColorLight.secondary : AppTextColorDark.secondary;
 
     return Container(
       padding: AppSpacings.paddingMd,
@@ -873,35 +745,50 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           Row(
             children: [
               Expanded(
-                child: _buildInfoTile(
-                  context,
-                  'Type',
-                  _getWindowCoveringTypeName(context),
-                  isLight
-                      ? AppTextColorLight.secondary
-                      : AppTextColorDark.secondary,
+                child: UniversalTile(
+                  layout: TileLayout.horizontal,
+                  icon: MdiIcons.blindsHorizontal,
+                  name: 'Type',
+                  status: _getWindowCoveringTypeName(context),
+                  isActive: false,
+                  iconAccentColor: secondaryColor,
+                  showGlow: false,
+                  showWarningBadge: false,
+                  showInactiveBorder: isLight,
                 ),
               ),
               AppSpacings.spacingSmHorizontal,
               Expanded(
-                child: _buildInfoTile(
-                  context,
-                  'Status',
-                  _getStatusLabel(context),
-                  _getStatusColor(context),
+                child: UniversalTile(
+                  layout: TileLayout.horizontal,
+                  icon: MdiIcons.clock,
+                  name: 'Status',
+                  status: _getStatusLabel(context),
+                  isActive: false,
+                  iconAccentColor: _getStatusColor(context),
+                  showGlow: false,
+                  showWarningBadge: false,
+                  showInactiveBorder: isLight,
                 ),
               ),
             ],
           ),
           if (_device.hasWindowCoveringObstruction) ...[
             AppSpacings.spacingSmVertical,
-            _buildInfoTile(
-              context,
-              'Obstruction',
-              _device.windowCoveringObstruction ? 'Detected' : 'Clear',
-              _device.windowCoveringObstruction
+            UniversalTile(
+              layout: TileLayout.horizontal,
+              icon: _device.windowCoveringObstruction
+                  ? MdiIcons.alertCircle
+                  : MdiIcons.checkCircle,
+              name: 'Obstruction',
+              status: _device.windowCoveringObstruction ? 'Detected' : 'Clear',
+              isActive: false,
+              iconAccentColor: _device.windowCoveringObstruction
                   ? (isLight ? AppColorsLight.warning : AppColorsDark.warning)
                   : (isLight ? AppColorsLight.success : AppColorsDark.success),
+              showGlow: false,
+              showWarningBadge: false,
+              showInactiveBorder: isLight,
             ),
           ],
         ],
@@ -924,190 +811,43 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     return Row(
       children: [
         Expanded(
-          child: _buildInfoTileCompact(
-            context,
-            'Status',
-            _getStatusLabel(context),
-            _getStatusColor(context),
+          child: UniversalTile(
+            layout: TileLayout.horizontal,
+            icon: MdiIcons.clock,
+            name: 'Status',
+            status: _getStatusLabel(context),
+            isActive: false,
+            activeColor: _getStatusColor(context),
+            iconAccentColor: _getStatusColor(context),
+            showGlow: false,
+            showWarningBadge: false,
+            showInactiveBorder: isLight,
           ),
         ),
         if (_device.hasWindowCoveringObstruction) ...[
           AppSpacings.spacingSmHorizontal,
           Expanded(
-            child: _buildInfoTileCompact(
-              context,
-              'Obstruction',
-              _device.windowCoveringObstruction ? 'Detected' : 'Clear',
-              _device.windowCoveringObstruction
+            child: UniversalTile(
+              layout: TileLayout.horizontal,
+              icon: _device.windowCoveringObstruction
+                  ? MdiIcons.alertCircle
+                  : MdiIcons.checkCircle,
+              name: 'Obstruction',
+              status: _device.windowCoveringObstruction ? 'Detected' : 'Clear',
+              isActive: false,
+              activeColor: _device.windowCoveringObstruction
                   ? (isLight ? AppColorsLight.warning : AppColorsDark.warning)
                   : (isLight ? AppColorsLight.success : AppColorsDark.success),
+              iconAccentColor: _device.windowCoveringObstruction
+                  ? (isLight ? AppColorsLight.warning : AppColorsDark.warning)
+                  : (isLight ? AppColorsLight.success : AppColorsDark.success),
+              showGlow: false,
+              showWarningBadge: false,
+              showInactiveBorder: isLight,
             ),
           ),
         ],
       ],
-    );
-  }
-
-  Widget _buildInfoTile(
-    BuildContext context,
-    String label,
-    String value,
-    Color color,
-  ) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-
-    IconData getIcon() {
-      switch (label) {
-        case 'Status':
-          return MdiIcons.clock;
-        case 'Connection':
-          return MdiIcons.checkCircle;
-        case 'Type':
-          return MdiIcons.blindsHorizontal;
-        case 'Obstruction':
-          return MdiIcons.alertCircle;
-        default:
-          return MdiIcons.information;
-      }
-    }
-
-    return Container(
-      padding: AppSpacings.paddingSm,
-      decoration: BoxDecoration(
-        color: isLight
-            ? AppFillColorLight.base
-            : AppFillColorDark.base,
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: _screenService.scale(
-              36,
-              density: _visualDensityService.density,
-            ),
-            height: _screenService.scale(
-              36,
-              density: _visualDensityService.density,
-            ),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(AppBorderRadius.small),
-            ),
-            child: Icon(
-              getIcon(),
-              color: color,
-              size: _screenService.scale(
-                18,
-                density: _visualDensityService.density,
-              ),
-            ),
-          ),
-          AppSpacings.spacingSmHorizontal,
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: AppFontSize.extraSmall,
-                    color: isLight
-                        ? AppTextColorLight.placeholder
-                        : AppTextColorDark.placeholder,
-                  ),
-                ),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: AppFontSize.small,
-                    fontWeight: FontWeight.w600,
-                    color: isLight
-                        ? AppTextColorLight.regular
-                        : AppTextColorDark.regular,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoTileCompact(
-    BuildContext context,
-    String label,
-    String value,
-    Color color,
-  ) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-
-    return Container(
-      padding: AppSpacings.paddingSm,
-      decoration: BoxDecoration(
-        color: isLight
-            ? AppFillColorLight.base
-            : AppFillColorDark.base,
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: _screenService.scale(
-              36,
-              density: _visualDensityService.density,
-            ),
-            height: _screenService.scale(
-              36,
-              density: _visualDensityService.density,
-            ),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(AppBorderRadius.small),
-            ),
-            child: Icon(
-              label == 'Status'
-                  ? MdiIcons.clock
-                  : label == 'Obstruction'
-                      ? MdiIcons.alertCircle
-                      : MdiIcons.checkCircle,
-              color: color,
-              size: _screenService.scale(
-                18,
-                density: _visualDensityService.density,
-              ),
-            ),
-          ),
-          AppSpacings.spacingSmHorizontal,
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: AppFontSize.extraSmall,
-                    color: isLight
-                        ? AppTextColorLight.placeholder
-                        : AppTextColorDark.placeholder,
-                  ),
-                ),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: AppFontSize.small,
-                    fontWeight: FontWeight.w600,
-                    color: isLight
-                        ? AppTextColorLight.regular
-                        : AppTextColorDark.regular,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1117,6 +857,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
   Widget _buildPresetsCard(BuildContext context) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final primaryColor =
+        isLight ? AppColorsLight.primary : AppColorsDark.primary;
 
     return Container(
       padding: AppSpacings.paddingMd,
@@ -1125,28 +867,36 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         borderRadius: BorderRadius.circular(AppBorderRadius.medium),
         border: isLight ? Border.all(color: AppBorderColorLight.base) : null,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildCardTitle(context, 'Presets', MdiIcons.tune),
-          AppSpacings.spacingMdVertical,
-          Expanded(
-            child: GridView.count(
-              crossAxisCount: 3,
-              mainAxisSpacing: AppSpacings.pSm,
-              crossAxisSpacing: AppSpacings.pSm,
-              childAspectRatio: 0.9,
-              children: _presets.map((preset) {
-                return _buildPresetButton(context, preset);
-              }).toList(),
-            ),
-          ),
-        ],
+      child: GridView.count(
+        crossAxisCount: 3,
+        mainAxisSpacing: AppSpacings.pSm,
+        crossAxisSpacing: AppSpacings.pSm,
+        childAspectRatio: 0.9,
+        children: _presets.map((preset) {
+          final bool isActive = _position == preset.position;
+
+          return UniversalTile(
+            layout: TileLayout.vertical,
+            icon: preset.icon,
+            name: preset.name,
+            status: '${preset.position}%',
+            isActive: isActive,
+            activeColor: primaryColor,
+            onTileTap: () => _applyPreset(preset),
+            showGlow: false,
+            showWarningBadge: false,
+            showInactiveBorder: isLight,
+          );
+        }).toList(),
       ),
     );
   }
 
   Widget _buildPresetsHorizontalScroll(BuildContext context) {
+    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final primaryColor =
+        isLight ? AppColorsLight.primary : AppColorsDark.primary;
+
     return SizedBox(
       height: _screenService.scale(
         72,
@@ -1157,155 +907,28 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         itemCount: _presets.length,
         separatorBuilder: (_, __) => AppSpacings.spacingSmHorizontal,
         itemBuilder: (context, index) {
+          final preset = _presets[index];
+          final bool isActive = _position == preset.position;
+
           return SizedBox(
             width: _screenService.scale(
               140,
               density: _visualDensityService.density,
             ),
-            child: _buildPresetCard(context, _presets[index]),
+            child: UniversalTile(
+              layout: TileLayout.horizontal,
+              icon: preset.icon,
+              name: preset.name,
+              status: '${preset.position}%',
+              isActive: isActive,
+              activeColor: primaryColor,
+              onTileTap: () => _applyPreset(preset),
+              showGlow: false,
+              showWarningBadge: false,
+              showInactiveBorder: isLight,
+            ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildPresetButton(BuildContext context, _Preset preset) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final primaryColor =
-        isLight ? AppColorsLight.primary : AppColorsDark.primary;
-    final bool isActive = _position == preset.position;
-
-    return GestureDetector(
-      onTap: () => _applyPreset(preset),
-      child: Container(
-        decoration: BoxDecoration(
-          color: isActive
-              ? primaryColor
-              : (isLight
-                  ? AppFillColorLight.base
-                  : AppFillColorDark.base),
-          borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          border: isActive || !isLight
-              ? null
-              : Border.all(color: AppBorderColorLight.base),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              preset.icon,
-              size: _screenService.scale(
-                26,
-                density: _visualDensityService.density,
-              ),
-              color: isActive
-                  ? AppColors.white
-                  : (isLight
-                      ? AppTextColorLight.secondary
-                      : AppTextColorDark.secondary),
-            ),
-            AppSpacings.spacingXsVertical,
-            Text(
-              preset.name,
-              style: TextStyle(
-                fontSize: AppFontSize.extraSmall,
-                fontWeight: FontWeight.w500,
-                color: isActive
-                    ? AppColors.white
-                    : (isLight
-                        ? AppTextColorLight.regular
-                        : AppTextColorDark.regular),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPresetCard(BuildContext context, _Preset preset) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final primaryColor =
-        isLight ? AppColorsLight.primary : AppColorsDark.primary;
-    final bool isActive = _position == preset.position;
-
-    return GestureDetector(
-      onTap: () => _applyPreset(preset),
-      child: Container(
-        padding: EdgeInsets.all(AppSpacings.pSm),
-        decoration: BoxDecoration(
-          color: isActive
-              ? primaryColor.withValues(alpha: 0.15)
-              : (isLight
-                  ? AppFillColorLight.base
-                  : AppFillColorDark.base),
-          borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          border: isActive
-              ? Border.all(color: primaryColor)
-              : (isLight ? Border.all(color: AppBorderColorLight.base) : null),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: _screenService.scale(
-                36,
-                density: _visualDensityService.density,
-              ),
-              height: _screenService.scale(
-                36,
-                density: _visualDensityService.density,
-              ),
-              decoration: BoxDecoration(
-                color: isActive
-                    ? primaryColor
-                    : (isLight
-                        ? AppFillColorLight.light
-                        : AppFillColorDark.light),
-                borderRadius: BorderRadius.circular(AppBorderRadius.small),
-              ),
-              child: Icon(
-                preset.icon,
-                size: _screenService.scale(
-                  20,
-                  density: _visualDensityService.density,
-                ),
-                color: isActive
-                    ? AppColors.white
-                    : (isLight
-                        ? AppTextColorLight.secondary
-                        : AppTextColorDark.secondary),
-              ),
-            ),
-            AppSpacings.spacingSmHorizontal,
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    preset.name,
-                    style: TextStyle(
-                      fontSize: AppFontSize.small,
-                      fontWeight: FontWeight.w500,
-                      color: isLight
-                          ? AppTextColorLight.regular
-                          : AppTextColorDark.regular,
-                    ),
-                  ),
-                  Text(
-                    '${preset.position}%',
-                    style: TextStyle(
-                      fontSize: AppFontSize.extraSmall,
-                      color: isLight
-                          ? AppTextColorLight.placeholder
-                          : AppTextColorDark.placeholder,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -1352,34 +975,91 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     );
   }
 
-  Widget _buildSectionTitle(BuildContext context, String title, IconData icon) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
+}
 
-    return Row(
-      children: [
-        Icon(
-          icon,
-          color: isLight
-              ? AppTextColorLight.secondary
-              : AppTextColorDark.secondary,
-          size: _screenService.scale(
-            18,
-            density: _visualDensityService.density,
-          ),
+// ===========================================================================
+// TILT SLIDER WIDGET (SpeedSlider-style UI for tilt control)
+// ===========================================================================
+
+/// A tilt slider widget that follows SpeedSlider's visual design.
+///
+/// Shows label on the left, value in degrees on the right, and a slider below.
+class _TiltSlider extends StatelessWidget {
+  final double value;
+  final Color? activeColor;
+  final String label;
+  final String valueLabel;
+  final List<String> steps;
+  final ValueChanged<double>? onChanged;
+
+  const _TiltSlider({
+    required this.value,
+    this.activeColor,
+    required this.label,
+    required this.valueLabel,
+    required this.steps,
+    this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final effectiveActiveColor =
+        activeColor ?? (isDark ? AppColorsDark.info : AppColorsLight.info);
+    final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
+    final borderColor =
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+    final textColor =
+        isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
+    final secondaryColor =
+        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+
+    final screenService = locator<ScreenService>();
+    final visualDensityService = locator<VisualDensityService>();
+
+    return Container(
+      padding: AppSpacings.paddingLg,
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(AppBorderRadius.round),
+        border: Border.all(
+          color: borderColor,
+          width: screenService.scale(1, density: visualDensityService.density),
         ),
-        AppSpacings.spacingSmHorizontal,
-        Text(
-          title.toUpperCase(),
-          style: TextStyle(
-            fontSize: AppFontSize.small,
-            fontWeight: FontWeight.w600,
-            color: isLight
-                ? AppTextColorLight.secondary
-                : AppTextColorDark.secondary,
-            letterSpacing: 0.5,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: secondaryColor,
+                  fontSize: AppFontSize.small,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(
+                valueLabel,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: AppFontSize.extraLarge,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
+          AppSpacings.spacingMdVertical,
+          SliderWithSteps(
+            value: value,
+            activeColor: effectiveActiveColor,
+            steps: steps,
+            onChanged: onChanged,
+          ),
+        ],
+      ),
     );
   }
 }
