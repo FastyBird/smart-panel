@@ -461,6 +461,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         layout: useVerticalLayout
             ? ValueSelectorRowLayout.compact
             : ValueSelectorRowLayout.horizontal,
+        showChevron: _screenService.isLargeScreen,
         onChanged: isEnabled ? (level) {
           if (level != null) _setSpeedLevel(level);
         } : null,
@@ -478,6 +479,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           displayFormatter: (v) => _formatSpeed(localizations, v),
           columns: 4,
           layout: ValueSelectorRowLayout.compact,
+          showChevron: _screenService.isLargeScreen,
           onChanged: isEnabled ? (v) => _setSpeedValue(v ?? 0) : null,
         );
       } else {
@@ -790,6 +792,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         layout: useVerticalLayout
             ? ValueSelectorRowLayout.compact
             : ValueSelectorRowLayout.horizontal,
+        showChevron: _screenService.isLargeScreen,
         onChanged: (preset) {
           if (preset != null) {
             _setFanTimerPreset(preset);
@@ -813,6 +816,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         layout: useVerticalLayout
             ? ValueSelectorRowLayout.compact
             : ValueSelectorRowLayout.horizontal,
+        showChevron: _screenService.isLargeScreen,
         onChanged: (minutes) {
           if (minutes != null) {
             _setFanTimerNumeric(minutes);

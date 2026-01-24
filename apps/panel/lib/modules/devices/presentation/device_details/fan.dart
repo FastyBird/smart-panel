@@ -581,6 +581,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
         layout: useVerticalLayout
             ? ValueSelectorRowLayout.compact
             : ValueSelectorRowLayout.horizontal,
+        showChevron: _screenService.isLargeScreen,
         onChanged: _device.isOn
             ? (level) {
                 if (level != null) _setSpeedLevel(level);
@@ -603,6 +604,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
           displayFormatter: (v) => _formatSpeed(localizations, v),
           columns: 4,
           layout: ValueSelectorRowLayout.compact,
+          showChevron: _screenService.isLargeScreen,
           onChanged: _device.isOn ? (v) => _setSpeedValue(v ?? 0) : null,
         );
       } else {
@@ -816,6 +818,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
         layout: useCompactLayout
             ? ValueSelectorRowLayout.compact
             : ValueSelectorRowLayout.horizontal,
+        showChevron: _screenService.isLargeScreen,
         onChanged: (preset) {
           if (preset != null) {
             _setFanTimerPreset(preset);
@@ -838,6 +841,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
         layout: useCompactLayout
             ? ValueSelectorRowLayout.compact
             : ValueSelectorRowLayout.horizontal,
+        showChevron: _screenService.isLargeScreen,
         onChanged: (minutes) {
           if (minutes != null) {
             _setFanTimerNumeric(minutes);

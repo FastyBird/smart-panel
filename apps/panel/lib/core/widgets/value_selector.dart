@@ -71,6 +71,9 @@ class ValueSelectorRow<T> extends StatelessWidget {
   /// Layout style for the row (default: horizontal)
   final ValueSelectorRowLayout layout;
 
+  /// Whether to show the chevron icon on the right (default: true)
+  final bool showChevron;
+
   ValueSelectorRow({
     super.key,
     required this.currentValue,
@@ -83,6 +86,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
     this.displayFormatter,
     this.columns = 4,
     this.layout = ValueSelectorRowLayout.horizontal,
+    this.showChevron = true,
   });
 
   double _scale(double value) =>
@@ -207,13 +211,14 @@ class ValueSelectorRow<T> extends StatelessWidget {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                AppSpacings.spacingXsHorizontal,
+                if (showChevron) AppSpacings.spacingXsHorizontal,
               ],
-              Icon(
-                Icons.chevron_right,
-                color: secondaryColor,
-                size: _scale(20),
-              ),
+              if (showChevron)
+                Icon(
+                  Icons.chevron_right,
+                  color: secondaryColor,
+                  size: _scale(20),
+                ),
             ],
           ),
         ),

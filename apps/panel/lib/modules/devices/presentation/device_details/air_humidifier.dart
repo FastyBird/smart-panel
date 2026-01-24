@@ -1146,6 +1146,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       layout: useCompactLayout
           ? ValueSelectorRowLayout.compact
           : ValueSelectorRowLayout.horizontal,
+      showChevron: _screenService.isLargeScreen,
       onChanged: (level) {
         if (level != null) {
           _setMistLevelEnum(level);
@@ -1185,6 +1186,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       layout: useCompactLayout
           ? ValueSelectorRowLayout.compact
           : ValueSelectorRowLayout.horizontal,
+      showChevron: _screenService.isLargeScreen,
       onChanged: isOn ? (v) => _setMistLevel(v ?? 0) : null,
     );
   }
@@ -1307,6 +1309,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         layout: useVerticalLayout
             ? ValueSelectorRowLayout.compact
             : ValueSelectorRowLayout.horizontal,
+        showChevron: _screenService.isLargeScreen,
         onChanged: _device.isOn
             ? (level) {
                 if (level != null) {
@@ -1356,6 +1359,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
           displayFormatter: (v) => _formatFanSpeed(localizations, v),
           columns: 4,
           layout: ValueSelectorRowLayout.compact,
+          showChevron: _screenService.isLargeScreen,
           onChanged: _device.isOn ? (v) => _setFanSpeed(v ?? 0) : null,
         );
 
@@ -1439,6 +1443,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
             : '-',
         columns: availableModes.length > 4 ? 3 : availableModes.length,
         layout: ValueSelectorRowLayout.compact,
+        showChevron: _screenService.isLargeScreen,
         onChanged: _device.isOn
             ? (mode) {
                 if (mode != null) {
@@ -1593,6 +1598,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         layout: useCompactLayout
             ? ValueSelectorRowLayout.compact
             : ValueSelectorRowLayout.horizontal,
+        showChevron: _screenService.isLargeScreen,
         onChanged: (preset) {
           if (preset != null) {
             _setHumidifierTimerPreset(preset);
@@ -1617,6 +1623,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         layout: useCompactLayout
             ? ValueSelectorRowLayout.compact
             : ValueSelectorRowLayout.horizontal,
+        showChevron: _screenService.isLargeScreen,
         onChanged: (seconds) {
           if (seconds != null) {
             _setHumidifierTimerNumeric(seconds);

@@ -1249,6 +1249,7 @@ class _AirConditionerDeviceDetailState
             : '',
         columns: availableModes.length > 4 ? 3 : availableModes.length,
         layout: ValueSelectorRowLayout.compact,
+        showChevron: _screenService.isLargeScreen,
         onChanged: (mode) {
           if (mode != null) {
             _setFanMode(mode);
@@ -1313,6 +1314,7 @@ class _AirConditionerDeviceDetailState
         layout: useCompactLayout
             ? ValueSelectorRowLayout.compact
             : ValueSelectorRowLayout.horizontal,
+        showChevron: _screenService.isLargeScreen,
         onChanged: _currentMode != AcMode.off
             ? (level) {
                 if (level != null) _setFanSpeedLevel(level);
@@ -1348,6 +1350,7 @@ class _AirConditionerDeviceDetailState
           displayFormatter: (v) => _formatFanSpeed(localizations, v),
           columns: 4,
           layout: ValueSelectorRowLayout.compact,
+          showChevron: _screenService.isLargeScreen,
           onChanged: _currentMode != AcMode.off ? (v) => _setFanSpeedValue(v ?? 0) : null,
         );
 
@@ -1530,6 +1533,7 @@ class _AirConditionerDeviceDetailState
         layout: useCompactLayout
             ? ValueSelectorRowLayout.compact
             : ValueSelectorRowLayout.horizontal,
+        showChevron: _screenService.isLargeScreen,
         onChanged: (preset) {
           if (preset != null) {
             _setFanTimerPreset(preset);
@@ -1552,6 +1556,7 @@ class _AirConditionerDeviceDetailState
         layout: useCompactLayout
             ? ValueSelectorRowLayout.compact
             : ValueSelectorRowLayout.horizontal,
+        showChevron: _screenService.isLargeScreen,
         onChanged: (minutes) {
           if (minutes != null) {
             _setFanTimerNumeric(minutes);
