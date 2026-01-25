@@ -6,7 +6,9 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
-import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
@@ -827,95 +829,67 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
   Widget _buildPortraitLayout(BuildContext context) {
     final hasDevices = _state.climateDevices.isNotEmpty;
 
-    // Match lighting control panel portrait height (140)
-    final devicesHeight = _scale(140);
-
-    // Columns: small 2, medium 3, large 4
-    final columns = _screenService.isLargeScreen
-        ? 4
-        : (_screenService.isMediumScreen ? 3 : 2);
-
-    return Column(
-      children: [
-        // Dial section - takes available space (expands)
-        Expanded(
-          child: SingleChildScrollView(
-            padding: AppSpacings.paddingLg,
-            child: _buildPrimaryControlCard(context, dialSize: _scale(200)),
-          ),
-        ),
-
-        // Devices section at bottom - matches lighting control panel
-        if (hasDevices)
-          _buildDevicesSection(
-            context,
-            height: devicesHeight,
-            columns: columns,
-          ),
-      ],
+    return DeviceDetailPortraitLayout(
+      content: _buildPrimaryControlCard(context, dialSize: _scale(200)),
+      stickyBottom: hasDevices ? _buildPortraitDevicesList(context) : null,
+      useStickyBottomPadding: false,
     );
   }
 
   /// Builds the devices section matching lighting control panel pattern
-  Widget _buildDevicesSection(
-    BuildContext context, {
-    required double height,
-    required int columns,
-  }) {
+  Widget _buildPortraitDevicesList(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+    final localizations = AppLocalizations.of(context)!;
+    final dividerColor =
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.base;
 
-    return Container(
-      height: height,
-      decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(color: borderColor, width: _scale(1)),
-        ),
-      ),
-      child: Column(
-        children: [
-          SectionHeader(
-            title: AppLocalizations.of(context)!.climate_devices_section,
-            icon: MdiIcons.devices,
-            count: _state.climateDevices.length,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: EdgeInsets.only(
+            left: AppSpacings.pLg,
+            right: AppSpacings.pLg,
+            top: AppSpacings.pSm,
+            bottom: AppSpacings.pSm,
           ),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                // Calculate tile width based on columns
-                final horizontalPadding = AppSpacings.pMd * 2;
-                final totalSpacing = AppSpacings.pMd * (columns - 1);
-                final availableWidth =
-                    constraints.maxWidth - horizontalPadding - totalSpacing;
-                final tileWidth = availableWidth / columns;
-
-                return ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: AppSpacings.pMd,
-                    vertical: AppSpacings.pMd,
-                  ),
-                  itemCount: _state.climateDevices.length,
-                  itemBuilder: (context, index) {
-                    return Padding(
-                      padding: EdgeInsets.only(right: AppSpacings.pMd),
-                      child: SizedBox(
-                        width: tileWidth,
-                        child: _buildDeviceTile(
-                          context,
-                          _state.climateDevices[index],
-                          isVertical: true,
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: dividerColor,
+                width: 1,
+              ),
             ),
           ),
-        ],
-      ),
+          child: SectionTitle(
+            title: localizations.climate_devices_section,
+            icon: MdiIcons.devices,
+          ),
+        ),
+        AppSpacings.spacingMdVertical,
+        Padding(
+          padding: EdgeInsets.only(
+            left: AppSpacings.pLg,
+            right: AppSpacings.pLg,
+            bottom: AppSpacings.pMd,
+          ),
+          child: HorizontalScrollWithGradient(
+            height: _scale(80),
+            layoutPadding: AppSpacings.pLg,
+            itemCount: _state.climateDevices.length,
+            separatorWidth: AppSpacings.pMd,
+            itemBuilder: (context, index) {
+              final device = _state.climateDevices[index];
+
+              return AspectRatio(
+                aspectRatio: 1.0,
+                child: _buildDeviceTile(context, device, isVertical: true),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -924,13 +898,9 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
   // --------------------------------------------------------------------------
 
   Widget _buildLandscapeLayout(BuildContext context) {
-    final hasDevices = _state.climateDevices.isNotEmpty;
-
-    return LandscapeViewLayout(
+    return DeviceDetailLandscapeLayout(
       mainContent: _buildCompactDialWithModes(context),
-      additionalContent: hasDevices
-          ? _buildLandscapeDevicesColumn(context)
-          : null,
+      secondaryContent: _buildLandscapeDevicesColumn(context),
     );
   }
 
