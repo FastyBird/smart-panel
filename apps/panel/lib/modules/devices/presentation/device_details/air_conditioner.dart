@@ -866,7 +866,6 @@ class _AirConditionerDeviceDetailState
     final modeColor = _getModeColor(isDark);
 
     return DeviceDetailLandscapeLayout(
-      largeSecondaryColumn: isLargeScreen,
       secondaryScrollable: false,
       secondaryContentPadding: EdgeInsets.zero,
       mainContent: isLargeScreen
@@ -1339,7 +1338,10 @@ class _AirConditionerDeviceDetailState
       final range = fanChannel.maxSpeed - fanChannel.minSpeed;
       if (range <= 0) return const SizedBox.shrink();
 
-      if (useCompactLayout) {
+      final isLandscape = _screenService.isLandscape;
+
+      // Landscape (all sizes): Use ValueSelectorRow button
+      if (isLandscape) {
         final speedWidget = ValueSelectorRow<double>(
           currentValue: _fanSpeed,
           label: localizations.device_fan_speed,
@@ -1361,14 +1363,14 @@ class _AirConditionerDeviceDetailState
             children: [
               speedWidget,
               AppSpacings.spacingMdVertical,
-              _buildFanModeControl(localizations, modeColor, useCompactLayout),
+              _buildFanModeControl(localizations, modeColor, true),
             ],
           );
         }
 
         return speedWidget;
       } else {
-        // Use SpeedSlider widget for landscape layout
+        // Portrait (all sizes): Use SpeedSlider
         // Mode selector goes inside the slider's bordered box as footer
         final isEnabled = _currentMode != AcMode.off;
 

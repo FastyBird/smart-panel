@@ -466,7 +466,6 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     final modeColor = _getModeColor(isDark);
 
     return DeviceDetailLandscapeLayout(
-      largeSecondaryColumn: isLargeScreen,
       secondaryScrollable: false,
       secondaryContentPadding: EdgeInsets.zero,
       mainContent: isLargeScreen
