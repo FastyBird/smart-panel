@@ -25,7 +25,15 @@ class WindowCoveringDeviceController {
   })  : _controlState = controlState,
         _devicesService = devicesService,
         _onError = onError {
-    _windowCoveringControllers = device.windowCoveringChannels.map((channel) {
+    final channels = device.windowCoveringChannels;
+    if (channels.isEmpty) {
+      throw ArgumentError(
+        'WindowCoveringDeviceController requires at least one window covering channel. '
+        'Device "${device.name}" (${device.id}) has no window covering channels.',
+      );
+    }
+
+    _windowCoveringControllers = channels.map((channel) {
       return WindowCoveringChannelController(
         deviceId: device.id,
         channel: channel,
