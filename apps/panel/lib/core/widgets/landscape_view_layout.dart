@@ -75,7 +75,7 @@ class LandscapeViewLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.base;
     final isLargeScreen = _screenService.isLargeScreen;
 
     // Determine if mode selector should show labels
