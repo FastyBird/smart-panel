@@ -82,62 +82,53 @@ class LandscapeViewLayout extends StatelessWidget {
     final showLabels =
         modeSelectorShowLabels ?? (isLargeScreen && additionalContent == null);
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Calculate fixed width for additional content column
-        // Use 1/3 of total width to match 2-col layout (flex 2:1 ratio)
-        final additionalContentWidth = additionalContent != null
-            ? constraints.maxWidth / (mainContentFlex + additionalContentFlex) * additionalContentFlex
-            : 0.0;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Left column: Main content (flex-based)
+        Expanded(
+          flex: mainContentFlex,
+          child: Padding(
+            padding: mainContentPadding ?? EdgeInsets.all(AppSpacings.pLg),
+            child: mainContent,
+          ),
+        ),
 
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Left column: Main content (takes remaining space)
-            Expanded(
-              child: Padding(
-                padding: mainContentPadding ?? EdgeInsets.all(AppSpacings.pLg),
-                child: mainContent,
-              ),
-            ),
-
-            // Middle column: Mode selector (optional) - no border on left
-            if (modeSelector != null)
-              Container(
-                padding: modeSelectorPadding ??
-                    EdgeInsets.symmetric(
-                      vertical: AppSpacings.pLg,
-                      horizontal: showLabels ? AppSpacings.pLg : AppSpacings.pMd,
-                    ),
-                child: Center(child: modeSelector),
-              ),
-
-            // Right column: Additional content (optional) - fixed width
-            if (additionalContent != null) ...[
-              Container(width: 1, color: borderColor),
-              SizedBox(
-                width: additionalContentWidth,
-                child: Container(
-                  color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-                  child: additionalContentScrollable
-                      ? VerticalScrollWithGradient(
-                          gradientHeight: AppSpacings.pLg,
-                          padding: additionalContentPadding ?? EdgeInsets.all(AppSpacings.pLg),
-                          backgroundColor: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-                          itemCount: 1,
-                          separatorHeight: 0,
-                          itemBuilder: (context, index) => additionalContent!,
-                        )
-                      : Padding(
-                          padding: additionalContentPadding ?? EdgeInsets.all(AppSpacings.pLg),
-                          child: additionalContent,
-                        ),
+        // Middle column: Mode selector (optional) - intrinsic width
+        if (modeSelector != null)
+          Container(
+            padding: modeSelectorPadding ??
+                EdgeInsets.symmetric(
+                  vertical: AppSpacings.pLg,
+                  horizontal: showLabels ? AppSpacings.pLg : AppSpacings.pMd,
                 ),
-              ),
-            ],
-          ],
-        );
-      },
+            child: Center(child: modeSelector),
+          ),
+
+        // Right column: Additional content (optional) - flex-based
+        if (additionalContent != null) ...[
+          Container(width: 1, color: borderColor),
+          Expanded(
+            flex: additionalContentFlex,
+            child: Container(
+              color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
+              child: additionalContentScrollable
+                  ? VerticalScrollWithGradient(
+                      gradientHeight: AppSpacings.pLg,
+                      padding: additionalContentPadding ?? EdgeInsets.all(AppSpacings.pLg),
+                      backgroundColor: isDark ? AppFillColorDark.light : AppFillColorLight.light,
+                      itemCount: 1,
+                      separatorHeight: 0,
+                      itemBuilder: (context, index) => additionalContent!,
+                    )
+                  : Padding(
+                      padding: additionalContentPadding ?? EdgeInsets.all(AppSpacings.pLg),
+                      child: additionalContent,
+                    ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

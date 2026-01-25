@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 
 /// A reusable landscape layout widget for device detail pages.
 ///
-/// Provides two layout modes:
+/// Provides flexible layout modes:
+/// - **1-column**: Main content only (when secondaryContent is null)
 /// - **2-column**: Main content (flex 2) + secondary content (flex 1)
 /// - **3-column**: Main content (flex 2) + mode selector (fixed) + secondary content (flex 1)
 ///
@@ -31,9 +32,10 @@ class DeviceDetailLandscapeLayout extends StatelessWidget {
   /// If provided, creates a 3-column layout
   final Widget? modeSelector;
 
-  /// The secondary content widget (right column)
-  /// Typically contains status info, settings, sensors, presets
-  final Widget secondaryContent;
+  /// Optional secondary content widget (right column)
+  /// Typically contains status info, settings, sensors, presets.
+  /// If null, only the main content column is shown.
+  final Widget? secondaryContent;
 
   /// Padding for the main content column
   /// Default: AppSpacings.paddingLg
@@ -63,7 +65,7 @@ class DeviceDetailLandscapeLayout extends StatelessWidget {
     super.key,
     required this.mainContent,
     this.modeSelector,
-    required this.secondaryContent,
+    this.secondaryContent,
     this.mainContentPadding,
     this.modeSelectorPadding,
     this.secondaryContentPadding,
@@ -80,71 +82,68 @@ class DeviceDetailLandscapeLayout extends StatelessWidget {
     final secondaryBgColor =
         isDark ? AppFillColorDark.light : AppFillColorLight.light;
 
+    // Flex values: largeSecondaryColumn: true = 1:1 ratio, false = 2:1 ratio
+    final mainFlex = largeSecondaryColumn ? 1 : 2;
+    const secondaryFlex = 1;
+
     final defaultSecondaryPadding = secondaryContentPadding ?? AppSpacings.paddingLg;
 
-    Widget secondaryWidget;
-    if (secondaryScrollable) {
-      secondaryWidget = VerticalScrollWithGradient(
-        gradientHeight: AppSpacings.pLg,
-        padding: defaultSecondaryPadding,
-        backgroundColor: secondaryBgColor,
-        itemCount: 1,
-        separatorHeight: 0,
-        itemBuilder: (context, index) => secondaryContent,
-      );
-    } else {
-      secondaryWidget = Padding(
-        padding: defaultSecondaryPadding,
-        child: secondaryContent,
-      );
+    Widget? secondaryWidget;
+    if (secondaryContent != null) {
+      if (secondaryScrollable) {
+        secondaryWidget = VerticalScrollWithGradient(
+          gradientHeight: AppSpacings.pLg,
+          padding: defaultSecondaryPadding,
+          backgroundColor: secondaryBgColor,
+          itemCount: 1,
+          separatorHeight: 0,
+          itemBuilder: (context, index) => secondaryContent!,
+        );
+      } else {
+        secondaryWidget = Padding(
+          padding: defaultSecondaryPadding,
+          child: secondaryContent,
+        );
+      }
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Calculate fixed width for secondary content column
-        // largeSecondaryColumn: true = 1:1 ratio (equal columns)
-        // largeSecondaryColumn: false = 2:1 ratio (main larger)
-        final mainFlex = largeSecondaryColumn ? 1 : 2;
-        final secondaryFlex = 1;
-        final secondaryContentWidth =
-            constraints.maxWidth / (mainFlex + secondaryFlex) * secondaryFlex;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Left column: Main content (flex-based)
+        Expanded(
+          flex: mainFlex,
+          child: Padding(
+            padding: mainContentPadding ?? AppSpacings.paddingLg,
+            child: mainContent,
+          ),
+        ),
 
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Left column: Main content (takes remaining space)
-            Expanded(
-              child: Padding(
-                padding: mainContentPadding ?? AppSpacings.paddingLg,
-                child: mainContent,
-              ),
+        // Middle column: Mode selector (optional) - intrinsic width
+        if (modeSelector != null)
+          Container(
+            padding: modeSelectorPadding ??
+                EdgeInsets.symmetric(
+                  vertical: AppSpacings.pLg,
+                  horizontal: AppSpacings.pMd,
+                ),
+            child: Center(child: modeSelector),
+          ),
+
+        // Right column: Secondary content (optional, flex-based)
+        if (secondaryContent != null) ...[
+          // Divider between columns
+          if (showDivider) Container(width: 1, color: borderColor),
+
+          Expanded(
+            flex: secondaryFlex,
+            child: Container(
+              color: secondaryBgColor,
+              child: secondaryWidget,
             ),
-
-            // Middle column: Mode selector (optional)
-            if (modeSelector != null)
-              Container(
-                padding: modeSelectorPadding ??
-                    EdgeInsets.symmetric(
-                      vertical: AppSpacings.pLg,
-                      horizontal: AppSpacings.pMd,
-                    ),
-                child: Center(child: modeSelector),
-              ),
-
-            // Divider between columns
-            if (showDivider) Container(width: 1, color: borderColor),
-
-            // Right column: Secondary content (fixed width)
-            SizedBox(
-              width: secondaryContentWidth,
-              child: Container(
-                color: secondaryBgColor,
-                child: secondaryWidget,
-              ),
-            ),
-          ],
-        );
-      },
+          ),
+        ],
+      ],
     );
   }
 }

@@ -402,19 +402,20 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
           ? _buildVerticalModeSelector(context, isDark)
           : null,
       secondaryContent: _isSimple
-          ? const SizedBox.shrink()
+          ? null
           : _buildLandscapeSecondaryContent(context, isDark),
     );
   }
 
   Widget _buildVerticalModeSelector(BuildContext context, bool isDark) {
+    final localizations = AppLocalizations.of(context)!;
     final enabledCaps = _enabledCapabilities;
 
     final modes = enabledCaps.map((cap) {
       return ModeOption<LightCapability>(
         value: cap,
         icon: _getCapabilityIcon(cap),
-        label: _getCapabilityLabel(cap),
+        label: _getCapabilityLabel(cap, localizations),
       );
     }).toList();
 
@@ -445,16 +446,16 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
     }
   }
 
-  String _getCapabilityLabel(LightCapability cap) {
+  String _getCapabilityLabel(LightCapability cap, AppLocalizations localizations) {
     switch (cap) {
       case LightCapability.brightness:
-        return 'Brightness';
+        return localizations.light_mode_brightness;
       case LightCapability.colorTemp:
-        return 'Temperature';
+        return localizations.light_mode_temperature;
       case LightCapability.color:
-        return 'Color';
+        return localizations.light_mode_color;
       case LightCapability.white:
-        return 'White';
+        return localizations.light_mode_white;
       default:
         return '';
     }
@@ -1244,6 +1245,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
   // --------------------------------------------------------------------------
 
   Widget _buildHorizontalCapabilityTabs(BuildContext context, bool isDark) {
+    final localizations = AppLocalizations.of(context)!;
     final enabledCaps = _enabledCapabilities;
     if (enabledCaps.length <= 1) return const SizedBox.shrink();
 
@@ -1251,7 +1253,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
       return ModeOption<LightCapability>(
         value: cap,
         icon: _getCapabilityIcon(cap),
-        label: _getCapabilityLabel(cap),
+        label: _getCapabilityLabel(cap, localizations),
       );
     }).toList();
 
