@@ -868,9 +868,12 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
             separatorWidth: AppSpacings.pMd,
             itemBuilder: (context, index) {
               final device = _state.climateDevices[index];
+              final tileWidth = _screenService.isSmallScreen
+                  ? AppTileWidth.verticalMedium
+                  : AppTileWidth.verticalLarge;
 
               return SizedBox(
-                width: _scale(110),
+                width: _scale(tileWidth),
                 child: _buildDeviceTile(context, device, isVertical: true),
               );
             },

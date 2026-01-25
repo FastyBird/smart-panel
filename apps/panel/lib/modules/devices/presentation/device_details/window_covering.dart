@@ -1000,8 +1000,12 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
               final isSelected = index == _selectedChannelIndex;
               final position = controller?.position ?? channel.position;
 
+              final tileWidth = _screenService.isSmallScreen
+                  ? AppTileWidth.verticalMedium
+                  : AppTileWidth.verticalLarge;
+
               return SizedBox(
-                width: _scale(110),
+                width: _scale(tileWidth),
                 child: UniversalTile(
                   layout: TileLayout.vertical,
                   icon: MdiIcons.blindsHorizontalClosed,

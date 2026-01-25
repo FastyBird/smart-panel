@@ -1204,9 +1204,12 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
             separatorWidth: AppSpacings.pMd,
             itemBuilder: (context, index) {
               final channel = widget.channels[index];
+              final tileWidth = _screenService.isSmallScreen
+                  ? AppTileWidth.verticalMedium
+                  : AppTileWidth.verticalLarge;
 
               return SizedBox(
-                width: _scale(110),
+                width: _scale(tileWidth),
                 child: UniversalTile(
                   layout: TileLayout.vertical,
                   icon: Icons.lightbulb_outline,
