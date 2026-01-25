@@ -247,19 +247,6 @@ class ClimateRoomState {
     );
   }
 
-  String get modeLabel {
-    switch (mode) {
-      case ClimateMode.off:
-        return 'Off';
-      case ClimateMode.heat:
-        return 'Heating';
-      case ClimateMode.cool:
-        return 'Cooling';
-      case ClimateMode.auto:
-        return 'Auto';
-    }
-  }
-
   List<AuxiliaryDevice> get humidityDevices =>
       auxiliaryDevices.where((d) => d.isHumidityControl).toList();
 
@@ -1493,6 +1480,19 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     return climateState.isHeating || climateState.isCooling;
   }
 
+  String _getModeLabel(AppLocalizations localizations) {
+    switch (_state.mode) {
+      case ClimateMode.off:
+        return localizations.thermostat_mode_off;
+      case ClimateMode.heat:
+        return localizations.thermostat_mode_heat;
+      case ClimateMode.cool:
+        return localizations.thermostat_mode_cool;
+      case ClimateMode.auto:
+        return localizations.thermostat_mode_auto;
+    }
+  }
+
   String _getStatusLabel(AppLocalizations localizations) {
     if (_state.mode == ClimateMode.off) {
       return localizations.thermostat_state_off;
@@ -1641,7 +1641,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           // Auxiliary section - same as devices on covering domain
           if (hasAuxiliary) ...[
             SectionTitle(
-              title: 'Auxiliary',
+              title: localizations.climate_role_auxiliary,
               icon: MdiIcons.devices,
             ),
             AppSpacings.spacingMdVertical,
@@ -1763,7 +1763,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     // Auxiliary section - displayed as individual tiles (like devices on covering domain)
     if (hasAuxiliary) {
       contentWidgets.add(
-        SectionTitle(title: 'Auxiliary', icon: MdiIcons.devices),
+        SectionTitle(title: localizations.climate_role_auxiliary, icon: MdiIcons.devices),
       );
 
       // Add each auxiliary device as an individual tile
@@ -1849,6 +1849,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   /// Compact dial with vertical icon-only mode selector on the right
   Widget _buildCompactDialWithModes(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
     final modeColor = _getModeColor(context);
     final borderColor = _state.mode != ClimateMode.off
         ? modeColor.withValues(alpha: 0.3)
@@ -1909,7 +1910,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                       accentType: _getDialAccentType(),
                       isActive: _isDialActive(),
                       enabled: _state.mode != ClimateMode.off,
-                      modeLabel: _state.mode.name,
+                      modeLabel: _getModeLabel(localizations),
                       displayFormat: DialDisplayFormat.temperature,
                       onChanged: _setTargetTemp,
                     ),
@@ -1923,7 +1924,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'Tap for details',
+                        localizations.climate_tap_for_details,
                         style: TextStyle(
                           color: isDark
                               ? AppTextColorDark.secondary
@@ -2012,6 +2013,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     BuildContext context, {
     required double dialSize,
   }) {
+    final localizations = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final modeColor = _getModeColor(context);
     final borderColor = _state.mode != ClimateMode.off
@@ -2046,7 +2048,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
               accentType: _getDialAccentType(),
               isActive: _isDialActive(),
               enabled: _state.mode != ClimateMode.off,
-              modeLabel: _state.mode.name,
+              modeLabel: _getModeLabel(localizations),
               displayFormat: DialDisplayFormat.temperature,
               onChanged: _setTargetTemp,
             ),
@@ -2058,7 +2060,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Tap for details',
+                    localizations.climate_tap_for_details,
                     style: TextStyle(
                       color: isDark
                           ? AppTextColorDark.secondary

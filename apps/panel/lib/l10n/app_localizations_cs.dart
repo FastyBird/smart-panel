@@ -878,6 +878,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get climate_role_auxiliary => 'Pomocné';
 
   @override
+  String get climate_tap_for_details => 'Klepněte pro detaily';
+
+  @override
   String get climate_role_ventilation => 'Větrání';
 
   @override
@@ -1762,4 +1765,40 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get cover_type_cover => 'Krytina';
+
+  @override
+  String get light_preset_candle => 'Svíčka';
+
+  @override
+  String get light_preset_warm => 'Teplá';
+
+  @override
+  String get light_preset_daylight => 'Denní světlo';
+
+  @override
+  String get light_preset_cool => 'Studená';
+
+  @override
+  String get light_color_red => 'Červená';
+
+  @override
+  String get light_color_orange => 'Oranžová';
+
+  @override
+  String get light_color_yellow => 'Žlutá';
+
+  @override
+  String get light_color_green => 'Zelená';
+
+  @override
+  String get light_color_cyan => 'Azurová';
+
+  @override
+  String get light_color_blue => 'Modrá';
+
+  @override
+  String get light_color_purple => 'Fialová';
+
+  @override
+  String get light_color_pink => 'Růžová';
 }

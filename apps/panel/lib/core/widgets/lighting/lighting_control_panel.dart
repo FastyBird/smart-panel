@@ -659,7 +659,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
     final isLargeScreen = _screenService.isLargeScreen;
 
     // Get presets based on selected capability
-    final presets = _getPresetsForCapability(_selectedCapability);
+    final presets = _getPresetsForCapability(_selectedCapability, localizations);
     if (presets.isEmpty) return const SizedBox.shrink();
 
     // Special handling for color presets - show color swatches only
@@ -797,7 +797,10 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
     );
   }
 
-  List<_LightPreset> _getPresetsForCapability(LightCapability capability) {
+  List<_LightPreset> _getPresetsForCapability(
+    LightCapability capability,
+    AppLocalizations localizations,
+  ) {
     switch (capability) {
       case LightCapability.brightness:
         return [
@@ -830,25 +833,25 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
         return [
           _LightPreset(
             icon: Icons.local_fire_department,
-            label: 'Candle',
+            label: localizations.light_preset_candle,
             value: 2700,
             type: _PresetType.colorTemp,
           ),
           _LightPreset(
             icon: Icons.nights_stay,
-            label: 'Warm',
+            label: localizations.light_preset_warm,
             value: 3200,
             type: _PresetType.colorTemp,
           ),
           _LightPreset(
             icon: Icons.wb_sunny,
-            label: 'Daylight',
+            label: localizations.light_preset_daylight,
             value: 5000,
             type: _PresetType.colorTemp,
           ),
           _LightPreset(
             icon: Icons.ac_unit,
-            label: 'Cool',
+            label: localizations.light_preset_cool,
             value: 6500,
             type: _PresetType.colorTemp,
           ),
@@ -857,56 +860,56 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
         return [
           _LightPreset(
             icon: Icons.circle,
-            label: 'Red',
+            label: localizations.light_color_red,
             value: 0,
             type: _PresetType.color,
             color: Colors.red,
           ),
           _LightPreset(
             icon: Icons.circle,
-            label: 'Orange',
+            label: localizations.light_color_orange,
             value: 30,
             type: _PresetType.color,
             color: Colors.orange,
           ),
           _LightPreset(
             icon: Icons.circle,
-            label: 'Yellow',
+            label: localizations.light_color_yellow,
             value: 60,
             type: _PresetType.color,
             color: Colors.yellow,
           ),
           _LightPreset(
             icon: Icons.circle,
-            label: 'Green',
+            label: localizations.light_color_green,
             value: 120,
             type: _PresetType.color,
             color: Colors.green,
           ),
           _LightPreset(
             icon: Icons.circle,
-            label: 'Cyan',
+            label: localizations.light_color_cyan,
             value: 180,
             type: _PresetType.color,
             color: Colors.cyan,
           ),
           _LightPreset(
             icon: Icons.circle,
-            label: 'Blue',
+            label: localizations.light_color_blue,
             value: 240,
             type: _PresetType.color,
             color: Colors.blue,
           ),
           _LightPreset(
             icon: Icons.circle,
-            label: 'Purple',
+            label: localizations.light_color_purple,
             value: 270,
             type: _PresetType.color,
             color: Colors.purple,
           ),
           _LightPreset(
             icon: Icons.circle,
-            label: 'Pink',
+            label: localizations.light_color_pink,
             value: 330,
             type: _PresetType.color,
             color: Colors.pink,
@@ -980,7 +983,8 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
   }
 
   Widget _buildPortraitLayout(BuildContext context, bool isDark) {
-    final presets = _getPresetsForCapability(_selectedCapability);
+    final localizations = AppLocalizations.of(context)!;
+    final presets = _getPresetsForCapability(_selectedCapability, localizations);
     final hasPresets = presets.isNotEmpty && !_isSimple;
 
     return DeviceDetailPortraitLayout(

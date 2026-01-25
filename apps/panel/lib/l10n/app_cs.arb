@@ -286,6 +286,7 @@
   "space_climate_current_label": "Aktuální",
   "space_climate_target_label": "Cílová",
   "climate_role_auxiliary": "Pomocné",
+  "climate_tap_for_details": "Klepněte pro detaily",
   "climate_role_ventilation": "Větrání",
   "climate_role_humidity": "Ovládání vlhkosti",
   "climate_role_other": "Ostatní zařízení",
@@ -594,5 +595,17 @@
   "cover_type_blind": "Žaluzie",
   "cover_type_roller": "Roleta",
   "cover_type_outdoor_blind": "Venkovní žaluzie",
-  "cover_type_cover": "Krytina"
+  "cover_type_cover": "Krytina",
+  "light_preset_candle": "Svíčka",
+  "light_preset_warm": "Teplá",
+  "light_preset_daylight": "Denní světlo",
+  "light_preset_cool": "Studená",
+  "light_color_red": "Červená",
+  "light_color_orange": "Oranžová",
+  "light_color_yellow": "Žlutá",
+  "light_color_green": "Zelená",
+  "light_color_cyan": "Azurová",
+  "light_color_blue": "Modrá",
+  "light_color_purple": "Fialová",
+  "light_color_pink": "Růžová"
 }

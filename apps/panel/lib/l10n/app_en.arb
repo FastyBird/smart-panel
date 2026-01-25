@@ -1184,6 +1184,10 @@
   "@climate_role_auxiliary": {
     "description": "Section header for auxiliary climate devices"
   },
+  "climate_tap_for_details": "Tap for details",
+  "@climate_tap_for_details": {
+    "description": "Hint text for tapping on climate dial"
+  },
   "climate_role_ventilation": "Ventilation",
   "@climate_role_ventilation": {
     "description": "Section header for ventilation devices (fans, purifiers)"
@@ -2393,5 +2397,53 @@
   "cover_type_cover": "Cover",
   "@cover_type_cover": {
     "description": "Generic cover type label"
+  },
+  "light_preset_candle": "Candle",
+  "@light_preset_candle": {
+    "description": "Candle color temperature preset label"
+  },
+  "light_preset_warm": "Warm",
+  "@light_preset_warm": {
+    "description": "Warm color temperature preset label"
+  },
+  "light_preset_daylight": "Daylight",
+  "@light_preset_daylight": {
+    "description": "Daylight color temperature preset label"
+  },
+  "light_preset_cool": "Cool",
+  "@light_preset_cool": {
+    "description": "Cool color temperature preset label"
+  },
+  "light_color_red": "Red",
+  "@light_color_red": {
+    "description": "Red color preset label"
+  },
+  "light_color_orange": "Orange",
+  "@light_color_orange": {
+    "description": "Orange color preset label"
+  },
+  "light_color_yellow": "Yellow",
+  "@light_color_yellow": {
+    "description": "Yellow color preset label"
+  },
+  "light_color_green": "Green",
+  "@light_color_green": {
+    "description": "Green color preset label"
+  },
+  "light_color_cyan": "Cyan",
+  "@light_color_cyan": {
+    "description": "Cyan color preset label"
+  },
+  "light_color_blue": "Blue",
+  "@light_color_blue": {
+    "description": "Blue color preset label"
+  },
+  "light_color_purple": "Purple",
+  "@light_color_purple": {
+    "description": "Purple color preset label"
+  },
+  "light_color_pink": "Pink",
+  "@light_color_pink": {
+    "description": "Pink color preset label"
   }
 }

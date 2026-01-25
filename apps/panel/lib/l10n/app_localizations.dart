@@ -1805,6 +1805,12 @@ abstract class AppLocalizations {
   /// **'Auxiliary'**
   String get climate_role_auxiliary;
 
+  /// Hint text for tapping on climate dial
+  ///
+  /// In en, this message translates to:
+  /// **'Tap for details'**
+  String get climate_tap_for_details;
+
   /// Section header for ventilation devices (fans, purifiers)
   ///
   /// In en, this message translates to:
@@ -3508,6 +3514,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cover'**
   String get cover_type_cover;
+
+  /// Candle color temperature preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Candle'**
+  String get light_preset_candle;
+
+  /// Warm color temperature preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Warm'**
+  String get light_preset_warm;
+
+  /// Daylight color temperature preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Daylight'**
+  String get light_preset_daylight;
+
+  /// Cool color temperature preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Cool'**
+  String get light_preset_cool;
+
+  /// Red color preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Red'**
+  String get light_color_red;
+
+  /// Orange color preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Orange'**
+  String get light_color_orange;
+
+  /// Yellow color preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Yellow'**
+  String get light_color_yellow;
+
+  /// Green color preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Green'**
+  String get light_color_green;
+
+  /// Cyan color preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Cyan'**
+  String get light_color_cyan;
+
+  /// Blue color preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Blue'**
+  String get light_color_blue;
+
+  /// Purple color preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Purple'**
+  String get light_color_purple;
+
+  /// Pink color preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Pink'**
+  String get light_color_pink;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -878,6 +878,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get climate_role_auxiliary => 'Auxiliary';
 
   @override
+  String get climate_tap_for_details => 'Tap for details';
+
+  @override
   String get climate_role_ventilation => 'Ventilation';
 
   @override
@@ -1760,4 +1763,40 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cover_type_cover => 'Cover';
+
+  @override
+  String get light_preset_candle => 'Candle';
+
+  @override
+  String get light_preset_warm => 'Warm';
+
+  @override
+  String get light_preset_daylight => 'Daylight';
+
+  @override
+  String get light_preset_cool => 'Cool';
+
+  @override
+  String get light_color_red => 'Red';
+
+  @override
+  String get light_color_orange => 'Orange';
+
+  @override
+  String get light_color_yellow => 'Yellow';
+
+  @override
+  String get light_color_green => 'Green';
+
+  @override
+  String get light_color_cyan => 'Cyan';
+
+  @override
+  String get light_color_blue => 'Blue';
+
+  @override
+  String get light_color_purple => 'Purple';
+
+  @override
+  String get light_color_pink => 'Pink';
 }

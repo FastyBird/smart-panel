@@ -1788,7 +1788,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       return;
     }
 
-    final localizations = AppLocalizations.of(context);
+    final localizations = AppLocalizations.of(context)!;
     final spacesService = _spacesService;
 
     // Map LightTargetRole to LightingStateRole for backend
@@ -1847,7 +1847,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       } else if (!success && mounted) {
         AlertBar.showError(
           context,
-          message: localizations?.action_failed ?? 'Failed to toggle lights',
+          message: localizations.action_failed,
         );
         // Reset on error
         _roleControlStateService.setIdle(roleChannelId);
@@ -1860,7 +1860,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       if (mounted) {
         AlertBar.showError(
           context,
-          message: localizations?.action_failed ?? 'Failed to toggle lights',
+          message: localizations.action_failed,
         );
         // Reset on error
         _roleControlStateService.setIdle(roleChannelId);

@@ -99,19 +99,6 @@ class ClimateDetailState {
       climateDevices: climateDevices ?? this.climateDevices,
     );
   }
-
-  String get modeLabel {
-    switch (mode) {
-      case ClimateMode.off:
-        return 'Off';
-      case ClimateMode.heat:
-        return 'Heating';
-      case ClimateMode.cool:
-        return 'Cooling';
-      case ClimateMode.auto:
-        return 'Auto';
-    }
-  }
 }
 
 // ============================================================================
@@ -971,6 +958,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
     required double dialSize,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
     final modeColor = _getModeColor(context);
     final borderColor = _state.mode != ClimateMode.off
         ? modeColor.withValues(alpha: 0.3)
@@ -998,7 +986,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
             accentType: _getDialAccentType(),
             isActive: _isDialActive(),
             enabled: _state.mode != ClimateMode.off,
-            modeLabel: _state.mode.name,
+            modeLabel: _getModeLabel(localizations),
             displayFormat: DialDisplayFormat.temperature,
             onChanged: _setTargetTemp,
           ),
@@ -1065,6 +1053,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
   /// Compact dial with vertical icon-only mode selector on the right
   Widget _buildCompactDialWithModes(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
     final modeColor = _getModeColor(context);
     final borderColor = _state.mode != ClimateMode.off
         ? modeColor.withValues(alpha: 0.3)
@@ -1103,7 +1092,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
                 accentType: _getDialAccentType(),
                 isActive: _isDialActive(),
                 enabled: _state.mode != ClimateMode.off,
-                modeLabel: _state.mode.name,
+                modeLabel: _getModeLabel(localizations),
                 displayFormat: DialDisplayFormat.temperature,
                 onChanged: _setTargetTemp,
               ),
@@ -1153,6 +1142,19 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
         return localizations.device_status_inactive;
       default:
         return status;
+    }
+  }
+
+  String _getModeLabel(AppLocalizations localizations) {
+    switch (_state.mode) {
+      case ClimateMode.off:
+        return localizations.thermostat_mode_off;
+      case ClimateMode.heat:
+        return localizations.thermostat_mode_heat;
+      case ClimateMode.cool:
+        return localizations.thermostat_mode_cool;
+      case ClimateMode.auto:
+        return localizations.thermostat_mode_auto;
     }
   }
 
