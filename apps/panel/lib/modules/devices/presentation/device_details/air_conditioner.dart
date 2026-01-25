@@ -866,14 +866,29 @@ class _AirConditionerDeviceDetailState
     final localizations = AppLocalizations.of(context)!;
     final modeColor = _getModeColor(isDark);
     final statusSection = _buildStatusSection(localizations, isDark, modeColor);
+    final tileHeight = _scale(AppTileHeight.horizontal);
+    final fanChannel = _device.fanChannel;
+
+    // Build speed/mode control widget
+    Widget? speedControl;
+    if (fanChannel.hasSpeed) {
+      speedControl = _buildFanSpeedControl(localizations, isDark, modeColor, false, tileHeight);
+    } else if (fanChannel.hasMode && fanChannel.availableModes.length > 1) {
+      speedControl = _buildFanModeControl(localizations, modeColor, false, tileHeight);
+    }
+
+    // Build fan options
+    final fanOptions = _buildFanOptions(localizations, isDark, modeColor, false, tileHeight);
 
     return DeviceDetailPortraitLayout(
-      contentPadding: AppSpacings.paddingLg,
       content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildPrimaryControlCard(context, isDark, dialSize: _scale(200)),
-          AppSpacings.spacingMdVertical,
-          _buildFanControls(localizations, isDark, modeColor, false),
+          if (speedControl != null) ...[
+            AppSpacings.spacingMdVertical,
+            speedControl,
+          ],
           if (statusSection is! SizedBox) ...[
             AppSpacings.spacingLgVertical,
             SectionTitle(
@@ -882,6 +897,15 @@ class _AirConditionerDeviceDetailState
             ),
             AppSpacings.spacingMdVertical,
             statusSection,
+          ],
+          if (fanOptions.isNotEmpty) ...[
+            AppSpacings.spacingLgVertical,
+            SectionTitle(
+              title: localizations.device_controls,
+              icon: MdiIcons.tuneVertical,
+            ),
+            AppSpacings.spacingMdVertical,
+            ...fanOptions,
           ],
         ],
       ),
@@ -898,6 +922,21 @@ class _AirConditionerDeviceDetailState
         isDark ? AppFillColorDark.light : AppFillColorLight.light;
     final isLargeScreen = _screenService.isLargeScreen;
     final modeColor = _getModeColor(isDark);
+    final statusSection = _buildStatusSection(localizations, isDark, modeColor);
+    final tileHeight = _scale(AppTileHeight.horizontal);
+    final fanChannel = _device.fanChannel;
+    final useCompactLayout = !isLargeScreen;
+
+    // Build speed/mode control widget
+    Widget? speedControl;
+    if (fanChannel.hasSpeed) {
+      speedControl = _buildFanSpeedControl(localizations, isDark, modeColor, useCompactLayout, tileHeight);
+    } else if (fanChannel.hasMode && fanChannel.availableModes.length > 1) {
+      speedControl = _buildFanModeControl(localizations, modeColor, useCompactLayout, tileHeight);
+    }
+
+    // Build fan options
+    final fanOptions = _buildFanOptions(localizations, isDark, modeColor, useCompactLayout, tileHeight);
 
     return DeviceDetailLandscapeLayout(
       secondaryScrollable: false,
@@ -914,9 +953,27 @@ class _AirConditionerDeviceDetailState
         itemBuilder: (context, index) => Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildStatusSection(localizations, isDark, modeColor),
-            AppSpacings.spacingMdVertical,
-            _buildFanControls(localizations, isDark, modeColor, !isLargeScreen),
+            if (statusSection is! SizedBox) ...[
+              SectionTitle(
+                title: localizations.device_sensors,
+                icon: MdiIcons.eyeSettings,
+              ),
+              AppSpacings.spacingMdVertical,
+              statusSection,
+            ],
+            if (speedControl != null || fanOptions.isNotEmpty) ...[
+              if (statusSection is! SizedBox) AppSpacings.spacingLgVertical,
+              SectionTitle(
+                title: localizations.device_controls,
+                icon: MdiIcons.tuneVertical,
+              ),
+              AppSpacings.spacingMdVertical,
+              if (speedControl != null) ...[
+                speedControl,
+                if (fanOptions.isNotEmpty) AppSpacings.spacingMdVertical,
+              ],
+              ...fanOptions,
+            ],
           ],
         ),
       ),

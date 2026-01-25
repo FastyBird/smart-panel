@@ -1,9 +1,10 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:flutter/material.dart';
 
 /// A reusable portrait layout widget for device detail pages.
 ///
-/// Provides a scrollable content area with consistent padding.
+/// Provides a scrollable content area with gradient overlays and consistent padding.
 /// Similar to [PortraitViewLayout] but without mode selector support
 /// since device details don't use domain-level mode selection.
 ///
@@ -31,15 +32,16 @@ class DeviceDetailPortraitLayout extends StatelessWidget {
   /// Default: true
   final bool scrollable;
 
-  /// Custom scroll controller for the content
-  final ScrollController? scrollController;
+  /// Height of the gradient overlay at top and bottom
+  /// Default: AppSpacings.pLg
+  final double? gradientHeight;
 
   const DeviceDetailPortraitLayout({
     super.key,
     required this.content,
     this.contentPadding,
     this.scrollable = true,
-    this.scrollController,
+    this.gradientHeight,
   });
 
   @override
@@ -47,10 +49,12 @@ class DeviceDetailPortraitLayout extends StatelessWidget {
     final defaultPadding = AppSpacings.paddingLg;
 
     if (scrollable) {
-      return SingleChildScrollView(
-        controller: scrollController,
+      return VerticalScrollWithGradient(
+        gradientHeight: gradientHeight ?? AppSpacings.pLg,
         padding: contentPadding ?? defaultPadding,
-        child: content,
+        itemCount: 1,
+        separatorHeight: 0,
+        itemBuilder: (context, index) => content,
       );
     }
 

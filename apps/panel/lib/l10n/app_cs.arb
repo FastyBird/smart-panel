@@ -526,6 +526,7 @@
   "device_air_quality_index": "Index kvality vzduchu",
   "device_temperature": "Teplota",
   "device_sensors": "Senzory",
+  "device_controls": "Ovládání",
   "duration_format_hours_minutes": "{hours}h {minutes}m",
   "@duration_format_hours_minutes": {
     "placeholders": {

@@ -3227,6 +3227,12 @@ abstract class AppLocalizations {
   /// **'Sensors'**
   String get device_sensors;
 
+  /// Controls section label
+  ///
+  /// In en, this message translates to:
+  /// **'Controls'**
+  String get device_controls;
+
   /// Duration format with hours and minutes
   ///
   /// In en, this message translates to:

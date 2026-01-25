@@ -2175,6 +2175,10 @@
   "@device_sensors": {
     "description": "Sensors section label"
   },
+  "device_controls": "Controls",
+  "@device_controls": {
+    "description": "Controls section label"
+  },
 
   "duration_format_hours_minutes": "{hours}h {minutes}m",
   "@duration_format_hours_minutes": {
