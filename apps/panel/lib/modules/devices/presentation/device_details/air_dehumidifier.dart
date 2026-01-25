@@ -759,6 +759,7 @@ class _AirDehumidifierDeviceDetailState
             ? localizations.leak_sensor_detected
             : localizations.leak_sensor_dry,
         icon: MdiIcons.pipeLeak,
+        valueColor: SensorColors.alert(isDark),
         isWarning: isLeaking,
       ));
     }
@@ -771,11 +772,11 @@ class _AirDehumidifierDeviceDetailState
     final currentHumidity = _device.humidityChannel.humidity;
     sensors.add(_SensorInfo(
       id: 'humidity',
-      label: localizations.device_current_humidity,
+      label: localizations.device_humidity,
       value: NumberFormatUtils.defaultFormat.formatInteger(currentHumidity),
       unit: '%',
       icon: MdiIcons.waterPercent,
-      valueColor: humidityColor,
+      valueColor: SensorColors.humidity(isDark),
     ));
 
     // Water tank level
@@ -786,6 +787,7 @@ class _AirDehumidifierDeviceDetailState
         value: NumberFormatUtils.defaultFormat.formatInteger(channel.waterTankLevel),
         unit: '%',
         icon: MdiIcons.cup,
+        valueColor: SensorColors.alert(isDark),
         isWarning: channel.waterTankWarning,
       ));
     } else if (channel != null && channel.hasWaterTankFull) {
@@ -796,6 +798,7 @@ class _AirDehumidifierDeviceDetailState
             ? localizations.on_state_on
             : localizations.on_state_off,
         icon: MdiIcons.cup,
+        valueColor: SensorColors.alert(isDark),
         isWarning: channel.waterTankFull,
       ));
     }
@@ -807,6 +810,7 @@ class _AirDehumidifierDeviceDetailState
         label: localizations.dehumidifier_defrost,
         value: localizations.dehumidifier_defrost_active,
         icon: MdiIcons.snowflakeMelt,
+        valueColor: SensorColors.alert(isDark),
         isWarning: true,
       ));
     }
@@ -827,6 +831,7 @@ class _AirDehumidifierDeviceDetailState
         label: localizations.device_fan_speed,
         value: speedLabel,
         icon: MdiIcons.fan,
+        valueColor: DeviceColors.fan(isDark),
       ));
     }
 
@@ -847,6 +852,7 @@ class _AirDehumidifierDeviceDetailState
         ),
         unit: '°C',
         icon: MdiIcons.thermometer,
+        valueColor: SensorColors.temperature(isDark),
       ));
     }
 

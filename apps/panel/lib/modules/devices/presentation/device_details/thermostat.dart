@@ -18,6 +18,7 @@ import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/devices/thermostat.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
@@ -797,18 +798,19 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
       ),
       unit: '°C',
       icon: MdiIcons.thermometer,
-      valueColor: modeColor,
+      valueColor: SensorColors.temperature(isDark),
     ));
 
     // Humidity (optional)
     if (humidityChannel != null) {
       sensors.add(_SensorInfo(
         id: 'humidity',
-        label: localizations.device_current_humidity,
+        label: localizations.device_humidity,
         value: NumberFormatUtils.defaultFormat
             .formatInteger(humidityChannel.humidity),
         unit: '%',
         icon: MdiIcons.waterPercent,
+        valueColor: SensorColors.humidity(isDark),
       ));
     }
 
@@ -823,6 +825,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
             ? localizations.contact_sensor_open
             : localizations.contact_sensor_closed,
         icon: MdiIcons.windowOpenVariant,
+        valueColor: SensorColors.alert(isDark),
         isWarning: isOpen,
       ));
     }

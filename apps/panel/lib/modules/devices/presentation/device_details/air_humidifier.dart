@@ -797,6 +797,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
             ? localizations.leak_sensor_detected
             : localizations.leak_sensor_dry,
         icon: MdiIcons.pipeLeak,
+        valueColor: SensorColors.alert(isDark),
         isWarning: isLeaking,
       ));
     }
@@ -809,11 +810,11 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     final currentHumidity = _device.humidityChannel.humidity;
     sensors.add(_SensorInfo(
       id: 'humidity',
-      label: localizations.device_current_humidity,
+      label: localizations.device_humidity,
       value: NumberFormatUtils.defaultFormat.formatInteger(currentHumidity),
       unit: '%',
       icon: MdiIcons.waterPercent,
-      valueColor: humidityColor,
+      valueColor: SensorColors.humidity(isDark),
     ));
 
     // Water tank level
@@ -824,6 +825,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         value: NumberFormatUtils.defaultFormat.formatInteger(channel.waterTankLevel),
         unit: '%',
         icon: MdiIcons.cup,
+        valueColor: SensorColors.alert(isDark),
         isWarning: channel.waterTankWarning,
       ));
     } else if (channel != null && channel.hasWaterTankEmpty) {
@@ -834,6 +836,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
             ? localizations.humidifier_mist_level_off
             : localizations.on_state_on,
         icon: MdiIcons.cup,
+        valueColor: SensorColors.alert(isDark),
         isWarning: channel.waterTankEmpty,
       ));
     }
@@ -848,6 +851,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         value: NumberFormatUtils.defaultFormat.formatInteger(channel.mistLevel),
         unit: '%',
         icon: MdiIcons.waterOutline,
+        valueColor: SensorColors.humidity(isDark),
       ));
     } else if (channel != null &&
         channel.hasMistLevel &&
@@ -860,6 +864,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
             ? HumidifierUtils.getMistLevelLabel(localizations, preset)
             : '-',
         icon: MdiIcons.waterOutline,
+        valueColor: SensorColors.humidity(isDark),
       ));
     }
 
@@ -879,6 +884,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         label: localizations.device_fan_speed,
         value: speedLabel,
         icon: MdiIcons.fan,
+        valueColor: DeviceColors.fan(isDark),
       ));
     }
 
@@ -899,6 +905,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         ),
         unit: '°C',
         icon: MdiIcons.thermometer,
+        valueColor: SensorColors.temperature(isDark),
       ));
     }
 

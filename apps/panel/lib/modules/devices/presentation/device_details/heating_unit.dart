@@ -17,6 +17,7 @@ import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/devices/heating_unit.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
@@ -532,18 +533,19 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
       ),
       unit: '°C',
       icon: MdiIcons.thermometer,
-      valueColor: modeColor,
+      valueColor: SensorColors.temperature(isDark),
     ));
 
     // Humidity (optional)
     if (humidityChannel != null) {
       sensors.add(_SensorInfo(
         id: 'humidity',
-        label: localizations.device_current_humidity,
+        label: localizations.device_humidity,
         value: NumberFormatUtils.defaultFormat
             .formatInteger(humidityChannel.humidity),
         unit: '%',
         icon: MdiIcons.waterPercent,
+        valueColor: SensorColors.humidity(isDark),
       ));
     }
 

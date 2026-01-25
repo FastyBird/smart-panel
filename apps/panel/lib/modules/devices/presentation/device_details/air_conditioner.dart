@@ -20,6 +20,7 @@ import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/devices/air_conditioner.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/fan_utils.dart';
@@ -938,18 +939,19 @@ class _AirConditionerDeviceDetailState
       ),
       unit: '°C',
       icon: MdiIcons.thermometer,
-      valueColor: modeColor,
+      valueColor: SensorColors.temperature(isDark),
     ));
 
     // Humidity (optional)
     if (humidityChannel != null) {
       sensors.add(_SensorInfo(
         id: 'humidity',
-        label: localizations.device_current_humidity,
+        label: localizations.device_humidity,
         value: NumberFormatUtils.defaultFormat
             .formatInteger(humidityChannel.humidity),
         unit: '%',
         icon: MdiIcons.waterPercent,
+        valueColor: SensorColors.humidity(isDark),
       ));
     }
 
@@ -964,6 +966,7 @@ class _AirConditionerDeviceDetailState
             ? localizations.contact_sensor_open
             : localizations.contact_sensor_closed,
         icon: MdiIcons.windowOpenVariant,
+        valueColor: SensorColors.alert(isDark),
         isWarning: isOpen,
       ));
     }
@@ -980,6 +983,7 @@ class _AirConditionerDeviceDetailState
             ? localizations.leak_sensor_detected
             : localizations.leak_sensor_dry,
         icon: MdiIcons.pipeLeak,
+        valueColor: SensorColors.alert(isDark),
         isWarning: isLeaking,
       ));
     }
@@ -996,6 +1000,7 @@ class _AirConditionerDeviceDetailState
           value: '${(filterLife * 100).toInt()}',
           unit: '%',
           icon: MdiIcons.airFilter,
+          valueColor: SensorColors.filter(isDark),
           isWarning: filterLife < 0.3 || _device.isFilterNeedsReplacement,
         ));
       } else if (filterChannel.hasStatus) {
@@ -1005,6 +1010,7 @@ class _AirConditionerDeviceDetailState
           label: localizations.device_filter_status,
           value: FilterUtils.getStatusLabel(localizations, filterChannel.status),
           icon: MdiIcons.airFilter,
+          valueColor: SensorColors.filter(isDark),
           isWarning: _device.isFilterNeedsReplacement,
         ));
       }
