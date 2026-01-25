@@ -929,7 +929,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       lights.add(LightDeviceData(
         deviceId: target.deviceId,
         channelId: channel.id,
-        name: stripRoomNameFromDevice(target.channelName, roomName),
+        name: getLightTargetDisplayName(target, targets, roomName),
         state: state,
         brightness: channel.hasBrightness && isOn ? channel.brightness : null,
       ));
