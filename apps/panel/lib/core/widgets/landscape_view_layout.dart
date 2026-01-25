@@ -1,6 +1,7 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:flutter/material.dart';
 
 /// A reusable landscape layout widget for domain view pages.
@@ -49,11 +50,12 @@ class LandscapeViewLayout extends StatelessWidget {
   /// Flex value for the additional content column (default: 1)
   final int additionalContentFlex;
 
-  /// Whether to show the divider between columns
-  final bool showDivider;
-
   /// Whether the mode selector should show labels (for large screens)
   final bool? modeSelectorShowLabels;
+
+  /// Whether the additional content should be scrollable with gradient
+  /// Default: true
+  final bool additionalContentScrollable;
 
   LandscapeViewLayout({
     super.key,
@@ -65,8 +67,8 @@ class LandscapeViewLayout extends StatelessWidget {
     this.additionalContentPadding,
     this.mainContentFlex = 2,
     this.additionalContentFlex = 1,
-    this.showDivider = true,
     this.modeSelectorShowLabels,
+    this.additionalContentScrollable = true,
   });
 
   @override
@@ -112,16 +114,24 @@ class LandscapeViewLayout extends StatelessWidget {
 
             // Right column: Additional content (optional) - fixed width
             if (additionalContent != null) ...[
-              if (showDivider) Container(width: 1, color: borderColor),
+              Container(width: 1, color: borderColor),
               SizedBox(
                 width: additionalContentWidth,
                 child: Container(
                   color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-                  child: Padding(
-                    padding:
-                        additionalContentPadding ?? EdgeInsets.all(AppSpacings.pLg),
-                    child: additionalContent,
-                  ),
+                  child: additionalContentScrollable
+                      ? VerticalScrollWithGradient(
+                          gradientHeight: AppSpacings.pLg,
+                          padding: additionalContentPadding ?? EdgeInsets.all(AppSpacings.pLg),
+                          backgroundColor: isDark ? AppFillColorDark.light : AppFillColorLight.light,
+                          itemCount: 1,
+                          separatorHeight: 0,
+                          itemBuilder: (context, index) => additionalContent!,
+                        )
+                      : Padding(
+                          padding: additionalContentPadding ?? EdgeInsets.all(AppSpacings.pLg),
+                          child: additionalContent,
+                        ),
                 ),
               ),
             ],

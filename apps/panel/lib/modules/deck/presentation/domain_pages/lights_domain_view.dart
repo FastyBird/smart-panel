@@ -12,7 +12,6 @@ import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
-import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/constants.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
@@ -1272,7 +1271,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       additionalContent: hasScenes
           ? _buildLandscapeScenesColumn(context, localizations)
           : null,
-      additionalContentPadding: EdgeInsets.zero,
     );
   }
 
@@ -1344,26 +1342,16 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     BuildContext context,
     AppLocalizations localizations,
   ) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final secondaryBgColor =
-        isLight ? AppFillColorLight.light : AppFillColorDark.light;
-
-    // Build content widgets: header + scenes card
-    final contentWidgets = <Widget>[
-      SectionTitle(
-        title: localizations.space_scenes_title,
-        icon: Icons.auto_awesome,
-      ),
-      _buildLandscapeScenesCard(context),
-    ];
-
-    return VerticalScrollWithGradient(
-      gradientHeight: AppSpacings.pLg,
-      itemCount: contentWidgets.length,
-      separatorHeight: AppSpacings.pMd,
-      padding: AppSpacings.paddingLg,
-      backgroundColor: secondaryBgColor,
-      itemBuilder: (context, index) => contentWidgets[index],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionTitle(
+          title: localizations.space_scenes_title,
+          icon: Icons.auto_awesome,
+        ),
+        SizedBox(height: AppSpacings.pMd),
+        _buildLandscapeScenesCard(context),
+      ],
     );
   }
 

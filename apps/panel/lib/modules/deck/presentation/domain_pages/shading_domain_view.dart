@@ -11,7 +11,6 @@ import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
-import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
@@ -536,7 +535,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       additionalContent: hasDevices
           ? _buildLandscapeDevicesColumn(context, deviceDataList, localizations)
           : null,
-      additionalContentPadding: EdgeInsets.zero,
     );
   }
 
@@ -545,9 +543,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     List<_CoverDeviceData> deviceDataList,
     AppLocalizations localizations,
   ) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final secondaryBgColor =
-        isLight ? AppFillColorLight.light : AppFillColorDark.light;
     final tileHeight = _screenService.scale(
       AppTileHeight.horizontal,
       density: _visualDensityService.density,
@@ -576,22 +571,19 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       );
     }).toList();
 
-    return VerticalScrollWithGradient(
-      gradientHeight: AppSpacings.pLg,
-      itemCount: deviceWidgets.length + 1, // +1 for header
-      separatorHeight: AppSpacings.pMd,
-      padding: AppSpacings.paddingLg,
-      backgroundColor: secondaryBgColor,
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return _buildSectionTitle(
-            context,
-            localizations.shading_devices_title,
-            MdiIcons.viewGrid,
-          );
-        }
-        return deviceWidgets[index - 1];
-      },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle(
+          context,
+          localizations.shading_devices_title,
+          MdiIcons.viewGrid,
+        ),
+        for (final widget in deviceWidgets) ...[
+          SizedBox(height: AppSpacings.pMd),
+          widget,
+        ],
+      ],
     );
   }
 
