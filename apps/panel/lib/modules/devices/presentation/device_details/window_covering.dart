@@ -1839,7 +1839,10 @@ class _TiltSlider extends StatelessWidget {
     final visualDensityService = locator<VisualDensityService>();
 
     return Container(
-      padding: AppSpacings.paddingLg,
+      padding: EdgeInsets.symmetric(
+        vertical: AppSpacings.pMd,
+        horizontal: AppSpacings.pLg,
+      ),
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(AppBorderRadius.round),

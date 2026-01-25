@@ -1,6 +1,80 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 
+/// Sensor type identifiers for color mapping
+class SensorType {
+  static const String temperature = 'temp';
+  static const String humidity = 'humidity';
+  static const String aqi = 'aqi';
+  static const String pm = 'pm';
+  static const String voc = 'voc';
+  static const String co2 = 'co2';
+  static const String pressure = 'pressure';
+  static const String contact = 'contact';
+  static const String leak = 'leak';
+  static const String filter = 'filter';
+}
+
+/// Standardized sensor colors for consistent UI across all sensor displays
+class SensorColors {
+  /// Get color for a sensor based on its type
+  static Color forType(String type, bool isDark) {
+    switch (type) {
+      case SensorType.temperature:
+        return isDark ? AppColorsDark.info : AppColorsLight.info;
+      case SensorType.humidity:
+        return isDark ? AppColorsDark.success : AppColorsLight.success;
+      case SensorType.aqi:
+      case SensorType.pm:
+      case SensorType.voc:
+        return isDark ? AppColorsDark.warning : AppColorsLight.warning;
+      case SensorType.co2:
+        return isDark ? AppColorsDark.error : AppColorsLight.error;
+      case SensorType.pressure:
+        return isDark ? AppColorsDark.info : AppColorsLight.info;
+      case SensorType.contact:
+      case SensorType.leak:
+        return isDark ? AppColorsDark.warning : AppColorsLight.warning;
+      case SensorType.filter:
+        return isDark ? AppColorsDark.teal : AppColorsLight.teal;
+      default:
+        return isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+    }
+  }
+
+  /// Temperature sensor color (info/blue)
+  static Color temperature(bool isDark) =>
+      isDark ? AppColorsDark.info : AppColorsLight.info;
+
+  /// Humidity sensor color (success/green)
+  static Color humidity(bool isDark) =>
+      isDark ? AppColorsDark.success : AppColorsLight.success;
+
+  /// Air quality sensor color (warning/orange) - for AQI, PM, VOC
+  static Color airQuality(bool isDark) =>
+      isDark ? AppColorsDark.warning : AppColorsLight.warning;
+
+  /// CO2 sensor color (error/red)
+  static Color co2(bool isDark) =>
+      isDark ? AppColorsDark.error : AppColorsLight.error;
+
+  /// Pressure sensor color (info/blue)
+  static Color pressure(bool isDark) =>
+      isDark ? AppColorsDark.info : AppColorsLight.info;
+
+  /// Contact/leak sensor color (warning/orange)
+  static Color alert(bool isDark) =>
+      isDark ? AppColorsDark.warning : AppColorsLight.warning;
+
+  /// Filter sensor color (teal)
+  static Color filter(bool isDark) =>
+      isDark ? AppColorsDark.teal : AppColorsLight.teal;
+
+  /// Default/fallback sensor color (secondary text)
+  static Color defaultColor(bool isDark) =>
+      isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+}
+
 /// Device-specific colors helper using app theme colors
 class DeviceColors {
   /// Humidity color (teal) for humidifier/dehumidifier devices

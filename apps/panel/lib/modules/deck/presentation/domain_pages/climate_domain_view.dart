@@ -1471,22 +1471,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
   Color _getSensorColor(BuildContext context, String type) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    switch (type) {
-      case 'temp':
-        return isDark ? AppColorsDark.info : AppColorsLight.info;
-      case 'humidity':
-        return isDark ? AppColorsDark.success : AppColorsLight.success;
-      case 'aqi':
-      case 'pm':
-      case 'voc':
-        return isDark ? AppColorsDark.warning : AppColorsLight.warning;
-      case 'co2':
-        return isDark ? AppColorsDark.error : AppColorsLight.error;
-      case 'pressure':
-        return isDark ? AppColorsDark.info : AppColorsLight.info;
-      default:
-        return isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-    }
+    return SensorColors.forType(type, isDark);
   }
 
   DialAccentColor _getDialAccentType() {

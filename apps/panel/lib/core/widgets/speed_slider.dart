@@ -142,7 +142,10 @@ class _SpeedSliderState extends State<SpeedSlider> {
       opacity: widget.enabled ? 1.0 : 0.5,
       duration: const Duration(milliseconds: 200),
       child: Container(
-        padding: AppSpacings.paddingLg,
+        padding: EdgeInsets.symmetric(
+          vertical: AppSpacings.pMd,
+          horizontal: AppSpacings.pLg,
+        ),
         decoration: BoxDecoration(
           color: cardColor,
           borderRadius: BorderRadius.circular(AppBorderRadius.round),
