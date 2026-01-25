@@ -70,7 +70,7 @@ class SliderWithSteps extends StatelessWidget {
 
     // Disabled active track color (left part of track when disabled)
     final disabledActiveColor =
-        isDark ? AppFillColorDark.base : AppFillColorLight.base;
+        isDark ? AppTextColorDark.placeholder : AppTextColorLight.disabled;
 
     // Active track: accent when enabled, muted gray when disabled
     final sliderActiveColor = enabled ? effectiveActiveColor : disabledActiveColor;
