@@ -494,7 +494,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
           ),
           if (_device.fanChannel.hasMode &&
               _device.fanChannel.availableModes.isNotEmpty) ...[
-            AppSpacings.spacingLgVertical,
+            AppSpacings.spacingXlVertical,
             _buildModeSelector(localizations, isDark, fanColor),
           ],
         ],

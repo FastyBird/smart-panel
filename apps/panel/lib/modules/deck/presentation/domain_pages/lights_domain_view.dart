@@ -1286,6 +1286,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final hasOtherLights = otherLights.isNotEmpty;
     final isLargeScreen = _screenService.isLargeScreen;
     final tilesPerRow = isLargeScreen ? 4 : 3;
+    // Use wider aspect ratio on small/medium screens to reduce tile height
+    final tileAspectRatio = isLargeScreen ? 1.0 : 1.1;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1298,6 +1300,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             roles,
             devicesService,
             tilesPerRow: tilesPerRow,
+            aspectRatio: tileAspectRatio,
           ),
           AppSpacings.spacingLgVertical,
           // Other Lights header
@@ -1310,6 +1313,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             localizations,
             tilesPerRow: tilesPerRow,
             maxRows: isLargeScreen ? 2 : 1,
+            aspectRatio: tileAspectRatio,
           ),
         ] else if (hasRoles) ...[
           // Only roles, no other lights - grid layout
@@ -1319,7 +1323,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
               roles,
               devicesService,
               crossAxisCount: tilesPerRow,
-              aspectRatio: 1.0,
+              aspectRatio: tileAspectRatio,
             ),
           ),
         ] else if (hasOtherLights) ...[
@@ -1332,6 +1336,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             localizations,
             tilesPerRow: tilesPerRow,
             maxRows: isLargeScreen ? 2 : 1,
+            aspectRatio: tileAspectRatio,
           ),
         ],
       ],
