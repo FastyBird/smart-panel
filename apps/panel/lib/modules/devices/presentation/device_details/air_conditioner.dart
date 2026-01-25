@@ -8,15 +8,20 @@ import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
-import 'package:fastybird_smart_panel/core/widgets/info_tile.dart';
+import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
+import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/devices/air_conditioner.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/fan_utils.dart';
@@ -30,6 +35,30 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 
 /// Mode enum for A/C device
 enum AcMode { heat, cool, off }
+
+/// Internal sensor data structure for air conditioner device detail.
+class _SensorInfo {
+  final String id;
+  final String label;
+  final String value;
+  final String? unit;
+  final IconData icon;
+  final Color? valueColor;
+  final bool isWarning;
+
+  const _SensorInfo({
+    required this.id,
+    required this.label,
+    required this.value,
+    required this.icon,
+    this.unit,
+    this.valueColor,
+    this.isWarning = false,
+  });
+
+  /// Returns the formatted display value with unit
+  String get displayValue => unit != null ? '$value$unit' : value;
+}
 
 class AirConditionerDeviceDetail extends StatefulWidget {
   final AirConditionerDeviceView _device;
@@ -836,16 +865,48 @@ class _AirConditionerDeviceDetailState
   Widget _buildPortraitLayout(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
     final modeColor = _getModeColor(isDark);
+    final statusSection = _buildStatusSection(localizations, isDark, modeColor);
+    final tileHeight = _scale(AppTileHeight.horizontal);
+    final fanChannel = _device.fanChannel;
 
-    return SingleChildScrollView(
-      padding: AppSpacings.paddingLg,
-      child: Column(
+    // Build speed/mode control widget
+    Widget? speedControl;
+    if (fanChannel.hasSpeed) {
+      speedControl = _buildFanSpeedControl(localizations, isDark, modeColor, false, tileHeight);
+    } else if (fanChannel.hasMode && fanChannel.availableModes.length > 1) {
+      speedControl = _buildFanModeControl(localizations, modeColor, false, tileHeight);
+    }
+
+    // Build fan options
+    final fanOptions = _buildFanOptions(localizations, isDark, modeColor, false, tileHeight);
+
+    return DeviceDetailPortraitLayout(
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildPrimaryControlCard(context, isDark, dialSize: _scale(200)),
-          AppSpacings.spacingMdVertical,
-          _buildStatusSection(localizations, isDark, modeColor),
-          AppSpacings.spacingMdVertical,
-          _buildFanControls(localizations, isDark, modeColor, false),
+          if (speedControl != null) ...[
+            AppSpacings.spacingMdVertical,
+            speedControl,
+          ],
+          if (statusSection is! SizedBox) ...[
+            AppSpacings.spacingLgVertical,
+            SectionTitle(
+              title: localizations.device_sensors,
+              icon: MdiIcons.eyeSettings,
+            ),
+            AppSpacings.spacingMdVertical,
+            statusSection,
+          ],
+          if (fanOptions.isNotEmpty) ...[
+            AppSpacings.spacingLgVertical,
+            SectionTitle(
+              title: localizations.device_controls,
+              icon: MdiIcons.tuneVertical,
+            ),
+            AppSpacings.spacingMdVertical,
+            ...fanOptions,
+          ],
         ],
       ),
     );
@@ -857,77 +918,54 @@ class _AirConditionerDeviceDetailState
 
   Widget _buildLandscapeLayout(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
-    final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
-    final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.light;
     final isLargeScreen = _screenService.isLargeScreen;
     final modeColor = _getModeColor(isDark);
+    final statusSection = _buildStatusSection(localizations, isDark, modeColor);
+    final tileHeight = _scale(AppTileHeight.horizontal);
+    final fanChannel = _device.fanChannel;
+    final useCompactLayout = !isLargeScreen;
 
-    // Large screen: equal columns
-    if (isLargeScreen) {
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            flex: 1,
-            child: Padding(
-              padding: AppSpacings.paddingLg,
-              child: _buildPrimaryControlCard(context, isDark,
-                  dialSize: _scale(200)),
-            ),
-          ),
-          Container(width: _scale(1), color: borderColor),
-          Expanded(
-            flex: 1,
-            child: Container(
-              color: cardColor,
-              padding: AppSpacings.paddingLg,
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildStatusSection(localizations, isDark, modeColor),
-                    AppSpacings.spacingMdVertical,
-                    _buildFanControls(localizations, isDark, modeColor, false),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
+    // Build speed/mode control widget
+    Widget? speedControl;
+    if (fanChannel.hasSpeed) {
+      speedControl = _buildFanSpeedControl(localizations, isDark, modeColor, useCompactLayout, tileHeight);
+    } else if (fanChannel.hasMode && fanChannel.availableModes.length > 1) {
+      speedControl = _buildFanModeControl(localizations, modeColor, useCompactLayout, tileHeight);
     }
 
-    // Small/medium: 2:1 ratio with stretched dial
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          flex: 2,
-          child: Padding(
-            padding: AppSpacings.paddingLg,
-            child: _buildCompactDialWithModes(context, isDark),
-          ),
-        ),
-        Container(width: _scale(1), color: borderColor),
-        Expanded(
-          flex: 1,
-          child: Container(
-            color: cardColor,
-            padding: AppSpacings.paddingLg,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildStatusSection(localizations, isDark, modeColor),
-                  AppSpacings.spacingMdVertical,
-                  _buildFanControls(localizations, isDark, modeColor, true),
-                ],
-              ),
+    // Build fan options
+    final fanOptions = _buildFanOptions(localizations, isDark, modeColor, useCompactLayout, tileHeight);
+
+    return DeviceDetailLandscapeLayout(
+      mainContent: isLargeScreen
+          ? _buildPrimaryControlCard(context, isDark, dialSize: _scale(200))
+          : _buildCompactDialWithModes(context, isDark),
+      secondaryContent: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (statusSection is! SizedBox) ...[
+            SectionTitle(
+              title: localizations.device_sensors,
+              icon: MdiIcons.eyeSettings,
             ),
-          ),
-        ),
-      ],
+            AppSpacings.spacingMdVertical,
+            statusSection,
+          ],
+          if (speedControl != null || fanOptions.isNotEmpty) ...[
+            if (statusSection is! SizedBox) AppSpacings.spacingLgVertical,
+            SectionTitle(
+              title: localizations.device_controls,
+              icon: MdiIcons.tuneVertical,
+            ),
+            AppSpacings.spacingMdVertical,
+            if (speedControl != null) ...[
+              speedControl,
+              if (fanOptions.isNotEmpty) AppSpacings.spacingMdVertical,
+            ],
+            ...fanOptions,
+          ],
+        ],
+      ),
     );
   }
 
@@ -942,30 +980,33 @@ class _AirConditionerDeviceDetailState
   ) {
     final humidityChannel = _device.humidityChannel;
     final contactChannel = _device.contactChannel;
-    final useVerticalLayout = _screenService.isLandscape &&
-        (_screenService.isSmallScreen || _screenService.isMediumScreen);
 
-    // Build info tiles list
-    final infoTiles = <Widget>[];
+    // Build sensor info list
+    final sensors = <_SensorInfo>[];
 
     // Temperature (always present)
-    infoTiles.add(InfoTile(
+    sensors.add(_SensorInfo(
+      id: 'temperature',
       label: localizations.device_current_temperature,
       value: NumberFormatUtils.defaultFormat.formatDecimal(
         _currentTemperature,
         decimalPlaces: 1,
       ),
       unit: '°C',
-      valueColor: modeColor,
+      icon: MdiIcons.thermometer,
+      valueColor: SensorColors.temperature(isDark),
     ));
 
     // Humidity (optional)
     if (humidityChannel != null) {
-      infoTiles.add(InfoTile(
-        label: localizations.device_current_humidity,
+      sensors.add(_SensorInfo(
+        id: 'humidity',
+        label: localizations.device_humidity,
         value: NumberFormatUtils.defaultFormat
             .formatInteger(humidityChannel.humidity),
         unit: '%',
+        icon: MdiIcons.waterPercent,
+        valueColor: SensorColors.humidity(isDark),
       ));
     }
 
@@ -973,11 +1014,14 @@ class _AirConditionerDeviceDetailState
     // detected = true means window is open
     if (contactChannel != null) {
       final isOpen = contactChannel.detected;
-      infoTiles.add(InfoTile(
+      sensors.add(_SensorInfo(
+        id: 'contact',
         label: localizations.contact_sensor_window,
         value: isOpen
             ? localizations.contact_sensor_open
             : localizations.contact_sensor_closed,
+        icon: MdiIcons.windowOpenVariant,
+        valueColor: SensorColors.alert(isDark),
         isWarning: isOpen,
       ));
     }
@@ -987,11 +1031,14 @@ class _AirConditionerDeviceDetailState
     final leakChannel = _device.leakChannel;
     if (leakChannel != null) {
       final isLeaking = leakChannel.detected;
-      infoTiles.add(InfoTile(
+      sensors.add(_SensorInfo(
+        id: 'leak',
         label: localizations.leak_sensor_water,
         value: isLeaking
             ? localizations.leak_sensor_detected
             : localizations.leak_sensor_dry,
+        icon: MdiIcons.pipeLeak,
+        valueColor: SensorColors.alert(isDark),
         isWarning: isLeaking,
       ));
     }
@@ -1002,83 +1049,103 @@ class _AirConditionerDeviceDetailState
       if (filterChannel.hasLifeRemaining) {
         // Show life remaining percentage
         final filterLife = _device.filterLifeRemaining / 100.0;
-        infoTiles.add(InfoTile(
+        sensors.add(_SensorInfo(
+          id: 'filter_life',
           label: localizations.device_filter_life,
           value: '${(filterLife * 100).toInt()}',
           unit: '%',
+          icon: MdiIcons.airFilter,
+          valueColor: SensorColors.filter(isDark),
           isWarning: filterLife < 0.3 || _device.isFilterNeedsReplacement,
         ));
       } else if (filterChannel.hasStatus) {
         // Show status if no life remaining property
-        infoTiles.add(InfoTile(
+        sensors.add(_SensorInfo(
+          id: 'filter_status',
           label: localizations.device_filter_status,
           value: FilterUtils.getStatusLabel(localizations, filterChannel.status),
+          icon: MdiIcons.airFilter,
+          valueColor: SensorColors.filter(isDark),
           isWarning: _device.isFilterNeedsReplacement,
         ));
       }
     }
 
-    if (infoTiles.isEmpty) {
+    if (sensors.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (useVerticalLayout)
-          ...infoTiles
-              .expand((tile) => [
-                    SizedBox(width: double.infinity, child: tile),
-                    AppSpacings.spacingSmVertical,
-                  ])
-              .take(infoTiles.length * 2 - 1)
-        else
-          _buildInfoTilesGrid(infoTiles),
-      ],
-    );
+    return _buildSensorsSection(isDark, sensors, modeColor);
   }
 
-  Widget _buildInfoTilesGrid(List<Widget> tiles) {
-    // Dynamic tiles per row based on total count:
-    // 1 tile: full width, 2 tiles: 2 per row, 3+ tiles: 3 per row
-    final int tilesPerRow = tiles.length == 1
-        ? 1
-        : tiles.length == 2
-            ? 2
-            : 3;
+  /// Builds sensors section matching climate domain pattern:
+  /// - Portrait: HorizontalScrollWithGradient with HorizontalTileCompact
+  /// - Landscape large: GridView.count with 2 columns using VerticalTileLarge
+  /// - Landscape small/medium: Column with HorizontalTileStretched
+  Widget _buildSensorsSection(bool isDark, List<_SensorInfo> sensors, Color accentColor) {
+    if (sensors.isEmpty) return const SizedBox.shrink();
 
-    final rows = <Widget>[];
+    final isLandscape = _screenService.isLandscape;
+    final isLargeScreen = _screenService.isLargeScreen;
 
-    for (var i = 0; i < tiles.length; i += tilesPerRow) {
-      final rowTiles = tiles.skip(i).take(tilesPerRow).toList();
+    // Portrait: Horizontal scroll with gradient (edge-to-edge)
+    if (!isLandscape) {
+      final tileHeight = _scale(AppTileHeight.horizontal);
 
-      // Build row with tiles
-      final rowChildren = <Widget>[];
-      for (var j = 0; j < rowTiles.length; j++) {
-        rowChildren.add(Expanded(child: rowTiles[j]));
-        if (j < rowTiles.length - 1) {
-          rowChildren.add(AppSpacings.spacingSmHorizontal);
-        }
-      }
-
-      // Add empty spacers if row is not full (to maintain consistent sizing)
-      final emptySlots = tilesPerRow - rowTiles.length;
-      for (var j = 0; j < emptySlots; j++) {
-        rowChildren.add(AppSpacings.spacingSmHorizontal);
-        rowChildren.add(const Expanded(child: SizedBox.shrink()));
-      }
-
-      rows.add(Row(children: rowChildren));
-
-      // Add spacing between rows
-      if (i + tilesPerRow < tiles.length) {
-        rows.add(AppSpacings.spacingSmVertical);
-      }
+      return HorizontalScrollWithGradient(
+        height: tileHeight,
+        layoutPadding: AppSpacings.pLg,
+        itemCount: sensors.length,
+        separatorWidth: AppSpacings.pMd,
+        itemBuilder: (context, index) {
+          final sensor = sensors[index];
+          return HorizontalTileCompact(
+            icon: sensor.icon,
+            name: sensor.displayValue,
+            status: sensor.label,
+            iconAccentColor: sensor.valueColor ?? accentColor,
+          );
+        },
+      );
     }
 
+    // Landscape large: GridView with 2 columns (vertical tile layout)
+    if (isLargeScreen) {
+      return GridView.count(
+        crossAxisCount: 2,
+        mainAxisSpacing: AppSpacings.pMd,
+        crossAxisSpacing: AppSpacings.pMd,
+        childAspectRatio: AppTileAspectRatio.square,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        children: sensors.map((sensor) {
+          return VerticalTileLarge(
+            icon: sensor.icon,
+            name: sensor.displayValue,
+            status: sensor.label,
+            iconAccentColor: sensor.valueColor ?? accentColor,
+          );
+        }).toList(),
+      );
+    }
+
+    // Landscape small/medium: Column with fixed-height tiles (horizontal layout)
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: rows,
+      children: sensors.asMap().entries.map((entry) {
+        final index = entry.key;
+        final sensor = entry.value;
+        final isLast = index == sensors.length - 1;
+
+        return Padding(
+          padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
+          child: HorizontalTileStretched(
+            icon: sensor.icon,
+            name: sensor.displayValue,
+            status: sensor.label,
+            iconAccentColor: sensor.valueColor ?? accentColor,
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -1220,50 +1287,11 @@ class _AirConditionerDeviceDetailState
   // FAN CONTROLS
   // --------------------------------------------------------------------------
 
-  Widget _buildFanControls(
-    AppLocalizations localizations,
-    bool isDark,
-    Color modeColor,
-    bool useCompactLayout,
-  ) {
-    final fanChannel = _device.fanChannel;
-    final controls = <Widget>[];
-
-    // Speed control with mode selector inside
-    if (fanChannel.hasSpeed) {
-      controls.add(_buildFanSpeedControl(localizations, isDark, modeColor, useCompactLayout));
-      controls.add(AppSpacings.spacingMdVertical);
-    } else if (fanChannel.hasMode && fanChannel.availableModes.length > 1) {
-      // If no speed but has mode, show mode selector standalone
-      controls.add(_buildFanModeControl(localizations, modeColor, useCompactLayout));
-      controls.add(AppSpacings.spacingMdVertical);
-    }
-
-    // Options (swing, direction, natural breeze, timer, locked)
-    final options = _buildFanOptions(localizations, isDark, modeColor, useCompactLayout);
-    if (options.isNotEmpty) {
-      controls.addAll(options);
-    }
-
-    if (controls.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    // Remove trailing spacer
-    if (controls.isNotEmpty && controls.last == AppSpacings.spacingMdVertical) {
-      controls.removeLast();
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: controls,
-    );
-  }
-
   Widget _buildFanModeControl(
     AppLocalizations localizations,
     Color activeColor,
     bool useCompactLayout,
+    double? tileHeight,
   ) {
     final fanChannel = _device.fanChannel;
     final availableModes = fanChannel.availableModes;
@@ -1278,7 +1306,7 @@ class _AirConditionerDeviceDetailState
         );
       }).toList();
 
-      return ValueSelectorRow<FanModeValue>(
+      final valueSelectorRow = ValueSelectorRow<FanModeValue>(
         currentValue: selectedMode,
         label: localizations.device_fan_mode,
         icon: Icons.air,
@@ -1290,12 +1318,22 @@ class _AirConditionerDeviceDetailState
             : '',
         columns: availableModes.length > 4 ? 3 : availableModes.length,
         layout: ValueSelectorRowLayout.compact,
+        showChevron: _screenService.isLargeScreen,
         onChanged: (mode) {
           if (mode != null) {
             _setFanMode(mode);
           }
         },
       );
+
+      if (tileHeight != null) {
+        return SizedBox(
+          height: tileHeight,
+          width: double.infinity,
+          child: valueSelectorRow,
+        );
+      }
+      return valueSelectorRow;
     }
 
     return ModeSelector<FanModeValue>(
@@ -1320,6 +1358,7 @@ class _AirConditionerDeviceDetailState
     bool isDark,
     Color modeColor,
     bool useCompactLayout,
+    double tileHeight,
   ) {
     final fanChannel = _device.fanChannel;
 
@@ -1333,63 +1372,41 @@ class _AirConditionerDeviceDetailState
       final availableLevels = fanChannel.availableSpeedLevels;
       if (availableLevels.isEmpty) return const SizedBox.shrink();
 
-      final options = availableLevels.map((level) {
-        return ValueOption(
-          value: level,
-          label: FanUtils.getSpeedLevelLabel(localizations, level),
-        );
-      }).toList();
+      final isLandscape = _screenService.isLandscape;
 
-      final speedWidget = ValueSelectorRow<FanSpeedLevelValue>(
-        currentValue: fanChannel.speedLevel,
-        label: localizations.device_fan_speed,
-        icon: Icons.speed,
-        sheetTitle: localizations.device_fan_speed,
-        activeColor: modeColor,
-        options: options,
-        displayFormatter: (level) => level != null
-            ? FanUtils.getSpeedLevelLabel(localizations, level)
-            : localizations.fan_speed_off,
-        columns: availableLevels.length > 4 ? 3 : availableLevels.length,
-        layout: useCompactLayout
-            ? ValueSelectorRowLayout.compact
-            : ValueSelectorRowLayout.horizontal,
-        onChanged: _currentMode != AcMode.off
-            ? (level) {
-                if (level != null) _setFanSpeedLevel(level);
-              }
-            : null,
-      );
+      // Landscape: Use ValueSelectorRow button
+      if (isLandscape) {
+        final options = availableLevels.map((level) {
+          return ValueOption(
+            value: level,
+            label: FanUtils.getSpeedLevelLabel(localizations, level),
+          );
+        }).toList();
 
-      // If fan has mode, add mode selector below (always button since speed is button)
-      if (hasMode) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            speedWidget,
-            AppSpacings.spacingMdVertical,
-            _buildFanModeControl(localizations, modeColor, true),
-          ],
-        );
-      }
-
-      return speedWidget;
-    } else {
-      final range = fanChannel.maxSpeed - fanChannel.minSpeed;
-      if (range <= 0) return const SizedBox.shrink();
-
-      if (useCompactLayout) {
-        final speedWidget = ValueSelectorRow<double>(
-          currentValue: _fanSpeed,
-          label: localizations.device_fan_speed,
-          icon: Icons.speed,
-          sheetTitle: localizations.device_fan_speed,
-          activeColor: modeColor,
-          options: _getFanSpeedOptions(localizations),
-          displayFormatter: (v) => _formatFanSpeed(localizations, v),
-          columns: 4,
-          layout: ValueSelectorRowLayout.compact,
-          onChanged: _currentMode != AcMode.off ? (v) => _setFanSpeedValue(v ?? 0) : null,
+        final speedWidget = SizedBox(
+          height: tileHeight,
+          width: double.infinity,
+          child: ValueSelectorRow<FanSpeedLevelValue>(
+            currentValue: fanChannel.speedLevel,
+            label: localizations.device_fan_speed,
+            icon: Icons.speed,
+            sheetTitle: localizations.device_fan_speed,
+            activeColor: modeColor,
+            options: options,
+            displayFormatter: (level) => level != null
+                ? FanUtils.getSpeedLevelLabel(localizations, level)
+                : localizations.fan_speed_off,
+            columns: availableLevels.length > 4 ? 3 : availableLevels.length,
+            layout: useCompactLayout
+                ? ValueSelectorRowLayout.compact
+                : ValueSelectorRowLayout.horizontal,
+            showChevron: _screenService.isLargeScreen,
+            onChanged: _currentMode != AcMode.off
+                ? (level) {
+                    if (level != null) _setFanSpeedLevel(level);
+                  }
+                : null,
+          ),
         );
 
         // If fan has mode, add mode selector below
@@ -1399,14 +1416,86 @@ class _AirConditionerDeviceDetailState
             children: [
               speedWidget,
               AppSpacings.spacingMdVertical,
-              _buildFanModeControl(localizations, modeColor, useCompactLayout),
+              _buildFanModeControl(localizations, modeColor, true, tileHeight),
             ],
           );
         }
 
         return speedWidget;
       } else {
-        // Use SpeedSlider widget for landscape layout
+        // Portrait: Use SpeedSlider with defined steps
+        final steps = availableLevels
+            .map((level) => FanUtils.getSpeedLevelLabel(localizations, level))
+            .toList();
+
+        final isEnabled = _currentMode != AcMode.off;
+
+        // Calculate normalized value from current speed level index
+        final currentLevel = fanChannel.speedLevel;
+        final currentIndex = currentLevel != null
+            ? availableLevels.indexOf(currentLevel)
+            : 0;
+        final normalizedValue = availableLevels.length > 1
+            ? currentIndex / (availableLevels.length - 1)
+            : 0.0;
+
+        return SpeedSlider(
+          value: normalizedValue.clamp(0.0, 1.0),
+          activeColor: modeColor,
+          enabled: isEnabled,
+          steps: steps,
+          onChanged: (value) {
+            // Convert slider value to speed level index
+            final index = ((value * (availableLevels.length - 1)).round())
+                .clamp(0, availableLevels.length - 1);
+            _setFanSpeedLevel(availableLevels[index]);
+          },
+          footer: hasMode
+              ? _buildFanModeControl(localizations, modeColor, false, null)
+              : null,
+        );
+      }
+    } else {
+      final range = fanChannel.maxSpeed - fanChannel.minSpeed;
+      if (range <= 0) return const SizedBox.shrink();
+
+      final isLandscape = _screenService.isLandscape;
+
+      // Landscape (all sizes): Use ValueSelectorRow button
+      if (isLandscape) {
+        final speedWidget = SizedBox(
+          height: tileHeight,
+          width: double.infinity,
+          child: ValueSelectorRow<double>(
+            currentValue: _fanSpeed,
+            label: localizations.device_fan_speed,
+            icon: Icons.speed,
+            sheetTitle: localizations.device_fan_speed,
+            activeColor: modeColor,
+            options: _getFanSpeedOptions(localizations),
+            displayFormatter: (v) => _formatFanSpeed(localizations, v),
+            columns: 4,
+            layout: ValueSelectorRowLayout.compact,
+            showChevron: _screenService.isLargeScreen,
+            onChanged: _currentMode != AcMode.off ? (v) => _setFanSpeedValue(v ?? 0) : null,
+          ),
+        );
+
+        // If fan has mode, add mode selector below
+        if (hasMode) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              speedWidget,
+              AppSpacings.spacingMdVertical,
+              _buildFanModeControl(localizations, modeColor, true, tileHeight),
+            ],
+          );
+        }
+
+        return speedWidget;
+      } else {
+        // Portrait (all sizes): Use SpeedSlider
         // Mode selector goes inside the slider's bordered box as footer
         final isEnabled = _currentMode != AcMode.off;
 
@@ -1422,7 +1511,7 @@ class _AirConditionerDeviceDetailState
           ],
           onChanged: _setFanSpeedValue,
           footer: hasMode
-              ? _buildFanModeControl(localizations, modeColor, false)
+              ? _buildFanModeControl(localizations, modeColor, false, null)
               : null,
         );
       }
@@ -1449,13 +1538,23 @@ class _AirConditionerDeviceDetailState
     bool isDark,
     Color modeColor,
     bool useCompactLayout,
+    double tileHeight,
   ) {
     final fanChannel = _device.fanChannel;
     final options = <Widget>[];
 
+    // Helper to wrap control with fixed height
+    Widget wrapControl(Widget child) {
+      return SizedBox(
+        height: tileHeight,
+        width: double.infinity,
+        child: child,
+      );
+    }
+
     // Oscillation / Swing
     if (fanChannel.hasSwing) {
-      options.add(UniversalTile(
+      options.add(wrapControl(UniversalTile(
         layout: TileLayout.horizontal,
         icon: Icons.sync,
         name: localizations.device_oscillation,
@@ -1468,14 +1567,14 @@ class _AirConditionerDeviceDetailState
         showGlow: false,
         showDoubleBorder: false,
         showInactiveBorder: true,
-      ));
-      options.add(AppSpacings.spacingSmVertical);
+      )));
+      options.add(AppSpacings.spacingMdVertical);
     }
 
     // Direction
     if (fanChannel.hasDirection) {
       final isReversed = fanChannel.direction == FanDirectionValue.counterClockwise;
-      options.add(UniversalTile(
+      options.add(wrapControl(UniversalTile(
         layout: TileLayout.horizontal,
         icon: Icons.swap_vert,
         name: localizations.device_direction,
@@ -1493,13 +1592,13 @@ class _AirConditionerDeviceDetailState
         showGlow: false,
         showDoubleBorder: false,
         showInactiveBorder: true,
-      ));
-      options.add(AppSpacings.spacingSmVertical);
+      )));
+      options.add(AppSpacings.spacingMdVertical);
     }
 
     // Natural Breeze
     if (fanChannel.hasNaturalBreeze) {
-      options.add(UniversalTile(
+      options.add(wrapControl(UniversalTile(
         layout: TileLayout.horizontal,
         icon: MdiIcons.weatherWindy,
         name: localizations.device_natural_breeze,
@@ -1512,13 +1611,13 @@ class _AirConditionerDeviceDetailState
         showGlow: false,
         showDoubleBorder: false,
         showInactiveBorder: true,
-      ));
-      options.add(AppSpacings.spacingSmVertical);
+      )));
+      options.add(AppSpacings.spacingMdVertical);
     }
 
     // Child Lock
     if (fanChannel.hasLocked) {
-      options.add(UniversalTile(
+      options.add(wrapControl(UniversalTile(
         layout: TileLayout.horizontal,
         icon: Icons.lock,
         name: localizations.device_child_lock,
@@ -1531,17 +1630,17 @@ class _AirConditionerDeviceDetailState
         showGlow: false,
         showDoubleBorder: false,
         showInactiveBorder: true,
-      ));
-      options.add(AppSpacings.spacingSmVertical);
+      )));
+      options.add(AppSpacings.spacingMdVertical);
     }
 
     // Timer
     if (fanChannel.hasTimer) {
-      options.add(_buildTimerControl(localizations, modeColor, useCompactLayout));
+      options.add(_buildTimerControl(localizations, modeColor, useCompactLayout, tileHeight));
     }
 
     // Remove trailing spacer
-    if (options.isNotEmpty && options.last == AppSpacings.spacingSmVertical) {
+    if (options.isNotEmpty && options.last == AppSpacings.spacingMdVertical) {
       options.removeLast();
     }
 
@@ -1552,6 +1651,7 @@ class _AirConditionerDeviceDetailState
     AppLocalizations localizations,
     Color modeColor,
     bool useCompactLayout,
+    double tileHeight,
   ) {
     final fanChannel = _device.fanChannel;
 
@@ -1559,45 +1659,55 @@ class _AirConditionerDeviceDetailState
       final options = _getTimerPresetOptions(localizations);
       if (options.isEmpty) return const SizedBox.shrink();
 
-      return ValueSelectorRow<FanTimerPresetValue?>(
-        currentValue: fanChannel.timerPreset,
-        label: localizations.device_timer,
-        icon: Icons.timer_outlined,
-        sheetTitle: localizations.device_auto_off_timer,
-        activeColor: modeColor,
-        options: options,
-        displayFormatter: (p) => _formatTimerPreset(localizations, p),
-        columns: options.length > 4 ? 4 : options.length,
-        layout: useCompactLayout
-            ? ValueSelectorRowLayout.compact
-            : ValueSelectorRowLayout.horizontal,
-        onChanged: (preset) {
-          if (preset != null) {
-            _setFanTimerPreset(preset);
-          }
-        },
+      return SizedBox(
+        height: tileHeight,
+        width: double.infinity,
+        child: ValueSelectorRow<FanTimerPresetValue?>(
+          currentValue: fanChannel.timerPreset,
+          label: localizations.device_timer,
+          icon: Icons.timer_outlined,
+          sheetTitle: localizations.device_auto_off_timer,
+          activeColor: modeColor,
+          options: options,
+          displayFormatter: (p) => _formatTimerPreset(localizations, p),
+          columns: options.length > 4 ? 4 : options.length,
+          layout: useCompactLayout
+              ? ValueSelectorRowLayout.compact
+              : ValueSelectorRowLayout.horizontal,
+          showChevron: _screenService.isLargeScreen,
+          onChanged: (preset) {
+            if (preset != null) {
+              _setFanTimerPreset(preset);
+            }
+          },
+        ),
       );
     } else {
       final options = _getNumericTimerOptions(localizations);
       if (options.isEmpty) return const SizedBox.shrink();
 
-      return ValueSelectorRow<int>(
-        currentValue: fanChannel.timer,
-        label: localizations.device_timer,
-        icon: Icons.timer_outlined,
-        sheetTitle: localizations.device_auto_off_timer,
-        activeColor: modeColor,
-        options: options,
-        displayFormatter: (m) => _formatNumericTimer(localizations, m),
-        columns: options.length > 4 ? 4 : options.length,
-        layout: useCompactLayout
-            ? ValueSelectorRowLayout.compact
-            : ValueSelectorRowLayout.horizontal,
-        onChanged: (minutes) {
-          if (minutes != null) {
-            _setFanTimerNumeric(minutes);
-          }
-        },
+      return SizedBox(
+        height: tileHeight,
+        width: double.infinity,
+        child: ValueSelectorRow<int>(
+          currentValue: fanChannel.timer,
+          label: localizations.device_timer,
+          icon: Icons.timer_outlined,
+          sheetTitle: localizations.device_auto_off_timer,
+          activeColor: modeColor,
+          options: options,
+          displayFormatter: (m) => _formatNumericTimer(localizations, m),
+          columns: options.length > 4 ? 4 : options.length,
+          layout: useCompactLayout
+              ? ValueSelectorRowLayout.compact
+              : ValueSelectorRowLayout.horizontal,
+          showChevron: _screenService.isLargeScreen,
+          onChanged: (minutes) {
+            if (minutes != null) {
+              _setFanTimerNumeric(minutes);
+            }
+          },
+        ),
       );
     }
   }

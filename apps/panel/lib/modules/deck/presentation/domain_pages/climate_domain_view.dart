@@ -7,12 +7,13 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
+import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
-import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
+import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
@@ -244,19 +245,6 @@ class ClimateRoomState {
       auxiliaryDevices: auxiliaryDevices ?? this.auxiliaryDevices,
       sensors: sensors ?? this.sensors,
     );
-  }
-
-  String get modeLabel {
-    switch (mode) {
-      case ClimateMode.off:
-        return 'Off';
-      case ClimateMode.heat:
-        return 'Heating';
-      case ClimateMode.cool:
-        return 'Cooling';
-      case ClimateMode.auto:
-        return 'Auto';
-    }
   }
 
   List<AuxiliaryDevice> get humidityDevices =>
@@ -1469,22 +1457,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
   Color _getSensorColor(BuildContext context, String type) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    switch (type) {
-      case 'temp':
-        return isDark ? AppColorsDark.info : AppColorsLight.info;
-      case 'humidity':
-        return isDark ? AppColorsDark.success : AppColorsLight.success;
-      case 'aqi':
-      case 'pm':
-      case 'voc':
-        return isDark ? AppColorsDark.warning : AppColorsLight.warning;
-      case 'co2':
-        return isDark ? AppColorsDark.error : AppColorsLight.error;
-      case 'pressure':
-        return isDark ? AppColorsDark.info : AppColorsLight.info;
-      default:
-        return isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-    }
+    return SensorColors.forType(type, isDark);
   }
 
   DialAccentColor _getDialAccentType() {
@@ -1505,6 +1478,19 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     if (climateState == null) return false;
     // Use actual device activity status from backend
     return climateState.isHeating || climateState.isCooling;
+  }
+
+  String _getModeLabel(AppLocalizations localizations) {
+    switch (_state.mode) {
+      case ClimateMode.off:
+        return localizations.thermostat_mode_off;
+      case ClimateMode.heat:
+        return localizations.thermostat_mode_heat;
+      case ClimateMode.cool:
+        return localizations.thermostat_mode_cool;
+      case ClimateMode.auto:
+        return localizations.thermostat_mode_auto;
+    }
   }
 
   String _getStatusLabel(AppLocalizations localizations) {
@@ -1632,18 +1618,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   // --------------------------------------------------------------------------
 
   Widget _buildPortraitLayout(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     final hasAuxiliary = _state.auxiliaryDevices.isNotEmpty;
     final hasSensors = _state.sensors.isNotEmpty;
-    final isAtLeastMedium = _screenService.isAtLeastMedium;
-    final isSmallScreen = _screenService.isSmallScreen;
-
-    // Sensors layout:
-    // - Small: 2 columns, horizontal scroll, horizontal tiles (original)
-    // - Medium/Large: same as "quick scenes" - 3/4 columns, vertical tiles
-    final sensorColumns = isSmallScreen ? 2 : (isAtLeastMedium ? 4 : 3);
-
-    // Auxiliary layout: same as "other lights" - 2 cols, aspect ratio based on screen size
-    final auxiliaryAspectRatio = isAtLeastMedium ? 3.0 : 2.5;
 
     return PortraitViewLayout(
       content: Column(
@@ -1651,53 +1628,103 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         children: [
           _buildPrimaryControlCard(context, dialSize: _scale(200)),
           AppSpacings.spacingLgVertical,
+          // Sensors section - horizontal scroll like presets on window_covering.dart
           if (hasSensors) ...[
-            SectionTitle(title: 'Sensors', icon: MdiIcons.eyeSettings),
+            SectionTitle(
+              title: localizations.device_sensors,
+              icon: MdiIcons.eyeSettings,
+            ),
             AppSpacings.spacingMdVertical,
-            if (isSmallScreen)
-              // Small: horizontal scroll with horizontal tiles (original behavior)
-              SizedBox(
-                height: _scale(50),
-                child: _buildSensorsScrollRow(
-                  context,
-                  columns: sensorColumns,
-                  useVerticalTiles: false,
-                ),
-              )
-            else if (hasAuxiliary)
-              // Medium/Large with auxiliary: horizontal scroll with vertical tiles
-              SizedBox(
-                height: _scale(100),
-                child: _buildSensorsScrollRow(
-                  context,
-                  columns: sensorColumns,
-                  useVerticalTiles: true,
-                  statusFontSize: AppFontSize.extraSmall,
-                ),
-              )
-            else
-              // Medium/Large without auxiliary: grid with vertical tiles
-              _buildSensorsGrid(
-                context,
-                crossAxisCount: sensorColumns,
-                aspectRatio: 1.0,
-                statusFontSize: AppFontSize.extraSmall,
-              ),
+            _buildSensorsWithGradient(context),
             AppSpacings.spacingLgVertical,
           ],
+          // Auxiliary section - same as devices on covering domain
           if (hasAuxiliary) ...[
-            SectionTitle(title: 'Auxiliary', icon: MdiIcons.devices),
-            AppSpacings.spacingMdVertical,
-            _buildAuxiliaryGrid(
-              context,
-              crossAxisCount: 2,
-              aspectRatio: auxiliaryAspectRatio,
+            SectionTitle(
+              title: localizations.climate_role_auxiliary,
+              icon: MdiIcons.devices,
             ),
+            AppSpacings.spacingMdVertical,
+            _buildPortraitAuxiliaryGrid(context),
           ],
         ],
       ),
       // No mode selector - climate uses integrated mode control in dial
     );
+  }
+
+  /// Builds the sensors horizontal scroll with edge gradients.
+  /// Matches the presets pattern from window_covering.dart.
+  Widget _buildSensorsWithGradient(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+    final tileHeight = _scale(AppTileHeight.horizontal);
+
+    return HorizontalScrollWithGradient(
+      height: tileHeight,
+      layoutPadding: AppSpacings.pLg,
+      itemCount: _state.sensors.length,
+      separatorWidth: AppSpacings.pMd,
+      itemBuilder: (context, index) {
+        final sensor = _state.sensors[index];
+
+        return HorizontalTileCompact(
+          icon: sensor.icon,
+          name: sensor.value,
+          status: _translateSensorLabel(localizations, sensor),
+          iconAccentColor: _getSensorColor(context, sensor.type),
+          onTileTap: () {
+            // TODO: Sensor detail
+          },
+        );
+      },
+    );
+  }
+
+  /// Builds a grid of auxiliary device tiles with fixed height.
+  /// Matches the devices pattern from covering domain view.
+  Widget _buildPortraitAuxiliaryGrid(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+    final devices = _state.auxiliaryDevices;
+
+    // Build rows of tiles (2 columns)
+    const crossAxisCount = 2;
+    final List<Widget> rows = [];
+    for (var i = 0; i < devices.length; i += crossAxisCount) {
+      final rowItems = <Widget>[];
+      for (var j = 0; j < crossAxisCount; j++) {
+        final index = i + j;
+        if (index < devices.length) {
+          final device = devices[index];
+          final deviceView = _devicesService?.getDevice(device.id);
+          final isOffline = deviceView != null && !deviceView.isOnline;
+
+          rowItems.add(
+            Expanded(
+              child: DeviceTilePortrait(
+                icon: device.icon,
+                name: device.name,
+                status: _translateDeviceStatus(localizations, device.status, device.isActive),
+                isActive: device.isActive,
+                isOffline: isOffline,
+                onIconTap: isOffline ? null : () => _toggleAuxiliaryDevice(device),
+                onTileTap: () => _openAuxiliaryDeviceDetail(device),
+              ),
+            ),
+          );
+        } else {
+          rowItems.add(const Expanded(child: SizedBox()));
+        }
+        if (j < crossAxisCount - 1) {
+          rowItems.add(SizedBox(width: AppSpacings.pMd));
+        }
+      }
+      if (rows.isNotEmpty) {
+        rows.add(SizedBox(height: AppSpacings.pMd));
+      }
+      rows.add(Row(children: rowItems));
+    }
+
+    return Column(children: rows);
   }
 
   // --------------------------------------------------------------------------
@@ -1723,63 +1750,115 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   }
 
   Widget _buildLandscapeAdditionalColumn(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
     final hasSensors = _state.sensors.isNotEmpty;
     final hasAuxiliary = _state.auxiliaryDevices.isNotEmpty;
-    final isLargeScreen = _screenService.isLargeScreen;
 
-    // Sensors: large = 2 columns vertical, medium/small = 1 column horizontal
-    final sensorsCrossAxisCount = isLargeScreen ? 2 : 1;
-    final sensorsAspectRatio = isLargeScreen ? 1.0 : 3.0;
+    // Build content widgets: headers + cards/tiles
+    final contentWidgets = <Widget>[];
 
-    // Auxiliary: always 1 column horizontal
-    const auxiliaryCrossAxisCount = 1;
-    const auxiliaryAspectRatio = 3.0;
+    // Sensors section - displayed as a card (like presets on window_covering.dart)
+    if (hasSensors) {
+      contentWidgets.add(
+        SectionTitle(title: localizations.device_sensors, icon: MdiIcons.eyeSettings),
+      );
+      contentWidgets.add(_buildLandscapeSensorsCard(context));
+    }
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (hasSensors) ...[
-            SectionTitle(title: 'Sensors', icon: MdiIcons.eyeSettings),
-            AppSpacings.spacingMdVertical,
-            _buildSensorsGrid(context,
-                crossAxisCount: sensorsCrossAxisCount,
-                aspectRatio: sensorsAspectRatio,
-                showInactiveBorder: true),
-            if (hasAuxiliary) AppSpacings.spacingLgVertical,
-          ],
-          if (hasAuxiliary) ...[
-            SectionTitle(title: 'Auxiliary', icon: MdiIcons.devices),
-            AppSpacings.spacingMdVertical,
-            _buildAuxiliaryGrid(context,
-                crossAxisCount: auxiliaryCrossAxisCount,
-                aspectRatio: auxiliaryAspectRatio,
-                showInactiveBorder: true),
-          ],
-          if (!hasSensors && !hasAuxiliary)
-            Center(
-              child: Padding(
-                padding: EdgeInsets.only(top: AppSpacings.pLg * 2),
-                child: Text(
-                  'No devices',
-                  style: TextStyle(
-                    color: isDark
-                        ? AppTextColorDark.secondary
-                        : AppTextColorLight.secondary,
-                    fontSize: AppFontSize.small,
-                  ),
-                ),
-              ),
-            ),
+    // Auxiliary section - displayed as individual tiles (like devices on covering domain)
+    if (hasAuxiliary) {
+      contentWidgets.add(
+        SectionTitle(title: localizations.climate_role_auxiliary, icon: MdiIcons.devices),
+      );
+
+      // Add each auxiliary device as an individual tile
+      for (final device in _state.auxiliaryDevices) {
+        final deviceView = _devicesService?.getDevice(device.id);
+        final isOffline = deviceView != null && !deviceView.isOnline;
+
+        contentWidgets.add(
+          DeviceTileLandscape(
+            icon: device.icon,
+            name: device.name,
+            status: _translateDeviceStatus(localizations, device.status, device.isActive),
+            isActive: device.isActive,
+            isOffline: isOffline,
+            onIconTap: isOffline ? null : () => _toggleAuxiliaryDevice(device),
+            onTileTap: () => _openAuxiliaryDeviceDetail(device),
+          ),
+        );
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (int i = 0; i < contentWidgets.length; i++) ...[
+          if (i > 0) SizedBox(height: AppSpacings.pMd),
+          contentWidgets[i],
         ],
-      ),
+      ],
+    );
+  }
+
+  /// Build sensors card matching the presets pattern from window_covering.dart.
+  /// Large screens: 2 vertical tiles per row (square).
+  /// Small/medium screens: Column of fixed-height horizontal tiles.
+  Widget _buildLandscapeSensorsCard(BuildContext context) {
+    final isLargeScreen = _screenService.isLargeScreen;
+    final localizations = AppLocalizations.of(context)!;
+    final sensors = _state.sensors;
+
+    // Large screens: 2 vertical tiles per row (square)
+    if (isLargeScreen) {
+      return GridView.count(
+        crossAxisCount: 2,
+        mainAxisSpacing: AppSpacings.pMd,
+        crossAxisSpacing: AppSpacings.pMd,
+        childAspectRatio: AppTileAspectRatio.square,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        children: sensors.map((sensor) {
+          return VerticalTileLarge(
+            icon: sensor.icon,
+            name: sensor.value,
+            status: _translateSensorLabel(localizations, sensor),
+            iconAccentColor: _getSensorColor(context, sensor.type),
+            onTileTap: () {
+              // TODO: Sensor detail
+            },
+          );
+        }).toList(),
+      );
+    }
+
+    // Small/medium: Column of fixed-height horizontal tiles
+    return Column(
+      children: sensors.asMap().entries.map((entry) {
+        final index = entry.key;
+        final sensor = entry.value;
+        final isLast = index == sensors.length - 1;
+
+        return Padding(
+          padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
+          child: HorizontalTileStretched(
+            icon: sensor.icon,
+            name: sensor.value,
+            status: _translateSensorLabel(localizations, sensor),
+            iconAccentColor: _getSensorColor(context, sensor.type),
+            onTileTap: () {
+              // TODO: Sensor detail
+            },
+          ),
+        );
+      }).toList(),
     );
   }
 
   /// Compact dial with vertical icon-only mode selector on the right
   Widget _buildCompactDialWithModes(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
     final modeColor = _getModeColor(context);
     final borderColor = _state.mode != ClimateMode.off
         ? modeColor.withValues(alpha: 0.3)
@@ -1840,7 +1919,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                       accentType: _getDialAccentType(),
                       isActive: _isDialActive(),
                       enabled: _state.mode != ClimateMode.off,
-                      modeLabel: _state.mode.name,
+                      modeLabel: _getModeLabel(localizations),
                       displayFormat: DialDisplayFormat.temperature,
                       onChanged: _setTargetTemp,
                     ),
@@ -1854,7 +1933,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'Tap for details',
+                        localizations.climate_tap_for_details,
                         style: TextStyle(
                           color: isDark
                               ? AppTextColorDark.secondary
@@ -1943,6 +2022,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     BuildContext context, {
     required double dialSize,
   }) {
+    final localizations = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final modeColor = _getModeColor(context);
     final borderColor = _state.mode != ClimateMode.off
@@ -1977,7 +2057,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
               accentType: _getDialAccentType(),
               isActive: _isDialActive(),
               enabled: _state.mode != ClimateMode.off,
-              modeLabel: _state.mode.name,
+              modeLabel: _getModeLabel(localizations),
               displayFormat: DialDisplayFormat.temperature,
               onChanged: _setTargetTemp,
             ),
@@ -1989,7 +2069,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Tap for details',
+                    localizations.climate_tap_for_details,
                     style: TextStyle(
                       color: isDark
                           ? AppTextColorDark.secondary
@@ -2029,78 +2109,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   // SENSORS
   // --------------------------------------------------------------------------
 
-  /// Builds a horizontal scrollable row of sensor tiles.
-  /// Tiles are sized based on column count to match grid layout sizing.
-  Widget _buildSensorsScrollRow(
-    BuildContext context, {
-    required int columns,
-    bool useVerticalTiles = true,
-    double? statusFontSize,
-  }) {
-    final tileLayout =
-        useVerticalTiles ? TileLayout.vertical : TileLayout.horizontal;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final totalSpacing = AppSpacings.pMd * (columns - 1);
-        final tileWidth = (constraints.maxWidth - totalSpacing) / columns;
-
-        return ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: _state.sensors.length,
-          separatorBuilder: (context, index) => AppSpacings.spacingMdHorizontal,
-          itemBuilder: (context, index) {
-            return SizedBox(
-              width: tileWidth,
-              child: _buildSensorTile(
-                context,
-                _state.sensors[index],
-                layout: tileLayout,
-                statusFontSize: statusFontSize,
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  /// Builds a grid of sensor tiles that fill the available width.
-  /// Used on large screens without auxiliary devices.
-  Widget _buildSensorsGrid(
-    BuildContext context, {
-    required int crossAxisCount,
-    double? aspectRatio,
-    double? statusFontSize,
-    bool showInactiveBorder = false,
-  }) {
-    // Use horizontal layout for single column (aspect ratio > 1)
-    final useHorizontalLayout =
-        crossAxisCount == 1 || (aspectRatio != null && aspectRatio > 1.5);
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        crossAxisSpacing: AppSpacings.pMd,
-        mainAxisSpacing: AppSpacings.pMd,
-        childAspectRatio: aspectRatio ?? 1.0,
-      ),
-      itemCount: _state.sensors.length,
-      itemBuilder: (context, index) {
-        return _buildSensorTile(
-          context,
-          _state.sensors[index],
-          layout:
-              useHorizontalLayout ? TileLayout.horizontal : TileLayout.vertical,
-          statusFontSize: statusFontSize,
-          showInactiveBorder: showInactiveBorder,
-        );
-      },
-    );
-  }
-
   /// Translates sensor label based on type
   String _translateSensorLabel(
       AppLocalizations localizations, ClimateSensor sensor) {
@@ -2114,66 +2122,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
   }
 
-  /// Builds a single sensor tile widget using UniversalTile.
-  Widget _buildSensorTile(
-    BuildContext context,
-    ClimateSensor sensor, {
-    TileLayout layout = TileLayout.horizontal,
-    double? statusFontSize,
-    bool showInactiveBorder = false,
-  }) {
-    final sensorColor = _getSensorColor(context, sensor.type);
-    final localizations = AppLocalizations.of(context)!;
-
-    return UniversalTile(
-      layout: layout,
-      icon: sensor.icon,
-      name: sensor.value,
-      status: _translateSensorLabel(localizations, sensor),
-      iconAccentColor: sensorColor,
-      statusFontSize: statusFontSize,
-      showDoubleBorder: false,
-      showWarningBadge: false,
-      showInactiveBorder: showInactiveBorder,
-      onTileTap: () {
-        // TODO: Sensor detail
-      },
-    );
-  }
-
   // --------------------------------------------------------------------------
   // AUXILIARY
   // --------------------------------------------------------------------------
-
-  /// Builds a grid of auxiliary device tiles that fill the available width.
-  Widget _buildAuxiliaryGrid(
-    BuildContext context, {
-    required int crossAxisCount,
-    double? aspectRatio,
-    bool showInactiveBorder = false,
-  }) {
-    // Use horizontal layout for single column or wide aspect ratio
-    final useHorizontalLayout =
-        crossAxisCount == 1 || (aspectRatio != null && aspectRatio > 1.5);
-    final tileLayout =
-        useHorizontalLayout ? TileLayout.horizontal : TileLayout.vertical;
-
-    final items =
-        _buildAuxiliaryItems(context, tileLayout, showInactiveBorder: showInactiveBorder);
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        crossAxisSpacing: AppSpacings.pMd,
-        mainAxisSpacing: AppSpacings.pMd,
-        childAspectRatio: aspectRatio ?? 1.0,
-      ),
-      itemCount: items.length,
-      itemBuilder: (context, index) => items[index],
-    );
-  }
 
   /// Translates device status string to localized version
   String _translateDeviceStatus(
@@ -2199,37 +2150,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       default:
         return status;
     }
-  }
-
-  /// Builds list of auxiliary tile widgets
-  List<Widget> _buildAuxiliaryItems(BuildContext context, TileLayout layout,
-      {bool showInactiveBorder = false}) {
-    final items = <Widget>[];
-    final localizations = AppLocalizations.of(context)!;
-
-    // Show all auxiliary devices individually
-    for (final device in _state.auxiliaryDevices) {
-      // Check if device is online
-      final deviceView = _devicesService?.getDevice(device.id);
-      final isOffline = deviceView != null && !deviceView.isOnline;
-
-      items.add(UniversalTile(
-        layout: layout,
-        icon: device.icon,
-        name: device.name,
-        status: _translateDeviceStatus(localizations, device.status, device.isActive),
-        isActive: device.isActive,
-        isOffline: isOffline,
-        showDoubleBorder: false,
-        showWarningBadge: true, // Show warning badge for offline devices
-        showInactiveBorder: showInactiveBorder,
-        // Disable icon tap (toggle) when device is offline
-        onIconTap: isOffline ? null : () => _toggleAuxiliaryDevice(device),
-        onTileTap: () => _openAuxiliaryDeviceDetail(device),
-      ));
-    }
-
-    return items;
   }
 
   /// Toggles the on/off state of an auxiliary device

@@ -8,10 +8,15 @@ import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
-import 'package:fastybird_smart_panel/core/widgets/info_tile.dart';
+import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
+import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
+import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -27,6 +32,30 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/air_dehumidi
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
+/// Internal sensor data structure for air dehumidifier device detail.
+class _SensorInfo {
+  final String id;
+  final String label;
+  final String value;
+  final String? unit;
+  final IconData icon;
+  final Color? valueColor;
+  final bool isWarning;
+
+  const _SensorInfo({
+    required this.id,
+    required this.label,
+    required this.value,
+    required this.icon,
+    this.unit,
+    this.valueColor,
+    this.isWarning = false,
+  });
+
+  /// Returns the formatted display value with unit
+  String get displayValue => unit != null ? '$value$unit' : value;
+}
 
 class AirDehumidifierDeviceDetail extends StatefulWidget {
   final AirDehumidifierDeviceView _device;
@@ -478,61 +507,41 @@ class _AirDehumidifierDeviceDetailState
   }
 
   Widget _buildLandscape(BuildContext context, bool isDark) {
+    final localizations = AppLocalizations.of(context)!;
     final humidityColor = DeviceColors.humidity(isDark);
-    final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
-    final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.light;
     final isLargeScreen = _screenService.isLargeScreen;
 
-    if (isLargeScreen) {
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            flex: 1,
-            child: Padding(
-              padding: AppSpacings.paddingLg,
-              child: _buildControlCard(isDark, humidityColor),
-            ),
-          ),
-          Container(width: _scale(1), color: borderColor),
-          Expanded(
-            flex: 1,
-            child: Container(
-              color: cardColor,
-              padding: AppSpacings.paddingLg,
-              child: SingleChildScrollView(
-                child: _buildStatus(isDark),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
+    final sensors = _getSensors(localizations, isDark);
+    final controlsSection = _buildLandscapeControlsSection(localizations, isDark, humidityColor);
 
-    // Compact layout for small/medium screens
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          flex: 2,
-          child: Padding(
-            padding: AppSpacings.paddingLg,
-            child: _buildCompactControlCard(context, isDark, humidityColor),
-          ),
-        ),
-        Container(width: _scale(1), color: borderColor),
-        Expanded(
-          flex: 1,
-          child: Container(
-            color: cardColor,
-            padding: AppSpacings.paddingLg,
-            child: SingleChildScrollView(
-              child: _buildStatus(isDark),
+    return DeviceDetailLandscapeLayout(
+      mainContent: isLargeScreen
+          ? _buildControlCard(isDark, humidityColor)
+          : _buildCompactControlCard(context, isDark, humidityColor),
+      secondaryContent: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Sensors at top with label
+          if (sensors.isNotEmpty) ...[
+            SectionTitle(
+              title: localizations.device_sensors,
+              icon: MdiIcons.eyeSettings,
             ),
-          ),
-        ),
-      ],
+            AppSpacings.spacingMdVertical,
+            _buildSensorsSection(isDark, sensors),
+            AppSpacings.spacingLgVertical,
+          ],
+          // Controls section with label
+          if (controlsSection is! SizedBox) ...[
+            SectionTitle(
+              title: localizations.device_controls,
+              icon: MdiIcons.tuneVertical,
+            ),
+            AppSpacings.spacingMdVertical,
+            controlsSection,
+          ],
+        ],
+      ),
     );
   }
 
@@ -654,6 +663,7 @@ class _AirDehumidifierDeviceDetailState
   }
 
   Widget _buildPortrait(BuildContext context, bool isDark) {
+    final localizations = AppLocalizations.of(context)!;
     final humidityColor = DeviceColors.humidity(isDark);
     final borderColor =
         isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
@@ -661,11 +671,23 @@ class _AirDehumidifierDeviceDetailState
     final controlBorderColor =
         isOn ? DeviceColors.humidityLight7(isDark) : borderColor;
 
-    return SingleChildScrollView(
-      padding: AppSpacings.paddingMd,
-      child: Column(
+    final fanChannel = _device.fanChannel;
+    final hasSpeed = fanChannel != null && fanChannel.hasSpeed;
+    final sensorsSection = _buildSensorsWithLabel(context, isDark, localizations);
+    // Skip fan mode in controls section if it's shown in SpeedSlider footer
+    final controlsSection = _buildFanOptionsSection(
+      localizations,
+      isDark,
+      humidityColor,
+      false,
+      skipFanMode: hasSpeed,
+    );
+
+    return DeviceDetailPortraitLayout(
+      content: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Main control card with dial and mode selector
           Container(
             padding: AppSpacings.paddingLg,
             decoration: BoxDecoration(
@@ -681,8 +703,26 @@ class _AirDehumidifierDeviceDetailState
               ],
             ),
           ),
-          AppSpacings.spacingMdVertical,
-          _buildStatus(isDark),
+          // Speed slider under main box
+          if (hasSpeed) ...[
+            AppSpacings.spacingMdVertical,
+            _buildSpeedSliderForPortrait(localizations, isDark, humidityColor),
+          ],
+          // Sensors section with label
+          if (sensorsSection is! SizedBox) ...[
+            AppSpacings.spacingLgVertical,
+            sensorsSection,
+          ],
+          // Controls section with label
+          if (controlsSection is! SizedBox) ...[
+            AppSpacings.spacingLgVertical,
+            SectionTitle(
+              title: localizations.device_controls,
+              icon: MdiIcons.tuneVertical,
+            ),
+            AppSpacings.spacingMdVertical,
+            controlsSection,
+          ],
         ],
       ),
     );
@@ -742,16 +782,10 @@ class _AirDehumidifierDeviceDetailState
     );
   }
 
-  Widget _buildStatus(bool isDark) {
-    final localizations = AppLocalizations.of(context)!;
-    final humidityColor = DeviceColors.humidity(isDark);
+  /// Builds the list of sensor info for the dehumidifier.
+  List<_SensorInfo> _getSensors(AppLocalizations localizations, bool isDark) {
     final channel = _dehumidifierChannel;
-    final fanChannel = _device.fanChannel;
-    final useVerticalLayout = _screenService.isLandscape &&
-        (_screenService.isSmallScreen || _screenService.isMediumScreen);
-
-    // Build info tiles ordered by priority
-    final infoTiles = <Widget>[];
+    final sensors = <_SensorInfo>[];
 
     // ═══════════════════════════════════════════════════════════════════════
     // PRIORITY 1: SAFETY-CRITICAL
@@ -761,11 +795,14 @@ class _AirDehumidifierDeviceDetailState
     final leakChannel = _device.leakChannel;
     if (leakChannel != null) {
       final isLeaking = leakChannel.detected;
-      infoTiles.add(InfoTile(
+      sensors.add(_SensorInfo(
+        id: 'leak',
         label: localizations.leak_sensor_water,
         value: isLeaking
             ? localizations.leak_sensor_detected
             : localizations.leak_sensor_dry,
+        icon: MdiIcons.pipeLeak,
+        valueColor: SensorColors.alert(isDark),
         isWarning: isLeaking,
       ));
     }
@@ -776,54 +813,48 @@ class _AirDehumidifierDeviceDetailState
 
     // Current humidity from humidity channel (required per spec)
     final currentHumidity = _device.humidityChannel.humidity;
-    infoTiles.add(InfoTile(
-      label: localizations.device_current_humidity,
+    sensors.add(_SensorInfo(
+      id: 'humidity',
+      label: localizations.device_humidity,
       value: NumberFormatUtils.defaultFormat.formatInteger(currentHumidity),
       unit: '%',
-      valueColor: humidityColor,
+      icon: MdiIcons.waterPercent,
+      valueColor: SensorColors.humidity(isDark),
     ));
 
     // Water tank level
     if (channel != null && channel.hasWaterTankLevel) {
-      infoTiles.add(InfoTile(
+      sensors.add(_SensorInfo(
+        id: 'water_tank',
         label: localizations.dehumidifier_water_tank,
         value: NumberFormatUtils.defaultFormat.formatInteger(channel.waterTankLevel),
         unit: '%',
+        icon: MdiIcons.cup,
+        valueColor: SensorColors.alert(isDark),
         isWarning: channel.waterTankWarning,
       ));
     } else if (channel != null && channel.hasWaterTankFull) {
-      infoTiles.add(InfoTile(
+      sensors.add(_SensorInfo(
+        id: 'water_tank',
         label: localizations.dehumidifier_water_tank,
         value: channel.waterTankFull
             ? localizations.on_state_on
             : localizations.on_state_off,
+        icon: MdiIcons.cup,
+        valueColor: SensorColors.alert(isDark),
         isWarning: channel.waterTankFull,
       ));
     }
 
     // Defrost indicator (only show when defrosting is active)
     if (channel != null && channel.hasStatus && channel.isDefrosting) {
-      infoTiles.add(InfoTile(
+      sensors.add(_SensorInfo(
+        id: 'defrost',
         label: localizations.dehumidifier_defrost,
         value: localizations.dehumidifier_defrost_active,
+        icon: MdiIcons.snowflakeMelt,
+        valueColor: SensorColors.alert(isDark),
         isWarning: true,
-      ));
-    }
-
-    // Fan speed if available
-    if (fanChannel != null && fanChannel.hasSpeed) {
-      String speedLabel;
-      if (fanChannel.isSpeedEnum) {
-        final level = fanChannel.speedLevel;
-        speedLabel = level != null
-            ? FanUtils.getSpeedLevelLabel(localizations, level)
-            : '-';
-      } else {
-        speedLabel = '${NumberFormatUtils.defaultFormat.formatInteger(fanChannel.speed.toInt())}%';
-      }
-      infoTiles.add(InfoTile(
-        label: localizations.device_fan_speed,
-        value: speedLabel,
       ));
     }
 
@@ -835,149 +866,368 @@ class _AirDehumidifierDeviceDetailState
     final tempChannel = _device.temperatureChannel;
     final currentTemp = tempChannel?.temperature;
     if (currentTemp != null) {
-      infoTiles.add(InfoTile(
+      sensors.add(_SensorInfo(
+        id: 'temperature',
         label: localizations.device_current_temperature,
         value: NumberFormatUtils.defaultFormat.formatDecimal(
           currentTemp,
           decimalPlaces: 1,
         ),
         unit: '°C',
+        icon: MdiIcons.thermometer,
+        valueColor: SensorColors.temperature(isDark),
       ));
     }
+
+    return sensors;
+  }
+
+  /// Builds sensors section with label for portrait layout.
+  Widget _buildSensorsWithLabel(
+    BuildContext context,
+    bool isDark,
+    AppLocalizations localizations,
+  ) {
+    final sensors = _getSensors(localizations, isDark);
+    if (sensors.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (infoTiles.isNotEmpty) ...[
-          if (useVerticalLayout)
-            ...infoTiles
-                .expand((tile) => [
-                      SizedBox(width: double.infinity, child: tile),
-                      AppSpacings.spacingSmVertical,
-                    ])
-                .take(infoTiles.length * 2 - 1)
-          else
-            _buildInfoTilesRow(infoTiles),
-          AppSpacings.spacingMdVertical,
-        ],
-        // Fan speed control if available (includes fan mode if present)
-        if (fanChannel != null && fanChannel.hasSpeed)
-          _buildFanSpeedControl(localizations, isDark, humidityColor, useVerticalLayout),
-        // Oscillation / Swing tile - only show if fan has swing property
-        if (fanChannel != null && fanChannel.hasSwing) ...[
-          UniversalTile(
-            layout: TileLayout.horizontal,
-            icon: Icons.sync,
-            name: localizations.device_oscillation,
-            status: fanChannel.swing
-                ? localizations.on_state_on
-                : localizations.on_state_off,
-            isActive: fanChannel.swing,
-            activeColor: humidityColor,
-            onTileTap: () => _setFanSwing(!fanChannel.swing),
-            showGlow: false,
-            showDoubleBorder: false,
-            showInactiveBorder: true,
-          ),
-          AppSpacings.spacingSmVertical,
-        ],
-        // Direction tile - only show if fan has direction property
-        if (fanChannel != null && fanChannel.hasDirection) ...[
-          UniversalTile(
-            layout: TileLayout.horizontal,
-            icon: Icons.swap_vert,
-            name: localizations.device_direction,
-            status: fanChannel.direction != null
-                ? FanUtils.getDirectionLabel(localizations, fanChannel.direction!)
-                : '-',
-            isActive: fanChannel.direction != null,
-            activeColor: humidityColor,
-            onTileTap: () {
-              // Toggle between clockwise and counter_clockwise
-              final newDirection =
-                  fanChannel.direction == FanDirectionValue.clockwise
-                      ? FanDirectionValue.counterClockwise
-                      : FanDirectionValue.clockwise;
-              _setFanDirection(newDirection);
-            },
-            showGlow: false,
-            showDoubleBorder: false,
-            showInactiveBorder: true,
-          ),
-          AppSpacings.spacingSmVertical,
-        ],
-        // Natural breeze tile - only show if fan has natural_breeze property
-        if (fanChannel != null && fanChannel.hasNaturalBreeze) ...[
-          UniversalTile(
-            layout: TileLayout.horizontal,
-            icon: Icons.air,
-            name: localizations.device_natural_breeze,
-            status: fanChannel.naturalBreeze
-                ? localizations.on_state_on
-                : localizations.on_state_off,
-            isActive: fanChannel.naturalBreeze,
-            activeColor: humidityColor,
-            onTileTap: () => _setFanNaturalBreeze(!fanChannel.naturalBreeze),
-            showGlow: false,
-            showDoubleBorder: false,
-            showInactiveBorder: true,
-          ),
-          AppSpacings.spacingSmVertical,
-        ],
-        // Child Lock
-        if (channel != null && channel.hasLocked) ...[
-          UniversalTile(
-            layout: TileLayout.horizontal,
-            icon: Icons.lock,
-            name: localizations.device_child_lock,
-            status: channel.locked
-                ? localizations.thermostat_lock_locked
-                : localizations.thermostat_lock_unlocked,
-            isActive: channel.locked,
-            activeColor: humidityColor,
-            onTileTap: () => _setDehumidifierLocked(!channel.locked),
-            showGlow: false,
-            showDoubleBorder: false,
-            showInactiveBorder: true,
-          ),
-          AppSpacings.spacingSmVertical,
-        ],
-        // Timer
-        if (channel != null && channel.hasTimer)
-          _buildTimerControl(localizations, humidityColor, useVerticalLayout),
+        SectionTitle(
+          title: localizations.device_sensors,
+          icon: MdiIcons.eyeSettings,
+        ),
+        AppSpacings.spacingMdVertical,
+        _buildSensorsSection(isDark, sensors),
       ],
     );
   }
 
-  Widget _buildInfoTilesRow(List<Widget> tiles) {
-    if (tiles.isEmpty) return const SizedBox.shrink();
+  /// Builds the speed slider for portrait layout.
+  /// If fan has mode, includes ModeSelector as footer in the SpeedSlider.
+  Widget _buildSpeedSliderForPortrait(
+    AppLocalizations localizations,
+    bool isDark,
+    Color humidityColor,
+  ) {
+    final fanChannel = _device.fanChannel;
+    if (fanChannel == null || !fanChannel.hasSpeed) {
+      return const SizedBox.shrink();
+    }
 
-    // Max 3 tiles per row
-    if (tiles.length <= 3) {
-      return Row(
-        children: tiles
-            .expand((tile) => [Expanded(child: tile), AppSpacings.spacingSmHorizontal])
-            .take(tiles.length * 2 - 1)
+    final hasFanMode = fanChannel.hasMode && fanChannel.availableModes.length > 1;
+
+    // Build mode selector footer if fan mode is available
+    Widget? modeFooter;
+    if (hasFanMode) {
+      final currentMode = fanChannel.mode;
+      final availableModes = fanChannel.availableModes;
+
+      modeFooter = ModeSelector<FanModeValue>(
+        modes: availableModes
+            .map((mode) => ModeOption(
+                  value: mode,
+                  icon: FanUtils.getModeIcon(mode),
+                  label: FanUtils.getModeLabel(localizations, mode),
+                ))
             .toList(),
+        selectedValue: currentMode,
+        onChanged: (value) {
+          if (_device.isOn) {
+            _setFanMode(value);
+          }
+        },
+        orientation: ModeSelectorOrientation.horizontal,
+        iconPlacement: ModeSelectorIconPlacement.left,
+        color: ModeSelectorColor.teal,
+        scrollable: true,
       );
     }
 
-    // Split into rows of 3
-    final rows = <Widget>[];
-    for (var i = 0; i < tiles.length; i += 3) {
-      final rowTiles = tiles.skip(i).take(3).toList();
-      rows.add(Row(
-        children: rowTiles
-            .expand((tile) => [Expanded(child: tile), AppSpacings.spacingSmHorizontal])
-            .take(rowTiles.length * 2 - 1)
-            .toList(),
-      ));
-      if (i + 3 < tiles.length) {
-        rows.add(AppSpacings.spacingSmVertical);
-      }
+    if (fanChannel.isSpeedEnum) {
+      // Enum-based speed - use SpeedSlider with defined steps
+      final availableLevels = fanChannel.availableSpeedLevels;
+      if (availableLevels.isEmpty) return const SizedBox.shrink();
+
+      final steps = availableLevels
+          .map((level) => FanUtils.getSpeedLevelLabel(localizations, level))
+          .toList();
+
+      // Calculate normalized value from current speed level index
+      final currentLevel = fanChannel.speedLevel;
+      final currentIndex = currentLevel != null
+          ? availableLevels.indexOf(currentLevel)
+          : 0;
+      final normalizedValue = availableLevels.length > 1
+          ? currentIndex / (availableLevels.length - 1)
+          : 0.0;
+
+      return SpeedSlider(
+        value: normalizedValue.clamp(0.0, 1.0),
+        activeColor: humidityColor,
+        enabled: _device.isOn,
+        steps: steps,
+        onChanged: (value) {
+          // Convert slider value to speed level index
+          final index = ((value * (availableLevels.length - 1)).round())
+              .clamp(0, availableLevels.length - 1);
+          _setFanSpeedLevel(availableLevels[index]);
+        },
+        footer: modeFooter,
+      );
+    } else {
+      // Numeric speed (0-100%) - use SpeedSlider with default steps
+      final minSpeed = fanChannel.minSpeed;
+      final maxSpeed = fanChannel.maxSpeed;
+      final range = maxSpeed - minSpeed;
+      if (range <= 0) return const SizedBox.shrink();
+
+      return SpeedSlider(
+        value: _normalizedFanSpeed,
+        activeColor: humidityColor,
+        enabled: _device.isOn,
+        steps: [
+          localizations.fan_speed_off,
+          localizations.fan_speed_low,
+          localizations.fan_speed_medium,
+          localizations.fan_speed_high,
+        ],
+        onChanged: _setFanSpeed,
+        footer: modeFooter,
+      );
+    }
+  }
+
+  /// Builds the fan options controls (oscillation, direction, natural breeze, child lock, timer).
+  /// Set [skipFanMode] to true when fan mode is shown elsewhere (e.g., with speed slider in portrait).
+  Widget _buildFanOptionsSection(
+    AppLocalizations localizations,
+    bool isDark,
+    Color humidityColor,
+    bool useVerticalLayout, {
+    bool skipFanMode = false,
+  }) {
+    final channel = _dehumidifierChannel;
+    final fanChannel = _device.fanChannel;
+    final tileHeight = _scale(AppTileHeight.horizontal);
+
+    // Helper to wrap control with fixed height
+    Widget wrapControl(Widget child) {
+      return SizedBox(
+        height: tileHeight,
+        width: double.infinity,
+        child: child,
+      );
     }
 
-    return Column(children: rows);
+    final children = <Widget>[];
+
+    // Fan mode if available (skip if already shown with speed slider)
+    if (!skipFanMode && fanChannel != null && fanChannel.hasMode && fanChannel.availableModes.length > 1) {
+      children.add(_buildFanModeControl(localizations, humidityColor, true, tileHeight));
+      children.add(AppSpacings.spacingMdVertical);
+    }
+
+    // Oscillation / Swing tile - only show if fan has swing property
+    if (fanChannel != null && fanChannel.hasSwing) {
+      children.add(wrapControl(UniversalTile(
+        layout: TileLayout.horizontal,
+        icon: Icons.sync,
+        name: localizations.device_oscillation,
+        status: fanChannel.swing
+            ? localizations.on_state_on
+            : localizations.on_state_off,
+        isActive: fanChannel.swing,
+        activeColor: humidityColor,
+        onTileTap: () => _setFanSwing(!fanChannel.swing),
+        showGlow: false,
+        showDoubleBorder: false,
+        showInactiveBorder: true,
+      )));
+      children.add(AppSpacings.spacingMdVertical);
+    }
+
+    // Direction tile - only show if fan has direction property
+    if (fanChannel != null && fanChannel.hasDirection) {
+      children.add(wrapControl(UniversalTile(
+        layout: TileLayout.horizontal,
+        icon: Icons.swap_vert,
+        name: localizations.device_direction,
+        status: fanChannel.direction != null
+            ? FanUtils.getDirectionLabel(localizations, fanChannel.direction!)
+            : '-',
+        isActive: fanChannel.direction == FanDirectionValue.counterClockwise,
+        activeColor: humidityColor,
+        onTileTap: () {
+          // Toggle between clockwise and counter_clockwise
+          final newDirection =
+              fanChannel.direction == FanDirectionValue.clockwise
+                  ? FanDirectionValue.counterClockwise
+                  : FanDirectionValue.clockwise;
+          _setFanDirection(newDirection);
+        },
+        showGlow: false,
+        showDoubleBorder: false,
+        showInactiveBorder: true,
+      )));
+      children.add(AppSpacings.spacingMdVertical);
+    }
+
+    // Natural breeze tile - only show if fan has natural_breeze property
+    if (fanChannel != null && fanChannel.hasNaturalBreeze) {
+      children.add(wrapControl(UniversalTile(
+        layout: TileLayout.horizontal,
+        icon: Icons.air,
+        name: localizations.device_natural_breeze,
+        status: fanChannel.naturalBreeze
+            ? localizations.on_state_on
+            : localizations.on_state_off,
+        isActive: fanChannel.naturalBreeze,
+        activeColor: humidityColor,
+        onTileTap: () => _setFanNaturalBreeze(!fanChannel.naturalBreeze),
+        showGlow: false,
+        showDoubleBorder: false,
+        showInactiveBorder: true,
+      )));
+      children.add(AppSpacings.spacingMdVertical);
+    }
+
+    // Child Lock
+    if (channel != null && channel.hasLocked) {
+      children.add(wrapControl(UniversalTile(
+        layout: TileLayout.horizontal,
+        icon: Icons.lock,
+        name: localizations.device_child_lock,
+        status: channel.locked
+            ? localizations.thermostat_lock_locked
+            : localizations.thermostat_lock_unlocked,
+        isActive: channel.locked,
+        activeColor: humidityColor,
+        onTileTap: () => _setDehumidifierLocked(!channel.locked),
+        showGlow: false,
+        showDoubleBorder: false,
+        showInactiveBorder: true,
+      )));
+      children.add(AppSpacings.spacingMdVertical);
+    }
+
+    // Timer
+    if (channel != null && channel.hasTimer) {
+      children.add(_buildTimerControl(localizations, humidityColor, useVerticalLayout, tileHeight));
+    }
+
+    if (children.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
+  }
+
+  /// Builds the controls section for landscape (fan speed/mode first, then options).
+  Widget _buildLandscapeControlsSection(
+    AppLocalizations localizations,
+    bool isDark,
+    Color humidityColor,
+  ) {
+    final fanChannel = _device.fanChannel;
+    final useVerticalLayout = _screenService.isSmallScreen || _screenService.isMediumScreen;
+    final tileHeight = _scale(AppTileHeight.horizontal);
+
+    final children = <Widget>[];
+
+    // Fan speed control if available
+    if (fanChannel != null && fanChannel.hasSpeed) {
+      children.add(_buildFanSpeedControl(localizations, isDark, humidityColor, useVerticalLayout, tileHeight));
+    }
+
+    // Build rest of options
+    final optionsSection = _buildFanOptionsSection(localizations, isDark, humidityColor, useVerticalLayout);
+    if (optionsSection is! SizedBox) {
+      children.add(optionsSection);
+    }
+
+    if (children.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
+  }
+
+  /// Builds sensors section using tile wrappers:
+  /// - Portrait: HorizontalScrollWithGradient with HorizontalTileCompact
+  /// - Landscape large: GridView.count with VerticalTileLarge
+  /// - Landscape small/medium: Column with HorizontalTileStretched
+  Widget _buildSensorsSection(bool isDark, List<_SensorInfo> sensors) {
+    if (sensors.isEmpty) return const SizedBox.shrink();
+
+    final isLandscape = _screenService.isLandscape;
+    final isLargeScreen = _screenService.isLargeScreen;
+    final humidityColor = DeviceColors.humidity(isDark);
+
+    // Portrait: Horizontal scroll with HorizontalTileCompact
+    if (!isLandscape) {
+      final tileHeight = _scale(AppTileHeight.horizontal);
+
+      return HorizontalScrollWithGradient(
+        height: tileHeight,
+        layoutPadding: AppSpacings.pLg,
+        itemCount: sensors.length,
+        separatorWidth: AppSpacings.pMd,
+        itemBuilder: (context, index) {
+          final sensor = sensors[index];
+          return HorizontalTileCompact(
+            icon: sensor.icon,
+            name: sensor.displayValue,
+            status: sensor.label,
+            iconAccentColor: sensor.valueColor ?? humidityColor,
+            showWarningBadge: sensor.isWarning,
+          );
+        },
+      );
+    }
+
+    // Landscape large: GridView with VerticalTileLarge
+    if (isLargeScreen) {
+      return GridView.count(
+        crossAxisCount: 2,
+        mainAxisSpacing: AppSpacings.pMd,
+        crossAxisSpacing: AppSpacings.pMd,
+        childAspectRatio: AppTileAspectRatio.square,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        children: sensors.map((sensor) {
+          return VerticalTileLarge(
+            icon: sensor.icon,
+            name: sensor.displayValue,
+            status: sensor.label,
+            iconAccentColor: sensor.valueColor ?? humidityColor,
+            showWarningBadge: sensor.isWarning,
+          );
+        }).toList(),
+      );
+    }
+
+    // Landscape small/medium: Column with HorizontalTileStretched
+    return Column(
+      children: sensors.asMap().entries.map((entry) {
+        final index = entry.key;
+        final sensor = entry.value;
+        final isLast = index == sensors.length - 1;
+        return Padding(
+          padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
+          child: HorizontalTileStretched(
+            icon: sensor.icon,
+            name: sensor.displayValue,
+            status: sensor.label,
+            iconAccentColor: sensor.valueColor ?? humidityColor,
+            showWarningBadge: sensor.isWarning,
+          ),
+        );
+      }).toList(),
+    );
   }
 
   Widget _buildFanSpeedControl(
@@ -985,11 +1235,19 @@ class _AirDehumidifierDeviceDetailState
     bool isDark,
     Color humidityColor,
     bool useVerticalLayout,
+    double tileHeight,
   ) {
     final fanChannel = _device.fanChannel;
     if (fanChannel == null || !fanChannel.hasSpeed) return const SizedBox.shrink();
 
-    final hasMode = fanChannel.hasMode && fanChannel.availableModes.length > 1;
+    // Helper to wrap widget with fixed height
+    Widget wrapWithHeight(Widget child) {
+      return SizedBox(
+        height: tileHeight,
+        width: double.infinity,
+        child: child,
+      );
+    }
 
     if (fanChannel.isSpeedEnum) {
       // Enum-based speed (off, low, medium, high, etc.)
@@ -1017,6 +1275,7 @@ class _AirDehumidifierDeviceDetailState
         layout: useVerticalLayout
             ? ValueSelectorRowLayout.compact
             : ValueSelectorRowLayout.horizontal,
+        showChevron: _screenService.isLargeScreen,
         onChanged: _device.isOn
             ? (level) {
                 if (level != null) {
@@ -1026,82 +1285,39 @@ class _AirDehumidifierDeviceDetailState
             : null,
       );
 
-      // If fan has mode, add mode selector below (always button since speed is button)
-      if (hasMode) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            speedWidget,
-            AppSpacings.spacingMdVertical,
-            _buildFanModeControl(localizations, humidityColor, true),
-          ],
-        );
-      }
-
       return Column(
         children: [
-          speedWidget,
-          AppSpacings.spacingSmVertical,
+          wrapWithHeight(speedWidget),
+          AppSpacings.spacingMdVertical,
         ],
       );
     } else {
-      // Numeric speed (0-100%)
+      // Numeric speed (0-100%) - use ValueSelectorRow for landscape
       final minSpeed = fanChannel.minSpeed;
       final maxSpeed = fanChannel.maxSpeed;
       final range = maxSpeed - minSpeed;
       if (range <= 0) return const SizedBox.shrink();
 
-      if (useVerticalLayout) {
-        final speedWidget = ValueSelectorRow<double>(
-          currentValue: _normalizedFanSpeed,
-          label: localizations.device_fan_speed,
-          icon: Icons.speed,
-          sheetTitle: localizations.device_fan_speed,
-          activeColor: humidityColor,
-          options: _getFanSpeedOptions(localizations),
-          displayFormatter: (v) => _formatFanSpeed(localizations, v),
-          columns: 4,
-          layout: ValueSelectorRowLayout.compact,
-          onChanged: _device.isOn ? (v) => _setFanSpeed(v ?? 0) : null,
-        );
+      final speedWidget = ValueSelectorRow<double>(
+        currentValue: _normalizedFanSpeed,
+        label: localizations.device_fan_speed,
+        icon: Icons.speed,
+        sheetTitle: localizations.device_fan_speed,
+        activeColor: humidityColor,
+        options: _getFanSpeedOptions(localizations),
+        displayFormatter: (v) => _formatFanSpeed(localizations, v),
+        columns: 4,
+        layout: ValueSelectorRowLayout.compact,
+        showChevron: _screenService.isLargeScreen,
+        onChanged: _device.isOn ? (v) => _setFanSpeed(v ?? 0) : null,
+      );
 
-        // If fan has mode, add mode selector below
-        if (hasMode) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              speedWidget,
-              AppSpacings.spacingMdVertical,
-              _buildFanModeControl(localizations, humidityColor, useVerticalLayout),
-            ],
-          );
-        }
-
-        return Column(
-          children: [
-            speedWidget,
-            AppSpacings.spacingSmVertical,
-          ],
-        );
-      } else {
-        // Use SpeedSlider widget for landscape layout
-        // Mode selector goes inside the slider's bordered box as footer
-        return SpeedSlider(
-          value: _normalizedFanSpeed,
-          activeColor: humidityColor,
-          enabled: _device.isOn,
-          steps: [
-            localizations.fan_speed_off,
-            localizations.fan_speed_low,
-            localizations.fan_speed_medium,
-            localizations.fan_speed_high,
-          ],
-          onChanged: _setFanSpeed,
-          footer: hasMode
-              ? _buildFanModeControl(localizations, humidityColor, false)
-              : null,
-        );
-      }
+      return Column(
+        children: [
+          wrapWithHeight(speedWidget),
+          AppSpacings.spacingMdVertical,
+        ],
+      );
     }
   }
 
@@ -1109,6 +1325,7 @@ class _AirDehumidifierDeviceDetailState
     AppLocalizations localizations,
     Color humidityColor,
     bool useCompactLayout,
+    double? tileHeight,
   ) {
     final fanChannel = _device.fanChannel;
     if (fanChannel == null || !fanChannel.hasMode) return const SizedBox.shrink();
@@ -1127,7 +1344,7 @@ class _AirDehumidifierDeviceDetailState
               ))
           .toList();
 
-      return ValueSelectorRow<FanModeValue>(
+      final widget = ValueSelectorRow<FanModeValue>(
         currentValue: currentMode,
         label: localizations.device_fan_mode,
         icon: Icons.tune,
@@ -1139,6 +1356,7 @@ class _AirDehumidifierDeviceDetailState
             : '-',
         columns: availableModes.length > 4 ? 3 : availableModes.length,
         layout: ValueSelectorRowLayout.compact,
+        showChevron: _screenService.isLargeScreen,
         onChanged: _device.isOn
             ? (mode) {
                 if (mode != null) {
@@ -1147,6 +1365,16 @@ class _AirDehumidifierDeviceDetailState
               }
             : null,
       );
+
+      // Always wrap in compact mode since tileHeight is always provided
+      if (tileHeight != null) {
+        return SizedBox(
+          height: tileHeight,
+          width: double.infinity,
+          child: widget,
+        );
+      }
+      return widget;
     }
 
     return ModeSelector<FanModeValue>(
@@ -1257,9 +1485,19 @@ class _AirDehumidifierDeviceDetailState
     AppLocalizations localizations,
     Color humidityColor,
     bool useCompactLayout,
+    double tileHeight,
   ) {
     final channel = _dehumidifierChannel;
     if (channel == null) return const SizedBox.shrink();
+
+    // Helper to wrap widget with fixed height
+    Widget wrapWithHeight(Widget child) {
+      return SizedBox(
+        height: tileHeight,
+        width: double.infinity,
+        child: child,
+      );
+    }
 
     if (channel.isTimerEnum) {
       final options = channel.availableTimerPresets
@@ -1271,7 +1509,7 @@ class _AirDehumidifierDeviceDetailState
 
       if (options.isEmpty) return const SizedBox.shrink();
 
-      return ValueSelectorRow<DehumidifierTimerPresetValue?>(
+      final widget = ValueSelectorRow<DehumidifierTimerPresetValue?>(
         currentValue: channel.timerPreset,
         label: localizations.device_timer,
         icon: Icons.timer_outlined,
@@ -1285,18 +1523,21 @@ class _AirDehumidifierDeviceDetailState
         layout: useCompactLayout
             ? ValueSelectorRowLayout.compact
             : ValueSelectorRowLayout.horizontal,
+        showChevron: _screenService.isLargeScreen,
         onChanged: (preset) {
           if (preset != null) {
             _setDehumidifierTimerPreset(preset);
           }
         },
       );
+
+      return wrapWithHeight(widget);
     } else {
       // Numeric timer in seconds
       final options = _getNumericTimerOptions(localizations, channel);
       if (options.isEmpty) return const SizedBox.shrink();
 
-      return ValueSelectorRow<int>(
+      final widget = ValueSelectorRow<int>(
         currentValue: channel.timer,
         label: localizations.device_timer,
         icon: Icons.timer_outlined,
@@ -1309,12 +1550,15 @@ class _AirDehumidifierDeviceDetailState
         layout: useCompactLayout
             ? ValueSelectorRowLayout.compact
             : ValueSelectorRowLayout.horizontal,
+        showChevron: _screenService.isLargeScreen,
         onChanged: (seconds) {
           if (seconds != null) {
             _setDehumidifierTimerNumeric(seconds);
           }
         },
       );
+
+      return wrapWithHeight(widget);
     }
   }
 

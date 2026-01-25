@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:flutter/material.dart';
 
 /// A reusable portrait layout widget for domain view pages.
@@ -71,10 +72,12 @@ class PortraitViewLayout extends StatelessWidget {
         bottom: AppSpacings.pLg + bottomPadding,
       );
 
-      contentWidget = SingleChildScrollView(
-        controller: scrollController,
+      contentWidget = VerticalScrollWithGradient(
+        gradientHeight: AppSpacings.pLg,
         padding: contentPadding ?? defaultPadding,
-        child: content,
+        itemCount: 1,
+        separatorHeight: 0,
+        itemBuilder: (context, index) => content,
       );
     } else if (contentPadding != null) {
       contentWidget = Padding(

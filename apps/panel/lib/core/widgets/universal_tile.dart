@@ -109,6 +109,7 @@ class UniversalTile extends StatelessWidget {
 
   Widget _buildVerticalTile(BuildContext context) {
     final colors = _getTileColors(context);
+    final isLargeScreen = _screenService.isLargeScreen;
 
     return GestureDetector(
       onTap: onTileTap,
@@ -147,7 +148,10 @@ class UniversalTile extends StatelessWidget {
           child: Stack(
             children: [
               Padding(
-                padding: EdgeInsets.all(AppSpacings.pMd),
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacings.pMd,
+                  vertical: AppSpacings.pSm,
+                ),
                 child: Column(
                   children: [
                     // Icon - takes available space
@@ -173,7 +177,8 @@ class UniversalTile extends StatelessWidget {
                       name,
                       style: TextStyle(
                         color: colors.textColor,
-                        fontSize: nameFontSize ?? AppFontSize.base,
+                        fontSize: nameFontSize ??
+                            (isLargeScreen ? AppFontSize.base : AppFontSize.small),
                         fontWeight: FontWeight.w600,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -190,7 +195,8 @@ class UniversalTile extends StatelessWidget {
                           color: isOffline
                               ? colors.warningColor
                               : colors.subtitleColor,
-                          fontSize: statusFontSize ?? AppFontSize.small,
+                          fontSize: statusFontSize ??
+                              (isLargeScreen ? AppFontSize.small : AppFontSize.extraSmall),
                         ),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,

@@ -84,7 +84,7 @@ class ThermostatDeviceController {
     return heaterOn || coolerOn;
   }
 
-  /// Whether thermostat child lock is enabled (optimistic-aware).
+  /// Whether thermostat is locked (optimistic-aware).
   bool get isLocked => _thermostatController.isLocked;
 
   /// Target heating temperature (optimistic-aware).
@@ -107,10 +107,10 @@ class ThermostatDeviceController {
   // DEVICE-LEVEL COMMANDS
   // ===========================================================================
 
-  /// Set thermostat child lock state with optimistic UI.
+  /// Set thermostat locked state with optimistic UI.
   void setLocked(bool value) => _thermostatController.setLocked(value);
 
-  /// Toggle thermostat child lock state with optimistic UI.
+  /// Toggle thermostat locked state with optimistic UI.
   void toggleLocked() => _thermostatController.toggleLocked();
 
   /// Set heater power state with optimistic UI.

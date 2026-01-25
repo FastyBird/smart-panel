@@ -48,6 +48,10 @@
   "@button_confirm": {
     "description": "Text for Confirm button"
   },
+  "button_done": "Done",
+  "@button_done": {
+    "description": "Text for Done button"
+  },
   "unit_celsius": "Celsius",
   "@unit_celsius": {
     "description": "Label for Celsius temperature unit."
@@ -517,6 +521,14 @@
   "on_state_off": "Off",
   "@on_state_off": {
     "description": "Indicates that a device or feature is turned off"
+  },
+  "power_hint_tap_to_turn_on": "Tap to turn on",
+  "@power_hint_tap_to_turn_on": {
+    "description": "Hint text shown on power button when device is off"
+  },
+  "power_hint_tap_to_turn_off": "Tap to turn off",
+  "@power_hint_tap_to_turn_off": {
+    "description": "Hint text shown on power button when device is on"
   },
   "message_info_app_reboot_title": "Rebooting Device!",
   "@message_info_app_reboot_title": {
@@ -1184,6 +1196,10 @@
   "@climate_role_auxiliary": {
     "description": "Section header for auxiliary climate devices"
   },
+  "climate_tap_for_details": "Tap for details",
+  "@climate_tap_for_details": {
+    "description": "Hint text for tapping on climate dial"
+  },
   "climate_role_ventilation": "Ventilation",
   "@climate_role_ventilation": {
     "description": "Section header for ventilation devices (fans, purifiers)"
@@ -1410,6 +1426,14 @@
   "@window_covering_preset_away": {
     "description": "Away preset name for window covering"
   },
+  "window_covering_presets_label": "Presets",
+  "@window_covering_presets_label": {
+    "description": "Section label for window covering presets"
+  },
+  "window_covering_channels_label": "Blinds",
+  "@window_covering_channels_label": {
+    "description": "Section label for window covering channels list"
+  },
   "window_covering_info_status": "Status",
   "@window_covering_info_status": {
     "description": "Status label in window covering info card"
@@ -1451,6 +1475,10 @@
   "button_retry": "Retry",
   "@button_retry": {
     "description": "Text for Retry button"
+  },
+  "button_sync_all": "Sync All",
+  "@button_sync_all": {
+    "description": "Text for Sync All button when devices are out of sync"
   },
   "system_view_room": "Room",
   "@system_view_room": {
@@ -2171,6 +2199,14 @@
   "@device_temperature": {
     "description": "Temperature short label"
   },
+  "device_sensors": "Sensors",
+  "@device_sensors": {
+    "description": "Sensors section label"
+  },
+  "device_controls": "Controls",
+  "@device_controls": {
+    "description": "Controls section label"
+  },
 
   "duration_format_hours_minutes": "{hours}h {minutes}m",
   "@duration_format_hours_minutes": {
@@ -2377,5 +2413,53 @@
   "cover_type_cover": "Cover",
   "@cover_type_cover": {
     "description": "Generic cover type label"
+  },
+  "light_preset_candle": "Candle",
+  "@light_preset_candle": {
+    "description": "Candle color temperature preset label"
+  },
+  "light_preset_warm": "Warm",
+  "@light_preset_warm": {
+    "description": "Warm color temperature preset label"
+  },
+  "light_preset_daylight": "Daylight",
+  "@light_preset_daylight": {
+    "description": "Daylight color temperature preset label"
+  },
+  "light_preset_cool": "Cool",
+  "@light_preset_cool": {
+    "description": "Cool color temperature preset label"
+  },
+  "light_color_red": "Red",
+  "@light_color_red": {
+    "description": "Red color preset label"
+  },
+  "light_color_orange": "Orange",
+  "@light_color_orange": {
+    "description": "Orange color preset label"
+  },
+  "light_color_yellow": "Yellow",
+  "@light_color_yellow": {
+    "description": "Yellow color preset label"
+  },
+  "light_color_green": "Green",
+  "@light_color_green": {
+    "description": "Green color preset label"
+  },
+  "light_color_cyan": "Cyan",
+  "@light_color_cyan": {
+    "description": "Cyan color preset label"
+  },
+  "light_color_blue": "Blue",
+  "@light_color_blue": {
+    "description": "Blue color preset label"
+  },
+  "light_color_purple": "Purple",
+  "@light_color_purple": {
+    "description": "Purple color preset label"
+  },
+  "light_color_pink": "Pink",
+  "@light_color_pink": {
+    "description": "Pink color preset label"
   }
 }

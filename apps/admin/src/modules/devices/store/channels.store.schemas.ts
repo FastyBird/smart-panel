@@ -25,7 +25,7 @@ export const ChannelSchema = z.object({
 	type: z.string().trim().nonempty(),
 	device: ItemIdSchema,
 	category: z.nativeEnum(DevicesModuleChannelCategory).default(DevicesModuleChannelCategory.generic),
-	identifier: z.string().trim().nonempty().nullable(),
+	identifier: z.string().trim().nonempty().nullable().default(null),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable().default(null),
 	parent: z.string().uuid().nullable().default(null),

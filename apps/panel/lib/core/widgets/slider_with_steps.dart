@@ -64,15 +64,22 @@ class SliderWithSteps extends StatelessWidget {
         isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled;
     final trackColor =
         isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
-    final thumbFillColor =
-        isDark ? AppFillColorDark.darker : AppColors.white;
 
     // For discrete mode, calculate divisions based on steps
     final divisions = discrete && steps.length > 1 ? steps.length - 1 : null;
 
-    // When disabled, use track color for both active track and thumb border
-    final sliderActiveColor = enabled ? effectiveActiveColor : trackColor;
-    final thumbBorderColor = enabled ? effectiveActiveColor : trackColor;
+    // Disabled active track color (left part of track when disabled)
+    final disabledActiveColor =
+        isDark ? AppTextColorDark.placeholder : AppTextColorLight.disabled;
+
+    // Active track: accent when enabled, muted gray when disabled
+    final sliderActiveColor = enabled ? effectiveActiveColor : disabledActiveColor;
+    // Thumb border matches active track
+    final thumbBorderColor = enabled ? effectiveActiveColor : disabledActiveColor;
+    // Thumb fill: dark background when enabled, matches active track (left part) when disabled
+    final thumbFillColor = enabled
+        ? (isDark ? AppFillColorDark.base : AppFillColorLight.base)
+        : isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
 
     final clampedValue = value.clamp(0.0, 1.0);
 

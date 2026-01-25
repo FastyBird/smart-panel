@@ -45,6 +45,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get button_confirm => 'Confirm';
 
   @override
+  String get button_done => 'Done';
+
+  @override
   String get unit_celsius => 'Celsius';
 
   @override
@@ -388,6 +391,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get on_state_off => 'Off';
+
+  @override
+  String get power_hint_tap_to_turn_on => 'Tap to turn on';
+
+  @override
+  String get power_hint_tap_to_turn_off => 'Tap to turn off';
 
   @override
   String get message_info_app_reboot_title => 'Rebooting Device!';
@@ -878,6 +887,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get climate_role_auxiliary => 'Auxiliary';
 
   @override
+  String get climate_tap_for_details => 'Tap for details';
+
+  @override
   String get climate_role_ventilation => 'Ventilation';
 
   @override
@@ -1046,6 +1058,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get window_covering_preset_away => 'Away';
 
   @override
+  String get window_covering_presets_label => 'Presets';
+
+  @override
+  String get window_covering_channels_label => 'Blinds';
+
+  @override
   String get window_covering_info_status => 'Status';
 
   @override
@@ -1073,6 +1091,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get button_retry => 'Retry';
+
+  @override
+  String get button_sync_all => 'Sync All';
 
   @override
   String get system_view_room => 'Room';
@@ -1602,6 +1623,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get device_temperature => 'Temp';
 
   @override
+  String get device_sensors => 'Sensors';
+
+  @override
+  String get device_controls => 'Controls';
+
+  @override
   String duration_format_hours_minutes(int hours, int minutes) {
     return '${hours}h ${minutes}m';
   }
@@ -1748,4 +1775,40 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cover_type_cover => 'Cover';
+
+  @override
+  String get light_preset_candle => 'Candle';
+
+  @override
+  String get light_preset_warm => 'Warm';
+
+  @override
+  String get light_preset_daylight => 'Daylight';
+
+  @override
+  String get light_preset_cool => 'Cool';
+
+  @override
+  String get light_color_red => 'Red';
+
+  @override
+  String get light_color_orange => 'Orange';
+
+  @override
+  String get light_color_yellow => 'Yellow';
+
+  @override
+  String get light_color_green => 'Green';
+
+  @override
+  String get light_color_cyan => 'Cyan';
+
+  @override
+  String get light_color_blue => 'Blue';
+
+  @override
+  String get light_color_purple => 'Purple';
+
+  @override
+  String get light_color_pink => 'Pink';
 }

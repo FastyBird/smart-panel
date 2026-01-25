@@ -167,6 +167,12 @@ abstract class AppLocalizations {
   /// **'Confirm'**
   String get button_confirm;
 
+  /// Text for Done button
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get button_done;
+
   /// Label for Celsius temperature unit.
   ///
   /// In en, this message translates to:
@@ -844,6 +850,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Off'**
   String get on_state_off;
+
+  /// Hint text shown on power button when device is off
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to turn on'**
+  String get power_hint_tap_to_turn_on;
+
+  /// Hint text shown on power button when device is on
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to turn off'**
+  String get power_hint_tap_to_turn_off;
 
   /// Title displayed during a device reboot operation.
   ///
@@ -1805,6 +1823,12 @@ abstract class AppLocalizations {
   /// **'Auxiliary'**
   String get climate_role_auxiliary;
 
+  /// Hint text for tapping on climate dial
+  ///
+  /// In en, this message translates to:
+  /// **'Tap for details'**
+  String get climate_tap_for_details;
+
   /// Section header for ventilation devices (fans, purifiers)
   ///
   /// In en, this message translates to:
@@ -2141,6 +2165,18 @@ abstract class AppLocalizations {
   /// **'Away'**
   String get window_covering_preset_away;
 
+  /// Section label for window covering presets
+  ///
+  /// In en, this message translates to:
+  /// **'Presets'**
+  String get window_covering_presets_label;
+
+  /// Section label for window covering channels list
+  ///
+  /// In en, this message translates to:
+  /// **'Blinds'**
+  String get window_covering_channels_label;
+
   /// Status label in window covering info card
   ///
   /// In en, this message translates to:
@@ -2194,6 +2230,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Retry'**
   String get button_retry;
+
+  /// Text for Sync All button when devices are out of sync
+  ///
+  /// In en, this message translates to:
+  /// **'Sync All'**
+  String get button_sync_all;
 
   /// Title for room system view in deck navigation
   ///
@@ -3221,6 +3263,18 @@ abstract class AppLocalizations {
   /// **'Temp'**
   String get device_temperature;
 
+  /// Sensors section label
+  ///
+  /// In en, this message translates to:
+  /// **'Sensors'**
+  String get device_sensors;
+
+  /// Controls section label
+  ///
+  /// In en, this message translates to:
+  /// **'Controls'**
+  String get device_controls;
+
   /// Duration format with hours and minutes
   ///
   /// In en, this message translates to:
@@ -3484,6 +3538,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cover'**
   String get cover_type_cover;
+
+  /// Candle color temperature preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Candle'**
+  String get light_preset_candle;
+
+  /// Warm color temperature preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Warm'**
+  String get light_preset_warm;
+
+  /// Daylight color temperature preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Daylight'**
+  String get light_preset_daylight;
+
+  /// Cool color temperature preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Cool'**
+  String get light_preset_cool;
+
+  /// Red color preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Red'**
+  String get light_color_red;
+
+  /// Orange color preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Orange'**
+  String get light_color_orange;
+
+  /// Yellow color preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Yellow'**
+  String get light_color_yellow;
+
+  /// Green color preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Green'**
+  String get light_color_green;
+
+  /// Cyan color preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Cyan'**
+  String get light_color_cyan;
+
+  /// Blue color preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Blue'**
+  String get light_color_blue;
+
+  /// Purple color preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Purple'**
+  String get light_color_purple;
+
+  /// Pink color preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Pink'**
+  String get light_color_pink;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

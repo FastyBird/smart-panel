@@ -1661,7 +1661,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
 
         channels.add(LightingChannelData(
           id: target.channelId,
-          name: stripRoomNameFromDevice(target.channelName, roomName),
+          name: getLightTargetDisplayName(target, targets, roomName),
           isOn: isOn,
           brightness: channel.hasBrightness ? channel.brightness : 100,
           hasBrightness: channel.hasBrightness,

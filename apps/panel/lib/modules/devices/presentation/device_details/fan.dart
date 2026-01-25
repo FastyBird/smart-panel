@@ -5,7 +5,10 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
+import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
@@ -21,6 +24,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/fan.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class FanDeviceDetail extends StatefulWidget {
   final FanDeviceView _device;
@@ -420,74 +424,25 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
   Widget _buildLandscape(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
     final fanColor = DeviceColors.fan(isDark);
-    final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
-    final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.light;
     final isLargeScreen = _screenService.isLargeScreen;
 
-    // Large screen: control card only in left column
-    if (isLargeScreen) {
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return DeviceDetailLandscapeLayout(
+      mainContent: isLargeScreen
+          ? _buildControlCard(context, isDark, fanColor)
+          : _buildCompactControlCard(context, isDark, fanColor),
+      secondaryContent: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            flex: 1,
-            child: Padding(
-              padding: AppSpacings.paddingLg,
-              child: _buildControlCard(context, isDark, fanColor),
-            ),
+          SectionTitle(
+            title: localizations.device_controls,
+            icon: MdiIcons.tuneVertical,
           ),
-          Container(width: _scale(1), color: borderColor),
-          Expanded(
-            flex: 1,
-            child: Container(
-              color: cardColor,
-              padding: AppSpacings.paddingLg,
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildSpeedControl(localizations, isDark, fanColor, false),
-                    AppSpacings.spacingMdVertical,
-                    _buildOptions(context, isDark),
-                  ],
-                ),
-              ),
-            ),
-          ),
+          AppSpacings.spacingMdVertical,
+          _buildSpeedControl(localizations, isDark, fanColor, !isLargeScreen),
+          AppSpacings.spacingMdVertical,
+          _buildOptions(context, isDark),
         ],
-      );
-    }
-
-    // Small/medium: compact layout with stretch
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          flex: 2,
-          child: Padding(
-            padding: AppSpacings.paddingLg,
-            child: _buildCompactControlCard(context, isDark, fanColor),
-          ),
-        ),
-        Container(width: _scale(1), color: borderColor),
-        Expanded(
-          flex: 1,
-          child: Container(
-            color: cardColor,
-            padding: AppSpacings.paddingLg,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildSpeedControl(localizations, isDark, fanColor, true),
-                  _buildOptions(context, isDark),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
@@ -495,13 +450,18 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     final localizations = AppLocalizations.of(context)!;
     final fanColor = DeviceColors.fan(isDark);
 
-    return SingleChildScrollView(
-      padding: AppSpacings.paddingMd,
-      child: Column(
+    return DeviceDetailPortraitLayout(
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildControlCard(context, isDark, fanColor),
           AppSpacings.spacingMdVertical,
           _buildSpeedControl(localizations, isDark, fanColor, false),
+          AppSpacings.spacingLgVertical,
+          SectionTitle(
+            title: localizations.device_controls,
+            icon: MdiIcons.tuneVertical,
+          ),
           AppSpacings.spacingMdVertical,
           _buildOptions(context, isDark),
         ],
@@ -534,7 +494,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
           ),
           if (_device.fanChannel.hasMode &&
               _device.fanChannel.availableModes.isNotEmpty) ...[
-            AppSpacings.spacingLgVertical,
+            AppSpacings.spacingXlVertical,
             _buildModeSelector(localizations, isDark, fanColor),
           ],
         ],
@@ -596,57 +556,106 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
       return const SizedBox.shrink();
     }
 
+    // Fixed tile height for consistent control sizing
+    final tileHeight = _scale(AppTileHeight.horizontal);
+
     if (fanChannel.isSpeedEnum) {
       // Enum-based speed
       final availableLevels = fanChannel.availableSpeedLevels;
       if (availableLevels.isEmpty) return const SizedBox.shrink();
 
-      final options = availableLevels.map((level) {
-        return ValueOption(
-          value: level,
-          label: FanUtils.getSpeedLevelLabel(localizations, level),
-        );
-      }).toList();
+      final isLandscape = _screenService.isLandscape;
 
-      return ValueSelectorRow<FanSpeedLevelValue>(
-        currentValue: fanChannel.speedLevel,
-        label: localizations.device_fan_speed,
-        icon: Icons.speed,
-        sheetTitle: localizations.device_fan_speed,
-        activeColor: fanColor,
-        options: options,
-        displayFormatter: (level) => level != null
-            ? FanUtils.getSpeedLevelLabel(localizations, level)
-            : localizations.fan_speed_off,
-        columns: availableLevels.length > 4 ? 3 : availableLevels.length,
-        layout: useVerticalLayout
-            ? ValueSelectorRowLayout.compact
-            : ValueSelectorRowLayout.horizontal,
-        onChanged: _device.isOn
-            ? (level) {
-                if (level != null) _setSpeedLevel(level);
-              }
-            : null,
-      );
+      // Landscape: Use ValueSelectorRow button
+      if (isLandscape) {
+        final options = availableLevels.map((level) {
+          return ValueOption(
+            value: level,
+            label: FanUtils.getSpeedLevelLabel(localizations, level),
+          );
+        }).toList();
+
+        return SizedBox(
+          height: tileHeight,
+          width: double.infinity,
+          child: ValueSelectorRow<FanSpeedLevelValue>(
+            currentValue: fanChannel.speedLevel,
+            label: localizations.device_fan_speed,
+            icon: Icons.speed,
+            sheetTitle: localizations.device_fan_speed,
+            activeColor: fanColor,
+            options: options,
+            displayFormatter: (level) => level != null
+                ? FanUtils.getSpeedLevelLabel(localizations, level)
+                : localizations.fan_speed_off,
+            columns: availableLevels.length > 4 ? 3 : availableLevels.length,
+            layout: useVerticalLayout
+                ? ValueSelectorRowLayout.compact
+                : ValueSelectorRowLayout.horizontal,
+            showChevron: _screenService.isLargeScreen,
+            onChanged: _device.isOn
+                ? (level) {
+                    if (level != null) _setSpeedLevel(level);
+                  }
+                : null,
+          ),
+        );
+      } else {
+        // Portrait: Use SpeedSlider with defined steps
+        final steps = availableLevels
+            .map((level) => FanUtils.getSpeedLevelLabel(localizations, level))
+            .toList();
+
+        // Calculate normalized value from current speed level index
+        final currentLevel = fanChannel.speedLevel;
+        final currentIndex = currentLevel != null
+            ? availableLevels.indexOf(currentLevel)
+            : 0;
+        final normalizedValue = availableLevels.length > 1
+            ? currentIndex / (availableLevels.length - 1)
+            : 0.0;
+
+        return SpeedSlider(
+          value: normalizedValue.clamp(0.0, 1.0),
+          activeColor: fanColor,
+          enabled: _device.isOn,
+          steps: steps,
+          onChanged: (value) {
+            // Convert slider value to speed level index
+            final index = ((value * (availableLevels.length - 1)).round())
+                .clamp(0, availableLevels.length - 1);
+            _setSpeedLevel(availableLevels[index]);
+          },
+        );
+      }
     } else {
       // Numeric speed (0-100%)
       final range = fanChannel.maxSpeed - fanChannel.minSpeed;
       if (range <= 0) return const SizedBox.shrink();
 
-      if (useVerticalLayout) {
-        return ValueSelectorRow<double>(
-          currentValue: _speed,
-          label: localizations.device_fan_speed,
-          icon: Icons.speed,
-          sheetTitle: localizations.device_fan_speed,
-          activeColor: fanColor,
-          options: _getSpeedOptions(localizations),
-          displayFormatter: (v) => _formatSpeed(localizations, v),
-          columns: 4,
-          layout: ValueSelectorRowLayout.compact,
-          onChanged: _device.isOn ? (v) => _setSpeedValue(v ?? 0) : null,
+      final isLandscape = _screenService.isLandscape;
+
+      // Landscape (all sizes): Use ValueSelectorRow button
+      if (isLandscape) {
+        return SizedBox(
+          height: tileHeight,
+          width: double.infinity,
+          child: ValueSelectorRow<double>(
+            currentValue: _speed,
+            label: localizations.device_fan_speed,
+            icon: Icons.speed,
+            sheetTitle: localizations.device_fan_speed,
+            activeColor: fanColor,
+            options: _getSpeedOptions(localizations),
+            displayFormatter: (v) => _formatSpeed(localizations, v),
+            columns: 4,
+            layout: ValueSelectorRowLayout.compact,
+            showChevron: _screenService.isLargeScreen,
+            onChanged: _device.isOn ? (v) => _setSpeedValue(v ?? 0) : null,
+          ),
         );
       } else {
+        // Portrait (all sizes): Use SpeedSlider
         return SpeedSlider(
           value: _speed,
           activeColor: fanColor,
@@ -749,11 +758,23 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     final useCompactLayout = _screenService.isLandscape &&
         (_screenService.isSmallScreen || _screenService.isMediumScreen);
 
+    // Fixed tile height for consistent control sizing
+    final tileHeight = _scale(AppTileHeight.horizontal);
+
+    // Helper to wrap control with fixed height
+    Widget wrapControl(Widget child) {
+      return SizedBox(
+        height: tileHeight,
+        width: double.infinity,
+        child: child,
+      );
+    }
+
     final options = <Widget>[];
 
     // Oscillation / Swing
     if (fanChannel.hasSwing) {
-      options.add(UniversalTile(
+      options.add(wrapControl(UniversalTile(
         layout: TileLayout.horizontal,
         icon: Icons.sync,
         name: localizations.device_oscillation,
@@ -766,14 +787,14 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
         showGlow: false,
         showDoubleBorder: false,
         showInactiveBorder: true,
-      ));
-      options.add(AppSpacings.spacingSmVertical);
+      )));
+      options.add(AppSpacings.spacingMdVertical);
     }
 
     // Direction (reverse)
     if (fanChannel.hasDirection) {
       final isReversed = fanChannel.direction == FanDirectionValue.counterClockwise;
-      options.add(UniversalTile(
+      options.add(wrapControl(UniversalTile(
         layout: TileLayout.horizontal,
         icon: Icons.swap_vert,
         name: localizations.device_direction,
@@ -791,13 +812,13 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
         showGlow: false,
         showDoubleBorder: false,
         showInactiveBorder: true,
-      ));
-      options.add(AppSpacings.spacingSmVertical);
+      )));
+      options.add(AppSpacings.spacingMdVertical);
     }
 
     // Child Lock
     if (fanChannel.hasLocked) {
-      options.add(UniversalTile(
+      options.add(wrapControl(UniversalTile(
         layout: TileLayout.horizontal,
         icon: Icons.lock,
         name: localizations.device_child_lock,
@@ -810,13 +831,13 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
         showGlow: false,
         showDoubleBorder: false,
         showInactiveBorder: true,
-      ));
-      options.add(AppSpacings.spacingSmVertical);
+      )));
+      options.add(AppSpacings.spacingMdVertical);
     }
 
     // Timer
     if (fanChannel.hasTimer) {
-      options.add(_buildTimerControl(localizations, fanColor, useCompactLayout));
+      options.add(_buildTimerControl(localizations, fanColor, useCompactLayout, tileHeight));
     }
 
     if (options.isEmpty) {
@@ -824,7 +845,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     }
 
     // Remove trailing spacer
-    if (options.isNotEmpty && options.last == AppSpacings.spacingSmVertical) {
+    if (options.isNotEmpty && options.last == AppSpacings.spacingMdVertical) {
       options.removeLast();
     }
 
@@ -838,6 +859,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     AppLocalizations localizations,
     Color fanColor,
     bool useCompactLayout,
+    double tileHeight,
   ) {
     final fanChannel = _device.fanChannel;
 
@@ -845,45 +867,55 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
       final options = _getTimerPresetOptions(localizations);
       if (options.isEmpty) return const SizedBox.shrink();
 
-      return ValueSelectorRow<FanTimerPresetValue?>(
-        currentValue: fanChannel.timerPreset,
-        label: localizations.device_timer,
-        icon: Icons.timer_outlined,
-        sheetTitle: localizations.device_auto_off_timer,
-        activeColor: fanColor,
-        options: options,
-        displayFormatter: (p) => _formatTimerPreset(localizations, p),
-        columns: options.length > 4 ? 4 : options.length,
-        layout: useCompactLayout
-            ? ValueSelectorRowLayout.compact
-            : ValueSelectorRowLayout.horizontal,
-        onChanged: (preset) {
-          if (preset != null) {
-            _setFanTimerPreset(preset);
-          }
-        },
+      return SizedBox(
+        height: tileHeight,
+        width: double.infinity,
+        child: ValueSelectorRow<FanTimerPresetValue?>(
+          currentValue: fanChannel.timerPreset,
+          label: localizations.device_timer,
+          icon: Icons.timer_outlined,
+          sheetTitle: localizations.device_auto_off_timer,
+          activeColor: fanColor,
+          options: options,
+          displayFormatter: (p) => _formatTimerPreset(localizations, p),
+          columns: options.length > 4 ? 4 : options.length,
+          layout: useCompactLayout
+              ? ValueSelectorRowLayout.compact
+              : ValueSelectorRowLayout.horizontal,
+          showChevron: _screenService.isLargeScreen,
+          onChanged: (preset) {
+            if (preset != null) {
+              _setFanTimerPreset(preset);
+            }
+          },
+        ),
       );
     } else {
       final options = _getNumericTimerOptions(localizations);
       if (options.isEmpty) return const SizedBox.shrink();
 
-      return ValueSelectorRow<int>(
-        currentValue: fanChannel.timer,
-        label: localizations.device_timer,
-        icon: Icons.timer_outlined,
-        sheetTitle: localizations.device_auto_off_timer,
-        activeColor: fanColor,
-        options: options,
-        displayFormatter: (m) => _formatNumericTimer(localizations, m),
-        columns: options.length > 4 ? 4 : options.length,
-        layout: useCompactLayout
-            ? ValueSelectorRowLayout.compact
-            : ValueSelectorRowLayout.horizontal,
-        onChanged: (minutes) {
-          if (minutes != null) {
-            _setFanTimerNumeric(minutes);
-          }
-        },
+      return SizedBox(
+        height: tileHeight,
+        width: double.infinity,
+        child: ValueSelectorRow<int>(
+          currentValue: fanChannel.timer,
+          label: localizations.device_timer,
+          icon: Icons.timer_outlined,
+          sheetTitle: localizations.device_auto_off_timer,
+          activeColor: fanColor,
+          options: options,
+          displayFormatter: (m) => _formatNumericTimer(localizations, m),
+          columns: options.length > 4 ? 4 : options.length,
+          layout: useCompactLayout
+              ? ValueSelectorRowLayout.compact
+              : ValueSelectorRowLayout.horizontal,
+          showChevron: _screenService.isLargeScreen,
+          onChanged: (minutes) {
+            if (minutes != null) {
+              _setFanTimerNumeric(minutes);
+            }
+          },
+        ),
       );
     }
   }

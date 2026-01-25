@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -71,6 +72,9 @@ class ValueSelectorRow<T> extends StatelessWidget {
   /// Layout style for the row (default: horizontal)
   final ValueSelectorRowLayout layout;
 
+  /// Whether to show the chevron icon on the right (default: true)
+  final bool showChevron;
+
   ValueSelectorRow({
     super.key,
     required this.currentValue,
@@ -83,31 +87,44 @@ class ValueSelectorRow<T> extends StatelessWidget {
     this.displayFormatter,
     this.columns = 4,
     this.layout = ValueSelectorRowLayout.horizontal,
+    this.showChevron = true,
   });
 
   double _scale(double value) =>
       _screenService.scale(value, density: _visualDensityService.density);
 
-  String get _displayValue {
+  String _getDisplayValue(AppLocalizations localizations) {
     if (displayFormatter != null) {
       return displayFormatter!(currentValue);
     }
     final option = options.where((o) => o.value == currentValue).firstOrNull;
-    return option?.label ?? 'Off';
+    return option?.label ?? localizations.on_state_off;
   }
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
+    final isDisabled = onChanged == null;
+
+    // Use disabled colors when onChanged is null
+    final cardColor = isDisabled
+        ? (isDark ? AppFillColorDark.darker : AppFillColorLight.darker)
+        : (isDark ? AppFillColorDark.light : AppFillColorLight.blank);
     final borderColor =
         isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
-    final textColor =
-        isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
-    final secondaryColor =
-        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-    final iconColor =
-        isDark ? AppTextColorDark.regular : AppTextColorLight.regular;
+    final textColor = isDisabled
+        ? (isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled)
+        : (isDark ? AppTextColorDark.primary : AppTextColorLight.primary);
+    final secondaryColor = isDisabled
+        ? (isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled)
+        : (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary);
+    final iconBgColor = isDisabled
+        ? (isDark ? AppFillColorDark.light : AppFillColorLight.light)
+        : (isDark ? AppFillColorDark.darker : AppFillColorLight.light);
+    final iconColor = isDisabled
+        ? (isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled)
+        : (isDark ? AppTextColorDark.regular : AppTextColorLight.regular);
 
     return Material(
       color: cardColor,
@@ -123,7 +140,9 @@ class ValueSelectorRow<T> extends StatelessWidget {
         child: Container(
           padding: EdgeInsets.symmetric(
             horizontal: AppSpacings.pMd,
-            vertical: AppSpacings.pMd,
+            vertical: layout == ValueSelectorRowLayout.compact
+                ? AppSpacings.pSm
+                : AppSpacings.pMd,
           ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppBorderRadius.medium),
@@ -134,12 +153,21 @@ class ValueSelectorRow<T> extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(
-                icon,
-                color: iconColor,
-                size: _scale(20),
+              // Icon with background container (matching UniversalTile style)
+              Container(
+                width: _scale(32),
+                height: _scale(32),
+                decoration: BoxDecoration(
+                  color: iconBgColor,
+                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
+                ),
+                child: Icon(
+                  icon,
+                  color: iconColor,
+                  size: _scale(18),
+                ),
               ),
-              AppSpacings.spacingSmHorizontal,
+              AppSpacings.spacingMdHorizontal,
               Expanded(
                 child: layout == ValueSelectorRowLayout.compact
                     ? Column(
@@ -150,18 +178,20 @@ class ValueSelectorRow<T> extends StatelessWidget {
                             label,
                             style: TextStyle(
                               color: textColor,
-                              fontSize: AppFontSize.small,
-                              fontWeight: FontWeight.w400,
+                              fontSize: AppFontSize.base,
+                              fontWeight: FontWeight.w600,
                             ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
-                          AppSpacings.spacingXsVertical,
                           Text(
-                            _displayValue,
+                            _getDisplayValue(localizations),
                             style: TextStyle(
                               color: secondaryColor,
                               fontSize: AppFontSize.extraSmall,
-                              fontWeight: FontWeight.w500,
                             ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
                         ],
                       )
@@ -176,20 +206,21 @@ class ValueSelectorRow<T> extends StatelessWidget {
               ),
               if (layout == ValueSelectorRowLayout.horizontal) ...[
                 Text(
-                  _displayValue,
+                  _getDisplayValue(localizations),
                   style: TextStyle(
                     color: secondaryColor,
                     fontSize: AppFontSize.base,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                AppSpacings.spacingXsHorizontal,
+                if (showChevron) AppSpacings.spacingXsHorizontal,
               ],
-              Icon(
-                Icons.chevron_right,
-                color: secondaryColor,
-                size: _scale(20),
-              ),
+              if (showChevron)
+                Icon(
+                  Icons.chevron_right,
+                  color: secondaryColor,
+                  size: _scale(20),
+                ),
             ],
           ),
         ),
@@ -277,6 +308,7 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final effectiveActiveColor = widget.activeColor ??
         (isDark ? AppColorsDark.primary : AppColorsLight.primary);
@@ -455,7 +487,7 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
                     elevation: 0,
                   ),
                   child: Text(
-                    'Done',
+                    localizations.button_done,
                     style: TextStyle(
                       fontSize: AppFontSize.base,
                       fontWeight: FontWeight.w600,

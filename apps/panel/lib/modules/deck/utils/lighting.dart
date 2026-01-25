@@ -33,6 +33,30 @@ LightChannelView? findLightChannel(
   return channel;
 }
 
+/// Gets the display name for a light target based on channel count.
+///
+/// - If device has 1 channel: uses device name
+/// - If device has 2+ channels: uses channel name
+/// - Room name is stripped from the result
+///
+/// [target] - The light target to get name for
+/// [allTargets] - All light targets to count channels per device
+/// [roomName] - Room name to strip from the result (optional)
+String getLightTargetDisplayName(
+  LightTargetView target,
+  List<LightTargetView> allTargets,
+  String? roomName,
+) {
+  // Count how many channels belong to this device
+  final channelCount = allTargets.where((t) => t.deviceId == target.deviceId).length;
+
+  // Use device name for single-channel devices, channel name for multi-channel
+  final baseName = channelCount == 1 ? target.deviceName : target.channelName;
+
+  // Strip room name from the result
+  return stripRoomNameFromDevice(baseName, roomName);
+}
+
 /// Strips room name from device name (case insensitive).
 /// Capitalizes first letter if it becomes lowercase after stripping.
 String stripRoomNameFromDevice(String deviceName, String? roomName) {

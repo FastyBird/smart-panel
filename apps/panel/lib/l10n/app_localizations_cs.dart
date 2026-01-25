@@ -45,6 +45,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get button_confirm => 'Potvrdit';
 
   @override
+  String get button_done => 'Hotovo';
+
+  @override
   String get unit_celsius => 'Celsia';
 
   @override
@@ -388,6 +391,12 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get on_state_off => 'Vypnuto';
+
+  @override
+  String get power_hint_tap_to_turn_on => 'Klepnutím zapnete';
+
+  @override
+  String get power_hint_tap_to_turn_off => 'Klepnutím vypnete';
 
   @override
   String get message_info_app_reboot_title => 'Restartování zařízení!';
@@ -878,6 +887,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get climate_role_auxiliary => 'Pomocné';
 
   @override
+  String get climate_tap_for_details => 'Klepněte pro detaily';
+
+  @override
   String get climate_role_ventilation => 'Větrání';
 
   @override
@@ -1046,6 +1058,12 @@ class AppLocalizationsCs extends AppLocalizations {
   String get window_covering_preset_away => 'Pryč';
 
   @override
+  String get window_covering_presets_label => 'Předvolby';
+
+  @override
+  String get window_covering_channels_label => 'Žaluzie';
+
+  @override
   String get window_covering_info_status => 'Stav';
 
   @override
@@ -1073,6 +1091,9 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get button_retry => 'Opakovat';
+
+  @override
+  String get button_sync_all => 'Synchronizovat vše';
 
   @override
   String get system_view_room => 'Místnost';
@@ -1603,6 +1624,12 @@ class AppLocalizationsCs extends AppLocalizations {
   String get device_temperature => 'Teplota';
 
   @override
+  String get device_sensors => 'Senzory';
+
+  @override
+  String get device_controls => 'Ovládání';
+
+  @override
   String duration_format_hours_minutes(int hours, int minutes) {
     return '${hours}h ${minutes}m';
   }
@@ -1750,4 +1777,40 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get cover_type_cover => 'Krytina';
+
+  @override
+  String get light_preset_candle => 'Svíčka';
+
+  @override
+  String get light_preset_warm => 'Teplá';
+
+  @override
+  String get light_preset_daylight => 'Denní světlo';
+
+  @override
+  String get light_preset_cool => 'Studená';
+
+  @override
+  String get light_color_red => 'Červená';
+
+  @override
+  String get light_color_orange => 'Oranžová';
+
+  @override
+  String get light_color_yellow => 'Žlutá';
+
+  @override
+  String get light_color_green => 'Zelená';
+
+  @override
+  String get light_color_cyan => 'Azurová';
+
+  @override
+  String get light_color_blue => 'Modrá';
+
+  @override
+  String get light_color_purple => 'Fialová';
+
+  @override
+  String get light_color_pink => 'Růžová';
 }

@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/modules/devices/views/channels/contact.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/device_information.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_energy.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_power.dart';
@@ -14,7 +15,8 @@ class HeatingUnitDeviceView extends DeviceView
         DeviceTemperatureMixin,
         DeviceElectricalEnergyMixin,
         DeviceElectricalPowerMixin,
-        DeviceHumidityMixin {
+        DeviceHumidityMixin,
+        DeviceContactMixin {
   HeatingUnitDeviceView({
     required super.id,
     required super.type,
@@ -54,6 +56,10 @@ class HeatingUnitDeviceView extends DeviceView
   @override
   HumidityChannelView? get humidityChannel =>
       channels.whereType<HumidityChannelView>().firstOrNull;
+
+  @override
+  ContactChannelView? get contactChannel =>
+      channels.whereType<ContactChannelView>().firstOrNull;
 
   @override
   bool get isOn => heaterChannel.isHeating;

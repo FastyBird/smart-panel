@@ -10,8 +10,7 @@ import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
-import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
-import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
+import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
@@ -536,7 +535,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       additionalContent: hasDevices
           ? _buildLandscapeDevicesColumn(context, deviceDataList, localizations)
           : null,
-      additionalContentPadding: EdgeInsets.zero,
     );
   }
 
@@ -545,53 +543,36 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     List<_CoverDeviceData> deviceDataList,
     AppLocalizations localizations,
   ) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final secondaryBgColor =
-        isLight ? AppFillColorLight.light : AppFillColorDark.light;
-    final tileHeight = _screenService.scale(
-      AppTileHeight.horizontal,
-      density: _visualDensityService.density,
-    );
-
-    // Build list of device tile widgets
+    // Build list of device tile widgets using DeviceTileLandscape wrapper
     final deviceWidgets = deviceDataList.map((device) {
       final isActive = device.isOnline && device.position > 0;
       final status = _getDeviceStatus(device, localizations);
 
-      return SizedBox(
-        height: tileHeight,
-        child: UniversalTile(
-          layout: TileLayout.horizontal,
-          icon: device.position > 0
-              ? MdiIcons.blindsHorizontal
-              : MdiIcons.blindsHorizontalClosed,
-          name: device.name,
-          status: status,
-          isActive: isActive,
-          isOffline: !device.isOnline,
-          showWarningBadge: true,
-          showInactiveBorder: true,
-          onTileTap: () => _openDeviceDetail(context, device),
-        ),
+      return DeviceTileLandscape(
+        icon: device.position > 0
+            ? MdiIcons.blindsHorizontal
+            : MdiIcons.blindsHorizontalClosed,
+        name: device.name,
+        status: status,
+        isActive: isActive,
+        isOffline: !device.isOnline,
+        onTileTap: () => _openDeviceDetail(context, device),
       );
     }).toList();
 
-    return VerticalScrollWithGradient(
-      gradientHeight: AppSpacings.pLg,
-      itemCount: deviceWidgets.length + 1, // +1 for header
-      separatorHeight: AppSpacings.pMd,
-      padding: AppSpacings.paddingLg,
-      backgroundColor: secondaryBgColor,
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return _buildSectionTitle(
-            context,
-            localizations.shading_devices_title,
-            MdiIcons.viewGrid,
-          );
-        }
-        return deviceWidgets[index - 1];
-      },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle(
+          context,
+          localizations.shading_devices_title,
+          MdiIcons.viewGrid,
+        ),
+        for (final widget in deviceWidgets) ...[
+          SizedBox(height: AppSpacings.pMd),
+          widget,
+        ],
+      ],
     );
   }
 
@@ -1191,23 +1172,29 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   // ===========================================================================
 
   /// Builds a grid of device tiles that fill the available width.
+  /// Uses DeviceTilePortrait wrapper for portrait mode.
   Widget _buildDevicesGrid(
     BuildContext context,
     List<_CoverDeviceData> deviceDataList,
     AppLocalizations localizations, {
     int crossAxisCount = 2,
   }) {
-    final tileHeight = _screenService.scale(
-      AppTileHeight.horizontal,
-      density: _visualDensityService.density,
-    );
+    // Build device tiles using DeviceTilePortrait wrapper
+    final items = deviceDataList.map((device) {
+      final isActive = device.isOnline && device.position > 0;
+      final status = _getDeviceStatus(device, localizations);
 
-    final items = _buildDeviceItems(
-      context,
-      deviceDataList,
-      localizations,
-      TileLayout.horizontal,
-    );
+      return DeviceTilePortrait(
+        icon: device.position > 0
+            ? MdiIcons.blindsHorizontal
+            : MdiIcons.blindsHorizontalClosed,
+        name: device.name,
+        status: status,
+        isActive: isActive,
+        isOffline: !device.isOnline,
+        onTileTap: () => _openDeviceDetail(context, device),
+      );
+    }).toList();
 
     // Build rows of tiles
     final List<Widget> rows = [];
@@ -1216,7 +1203,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       for (var j = 0; j < crossAxisCount; j++) {
         final index = i + j;
         if (index < items.length) {
-          rowItems.add(Expanded(child: SizedBox(height: tileHeight, child: items[index])));
+          rowItems.add(Expanded(child: items[index]));
         } else {
           rowItems.add(const Expanded(child: SizedBox()));
         }
@@ -1231,32 +1218,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     }
 
     return Column(children: rows);
-  }
-
-  /// Builds list of device tile widgets
-  List<Widget> _buildDeviceItems(
-    BuildContext context,
-    List<_CoverDeviceData> deviceDataList,
-    AppLocalizations localizations,
-    TileLayout layout,
-  ) {
-    return deviceDataList.map((device) {
-      final isActive = device.isOnline && device.position > 0;
-      final status = _getDeviceStatus(device, localizations);
-
-      return UniversalTile(
-        layout: layout,
-        icon: device.position > 0
-            ? MdiIcons.blindsHorizontal
-            : MdiIcons.blindsHorizontalClosed,
-        name: device.name,
-        status: status,
-        isActive: isActive,
-        isOffline: !device.isOnline,
-        showWarningBadge: true,
-        onTileTap: () => _openDeviceDetail(context, device),
-      );
-    }).toList();
   }
 
   /// Get localized status text for a device
