@@ -762,7 +762,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
       children: [
         SectionTitle(
           title: localizations.window_covering_presets_label,
-          icon: MdiIcons.palette,
+          icon: MdiIcons.viewGrid,
         ),
         AppSpacings.spacingSmVertical,
         GridView.count(
@@ -785,20 +785,9 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
                   color: color,
                   borderRadius: BorderRadius.circular(AppBorderRadius.base),
                   border: Border.all(
-                    color: isActive
-                        ? (isDark ? AppColors.white : AppColors.black)
-                        : borderColor,
+                    color: isActive ? color : borderColor,
                     width: isActive ? _scale(3) : _scale(1),
                   ),
-                  boxShadow: isActive
-                      ? [
-                          BoxShadow(
-                            color: color.withValues(alpha: 0.5),
-                            blurRadius: _scale(8),
-                            spreadRadius: _scale(2),
-                          ),
-                        ]
-                      : null,
                 ),
               ),
             );
@@ -1166,7 +1155,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
         isDark ? AppColorsDark.primary : AppColorsLight.primary;
     final stateColor = _getStateColor(isDark);
     final dividerColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.base;
 
     // Determine icon based on state
     IconData sectionIcon = MdiIcons.lightbulbGroup;
@@ -1197,12 +1186,12 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
           ),
           child: _buildChannelsSectionHeader(isDark, sectionIcon, stateColor),
         ),
-        AppSpacings.spacingSmVertical,
+        AppSpacings.spacingMdVertical,
         Padding(
           padding: EdgeInsets.only(
             left: AppSpacings.pLg,
             right: AppSpacings.pLg,
-            bottom: AppSpacings.pSm,
+            bottom: AppSpacings.pMd,
           ),
           child: HorizontalScrollWithGradient(
             height: _scale(80),
