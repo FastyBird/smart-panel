@@ -48,6 +48,10 @@
   "@button_confirm": {
     "description": "Text for Confirm button"
   },
+  "button_done": "Done",
+  "@button_done": {
+    "description": "Text for Done button"
+  },
   "unit_celsius": "Celsius",
   "@unit_celsius": {
     "description": "Label for Celsius temperature unit."
@@ -517,6 +521,14 @@
   "on_state_off": "Off",
   "@on_state_off": {
     "description": "Indicates that a device or feature is turned off"
+  },
+  "power_hint_tap_to_turn_on": "Tap to turn on",
+  "@power_hint_tap_to_turn_on": {
+    "description": "Hint text shown on power button when device is off"
+  },
+  "power_hint_tap_to_turn_off": "Tap to turn off",
+  "@power_hint_tap_to_turn_off": {
+    "description": "Hint text shown on power button when device is on"
   },
   "message_info_app_reboot_title": "Rebooting Device!",
   "@message_info_app_reboot_title": {

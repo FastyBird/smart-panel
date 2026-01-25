@@ -167,6 +167,12 @@ abstract class AppLocalizations {
   /// **'Confirm'**
   String get button_confirm;
 
+  /// Text for Done button
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get button_done;
+
   /// Label for Celsius temperature unit.
   ///
   /// In en, this message translates to:
@@ -844,6 +850,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Off'**
   String get on_state_off;
+
+  /// Hint text shown on power button when device is off
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to turn on'**
+  String get power_hint_tap_to_turn_on;
+
+  /// Hint text shown on power button when device is on
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to turn off'**
+  String get power_hint_tap_to_turn_off;
 
   /// Title displayed during a device reboot operation.
   ///

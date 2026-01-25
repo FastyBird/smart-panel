@@ -17,7 +17,7 @@ class ThermostatDeviceController {
   final DevicesService _devicesService;
   final ControllerErrorCallback? _onError;
 
-  ThermostatChannelController? _thermostatController;
+  late final ThermostatChannelController _thermostatController;
   HeaterChannelController? _heaterController;
   CoolerChannelController? _coolerController;
 
@@ -29,16 +29,13 @@ class ThermostatDeviceController {
   })  : _controlState = controlState,
         _devicesService = devicesService,
         _onError = onError {
-    final thermostatChannel = device.thermostatChannel;
-    if (thermostatChannel != null) {
-      _thermostatController = ThermostatChannelController(
-        deviceId: device.id,
-        channel: thermostatChannel,
-        controlState: _controlState,
-        devicesService: _devicesService,
-        onError: _onError,
-      );
-    }
+    _thermostatController = ThermostatChannelController(
+      deviceId: device.id,
+      channel: device.thermostatChannel,
+      controlState: _controlState,
+      devicesService: _devicesService,
+      onError: _onError,
+    );
 
     final heaterChannel = device.heaterChannel;
     if (heaterChannel != null) {
@@ -67,8 +64,8 @@ class ThermostatDeviceController {
   // CHANNEL CONTROLLER ACCESS
   // ===========================================================================
 
-  /// Access to the thermostat channel controller (if available).
-  ThermostatChannelController? get thermostat => _thermostatController;
+  /// Access to the thermostat channel controller.
+  ThermostatChannelController get thermostat => _thermostatController;
 
   /// Access to the heater channel controller (if available).
   HeaterChannelController? get heater => _heaterController;
@@ -88,7 +85,7 @@ class ThermostatDeviceController {
   }
 
   /// Whether thermostat is locked (optimistic-aware).
-  bool get isLocked => _thermostatController?.isLocked ?? false;
+  bool get isLocked => _thermostatController.isLocked;
 
   /// Target heating temperature (optimistic-aware).
   double? get heatingTemperature => _heaterController?.temperature;
@@ -102,7 +99,7 @@ class ThermostatDeviceController {
 
   bool get hasHeater => _heaterController != null;
   bool get hasCooler => _coolerController != null;
-  bool get hasThermostatLock => _thermostatController?.hasLocked ?? false;
+  bool get hasThermostatLock => _thermostatController.hasLocked;
   bool get isHeating => _heaterController?.isHeating ?? false;
   bool get isCooling => _coolerController?.isCooling ?? false;
 
@@ -111,10 +108,10 @@ class ThermostatDeviceController {
   // ===========================================================================
 
   /// Set thermostat locked state with optimistic UI.
-  void setLocked(bool value) => _thermostatController?.setLocked(value);
+  void setLocked(bool value) => _thermostatController.setLocked(value);
 
   /// Toggle thermostat locked state with optimistic UI.
-  void toggleLocked() => _thermostatController?.toggleLocked();
+  void toggleLocked() => _thermostatController.toggleLocked();
 
   /// Set heater power state with optimistic UI.
   void setHeaterPower(bool value) => _heaterController?.setPower(value);

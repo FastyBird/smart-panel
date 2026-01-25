@@ -62,12 +62,12 @@ class LightingChannelData {
   });
 
   /// Get status text for display
-  String get statusText {
-    if (!isOnline) return 'Offline';
+  String getStatusText(AppLocalizations localizations) {
+    if (!isOnline) return localizations.device_status_offline;
     if (isOn) {
-      return hasBrightness ? '$brightness%' : 'On';
+      return hasBrightness ? '$brightness%' : localizations.on_state_on;
     }
-    return 'Off';
+    return localizations.on_state_off;
   }
 }
 
@@ -475,6 +475,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
   }
 
   Widget _buildLandscapeChannelsList(BuildContext context, bool isDark) {
+    final localizations = AppLocalizations.of(context)!;
     final primaryColor =
         isDark ? AppColorsDark.primary : AppColorsLight.primary;
     final isLargeScreen = _screenService.isLargeScreen;
@@ -511,7 +512,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
                 icon: Icons.lightbulb_outline,
                 activeIcon: Icons.lightbulb,
                 name: channel.name,
-                status: channel.statusText,
+                status: channel.getStatusText(localizations),
                 isActive: channel.isOn && channel.isOnline,
                 isOffline: !channel.isOnline,
                 isSelected: channel.isSelected,
@@ -552,7 +553,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
                 icon: Icons.lightbulb_outline,
                 activeIcon: Icons.lightbulb,
                 name: channel.name,
-                status: channel.statusText,
+                status: channel.getStatusText(localizations),
                 isActive: channel.isOn && channel.isOnline,
                 isOffline: !channel.isOnline,
                 isSelected: channel.isSelected,
@@ -1155,6 +1156,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
   }
 
   Widget _buildPortraitChannelsList(BuildContext context, bool isDark) {
+    final localizations = AppLocalizations.of(context)!;
     final primaryColor =
         isDark ? AppColorsDark.primary : AppColorsLight.primary;
     final stateColor = _getStateColor(isDark);
@@ -1215,7 +1217,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
                   icon: Icons.lightbulb_outline,
                   activeIcon: Icons.lightbulb,
                   name: channel.name,
-                  status: channel.statusText,
+                  status: channel.getStatusText(localizations),
                   isActive: channel.isOn && channel.isOnline,
                   isOffline: !channel.isOnline,
                   isSelected: channel.isSelected,
@@ -1288,6 +1290,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
   // --------------------------------------------------------------------------
 
   Widget _buildPowerButton(BuildContext context, bool isDark) {
+    final localizations = AppLocalizations.of(context)!;
     final primaryColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
     final primaryBgColor =
         isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9;
@@ -1296,7 +1299,9 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
     final inactiveColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 
-    final infoText = widget.isOn ? 'Tap to turn off' : 'Tap to turn on';
+    final infoText = widget.isOn
+        ? localizations.power_hint_tap_to_turn_off
+        : localizations.power_hint_tap_to_turn_on;
 
     return Center(
       child: Column(
@@ -1353,7 +1358,9 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
                   ),
                   AppSpacings.spacingMdVertical,
                   Text(
-                    widget.isOn ? 'On' : 'Off',
+                    widget.isOn
+                        ? localizations.on_state_on
+                        : localizations.on_state_off,
                     style: TextStyle(
                       fontSize: _scale(26),
                       fontWeight: FontWeight.w300,

@@ -45,6 +45,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get button_confirm => 'Confirm';
 
   @override
+  String get button_done => 'Done';
+
+  @override
   String get unit_celsius => 'Celsius';
 
   @override
@@ -388,6 +391,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get on_state_off => 'Off';
+
+  @override
+  String get power_hint_tap_to_turn_on => 'Tap to turn on';
+
+  @override
+  String get power_hint_tap_to_turn_off => 'Tap to turn off';
 
   @override
   String get message_info_app_reboot_title => 'Rebooting Device!';

@@ -45,6 +45,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get button_confirm => 'Potvrdit';
 
   @override
+  String get button_done => 'Hotovo';
+
+  @override
   String get unit_celsius => 'Celsia';
 
   @override
@@ -388,6 +391,12 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get on_state_off => 'Vypnuto';
+
+  @override
+  String get power_hint_tap_to_turn_on => 'Klepnutím zapnete';
+
+  @override
+  String get power_hint_tap_to_turn_off => 'Klepnutím vypnete';
 
   @override
   String get message_info_app_reboot_title => 'Restartování zařízení!';

@@ -1792,9 +1792,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   /// Large screens: 2 vertical tiles per row (square).
   /// Small/medium screens: Column of fixed-height horizontal tiles.
   Widget _buildLandscapeSensorsCard(BuildContext context) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final primaryColor =
-        isLight ? AppColorsLight.primary : AppColorsDark.primary;
     final isLargeScreen = _screenService.isLargeScreen;
     final sensors = _state.sensors;
 
@@ -2100,78 +2097,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   // SENSORS
   // --------------------------------------------------------------------------
 
-  /// Builds a horizontal scrollable row of sensor tiles.
-  /// Tiles are sized based on column count to match grid layout sizing.
-  Widget _buildSensorsScrollRow(
-    BuildContext context, {
-    required int columns,
-    bool useVerticalTiles = true,
-    double? statusFontSize,
-  }) {
-    final tileLayout =
-        useVerticalTiles ? TileLayout.vertical : TileLayout.horizontal;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final totalSpacing = AppSpacings.pMd * (columns - 1);
-        final tileWidth = (constraints.maxWidth - totalSpacing) / columns;
-
-        return ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: _state.sensors.length,
-          separatorBuilder: (context, index) => AppSpacings.spacingMdHorizontal,
-          itemBuilder: (context, index) {
-            return SizedBox(
-              width: tileWidth,
-              child: _buildSensorTile(
-                context,
-                _state.sensors[index],
-                layout: tileLayout,
-                statusFontSize: statusFontSize,
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  /// Builds a grid of sensor tiles that fill the available width.
-  /// Used on large screens without auxiliary devices.
-  Widget _buildSensorsGrid(
-    BuildContext context, {
-    required int crossAxisCount,
-    double? aspectRatio,
-    double? statusFontSize,
-    bool showInactiveBorder = false,
-  }) {
-    // Use horizontal layout for single column (aspect ratio > 1)
-    final useHorizontalLayout =
-        crossAxisCount == 1 || (aspectRatio != null && aspectRatio > 1.5);
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        crossAxisSpacing: AppSpacings.pMd,
-        mainAxisSpacing: AppSpacings.pMd,
-        childAspectRatio: aspectRatio ?? 1.0,
-      ),
-      itemCount: _state.sensors.length,
-      itemBuilder: (context, index) {
-        return _buildSensorTile(
-          context,
-          _state.sensors[index],
-          layout:
-              useHorizontalLayout ? TileLayout.horizontal : TileLayout.vertical,
-          statusFontSize: statusFontSize,
-          showInactiveBorder: showInactiveBorder,
-        );
-      },
-    );
-  }
-
   /// Translates sensor label based on type
   String _translateSensorLabel(
       AppLocalizations localizations, ClimateSensor sensor) {
@@ -2216,36 +2141,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   // --------------------------------------------------------------------------
   // AUXILIARY
   // --------------------------------------------------------------------------
-
-  /// Builds a grid of auxiliary device tiles that fill the available width.
-  Widget _buildAuxiliaryGrid(
-    BuildContext context, {
-    required int crossAxisCount,
-    double? aspectRatio,
-    bool showInactiveBorder = false,
-  }) {
-    // Use horizontal layout for single column or wide aspect ratio
-    final useHorizontalLayout =
-        crossAxisCount == 1 || (aspectRatio != null && aspectRatio > 1.5);
-    final tileLayout =
-        useHorizontalLayout ? TileLayout.horizontal : TileLayout.vertical;
-
-    final items =
-        _buildAuxiliaryItems(context, tileLayout, showInactiveBorder: showInactiveBorder);
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        crossAxisSpacing: AppSpacings.pMd,
-        mainAxisSpacing: AppSpacings.pMd,
-        childAspectRatio: aspectRatio ?? 1.0,
-      ),
-      itemCount: items.length,
-      itemBuilder: (context, index) => items[index],
-    );
-  }
 
   /// Translates device status string to localized version
   String _translateDeviceStatus(

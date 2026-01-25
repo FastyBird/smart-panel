@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -92,16 +93,17 @@ class ValueSelectorRow<T> extends StatelessWidget {
   double _scale(double value) =>
       _screenService.scale(value, density: _visualDensityService.density);
 
-  String get _displayValue {
+  String _getDisplayValue(AppLocalizations localizations) {
     if (displayFormatter != null) {
       return displayFormatter!(currentValue);
     }
     final option = options.where((o) => o.value == currentValue).firstOrNull;
-    return option?.label ?? 'Off';
+    return option?.label ?? localizations.on_state_off;
   }
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isDisabled = onChanged == null;
 
@@ -183,7 +185,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
                             maxLines: 1,
                           ),
                           Text(
-                            _displayValue,
+                            _getDisplayValue(localizations),
                             style: TextStyle(
                               color: secondaryColor,
                               fontSize: AppFontSize.extraSmall,
@@ -204,7 +206,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
               ),
               if (layout == ValueSelectorRowLayout.horizontal) ...[
                 Text(
-                  _displayValue,
+                  _getDisplayValue(localizations),
                   style: TextStyle(
                     color: secondaryColor,
                     fontSize: AppFontSize.base,
@@ -306,6 +308,7 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final effectiveActiveColor = widget.activeColor ??
         (isDark ? AppColorsDark.primary : AppColorsLight.primary);
@@ -484,7 +487,7 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
                     elevation: 0,
                   ),
                   child: Text(
-                    'Done',
+                    localizations.button_done,
                     style: TextStyle(
                       fontSize: AppFontSize.base,
                       fontWeight: FontWeight.w600,

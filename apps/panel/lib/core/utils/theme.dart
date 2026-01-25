@@ -668,7 +668,6 @@ class AppTileWidth {
 /// Use for horizontal tiles where height should be fixed regardless of width.
 class AppTileHeight {
   /// Standard height for horizontal tiles (status, info, presets)
-  /// Matches horizontalMedium (140) / wide aspect ratio (2.5) = 56
   static const double horizontal = 50.0;
 }
 

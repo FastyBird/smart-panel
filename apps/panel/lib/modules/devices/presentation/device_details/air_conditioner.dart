@@ -1302,49 +1302,6 @@ class _AirConditionerDeviceDetailState
   // FAN CONTROLS
   // --------------------------------------------------------------------------
 
-  Widget _buildFanControls(
-    AppLocalizations localizations,
-    bool isDark,
-    Color modeColor,
-    bool useCompactLayout,
-  ) {
-    final fanChannel = _device.fanChannel;
-    final controls = <Widget>[];
-
-    // Fixed tile height for consistent control sizing
-    final tileHeight = _scale(AppTileHeight.horizontal);
-
-    // Speed control with mode selector inside
-    if (fanChannel.hasSpeed) {
-      controls.add(_buildFanSpeedControl(localizations, isDark, modeColor, useCompactLayout, tileHeight));
-      controls.add(AppSpacings.spacingMdVertical);
-    } else if (fanChannel.hasMode && fanChannel.availableModes.length > 1) {
-      // If no speed but has mode, show mode selector standalone
-      controls.add(_buildFanModeControl(localizations, modeColor, useCompactLayout, tileHeight));
-      controls.add(AppSpacings.spacingMdVertical);
-    }
-
-    // Options (swing, direction, natural breeze, timer, locked)
-    final options = _buildFanOptions(localizations, isDark, modeColor, useCompactLayout, tileHeight);
-    if (options.isNotEmpty) {
-      controls.addAll(options);
-    }
-
-    if (controls.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    // Remove trailing spacer
-    if (controls.isNotEmpty && controls.last == AppSpacings.spacingMdVertical) {
-      controls.removeLast();
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: controls,
-    );
-  }
-
   Widget _buildFanModeControl(
     AppLocalizations localizations,
     Color activeColor,
