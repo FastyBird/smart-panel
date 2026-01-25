@@ -781,6 +781,9 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     final humidityChannel = _device.humidityChannel;
     final contactChannel = _device.contactChannel;
 
+    // Fixed tile height for consistent control sizing
+    final tileHeight = _scale(AppTileHeight.horizontal);
+
     // Build sensor info list
     final sensors = <_SensorInfo>[];
 
@@ -834,19 +837,23 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         ],
         // Lock control if available
         if (_device.hasThermostatLock) ...[
-          UniversalTile(
-            layout: TileLayout.horizontal,
-            icon: Icons.lock,
-            name: localizations.device_child_lock,
-            status: _device.isThermostatLocked
-                ? localizations.thermostat_lock_locked
-                : localizations.thermostat_lock_unlocked,
-            isActive: _device.isThermostatLocked,
-            activeColor: modeColor,
-            onTileTap: () => _setThermostatLocked(!_device.isThermostatLocked),
-            showGlow: false,
-            showDoubleBorder: false,
-            showInactiveBorder: true,
+          SizedBox(
+            height: tileHeight,
+            width: double.infinity,
+            child: UniversalTile(
+              layout: TileLayout.horizontal,
+              icon: Icons.lock,
+              name: localizations.device_child_lock,
+              status: _device.isThermostatLocked
+                  ? localizations.thermostat_lock_locked
+                  : localizations.thermostat_lock_unlocked,
+              isActive: _device.isThermostatLocked,
+              activeColor: modeColor,
+              onTileTap: () => _setThermostatLocked(!_device.isThermostatLocked),
+              showGlow: false,
+              showDoubleBorder: false,
+              showInactiveBorder: true,
+            ),
           ),
           AppSpacings.spacingMdVertical,
         ],

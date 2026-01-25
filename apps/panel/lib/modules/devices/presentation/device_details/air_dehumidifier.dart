@@ -850,6 +850,18 @@ class _AirDehumidifierDeviceDetailState
       ));
     }
 
+    // Fixed tile height for consistent control sizing
+    final tileHeight = _scale(AppTileHeight.horizontal);
+
+    // Helper to wrap control with fixed height
+    Widget wrapControl(Widget child) {
+      return SizedBox(
+        height: tileHeight,
+        width: double.infinity,
+        child: child,
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -859,10 +871,10 @@ class _AirDehumidifierDeviceDetailState
         ],
         // Fan speed control if available (includes fan mode if present)
         if (fanChannel != null && fanChannel.hasSpeed)
-          _buildFanSpeedControl(localizations, isDark, humidityColor, useVerticalLayout),
+          _buildFanSpeedControl(localizations, isDark, humidityColor, useVerticalLayout, tileHeight),
         // Oscillation / Swing tile - only show if fan has swing property
         if (fanChannel != null && fanChannel.hasSwing) ...[
-          UniversalTile(
+          wrapControl(UniversalTile(
             layout: TileLayout.horizontal,
             icon: Icons.sync,
             name: localizations.device_oscillation,
@@ -875,12 +887,12 @@ class _AirDehumidifierDeviceDetailState
             showGlow: false,
             showDoubleBorder: false,
             showInactiveBorder: true,
-          ),
+          )),
           AppSpacings.spacingMdVertical,
         ],
         // Direction tile - only show if fan has direction property
         if (fanChannel != null && fanChannel.hasDirection) ...[
-          UniversalTile(
+          wrapControl(UniversalTile(
             layout: TileLayout.horizontal,
             icon: Icons.swap_vert,
             name: localizations.device_direction,
@@ -900,12 +912,12 @@ class _AirDehumidifierDeviceDetailState
             showGlow: false,
             showDoubleBorder: false,
             showInactiveBorder: true,
-          ),
+          )),
           AppSpacings.spacingMdVertical,
         ],
         // Natural breeze tile - only show if fan has natural_breeze property
         if (fanChannel != null && fanChannel.hasNaturalBreeze) ...[
-          UniversalTile(
+          wrapControl(UniversalTile(
             layout: TileLayout.horizontal,
             icon: Icons.air,
             name: localizations.device_natural_breeze,
@@ -918,12 +930,12 @@ class _AirDehumidifierDeviceDetailState
             showGlow: false,
             showDoubleBorder: false,
             showInactiveBorder: true,
-          ),
+          )),
           AppSpacings.spacingMdVertical,
         ],
         // Child Lock
         if (channel != null && channel.hasLocked) ...[
-          UniversalTile(
+          wrapControl(UniversalTile(
             layout: TileLayout.horizontal,
             icon: Icons.lock,
             name: localizations.device_child_lock,
@@ -936,12 +948,12 @@ class _AirDehumidifierDeviceDetailState
             showGlow: false,
             showDoubleBorder: false,
             showInactiveBorder: true,
-          ),
+          )),
           AppSpacings.spacingMdVertical,
         ],
         // Timer
         if (channel != null && channel.hasTimer)
-          _buildTimerControl(localizations, humidityColor, useVerticalLayout),
+          _buildTimerControl(localizations, humidityColor, useVerticalLayout, tileHeight),
       ],
     );
   }
@@ -1040,11 +1052,21 @@ class _AirDehumidifierDeviceDetailState
     bool isDark,
     Color humidityColor,
     bool useVerticalLayout,
+    double tileHeight,
   ) {
     final fanChannel = _device.fanChannel;
     if (fanChannel == null || !fanChannel.hasSpeed) return const SizedBox.shrink();
 
     final hasMode = fanChannel.hasMode && fanChannel.availableModes.length > 1;
+
+    // Helper to wrap widget with fixed height
+    Widget wrapWithHeight(Widget child) {
+      return SizedBox(
+        height: tileHeight,
+        width: double.infinity,
+        child: child,
+      );
+    }
 
     if (fanChannel.isSpeedEnum) {
       // Enum-based speed (off, low, medium, high, etc.)
@@ -1087,9 +1109,9 @@ class _AirDehumidifierDeviceDetailState
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            speedWidget,
+            wrapWithHeight(speedWidget),
             AppSpacings.spacingMdVertical,
-            _buildFanModeControl(localizations, humidityColor, true),
+            _buildFanModeControl(localizations, humidityColor, true, tileHeight),
             AppSpacings.spacingMdVertical,
           ],
         );
@@ -1097,7 +1119,7 @@ class _AirDehumidifierDeviceDetailState
 
       return Column(
         children: [
-          speedWidget,
+          wrapWithHeight(speedWidget),
           AppSpacings.spacingMdVertical,
         ],
       );
@@ -1131,9 +1153,9 @@ class _AirDehumidifierDeviceDetailState
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              speedWidget,
+              wrapWithHeight(speedWidget),
               AppSpacings.spacingMdVertical,
-              _buildFanModeControl(localizations, humidityColor, true),
+              _buildFanModeControl(localizations, humidityColor, true, tileHeight),
               AppSpacings.spacingMdVertical,
             ],
           );
@@ -1141,7 +1163,7 @@ class _AirDehumidifierDeviceDetailState
 
         return Column(
           children: [
-            speedWidget,
+            wrapWithHeight(speedWidget),
             AppSpacings.spacingMdVertical,
           ],
         );
@@ -1162,7 +1184,7 @@ class _AirDehumidifierDeviceDetailState
               ],
               onChanged: _setFanSpeed,
               footer: hasMode
-                  ? _buildFanModeControl(localizations, humidityColor, false)
+                  ? _buildFanModeControl(localizations, humidityColor, false, null)
                   : null,
             ),
             AppSpacings.spacingMdVertical,
@@ -1176,6 +1198,7 @@ class _AirDehumidifierDeviceDetailState
     AppLocalizations localizations,
     Color humidityColor,
     bool useCompactLayout,
+    double? tileHeight,
   ) {
     final fanChannel = _device.fanChannel;
     if (fanChannel == null || !fanChannel.hasMode) return const SizedBox.shrink();
@@ -1194,7 +1217,7 @@ class _AirDehumidifierDeviceDetailState
               ))
           .toList();
 
-      return ValueSelectorRow<FanModeValue>(
+      final widget = ValueSelectorRow<FanModeValue>(
         currentValue: currentMode,
         label: localizations.device_fan_mode,
         icon: Icons.tune,
@@ -1215,6 +1238,16 @@ class _AirDehumidifierDeviceDetailState
               }
             : null,
       );
+
+      // Always wrap in compact mode since tileHeight is always provided
+      if (tileHeight != null) {
+        return SizedBox(
+          height: tileHeight,
+          width: double.infinity,
+          child: widget,
+        );
+      }
+      return widget;
     }
 
     return ModeSelector<FanModeValue>(
@@ -1325,9 +1358,19 @@ class _AirDehumidifierDeviceDetailState
     AppLocalizations localizations,
     Color humidityColor,
     bool useCompactLayout,
+    double tileHeight,
   ) {
     final channel = _dehumidifierChannel;
     if (channel == null) return const SizedBox.shrink();
+
+    // Helper to wrap widget with fixed height
+    Widget wrapWithHeight(Widget child) {
+      return SizedBox(
+        height: tileHeight,
+        width: double.infinity,
+        child: child,
+      );
+    }
 
     if (channel.isTimerEnum) {
       final options = channel.availableTimerPresets
@@ -1339,7 +1382,7 @@ class _AirDehumidifierDeviceDetailState
 
       if (options.isEmpty) return const SizedBox.shrink();
 
-      return ValueSelectorRow<DehumidifierTimerPresetValue?>(
+      final widget = ValueSelectorRow<DehumidifierTimerPresetValue?>(
         currentValue: channel.timerPreset,
         label: localizations.device_timer,
         icon: Icons.timer_outlined,
@@ -1360,12 +1403,14 @@ class _AirDehumidifierDeviceDetailState
           }
         },
       );
+
+      return wrapWithHeight(widget);
     } else {
       // Numeric timer in seconds
       final options = _getNumericTimerOptions(localizations, channel);
       if (options.isEmpty) return const SizedBox.shrink();
 
-      return ValueSelectorRow<int>(
+      final widget = ValueSelectorRow<int>(
         currentValue: channel.timer,
         label: localizations.device_timer,
         icon: Icons.timer_outlined,
@@ -1385,6 +1430,8 @@ class _AirDehumidifierDeviceDetailState
           }
         },
       );
+
+      return wrapWithHeight(widget);
     }
   }
 

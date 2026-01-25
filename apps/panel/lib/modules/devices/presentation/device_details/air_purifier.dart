@@ -431,6 +431,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     bool isDark,
     Color airColor,
     bool useVerticalLayout,
+    double tileHeight,
   ) {
     final fanChannel = _device.fanChannel;
     final isEnabled = _device.isOn;
@@ -447,24 +448,28 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         );
       }).toList();
 
-      return ValueSelectorRow<FanSpeedLevelValue>(
-        currentValue: fanChannel.speedLevel,
-        label: localizations.device_fan_speed,
-        icon: Icons.speed,
-        sheetTitle: localizations.device_fan_speed,
-        activeColor: airColor,
-        options: options,
-        displayFormatter: (level) => level != null
-            ? FanUtils.getSpeedLevelLabel(localizations, level)
-            : localizations.fan_speed_off,
-        columns: availableLevels.length > 4 ? 3 : availableLevels.length,
-        layout: useVerticalLayout
-            ? ValueSelectorRowLayout.compact
-            : ValueSelectorRowLayout.horizontal,
-        showChevron: _screenService.isLargeScreen,
-        onChanged: isEnabled ? (level) {
-          if (level != null) _setSpeedLevel(level);
-        } : null,
+      return SizedBox(
+        height: tileHeight,
+        width: double.infinity,
+        child: ValueSelectorRow<FanSpeedLevelValue>(
+          currentValue: fanChannel.speedLevel,
+          label: localizations.device_fan_speed,
+          icon: Icons.speed,
+          sheetTitle: localizations.device_fan_speed,
+          activeColor: airColor,
+          options: options,
+          displayFormatter: (level) => level != null
+              ? FanUtils.getSpeedLevelLabel(localizations, level)
+              : localizations.fan_speed_off,
+          columns: availableLevels.length > 4 ? 3 : availableLevels.length,
+          layout: useVerticalLayout
+              ? ValueSelectorRowLayout.compact
+              : ValueSelectorRowLayout.horizontal,
+          showChevron: _screenService.isLargeScreen,
+          onChanged: isEnabled ? (level) {
+            if (level != null) _setSpeedLevel(level);
+          } : null,
+        ),
       );
     } else {
       // Numeric speed (0-100%)
@@ -472,18 +477,22 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
 
       // Landscape (all sizes): Use ValueSelectorRow button
       if (isLandscape) {
-        return ValueSelectorRow<double>(
-          currentValue: _normalizedSpeed,
-          label: localizations.device_fan_speed,
-          icon: Icons.speed,
-          sheetTitle: localizations.device_fan_speed,
-          activeColor: airColor,
-          options: _getSpeedOptions(localizations),
-          displayFormatter: (v) => _formatSpeed(localizations, v),
-          columns: 4,
-          layout: ValueSelectorRowLayout.compact,
-          showChevron: _screenService.isLargeScreen,
-          onChanged: isEnabled ? (v) => _setSpeedValue(v ?? 0) : null,
+        return SizedBox(
+          height: tileHeight,
+          width: double.infinity,
+          child: ValueSelectorRow<double>(
+            currentValue: _normalizedSpeed,
+            label: localizations.device_fan_speed,
+            icon: Icons.speed,
+            sheetTitle: localizations.device_fan_speed,
+            activeColor: airColor,
+            options: _getSpeedOptions(localizations),
+            displayFormatter: (v) => _formatSpeed(localizations, v),
+            columns: 4,
+            layout: ValueSelectorRowLayout.compact,
+            showChevron: _screenService.isLargeScreen,
+            onChanged: isEnabled ? (v) => _setSpeedValue(v ?? 0) : null,
+          ),
         );
       } else {
         // Portrait (all sizes): Use SpeedSlider
@@ -775,6 +784,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     AppLocalizations localizations,
     Color airColor,
     bool useVerticalLayout,
+    double tileHeight,
   ) {
     final fanChannel = _device.fanChannel;
 
@@ -783,48 +793,56 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       final options = _getTimerPresetOptions(localizations);
       if (options.isEmpty) return const SizedBox.shrink();
 
-      return ValueSelectorRow<FanTimerPresetValue?>(
-        currentValue: fanChannel.timerPreset,
-        label: localizations.device_timer,
-        icon: Icons.timer_outlined,
-        sheetTitle: localizations.device_auto_off_timer,
-        activeColor: airColor,
-        options: options,
-        displayFormatter: (p) => _formatTimerPreset(localizations, p),
-        columns: options.length > 4 ? 4 : options.length,
-        layout: useVerticalLayout
-            ? ValueSelectorRowLayout.compact
-            : ValueSelectorRowLayout.horizontal,
-        showChevron: _screenService.isLargeScreen,
-        onChanged: (preset) {
-          if (preset != null) {
-            _setFanTimerPreset(preset);
-          }
-        },
+      return SizedBox(
+        height: tileHeight,
+        width: double.infinity,
+        child: ValueSelectorRow<FanTimerPresetValue?>(
+          currentValue: fanChannel.timerPreset,
+          label: localizations.device_timer,
+          icon: Icons.timer_outlined,
+          sheetTitle: localizations.device_auto_off_timer,
+          activeColor: airColor,
+          options: options,
+          displayFormatter: (p) => _formatTimerPreset(localizations, p),
+          columns: options.length > 4 ? 4 : options.length,
+          layout: useVerticalLayout
+              ? ValueSelectorRowLayout.compact
+              : ValueSelectorRowLayout.horizontal,
+          showChevron: _screenService.isLargeScreen,
+          onChanged: (preset) {
+            if (preset != null) {
+              _setFanTimerPreset(preset);
+            }
+          },
+        ),
       );
     } else {
       // Numeric timer (minutes)
       final options = _getNumericTimerOptions(localizations);
       if (options.isEmpty) return const SizedBox.shrink();
 
-      return ValueSelectorRow<int>(
-        currentValue: fanChannel.timer,
-        label: localizations.device_timer,
-        icon: Icons.timer_outlined,
-        sheetTitle: localizations.device_auto_off_timer,
-        activeColor: airColor,
-        options: options,
-        displayFormatter: (m) => _formatNumericTimer(localizations, m),
-        columns: options.length > 4 ? 4 : options.length,
-        layout: useVerticalLayout
-            ? ValueSelectorRowLayout.compact
-            : ValueSelectorRowLayout.horizontal,
-        showChevron: _screenService.isLargeScreen,
-        onChanged: (minutes) {
-          if (minutes != null) {
-            _setFanTimerNumeric(minutes);
-          }
-        },
+      return SizedBox(
+        height: tileHeight,
+        width: double.infinity,
+        child: ValueSelectorRow<int>(
+          currentValue: fanChannel.timer,
+          label: localizations.device_timer,
+          icon: Icons.timer_outlined,
+          sheetTitle: localizations.device_auto_off_timer,
+          activeColor: airColor,
+          options: options,
+          displayFormatter: (m) => _formatNumericTimer(localizations, m),
+          columns: options.length > 4 ? 4 : options.length,
+          layout: useVerticalLayout
+              ? ValueSelectorRowLayout.compact
+              : ValueSelectorRowLayout.horizontal,
+          showChevron: _screenService.isLargeScreen,
+          onChanged: (minutes) {
+            if (minutes != null) {
+              _setFanTimerNumeric(minutes);
+            }
+          },
+        ),
       );
     }
   }
@@ -1024,6 +1042,18 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     final airColor = DeviceColors.air(isDark);
     final useVerticalLayout = _screenService.isLandscape &&
         (_screenService.isSmallScreen || _screenService.isMediumScreen);
+
+    // Fixed tile height for consistent control sizing
+    final tileHeight = _scale(AppTileHeight.horizontal);
+
+    // Helper to wrap control with fixed height
+    Widget wrapControl(Widget child) {
+      return SizedBox(
+        height: tileHeight,
+        width: double.infinity,
+        child: child,
+      );
+    }
 
     // Build info tiles dynamically based on available channels
     // Ordered by priority: safety-critical > primary air quality > secondary gases > maintenance > environmental
@@ -1306,12 +1336,12 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         ],
         // Speed control - only show if fan has speed property
         if (_device.fanChannel.hasSpeed) ...[
-          _buildSpeedControl(localizations, isDark, airColor, useVerticalLayout),
+          _buildSpeedControl(localizations, isDark, airColor, useVerticalLayout, tileHeight),
           AppSpacings.spacingMdVertical,
         ],
         // Oscillation / Swing tile - only show if fan has swing property
         if (_device.fanChannel.hasSwing) ...[
-          UniversalTile(
+          wrapControl(UniversalTile(
             layout: TileLayout.horizontal,
             icon: Icons.sync,
             name: localizations.device_oscillation,
@@ -1324,12 +1354,12 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             showGlow: false,
             showDoubleBorder: false,
             showInactiveBorder: true,
-          ),
+          )),
           AppSpacings.spacingMdVertical,
         ],
         // Direction tile - only show if fan has direction property
         if (_device.fanChannel.hasDirection) ...[
-          UniversalTile(
+          wrapControl(UniversalTile(
             layout: TileLayout.horizontal,
             icon: Icons.swap_vert,
             name: localizations.device_direction,
@@ -1348,12 +1378,12 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             showGlow: false,
             showDoubleBorder: false,
             showInactiveBorder: true,
-          ),
+          )),
           AppSpacings.spacingMdVertical,
         ],
         // Natural Breeze tile - only show if fan has natural breeze property
         if (_device.fanChannel.hasNaturalBreeze) ...[
-          UniversalTile(
+          wrapControl(UniversalTile(
             layout: TileLayout.horizontal,
             icon: MdiIcons.weatherWindy,
             name: localizations.device_natural_breeze,
@@ -1366,12 +1396,12 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             showGlow: false,
             showDoubleBorder: false,
             showInactiveBorder: true,
-          ),
+          )),
           AppSpacings.spacingMdVertical,
         ],
         // Child Lock tile - only show if fan has locked property
         if (_device.fanChannel.hasLocked) ...[
-          UniversalTile(
+          wrapControl(UniversalTile(
             layout: TileLayout.horizontal,
             icon: Icons.lock,
             name: localizations.device_child_lock,
@@ -1384,12 +1414,12 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             showGlow: false,
             showDoubleBorder: false,
             showInactiveBorder: true,
-          ),
+          )),
           AppSpacings.spacingMdVertical,
         ],
         // Timer - only show if fan has timer property
         if (_device.fanChannel.hasTimer)
-          _buildTimerControl(localizations, airColor, useVerticalLayout),
+          _buildTimerControl(localizations, airColor, useVerticalLayout, tileHeight),
       ],
     );
   }
