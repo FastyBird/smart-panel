@@ -259,6 +259,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         isDark ? AppColorsDark.primary : AppColorsLight.primary;
     final primaryBgColor =
         isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9;
+    final warningColor =
+        isDark ? AppColorsDark.warning : AppColorsLight.warning;
 
     return PageHeader(
       title: widget._device.name,
@@ -297,6 +299,21 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           ),
         ],
       ),
+      trailing: _device.windowCoveringObstruction
+          ? Container(
+              width: _scale(32),
+              height: _scale(32),
+              decoration: BoxDecoration(
+                color: warningColor.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                MdiIcons.alertCircle,
+                size: _scale(18),
+                color: warningColor,
+              ),
+            )
+          : null,
     );
   }
 
@@ -338,7 +355,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       if (_device.hasWindowCoveringTilt)
         _buildTiltCard(context, useCompactLayout: true),
       _buildPresetsCard(context),
-      _buildInfoCard(context),
     ];
 
     return DeviceDetailLandscapeLayout(
@@ -858,8 +874,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
             AppSpacings.spacingMdVertical,
           ],
           _buildPresetsWithGradient(context),
-          AppSpacings.spacingMdVertical,
-          _buildInfoRow(context),
         ],
       ),
     );
@@ -1541,59 +1555,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     );
   }
 
-  // ===========================================================================
-  // INFO CARD
-  // ===========================================================================
-
-  Widget _buildInfoCard(BuildContext context) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final localizations = AppLocalizations.of(context)!;
-    final tileHeight = _scale(AppTileHeight.horizontal);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          height: tileHeight,
-          child: UniversalTile(
-            layout: TileLayout.horizontal,
-            icon: _getStatusIcon(),
-            name: localizations.window_covering_info_status,
-            status: _getStatusLabel(context),
-            isActive: false,
-            iconAccentColor: _getStatusColor(context),
-            showGlow: false,
-            showWarningBadge: false,
-            showInactiveBorder: true,
-          ),
-        ),
-        if (_device.hasWindowCoveringObstruction) ...[
-          AppSpacings.spacingMdVertical,
-          SizedBox(
-            height: tileHeight,
-            child: UniversalTile(
-              layout: TileLayout.horizontal,
-              icon: _device.windowCoveringObstruction
-                  ? MdiIcons.alertCircle
-                  : MdiIcons.checkCircle,
-              name: localizations.window_covering_info_obstruction,
-              status: _device.windowCoveringObstruction
-                  ? localizations.window_covering_obstruction_detected
-                  : localizations.window_covering_obstruction_clear,
-              isActive: false,
-              iconAccentColor: _device.windowCoveringObstruction
-                  ? (isLight ? AppColorsLight.warning : AppColorsDark.warning)
-                  : (isLight ? AppColorsLight.success : AppColorsDark.success),
-              showGlow: false,
-              showWarningBadge: false,
-              showInactiveBorder: true,
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
   Color _getStatusColor(BuildContext context) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
 
@@ -1610,78 +1571,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     }
   }
 
-  IconData _getStatusIcon() {
-    switch (_device.windowCoveringStatus) {
-      case WindowCoveringStatusValue.opened:
-        return MdiIcons.blindsOpen;
-      case WindowCoveringStatusValue.closed:
-        return MdiIcons.blinds;
-      case WindowCoveringStatusValue.opening:
-        return MdiIcons.arrowUpBold;
-      case WindowCoveringStatusValue.closing:
-        return MdiIcons.arrowDownBold;
-      case WindowCoveringStatusValue.stopped:
-        return MdiIcons.pauseCircle;
-    }
-  }
-
-  Widget _buildInfoRow(BuildContext context) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final localizations = AppLocalizations.of(context)!;
-    final tileHeight = _scale(AppTileHeight.horizontal);
-
-    return SizedBox(
-      height: tileHeight,
-      child: Row(
-        children: [
-          Expanded(
-            child: UniversalTile(
-              layout: TileLayout.horizontal,
-              icon: _getStatusIcon(),
-              name: localizations.window_covering_info_status,
-              status: _getStatusLabel(context),
-              isActive: false,
-              activeColor: _getStatusColor(context),
-              iconAccentColor: _getStatusColor(context),
-              showGlow: false,
-              showWarningBadge: false,
-              showInactiveBorder: true,
-            ),
-          ),
-          if (_device.hasWindowCoveringObstruction) ...[
-            AppSpacings.spacingSmHorizontal,
-            Expanded(
-              child: UniversalTile(
-                layout: TileLayout.horizontal,
-                icon: _device.windowCoveringObstruction
-                    ? MdiIcons.alertCircle
-                    : MdiIcons.checkCircle,
-                name: localizations.window_covering_info_obstruction,
-                status: _device.windowCoveringObstruction
-                    ? localizations.window_covering_obstruction_detected
-                    : localizations.window_covering_obstruction_clear,
-                isActive: false,
-                activeColor: _device.windowCoveringObstruction
-                    ? (isLight ? AppColorsLight.warning : AppColorsDark.warning)
-                    : (isLight ? AppColorsLight.success : AppColorsDark.success),
-                iconAccentColor: _device.windowCoveringObstruction
-                    ? (isLight ? AppColorsLight.warning : AppColorsDark.warning)
-                    : (isLight ? AppColorsLight.success : AppColorsDark.success),
-                showGlow: false,
-                showWarningBadge: false,
-                showInactiveBorder: true,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
   // ===========================================================================
   // PRESETS
   // ===========================================================================
-
 
   Widget _buildPresetsCard(BuildContext context) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
