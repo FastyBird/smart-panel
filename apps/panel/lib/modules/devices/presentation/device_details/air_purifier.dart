@@ -468,7 +468,10 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       );
     } else {
       // Numeric speed (0-100%)
-      if (useVerticalLayout) {
+      final isLandscape = _screenService.isLandscape;
+
+      // Landscape (all sizes): Use ValueSelectorRow button
+      if (isLandscape) {
         return ValueSelectorRow<double>(
           currentValue: _normalizedSpeed,
           label: localizations.device_fan_speed,
@@ -483,6 +486,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           onChanged: isEnabled ? (v) => _setSpeedValue(v ?? 0) : null,
         );
       } else {
+        // Portrait (all sizes): Use SpeedSlider
         return SpeedSlider(
           value: _normalizedSpeed,
           activeColor: airColor,
@@ -592,7 +596,6 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     final isLargeScreen = _screenService.isLargeScreen;
 
     return DeviceDetailLandscapeLayout(
-      largeSecondaryColumn: isLargeScreen,
       secondaryScrollable: false,
       secondaryContentPadding: EdgeInsets.zero,
       mainContent: isLargeScreen
