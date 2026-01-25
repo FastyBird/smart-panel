@@ -1227,7 +1227,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
           color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
           borderRadius: BorderRadius.circular(AppBorderRadius.medium),
           border: Border.all(
-            color: isDark ? AppFillColorDark.light : AppBorderColorLight.light,
+            color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
             width: 1,
           ),
         ),
