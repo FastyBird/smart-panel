@@ -30,7 +30,7 @@ class ThermostatChannelController {
   // OPTIMISTIC-AWARE GETTERS
   // ===========================================================================
 
-  /// Whether child lock is enabled (optimistic-aware).
+  /// Whether locked is enabled (optimistic-aware).
   bool get isLocked {
     final prop = channel.lockedProp;
     if (prop != null &&
@@ -52,7 +52,7 @@ class ThermostatChannelController {
   // COMMANDS
   // ===========================================================================
 
-  /// Set child lock state with optimistic UI.
+  /// Set locked state with optimistic UI.
   void setLocked(bool value) {
     final prop = channel.lockedProp;
     if (prop == null) return;
@@ -72,7 +72,7 @@ class ThermostatChannelController {
     });
   }
 
-  /// Toggle child lock state with optimistic UI.
+  /// Toggle locked state with optimistic UI.
   void toggleLocked() {
     setLocked(!isLocked);
   }
