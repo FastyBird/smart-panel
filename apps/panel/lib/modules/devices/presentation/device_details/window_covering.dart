@@ -15,6 +15,7 @@ import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/channels/window_covering.dart';
+import 'package:fastybird_smart_panel/modules/devices/controllers/devices/window_covering.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/window_covering.dart';
@@ -31,11 +32,13 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 /// tilt control (if supported), and quick action buttons.
 class WindowCoveringDeviceDetail extends StatefulWidget {
   final WindowCoveringDeviceView _device;
+  final String? initialChannelId;
   final VoidCallback? onBack;
 
   const WindowCoveringDeviceDetail({
     super.key,
     required WindowCoveringDeviceView device,
+    this.initialChannelId,
     this.onBack,
   }) : _device = device;
 
@@ -51,8 +54,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   final DevicesService _devicesService = locator<DevicesService>();
   DeviceControlStateService? _deviceControlStateService;
 
-  // Channel controllers for multi-channel support
-  List<WindowCoveringChannelController> _channelControllers = [];
+  // Device controller for multi-channel support
+  WindowCoveringDeviceController? _deviceController;
 
   // Selected channel index for multi-channel devices
   int _selectedChannelIndex = 0;
@@ -82,6 +85,15 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   void initState() {
     super.initState();
 
+    // Initialize selected channel index from initialChannelId if provided
+    if (widget.initialChannelId != null) {
+      final index = widget._device.windowCoveringChannels
+          .indexWhere((c) => c.id == widget.initialChannelId);
+      if (index >= 0) {
+        _selectedChannelIndex = index;
+      }
+    }
+
     _devicesService.addListener(_onDeviceChanged);
 
     try {
@@ -100,35 +112,46 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   void _initController() {
     final controlState = _deviceControlStateService;
     if (controlState != null) {
-      _channelControllers = _device.windowCoveringChannels.map((channel) {
-        return WindowCoveringChannelController(
-          deviceId: _device.id,
-          channel: channel,
-          controlState: controlState,
-          devicesService: _devicesService,
-          onError: _onControllerError,
-        );
-      }).toList();
+      _deviceController = WindowCoveringDeviceController(
+        device: _device,
+        controlState: controlState,
+        devicesService: _devicesService,
+        onError: _onControllerError,
+      );
 
       // Ensure selected index is valid
-      if (_selectedChannelIndex >= _channelControllers.length) {
+      final controllers = _deviceController?.windowCoverings ?? [];
+      if (_selectedChannelIndex >= controllers.length) {
         _selectedChannelIndex = 0;
       }
     }
   }
 
+  /// Get all channel controllers from device controller
+  List<WindowCoveringChannelController> get _channelControllers =>
+      _deviceController?.windowCoverings ?? [];
+
   /// Whether the device has multiple window covering channels
   bool get _isMultiChannel => _device.windowCoveringChannels.length > 1;
 
   /// Currently selected channel controller
-  WindowCoveringChannelController? get _controller =>
-      _channelControllers.isNotEmpty
-          ? _channelControllers[_selectedChannelIndex]
-          : null;
+  WindowCoveringChannelController? get _controller {
+    final controllers = _channelControllers;
+    if (controllers.isEmpty) return null;
+    if (_selectedChannelIndex < 0 || _selectedChannelIndex >= controllers.length) {
+      return null;
+    }
+    return controllers[_selectedChannelIndex];
+  }
 
   /// Currently selected channel view
-  WindowCoveringChannelView get _selectedChannel =>
-      _device.windowCoveringChannels[_selectedChannelIndex];
+  WindowCoveringChannelView get _selectedChannel {
+    final channels = _device.windowCoveringChannels;
+    if (_selectedChannelIndex < 0 || _selectedChannelIndex >= channels.length) {
+      return channels.first;
+    }
+    return channels[_selectedChannelIndex];
+  }
 
   void _onControllerError(String propertyId, Object error) {
     if (kDebugMode) {
@@ -164,10 +187,15 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _checkConvergence();
-        _initController();
         setState(() {});
       }
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant WindowCoveringDeviceDetail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _initController();
   }
 
   void _checkConvergence() {
@@ -329,7 +357,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           ),
         ],
       ),
-      trailing: _device.windowCoveringObstruction
+      trailing: _selectedChannel.obstruction
           ? Container(
               width: _scale(32),
               height: _scale(32),
@@ -357,7 +385,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   String _getStatusLabel(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    switch (_device.windowCoveringStatus) {
+    switch (_selectedChannel.status) {
       case WindowCoveringStatusValue.opened:
         return localizations.window_covering_status_open;
       case WindowCoveringStatusValue.closed:
@@ -1801,7 +1829,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   Color _getStatusColor(BuildContext context) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
 
-    switch (_device.windowCoveringStatus) {
+    switch (_selectedChannel.status) {
       case WindowCoveringStatusValue.opened:
         return isLight ? AppColorsLight.success : AppColorsDark.success;
       case WindowCoveringStatusValue.closed:
