@@ -349,16 +349,12 @@ class _LightSingleChannelControlPanelState
     final white = _controller.colorWhite;
     final capabilities = _buildCapabilities();
 
-    // Show subtitle only if device name differs from channel name
-    final channelName = _controller.channel.name;
-    final showSubtitle =
-        channelName.toLowerCase() != widget.deviceName.toLowerCase();
-
+    // Single-channel device: use device name as title (no subtitle needed)
     return LightingControlPanel(
       // Header configuration
       showHeader: widget.showHeader,
-      title: channelName,
-      subtitle: showSubtitle ? widget.deviceName : null,
+      title: widget.deviceName,
+      subtitle: null,
       icon: MdiIcons.lightbulb,
       onBack: widget.onBack,
 
