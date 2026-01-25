@@ -393,6 +393,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           ],
         ),
       _buildPresetsCard(context),
+      if (_isMultiChannel) _buildLandscapeChannelsList(context),
     ];
 
     return DeviceDetailLandscapeLayout(
@@ -1007,6 +1008,108 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         _selectedPresetIndex = null;
       });
     }
+  }
+
+  /// Builds the channels list for landscape layout
+  Widget _buildLandscapeChannelsList(BuildContext context) {
+    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final primaryColor =
+        isLight ? AppColorsLight.primary : AppColorsDark.primary;
+    final localizations = AppLocalizations.of(context)!;
+    final isLargeScreen = _screenService.isLargeScreen;
+
+    // Large screens: 2 vertical tiles per row (square)
+    if (isLargeScreen) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionTitle(
+            title: localizations.window_covering_channels_label,
+            icon: MdiIcons.blindsHorizontal,
+          ),
+          AppSpacings.spacingSmVertical,
+          GridView.count(
+            crossAxisCount: 2,
+            mainAxisSpacing: AppSpacings.pMd,
+            crossAxisSpacing: AppSpacings.pMd,
+            childAspectRatio: AppTileAspectRatio.square,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            children: _device.windowCoveringChannels.asMap().entries.map((entry) {
+              final index = entry.key;
+              final channel = entry.value;
+              final controller = _channelControllers.isNotEmpty
+                  ? _channelControllers[index]
+                  : null;
+              final isSelected = index == _selectedChannelIndex;
+              final position = controller?.position ?? channel.position;
+
+              return UniversalTile(
+                layout: TileLayout.vertical,
+                icon: MdiIcons.blindsHorizontalClosed,
+                activeIcon: MdiIcons.blindsHorizontal,
+                name: channel.name,
+                status: '$position%',
+                isActive: position > 0,
+                isSelected: isSelected,
+                activeColor: primaryColor,
+                onTileTap: () => _handleChannelSelect(index),
+                showGlow: false,
+                showWarningBadge: false,
+                showInactiveBorder: true,
+                showSelectionIndicator: true,
+              );
+            }).toList(),
+          ),
+        ],
+      );
+    }
+
+    // Small/medium: Column of fixed-height horizontal tiles
+    final tileHeight = _scale(AppTileHeight.horizontal);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionTitle(
+          title: localizations.window_covering_channels_label,
+          icon: MdiIcons.blindsHorizontal,
+        ),
+        AppSpacings.spacingSmVertical,
+        ..._device.windowCoveringChannels.asMap().entries.map((entry) {
+          final index = entry.key;
+          final channel = entry.value;
+          final controller = _channelControllers.isNotEmpty
+              ? _channelControllers[index]
+              : null;
+          final isSelected = index == _selectedChannelIndex;
+          final position = controller?.position ?? channel.position;
+          final isLast = index == _device.windowCoveringChannels.length - 1;
+
+          return Padding(
+            padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
+            child: SizedBox(
+              height: tileHeight,
+              child: UniversalTile(
+                layout: TileLayout.horizontal,
+                icon: MdiIcons.blindsHorizontalClosed,
+                activeIcon: MdiIcons.blindsHorizontal,
+                name: channel.name,
+                status: '$position%',
+                isActive: position > 0,
+                isSelected: isSelected,
+                activeColor: primaryColor,
+                onTileTap: () => _handleChannelSelect(index),
+                showGlow: false,
+                showWarningBadge: false,
+                showInactiveBorder: true,
+                showSelectionIndicator: true,
+              ),
+            ),
+          );
+        }),
+      ],
+    );
   }
 
   /// Builds the presets horizontal scroll with edge gradients that extend
