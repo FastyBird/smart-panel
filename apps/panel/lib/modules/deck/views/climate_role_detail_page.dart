@@ -6,6 +6,7 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
+import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
@@ -923,232 +924,71 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
   // --------------------------------------------------------------------------
 
   Widget _buildLandscapeLayout(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
-    final isLargeScreen = _screenService.isLargeScreen;
-
     final hasDevices = _state.climateDevices.isNotEmpty;
 
-    if (isLargeScreen) {
-      return _buildLargeLandscapeLayout(
-        context,
-        isDark: isDark,
-        borderColor: borderColor,
-        hasDevices: hasDevices,
-      );
-    }
-
-    return _buildCompactLandscapeLayout(
-      context,
-      isDark: isDark,
-      borderColor: borderColor,
-      hasDevices: hasDevices,
+    return LandscapeViewLayout(
+      mainContent: _buildCompactDialWithModes(context),
+      additionalContent: hasDevices
+          ? _buildLandscapeDevicesColumn(context)
+          : null,
     );
   }
 
-  Widget _buildLargeLandscapeLayout(
-    BuildContext context, {
-    required bool isDark,
-    required Color borderColor,
-    required bool hasDevices,
-  }) {
-    final dialSize = _scale(200);
-    const columns = 2;
-    const aspectRatio = 1.0; // Square tiles
+  Widget _buildLandscapeDevicesColumn(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+    final isLargeScreen = _screenService.isLargeScreen;
 
-    return Row(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Left column: dial (1/2 screen)
-        Expanded(
-          flex: 1,
-          child: Center(
-            child: SingleChildScrollView(
-              padding: AppSpacings.paddingLg,
-              child: _buildPrimaryControlCard(context, dialSize: dialSize),
-            ),
-          ),
+        SectionTitle(
+          title: localizations.climate_devices_section,
+          icon: MdiIcons.devices,
         ),
-        Container(width: _scale(1), color: borderColor),
-        // Right column: climate devices (1/2 screen)
-        Expanded(
-          flex: 1,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (hasDevices) ...[
-                SectionHeader(
-                  title: 'Climate Devices',
-                  icon: MdiIcons.devices,
-                  showTopBorder: false,
-                  count: _state.climateDevices.length,
-                ),
-                Expanded(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      // Calculate tile width from available space
-                      final horizontalPadding = AppSpacings.pMd * 2;
-                      final totalSpacing = AppSpacings.pMd * (columns - 1);
-                      final availableWidth =
-                          constraints.maxWidth - horizontalPadding - totalSpacing;
-                      final tileWidth = availableWidth / columns;
-                      // Derive tile height from width using aspect ratio
-                      final tileHeight = tileWidth / aspectRatio;
-
-                      // Build rows of 2 tiles
-                      final rows = <Widget>[];
-                      for (var i = 0; i < _state.climateDevices.length; i += columns) {
-                        final rowDevices =
-                            _state.climateDevices.skip(i).take(columns).toList();
-                        rows.add(
-                          Padding(
-                            padding: EdgeInsets.only(bottom: AppSpacings.pMd),
-                            child: SizedBox(
-                              height: tileHeight,
-                              child: Row(
-                                children: [
-                                  for (var j = 0; j < columns; j++) ...[
-                                    if (j > 0) AppSpacings.spacingMdHorizontal,
-                                    SizedBox(
-                                      width: tileWidth,
-                                      child: j < rowDevices.length
-                                          ? _buildDeviceTile(context, rowDevices[j],
-                                              isVertical: true)
-                                          : const SizedBox.shrink(),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      }
-
-                      return ListView(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: AppSpacings.pMd,
-                          vertical: AppSpacings.pMd,
-                        ),
-                        children: rows,
-                      );
-                    },
-                  ),
-                ),
-              ],
-              if (!hasDevices)
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      'No devices',
-                      style: TextStyle(
-                        color: isDark
-                            ? AppTextColorDark.secondary
-                            : AppTextColorLight.secondary,
-                        fontSize: AppFontSize.small,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
+        SizedBox(height: AppSpacings.pMd),
+        isLargeScreen
+            ? _buildLandscapeDevicesGrid(context)
+            : _buildLandscapeDevicesList(context),
       ],
     );
   }
 
-  Widget _buildCompactLandscapeLayout(
-    BuildContext context, {
-    required bool isDark,
-    required Color borderColor,
-    required bool hasDevices,
-  }) {
-    const columns = 1;
-    const aspectRatio = 2.0; // Horizontal tiles (wider than tall)
+  /// Large screens: 2 vertical tiles per row (square)
+  Widget _buildLandscapeDevicesGrid(BuildContext context) {
+    return GridView.count(
+      crossAxisCount: 2,
+      mainAxisSpacing: AppSpacings.pMd,
+      crossAxisSpacing: AppSpacings.pMd,
+      childAspectRatio: AppTileAspectRatio.square,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      children: _state.climateDevices.map((device) {
+        return _buildDeviceTile(context, device, isVertical: true);
+      }).toList(),
+    );
+  }
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Left column: dial + mode icons (larger - 2/3 of screen)
-        Expanded(
-          flex: 2,
-          child: Padding(
-            padding: AppSpacings.paddingLg,
-            child: _buildCompactDialWithModes(context),
+  /// Small/medium screens: Column of fixed-height horizontal tiles
+  Widget _buildLandscapeDevicesList(BuildContext context) {
+    final tileHeight = _screenService.scale(
+      AppTileHeight.horizontal,
+      density: _visualDensityService.density,
+    );
+
+    return Column(
+      children: _state.climateDevices.asMap().entries.map((entry) {
+        final index = entry.key;
+        final device = entry.value;
+        final isLast = index == _state.climateDevices.length - 1;
+
+        return Padding(
+          padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
+          child: SizedBox(
+            height: tileHeight,
+            child: _buildDeviceTile(context, device, isVertical: false),
           ),
-        ),
-        Container(width: _scale(1), color: borderColor),
-        // Right column: climate devices (smaller - 1/3 of screen)
-        Expanded(
-          flex: 1,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (hasDevices) ...[
-                SectionHeader(
-                  title: 'Climate Devices',
-                  icon: MdiIcons.devices,
-                  showTopBorder: false,
-                  count: _state.climateDevices.length,
-                ),
-                Expanded(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      // Calculate tile width from available space
-                      final horizontalPadding = AppSpacings.pMd * 2;
-                      final availableWidth =
-                          constraints.maxWidth - horizontalPadding;
-                      final tileWidth = availableWidth / columns;
-                      // Derive tile height from width using aspect ratio
-                      final tileHeight = tileWidth / aspectRatio;
-
-                      // Build rows of 1 tile
-                      final rows = <Widget>[];
-                      for (var i = 0; i < _state.climateDevices.length; i++) {
-                        rows.add(
-                          Padding(
-                            padding: EdgeInsets.only(bottom: AppSpacings.pMd),
-                            child: SizedBox(
-                              height: tileHeight,
-                              child: _buildDeviceTile(
-                                context,
-                                _state.climateDevices[i],
-                                isVertical: false,
-                              ),
-                            ),
-                          ),
-                        );
-                      }
-
-                      return ListView(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: AppSpacings.pMd,
-                          vertical: AppSpacings.pMd,
-                        ),
-                        children: rows,
-                      );
-                    },
-                  ),
-                ),
-              ],
-              if (!hasDevices)
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      'No devices',
-                      style: TextStyle(
-                        color: isDark
-                            ? AppTextColorDark.secondary
-                            : AppTextColorLight.secondary,
-                        fontSize: AppFontSize.small,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
+        );
+      }).toList(),
     );
   }
 
@@ -1278,7 +1118,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
               constraints.maxWidth - modeIconsWidth - spacing;
           final maxDialHeight = constraints.maxHeight;
           final dialSize =
-              math.min(availableForDial, maxDialHeight).clamp(120.0, 400.0);
+              math.min(availableForDial, maxDialHeight).clamp(120.0, 500.0);
 
           return Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -1364,6 +1204,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
       isOffline: isOffline,
       activeColor: device.isActive ? modeColor : null,
       showDoubleBorder: false,
+      showInactiveBorder: true,
       showWarningBadge: true, // Show warning badge for offline devices
       // Disable icon tap (toggle) when device is offline
       onIconTap: isOffline
