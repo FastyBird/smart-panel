@@ -8,6 +8,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
+import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
@@ -24,6 +25,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/fan.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class FanDeviceDetail extends StatefulWidget {
   final FanDeviceView _device;
@@ -427,12 +429,6 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     final secondaryBgColor =
         isDark ? AppFillColorDark.light : AppFillColorLight.light;
 
-    // Build list of secondary content widgets
-    final secondaryWidgets = <Widget>[
-      _buildSpeedControl(localizations, isDark, fanColor, !isLargeScreen),
-      _buildOptions(context, isDark),
-    ];
-
     return DeviceDetailLandscapeLayout(
       secondaryScrollable: false,
       secondaryContentPadding: EdgeInsets.zero,
@@ -441,11 +437,23 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
           : _buildCompactControlCard(context, isDark, fanColor),
       secondaryContent: VerticalScrollWithGradient(
         gradientHeight: AppSpacings.pLg,
-        itemCount: secondaryWidgets.length,
-        separatorHeight: AppSpacings.pMd,
+        itemCount: 1,
+        separatorHeight: 0,
         padding: AppSpacings.paddingLg,
         backgroundColor: secondaryBgColor,
-        itemBuilder: (context, index) => secondaryWidgets[index],
+        itemBuilder: (context, index) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionTitle(
+              title: localizations.device_controls,
+              icon: MdiIcons.tuneVertical,
+            ),
+            AppSpacings.spacingMdVertical,
+            _buildSpeedControl(localizations, isDark, fanColor, !isLargeScreen),
+            AppSpacings.spacingMdVertical,
+            _buildOptions(context, isDark),
+          ],
+        ),
       ),
     );
   }
@@ -456,10 +464,16 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
 
     return DeviceDetailPortraitLayout(
       content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildControlCard(context, isDark, fanColor),
           AppSpacings.spacingMdVertical,
           _buildSpeedControl(localizations, isDark, fanColor, false),
+          AppSpacings.spacingLgVertical,
+          SectionTitle(
+            title: localizations.device_controls,
+            icon: MdiIcons.tuneVertical,
+          ),
           AppSpacings.spacingMdVertical,
           _buildOptions(context, isDark),
         ],
