@@ -992,6 +992,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
   Widget _buildPortraitLayout(BuildContext context, bool isDark) {
     return DeviceDetailPortraitLayout(
       contentPadding: EdgeInsets.zero,
+      scrollable: false,
       stickyBottom: _showChannelsPanel
           ? _buildPortraitChannelsList(context, isDark)
           : null,
