@@ -915,7 +915,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           height: tileHeight,
           layoutPadding: AppSpacings.pLg,
           itemCount: _presets.length,
-          separatorWidth: AppSpacings.pSm,
+          separatorWidth: AppSpacings.pMd,
           itemBuilder: (context, index) {
             final preset = _presets[index];
             final bool isActive = _isPresetActive(index);
