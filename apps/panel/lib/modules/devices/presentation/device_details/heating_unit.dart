@@ -12,6 +12,7 @@ import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layou
 import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
+import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
@@ -467,14 +468,22 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   Widget _buildPortraitLayout(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
     final modeColor = _getModeColor(isDark);
+    final statusSection = _buildStatusSection(localizations, isDark, modeColor);
 
     return DeviceDetailPortraitLayout(
-      contentPadding: AppSpacings.paddingLg,
       content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildPrimaryControlCard(context, isDark, dialSize: _scale(200)),
-          AppSpacings.spacingMdVertical,
-          _buildStatusSection(localizations, isDark, modeColor),
+          if (statusSection is! SizedBox) ...[
+            AppSpacings.spacingLgVertical,
+            SectionTitle(
+              title: localizations.device_sensors,
+              icon: MdiIcons.eyeSettings,
+            ),
+            AppSpacings.spacingMdVertical,
+            statusSection,
+          ],
         ],
       ),
     );
@@ -490,6 +499,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
         isDark ? AppFillColorDark.light : AppFillColorLight.light;
     final isLargeScreen = _screenService.isLargeScreen;
     final modeColor = _getModeColor(isDark);
+    final statusSection = _buildStatusSection(localizations, isDark, modeColor);
 
     return DeviceDetailLandscapeLayout(
       secondaryScrollable: false,
@@ -503,8 +513,19 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
         separatorHeight: 0,
         padding: AppSpacings.paddingLg,
         backgroundColor: secondaryBgColor,
-        itemBuilder: (context, index) =>
-            _buildStatusSection(localizations, isDark, modeColor),
+        itemBuilder: (context, index) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (statusSection is! SizedBox) ...[
+              SectionTitle(
+                title: localizations.device_sensors,
+                icon: MdiIcons.eyeSettings,
+              ),
+              AppSpacings.spacingMdVertical,
+              statusSection,
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -519,6 +540,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     Color modeColor,
   ) {
     final humidityChannel = _device.humidityChannel;
+    final contactChannel = _device.contactChannel;
 
     // Build sensor info list
     final sensors = <_SensorInfo>[];
@@ -546,6 +568,22 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
         unit: '%',
         icon: MdiIcons.waterPercent,
         valueColor: SensorColors.humidity(isDark),
+      ));
+    }
+
+    // Contact sensor (optional) - shows window/door status
+    // detected = true means window is open
+    if (contactChannel != null) {
+      final isOpen = contactChannel.detected;
+      sensors.add(_SensorInfo(
+        id: 'contact',
+        label: localizations.contact_sensor_window,
+        value: isOpen
+            ? localizations.contact_sensor_open
+            : localizations.contact_sensor_closed,
+        icon: MdiIcons.windowOpenVariant,
+        valueColor: SensorColors.alert(isDark),
+        isWarning: isOpen,
       ));
     }
 
