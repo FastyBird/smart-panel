@@ -78,8 +78,8 @@ class SliderWithSteps extends StatelessWidget {
     final thumbBorderColor = enabled ? effectiveActiveColor : disabledActiveColor;
     // Thumb fill: dark background when enabled, matches active track (left part) when disabled
     final thumbFillColor = enabled
-        ? (isDark ? AppFillColorDark.darker : AppColors.white)
-        : disabledActiveColor;
+        ? (isDark ? AppFillColorDark.base : AppFillColorLight.base)
+        : isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
 
     final clampedValue = value.clamp(0.0, 1.0);
 
