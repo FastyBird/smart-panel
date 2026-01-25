@@ -9,7 +9,6 @@ import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layou
 import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
-import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
@@ -426,34 +425,23 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     final localizations = AppLocalizations.of(context)!;
     final fanColor = DeviceColors.fan(isDark);
     final isLargeScreen = _screenService.isLargeScreen;
-    final secondaryBgColor =
-        isDark ? AppFillColorDark.light : AppFillColorLight.light;
 
     return DeviceDetailLandscapeLayout(
-      secondaryScrollable: false,
-      secondaryContentPadding: EdgeInsets.zero,
       mainContent: isLargeScreen
           ? _buildControlCard(context, isDark, fanColor)
           : _buildCompactControlCard(context, isDark, fanColor),
-      secondaryContent: VerticalScrollWithGradient(
-        gradientHeight: AppSpacings.pLg,
-        itemCount: 1,
-        separatorHeight: 0,
-        padding: AppSpacings.paddingLg,
-        backgroundColor: secondaryBgColor,
-        itemBuilder: (context, index) => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SectionTitle(
-              title: localizations.device_controls,
-              icon: MdiIcons.tuneVertical,
-            ),
-            AppSpacings.spacingMdVertical,
-            _buildSpeedControl(localizations, isDark, fanColor, !isLargeScreen),
-            AppSpacings.spacingMdVertical,
-            _buildOptions(context, isDark),
-          ],
-        ),
+      secondaryContent: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionTitle(
+            title: localizations.device_controls,
+            icon: MdiIcons.tuneVertical,
+          ),
+          AppSpacings.spacingMdVertical,
+          _buildSpeedControl(localizations, isDark, fanColor, !isLargeScreen),
+          AppSpacings.spacingMdVertical,
+          _buildOptions(context, isDark),
+        ],
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:flutter/material.dart';
 
 /// A reusable landscape layout widget for device detail pages.
@@ -79,9 +80,21 @@ class DeviceDetailLandscapeLayout extends StatelessWidget {
     final secondaryBgColor =
         isDark ? AppFillColorDark.light : AppFillColorLight.light;
 
-    Widget secondaryWidget = secondaryContent;
+    final defaultSecondaryPadding = secondaryContentPadding ?? AppSpacings.paddingLg;
+
+    Widget secondaryWidget;
     if (secondaryScrollable) {
-      secondaryWidget = SingleChildScrollView(
+      secondaryWidget = VerticalScrollWithGradient(
+        gradientHeight: AppSpacings.pLg,
+        padding: defaultSecondaryPadding,
+        backgroundColor: secondaryBgColor,
+        itemCount: 1,
+        separatorHeight: 0,
+        itemBuilder: (context, index) => secondaryContent,
+      );
+    } else {
+      secondaryWidget = Padding(
+        padding: defaultSecondaryPadding,
         child: secondaryContent,
       );
     }
@@ -126,10 +139,7 @@ class DeviceDetailLandscapeLayout extends StatelessWidget {
               width: secondaryContentWidth,
               child: Container(
                 color: secondaryBgColor,
-                child: Padding(
-                  padding: secondaryContentPadding ?? AppSpacings.paddingLg,
-                  child: secondaryWidget,
-                ),
+                child: secondaryWidget,
               ),
             ),
           ],

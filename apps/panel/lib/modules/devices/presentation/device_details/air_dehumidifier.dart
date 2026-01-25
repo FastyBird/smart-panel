@@ -14,7 +14,6 @@ import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradie
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
-import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
@@ -509,49 +508,38 @@ class _AirDehumidifierDeviceDetailState
   Widget _buildLandscape(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
     final humidityColor = DeviceColors.humidity(isDark);
-    final secondaryBgColor =
-        isDark ? AppFillColorDark.light : AppFillColorLight.light;
     final isLargeScreen = _screenService.isLargeScreen;
 
     final sensors = _getSensors(localizations, isDark);
     final controlsSection = _buildLandscapeControlsSection(localizations, isDark, humidityColor);
 
     return DeviceDetailLandscapeLayout(
-      secondaryScrollable: false,
-      secondaryContentPadding: EdgeInsets.zero,
       mainContent: isLargeScreen
           ? _buildControlCard(isDark, humidityColor)
           : _buildCompactControlCard(context, isDark, humidityColor),
-      secondaryContent: VerticalScrollWithGradient(
-        gradientHeight: AppSpacings.pLg,
-        itemCount: 1,
-        separatorHeight: 0,
-        padding: AppSpacings.paddingLg,
-        backgroundColor: secondaryBgColor,
-        itemBuilder: (itemContext, index) => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Sensors at top with label
-            if (sensors.isNotEmpty) ...[
-              SectionTitle(
-                title: localizations.device_sensors,
-                icon: MdiIcons.eyeSettings,
-              ),
-              AppSpacings.spacingMdVertical,
-              _buildSensorsSection(isDark, sensors),
-              AppSpacings.spacingLgVertical,
-            ],
-            // Controls section with label
-            if (controlsSection is! SizedBox) ...[
-              SectionTitle(
-                title: localizations.device_controls,
-                icon: MdiIcons.tuneVertical,
-              ),
-              AppSpacings.spacingMdVertical,
-              controlsSection,
-            ],
+      secondaryContent: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Sensors at top with label
+          if (sensors.isNotEmpty) ...[
+            SectionTitle(
+              title: localizations.device_sensors,
+              icon: MdiIcons.eyeSettings,
+            ),
+            AppSpacings.spacingMdVertical,
+            _buildSensorsSection(isDark, sensors),
+            AppSpacings.spacingLgVertical,
           ],
-        ),
+          // Controls section with label
+          if (controlsSection is! SizedBox) ...[
+            SectionTitle(
+              title: localizations.device_controls,
+              icon: MdiIcons.tuneVertical,
+            ),
+            AppSpacings.spacingMdVertical,
+            controlsSection,
+          ],
+        ],
       ),
     );
   }

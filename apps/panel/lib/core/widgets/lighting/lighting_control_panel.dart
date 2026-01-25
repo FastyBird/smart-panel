@@ -8,7 +8,6 @@ import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layou
 import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
-import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
@@ -394,9 +393,6 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
   // --------------------------------------------------------------------------
 
   Widget _buildLandscapeLayout(BuildContext context, bool isDark) {
-    final secondaryBgColor =
-        isDark ? AppFillColorDark.light : AppFillColorLight.light;
-
     return DeviceDetailLandscapeLayout(
       mainContent: _isSimple
           ? _buildPowerButton(context, isDark)
@@ -405,19 +401,9 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
       modeSelector: !_isSimple && _enabledCapabilities.length > 1
           ? _buildVerticalModeSelector(context, isDark)
           : null,
-      secondaryScrollable: false,
-      secondaryContentPadding: EdgeInsets.zero,
       secondaryContent: _isSimple
           ? const SizedBox.shrink()
-          : VerticalScrollWithGradient(
-              gradientHeight: AppSpacings.pLg,
-              itemCount: 1,
-              separatorHeight: 0,
-              padding: AppSpacings.paddingLg,
-              backgroundColor: secondaryBgColor,
-              itemBuilder: (context, index) =>
-                  _buildLandscapeSecondaryContent(context, isDark),
-            ),
+          : _buildLandscapeSecondaryContent(context, isDark),
     );
   }
 

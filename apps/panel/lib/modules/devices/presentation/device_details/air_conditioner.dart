@@ -12,7 +12,6 @@ import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layou
 import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
-import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
@@ -918,8 +917,6 @@ class _AirConditionerDeviceDetailState
 
   Widget _buildLandscapeLayout(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
-    final secondaryBgColor =
-        isDark ? AppFillColorDark.light : AppFillColorLight.light;
     final isLargeScreen = _screenService.isLargeScreen;
     final modeColor = _getModeColor(isDark);
     final statusSection = _buildStatusSection(localizations, isDark, modeColor);
@@ -939,43 +936,34 @@ class _AirConditionerDeviceDetailState
     final fanOptions = _buildFanOptions(localizations, isDark, modeColor, useCompactLayout, tileHeight);
 
     return DeviceDetailLandscapeLayout(
-      secondaryScrollable: false,
-      secondaryContentPadding: EdgeInsets.zero,
       mainContent: isLargeScreen
           ? _buildPrimaryControlCard(context, isDark, dialSize: _scale(200))
           : _buildCompactDialWithModes(context, isDark),
-      secondaryContent: VerticalScrollWithGradient(
-        gradientHeight: AppSpacings.pLg,
-        itemCount: 1,
-        separatorHeight: 0,
-        padding: AppSpacings.paddingLg,
-        backgroundColor: secondaryBgColor,
-        itemBuilder: (context, index) => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (statusSection is! SizedBox) ...[
-              SectionTitle(
-                title: localizations.device_sensors,
-                icon: MdiIcons.eyeSettings,
-              ),
-              AppSpacings.spacingMdVertical,
-              statusSection,
-            ],
-            if (speedControl != null || fanOptions.isNotEmpty) ...[
-              if (statusSection is! SizedBox) AppSpacings.spacingLgVertical,
-              SectionTitle(
-                title: localizations.device_controls,
-                icon: MdiIcons.tuneVertical,
-              ),
-              AppSpacings.spacingMdVertical,
-              if (speedControl != null) ...[
-                speedControl,
-                if (fanOptions.isNotEmpty) AppSpacings.spacingMdVertical,
-              ],
-              ...fanOptions,
-            ],
+      secondaryContent: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (statusSection is! SizedBox) ...[
+            SectionTitle(
+              title: localizations.device_sensors,
+              icon: MdiIcons.eyeSettings,
+            ),
+            AppSpacings.spacingMdVertical,
+            statusSection,
           ],
-        ),
+          if (speedControl != null || fanOptions.isNotEmpty) ...[
+            if (statusSection is! SizedBox) AppSpacings.spacingLgVertical,
+            SectionTitle(
+              title: localizations.device_controls,
+              icon: MdiIcons.tuneVertical,
+            ),
+            AppSpacings.spacingMdVertical,
+            if (speedControl != null) ...[
+              speedControl,
+              if (fanOptions.isNotEmpty) AppSpacings.spacingMdVertical,
+            ],
+            ...fanOptions,
+          ],
+        ],
       ),
     );
   }

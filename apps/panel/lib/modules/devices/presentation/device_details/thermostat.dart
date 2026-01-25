@@ -13,7 +13,6 @@ import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
-import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -766,47 +765,36 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
   Widget _buildLandscapeLayout(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
-    final secondaryBgColor =
-        isDark ? AppFillColorDark.light : AppFillColorLight.light;
     final isLargeScreen = _screenService.isLargeScreen;
     final modeColor = _getModeColor(isDark);
     final statusSection = _buildStatusSection(localizations, isDark, modeColor);
     final controlsSection = _buildControlsSection(localizations, isDark, modeColor);
 
     return DeviceDetailLandscapeLayout(
-      secondaryScrollable: false,
-      secondaryContentPadding: EdgeInsets.zero,
       mainContent: isLargeScreen
           ? _buildPrimaryControlCard(context, isDark, dialSize: _scale(200))
           : _buildCompactDialWithModes(context, isDark),
-      secondaryContent: VerticalScrollWithGradient(
-        gradientHeight: AppSpacings.pLg,
-        itemCount: 1,
-        separatorHeight: 0,
-        padding: AppSpacings.paddingLg,
-        backgroundColor: secondaryBgColor,
-        itemBuilder: (context, index) => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (statusSection is! SizedBox) ...[
-              SectionTitle(
-                title: localizations.device_sensors,
-                icon: MdiIcons.eyeSettings,
-              ),
-              AppSpacings.spacingMdVertical,
-              statusSection,
-            ],
-            if (controlsSection is! SizedBox) ...[
-              if (statusSection is! SizedBox) AppSpacings.spacingLgVertical,
-              SectionTitle(
-                title: localizations.device_controls,
-                icon: MdiIcons.tuneVertical,
-              ),
-              AppSpacings.spacingMdVertical,
-              controlsSection,
-            ],
+      secondaryContent: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (statusSection is! SizedBox) ...[
+            SectionTitle(
+              title: localizations.device_sensors,
+              icon: MdiIcons.eyeSettings,
+            ),
+            AppSpacings.spacingMdVertical,
+            statusSection,
           ],
-        ),
+          if (controlsSection is! SizedBox) ...[
+            if (statusSection is! SizedBox) AppSpacings.spacingLgVertical,
+            SectionTitle(
+              title: localizations.device_controls,
+              icon: MdiIcons.tuneVertical,
+            ),
+            AppSpacings.spacingMdVertical,
+            controlsSection,
+          ],
+        ],
       ),
     );
   }
