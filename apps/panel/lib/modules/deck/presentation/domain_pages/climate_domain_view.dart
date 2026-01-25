@@ -1664,7 +1664,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       height: tileHeight,
       layoutPadding: AppSpacings.pLg,
       itemCount: _state.sensors.length,
-      separatorWidth: AppSpacings.pSm,
+      separatorWidth: AppSpacings.pMd,
       itemBuilder: (context, index) {
         final sensor = _state.sensors[index];
 
