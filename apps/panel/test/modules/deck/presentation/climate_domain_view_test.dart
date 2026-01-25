@@ -251,29 +251,7 @@ void main() {
   });
 
   group('ClimateRoomState', () {
-    test('should return correct mode label for off', () {
-      const state = ClimateRoomState(
-        roomName: 'Test Room',
-        mode: ClimateMode.off,
-      );
-      expect(state.modeLabel, 'Off');
-    });
-
-    test('should return correct mode label for heat', () {
-      const state = ClimateRoomState(
-        roomName: 'Test Room',
-        mode: ClimateMode.heat,
-      );
-      expect(state.modeLabel, 'Heating');
-    });
-
-    test('should return correct mode label for cool', () {
-      const state = ClimateRoomState(
-        roomName: 'Test Room',
-        mode: ClimateMode.cool,
-      );
-      expect(state.modeLabel, 'Cooling');
-    });
+    // Note: modeLabel tests removed - mode labels are now localized via _getModeLabel()
 
     test('should filter humidity devices correctly', () {
       const state = ClimateRoomState(
