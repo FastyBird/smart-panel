@@ -6,6 +6,7 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
@@ -990,13 +991,16 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
   }
 
   Widget _buildPortraitLayout(BuildContext context, bool isDark) {
+    final presets = _getPresetsForCapability(_selectedCapability);
+    final hasPresets = presets.isNotEmpty && !_isSimple;
+
     return DeviceDetailPortraitLayout(
       contentPadding: EdgeInsets.zero,
       scrollable: false,
       stickyBottom: _showChannelsPanel
           ? _buildPortraitChannelsList(context, isDark)
           : null,
-      stickyBottomPadding: EdgeInsets.all(AppSpacings.pLg),
+      useStickyBottomPadding: false,
       content: Column(
         children: [
           if (!_isSimple) _buildHorizontalCapabilityTabs(context, isDark),
@@ -1005,8 +1009,155 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
                 ? _buildPowerButton(context, isDark)
                 : _buildControlPanel(context, isDark, isLandscape: false),
           ),
+          if (hasPresets) ...[
+            _buildPortraitPresetsPanel(context, isDark, presets),
+            SizedBox(height: AppSpacings.pMd),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _buildPortraitPresetsPanel(
+    BuildContext context,
+    bool isDark,
+    List<_LightPreset> presets,
+  ) {
+    final localizations = AppLocalizations.of(context)!;
+    final primaryColor =
+        isDark ? AppColorsDark.primary : AppColorsLight.primary;
+    final tileWidth = _scale(AppTileWidth.horizontalMedium);
+    final tileHeight = _scale(AppTileHeight.horizontal);
+
+    // Special handling for color presets - show color swatches
+    if (_selectedCapability == LightCapability.color) {
+      return _buildPortraitColorPresetsPanel(context, isDark, presets);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(
+            left: AppSpacings.pLg,
+            right: AppSpacings.pLg,
+            top: AppSpacings.pSm,
+          ),
+          child: SectionTitle(
+            title: localizations.window_covering_presets_label,
+            icon: MdiIcons.viewGrid,
+          ),
+        ),
+        AppSpacings.spacingSmVertical,
+        Padding(
+          padding: EdgeInsets.only(
+            left: AppSpacings.pLg,
+            right: AppSpacings.pLg,
+            bottom: AppSpacings.pSm,
+          ),
+          child: HorizontalScrollWithGradient(
+            height: tileHeight,
+            layoutPadding: AppSpacings.pLg,
+            itemCount: presets.length,
+            separatorWidth: AppSpacings.pMd,
+            itemBuilder: (context, index) {
+              final preset = presets[index];
+              final isActive = _isPresetActive(preset);
+
+              return SizedBox(
+                width: tileWidth,
+                height: tileHeight,
+                child: UniversalTile(
+                  layout: TileLayout.horizontal,
+                  icon: preset.icon,
+                  name: preset.label,
+                  isActive: isActive,
+                  activeColor: primaryColor,
+                  onTileTap: () => _applyPreset(preset),
+                  showGlow: false,
+                  showWarningBadge: false,
+                  showInactiveBorder: true,
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPortraitColorPresetsPanel(
+    BuildContext context,
+    bool isDark,
+    List<_LightPreset> presets,
+  ) {
+    final localizations = AppLocalizations.of(context)!;
+    final swatchHeight = _scale(AppTileHeight.horizontal);
+    final swatchWidth = _screenService.isLargeScreen ? swatchHeight * 2 : swatchHeight;
+    final borderColor =
+        isDark ? AppBorderColorDark.base : AppBorderColorLight.base;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(
+            left: AppSpacings.pLg,
+            right: AppSpacings.pLg,
+            top: AppSpacings.pSm,
+          ),
+          child: SectionTitle(
+            title: localizations.window_covering_presets_label,
+            icon: MdiIcons.viewGrid,
+          ),
+        ),
+        AppSpacings.spacingSmVertical,
+        Padding(
+          padding: EdgeInsets.only(
+            left: AppSpacings.pLg,
+            right: AppSpacings.pLg,
+            bottom: AppSpacings.pSm,
+          ),
+          child: HorizontalScrollWithGradient(
+            height: swatchHeight,
+            layoutPadding: AppSpacings.pLg,
+            itemCount: presets.length,
+            separatorWidth: AppSpacings.pMd,
+            itemBuilder: (context, index) {
+              final preset = presets[index];
+              final isActive = _isPresetActive(preset);
+              final presetColor = preset.color ?? Colors.white;
+
+              return GestureDetector(
+                onTap: () => _applyPreset(preset),
+                child: Container(
+                  width: swatchWidth,
+                  height: swatchHeight,
+                  decoration: BoxDecoration(
+                    color: presetColor,
+                    borderRadius: BorderRadius.circular(AppBorderRadius.small),
+                    border: Border.all(
+                      color: isActive ? presetColor : borderColor,
+                      width: isActive ? 3 : 1,
+                    ),
+                    boxShadow: isActive
+                        ? [
+                            BoxShadow(
+                              color: presetColor.withValues(alpha: 0.5),
+                              blurRadius: 8,
+                              spreadRadius: 2,
+                            ),
+                          ]
+                        : null,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -1014,6 +1165,8 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
     final primaryColor =
         isDark ? AppColorsDark.primary : AppColorsLight.primary;
     final stateColor = _getStateColor(isDark);
+    final dividerColor =
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
 
     // Determine icon based on state
     IconData sectionIcon = MdiIcons.lightbulbGroup;
@@ -1027,14 +1180,35 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        _buildChannelsSectionHeader(isDark, sectionIcon, stateColor),
+        Container(
+          padding: EdgeInsets.only(
+            left: AppSpacings.pLg,
+            right: AppSpacings.pLg,
+            top: AppSpacings.pSm,
+            bottom: AppSpacings.pSm,
+          ),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: dividerColor,
+                width: 1,
+              ),
+            ),
+          ),
+          child: _buildChannelsSectionHeader(isDark, sectionIcon, stateColor),
+        ),
         AppSpacings.spacingSmVertical,
-        SizedBox(
-          height: _scale(80),
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
+        Padding(
+          padding: EdgeInsets.only(
+            left: AppSpacings.pLg,
+            right: AppSpacings.pLg,
+            bottom: AppSpacings.pSm,
+          ),
+          child: HorizontalScrollWithGradient(
+            height: _scale(80),
+            layoutPadding: AppSpacings.pLg,
             itemCount: widget.channels.length,
-            separatorBuilder: (context, index) => AppSpacings.spacingSmHorizontal,
+            separatorWidth: AppSpacings.pMd,
             itemBuilder: (context, index) {
               final channel = widget.channels[index];
 
@@ -1075,35 +1249,40 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
     final enabledCaps = _enabledCapabilities;
     if (enabledCaps.length <= 1) return const SizedBox.shrink();
 
-    final dividerColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+    final modes = enabledCaps.map((cap) {
+      return ModeOption<LightCapability>(
+        value: cap,
+        icon: _getCapabilityIcon(cap),
+        label: _getCapabilityLabel(cap),
+      );
+    }).toList();
 
-    return Container(
-      padding: EdgeInsets.all(AppSpacings.pMd),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: dividerColor, width: _scale(1)),
-        ),
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacings.pLg,
+        vertical: AppSpacings.pMd,
       ),
-      child: Row(
-        children: enabledCaps.map((cap) {
-          final isSelected = _selectedCapability == cap;
-          return Expanded(
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: AppSpacings.pSm),
-              child: _CapabilityTab(
-                capability: cap,
-                isSelected: isSelected,
-                isDark: isDark,
-                isLandscape: false,
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  setState(() => _selectedCapability = cap);
-                },
-              ),
-            ),
-          );
-        }).toList(),
+      child: Container(
+        padding: AppSpacings.paddingMd,
+        decoration: BoxDecoration(
+          color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
+          borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+          border: Border.all(
+            color: isDark ? AppFillColorDark.light : AppBorderColorLight.light,
+            width: 1,
+          ),
+        ),
+        child: ModeSelector<LightCapability>(
+          modes: modes,
+          selectedValue: _selectedCapability,
+          iconPlacement: ModeSelectorIconPlacement.top,
+          onChanged: (value) {
+            HapticFeedback.selectionClick();
+            setState(() => _selectedCapability = value);
+          },
+          orientation: ModeSelectorOrientation.horizontal,
+          showLabels: !_screenService.isSmallScreen,
+        ),
       ),
     );
   }
@@ -1213,8 +1392,8 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
     bool isDark, {
     required bool isLandscape,
   }) {
-    // In landscape, presets are shown in the right column, so hide them in panels
-    final showPresets = !isLandscape;
+    // Presets are shown separately (landscape: right column, portrait: bottom section)
+    const showPresets = false;
 
     switch (_selectedCapability) {
       case LightCapability.brightness:
@@ -1273,121 +1452,6 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
     }
   }
 
-}
-
-// ============================================================================
-// CAPABILITY TAB
-// ============================================================================
-
-class _CapabilityTab extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
-  final LightCapability capability;
-  final bool isSelected;
-  final bool isDark;
-  final bool isLandscape;
-  final VoidCallback onTap;
-
-  _CapabilityTab({
-    required this.capability,
-    required this.isSelected,
-    required this.isDark,
-    required this.isLandscape,
-    required this.onTap,
-  });
-
-  double _scale(double size) =>
-      _screenService.scale(size, density: _visualDensityService.density);
-
-  IconData get _icon {
-    switch (capability) {
-      case LightCapability.brightness:
-        return Icons.wb_sunny_outlined;
-      case LightCapability.colorTemp:
-        return Icons.thermostat_outlined;
-      case LightCapability.color:
-        return Icons.palette_outlined;
-      case LightCapability.white:
-        return Icons.light_mode_outlined;
-      default:
-        return Icons.tune;
-    }
-  }
-
-  String get _label {
-    switch (capability) {
-      case LightCapability.brightness:
-        return 'Bright';
-      case LightCapability.colorTemp:
-        return 'Temp';
-      case LightCapability.color:
-        return 'Color';
-      case LightCapability.white:
-        return 'White';
-      default:
-        return '';
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final primaryColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
-    final bgColor = isDark ? AppBgColorDark.base : AppBgColorLight.base;
-    final inactiveColor =
-        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-    final selectedBg =
-        isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9;
-
-    final borderWidth = isSelected ? _scale(2) : _scale(1);
-    final paddingCompensation = isSelected ? 0.0 : _scale(1);
-
-    final content = AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      padding: EdgeInsets.symmetric(
-        vertical:
-            (isLandscape ? AppSpacings.pMd : _scale(8)) + paddingCompensation,
-        horizontal: (isLandscape ? AppSpacings.pMd : 0) + paddingCompensation,
-      ),
-      decoration: BoxDecoration(
-        color: isSelected ? selectedBg : bgColor,
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-        border: Border.all(
-          color: isSelected
-              ? primaryColor
-              : (isDark ? AppBorderColorDark.light : AppBorderColorLight.light),
-          width: borderWidth,
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            _icon,
-            size: _scale(isLandscape ? 16 : 20),
-            color: isSelected ? primaryColor : inactiveColor,
-          ),
-          AppSpacings.spacingSmVertical,
-          Text(
-            _label,
-            style: TextStyle(
-              fontSize: AppFontSize.extraSmall,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-              color: isSelected ? primaryColor : inactiveColor,
-            ),
-          ),
-        ],
-      ),
-    );
-
-    return GestureDetector(
-      onTap: onTap,
-      child: isLandscape
-          ? SizedBox(width: _scale(52), child: content)
-          : content,
-    );
-  }
 }
 
 // ============================================================================
@@ -1626,7 +1690,12 @@ class _SliderPanel extends StatelessWidget {
       );
     } else {
       return Padding(
-        padding: EdgeInsets.all(AppSpacings.pLg),
+        padding: EdgeInsets.only(
+          left: AppSpacings.pLg,
+          right: AppSpacings.pLg,
+          top: AppSpacings.pSm,
+          bottom: AppSpacings.pLg,
+        ),
         child: Column(
           children: [
             Expanded(child: _buildDisplay()),
@@ -1648,7 +1717,7 @@ class _SliderPanel extends StatelessWidget {
     final unitText = match?.group(2) ?? '';
 
     return Container(
-      padding: EdgeInsets.all(AppSpacings.pLg),
+      padding: EdgeInsets.all(AppSpacings.pSm),
       decoration: BoxDecoration(
         color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
         borderRadius: BorderRadius.circular(AppBorderRadius.round),
@@ -2083,11 +2152,18 @@ class _ColorPanel extends StatelessWidget {
         ),
       );
     } else {
+      final showColorPreview = !_screenService.isSmallScreen;
+
       return Padding(
-        padding: EdgeInsets.all(AppSpacings.pLg),
+        padding: EdgeInsets.only(
+          left: AppSpacings.pLg,
+          right: AppSpacings.pLg,
+          top: AppSpacings.pSm,
+          bottom: AppSpacings.pLg,
+        ),
         child: Column(
           children: [
-            if (!showChannelsPanel) ...[
+            if (showColorPreview) ...[
               Expanded(
                 flex: 2,
                 child: _buildDisplay(color),

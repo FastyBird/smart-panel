@@ -37,8 +37,13 @@ class DeviceDetailPortraitLayout extends StatelessWidget {
   final EdgeInsetsGeometry? contentPadding;
 
   /// Padding for the sticky bottom area
-  /// Default: horizontal pLg, vertical pMd
+  /// Default: horizontal pLg, top pMd, bottom pLg
+  /// Only used when [useStickyBottomPadding] is true
   final EdgeInsetsGeometry? stickyBottomPadding;
+
+  /// Whether to apply padding to the sticky bottom area
+  /// Default: true
+  final bool useStickyBottomPadding;
 
   /// Whether the content should be scrollable
   /// Default: true
@@ -58,6 +63,7 @@ class DeviceDetailPortraitLayout extends StatelessWidget {
     this.stickyBottom,
     this.contentPadding,
     this.stickyBottomPadding,
+    this.useStickyBottomPadding = true,
     this.scrollable = true,
     this.gradientHeight,
     this.showStickyBottomBorder = true,
@@ -117,11 +123,15 @@ class DeviceDetailPortraitLayout extends StatelessWidget {
                   )
                 : null,
           ),
-          padding: stickyBottomPadding ??
-              EdgeInsets.symmetric(
-                horizontal: AppSpacings.pLg,
-                vertical: AppSpacings.pMd,
-              ),
+          padding: useStickyBottomPadding
+              ? (stickyBottomPadding ??
+                  EdgeInsets.only(
+                    left: AppSpacings.pLg,
+                    right: AppSpacings.pLg,
+                    top: AppSpacings.pMd,
+                    bottom: AppSpacings.pLg,
+                  ))
+              : EdgeInsets.zero,
           child: stickyBottom,
         ),
       ],
