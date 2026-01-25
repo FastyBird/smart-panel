@@ -10,7 +10,7 @@ import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/info_tile.dart';
+import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
@@ -34,6 +34,30 @@ enum ThermostatMode {
   auto;
 
   String get value => name;
+}
+
+/// Internal sensor data structure for thermostat device detail.
+class _SensorInfo {
+  final String id;
+  final String label;
+  final String value;
+  final String? unit;
+  final IconData icon;
+  final Color? valueColor;
+  final bool isWarning;
+
+  const _SensorInfo({
+    required this.id,
+    required this.label,
+    required this.value,
+    required this.icon,
+    this.unit,
+    this.valueColor,
+    this.isWarning = false,
+  });
+
+  /// Returns the formatted display value with unit
+  String get displayValue => unit != null ? '$value$unit' : value;
 }
 
 class ThermostatDeviceDetail extends StatefulWidget {
@@ -756,30 +780,32 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   ) {
     final humidityChannel = _device.humidityChannel;
     final contactChannel = _device.contactChannel;
-    final useVerticalLayout = _screenService.isLandscape &&
-        (_screenService.isSmallScreen || _screenService.isMediumScreen);
 
-    // Build info tiles list
-    final infoTiles = <Widget>[];
+    // Build sensor info list
+    final sensors = <_SensorInfo>[];
 
     // Temperature (always present)
-    infoTiles.add(InfoTile(
+    sensors.add(_SensorInfo(
+      id: 'temperature',
       label: localizations.device_current_temperature,
       value: NumberFormatUtils.defaultFormat.formatDecimal(
         _currentTemperature,
         decimalPlaces: 1,
       ),
       unit: '°C',
+      icon: MdiIcons.thermometer,
       valueColor: modeColor,
     ));
 
     // Humidity (optional)
     if (humidityChannel != null) {
-      infoTiles.add(InfoTile(
+      sensors.add(_SensorInfo(
+        id: 'humidity',
         label: localizations.device_current_humidity,
         value: NumberFormatUtils.defaultFormat
             .formatInteger(humidityChannel.humidity),
         unit: '%',
+        icon: MdiIcons.waterPercent,
       ));
     }
 
@@ -787,11 +813,13 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     // detected = true means window is open
     if (contactChannel != null) {
       final isOpen = contactChannel.detected;
-      infoTiles.add(InfoTile(
+      sensors.add(_SensorInfo(
+        id: 'contact',
         label: localizations.contact_sensor_window,
         value: isOpen
             ? localizations.contact_sensor_open
             : localizations.contact_sensor_closed,
+        icon: MdiIcons.windowOpenVariant,
         isWarning: isOpen,
       ));
     }
@@ -799,17 +827,9 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Info tiles
-        if (infoTiles.isNotEmpty) ...[
-          if (useVerticalLayout)
-            ...infoTiles
-                .expand((tile) => [
-                      SizedBox(width: double.infinity, child: tile),
-                      AppSpacings.spacingMdVertical,
-                    ])
-                .take(infoTiles.length * 2 - 1)
-          else
-            _buildInfoTilesGrid(infoTiles),
+        // Sensor tiles
+        if (sensors.isNotEmpty) ...[
+          _buildSensorsSection(isDark, sensors, modeColor),
           AppSpacings.spacingMdVertical,
         ],
         // Lock control if available
@@ -834,47 +854,90 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     );
   }
 
-  Widget _buildInfoTilesGrid(List<Widget> tiles) {
-    // Dynamic tiles per row based on total count:
-    // 1 tile: full width, 2 tiles: 2 per row, 3+ tiles: 3 per row
-    final int tilesPerRow = tiles.length == 1
-        ? 1
-        : tiles.length == 2
-            ? 2
-            : 3;
+  /// Builds sensors section matching climate domain pattern:
+  /// - Portrait: HorizontalScrollWithGradient with UniversalTile (horizontal layout)
+  /// - Landscape large: GridView.count with 2 columns using UniversalTile (vertical layout)
+  /// - Landscape small/medium: Column with UniversalTile (horizontal layout)
+  Widget _buildSensorsSection(bool isDark, List<_SensorInfo> sensors, Color accentColor) {
+    if (sensors.isEmpty) return const SizedBox.shrink();
 
-    final rows = <Widget>[];
+    final isLandscape = _screenService.isLandscape;
+    final isLargeScreen = _screenService.isLargeScreen;
 
-    for (var i = 0; i < tiles.length; i += tilesPerRow) {
-      final rowTiles = tiles.skip(i).take(tilesPerRow).toList();
+    // Portrait: Horizontal scroll with gradient (edge-to-edge)
+    if (!isLandscape) {
+      final tileWidth = _scale(AppTileWidth.horizontalMedium);
+      final tileHeight = _scale(AppTileHeight.horizontal);
 
-      // Build row with tiles
-      final rowChildren = <Widget>[];
-      for (var j = 0; j < rowTiles.length; j++) {
-        rowChildren.add(Expanded(child: rowTiles[j]));
-        if (j < rowTiles.length - 1) {
-          rowChildren.add(AppSpacings.spacingMdHorizontal);
-        }
-      }
-
-      // Add empty spacers if row is not full (to maintain consistent sizing)
-      final emptySlots = tilesPerRow - rowTiles.length;
-      for (var j = 0; j < emptySlots; j++) {
-        rowChildren.add(AppSpacings.spacingMdHorizontal);
-        rowChildren.add(const Expanded(child: SizedBox.shrink()));
-      }
-
-      rows.add(Row(children: rowChildren));
-
-      // Add spacing between rows
-      if (i + tilesPerRow < tiles.length) {
-        rows.add(AppSpacings.spacingMdVertical);
-      }
+      return HorizontalScrollWithGradient(
+        height: tileHeight,
+        layoutPadding: AppSpacings.pLg,
+        itemCount: sensors.length,
+        separatorWidth: AppSpacings.pMd,
+        itemBuilder: (context, index) {
+          final sensor = sensors[index];
+          return SizedBox(
+            width: tileWidth,
+            height: tileHeight,
+            child: _buildSensorTile(sensor, TileLayout.horizontal, accentColor),
+          );
+        },
+      );
     }
 
+    // Landscape large: GridView with 2 columns (vertical tile layout)
+    if (isLargeScreen) {
+      return GridView.count(
+        crossAxisCount: 2,
+        mainAxisSpacing: AppSpacings.pMd,
+        crossAxisSpacing: AppSpacings.pMd,
+        childAspectRatio: AppTileAspectRatio.square,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        children: sensors
+            .map((sensor) =>
+                _buildSensorTile(sensor, TileLayout.vertical, accentColor))
+            .toList(),
+      );
+    }
+
+    // Landscape small/medium: Column with fixed-height tiles (horizontal layout)
+    final tileHeight = _scale(AppTileHeight.horizontal);
+
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: rows,
+      children: sensors.asMap().entries.map((entry) {
+        final index = entry.key;
+        final sensor = entry.value;
+        final isLast = index == sensors.length - 1;
+
+        return Padding(
+          padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
+          child: SizedBox(
+            height: tileHeight,
+            width: double.infinity,
+            child: _buildSensorTile(sensor, TileLayout.horizontal, accentColor),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  /// Builds a single sensor tile using UniversalTile.
+  Widget _buildSensorTile(
+    _SensorInfo sensor,
+    TileLayout layout,
+    Color accentColor,
+  ) {
+    return UniversalTile(
+      layout: layout,
+      icon: sensor.icon,
+      name: sensor.displayValue,
+      status: sensor.label,
+      iconAccentColor: sensor.valueColor ?? accentColor,
+      showGlow: false,
+      showDoubleBorder: false,
+      showWarningBadge: sensor.isWarning,
+      showInactiveBorder: true,
     );
   }
 
