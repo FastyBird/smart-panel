@@ -1049,6 +1049,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get window_covering_presets_label => 'Předvolby';
 
   @override
+  String get window_covering_channels_label => 'Žaluzie';
+
+  @override
   String get window_covering_info_status => 'Stav';
 
   @override

@@ -1201,8 +1201,8 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
             itemBuilder: (context, index) {
               final channel = widget.channels[index];
 
-              return AspectRatio(
-                aspectRatio: 1.0,
+              return SizedBox(
+                width: _scale(110),
                 child: UniversalTile(
                   layout: TileLayout.vertical,
                   icon: Icons.lightbulb_outline,

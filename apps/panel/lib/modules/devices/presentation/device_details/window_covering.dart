@@ -14,9 +14,10 @@ import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/modules/devices/controllers/devices/window_covering.dart';
+import 'package:fastybird_smart_panel/modules/devices/controllers/channels/window_covering.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/window_covering.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/window_covering.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter/foundation.dart';
@@ -49,7 +50,12 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       locator<VisualDensityService>();
   final DevicesService _devicesService = locator<DevicesService>();
   DeviceControlStateService? _deviceControlStateService;
-  WindowCoveringDeviceController? _controller;
+
+  // Channel controllers for multi-channel support
+  List<WindowCoveringChannelController> _channelControllers = [];
+
+  // Selected channel index for multi-channel devices
+  int _selectedChannelIndex = 0;
 
   // Debounce timers for sliders
   Timer? _positionDebounceTimer;
@@ -94,14 +100,35 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   void _initController() {
     final controlState = _deviceControlStateService;
     if (controlState != null) {
-      _controller = WindowCoveringDeviceController(
-        device: _device,
-        controlState: controlState,
-        devicesService: _devicesService,
-        onError: _onControllerError,
-      );
+      _channelControllers = _device.windowCoveringChannels.map((channel) {
+        return WindowCoveringChannelController(
+          deviceId: _device.id,
+          channel: channel,
+          controlState: controlState,
+          devicesService: _devicesService,
+          onError: _onControllerError,
+        );
+      }).toList();
+
+      // Ensure selected index is valid
+      if (_selectedChannelIndex >= _channelControllers.length) {
+        _selectedChannelIndex = 0;
+      }
     }
   }
+
+  /// Whether the device has multiple window covering channels
+  bool get _isMultiChannel => _device.windowCoveringChannels.length > 1;
+
+  /// Currently selected channel controller
+  WindowCoveringChannelController? get _controller =>
+      _channelControllers.isNotEmpty
+          ? _channelControllers[_selectedChannelIndex]
+          : null;
+
+  /// Currently selected channel view
+  WindowCoveringChannelView get _selectedChannel =>
+      _device.windowCoveringChannels[_selectedChannelIndex];
 
   void _onControllerError(String propertyId, Object error) {
     if (kDebugMode) {
@@ -148,28 +175,31 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     if (controlState == null) return;
 
     final deviceId = _device.id;
-    final channel = _device.windowCoveringChannel;
-    final channelId = channel.id;
 
-    // Check position property
-    controlState.checkPropertyConvergence(
-      deviceId,
-      channelId,
-      channel.positionProp.id,
-      channel.position,
-      tolerance: 1.0,
-    );
+    // Check convergence for all channels
+    for (final channel in _device.windowCoveringChannels) {
+      final channelId = channel.id;
 
-    // Check tilt property (if available)
-    final tiltProp = channel.tiltProp;
-    if (tiltProp != null) {
+      // Check position property
       controlState.checkPropertyConvergence(
         deviceId,
         channelId,
-        tiltProp.id,
-        channel.tilt,
+        channel.positionProp.id,
+        channel.position,
         tolerance: 1.0,
       );
+
+      // Check tilt property (if available)
+      final tiltProp = channel.tiltProp;
+      if (tiltProp != null) {
+        controlState.checkPropertyConvergence(
+          deviceId,
+          channelId,
+          tiltProp.id,
+          channel.tilt,
+          tolerance: 1.0,
+        );
+      }
     }
 
     // Note: Don't clear local values here - they should only be cleared when:
@@ -191,10 +221,10 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   }
 
   // Get current position (local value takes precedence for smooth slider)
-  int get _position => _localPosition ?? _controller?.position ?? _device.isWindowCoveringPercentage;
+  int get _position => _localPosition ?? _controller?.position ?? _selectedChannel.position;
 
   // Get current tilt (local value takes precedence for smooth slider)
-  int get _tiltAngle => _localTilt ?? _controller?.tilt ?? _device.isWindowCoveringTilt;
+  int get _tiltAngle => _localTilt ?? _controller?.tilt ?? _selectedChannel.tilt;
 
   // ===========================================================================
   // ACTION HANDLERS
@@ -350,7 +380,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
     // Build list of secondary content widgets
     final secondaryWidgets = <Widget>[
-      if (_device.hasWindowCoveringTilt)
+      if (_selectedChannel.hasTilt)
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -876,14 +906,107 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         children: [
           _buildMainControlCard(context),
           AppSpacings.spacingMdVertical,
-          if (_device.hasWindowCoveringTilt) ...[
+          if (_selectedChannel.hasTilt) ...[
             _buildTiltCard(context),
             AppSpacings.spacingMdVertical,
           ],
           _buildPresetsWithGradient(context),
         ],
       ),
+      stickyBottom: _isMultiChannel ? _buildPortraitChannelsList(context) : null,
+      useStickyBottomPadding: false,
     );
+  }
+
+  /// Builds the channels list section matching lighting control panel pattern
+  Widget _buildPortraitChannelsList(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
+    final primaryColor =
+        isDark ? AppColorsDark.primary : AppColorsLight.primary;
+    final dividerColor =
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.base;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: EdgeInsets.only(
+            left: AppSpacings.pLg,
+            right: AppSpacings.pLg,
+            top: AppSpacings.pSm,
+            bottom: AppSpacings.pSm,
+          ),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: dividerColor,
+                width: 1,
+              ),
+            ),
+          ),
+          child: SectionTitle(
+            title: localizations.window_covering_channels_label,
+            icon: MdiIcons.blindsHorizontal,
+          ),
+        ),
+        AppSpacings.spacingMdVertical,
+        Padding(
+          padding: EdgeInsets.only(
+            left: AppSpacings.pLg,
+            right: AppSpacings.pLg,
+            bottom: AppSpacings.pMd,
+          ),
+          child: HorizontalScrollWithGradient(
+            height: _scale(80),
+            layoutPadding: AppSpacings.pLg,
+            itemCount: _device.windowCoveringChannels.length,
+            separatorWidth: AppSpacings.pMd,
+            itemBuilder: (context, index) {
+              final channel = _device.windowCoveringChannels[index];
+              final controller = _channelControllers.isNotEmpty
+                  ? _channelControllers[index]
+                  : null;
+              final isSelected = index == _selectedChannelIndex;
+              final position = controller?.position ?? channel.position;
+
+              return SizedBox(
+                width: _scale(110),
+                child: UniversalTile(
+                  layout: TileLayout.vertical,
+                  icon: MdiIcons.blindsHorizontalClosed,
+                  activeIcon: MdiIcons.blindsHorizontal,
+                  name: channel.name,
+                  status: '$position%',
+                  isActive: position > 0,
+                  isSelected: isSelected,
+                  activeColor: primaryColor,
+                  onTileTap: () => _handleChannelSelect(index),
+                  showGlow: false,
+                  showWarningBadge: false,
+                  showInactiveBorder: true,
+                  showSelectionIndicator: true,
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Handle channel selection
+  void _handleChannelSelect(int index) {
+    if (index != _selectedChannelIndex) {
+      setState(() {
+        _selectedChannelIndex = index;
+        // Clear local values when changing channel
+        _localPosition = null;
+        _localTilt = null;
+        _selectedPresetIndex = null;
+      });
+    }
   }
 
   /// Builds the presets horizontal scroll with edge gradients that extend
@@ -1490,8 +1613,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         isLight ? AppColorsLight.primary : AppColorsDark.primary;
     final localizations = AppLocalizations.of(context)!;
 
-    final minTilt = _device.windowCoveringMinTilt;
-    final maxTilt = _device.windowCoveringMaxTilt;
+    final minTilt = _selectedChannel.minTilt;
+    final maxTilt = _selectedChannel.maxTilt;
     final tiltRange = maxTilt - minTilt;
 
     if (useCompactLayout) {
@@ -1700,7 +1823,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     });
 
     controller.setPosition(preset.position);
-    if (preset.tiltAngle != null && _device.hasWindowCoveringTilt) {
+    if (preset.tiltAngle != null && _selectedChannel.hasTilt) {
       controller.setTilt(preset.tiltAngle!);
     }
     setState(() {});
@@ -1716,7 +1839,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     if (_position != preset.position) return false;
 
     // Check tilt matches if device supports it and preset has tilt
-    if (_device.hasWindowCoveringTilt && preset.tiltAngle != null) {
+    if (_selectedChannel.hasTilt && preset.tiltAngle != null) {
       if (_tiltAngle != preset.tiltAngle) return false;
     }
 

@@ -1049,6 +1049,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get window_covering_presets_label => 'Presets';
 
   @override
+  String get window_covering_channels_label => 'Blinds';
+
+  @override
   String get window_covering_info_status => 'Status';
 
   @override

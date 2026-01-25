@@ -882,8 +882,8 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
             itemBuilder: (context, index) {
               final device = _state.climateDevices[index];
 
-              return AspectRatio(
-                aspectRatio: 1.0,
+              return SizedBox(
+                width: _scale(110),
                 child: _buildDeviceTile(context, device, isVertical: true),
               );
             },

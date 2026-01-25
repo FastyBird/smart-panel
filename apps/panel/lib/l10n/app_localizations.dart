@@ -2147,6 +2147,12 @@ abstract class AppLocalizations {
   /// **'Presets'**
   String get window_covering_presets_label;
 
+  /// Section label for window covering channels list
+  ///
+  /// In en, this message translates to:
+  /// **'Blinds'**
+  String get window_covering_channels_label;
+
   /// Status label in window covering info card
   ///
   /// In en, this message translates to:

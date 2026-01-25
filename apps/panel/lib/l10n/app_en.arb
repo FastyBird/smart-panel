@@ -1414,6 +1414,10 @@
   "@window_covering_presets_label": {
     "description": "Section label for window covering presets"
   },
+  "window_covering_channels_label": "Blinds",
+  "@window_covering_channels_label": {
+    "description": "Section label for window covering channels list"
+  },
   "window_covering_info_status": "Status",
   "@window_covering_info_status": {
     "description": "Status label in window covering info card"
