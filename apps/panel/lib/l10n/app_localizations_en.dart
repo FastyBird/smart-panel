@@ -1602,6 +1602,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get device_temperature => 'Temp';
 
   @override
+  String get device_sensors => 'Sensors';
+
+  @override
   String duration_format_hours_minutes(int hours, int minutes) {
     return '${hours}h ${minutes}m';
   }

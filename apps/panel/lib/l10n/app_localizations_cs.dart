@@ -1603,6 +1603,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get device_temperature => 'Teplota';
 
   @override
+  String get device_sensors => 'Senzory';
+
+  @override
   String duration_format_hours_minutes(int hours, int minutes) {
     return '${hours}h ${minutes}m';
   }

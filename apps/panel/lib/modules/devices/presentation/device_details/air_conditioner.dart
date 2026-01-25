@@ -14,6 +14,7 @@ import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradie
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
@@ -864,6 +865,7 @@ class _AirConditionerDeviceDetailState
   Widget _buildPortraitLayout(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
     final modeColor = _getModeColor(isDark);
+    final statusSection = _buildStatusSection(localizations, isDark, modeColor);
 
     return DeviceDetailPortraitLayout(
       contentPadding: AppSpacings.paddingLg,
@@ -871,9 +873,16 @@ class _AirConditionerDeviceDetailState
         children: [
           _buildPrimaryControlCard(context, isDark, dialSize: _scale(200)),
           AppSpacings.spacingMdVertical,
-          _buildStatusSection(localizations, isDark, modeColor),
-          AppSpacings.spacingMdVertical,
           _buildFanControls(localizations, isDark, modeColor, false),
+          if (statusSection is! SizedBox) ...[
+            AppSpacings.spacingLgVertical,
+            SectionTitle(
+              title: localizations.device_sensors,
+              icon: MdiIcons.eyeSettings,
+            ),
+            AppSpacings.spacingMdVertical,
+            statusSection,
+          ],
         ],
       ),
     );

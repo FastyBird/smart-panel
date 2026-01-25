@@ -1619,6 +1619,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   // --------------------------------------------------------------------------
 
   Widget _buildPortraitLayout(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     final hasAuxiliary = _state.auxiliaryDevices.isNotEmpty;
     final hasSensors = _state.sensors.isNotEmpty;
 
@@ -1631,7 +1632,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           // Sensors section - horizontal scroll like presets on window_covering.dart
           if (hasSensors) ...[
             SectionTitle(
-              title: 'Sensors',
+              title: localizations.device_sensors,
               icon: MdiIcons.eyeSettings,
             ),
             AppSpacings.spacingMdVertical,
@@ -1742,6 +1743,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   }
 
   Widget _buildLandscapeAdditionalColumn(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final secondaryBgColor =
         isLight ? AppFillColorLight.light : AppFillColorDark.light;
@@ -1758,7 +1760,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     // Sensors section - displayed as a card (like presets on window_covering.dart)
     if (hasSensors) {
       contentWidgets.add(
-        SectionTitle(title: 'Sensors', icon: MdiIcons.eyeSettings),
+        SectionTitle(title: localizations.device_sensors, icon: MdiIcons.eyeSettings),
       );
       contentWidgets.add(_buildLandscapeSensorsCard(context));
     }

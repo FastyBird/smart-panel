@@ -3221,6 +3221,12 @@ abstract class AppLocalizations {
   /// **'Temp'**
   String get device_temperature;
 
+  /// Sensors section label
+  ///
+  /// In en, this message translates to:
+  /// **'Sensors'**
+  String get device_sensors;
+
   /// Duration format with hours and minutes
   ///
   /// In en, this message translates to:
