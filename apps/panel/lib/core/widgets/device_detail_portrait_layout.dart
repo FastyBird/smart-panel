@@ -8,6 +8,9 @@ import 'package:flutter/material.dart';
 /// Similar to [PortraitViewLayout] but without mode selector support
 /// since device details don't use domain-level mode selection.
 ///
+/// Optionally supports a sticky bottom widget that stays fixed at the bottom
+/// of the screen while the main content scrolls.
+///
 /// Example usage:
 /// ```dart
 /// DeviceDetailPortraitLayout(
@@ -18,15 +21,24 @@ import 'package:flutter/material.dart';
 ///       _buildStatusCard(context),
 ///     ],
 ///   ),
+///   stickyBottom: _buildChannelsPanel(context), // Optional sticky bottom
 /// )
 /// ```
 class DeviceDetailPortraitLayout extends StatelessWidget {
   /// The main scrollable content
   final Widget content;
 
+  /// Optional sticky bottom widget
+  /// If provided, stays fixed at the bottom while content scrolls
+  final Widget? stickyBottom;
+
   /// Padding for the content area
   /// Default: AppSpacings.paddingLg on all sides (same as domain view)
   final EdgeInsetsGeometry? contentPadding;
+
+  /// Padding for the sticky bottom area
+  /// Default: horizontal pLg, vertical pMd
+  final EdgeInsetsGeometry? stickyBottomPadding;
 
   /// Whether the content should be scrollable
   /// Default: true
@@ -36,38 +48,83 @@ class DeviceDetailPortraitLayout extends StatelessWidget {
   /// Default: AppSpacings.pLg
   final double? gradientHeight;
 
+  /// Whether to show a top border on the sticky bottom
+  /// Default: true
+  final bool showStickyBottomBorder;
+
   const DeviceDetailPortraitLayout({
     super.key,
     required this.content,
+    this.stickyBottom,
     this.contentPadding,
+    this.stickyBottomPadding,
     this.scrollable = true,
     this.gradientHeight,
+    this.showStickyBottomBorder = true,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final defaultPadding = AppSpacings.paddingLg;
 
+    // Build the scrollable content widget
+    Widget contentWidget;
     if (scrollable) {
-      return VerticalScrollWithGradient(
+      contentWidget = VerticalScrollWithGradient(
         gradientHeight: gradientHeight ?? AppSpacings.pLg,
         padding: contentPadding ?? defaultPadding,
         itemCount: 1,
         separatorHeight: 0,
         itemBuilder: (context, index) => content,
       );
-    }
-
-    if (contentPadding != null) {
-      return Padding(
+    } else if (contentPadding != null) {
+      contentWidget = Padding(
         padding: contentPadding!,
+        child: content,
+      );
+    } else {
+      contentWidget = Padding(
+        padding: defaultPadding,
         child: content,
       );
     }
 
-    return Padding(
-      padding: defaultPadding,
-      child: content,
+    // If no sticky bottom, just return the content
+    if (stickyBottom == null) {
+      return contentWidget;
+    }
+
+    // With sticky bottom: Column with expanded content and sticky bottom
+    return Column(
+      children: [
+        // Scrollable content
+        Expanded(child: contentWidget),
+
+        // Sticky bottom
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+            border: showStickyBottomBorder
+                ? Border(
+                    top: BorderSide(
+                      color: isDark
+                          ? AppBorderColorDark.light
+                          : AppBorderColorLight.base,
+                      width: 1,
+                    ),
+                  )
+                : null,
+          ),
+          padding: stickyBottomPadding ??
+              EdgeInsets.symmetric(
+                horizontal: AppSpacings.pLg,
+                vertical: AppSpacings.pMd,
+              ),
+          child: stickyBottom,
+        ),
+      ],
     );
   }
 }

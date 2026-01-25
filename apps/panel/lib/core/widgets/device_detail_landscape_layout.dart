@@ -3,15 +3,12 @@ import 'package:flutter/material.dart';
 
 /// A reusable landscape layout widget for device detail pages.
 ///
-/// Provides a 2-column layout:
-/// - **Left column**: Main control content (2/3 width by default)
-/// - **Right column**: Secondary content like status/info (1/3 width by default)
-///
-/// Similar to [LandscapeViewLayout] but without mode selector column
-/// since device details don't use domain-level mode selection.
+/// Provides two layout modes:
+/// - **2-column**: Main content (flex 2) + secondary content (flex 1)
+/// - **3-column**: Main content (flex 2) + mode selector (fixed) + secondary content (flex 1)
 ///
 /// The secondary content column has a distinct background color and is
-/// typically used for device status, sensors, settings, or other info.
+/// typically used for device status, sensors, settings, presets, or other info.
 ///
 /// Use [largeSecondaryColumn] to make columns equal width (1:1 ratio)
 /// instead of the default 2:1 ratio.
@@ -20,6 +17,7 @@ import 'package:flutter/material.dart';
 /// ```dart
 /// DeviceDetailLandscapeLayout(
 ///   mainContent: _buildControlCard(context),
+///   modeSelector: MyModeSelector(), // Optional - if provided, creates 3-column layout
 ///   secondaryContent: _buildStatusContent(context),
 ///   largeSecondaryColumn: true, // Equal columns (1:1)
 /// )
@@ -28,13 +26,20 @@ class DeviceDetailLandscapeLayout extends StatelessWidget {
   /// The main control content widget (left column)
   final Widget mainContent;
 
+  /// Optional mode selector widget (middle column)
+  /// If provided, creates a 3-column layout
+  final Widget? modeSelector;
+
   /// The secondary content widget (right column)
-  /// Typically contains status info, settings, sensors
+  /// Typically contains status info, settings, sensors, presets
   final Widget secondaryContent;
 
   /// Padding for the main content column
   /// Default: AppSpacings.paddingLg
   final EdgeInsetsGeometry? mainContentPadding;
+
+  /// Padding for the mode selector column
+  final EdgeInsetsGeometry? modeSelectorPadding;
 
   /// Padding for the secondary content column
   /// Default: AppSpacings.paddingLg
@@ -56,8 +61,10 @@ class DeviceDetailLandscapeLayout extends StatelessWidget {
   const DeviceDetailLandscapeLayout({
     super.key,
     required this.mainContent,
+    this.modeSelector,
     required this.secondaryContent,
     this.mainContentPadding,
+    this.modeSelectorPadding,
     this.secondaryContentPadding,
     this.largeSecondaryColumn = false,
     this.showDivider = true,
@@ -99,6 +106,17 @@ class DeviceDetailLandscapeLayout extends StatelessWidget {
                 child: mainContent,
               ),
             ),
+
+            // Middle column: Mode selector (optional)
+            if (modeSelector != null)
+              Container(
+                padding: modeSelectorPadding ??
+                    EdgeInsets.symmetric(
+                      vertical: AppSpacings.pLg,
+                      horizontal: AppSpacings.pMd,
+                    ),
+                child: Center(child: modeSelector),
+              ),
 
             // Divider between columns
             if (showDivider) Container(width: 1, color: borderColor),
