@@ -10,6 +10,7 @@ import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
@@ -64,12 +65,12 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
   // Presets configuration
   static const _presets = [
-    _Preset(type: _PresetType.morning, icon: Icons.wb_sunny, position: 100),
-    _Preset(type: _PresetType.day, icon: Icons.light_mode, position: 75),
-    _Preset(type: _PresetType.evening, icon: Icons.nights_stay, position: 30),
-    _Preset(type: _PresetType.night, icon: Icons.bedtime, position: 0),
+    _Preset(type: _PresetType.morning, icon: Icons.wb_sunny, position: 100, tiltAngle: 0),
+    _Preset(type: _PresetType.day, icon: Icons.light_mode, position: 75, tiltAngle: 30),
+    _Preset(type: _PresetType.evening, icon: Icons.nights_stay, position: 30, tiltAngle: 60),
+    _Preset(type: _PresetType.night, icon: Icons.bedtime, position: 0, tiltAngle: 90),
     _Preset(type: _PresetType.privacy, icon: Icons.lock, position: 0, tiltAngle: 45),
-    _Preset(type: _PresetType.away, icon: Icons.home, position: 0),
+    _Preset(type: _PresetType.away, icon: Icons.home, position: 0, tiltAngle: 90),
   ];
 
   @override
@@ -349,11 +350,22 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final secondaryBgColor =
         isLight ? AppFillColorLight.light : AppFillColorDark.light;
+    final localizations = AppLocalizations.of(context)!;
 
     // Build list of secondary content widgets
     final secondaryWidgets = <Widget>[
       if (_device.hasWindowCoveringTilt)
-        _buildTiltCard(context, useCompactLayout: true),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionTitle(
+              title: localizations.device_controls,
+              icon: MdiIcons.tuneVertical,
+            ),
+            AppSpacings.spacingSmVertical,
+            _buildTiltCard(context, useCompactLayout: true),
+          ],
+        ),
       _buildPresetsCard(context),
     ];
 
@@ -885,38 +897,48 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final primaryColor =
         isLight ? AppColorsLight.primary : AppColorsDark.primary;
-    final localizations = AppLocalizations.of(context);
+    final localizations = AppLocalizations.of(context)!;
 
     // Use consistent tile dimensions
     final tileWidth = _scale(AppTileWidth.horizontalMedium);
     final tileHeight = _scale(AppTileHeight.horizontal);
 
-    return HorizontalScrollWithGradient(
-      height: tileHeight,
-      layoutPadding: AppSpacings.pLg,
-      itemCount: _presets.length,
-      separatorWidth: AppSpacings.pSm,
-      itemBuilder: (context, index) {
-        final preset = _presets[index];
-        final bool isActive = _isPresetActive(index);
-
-        return SizedBox(
-          width: tileWidth,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionTitle(
+          title: localizations.window_covering_presets_label,
+          icon: MdiIcons.viewGrid,
+        ),
+        AppSpacings.spacingSmVertical,
+        HorizontalScrollWithGradient(
           height: tileHeight,
-          child: UniversalTile(
-            layout: TileLayout.horizontal,
-            icon: preset.icon,
-            name: preset.getName(localizations),
-            status: '${preset.position}%',
-            isActive: isActive,
-            activeColor: primaryColor,
-            onTileTap: () => _applyPreset(index),
-            showGlow: false,
-            showWarningBadge: false,
-            showInactiveBorder: true,
-          ),
-        );
-      },
+          layoutPadding: AppSpacings.pLg,
+          itemCount: _presets.length,
+          separatorWidth: AppSpacings.pSm,
+          itemBuilder: (context, index) {
+            final preset = _presets[index];
+            final bool isActive = _isPresetActive(index);
+
+            return SizedBox(
+              width: tileWidth,
+              height: tileHeight,
+              child: UniversalTile(
+                layout: TileLayout.horizontal,
+                icon: preset.icon,
+                name: preset.getName(localizations),
+                status: '${preset.position}%',
+                isActive: isActive,
+                activeColor: primaryColor,
+                onTileTap: () => _applyPreset(index),
+                showGlow: false,
+                showWarningBadge: false,
+                showInactiveBorder: true,
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 
@@ -1579,37 +1601,47 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final primaryColor =
         isLight ? AppColorsLight.primary : AppColorsDark.primary;
-    final localizations = AppLocalizations.of(context);
+    final localizations = AppLocalizations.of(context)!;
     final isLargeScreen = _screenService.isLargeScreen;
 
     // Large screens: 2 vertical tiles per row (square)
     // Small/medium: 1 horizontal tile per row with fixed height
     if (isLargeScreen) {
-      return GridView.count(
-        crossAxisCount: 2,
-        mainAxisSpacing: AppSpacings.pMd,
-        crossAxisSpacing: AppSpacings.pMd,
-        childAspectRatio: AppTileAspectRatio.square,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        children: _presets.asMap().entries.map((entry) {
-          final index = entry.key;
-          final preset = entry.value;
-          final bool isActive = _isPresetActive(index);
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionTitle(
+            title: localizations.window_covering_presets_label,
+            icon: MdiIcons.viewGrid,
+          ),
+          AppSpacings.spacingSmVertical,
+          GridView.count(
+            crossAxisCount: 2,
+            mainAxisSpacing: AppSpacings.pMd,
+            crossAxisSpacing: AppSpacings.pMd,
+            childAspectRatio: AppTileAspectRatio.square,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            children: _presets.asMap().entries.map((entry) {
+              final index = entry.key;
+              final preset = entry.value;
+              final bool isActive = _isPresetActive(index);
 
-          return UniversalTile(
-            layout: TileLayout.vertical,
-            icon: preset.icon,
-            name: preset.getName(localizations),
-            status: '${preset.position}%',
-            isActive: isActive,
-            activeColor: primaryColor,
-            onTileTap: () => _applyPreset(index),
-            showGlow: false,
-            showWarningBadge: false,
-            showInactiveBorder: true,
-          );
-        }).toList(),
+              return UniversalTile(
+                layout: TileLayout.vertical,
+                icon: preset.icon,
+                name: preset.getName(localizations),
+                status: '${preset.position}%',
+                isActive: isActive,
+                activeColor: primaryColor,
+                onTileTap: () => _applyPreset(index),
+                showGlow: false,
+                showWarningBadge: false,
+                showInactiveBorder: true,
+              );
+            }).toList(),
+          ),
+        ],
       );
     }
 
@@ -1617,31 +1649,39 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     final tileHeight = _scale(AppTileHeight.horizontal);
 
     return Column(
-      children: _presets.asMap().entries.map((entry) {
-        final index = entry.key;
-        final preset = entry.value;
-        final bool isActive = _isPresetActive(index);
-        final isLast = index == _presets.length - 1;
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionTitle(
+          title: localizations.window_covering_presets_label,
+          icon: MdiIcons.viewGrid,
+        ),
+        AppSpacings.spacingSmVertical,
+        ..._presets.asMap().entries.map((entry) {
+          final index = entry.key;
+          final preset = entry.value;
+          final bool isActive = _isPresetActive(index);
+          final isLast = index == _presets.length - 1;
 
-        return Padding(
-          padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
-          child: SizedBox(
-            height: tileHeight,
-            child: UniversalTile(
-              layout: TileLayout.horizontal,
-              icon: preset.icon,
-              name: preset.getName(localizations),
-              status: '${preset.position}%',
-              isActive: isActive,
-              activeColor: primaryColor,
-              onTileTap: () => _applyPreset(index),
-              showGlow: false,
-              showWarningBadge: false,
-              showInactiveBorder: true,
+          return Padding(
+            padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
+            child: SizedBox(
+              height: tileHeight,
+              child: UniversalTile(
+                layout: TileLayout.horizontal,
+                icon: preset.icon,
+                name: preset.getName(localizations),
+                status: '${preset.position}%',
+                isActive: isActive,
+                activeColor: primaryColor,
+                onTileTap: () => _applyPreset(index),
+                showGlow: false,
+                showWarningBadge: false,
+                showInactiveBorder: true,
+              ),
             ),
-          ),
-        );
-      }).toList(),
+          );
+        }),
+      ],
     );
   }
 

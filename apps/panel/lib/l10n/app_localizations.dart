@@ -2141,6 +2141,12 @@ abstract class AppLocalizations {
   /// **'Away'**
   String get window_covering_preset_away;
 
+  /// Section label for window covering presets
+  ///
+  /// In en, this message translates to:
+  /// **'Presets'**
+  String get window_covering_presets_label;
+
   /// Status label in window covering info card
   ///
   /// In en, this message translates to:

@@ -1046,6 +1046,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get window_covering_preset_away => 'Pryč';
 
   @override
+  String get window_covering_presets_label => 'Předvolby';
+
+  @override
   String get window_covering_info_status => 'Stav';
 
   @override

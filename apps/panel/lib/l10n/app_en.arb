@@ -1410,6 +1410,10 @@
   "@window_covering_preset_away": {
     "description": "Away preset name for window covering"
   },
+  "window_covering_presets_label": "Presets",
+  "@window_covering_presets_label": {
+    "description": "Section label for window covering presets"
+  },
   "window_covering_info_status": "Status",
   "@window_covering_info_status": {
     "description": "Status label in window covering info card"

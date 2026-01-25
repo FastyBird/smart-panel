@@ -344,6 +344,7 @@
   "window_covering_preset_night": "Noc",
   "window_covering_preset_privacy": "Soukromí",
   "window_covering_preset_away": "Pryč",
+  "window_covering_presets_label": "Předvolby",
   "window_covering_info_status": "Stav",
   "window_covering_info_obstruction": "Překážka",
   "window_covering_obstruction_detected": "Zjištěna",
