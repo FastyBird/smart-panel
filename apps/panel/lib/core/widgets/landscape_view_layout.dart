@@ -8,7 +8,10 @@ import 'package:flutter/material.dart';
 ///
 /// Provides two layout modes:
 /// - **2-column**: Main content (flex 2) + additional content (flex 1)
-/// - **3-column**: Main content (flex 2) + mode selector (fixed) + additional content (flex 1)
+/// - **3-column**: Main content + mode selector (flex 2 combined) + additional content (flex 1)
+///
+/// The mode selector is placed within the main content flex area, ensuring
+/// the additional column width remains consistent whether mode selector is present or not.
 ///
 /// The additional content column has a distinct background color and is
 /// typically used for scenes, devices, sensors, or other secondary content.
@@ -85,25 +88,33 @@ class LandscapeViewLayout extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Left column: Main content (flex-based)
+        // Left column(s): Main content + optional mode selector (flex-based together)
+        // This ensures additional column width stays consistent with or without mode selector
         Expanded(
           flex: mainContentFlex,
-          child: Padding(
-            padding: mainContentPadding ?? EdgeInsets.all(AppSpacings.pLg),
-            child: mainContent,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Main content takes remaining space
+              Expanded(
+                child: Padding(
+                  padding: mainContentPadding ?? EdgeInsets.all(AppSpacings.pLg),
+                  child: mainContent,
+                ),
+              ),
+              // Mode selector (optional) - intrinsic width within main flex
+              if (modeSelector != null)
+                Container(
+                  padding: modeSelectorPadding ??
+                      EdgeInsets.symmetric(
+                        vertical: AppSpacings.pLg,
+                        horizontal: showLabels ? AppSpacings.pLg : AppSpacings.pMd,
+                      ),
+                  child: Center(child: modeSelector),
+                ),
+            ],
           ),
         ),
-
-        // Middle column: Mode selector (optional) - intrinsic width
-        if (modeSelector != null)
-          Container(
-            padding: modeSelectorPadding ??
-                EdgeInsets.symmetric(
-                  vertical: AppSpacings.pLg,
-                  horizontal: showLabels ? AppSpacings.pLg : AppSpacings.pMd,
-                ),
-            child: Center(child: modeSelector),
-          ),
 
         // Right column: Additional content (optional) - flex-based
         if (additionalContent != null) ...[

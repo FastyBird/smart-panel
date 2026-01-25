@@ -16,6 +16,7 @@ import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -1211,9 +1212,10 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
   }
 
   /// Builds sensors section matching climate domain pattern:
-  /// - Portrait: HorizontalScrollWithGradient with UniversalTile (horizontal layout)
-  /// - Landscape large: GridView.count with 2 columns using UniversalTile (vertical layout)
-  /// - Landscape small/medium: Column with UniversalTile (horizontal layout)
+  /// Builds sensors section using tile wrappers:
+  /// - Portrait: HorizontalScrollWithGradient with HorizontalTileCompact
+  /// - Landscape large: GridView.count with VerticalTileLarge
+  /// - Landscape small/medium: Column with HorizontalTileStretched
   Widget _buildSensorsSection(bool isDark, List<_SensorInfo> sensors) {
     if (sensors.isEmpty) return const SizedBox.shrink();
 
@@ -1221,9 +1223,8 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     final isLargeScreen = _screenService.isLargeScreen;
     final humidityColor = DeviceColors.humidity(isDark);
 
-    // Portrait: Horizontal scroll with gradient (edge-to-edge)
+    // Portrait: Horizontal scroll with HorizontalTileCompact
     if (!isLandscape) {
-      final tileWidth = _scale(AppTileWidth.horizontalMedium);
       final tileHeight = _scale(AppTileHeight.horizontal);
 
       return HorizontalScrollWithGradient(
@@ -1233,16 +1234,18 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         separatorWidth: AppSpacings.pMd,
         itemBuilder: (context, index) {
           final sensor = sensors[index];
-          return SizedBox(
-            width: tileWidth,
-            height: tileHeight,
-            child: _buildSensorTile(sensor, TileLayout.horizontal, humidityColor),
+          return HorizontalTileCompact(
+            icon: sensor.icon,
+            name: sensor.displayValue,
+            status: sensor.label,
+            iconAccentColor: sensor.valueColor ?? humidityColor,
+            showWarningBadge: sensor.isWarning,
           );
         },
       );
     }
 
-    // Landscape large: GridView with 2 columns (vertical tile layout)
+    // Landscape large: GridView with VerticalTileLarge
     if (isLargeScreen) {
       return GridView.count(
         crossAxisCount: 2,
@@ -1251,51 +1254,35 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         childAspectRatio: AppTileAspectRatio.square,
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        children: sensors
-            .map((sensor) =>
-                _buildSensorTile(sensor, TileLayout.vertical, humidityColor))
-            .toList(),
+        children: sensors.map((sensor) {
+          return VerticalTileLarge(
+            icon: sensor.icon,
+            name: sensor.displayValue,
+            status: sensor.label,
+            iconAccentColor: sensor.valueColor ?? humidityColor,
+            showWarningBadge: sensor.isWarning,
+          );
+        }).toList(),
       );
     }
 
-    // Landscape small/medium: Column with fixed-height tiles (horizontal layout)
-    final tileHeight = _scale(AppTileHeight.horizontal);
-
+    // Landscape small/medium: Column with HorizontalTileStretched
     return Column(
       children: sensors.asMap().entries.map((entry) {
         final index = entry.key;
         final sensor = entry.value;
         final isLast = index == sensors.length - 1;
-
         return Padding(
           padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
-          child: SizedBox(
-            height: tileHeight,
-            width: double.infinity,
-            child: _buildSensorTile(sensor, TileLayout.horizontal, humidityColor),
+          child: HorizontalTileStretched(
+            icon: sensor.icon,
+            name: sensor.displayValue,
+            status: sensor.label,
+            iconAccentColor: sensor.valueColor ?? humidityColor,
+            showWarningBadge: sensor.isWarning,
           ),
         );
       }).toList(),
-    );
-  }
-
-  /// Builds a single sensor tile using UniversalTile.
-  /// Matches the climate domain sensor tile pattern.
-  Widget _buildSensorTile(
-    _SensorInfo sensor,
-    TileLayout layout,
-    Color accentColor,
-  ) {
-    return UniversalTile(
-      layout: layout,
-      icon: sensor.icon,
-      name: sensor.displayValue,
-      status: sensor.label,
-      iconAccentColor: sensor.valueColor ?? accentColor,
-      showGlow: false,
-      showDoubleBorder: false,
-      showWarningBadge: sensor.isWarning,
-      showInactiveBorder: true,
     );
   }
 

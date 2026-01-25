@@ -11,7 +11,7 @@ import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradie
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
-import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
+import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/channels/window_covering.dart';
@@ -1000,27 +1000,16 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
               final isSelected = index == _selectedChannelIndex;
               final position = controller?.position ?? channel.position;
 
-              final tileWidth = _screenService.isSmallScreen
-                  ? AppTileWidth.verticalMedium
-                  : AppTileWidth.verticalLarge;
-
-              return SizedBox(
-                width: _scale(tileWidth),
-                child: UniversalTile(
-                  layout: TileLayout.vertical,
-                  icon: MdiIcons.blindsHorizontalClosed,
-                  activeIcon: MdiIcons.blindsHorizontal,
-                  name: channel.name,
-                  status: '$position%',
-                  isActive: position > 0,
-                  isSelected: isSelected,
-                  activeColor: primaryColor,
-                  onTileTap: () => _handleChannelSelect(index),
-                  showGlow: false,
-                  showWarningBadge: false,
-                  showInactiveBorder: true,
-                  showSelectionIndicator: true,
-                ),
+              return VerticalTileCompact(
+                icon: MdiIcons.blindsHorizontalClosed,
+                activeIcon: MdiIcons.blindsHorizontal,
+                name: channel.name,
+                status: '$position%',
+                isActive: position > 0,
+                isSelected: isSelected,
+                activeColor: primaryColor,
+                onTileTap: () => _handleChannelSelect(index),
+                showSelectionIndicator: true,
               );
             },
           ),
@@ -1042,63 +1031,13 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     }
   }
 
-  /// Builds the channels list for landscape layout
+  /// Builds the channels list for landscape layout.
+  /// Uses DeviceTileLandscape wrapper for all device sizes.
   Widget _buildLandscapeChannelsList(BuildContext context) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final primaryColor =
         isLight ? AppColorsLight.primary : AppColorsDark.primary;
     final localizations = AppLocalizations.of(context)!;
-    final isLargeScreen = _screenService.isLargeScreen;
-
-    // Large screens: 2 vertical tiles per row (square)
-    if (isLargeScreen) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SectionTitle(
-            title: localizations.window_covering_channels_label,
-            icon: MdiIcons.blindsHorizontal,
-          ),
-          AppSpacings.spacingSmVertical,
-          GridView.count(
-            crossAxisCount: 2,
-            mainAxisSpacing: AppSpacings.pMd,
-            crossAxisSpacing: AppSpacings.pMd,
-            childAspectRatio: AppTileAspectRatio.square,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            children: _device.windowCoveringChannels.asMap().entries.map((entry) {
-              final index = entry.key;
-              final channel = entry.value;
-              final controller = _channelControllers.isNotEmpty
-                  ? _channelControllers[index]
-                  : null;
-              final isSelected = index == _selectedChannelIndex;
-              final position = controller?.position ?? channel.position;
-
-              return UniversalTile(
-                layout: TileLayout.vertical,
-                icon: MdiIcons.blindsHorizontalClosed,
-                activeIcon: MdiIcons.blindsHorizontal,
-                name: channel.name,
-                status: '$position%',
-                isActive: position > 0,
-                isSelected: isSelected,
-                activeColor: primaryColor,
-                onTileTap: () => _handleChannelSelect(index),
-                showGlow: false,
-                showWarningBadge: false,
-                showInactiveBorder: true,
-                showSelectionIndicator: true,
-              );
-            }).toList(),
-          ),
-        ],
-      );
-    }
-
-    // Small/medium: Column of fixed-height horizontal tiles
-    final tileHeight = _scale(AppTileHeight.horizontal);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1120,23 +1059,16 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
           return Padding(
             padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
-            child: SizedBox(
-              height: tileHeight,
-              child: UniversalTile(
-                layout: TileLayout.horizontal,
-                icon: MdiIcons.blindsHorizontalClosed,
-                activeIcon: MdiIcons.blindsHorizontal,
-                name: channel.name,
-                status: '$position%',
-                isActive: position > 0,
-                isSelected: isSelected,
-                activeColor: primaryColor,
-                onTileTap: () => _handleChannelSelect(index),
-                showGlow: false,
-                showWarningBadge: false,
-                showInactiveBorder: true,
-                showSelectionIndicator: true,
-              ),
+            child: DeviceTileLandscape(
+              icon: MdiIcons.blindsHorizontalClosed,
+              activeIcon: MdiIcons.blindsHorizontal,
+              name: channel.name,
+              status: '$position%',
+              isActive: position > 0,
+              isSelected: isSelected,
+              activeColor: primaryColor,
+              onTileTap: () => _handleChannelSelect(index),
+              showSelectionIndicator: true,
             ),
           );
         }),
@@ -1146,14 +1078,13 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
   /// Builds the presets horizontal scroll with edge gradients that extend
   /// over the layout padding to the screen edges.
+  /// Uses HorizontalTileCompact wrapper for portrait mode.
   Widget _buildPresetsWithGradient(BuildContext context) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final primaryColor =
         isLight ? AppColorsLight.primary : AppColorsDark.primary;
     final localizations = AppLocalizations.of(context)!;
 
-    // Use consistent tile dimensions
-    final tileWidth = _scale(AppTileWidth.horizontalMedium);
     final tileHeight = _scale(AppTileHeight.horizontal);
 
     return Column(
@@ -1173,21 +1104,13 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
             final preset = _presets[index];
             final bool isActive = _isPresetActive(index);
 
-            return SizedBox(
-              width: tileWidth,
-              height: tileHeight,
-              child: UniversalTile(
-                layout: TileLayout.horizontal,
-                icon: preset.icon,
-                name: preset.getName(localizations),
-                status: '${preset.position}%',
-                isActive: isActive,
-                activeColor: primaryColor,
-                onTileTap: () => _applyPreset(index),
-                showGlow: false,
-                showWarningBadge: false,
-                showInactiveBorder: true,
-              ),
+            return HorizontalTileCompact(
+              icon: preset.icon,
+              name: preset.getName(localizations),
+              status: '${preset.position}%',
+              isActive: isActive,
+              activeColor: primaryColor,
+              onTileTap: () => _applyPreset(index),
             );
           },
         ),
@@ -1850,6 +1773,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   // PRESETS
   // ===========================================================================
 
+  /// Builds presets card for landscape mode.
+  /// Uses VerticalTileLarge for large screens, HorizontalTileStretched for small/medium.
   Widget _buildPresetsCard(BuildContext context) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final primaryColor =
@@ -1857,8 +1782,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     final localizations = AppLocalizations.of(context)!;
     final isLargeScreen = _screenService.isLargeScreen;
 
-    // Large screens: 2 vertical tiles per row (square)
-    // Small/medium: 1 horizontal tile per row with fixed height
+    // Large screens: GridView with VerticalTileLarge
     if (isLargeScreen) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1880,17 +1804,13 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
               final preset = entry.value;
               final bool isActive = _isPresetActive(index);
 
-              return UniversalTile(
-                layout: TileLayout.vertical,
+              return VerticalTileLarge(
                 icon: preset.icon,
                 name: preset.getName(localizations),
                 status: '${preset.position}%',
                 isActive: isActive,
                 activeColor: primaryColor,
                 onTileTap: () => _applyPreset(index),
-                showGlow: false,
-                showWarningBadge: false,
-                showInactiveBorder: true,
               );
             }).toList(),
           ),
@@ -1898,9 +1818,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       );
     }
 
-    // Small/medium: Column of fixed-height horizontal tiles
-    final tileHeight = _scale(AppTileHeight.horizontal);
-
+    // Small/medium: Column with HorizontalTileStretched
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1917,20 +1835,13 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
           return Padding(
             padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
-            child: SizedBox(
-              height: tileHeight,
-              child: UniversalTile(
-                layout: TileLayout.horizontal,
-                icon: preset.icon,
-                name: preset.getName(localizations),
-                status: '${preset.position}%',
-                isActive: isActive,
-                activeColor: primaryColor,
-                onTileTap: () => _applyPreset(index),
-                showGlow: false,
-                showWarningBadge: false,
-                showInactiveBorder: true,
-              ),
+            child: HorizontalTileStretched(
+              icon: preset.icon,
+              name: preset.getName(localizations),
+              status: '${preset.position}%',
+              isActive: isActive,
+              activeColor: primaryColor,
+              onTileTap: () => _applyPreset(index),
             ),
           );
         }),

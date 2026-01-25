@@ -11,6 +11,7 @@ import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
+import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/constants.dart';
@@ -1286,8 +1287,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final hasOtherLights = otherLights.isNotEmpty;
     final isLargeScreen = _screenService.isLargeScreen;
     final tilesPerRow = isLargeScreen ? 4 : 3;
-    // Use wider aspect ratio on small/medium screens to reduce tile height
-    final tileAspectRatio = isLargeScreen ? 1.0 : 1.1;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1300,7 +1299,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             roles,
             devicesService,
             tilesPerRow: tilesPerRow,
-            aspectRatio: tileAspectRatio,
           ),
           AppSpacings.spacingLgVertical,
           // Other Lights header
@@ -1313,7 +1311,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             localizations,
             tilesPerRow: tilesPerRow,
             maxRows: isLargeScreen ? 2 : 1,
-            aspectRatio: tileAspectRatio,
           ),
         ] else if (hasRoles) ...[
           // Only roles, no other lights - grid layout
@@ -1323,7 +1320,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
               roles,
               devicesService,
               crossAxisCount: tilesPerRow,
-              aspectRatio: tileAspectRatio,
             ),
           ),
         ] else if (hasOtherLights) ...[
@@ -1336,7 +1332,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             localizations,
             tilesPerRow: tilesPerRow,
             maxRows: isLargeScreen ? 2 : 1,
-            aspectRatio: tileAspectRatio,
           ),
         ],
       ],
@@ -1374,33 +1369,24 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     if (isLargeScreen) {
       return GridView.count(
         crossAxisCount: 2,
-        mainAxisSpacing: AppSpacings.pSm,
-        crossAxisSpacing: AppSpacings.pSm,
+        mainAxisSpacing: AppSpacings.pMd,
+        crossAxisSpacing: AppSpacings.pMd,
         childAspectRatio: AppTileAspectRatio.square,
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         children: scenes.map((scene) {
-          return UniversalTile(
-            layout: TileLayout.vertical,
+          return VerticalTileLarge(
             icon: _getSceneIcon(scene),
             name: scene.name,
             isActive: false,
             activeColor: primaryColor,
             onTileTap: () => _activateScene(scene),
-            showGlow: false,
-            showWarningBadge: false,
-            showInactiveBorder: true,
           );
         }).toList(),
       );
     }
 
     // Small/medium: Column of fixed-height horizontal tiles
-    final tileHeight = _screenService.scale(
-      AppTileHeight.horizontal,
-      density: _visualDensityService.density,
-    );
-
     return Column(
       children: scenes.asMap().entries.map((entry) {
         final index = entry.key;
@@ -1408,20 +1394,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         final isLast = index == scenes.length - 1;
 
         return Padding(
-          padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pSm),
-          child: SizedBox(
-            height: tileHeight,
-            child: UniversalTile(
-              layout: TileLayout.horizontal,
-              icon: _getSceneIcon(scene),
-              name: scene.name,
-              isActive: false,
-              activeColor: primaryColor,
-              onTileTap: () => _activateScene(scene),
-              showGlow: false,
-              showWarningBadge: false,
-              showInactiveBorder: true,
-            ),
+          padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
+          child: HorizontalTileStretched(
+            icon: _getSceneIcon(scene),
+            name: scene.name,
+            isActive: false,
+            activeColor: primaryColor,
+            onTileTap: () => _activateScene(scene),
           ),
         );
       }).toList(),
@@ -2040,23 +2019,24 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   /// Builds a grid of light tiles that fill the available width.
   /// Uses fixed tile height (AppTileHeight.horizontal) for consistency
   /// with other domain views (e.g., shading domain devices grid).
+  /// Builds a grid of light device tiles using DeviceTilePortrait wrapper.
   Widget _buildLightsGrid(
     BuildContext context,
     List<LightDeviceData> lights,
     AppLocalizations localizations, {
     int crossAxisCount = 2,
   }) {
-    final tileHeight = _screenService.scale(
-      AppTileHeight.horizontal,
-      density: _visualDensityService.density,
-    );
-
+    // Build device tiles using DeviceTilePortrait wrapper
     final items = lights.map((light) {
-      return _LightTile(
-        light: light,
-        localizations: localizations,
-        onTap: () => _openDeviceDetail(context, light),
-        onIconTap: () => _toggleLight(light),
+      return DeviceTilePortrait(
+        icon: Icons.lightbulb_outline,
+        activeIcon: Icons.lightbulb,
+        name: light.name,
+        status: _getLightStatusText(light, localizations),
+        isActive: light.isOn,
+        isOffline: light.isOffline,
+        onTileTap: () => _openDeviceDetail(context, light),
+        onIconTap: light.isOffline ? null : () => _toggleLight(light),
       );
     }).toList();
 
@@ -2067,7 +2047,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       for (var j = 0; j < crossAxisCount; j++) {
         final index = i + j;
         if (index < items.length) {
-          rowItems.add(Expanded(child: SizedBox(height: tileHeight, child: items[index])));
+          rowItems.add(Expanded(child: items[index]));
         } else {
           rowItems.add(const Expanded(child: SizedBox()));
         }
@@ -2082,6 +2062,20 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     }
 
     return Column(children: rows);
+  }
+
+  /// Get localized status text for a light device.
+  String _getLightStatusText(LightDeviceData light, AppLocalizations localizations) {
+    switch (light.state) {
+      case LightState.off:
+        return localizations.light_state_off;
+      case LightState.on:
+        return light.brightness != null
+            ? '${light.brightness}%'
+            : localizations.light_state_on;
+      case LightState.offline:
+        return localizations.device_status_offline;
+    }
   }
 
   // --------------------------------------------------------------------------

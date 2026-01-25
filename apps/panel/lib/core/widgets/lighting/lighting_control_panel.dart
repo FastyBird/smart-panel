@@ -10,7 +10,7 @@ import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradie
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
-import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
+import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -480,7 +480,6 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
     final primaryColor =
         isDark ? AppColorsDark.primary : AppColorsLight.primary;
     final isLargeScreen = _screenService.isLargeScreen;
-    final tileHeight = _scale(AppTileHeight.horizontal);
     final stateColor = _getStateColor(isDark);
 
     // Determine icon based on state
@@ -508,8 +507,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             children: widget.channels.map((channel) {
-              return UniversalTile(
-                layout: TileLayout.vertical,
+              return VerticalTileLarge(
                 icon: Icons.lightbulb_outline,
                 activeIcon: Icons.lightbulb,
                 name: channel.name,
@@ -522,9 +520,6 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
                 onIconTap: channel.isOnline
                     ? () => widget.onChannelIconTap?.call(channel)
                     : null,
-                showGlow: false,
-                showWarningBadge: false,
-                showInactiveBorder: true,
                 showSelectionIndicator: true,
               );
             }).toList(),
@@ -547,27 +542,20 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
 
           return Padding(
             padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
-            child: SizedBox(
-              height: tileHeight,
-              child: UniversalTile(
-                layout: TileLayout.horizontal,
-                icon: Icons.lightbulb_outline,
-                activeIcon: Icons.lightbulb,
-                name: channel.name,
-                status: channel.getStatusText(localizations),
-                isActive: channel.isOn && channel.isOnline,
-                isOffline: !channel.isOnline,
-                isSelected: channel.isSelected,
-                activeColor: primaryColor,
-                onTileTap: () => widget.onChannelTileTap?.call(channel),
-                onIconTap: channel.isOnline
-                    ? () => widget.onChannelIconTap?.call(channel)
-                    : null,
-                showGlow: false,
-                showWarningBadge: false,
-                showInactiveBorder: true,
-                showSelectionIndicator: true,
-              ),
+            child: HorizontalTileStretched(
+              icon: Icons.lightbulb_outline,
+              activeIcon: Icons.lightbulb,
+              name: channel.name,
+              status: channel.getStatusText(localizations),
+              isActive: channel.isOn && channel.isOnline,
+              isOffline: !channel.isOnline,
+              isSelected: channel.isSelected,
+              activeColor: primaryColor,
+              onTileTap: () => widget.onChannelTileTap?.call(channel),
+              onIconTap: channel.isOnline
+                  ? () => widget.onChannelIconTap?.call(channel)
+                  : null,
+              showSelectionIndicator: true,
             ),
           );
         }),
@@ -691,16 +679,12 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
             children: presets.map((preset) {
               final bool isActive = _isPresetActive(preset);
 
-              return UniversalTile(
-                layout: TileLayout.vertical,
+              return VerticalTileLarge(
                 icon: preset.icon,
                 name: preset.label,
                 isActive: isActive,
                 activeColor: primaryColor,
                 onTileTap: () => _applyPreset(preset),
-                showGlow: false,
-                showWarningBadge: false,
-                showInactiveBorder: true,
               );
             }).toList(),
           ),
@@ -709,8 +693,6 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
     }
 
     // Small/medium: Column of fixed-height horizontal tiles
-    final tileHeight = _scale(AppTileHeight.horizontal);
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -728,19 +710,12 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
 
           return Padding(
             padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
-            child: SizedBox(
-              height: tileHeight,
-              child: UniversalTile(
-                layout: TileLayout.horizontal,
-                icon: preset.icon,
-                name: preset.label,
-                isActive: isActive,
-                activeColor: primaryColor,
-                onTileTap: () => _applyPreset(preset),
-                showGlow: false,
-                showWarningBadge: false,
-                showInactiveBorder: true,
-              ),
+            child: HorizontalTileStretched(
+              icon: preset.icon,
+              name: preset.label,
+              isActive: isActive,
+              activeColor: primaryColor,
+              onTileTap: () => _applyPreset(preset),
             ),
           );
         }),
@@ -1021,7 +996,6 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
     final localizations = AppLocalizations.of(context)!;
     final primaryColor =
         isDark ? AppColorsDark.primary : AppColorsLight.primary;
-    final tileWidth = _scale(AppTileWidth.horizontalMedium);
     final tileHeight = _scale(AppTileHeight.horizontal);
 
     // Special handling for color presets - show color swatches
@@ -1060,20 +1034,12 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
               final preset = presets[index];
               final isActive = _isPresetActive(preset);
 
-              return SizedBox(
-                width: tileWidth,
-                height: tileHeight,
-                child: UniversalTile(
-                  layout: TileLayout.horizontal,
-                  icon: preset.icon,
-                  name: preset.label,
-                  isActive: isActive,
-                  activeColor: primaryColor,
-                  onTileTap: () => _applyPreset(preset),
-                  showGlow: false,
-                  showWarningBadge: false,
-                  showInactiveBorder: true,
-                ),
+              return HorizontalTileCompact(
+                icon: preset.icon,
+                name: preset.label,
+                isActive: isActive,
+                activeColor: primaryColor,
+                onTileTap: () => _applyPreset(preset),
               );
             },
           ),
@@ -1207,31 +1173,21 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
             separatorWidth: AppSpacings.pMd,
             itemBuilder: (context, index) {
               final channel = widget.channels[index];
-              final tileWidth = _screenService.isSmallScreen
-                  ? AppTileWidth.verticalMedium
-                  : AppTileWidth.verticalLarge;
 
-              return SizedBox(
-                width: _scale(tileWidth),
-                child: UniversalTile(
-                  layout: TileLayout.vertical,
-                  icon: Icons.lightbulb_outline,
-                  activeIcon: Icons.lightbulb,
-                  name: channel.name,
-                  status: channel.getStatusText(localizations),
-                  isActive: channel.isOn && channel.isOnline,
-                  isOffline: !channel.isOnline,
-                  isSelected: channel.isSelected,
-                  activeColor: primaryColor,
-                  onTileTap: () => widget.onChannelTileTap?.call(channel),
-                  onIconTap: channel.isOnline
-                      ? () => widget.onChannelIconTap?.call(channel)
-                      : null,
-                  showGlow: false,
-                  showWarningBadge: false,
-                  showInactiveBorder: true,
-                  showSelectionIndicator: true,
-                ),
+              return VerticalTileCompact(
+                icon: Icons.lightbulb_outline,
+                activeIcon: Icons.lightbulb,
+                name: channel.name,
+                status: channel.getStatusText(localizations),
+                isActive: channel.isOn && channel.isOnline,
+                isOffline: !channel.isOnline,
+                isSelected: channel.isSelected,
+                activeColor: primaryColor,
+                onTileTap: () => widget.onChannelTileTap?.call(channel),
+                onIconTap: channel.isOnline
+                    ? () => widget.onChannelIconTap?.call(channel)
+                    : null,
+                showSelectionIndicator: true,
               );
             },
           ),

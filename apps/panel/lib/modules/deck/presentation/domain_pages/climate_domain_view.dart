@@ -13,7 +13,7 @@ import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
-import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
+import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
@@ -1656,7 +1656,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   /// Builds the sensors horizontal scroll with edge gradients.
   /// Matches the presets pattern from window_covering.dart.
   Widget _buildSensorsWithGradient(BuildContext context) {
-    final tileWidth = _scale(AppTileWidth.horizontalMedium);
+    final localizations = AppLocalizations.of(context)!;
     final tileHeight = _scale(AppTileHeight.horizontal);
 
     return HorizontalScrollWithGradient(
@@ -1667,14 +1667,14 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       itemBuilder: (context, index) {
         final sensor = _state.sensors[index];
 
-        return SizedBox(
-          width: tileWidth,
-          height: tileHeight,
-          child: _buildSensorTile(
-            context,
-            sensor,
-            layout: TileLayout.horizontal,
-          ),
+        return HorizontalTileCompact(
+          icon: sensor.icon,
+          name: sensor.value,
+          status: _translateSensorLabel(localizations, sensor),
+          iconAccentColor: _getSensorColor(context, sensor.type),
+          onTileTap: () {
+            // TODO: Sensor detail
+          },
         );
       },
     );
@@ -1683,25 +1683,34 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   /// Builds a grid of auxiliary device tiles with fixed height.
   /// Matches the devices pattern from covering domain view.
   Widget _buildPortraitAuxiliaryGrid(BuildContext context) {
-    final tileHeight = _screenService.scale(
-      AppTileHeight.horizontal,
-      density: _visualDensityService.density,
-    );
-
-    final items = _buildAuxiliaryItems(
-      context,
-      TileLayout.horizontal,
-    );
+    final localizations = AppLocalizations.of(context)!;
+    final devices = _state.auxiliaryDevices;
 
     // Build rows of tiles (2 columns)
     const crossAxisCount = 2;
     final List<Widget> rows = [];
-    for (var i = 0; i < items.length; i += crossAxisCount) {
+    for (var i = 0; i < devices.length; i += crossAxisCount) {
       final rowItems = <Widget>[];
       for (var j = 0; j < crossAxisCount; j++) {
         final index = i + j;
-        if (index < items.length) {
-          rowItems.add(Expanded(child: SizedBox(height: tileHeight, child: items[index])));
+        if (index < devices.length) {
+          final device = devices[index];
+          final deviceView = _devicesService?.getDevice(device.id);
+          final isOffline = deviceView != null && !deviceView.isOnline;
+
+          rowItems.add(
+            Expanded(
+              child: DeviceTilePortrait(
+                icon: device.icon,
+                name: device.name,
+                status: _translateDeviceStatus(localizations, device.status, device.isActive),
+                isActive: device.isActive,
+                isOffline: isOffline,
+                onIconTap: isOffline ? null : () => _toggleAuxiliaryDevice(device),
+                onTileTap: () => _openAuxiliaryDeviceDetail(device),
+              ),
+            ),
+          );
         } else {
           rowItems.add(const Expanded(child: SizedBox()));
         }
@@ -1744,10 +1753,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     final localizations = AppLocalizations.of(context)!;
     final hasSensors = _state.sensors.isNotEmpty;
     final hasAuxiliary = _state.auxiliaryDevices.isNotEmpty;
-    final tileHeight = _screenService.scale(
-      AppTileHeight.horizontal,
-      density: _visualDensityService.density,
-    );
 
     // Build content widgets: headers + cards/tiles
     final contentWidgets = <Widget>[];
@@ -1767,13 +1772,21 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       );
 
       // Add each auxiliary device as an individual tile
-      final auxiliaryItems = _buildAuxiliaryItems(
-        context,
-        TileLayout.horizontal,
-        showInactiveBorder: true,
-      );
-      for (final item in auxiliaryItems) {
-        contentWidgets.add(SizedBox(height: tileHeight, child: item));
+      for (final device in _state.auxiliaryDevices) {
+        final deviceView = _devicesService?.getDevice(device.id);
+        final isOffline = deviceView != null && !deviceView.isOnline;
+
+        contentWidgets.add(
+          DeviceTileLandscape(
+            icon: device.icon,
+            name: device.name,
+            status: _translateDeviceStatus(localizations, device.status, device.isActive),
+            isActive: device.isActive,
+            isOffline: isOffline,
+            onIconTap: isOffline ? null : () => _toggleAuxiliaryDevice(device),
+            onTileTap: () => _openAuxiliaryDeviceDetail(device),
+          ),
+        );
       }
     }
 
@@ -1793,6 +1806,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   /// Small/medium screens: Column of fixed-height horizontal tiles.
   Widget _buildLandscapeSensorsCard(BuildContext context) {
     final isLargeScreen = _screenService.isLargeScreen;
+    final localizations = AppLocalizations.of(context)!;
     final sensors = _state.sensors;
 
     // Large screens: 2 vertical tiles per row (square)
@@ -1805,22 +1819,20 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         children: sensors.map((sensor) {
-          return _buildSensorTile(
-            context,
-            sensor,
-            layout: TileLayout.vertical,
-            showInactiveBorder: true,
+          return VerticalTileLarge(
+            icon: sensor.icon,
+            name: sensor.value,
+            status: _translateSensorLabel(localizations, sensor),
+            iconAccentColor: _getSensorColor(context, sensor.type),
+            onTileTap: () {
+              // TODO: Sensor detail
+            },
           );
         }).toList(),
       );
     }
 
     // Small/medium: Column of fixed-height horizontal tiles
-    final tileHeight = _screenService.scale(
-      AppTileHeight.horizontal,
-      density: _visualDensityService.density,
-    );
-
     return Column(
       children: sensors.asMap().entries.map((entry) {
         final index = entry.key;
@@ -1829,14 +1841,14 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
         return Padding(
           padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
-          child: SizedBox(
-            height: tileHeight,
-            child: _buildSensorTile(
-              context,
-              sensor,
-              layout: TileLayout.horizontal,
-              showInactiveBorder: true,
-            ),
+          child: HorizontalTileStretched(
+            icon: sensor.icon,
+            name: sensor.value,
+            status: _translateSensorLabel(localizations, sensor),
+            iconAccentColor: _getSensorColor(context, sensor.type),
+            onTileTap: () {
+              // TODO: Sensor detail
+            },
           ),
         );
       }).toList(),
@@ -2110,34 +2122,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
   }
 
-  /// Builds a single sensor tile widget using UniversalTile.
-  Widget _buildSensorTile(
-    BuildContext context,
-    ClimateSensor sensor, {
-    TileLayout layout = TileLayout.horizontal,
-    double? statusFontSize,
-    bool showInactiveBorder = false,
-  }) {
-    final sensorColor = _getSensorColor(context, sensor.type);
-    final localizations = AppLocalizations.of(context)!;
-
-    return UniversalTile(
-      layout: layout,
-      icon: sensor.icon,
-      name: sensor.value,
-      status: _translateSensorLabel(localizations, sensor),
-      iconAccentColor: sensorColor,
-      statusFontSize: statusFontSize,
-      showGlow: false,
-      showDoubleBorder: false,
-      showWarningBadge: false,
-      showInactiveBorder: showInactiveBorder,
-      onTileTap: () {
-        // TODO: Sensor detail
-      },
-    );
-  }
-
   // --------------------------------------------------------------------------
   // AUXILIARY
   // --------------------------------------------------------------------------
@@ -2166,37 +2150,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       default:
         return status;
     }
-  }
-
-  /// Builds list of auxiliary tile widgets
-  List<Widget> _buildAuxiliaryItems(BuildContext context, TileLayout layout,
-      {bool showInactiveBorder = false}) {
-    final items = <Widget>[];
-    final localizations = AppLocalizations.of(context)!;
-
-    // Show all auxiliary devices individually
-    for (final device in _state.auxiliaryDevices) {
-      // Check if device is online
-      final deviceView = _devicesService?.getDevice(device.id);
-      final isOffline = deviceView != null && !deviceView.isOnline;
-
-      items.add(UniversalTile(
-        layout: layout,
-        icon: device.icon,
-        name: device.name,
-        status: _translateDeviceStatus(localizations, device.status, device.isActive),
-        isActive: device.isActive,
-        isOffline: isOffline,
-        showDoubleBorder: false,
-        showWarningBadge: true, // Show warning badge for offline devices
-        showInactiveBorder: showInactiveBorder,
-        // Disable icon tap (toggle) when device is offline
-        onIconTap: isOffline ? null : () => _toggleAuxiliaryDevice(device),
-        onTileTap: () => _openAuxiliaryDeviceDetail(device),
-      ));
-    }
-
-    return items;
   }
 
   /// Toggles the on/off state of an auxiliary device

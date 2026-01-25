@@ -12,7 +12,7 @@ import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradie
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
-import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
+import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/climate_domain_view.dart'
     show ClimateMode, RoomCapability, ClimateDevice;
@@ -868,13 +868,21 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
             separatorWidth: AppSpacings.pMd,
             itemBuilder: (context, index) {
               final device = _state.climateDevices[index];
-              final tileWidth = _screenService.isSmallScreen
-                  ? AppTileWidth.verticalMedium
-                  : AppTileWidth.verticalLarge;
+              final modeColor = _getModeColor(context);
+              final deviceView = _devicesService?.getDevice(device.id);
+              final isOffline = deviceView != null && !deviceView.isOnline;
 
-              return SizedBox(
-                width: _scale(tileWidth),
-                child: _buildDeviceTile(context, device, isVertical: true),
+              return VerticalTileCompact(
+                icon: device.icon,
+                name: device.name,
+                status: _translateDeviceStatus(localizations, device.status, device.isActive),
+                isActive: device.isActive,
+                isOffline: isOffline,
+                activeColor: device.isActive ? modeColor : null,
+                onIconTap: isOffline ? null : () {
+                  // TODO: Toggle device
+                },
+                onTileTap: () => _openClimateDeviceDetail(device),
               );
             },
           ),
@@ -915,6 +923,9 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
 
   /// Large screens: 2 vertical tiles per row (square)
   Widget _buildLandscapeDevicesGrid(BuildContext context) {
+    final modeColor = _getModeColor(context);
+    final localizations = AppLocalizations.of(context)!;
+
     return GridView.count(
       crossAxisCount: 2,
       mainAxisSpacing: AppSpacings.pMd,
@@ -923,17 +934,31 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       children: _state.climateDevices.map((device) {
-        return _buildDeviceTile(context, device, isVertical: true);
+        final deviceView = _devicesService?.getDevice(device.id);
+        final isOffline = deviceView != null && !deviceView.isOnline;
+
+        return VerticalTileLarge(
+          icon: device.icon,
+          name: device.name,
+          status: _translateDeviceStatus(localizations, device.status, device.isActive),
+          isActive: device.isActive,
+          isOffline: isOffline,
+          activeColor: device.isActive ? modeColor : null,
+          onIconTap: isOffline
+              ? null
+              : () {
+                  // TODO: Toggle device
+                },
+          onTileTap: () => _openClimateDeviceDetail(device),
+        );
       }).toList(),
     );
   }
 
   /// Small/medium screens: Column of fixed-height horizontal tiles
   Widget _buildLandscapeDevicesList(BuildContext context) {
-    final tileHeight = _screenService.scale(
-      AppTileHeight.horizontal,
-      density: _visualDensityService.density,
-    );
+    final modeColor = _getModeColor(context);
+    final localizations = AppLocalizations.of(context)!;
 
     return Column(
       children: _state.climateDevices.asMap().entries.map((entry) {
@@ -941,11 +966,24 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
         final device = entry.value;
         final isLast = index == _state.climateDevices.length - 1;
 
+        final deviceView = _devicesService?.getDevice(device.id);
+        final isOffline = deviceView != null && !deviceView.isOnline;
+
         return Padding(
           padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
-          child: SizedBox(
-            height: tileHeight,
-            child: _buildDeviceTile(context, device, isVertical: false),
+          child: HorizontalTileStretched(
+            icon: device.icon,
+            name: device.name,
+            status: _translateDeviceStatus(localizations, device.status, device.isActive),
+            isActive: device.isActive,
+            isOffline: isOffline,
+            activeColor: device.isActive ? modeColor : null,
+            onIconTap: isOffline
+                ? null
+                : () {
+                    // TODO: Toggle device
+                  },
+            onTileTap: () => _openClimateDeviceDetail(device),
           ),
         );
       }).toList(),
@@ -1159,36 +1197,6 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
       case ClimateMode.auto:
         return localizations.thermostat_mode_auto;
     }
-  }
-
-  Widget _buildDeviceTile(BuildContext context, ClimateDevice device,
-      {bool isVertical = true}) {
-    final modeColor = _getModeColor(context);
-    final localizations = AppLocalizations.of(context)!;
-
-    // Check if device is online
-    final deviceView = _devicesService?.getDevice(device.id);
-    final isOffline = deviceView != null && !deviceView.isOnline;
-
-    return UniversalTile(
-      layout: isVertical ? TileLayout.vertical : TileLayout.horizontal,
-      icon: device.icon,
-      name: device.name,
-      status: _translateDeviceStatus(localizations, device.status, device.isActive),
-      isActive: device.isActive,
-      isOffline: isOffline,
-      activeColor: device.isActive ? modeColor : null,
-      showDoubleBorder: false,
-      showInactiveBorder: true,
-      showWarningBadge: true, // Show warning badge for offline devices
-      // Disable icon tap (toggle) when device is offline
-      onIconTap: isOffline
-          ? null
-          : () {
-              // TODO: Toggle device
-            },
-      onTileTap: () => _openClimateDeviceDetail(device),
-    );
   }
 
   /// Opens the detail page for a climate device

@@ -14,6 +14,7 @@ import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradie
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/devices/thermostat.dart';
@@ -898,19 +899,18 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     );
   }
 
-  /// Builds sensors section matching climate domain pattern:
-  /// - Portrait: HorizontalScrollWithGradient with UniversalTile (horizontal layout)
-  /// - Landscape large: GridView.count with 2 columns using UniversalTile (vertical layout)
-  /// - Landscape small/medium: Column with UniversalTile (horizontal layout)
+  /// Builds sensors section using tile wrappers:
+  /// - Portrait: HorizontalScrollWithGradient with HorizontalTileCompact
+  /// - Landscape large: GridView.count with VerticalTileLarge
+  /// - Landscape small/medium: Column with HorizontalTileStretched
   Widget _buildSensorsSection(bool isDark, List<_SensorInfo> sensors, Color accentColor) {
     if (sensors.isEmpty) return const SizedBox.shrink();
 
     final isLandscape = _screenService.isLandscape;
     final isLargeScreen = _screenService.isLargeScreen;
 
-    // Portrait: Horizontal scroll with gradient (edge-to-edge)
+    // Portrait: Horizontal scroll with HorizontalTileCompact
     if (!isLandscape) {
-      final tileWidth = _scale(AppTileWidth.horizontalMedium);
       final tileHeight = _scale(AppTileHeight.horizontal);
 
       return HorizontalScrollWithGradient(
@@ -920,16 +920,18 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         separatorWidth: AppSpacings.pMd,
         itemBuilder: (context, index) {
           final sensor = sensors[index];
-          return SizedBox(
-            width: tileWidth,
-            height: tileHeight,
-            child: _buildSensorTile(sensor, TileLayout.horizontal, accentColor),
+          return HorizontalTileCompact(
+            icon: sensor.icon,
+            name: sensor.displayValue,
+            status: sensor.label,
+            iconAccentColor: sensor.valueColor ?? accentColor,
+            showWarningBadge: sensor.isWarning,
           );
         },
       );
     }
 
-    // Landscape large: GridView with 2 columns (vertical tile layout)
+    // Landscape large: GridView with VerticalTileLarge
     if (isLargeScreen) {
       return GridView.count(
         crossAxisCount: 2,
@@ -938,50 +940,35 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         childAspectRatio: AppTileAspectRatio.square,
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        children: sensors
-            .map((sensor) =>
-                _buildSensorTile(sensor, TileLayout.vertical, accentColor))
-            .toList(),
+        children: sensors.map((sensor) {
+          return VerticalTileLarge(
+            icon: sensor.icon,
+            name: sensor.displayValue,
+            status: sensor.label,
+            iconAccentColor: sensor.valueColor ?? accentColor,
+            showWarningBadge: sensor.isWarning,
+          );
+        }).toList(),
       );
     }
 
-    // Landscape small/medium: Column with fixed-height tiles (horizontal layout)
-    final tileHeight = _scale(AppTileHeight.horizontal);
-
+    // Landscape small/medium: Column with HorizontalTileStretched
     return Column(
       children: sensors.asMap().entries.map((entry) {
         final index = entry.key;
         final sensor = entry.value;
         final isLast = index == sensors.length - 1;
-
         return Padding(
           padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
-          child: SizedBox(
-            height: tileHeight,
-            width: double.infinity,
-            child: _buildSensorTile(sensor, TileLayout.horizontal, accentColor),
+          child: HorizontalTileStretched(
+            icon: sensor.icon,
+            name: sensor.displayValue,
+            status: sensor.label,
+            iconAccentColor: sensor.valueColor ?? accentColor,
+            showWarningBadge: sensor.isWarning,
           ),
         );
       }).toList(),
-    );
-  }
-
-  /// Builds a single sensor tile using UniversalTile.
-  Widget _buildSensorTile(
-    _SensorInfo sensor,
-    TileLayout layout,
-    Color accentColor,
-  ) {
-    return UniversalTile(
-      layout: layout,
-      icon: sensor.icon,
-      name: sensor.displayValue,
-      status: sensor.label,
-      iconAccentColor: sensor.valueColor ?? accentColor,
-      showGlow: false,
-      showDoubleBorder: false,
-      showWarningBadge: sensor.isWarning,
-      showInactiveBorder: true,
     );
   }
 
