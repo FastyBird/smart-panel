@@ -8,23 +8,9 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/models/discovered_backend.dart';
 import 'package:fastybird_smart_panel/core/services/mdns_discovery.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/utils/theme.dart'
-    show
-        AppBorderColorDark,
-        AppBorderColorLight,
-        AppBorderRadius,
-        AppColors,
-        AppColorsDark,
-        AppColorsLight,
-        AppFillColorDark,
-        AppFillColorLight,
-        AppFilledButtonsDarkThemes,
-        AppFilledButtonsLightThemes,
-        AppFontSize,
-        AppSpacings,
-        AppTextColorDark,
-        AppTextColorLight;
+import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/system_pages/export.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 
 /// Discovery state enum
@@ -73,6 +59,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
   DiscoveredBackend? _selectedBackend;
   bool _showManualEntry = false;
   bool _wasManualEntry = false;
+  bool _showErrorToast = false;
 
   // Validation patterns
   static final RegExp _ipAddressPattern = RegExp(
@@ -88,15 +75,10 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     _startDiscovery();
     _manualUrlController.addListener(_onManualUrlChanged);
 
-    // Show AlertBar if there's an error message (connection failed)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.errorMessage != null && mounted) {
-        AlertBar.showError(
-          context,
-          message: widget.errorMessage!,
-        );
-      }
-    });
+    // Show error toast if there's an error message
+    if (widget.errorMessage != null) {
+      _showErrorToast = true;
+    }
   }
 
   void _onManualUrlChanged() {
@@ -137,7 +119,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
       if (mounted) {
         setState(() {
           _backends = backends;
-          
+
           // In debug mode on Android emulator, add a mock gateway if none found
           if (backends.isEmpty && kDebugMode && Platform.isAndroid) {
             _backends = [
@@ -150,8 +132,9 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
             ];
             _state = DiscoveryState.found;
           } else {
-            _state =
-                backends.isEmpty ? DiscoveryState.notFound : DiscoveryState.found;
+            _state = backends.isEmpty
+                ? DiscoveryState.notFound
+                : DiscoveryState.found;
           }
         });
       }
@@ -270,555 +253,866 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     }
   }
 
+  void _dismissErrorToast() {
+    setState(() {
+      _showErrorToast = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: SystemPagesTheme.background(isDark),
       body: SafeArea(
-        child: Padding(
-          padding: AppSpacings.paddingLg,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Main content
-              Expanded(
-                child: _buildContent(context, localizations),
-              ),
-            ],
-          ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isLandscape = constraints.maxWidth > constraints.maxHeight;
+
+            return Stack(
+              children: [
+                // Main content
+                _buildContent(context, isDark, isLandscape),
+
+                // Error toast
+                if (_showErrorToast && widget.errorMessage != null)
+                  Positioned(
+                    left: 24,
+                    right: 24,
+                    bottom: isLandscape ? 100 : 160,
+                    child: Center(
+                      child: _ErrorToast(
+                        message: widget.errorMessage!,
+                        onDismiss: _dismissErrorToast,
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
       ),
-      // Fixed bottom actions
-      bottomNavigationBar: _state != DiscoveryState.connecting
-          ? SafeArea(
-              child: Padding(
-                padding: AppSpacings.paddingLg,
-                child: _buildBottomActions(context, localizations),
-              ),
-            )
-          : null,
     );
   }
 
-  Widget _buildContent(BuildContext context, AppLocalizations localizations) {
+  Widget _buildContent(BuildContext context, bool isDark, bool isLandscape) {
     if (_state == DiscoveryState.connecting) {
-      return _buildConnectingState(context);
+      return _buildConnectingState(context, isDark, isLandscape);
     }
 
     if (_showManualEntry) {
-      return _buildManualEntryForm(context, localizations);
+      return _buildManualEntryForm(context, isDark, isLandscape);
     }
 
-    return _buildDiscoveryContent(context, localizations);
-  }
-
-  Widget _buildDiscoveryContent(
-    BuildContext context,
-    AppLocalizations localizations,
-  ) {
     switch (_state) {
       case DiscoveryState.initial:
       case DiscoveryState.searching:
-        return _buildSearchingState(context);
+        return _buildSearchingState(context, isDark, isLandscape);
 
       case DiscoveryState.found:
-        return _buildFoundState(context);
+        return _buildFoundState(context, isDark, isLandscape);
 
       case DiscoveryState.notFound:
-        return _buildNotFoundState(context);
+        return _buildNotFoundState(context, isDark, isLandscape);
 
       case DiscoveryState.error:
-        return _buildErrorState(context);
+        return _buildErrorState(context, isDark, isLandscape);
 
       case DiscoveryState.connecting:
-        return _buildConnectingState(context);
+        return _buildConnectingState(context, isDark, isLandscape);
     }
   }
 
-  Widget _buildSearchingState(BuildContext context) {
+  Widget _buildSearchingState(
+    BuildContext context,
+    bool isDark,
+    bool isLandscape,
+  ) {
     final localizations = AppLocalizations.of(context)!;
+    final accent = SystemPagesTheme.accent(isDark);
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Stack(
       children: [
-        Icon(
-          MdiIcons.accessPointNetwork,
-          size: _screenService.scale(48),
-          color: Theme.of(context).primaryColor,
-        ),
-        AppSpacings.spacingMdVertical,
-        Text(
-          localizations.discovery_searching_title,
-          style: Theme.of(context).textTheme.headlineSmall,
-          textAlign: TextAlign.center,
-        ),
-        AppSpacings.spacingSmVertical,
-        Text(
-          localizations.discovery_searching_description,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).brightness == Brightness.light
-                    ? AppTextColorLight.secondary
-                    : AppTextColorDark.secondary,
-              ),
-          textAlign: TextAlign.center,
-        ),
-        AppSpacings.spacingLgVertical,
-        SizedBox(
-          width: _screenService.scale(32),
-          height: _screenService.scale(32),
-          child: const CircularProgressIndicator(strokeWidth: 3),
-        ),
-        if (_backends.isNotEmpty) ...[
-          AppSpacings.spacingMdVertical,
-          Text(
-            localizations.discovery_found_count(_backends.length),
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).primaryColor,
+        // Main content
+        Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Animated icon with pulse rings
+              SizedBox(
+                width: _screenService.scale(100),
+                height: _screenService.scale(100),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    PulseRings(
+                      size: _screenService.scale(80),
+                      color: accent,
+                    ),
+                    Icon(
+                      MdiIcons.accessPointNetwork,
+                      size: _screenService.scale(48),
+                      color: accent,
+                    ),
+                  ],
                 ),
+              ),
+              SizedBox(height: _screenService.scale(28)),
+              Text(
+                localizations.discovery_searching_title,
+                style: TextStyle(
+                  color: SystemPagesTheme.textPrimary(isDark),
+                  fontSize: _screenService.scale(24),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              SizedBox(height: _screenService.scale(8)),
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: _screenService.scale(40),
+                ),
+                child: Text(
+                  localizations.discovery_searching_description,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: SystemPagesTheme.textMuted(isDark),
+                    fontSize: _screenService.scale(14),
+                    height: 1.5,
+                  ),
+                ),
+              ),
+              SizedBox(height: _screenService.scale(24)),
+              LoadingSpinner(
+                size: _screenService.scale(48),
+                color: accent,
+              ),
+              if (_backends.isNotEmpty) ...[
+                SizedBox(height: _screenService.scale(16)),
+                Text(
+                  localizations.discovery_found_count(_backends.length),
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: _screenService.scale(14),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+
+        // Bottom buttons
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: isLandscape
+              ? _screenService.scale(32)
+              : _screenService.scale(48),
+          child: _buildSearchingButtons(isDark, isLandscape, localizations),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchingButtons(
+    bool isDark,
+    bool isLandscape,
+    AppLocalizations localizations,
+  ) {
+    if (isLandscape) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SystemPageSecondaryButton(
+            label: localizations.discovery_button_rescan,
+            icon: Icons.refresh,
+            onPressed: null, // Disabled during search
+            isDark: isDark,
+          ),
+          SizedBox(width: _screenService.scale(16)),
+          SystemPageSecondaryButton(
+            label: localizations.discovery_button_manual,
+            icon: Icons.edit_outlined,
+            onPressed: null, // Disabled during search
+            isDark: isDark,
           ),
         ],
-      ],
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: _screenService.scale(40)),
+      child: Column(
+        children: [
+          SizedBox(
+            width: double.infinity,
+            child: SystemPageSecondaryButton(
+              label: localizations.discovery_button_rescan,
+              icon: Icons.refresh,
+              onPressed: null, // Disabled during search
+              isDark: isDark,
+              minWidth: double.infinity,
+            ),
+          ),
+          SizedBox(height: _screenService.scale(12)),
+          SizedBox(
+            width: double.infinity,
+            child: SystemPageSecondaryButton(
+              label: localizations.discovery_button_manual,
+              icon: Icons.edit_outlined,
+              onPressed: null, // Disabled during search
+              isDark: isDark,
+              minWidth: double.infinity,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildFoundState(BuildContext context) {
+  Widget _buildFoundState(
+    BuildContext context,
+    bool isDark,
+    bool isLandscape,
+  ) {
+    final localizations = AppLocalizations.of(context)!;
+    final accent = SystemPagesTheme.accent(isDark);
+
+    if (isLandscape) {
+      return _buildFoundStateLandscape(
+        context,
+        isDark,
+        localizations,
+        accent,
+      );
+    }
+
+    return _buildFoundStatePortrait(
+      context,
+      isDark,
+      localizations,
+      accent,
+    );
+  }
+
+  Widget _buildFoundStatePortrait(
+    BuildContext context,
+    bool isDark,
+    AppLocalizations localizations,
+    Color accent,
+  ) {
+    return Padding(
+      padding: EdgeInsets.all(_screenService.scale(40)),
+      child: Column(
+        children: [
+          // Header
+          Icon(
+            MdiIcons.accessPointNetwork,
+            size: _screenService.scale(56),
+            color: accent,
+          ),
+          SizedBox(height: _screenService.scale(20)),
+          Text(
+            localizations.discovery_select_title,
+            style: TextStyle(
+              color: SystemPagesTheme.textPrimary(isDark),
+              fontSize: _screenService.scale(24),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: _screenService.scale(4)),
+          Text(
+            localizations.discovery_select_description(_backends.length),
+            style: TextStyle(
+              color: SystemPagesTheme.textMuted(isDark),
+              fontSize: _screenService.scale(13),
+            ),
+          ),
+          SizedBox(height: _screenService.scale(24)),
+          // Gateway list
+          Expanded(
+            child: ListView.separated(
+              itemCount: _backends.length,
+              separatorBuilder: (_, __) =>
+                  SizedBox(height: _screenService.scale(12)),
+              itemBuilder: (context, index) {
+                final backend = _backends[index];
+                return GatewayListItem(
+                  backend: backend,
+                  isSelected: _selectedBackend == backend,
+                  onTap: () => _selectBackend(backend),
+                  isDark: isDark,
+                );
+              },
+            ),
+          ),
+          SizedBox(height: _screenService.scale(24)),
+          // Connect button
+          SizedBox(
+            width: double.infinity,
+            child: SystemPagePrimaryButton(
+              label: localizations.discovery_button_connect_selected,
+              icon: Icons.arrow_forward,
+              onPressed: _selectedBackend != null ? _confirmSelection : null,
+              minWidth: double.infinity,
+              isDark: isDark,
+            ),
+          ),
+          SizedBox(height: _screenService.scale(16)),
+          // Secondary actions
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SystemPageGhostButton(
+                label: localizations.discovery_button_rescan,
+                icon: Icons.refresh,
+                onPressed: _startDiscovery,
+                isDark: isDark,
+              ),
+              SystemPageGhostButton(
+                label: localizations.discovery_button_manual,
+                icon: Icons.edit_outlined,
+                onPressed: _showManualEntryForm,
+                isDark: isDark,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFoundStateLandscape(
+    BuildContext context,
+    bool isDark,
+    AppLocalizations localizations,
+    Color accent,
+  ) {
+    return Padding(
+      padding: EdgeInsets.all(_screenService.scale(32)),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Left: Header
+          SizedBox(
+            width: _screenService.scale(240),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  MdiIcons.accessPointNetwork,
+                  size: _screenService.scale(56),
+                  color: accent,
+                ),
+                SizedBox(height: _screenService.scale(20)),
+                Text(
+                  localizations.discovery_select_title,
+                  style: TextStyle(
+                    color: SystemPagesTheme.textPrimary(isDark),
+                    fontSize: _screenService.scale(24),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                SizedBox(height: _screenService.scale(4)),
+                Text(
+                  localizations.discovery_select_description(_backends.length),
+                  style: TextStyle(
+                    color: SystemPagesTheme.textMuted(isDark),
+                    fontSize: _screenService.scale(13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: _screenService.scale(48)),
+          // Right: List and actions
+          Expanded(
+            child: Column(
+              children: [
+                // Gateway list
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: _backends.length,
+                    separatorBuilder: (_, __) =>
+                        SizedBox(height: _screenService.scale(12)),
+                    itemBuilder: (context, index) {
+                      final backend = _backends[index];
+                      return GatewayListItem(
+                        backend: backend,
+                        isSelected: _selectedBackend == backend,
+                        onTap: () => _selectBackend(backend),
+                        isDark: isDark,
+                      );
+                    },
+                  ),
+                ),
+                SizedBox(height: _screenService.scale(24)),
+                // Actions
+                Row(
+                  children: [
+                    SystemPagePrimaryButton(
+                      label: localizations.discovery_button_connect_selected,
+                      icon: Icons.arrow_forward,
+                      onPressed:
+                          _selectedBackend != null ? _confirmSelection : null,
+                      isDark: isDark,
+                    ),
+                  ],
+                ),
+                SizedBox(height: _screenService.scale(16)),
+                Row(
+                  children: [
+                    SystemPageGhostButton(
+                      label: localizations.discovery_button_rescan,
+                      icon: Icons.refresh,
+                      onPressed: _startDiscovery,
+                      isDark: isDark,
+                    ),
+                    SystemPageGhostButton(
+                      label: localizations.discovery_button_manual,
+                      icon: Icons.edit_outlined,
+                      onPressed: _showManualEntryForm,
+                      isDark: isDark,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotFoundState(
+    BuildContext context,
+    bool isDark,
+    bool isLandscape,
+  ) {
     final localizations = AppLocalizations.of(context)!;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Icon(
-          MdiIcons.accessPointNetwork,
-          size: _screenService.scale(32),
-          color: Theme.of(context).primaryColor,
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: isLandscape
+              ? _screenService.scale(80)
+              : _screenService.scale(40),
         ),
-        AppSpacings.spacingSmVertical,
-        Text(
-          localizations.discovery_select_title,
-          style: Theme.of(context).textTheme.headlineSmall,
-          textAlign: TextAlign.center,
-        ),
-        AppSpacings.spacingXsVertical,
-        Text(
-          localizations.discovery_select_description(_backends.length),
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).brightness == Brightness.light
-                    ? AppTextColorLight.secondary
-                    : AppTextColorDark.secondary,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Warning WiFi icon
+            IconContainer(
+              icon: MdiIcons.serverOff,
+              color: SystemPagesTheme.warning,
+              size: _screenService.scale(80),
+              iconSize: _screenService.scale(40),
+            ),
+            SizedBox(height: _screenService.scale(24)),
+            // Title
+            Text(
+              localizations.discovery_not_found_title,
+              style: TextStyle(
+                color: SystemPagesTheme.textPrimary(isDark),
+                fontSize: _screenService.scale(24),
+                fontWeight: FontWeight.w500,
               ),
-          textAlign: TextAlign.center,
+            ),
+            SizedBox(height: _screenService.scale(8)),
+            // Message
+            Text(
+              localizations.discovery_not_found_description,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: SystemPagesTheme.textMuted(isDark),
+                fontSize: _screenService.scale(14),
+                height: 1.5,
+              ),
+            ),
+            SizedBox(height: _screenService.scale(32)),
+            // Buttons
+            _buildNotFoundButtons(isDark, isLandscape, localizations),
+          ],
         ),
-        AppSpacings.spacingMdVertical,
-        Expanded(
-          child: ListView.separated(
-            itemCount: _backends.length,
-            separatorBuilder: (_, __) => AppSpacings.spacingSmVertical,
-            itemBuilder: (context, index) {
-              final backend = _backends[index];
-              final isSelected = _selectedBackend == backend;
+      ),
+    );
+  }
 
-              return _BackendListItem(
-                backend: backend,
-                isSelected: isSelected,
-                onTap: () => _selectBackend(backend),
-                screenService: _screenService,
-              );
-            },
+  Widget _buildNotFoundButtons(
+    bool isDark,
+    bool isLandscape,
+    AppLocalizations localizations,
+  ) {
+    if (isLandscape) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SystemPagePrimaryButton(
+            label: localizations.discovery_button_rescan,
+            icon: Icons.refresh,
+            onPressed: _startDiscovery,
+            isDark: isDark,
+          ),
+          SizedBox(width: _screenService.scale(16)),
+          SystemPageSecondaryButton(
+            label: localizations.discovery_button_manual,
+            icon: Icons.edit_outlined,
+            onPressed: _showManualEntryForm,
+            isDark: isDark,
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: SystemPagePrimaryButton(
+            label: localizations.discovery_button_rescan,
+            icon: Icons.refresh,
+            onPressed: _startDiscovery,
+            minWidth: double.infinity,
+            isDark: isDark,
+          ),
+        ),
+        SizedBox(height: _screenService.scale(12)),
+        SizedBox(
+          width: double.infinity,
+          child: SystemPageSecondaryButton(
+            label: localizations.discovery_button_manual,
+            icon: Icons.edit_outlined,
+            onPressed: _showManualEntryForm,
+            isDark: isDark,
+            minWidth: double.infinity,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildNotFoundState(BuildContext context) {
+  Widget _buildErrorState(
+    BuildContext context,
+    bool isDark,
+    bool isLandscape,
+  ) {
     final localizations = AppLocalizations.of(context)!;
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          MdiIcons.serverOff,
-          size: _screenService.scale(48),
-          color: Theme.of(context).brightness == Brightness.light
-              ? AppTextColorLight.placeholder
-              : AppTextColorDark.placeholder,
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: isLandscape
+              ? _screenService.scale(80)
+              : _screenService.scale(40),
         ),
-        AppSpacings.spacingMdVertical,
-        Text(
-          localizations.discovery_not_found_title,
-          style: Theme.of(context).textTheme.headlineSmall,
-          textAlign: TextAlign.center,
-        ),
-        AppSpacings.spacingSmVertical,
-        Text(
-          localizations.discovery_not_found_description,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).brightness == Brightness.light
-                    ? AppTextColorLight.secondary
-                    : AppTextColorDark.secondary,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Error icon
+            IconContainer(
+              icon: MdiIcons.alertCircle,
+              color: SystemPagesTheme.error,
+              size: _screenService.scale(80),
+              iconSize: _screenService.scale(40),
+            ),
+            SizedBox(height: _screenService.scale(24)),
+            // Title
+            Text(
+              localizations.discovery_error_title,
+              style: TextStyle(
+                color: SystemPagesTheme.textPrimary(isDark),
+                fontSize: _screenService.scale(24),
+                fontWeight: FontWeight.w500,
               ),
-          textAlign: TextAlign.center,
+            ),
+            SizedBox(height: _screenService.scale(8)),
+            // Message
+            Text(
+              localizations.discovery_error_description,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: SystemPagesTheme.textMuted(isDark),
+                fontSize: _screenService.scale(14),
+                height: 1.5,
+              ),
+            ),
+            SizedBox(height: _screenService.scale(32)),
+            // Buttons
+            _buildErrorButtons(isDark, isLandscape, localizations),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorButtons(
+    bool isDark,
+    bool isLandscape,
+    AppLocalizations localizations,
+  ) {
+    if (isLandscape) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SystemPagePrimaryButton(
+            label: localizations.discovery_button_rescan,
+            icon: Icons.refresh,
+            onPressed: _startDiscovery,
+            isDark: isDark,
+          ),
+          SizedBox(width: _screenService.scale(16)),
+          SystemPageSecondaryButton(
+            label: localizations.discovery_button_manual,
+            icon: Icons.edit_outlined,
+            onPressed: _showManualEntryForm,
+            isDark: isDark,
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: SystemPagePrimaryButton(
+            label: localizations.discovery_button_rescan,
+            icon: Icons.refresh,
+            onPressed: _startDiscovery,
+            minWidth: double.infinity,
+            isDark: isDark,
+          ),
+        ),
+        SizedBox(height: _screenService.scale(12)),
+        SizedBox(
+          width: double.infinity,
+          child: SystemPageSecondaryButton(
+            label: localizations.discovery_button_manual,
+            icon: Icons.edit_outlined,
+            onPressed: _showManualEntryForm,
+            isDark: isDark,
+            minWidth: double.infinity,
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildErrorState(BuildContext context) {
+  Widget _buildConnectingState(
+    BuildContext context,
+    bool isDark,
+    bool isLandscape,
+  ) {
     final localizations = AppLocalizations.of(context)!;
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          MdiIcons.alertCircle,
-          size: _screenService.scale(48),
-          color: Theme.of(context).brightness == Brightness.light
-              ? AppColorsLight.danger
-              : AppColorsDark.danger,
-        ),
-        AppSpacings.spacingMdVertical,
-        Text(
-          localizations.discovery_error_title,
-          style: Theme.of(context).textTheme.headlineSmall,
-          textAlign: TextAlign.center,
-        ),
-        AppSpacings.spacingSmVertical,
-        Text(
-          localizations.discovery_error_description,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).brightness == Brightness.light
-                    ? AppTextColorLight.secondary
-                    : AppTextColorDark.secondary,
-              ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildConnectingState(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
+    final accent = SystemPagesTheme.accent(isDark);
 
     final address = _wasManualEntry
         ? _manualUrlController.text.trim()
-        : (_selectedBackend?.name ?? localizations.discovery_connecting_fallback);
+        : (_selectedBackend?.name ??
+            localizations.discovery_connecting_fallback);
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          MdiIcons.serverNetwork,
-          size: _screenService.scale(48),
-          color: Theme.of(context).primaryColor,
-        ),
-        AppSpacings.spacingMdVertical,
-        Text(
-          localizations.discovery_connecting_title,
-          style: Theme.of(context).textTheme.headlineSmall,
-          textAlign: TextAlign.center,
-        ),
-        AppSpacings.spacingSmVertical,
-        Text(
-          localizations.discovery_connecting_description(address),
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).brightness == Brightness.light
-                    ? AppTextColorLight.secondary
-                    : AppTextColorDark.secondary,
-              ),
-          textAlign: TextAlign.center,
-        ),
-        AppSpacings.spacingLgVertical,
-        SizedBox(
-          width: _screenService.scale(32),
-          height: _screenService.scale(32),
-          child: const CircularProgressIndicator(strokeWidth: 3),
-        ),
-      ],
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            MdiIcons.serverNetwork,
+            size: _screenService.scale(48),
+            color: accent,
+          ),
+          SizedBox(height: _screenService.scale(16)),
+          Text(
+            localizations.discovery_connecting_title,
+            style: TextStyle(
+              color: SystemPagesTheme.textPrimary(isDark),
+              fontSize: _screenService.scale(24),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: _screenService.scale(8)),
+          Text(
+            localizations.discovery_connecting_description(address),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: SystemPagesTheme.textMuted(isDark),
+              fontSize: _screenService.scale(14),
+            ),
+          ),
+          SizedBox(height: _screenService.scale(24)),
+          LoadingSpinner(
+            size: _screenService.scale(48),
+            color: accent,
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildManualEntryForm(
     BuildContext context,
-    AppLocalizations localizations,
+    bool isDark,
+    bool isLandscape,
   ) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          MdiIcons.keyboard,
-          size: _screenService.scale(48),
-          color: Theme.of(context).primaryColor,
+    final localizations = AppLocalizations.of(context)!;
+    final accent = SystemPagesTheme.accent(isDark);
+
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: isLandscape
+              ? _screenService.scale(80)
+              : _screenService.scale(40),
         ),
-        AppSpacings.spacingMdVertical,
-        Text(
-          localizations.discovery_manual_entry_title,
-          style: Theme.of(context).textTheme.headlineSmall,
-          textAlign: TextAlign.center,
-        ),
-        AppSpacings.spacingLgVertical,
-        TextField(
-          controller: _manualUrlController,
-          decoration: InputDecoration(
-            hintText: localizations.discovery_manual_entry_hint,
-            labelText: localizations.discovery_manual_entry_label,
-            prefixIcon: Icon(MdiIcons.serverNetwork),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppBorderRadius.base),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              MdiIcons.keyboard,
+              size: _screenService.scale(48),
+              color: accent,
             ),
-          ),
-          keyboardType: TextInputType.url,
-          autocorrect: false,
-          onSubmitted: (_) => _submitManualUrl(),
-        ),
-        AppSpacings.spacingMdVertical,
-        Text(
-          localizations.discovery_manual_entry_help,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).brightness == Brightness.light
-                    ? AppTextColorLight.placeholder
-                    : AppTextColorDark.placeholder,
+            SizedBox(height: _screenService.scale(16)),
+            Text(
+              localizations.discovery_manual_entry_title,
+              style: TextStyle(
+                color: SystemPagesTheme.textPrimary(isDark),
+                fontSize: _screenService.scale(24),
+                fontWeight: FontWeight.w500,
               ),
-          textAlign: TextAlign.center,
+            ),
+            SizedBox(height: _screenService.scale(24)),
+            TextField(
+              controller: _manualUrlController,
+              decoration: InputDecoration(
+                hintText: localizations.discovery_manual_entry_hint,
+                labelText: localizations.discovery_manual_entry_label,
+                prefixIcon: Icon(MdiIcons.serverNetwork),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
+                ),
+              ),
+              keyboardType: TextInputType.url,
+              autocorrect: false,
+              onSubmitted: (_) => _submitManualUrl(),
+            ),
+            SizedBox(height: _screenService.scale(16)),
+            Text(
+              localizations.discovery_manual_entry_help,
+              style: TextStyle(
+                color: SystemPagesTheme.textMuted(isDark),
+                fontSize: _screenService.scale(12),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: _screenService.scale(32)),
+            // Buttons
+            _buildManualEntryButtons(isDark, isLandscape, localizations),
+          ],
         ),
-      ],
+      ),
     );
   }
 
-  Widget _buildBottomActions(
-    BuildContext context,
+  Widget _buildManualEntryButtons(
+    bool isDark,
+    bool isLandscape,
     AppLocalizations localizations,
   ) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (_showManualEntry) ...[
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _backToDiscovery,
-                  style: OutlinedButton.styleFrom(
-                    padding: AppSpacings.paddingSm,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-                    ),
-                    textStyle: TextStyle(
-                      fontSize: AppFontSize.base,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  child: Text(localizations.discovery_button_back),
-                ),
-              ),
-              AppSpacings.spacingMdHorizontal,
-              Expanded(
-                child: Theme(
-                  data: ThemeData(
-                    filledButtonTheme:
-                        Theme.of(context).brightness == Brightness.light
-                            ? AppFilledButtonsLightThemes.primary
-                            : AppFilledButtonsDarkThemes.primary,
-                  ),
-                  child: FilledButton(
-                    onPressed: _manualUrlController.text.trim().isNotEmpty
-                        ? _submitManualUrl
-                        : null,
-                    style: FilledButton.styleFrom(
-                      padding: AppSpacings.paddingSm,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-                      ),
-                      textStyle: TextStyle(
-                        fontSize: AppFontSize.base,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    child: Text(localizations.discovery_button_connect),
-                  ),
-                ),
-              ),
-            ],
+    final hasText = _manualUrlController.text.trim().isNotEmpty;
+
+    if (isLandscape) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SystemPageSecondaryButton(
+            label: localizations.discovery_button_back,
+            icon: Icons.arrow_back,
+            onPressed: _backToDiscovery,
+            isDark: isDark,
           ),
-        ] else ...[
-          if (_state == DiscoveryState.found && _selectedBackend != null) ...[
-            Theme(
-              data: ThemeData(
-                filledButtonTheme:
-                    Theme.of(context).brightness == Brightness.light
-                        ? AppFilledButtonsLightThemes.primary
-                        : AppFilledButtonsDarkThemes.primary,
-              ),
-              child: FilledButton(
-                onPressed: _confirmSelection,
-                style: FilledButton.styleFrom(
-                  padding: AppSpacings.paddingSm,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-                  ),
-                  textStyle: TextStyle(
-                    fontSize: AppFontSize.base,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                child: Text(localizations.discovery_button_connect_selected),
-              ),
-            ),
-            AppSpacings.spacingSmVertical,
-          ],
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _state == DiscoveryState.searching
-                      ? null
-                      : _startDiscovery,
-                  style: OutlinedButton.styleFrom(
-                    padding: AppSpacings.paddingSm,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-                    ),
-                    textStyle: TextStyle(
-                      fontSize: AppFontSize.base,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  child: Text(localizations.discovery_button_rescan),
-                ),
-              ),
-              AppSpacings.spacingMdHorizontal,
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _state == DiscoveryState.searching
-                      ? null
-                      : _showManualEntryForm,
-                  style: OutlinedButton.styleFrom(
-                    padding: AppSpacings.paddingSm,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-                    ),
-                    textStyle: TextStyle(
-                      fontSize: AppFontSize.base,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  child: Text(localizations.discovery_button_manual),
-                ),
-              ),
-            ],
+          SizedBox(width: _screenService.scale(16)),
+          SystemPagePrimaryButton(
+            label: localizations.discovery_button_connect,
+            icon: Icons.arrow_forward,
+            onPressed: hasText ? _submitManualUrl : null,
+            isDark: isDark,
           ),
         ],
+      );
+    }
+
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: SystemPagePrimaryButton(
+            label: localizations.discovery_button_connect,
+            icon: Icons.arrow_forward,
+            onPressed: hasText ? _submitManualUrl : null,
+            minWidth: double.infinity,
+            isDark: isDark,
+          ),
+        ),
+        SizedBox(height: _screenService.scale(12)),
+        SizedBox(
+          width: double.infinity,
+          child: SystemPageSecondaryButton(
+            label: localizations.discovery_button_back,
+            icon: Icons.arrow_back,
+            onPressed: _backToDiscovery,
+            isDark: isDark,
+            minWidth: double.infinity,
+          ),
+        ),
       ],
     );
   }
 }
 
-/// List item widget for displaying a discovered backend
-class _BackendListItem extends StatelessWidget {
-  final DiscoveredBackend backend;
-  final bool isSelected;
-  final VoidCallback onTap;
-  final ScreenService screenService;
+/// Error toast widget
+class _ErrorToast extends StatelessWidget {
+  final String message;
+  final VoidCallback? onDismiss;
 
-  const _BackendListItem({
-    required this.backend,
-    required this.isSelected,
-    required this.onTap,
-    required this.screenService,
+  const _ErrorToast({
+    required this.message,
+    this.onDismiss,
   });
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = isSelected
-        ? Theme.of(context).primaryColor
-        : Theme.of(context).brightness == Brightness.light
-            ? AppBorderColorLight.base
-            : AppBorderColorDark.base;
-
-    final bgColor = isSelected
-        ? Theme.of(context).brightness == Brightness.light
-            ? AppColorsLight.primaryLight9
-            : AppColorsDark.primaryLight9
-        : AppColors.blank;
-
-    return Material(
-      color: bgColor,
-      borderRadius: BorderRadius.circular(AppBorderRadius.base),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        child: Container(
-          padding: AppSpacings.paddingMd,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppBorderRadius.base),
-            border: Border.all(
-              color: borderColor,
-              width: isSelected ? 2 : 1,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+      decoration: BoxDecoration(
+        color: SystemPagesTheme.error,
+        borderRadius: BorderRadius.circular(SystemPagesTheme.radiusLg),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 32,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.error_outline, color: Colors.white, size: 20),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              message,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
             ),
           ),
-          child: Row(
-            children: [
-              Icon(
-                isSelected ? MdiIcons.checkCircle : MdiIcons.server,
-                color: isSelected
-                    ? Theme.of(context).primaryColor
-                    : Theme.of(context).brightness == Brightness.light
-                        ? AppTextColorLight.secondary
-                        : AppTextColorDark.secondary,
-                size: screenService.scale(24),
-              ),
-              AppSpacings.spacingMdHorizontal,
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      backend.name,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight:
-                                isSelected ? FontWeight.bold : FontWeight.normal,
-                          ),
-                    ),
-                    AppSpacings.spacingXsVertical,
-                    Text(
-                      backend.displayAddress,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color:
-                                Theme.of(context).brightness == Brightness.light
-                                    ? AppTextColorLight.secondary
-                                    : AppTextColorDark.secondary,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-              if (backend.version != null)
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: AppSpacings.pSm,
-                    vertical: AppSpacings.pXs,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).brightness == Brightness.light
-                        ? AppFillColorLight.light
-                        : AppFillColorDark.light,
-                    borderRadius: BorderRadius.circular(AppBorderRadius.small),
-                  ),
-                  child: Text(
-                    'v${backend.version}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontSize: AppFontSize.extraSmall,
-                          color:
-                              Theme.of(context).brightness == Brightness.light
-                                  ? AppTextColorLight.secondary
-                                  : AppTextColorDark.secondary,
-                        ),
-                  ),
-                ),
-            ],
-          ),
-        ),
+          if (onDismiss != null) ...[
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: onDismiss,
+              child: const Icon(Icons.close, color: Colors.white70, size: 20),
+            ),
+          ],
+        ],
       ),
     );
   }
