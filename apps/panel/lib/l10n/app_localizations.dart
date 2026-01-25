@@ -2231,6 +2231,12 @@ abstract class AppLocalizations {
   /// **'Retry'**
   String get button_retry;
 
+  /// Text for Sync All button when devices are out of sync
+  ///
+  /// In en, this message translates to:
+  /// **'Sync All'**
+  String get button_sync_all;
+
   /// Title for room system view in deck navigation
   ///
   /// In en, this message translates to:

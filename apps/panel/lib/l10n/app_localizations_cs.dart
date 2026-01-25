@@ -1093,6 +1093,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get button_retry => 'Opakovat';
 
   @override
+  String get button_sync_all => 'Synchronizovat vše';
+
+  @override
   String get system_view_room => 'Místnost';
 
   @override

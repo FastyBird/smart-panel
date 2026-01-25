@@ -1476,6 +1476,10 @@
   "@button_retry": {
     "description": "Text for Retry button"
   },
+  "button_sync_all": "Sync All",
+  "@button_sync_all": {
+    "description": "Text for Sync All button when devices are out of sync"
+  },
   "system_view_room": "Room",
   "@system_view_room": {
     "description": "Title for room system view in deck navigation"

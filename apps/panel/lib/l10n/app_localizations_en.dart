@@ -1093,6 +1093,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get button_retry => 'Retry';
 
   @override
+  String get button_sync_all => 'Sync All';
+
+  @override
   String get system_view_room => 'Room';
 
   @override

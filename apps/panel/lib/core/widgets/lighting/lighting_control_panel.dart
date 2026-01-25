@@ -497,7 +497,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          _buildChannelsSectionHeader(isDark, sectionIcon, stateColor),
+          _buildChannelsSectionHeader(isDark, sectionIcon, stateColor, localizations),
           AppSpacings.spacingSmVertical,
           GridView.count(
             crossAxisCount: 2,
@@ -533,7 +533,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        _buildChannelsSectionHeader(isDark, sectionIcon, stateColor),
+        _buildChannelsSectionHeader(isDark, sectionIcon, stateColor, localizations),
         AppSpacings.spacingSmVertical,
         ...widget.channels.asMap().entries.map((entry) {
           final index = entry.key;
@@ -567,6 +567,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
     bool isDark,
     IconData icon,
     Color? stateColor,
+    AppLocalizations localizations,
   ) {
     final secondaryColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
@@ -584,7 +585,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
         ),
         SizedBox(width: AppSpacings.pSm),
         Text(
-          'Lights',
+          localizations.domain_lights,
           style: TextStyle(
             color: stateColor ?? primaryTextColor,
             fontSize: AppFontSize.small,
@@ -628,7 +629,9 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
                 borderRadius: BorderRadius.circular(AppBorderRadius.medium),
               ),
               child: Text(
-                widget.state == LightingState.mixed ? 'Sync All' : 'Retry',
+                widget.state == LightingState.mixed
+                    ? localizations.button_sync_all
+                    : localizations.button_retry,
                 style: TextStyle(
                   color: AppColors.white,
                   fontSize: AppFontSize.extraSmall,
@@ -1157,7 +1160,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
               ),
             ),
           ),
-          child: _buildChannelsSectionHeader(isDark, sectionIcon, stateColor),
+          child: _buildChannelsSectionHeader(isDark, sectionIcon, stateColor, localizations),
         ),
         AppSpacings.spacingMdVertical,
         Padding(

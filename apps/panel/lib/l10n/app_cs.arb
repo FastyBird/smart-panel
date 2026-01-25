@@ -359,6 +359,7 @@
   "config_error_title": "Vyžadována konfigurace",
   "config_error_hint": "Nakonfigurujte tento displej v Správci > Displeje",
   "button_retry": "Opakovat",
+  "button_sync_all": "Synchronizovat vše",
   "system_view_room": "Místnost",
   "system_view_master": "Domov",
   "system_view_entry": "Vstup",
