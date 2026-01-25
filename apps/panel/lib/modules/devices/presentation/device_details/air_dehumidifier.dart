@@ -685,7 +685,14 @@ class _AirDehumidifierDeviceDetailState
     final fanChannel = _device.fanChannel;
     final hasSpeed = fanChannel != null && fanChannel.hasSpeed;
     final sensorsSection = _buildSensorsWithLabel(context, isDark, localizations);
-    final controlsSection = _buildFanOptionsSection(localizations, isDark, humidityColor, false);
+    // Skip fan mode in controls section if it's shown in SpeedSlider footer
+    final controlsSection = _buildFanOptionsSection(
+      localizations,
+      isDark,
+      humidityColor,
+      false,
+      skipFanMode: hasSpeed,
+    );
 
     return DeviceDetailPortraitLayout(
       content: Column(
@@ -908,7 +915,8 @@ class _AirDehumidifierDeviceDetailState
     );
   }
 
-  /// Builds the speed slider for portrait layout (without the footer mode selector).
+  /// Builds the speed slider for portrait layout.
+  /// If fan has mode, includes ModeSelector as footer in the SpeedSlider.
   Widget _buildSpeedSliderForPortrait(
     AppLocalizations localizations,
     bool isDark,
@@ -919,47 +927,68 @@ class _AirDehumidifierDeviceDetailState
       return const SizedBox.shrink();
     }
 
-    final tileHeight = _scale(AppTileHeight.horizontal);
+    final hasFanMode = fanChannel.hasMode && fanChannel.availableModes.length > 1;
+
+    // Build mode selector footer if fan mode is available
+    Widget? modeFooter;
+    if (hasFanMode) {
+      final currentMode = fanChannel.mode;
+      final availableModes = fanChannel.availableModes;
+
+      modeFooter = ModeSelector<FanModeValue>(
+        modes: availableModes
+            .map((mode) => ModeOption(
+                  value: mode,
+                  icon: FanUtils.getModeIcon(mode),
+                  label: FanUtils.getModeLabel(localizations, mode),
+                ))
+            .toList(),
+        selectedValue: currentMode,
+        onChanged: (value) {
+          if (_device.isOn) {
+            _setFanMode(value);
+          }
+        },
+        orientation: ModeSelectorOrientation.horizontal,
+        iconPlacement: ModeSelectorIconPlacement.left,
+        color: ModeSelectorColor.teal,
+        scrollable: true,
+      );
+    }
 
     if (fanChannel.isSpeedEnum) {
-      // Enum-based speed (off, low, medium, high, etc.)
+      // Enum-based speed - use SpeedSlider with defined steps
       final availableLevels = fanChannel.availableSpeedLevels;
       if (availableLevels.isEmpty) return const SizedBox.shrink();
 
-      final options = availableLevels
-          .map((level) => ValueOption(
-                value: level,
-                label: FanUtils.getSpeedLevelLabel(localizations, level),
-              ))
+      final steps = availableLevels
+          .map((level) => FanUtils.getSpeedLevelLabel(localizations, level))
           .toList();
 
-      return SizedBox(
-        height: tileHeight,
-        width: double.infinity,
-        child: ValueSelectorRow<FanSpeedLevelValue>(
-          currentValue: fanChannel.speedLevel,
-          label: localizations.device_fan_speed,
-          icon: Icons.speed,
-          sheetTitle: localizations.device_fan_speed,
-          activeColor: humidityColor,
-          options: options,
-          displayFormatter: (level) => level != null
-              ? FanUtils.getSpeedLevelLabel(localizations, level)
-              : localizations.fan_speed_off,
-          columns: availableLevels.length > 4 ? 3 : availableLevels.length,
-          layout: ValueSelectorRowLayout.horizontal,
-          showChevron: _screenService.isLargeScreen,
-          onChanged: _device.isOn
-              ? (level) {
-                  if (level != null) {
-                    _setFanSpeedLevel(level);
-                  }
-                }
-              : null,
-        ),
+      // Calculate normalized value from current speed level index
+      final currentLevel = fanChannel.speedLevel;
+      final currentIndex = currentLevel != null
+          ? availableLevels.indexOf(currentLevel)
+          : 0;
+      final normalizedValue = availableLevels.length > 1
+          ? currentIndex / (availableLevels.length - 1)
+          : 0.0;
+
+      return SpeedSlider(
+        value: normalizedValue.clamp(0.0, 1.0),
+        activeColor: humidityColor,
+        enabled: _device.isOn,
+        steps: steps,
+        onChanged: (value) {
+          // Convert slider value to speed level index
+          final index = ((value * (availableLevels.length - 1)).round())
+              .clamp(0, availableLevels.length - 1);
+          _setFanSpeedLevel(availableLevels[index]);
+        },
+        footer: modeFooter,
       );
     } else {
-      // Numeric speed (0-100%) - use SpeedSlider
+      // Numeric speed (0-100%) - use SpeedSlider with default steps
       final minSpeed = fanChannel.minSpeed;
       final maxSpeed = fanChannel.maxSpeed;
       final range = maxSpeed - minSpeed;
@@ -976,17 +1005,20 @@ class _AirDehumidifierDeviceDetailState
           localizations.fan_speed_high,
         ],
         onChanged: _setFanSpeed,
+        footer: modeFooter,
       );
     }
   }
 
   /// Builds the fan options controls (oscillation, direction, natural breeze, child lock, timer).
+  /// Set [skipFanMode] to true when fan mode is shown elsewhere (e.g., with speed slider in portrait).
   Widget _buildFanOptionsSection(
     AppLocalizations localizations,
     bool isDark,
     Color humidityColor,
-    bool useVerticalLayout,
-  ) {
+    bool useVerticalLayout, {
+    bool skipFanMode = false,
+  }) {
     final channel = _dehumidifierChannel;
     final fanChannel = _device.fanChannel;
     final tileHeight = _scale(AppTileHeight.horizontal);
@@ -1002,8 +1034,8 @@ class _AirDehumidifierDeviceDetailState
 
     final children = <Widget>[];
 
-    // Fan mode if available (separate from speed for portrait)
-    if (fanChannel != null && fanChannel.hasMode && fanChannel.availableModes.length > 1) {
+    // Fan mode if available (skip if already shown with speed slider)
+    if (!skipFanMode && fanChannel != null && fanChannel.hasMode && fanChannel.availableModes.length > 1) {
       children.add(_buildFanModeControl(localizations, humidityColor, true, tileHeight));
       children.add(AppSpacings.spacingMdVertical);
     }

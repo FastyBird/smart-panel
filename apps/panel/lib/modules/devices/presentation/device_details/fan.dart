@@ -576,38 +576,70 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
       final availableLevels = fanChannel.availableSpeedLevels;
       if (availableLevels.isEmpty) return const SizedBox.shrink();
 
-      final options = availableLevels.map((level) {
-        return ValueOption(
-          value: level,
-          label: FanUtils.getSpeedLevelLabel(localizations, level),
-        );
-      }).toList();
+      final isLandscape = _screenService.isLandscape;
 
-      return SizedBox(
-        height: tileHeight,
-        width: double.infinity,
-        child: ValueSelectorRow<FanSpeedLevelValue>(
-          currentValue: fanChannel.speedLevel,
-          label: localizations.device_fan_speed,
-          icon: Icons.speed,
-          sheetTitle: localizations.device_fan_speed,
+      // Landscape: Use ValueSelectorRow button
+      if (isLandscape) {
+        final options = availableLevels.map((level) {
+          return ValueOption(
+            value: level,
+            label: FanUtils.getSpeedLevelLabel(localizations, level),
+          );
+        }).toList();
+
+        return SizedBox(
+          height: tileHeight,
+          width: double.infinity,
+          child: ValueSelectorRow<FanSpeedLevelValue>(
+            currentValue: fanChannel.speedLevel,
+            label: localizations.device_fan_speed,
+            icon: Icons.speed,
+            sheetTitle: localizations.device_fan_speed,
+            activeColor: fanColor,
+            options: options,
+            displayFormatter: (level) => level != null
+                ? FanUtils.getSpeedLevelLabel(localizations, level)
+                : localizations.fan_speed_off,
+            columns: availableLevels.length > 4 ? 3 : availableLevels.length,
+            layout: useVerticalLayout
+                ? ValueSelectorRowLayout.compact
+                : ValueSelectorRowLayout.horizontal,
+            showChevron: _screenService.isLargeScreen,
+            onChanged: _device.isOn
+                ? (level) {
+                    if (level != null) _setSpeedLevel(level);
+                  }
+                : null,
+          ),
+        );
+      } else {
+        // Portrait: Use SpeedSlider with defined steps
+        final steps = availableLevels
+            .map((level) => FanUtils.getSpeedLevelLabel(localizations, level))
+            .toList();
+
+        // Calculate normalized value from current speed level index
+        final currentLevel = fanChannel.speedLevel;
+        final currentIndex = currentLevel != null
+            ? availableLevels.indexOf(currentLevel)
+            : 0;
+        final normalizedValue = availableLevels.length > 1
+            ? currentIndex / (availableLevels.length - 1)
+            : 0.0;
+
+        return SpeedSlider(
+          value: normalizedValue.clamp(0.0, 1.0),
           activeColor: fanColor,
-          options: options,
-          displayFormatter: (level) => level != null
-              ? FanUtils.getSpeedLevelLabel(localizations, level)
-              : localizations.fan_speed_off,
-          columns: availableLevels.length > 4 ? 3 : availableLevels.length,
-          layout: useVerticalLayout
-              ? ValueSelectorRowLayout.compact
-              : ValueSelectorRowLayout.horizontal,
-          showChevron: _screenService.isLargeScreen,
-          onChanged: _device.isOn
-              ? (level) {
-                  if (level != null) _setSpeedLevel(level);
-                }
-              : null,
-        ),
-      );
+          enabled: _device.isOn,
+          steps: steps,
+          onChanged: (value) {
+            // Convert slider value to speed level index
+            final index = ((value * (availableLevels.length - 1)).round())
+                .clamp(0, availableLevels.length - 1);
+            _setSpeedLevel(availableLevels[index]);
+          },
+        );
+      }
     } else {
       // Numeric speed (0-100%)
       final range = fanChannel.maxSpeed - fanChannel.minSpeed;

@@ -1512,40 +1512,37 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     if (!fanChannel.hasSpeed) return const SizedBox.shrink();
 
     final isEnabled = _device.isOn;
-    final tileHeight = _scale(AppTileHeight.horizontal);
 
     if (fanChannel.isSpeedEnum) {
       // Enum-based speed (off, low, medium, high, turbo, auto)
       final availableLevels = fanChannel.availableSpeedLevels;
       if (availableLevels.isEmpty) return const SizedBox.shrink();
 
-      final options = availableLevels.map((level) {
-        return ValueOption(
-          value: level,
-          label: FanUtils.getSpeedLevelLabel(localizations, level),
-        );
-      }).toList();
+      // Portrait: Use SpeedSlider with defined steps
+      final steps = availableLevels
+          .map((level) => FanUtils.getSpeedLevelLabel(localizations, level))
+          .toList();
 
-      return SizedBox(
-        height: tileHeight,
-        width: double.infinity,
-        child: ValueSelectorRow<FanSpeedLevelValue>(
-          currentValue: fanChannel.speedLevel,
-          label: localizations.device_fan_speed,
-          icon: Icons.speed,
-          sheetTitle: localizations.device_fan_speed,
-          activeColor: airColor,
-          options: options,
-          displayFormatter: (level) => level != null
-              ? FanUtils.getSpeedLevelLabel(localizations, level)
-              : localizations.fan_speed_off,
-          columns: availableLevels.length > 4 ? 3 : availableLevels.length,
-          layout: ValueSelectorRowLayout.horizontal,
-          showChevron: _screenService.isLargeScreen,
-          onChanged: isEnabled ? (level) {
-            if (level != null) _setSpeedLevel(level);
-          } : null,
-        ),
+      // Calculate normalized value from current speed level index
+      final currentLevel = fanChannel.speedLevel;
+      final currentIndex = currentLevel != null
+          ? availableLevels.indexOf(currentLevel)
+          : 0;
+      final normalizedValue = availableLevels.length > 1
+          ? currentIndex / (availableLevels.length - 1)
+          : 0.0;
+
+      return SpeedSlider(
+        value: normalizedValue.clamp(0.0, 1.0),
+        activeColor: airColor,
+        enabled: isEnabled,
+        steps: steps,
+        onChanged: (value) {
+          // Convert slider value to speed level index
+          final index = ((value * (availableLevels.length - 1)).round())
+              .clamp(0, availableLevels.length - 1);
+          _setSpeedLevel(availableLevels[index]);
+        },
       );
     } else {
       // Numeric speed (0-100%) - use SpeedSlider for portrait

@@ -1442,52 +1442,89 @@ class _AirConditionerDeviceDetailState
       final availableLevels = fanChannel.availableSpeedLevels;
       if (availableLevels.isEmpty) return const SizedBox.shrink();
 
-      final options = availableLevels.map((level) {
-        return ValueOption(
-          value: level,
-          label: FanUtils.getSpeedLevelLabel(localizations, level),
+      final isLandscape = _screenService.isLandscape;
+
+      // Landscape: Use ValueSelectorRow button
+      if (isLandscape) {
+        final options = availableLevels.map((level) {
+          return ValueOption(
+            value: level,
+            label: FanUtils.getSpeedLevelLabel(localizations, level),
+          );
+        }).toList();
+
+        final speedWidget = SizedBox(
+          height: tileHeight,
+          width: double.infinity,
+          child: ValueSelectorRow<FanSpeedLevelValue>(
+            currentValue: fanChannel.speedLevel,
+            label: localizations.device_fan_speed,
+            icon: Icons.speed,
+            sheetTitle: localizations.device_fan_speed,
+            activeColor: modeColor,
+            options: options,
+            displayFormatter: (level) => level != null
+                ? FanUtils.getSpeedLevelLabel(localizations, level)
+                : localizations.fan_speed_off,
+            columns: availableLevels.length > 4 ? 3 : availableLevels.length,
+            layout: useCompactLayout
+                ? ValueSelectorRowLayout.compact
+                : ValueSelectorRowLayout.horizontal,
+            showChevron: _screenService.isLargeScreen,
+            onChanged: _currentMode != AcMode.off
+                ? (level) {
+                    if (level != null) _setFanSpeedLevel(level);
+                  }
+                : null,
+          ),
         );
-      }).toList();
 
-      final speedWidget = SizedBox(
-        height: tileHeight,
-        width: double.infinity,
-        child: ValueSelectorRow<FanSpeedLevelValue>(
-          currentValue: fanChannel.speedLevel,
-          label: localizations.device_fan_speed,
-          icon: Icons.speed,
-          sheetTitle: localizations.device_fan_speed,
+        // If fan has mode, add mode selector below
+        if (hasMode) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              speedWidget,
+              AppSpacings.spacingMdVertical,
+              _buildFanModeControl(localizations, modeColor, true, tileHeight),
+            ],
+          );
+        }
+
+        return speedWidget;
+      } else {
+        // Portrait: Use SpeedSlider with defined steps
+        final steps = availableLevels
+            .map((level) => FanUtils.getSpeedLevelLabel(localizations, level))
+            .toList();
+
+        final isEnabled = _currentMode != AcMode.off;
+
+        // Calculate normalized value from current speed level index
+        final currentLevel = fanChannel.speedLevel;
+        final currentIndex = currentLevel != null
+            ? availableLevels.indexOf(currentLevel)
+            : 0;
+        final normalizedValue = availableLevels.length > 1
+            ? currentIndex / (availableLevels.length - 1)
+            : 0.0;
+
+        return SpeedSlider(
+          value: normalizedValue.clamp(0.0, 1.0),
           activeColor: modeColor,
-          options: options,
-          displayFormatter: (level) => level != null
-              ? FanUtils.getSpeedLevelLabel(localizations, level)
-              : localizations.fan_speed_off,
-          columns: availableLevels.length > 4 ? 3 : availableLevels.length,
-          layout: useCompactLayout
-              ? ValueSelectorRowLayout.compact
-              : ValueSelectorRowLayout.horizontal,
-          showChevron: _screenService.isLargeScreen,
-          onChanged: _currentMode != AcMode.off
-              ? (level) {
-                  if (level != null) _setFanSpeedLevel(level);
-                }
+          enabled: isEnabled,
+          steps: steps,
+          onChanged: (value) {
+            // Convert slider value to speed level index
+            final index = ((value * (availableLevels.length - 1)).round())
+                .clamp(0, availableLevels.length - 1);
+            _setFanSpeedLevel(availableLevels[index]);
+          },
+          footer: hasMode
+              ? _buildFanModeControl(localizations, modeColor, false, null)
               : null,
-        ),
-      );
-
-      // If fan has mode, add mode selector below (always button since speed is button)
-      if (hasMode) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            speedWidget,
-            AppSpacings.spacingMdVertical,
-            _buildFanModeControl(localizations, modeColor, true, tileHeight),
-          ],
         );
       }
-
-      return speedWidget;
     } else {
       final range = fanChannel.maxSpeed - fanChannel.minSpeed;
       if (range <= 0) return const SizedBox.shrink();
