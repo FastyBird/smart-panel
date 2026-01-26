@@ -314,7 +314,15 @@ export class CoversIntentService extends SpaceIntentBaseService {
 
 	/**
 	 * Filter offline device IDs by role for role-specific intents.
-	 * Returns only the offline device IDs that would have been targeted by this intent.
+	 *
+	 * For the ROLE_POSITION intent, only returns offline device IDs that match
+	 * the target role. For non-role-specific intents, returns all offline device
+	 * IDs unchanged.
+	 *
+	 * @param allCovers - All cover devices in the space (including offline)
+	 * @param offlineIds - IDs of offline devices
+	 * @param intent - The covers intent being executed
+	 * @returns Filtered list of offline device IDs that would have been targeted
 	 */
 	private filterOfflineIdsByRole(allCovers: CoverDevice[], offlineIds: string[], intent: CoversIntentDto): string[] {
 		// For non-role-specific intents, all offline devices are targeted

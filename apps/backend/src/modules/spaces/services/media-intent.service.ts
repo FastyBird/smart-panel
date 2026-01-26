@@ -328,7 +328,15 @@ export class MediaIntentService extends SpaceIntentBaseService {
 
 	/**
 	 * Filter offline device IDs by role for role-specific intents.
-	 * Returns only the offline device IDs that would have been targeted by this intent.
+	 *
+	 * For role-specific intents (ROLE_POWER, ROLE_VOLUME), only returns offline
+	 * device IDs that match the target role. For non-role-specific intents,
+	 * returns all offline device IDs unchanged.
+	 *
+	 * @param allDevices - All media devices in the space (including offline)
+	 * @param offlineIds - IDs of offline devices
+	 * @param intent - The media intent being executed
+	 * @returns Filtered list of offline device IDs that would have been targeted
 	 */
 	private filterOfflineIdsByRole(allDevices: MediaDevice[], offlineIds: string[], intent: MediaIntentDto): string[] {
 		// For non-role-specific intents, all offline devices are targeted

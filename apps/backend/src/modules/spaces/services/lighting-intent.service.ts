@@ -339,7 +339,15 @@ export class LightingIntentService extends SpaceIntentBaseService {
 
 	/**
 	 * Filter offline device IDs by role for role-specific intents.
-	 * Returns only the offline device IDs that would have been targeted by this intent.
+	 *
+	 * For role-specific intents (ROLE_ON, ROLE_OFF, ROLE_BRIGHTNESS, etc.), only returns
+	 * offline device IDs that match the target role. For non-role-specific intents,
+	 * returns all offline device IDs unchanged.
+	 *
+	 * @param allLights - All light devices in the space (including offline)
+	 * @param offlineIds - IDs of offline devices
+	 * @param intent - The lighting intent being executed
+	 * @returns Filtered list of offline device IDs that would have been targeted
 	 */
 	private filterOfflineIdsByRole(allLights: LightDevice[], offlineIds: string[], intent: LightingIntentDto): string[] {
 		// For non-role-specific intents, all offline devices are targeted
