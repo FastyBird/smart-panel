@@ -78,6 +78,10 @@ class DevicesModuleService {
       apiClient: apiClient.devicesModule,
       channelsRepository: _channelsRepository,
     );
+
+    // Set the devices repository for offline checking
+    _channelPropertiesRepository.setDevicesRepository(_devicesRepository);
+
     _validationRepository = DeviceValidationRepository(
       apiClient: apiClient.devicesModule,
     );
