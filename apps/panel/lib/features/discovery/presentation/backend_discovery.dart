@@ -62,6 +62,17 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
   bool _showErrorToast = false;
   bool _discoveryCancelled = false;
 
+  /// Returns the appropriate padding for system pages based on screen size and orientation
+  /// LANDSCAPE - LARGE: pXl, MEDIUM/SMALL: pMd
+  /// PORTRAIT - LARGE/MEDIUM: pXl, SMALL: pMd
+  double _getSystemPagePadding(bool isLandscape) {
+    if (isLandscape) {
+      return _screenService.isLargeScreen ? AppSpacings.pXl : AppSpacings.pMd;
+    } else {
+      return _screenService.isSmallScreen ? AppSpacings.pMd : AppSpacings.pXl;
+    }
+  }
+
   // Validation patterns
   static final RegExp _ipAddressPattern = RegExp(
     r'^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$',
@@ -358,43 +369,41 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     final isCompactLandscape = isCompact && isLandscape;
 
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Animated icon with pulse rings
-          SizedBox(
-            width: _screenService.scale(isCompactLandscape ? 70 : 100),
-            height: _screenService.scale(isCompactLandscape ? 70 : 100),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                PulseRings(
-                  size: _screenService.scale(isCompactLandscape ? 56 : 80),
-                  color: accent,
-                ),
-                Icon(
-                  MdiIcons.accessPointNetwork,
-                  size: _screenService.scale(isCompactLandscape ? 32 : 48),
-                  color: accent,
-                ),
-              ],
+      child: Padding(
+        padding: EdgeInsets.all(_getSystemPagePadding(isLandscape)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Animated icon with pulse rings
+            SizedBox(
+              width: _screenService.scale(isCompactLandscape ? 70 : 100),
+              height: _screenService.scale(isCompactLandscape ? 70 : 100),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  PulseRings(
+                    size: _screenService.scale(isCompactLandscape ? 56 : 80),
+                    color: accent,
+                  ),
+                  Icon(
+                    MdiIcons.accessPointNetwork,
+                    size: _screenService.scale(isCompactLandscape ? 32 : 48),
+                    color: accent,
+                  ),
+                ],
+              ),
             ),
-          ),
-          SizedBox(height: _screenService.scale(isCompactLandscape ? 16 : 28)),
-          Text(
-            localizations.discovery_searching_title,
-            style: TextStyle(
-              color: SystemPagesTheme.textPrimary(isDark),
-              fontSize: _screenService.scale(24),
-              fontWeight: FontWeight.w500,
+            SizedBox(height: _screenService.scale(isCompactLandscape ? 16 : 28)),
+            Text(
+              localizations.discovery_searching_title,
+              style: TextStyle(
+                color: SystemPagesTheme.textPrimary(isDark),
+                fontSize: _screenService.scale(24),
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
-          SizedBox(height: _screenService.scale(8)),
-          Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: _screenService.scale(40),
-            ),
-            child: Text(
+            SizedBox(height: _screenService.scale(8)),
+            Text(
               localizations.discovery_searching_description,
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -403,21 +412,21 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                 height: 1.5,
               ),
             ),
-          ),
-          if (_backends.isNotEmpty) ...[
-            SizedBox(height: _screenService.scale(16)),
-            Text(
-              localizations.discovery_found_count(_backends.length),
-              style: TextStyle(
-                color: accent,
-                fontSize: _screenService.scale(14),
+            if (_backends.isNotEmpty) ...[
+              SizedBox(height: _screenService.scale(16)),
+              Text(
+                localizations.discovery_found_count(_backends.length),
+                style: TextStyle(
+                  color: accent,
+                  fontSize: _screenService.scale(14),
+                ),
               ),
-            ),
+            ],
+            SizedBox(height: _screenService.scale(isCompactLandscape ? 16 : 24)),
+            // Cancel button
+            _buildSearchingButtons(isDark, isLandscape, localizations),
           ],
-          SizedBox(height: _screenService.scale(isCompactLandscape ? 16 : 24)),
-          // Cancel button
-          _buildSearchingButtons(isDark, isLandscape, localizations),
-        ],
+        ),
       ),
     );
   }
@@ -468,13 +477,8 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     AppLocalizations localizations,
     Color accent,
   ) {
-    final isCompact =
-        _screenService.isSmallScreen || _screenService.isMediumScreen;
-
     return Padding(
-      padding: EdgeInsets.all(
-        _screenService.scale(isCompact ? 20 : 40),
-      ),
+      padding: EdgeInsets.all(_getSystemPagePadding(false)),
       child: Column(
         children: [
           // Header
@@ -564,9 +568,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
         _screenService.isSmallScreen || _screenService.isMediumScreen;
 
     return Padding(
-      padding: EdgeInsets.all(
-        _screenService.scale(isCompact ? 16 : 32),
-      ),
+      padding: EdgeInsets.all(_getSystemPagePadding(true)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -674,11 +676,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
 
     return Center(
       child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: isLandscape
-              ? _screenService.scale(isCompact ? 40 : 80)
-              : _screenService.scale(40),
-        ),
+        padding: EdgeInsets.all(_getSystemPagePadding(isLandscape)),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -782,11 +780,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
 
     return Center(
       child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: isLandscape
-              ? _screenService.scale(80)
-              : _screenService.scale(40),
-        ),
+        padding: EdgeInsets.all(_getSystemPagePadding(isLandscape)),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -842,11 +836,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
 
     return Center(
       child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: isLandscape
-              ? _screenService.scale(80)
-              : _screenService.scale(40),
-        ),
+        padding: EdgeInsets.all(_getSystemPagePadding(isLandscape)),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -894,11 +884,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
 
     return Center(
       child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: isLandscape
-              ? _screenService.scale(80)
-              : _screenService.scale(40),
-        ),
+        padding: EdgeInsets.all(_getSystemPagePadding(isLandscape)),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
