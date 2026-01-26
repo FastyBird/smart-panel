@@ -506,8 +506,13 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     AppLocalizations localizations,
     Color accent,
   ) {
+    final isCompact =
+        _screenService.isSmallScreen || _screenService.isMediumScreen;
+
     return Padding(
-      padding: EdgeInsets.all(_screenService.scale(40)),
+      padding: EdgeInsets.all(
+        _screenService.scale(isCompact ? 20 : 40),
+      ),
       child: Column(
         children: [
           // Header
@@ -593,8 +598,13 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     AppLocalizations localizations,
     Color accent,
   ) {
+    final isCompact =
+        _screenService.isSmallScreen || _screenService.isMediumScreen;
+
     return Padding(
-      padding: EdgeInsets.all(_screenService.scale(32)),
+      padding: EdgeInsets.all(
+        _screenService.scale(isCompact ? 16 : 32),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
