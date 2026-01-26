@@ -1141,9 +1141,13 @@
   },
   "discovery_button_rescan": "Rescan",
   "@discovery_button_rescan": {
+    "description": "Label for rescan button in discovery screen"
+  },
+  "discovery_button_try_again": "Try Again",
+  "@discovery_button_try_again": {
     "description": "Rescan button text"
   },
-  "discovery_button_manual": "Manual",
+  "discovery_button_manual": "Enter Manually",
   "@discovery_button_manual": {
     "description": "Manual entry button text"
   },

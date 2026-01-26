@@ -848,7 +848,10 @@ class AppLocalizationsCs extends AppLocalizations {
   String get discovery_button_rescan => 'Znovu vyhledat';
 
   @override
-  String get discovery_button_manual => 'Ručně';
+  String get discovery_button_try_again => 'Zkusit znovu';
+
+  @override
+  String get discovery_button_manual => 'Zadat ručně';
 
   @override
   String get discovery_button_cancel => 'Zrušit';

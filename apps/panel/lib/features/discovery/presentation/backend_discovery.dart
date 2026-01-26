@@ -582,13 +582,13 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
             children: [
               SystemPageGhostButton(
                 label: localizations.discovery_button_rescan,
-                icon: Icons.refresh,
+                icon: MdiIcons.cached,
                 onPressed: _startDiscovery,
                 isDark: isDark,
               ),
               SystemPageGhostButton(
                 label: localizations.discovery_button_manual,
-                icon: Icons.edit_outlined,
+                icon: MdiIcons.pencilOutline,
                 onPressed: _showManualEntryForm,
                 isDark: isDark,
               ),
@@ -685,13 +685,13 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                   children: [
                     SystemPageGhostButton(
                       label: localizations.discovery_button_rescan,
-                      icon: Icons.refresh,
+                      icon: MdiIcons.cached,
                       onPressed: _startDiscovery,
                       isDark: isDark,
                     ),
                     SystemPageGhostButton(
                       label: localizations.discovery_button_manual,
-                      icon: Icons.edit_outlined,
+                      icon: MdiIcons.pencilOutline,
                       onPressed: _showManualEntryForm,
                       isDark: isDark,
                     ),
@@ -768,15 +768,15 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           SystemPagePrimaryButton(
-            label: localizations.discovery_button_rescan,
-            icon: Icons.refresh,
+            label: localizations.discovery_button_try_again,
+            icon: MdiIcons.cached,
             onPressed: _startDiscovery,
             isDark: isDark,
           ),
           SizedBox(width: AppSpacings.pLg),
           SystemPageSecondaryButton(
             label: localizations.discovery_button_manual,
-            icon: Icons.edit_outlined,
+            icon: MdiIcons.pencilOutline,
             onPressed: _showManualEntryForm,
             isDark: isDark,
           ),
@@ -789,8 +789,8 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
         SizedBox(
           width: double.infinity,
           child: SystemPagePrimaryButton(
-            label: localizations.discovery_button_rescan,
-            icon: Icons.refresh,
+            label: localizations.discovery_button_try_again,
+            icon: MdiIcons.cached,
             onPressed: _startDiscovery,
             minWidth: double.infinity,
             isDark: isDark,
@@ -801,7 +801,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
           width: double.infinity,
           child: SystemPageSecondaryButton(
             label: localizations.discovery_button_manual,
-            icon: Icons.edit_outlined,
+            icon: MdiIcons.pencilOutline,
             onPressed: _showManualEntryForm,
             isDark: isDark,
             minWidth: double.infinity,

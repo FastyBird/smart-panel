@@ -275,7 +275,8 @@
   "discovery_button_connect": "Připojit",
   "discovery_button_connect_selected": "Připojit k vybrané bráně",
   "discovery_button_rescan": "Znovu vyhledat",
-  "discovery_button_manual": "Ručně",
+  "discovery_button_try_again": "Zkusit znovu",
+  "discovery_button_manual": "Zadat ručně",
   "discovery_button_cancel": "Zrušit",
 
   "action_success": "Akce byla úspěšně dokončena",

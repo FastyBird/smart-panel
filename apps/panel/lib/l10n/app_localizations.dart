@@ -1739,16 +1739,22 @@ abstract class AppLocalizations {
   /// **'Connect to Selected Gateway'**
   String get discovery_button_connect_selected;
 
-  /// Rescan button text
+  /// Label for rescan button in discovery screen
   ///
   /// In en, this message translates to:
   /// **'Rescan'**
   String get discovery_button_rescan;
 
+  /// Rescan button text
+  ///
+  /// In en, this message translates to:
+  /// **'Try Again'**
+  String get discovery_button_try_again;
+
   /// Manual entry button text
   ///
   /// In en, this message translates to:
-  /// **'Manual'**
+  /// **'Enter Manually'**
   String get discovery_button_manual;
 
   /// Cancel search button text

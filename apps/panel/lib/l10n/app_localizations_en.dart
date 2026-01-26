@@ -848,7 +848,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get discovery_button_rescan => 'Rescan';
 
   @override
-  String get discovery_button_manual => 'Manual';
+  String get discovery_button_try_again => 'Try Again';
+
+  @override
+  String get discovery_button_manual => 'Enter Manually';
 
   @override
   String get discovery_button_cancel => 'Cancel';
