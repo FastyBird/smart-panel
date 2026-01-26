@@ -211,12 +211,18 @@ export class MediaIntentService extends SpaceIntentBaseService {
 		const targetResults: IntentTargetResult[] = [];
 
 		// Add SKIPPED results for offline devices that were actually targeted
+		// Use filter() to get all channels of multi-channel devices, matching how targets are built
 		for (const deviceId of targetedOfflineIds) {
-			targetResults.push({
-				deviceId,
-				status: IntentTargetStatus.SKIPPED,
-				error: 'Device offline',
-			});
+			const offlineDevices = allDevices.filter((d) => d.device.id === deviceId);
+
+			for (const offlineDevice of offlineDevices) {
+				targetResults.push({
+					deviceId: offlineDevice.device.id,
+					channelId: offlineDevice.mediaChannel.id,
+					status: IntentTargetStatus.SKIPPED,
+					error: 'Device offline',
+				});
+			}
 		}
 
 		const intentRecord = this.intentsService.createIntent({
@@ -357,11 +363,11 @@ export class MediaIntentService extends SpaceIntentBaseService {
 			return offlineIds;
 		}
 
-		// Filter offline IDs to only those with the matching role
+		// Filter offline IDs to only those with at least one channel matching the target role
+		// Uses some() instead of find() to check if ANY channel matches, since multi-channel
+		// devices may have different roles per channel (e.g., TV with TELEVISION and SPEAKER)
 		return offlineIds.filter((deviceId) => {
-			const device = allDevices.find((d) => d.device.id === deviceId);
-
-			return device?.role === intent.role;
+			return allDevices.some((d) => d.device.id === deviceId && d.role === intent.role);
 		});
 	}
 

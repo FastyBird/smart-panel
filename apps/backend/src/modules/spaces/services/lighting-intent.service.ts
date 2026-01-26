@@ -356,6 +356,9 @@ export class LightingIntentService extends SpaceIntentBaseService {
 	 * offline device IDs that match the target role. For non-role-specific intents,
 	 * returns all offline device IDs unchanged.
 	 *
+	 * Uses some() instead of find() to check if ANY channel of the device matches
+	 * the target role, since multi-channel devices may have different roles per channel.
+	 *
 	 * @param allLights - All light devices in the space (including offline)
 	 * @param offlineIds - IDs of offline devices
 	 * @param intent - The lighting intent being executed
@@ -367,19 +370,20 @@ export class LightingIntentService extends SpaceIntentBaseService {
 			return offlineIds;
 		}
 
-		// Filter offline IDs to only those with the matching role
+		// Filter offline IDs to only those with at least one channel matching the target role
 		return offlineIds.filter((deviceId) => {
-			const light = allLights.find((l) => l.device.id === deviceId);
+			// Check if ANY channel of this device matches the target role
+			return allLights.some((l) => {
+				if (l.device.id !== deviceId) {
+					return false;
+				}
 
-			if (!light) {
-				return false;
-			}
+				if (intent.role === LightingRole.OTHER) {
+					return l.role === LightingRole.OTHER || l.role === null;
+				}
 
-			if (intent.role === LightingRole.OTHER) {
-				return light.role === LightingRole.OTHER || light.role === null;
-			}
-
-			return light.role === intent.role;
+				return l.role === intent.role;
+			});
 		});
 	}
 

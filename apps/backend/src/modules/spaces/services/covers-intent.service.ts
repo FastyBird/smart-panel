@@ -341,6 +341,9 @@ export class CoversIntentService extends SpaceIntentBaseService {
 	 * the target role. For non-role-specific intents, returns all offline device
 	 * IDs unchanged.
 	 *
+	 * Uses some() instead of find() to check if ANY channel of the device matches
+	 * the target role, since multi-channel devices may have different roles per channel.
+	 *
 	 * @param allCovers - All cover devices in the space (including offline)
 	 * @param offlineIds - IDs of offline devices
 	 * @param intent - The covers intent being executed
@@ -352,11 +355,10 @@ export class CoversIntentService extends SpaceIntentBaseService {
 			return offlineIds;
 		}
 
-		// Filter offline IDs to only those with the matching role
+		// Filter offline IDs to only those with at least one channel matching the target role
 		return offlineIds.filter((deviceId) => {
-			const cover = allCovers.find((c) => c.device.id === deviceId);
-
-			return cover?.role === intent.role;
+			// Check if ANY channel of this device matches the target role
+			return allCovers.some((c) => c.device.id === deviceId && c.role === intent.role);
 		});
 	}
 
