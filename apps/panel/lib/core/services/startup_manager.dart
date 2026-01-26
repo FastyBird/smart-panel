@@ -572,6 +572,12 @@ class StartupManagerService {
         locator.unregister<ClimateTargetsRepository>();
       } catch (_) {}
     }
+    if (locator.isRegistered<MediaTargetsRepository>()) {
+      try {
+        locator<MediaTargetsRepository>().dispose();
+        locator.unregister<MediaTargetsRepository>();
+      } catch (_) {}
+    }
     if (locator.isRegistered<CoversTargetsRepository>()) {
       try {
         locator<CoversTargetsRepository>().dispose();

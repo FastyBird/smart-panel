@@ -1143,8 +1143,8 @@ class ConfigurationRequiredPage extends StatelessWidget {
     super.key,
     this.isDark = true,
     this.title = 'Configuration Required',
-    this.message = 'Room display requires a space (room) to be assigned. Please configure this in Admin → Displays.',
-    this.hintText = 'Configure this display in Admin → Displays',
+    this.message = 'Room display requires a space (room) to be assigned.',
+    this.hintText = 'Configure this display in Admin > Displays',
     this.onHintTap,
   });
 

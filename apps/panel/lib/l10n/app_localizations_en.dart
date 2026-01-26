@@ -848,7 +848,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get discovery_button_rescan => 'Rescan';
 
   @override
-  String get discovery_button_manual => 'Manual';
+  String get discovery_button_try_again => 'Try Again';
+
+  @override
+  String get discovery_button_manual => 'Enter Manually';
+
+  @override
+  String get discovery_button_cancel => 'Cancel';
 
   @override
   String get action_success => 'Action completed successfully';
@@ -1087,7 +1093,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get config_error_title => 'Configuration Required';
 
   @override
-  String get config_error_hint => 'Configure this display in Admin > Displays';
+  String get config_error_hint_prefix => 'Configure this display in';
+
+  @override
+  String get config_error_hint_path => 'Admin > Displays';
+
+  @override
+  String get connection_lost_title => 'Connection Lost';
+
+  @override
+  String get connection_lost_message => 'Unable to connect to the gateway. Please check your network connection and try again.';
+
+  @override
+  String get connection_lost_button_reconnect => 'Reconnect';
+
+  @override
+  String get connection_lost_button_change_gateway => 'Change Gateway';
 
   @override
   String get button_retry => 'Retry';

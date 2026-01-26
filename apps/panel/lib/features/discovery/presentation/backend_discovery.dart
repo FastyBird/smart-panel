@@ -8,23 +8,9 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/models/discovered_backend.dart';
 import 'package:fastybird_smart_panel/core/services/mdns_discovery.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/utils/theme.dart'
-    show
-        AppBorderColorDark,
-        AppBorderColorLight,
-        AppBorderRadius,
-        AppColors,
-        AppColorsDark,
-        AppColorsLight,
-        AppFillColorDark,
-        AppFillColorLight,
-        AppFilledButtonsDarkThemes,
-        AppFilledButtonsLightThemes,
-        AppFontSize,
-        AppSpacings,
-        AppTextColorDark,
-        AppTextColorLight;
+import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/system_pages/export.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 
 /// Discovery state enum
@@ -73,6 +59,12 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
   DiscoveredBackend? _selectedBackend;
   bool _showManualEntry = false;
   bool _wasManualEntry = false;
+  bool _showErrorToast = false;
+
+  // Discovery session tracking to prevent race conditions
+  // Each discovery operation gets a unique session ID; only the current session
+  // can update state, preventing stale results from cancelled operations
+  int _discoverySessionId = 0;
 
   // Validation patterns
   static final RegExp _ipAddressPattern = RegExp(
@@ -88,15 +80,10 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     _startDiscovery();
     _manualUrlController.addListener(_onManualUrlChanged);
 
-    // Show AlertBar if there's an error message (connection failed)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.errorMessage != null && mounted) {
-        AlertBar.showError(
-          context,
-          message: widget.errorMessage!,
-        );
-      }
-    });
+    // Show error toast if there's an error message
+    if (widget.errorMessage != null) {
+      _showErrorToast = true;
+    }
   }
 
   void _onManualUrlChanged() {
@@ -114,17 +101,22 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
   }
 
   Future<void> _startDiscovery() async {
+    // Increment session ID to invalidate any pending discovery operations
+    final currentSession = ++_discoverySessionId;
+
     setState(() {
       _state = DiscoveryState.searching;
       _backends = [];
       _selectedBackend = null;
       _showManualEntry = false;
+      _showErrorToast = false;
     });
 
     try {
       final backends = await _discoveryService.discover(
         onBackendFound: (backend) {
-          if (mounted) {
+          // Only update if this is still the current session
+          if (mounted && currentSession == _discoverySessionId) {
             setState(() {
               if (!_backends.contains(backend)) {
                 _backends = [..._backends, backend];
@@ -134,10 +126,11 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
         },
       );
 
-      if (mounted) {
+      // Skip state update if this session was superseded by a newer one
+      if (mounted && currentSession == _discoverySessionId) {
         setState(() {
           _backends = backends;
-          
+
           // In debug mode on Android emulator, add a mock gateway if none found
           if (backends.isEmpty && kDebugMode && Platform.isAndroid) {
             _backends = [
@@ -150,13 +143,15 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
             ];
             _state = DiscoveryState.found;
           } else {
-            _state =
-                backends.isEmpty ? DiscoveryState.notFound : DiscoveryState.found;
+            _state = backends.isEmpty
+                ? DiscoveryState.notFound
+                : DiscoveryState.found;
           }
         });
       }
     } catch (e) {
-      if (mounted) {
+      // Skip error handling if this session was superseded
+      if (mounted && currentSession == _discoverySessionId) {
         setState(() {
           _state = DiscoveryState.error;
         });
@@ -171,8 +166,21 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
 
   void _selectBackend(DiscoveredBackend backend) {
     setState(() {
-      _selectedBackend = backend;
+      _selectedBackend = _selectedBackend == backend ? null : backend;
     });
+  }
+
+  Future<void> _cancelDiscovery() async {
+    // Increment session ID to invalidate the current discovery operation
+    _discoverySessionId++;
+    await _discoveryService.stop();
+    if (mounted) {
+      setState(() {
+        _state = _backends.isEmpty
+            ? DiscoveryState.notFound
+            : DiscoveryState.found;
+      });
+    }
   }
 
   void _confirmSelection() {
@@ -180,6 +188,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
       setState(() {
         _state = DiscoveryState.connecting;
         _wasManualEntry = false;
+        _showErrorToast = false;
       });
       widget.onBackendSelected(_selectedBackend!);
     }
@@ -247,6 +256,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     setState(() {
       _state = DiscoveryState.connecting;
       _wasManualEntry = true;
+      _showErrorToast = false;
     });
 
     widget.onManualUrlEntered(url);
@@ -270,555 +280,796 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     }
   }
 
+  void _dismissErrorToast() {
+    setState(() {
+      _showErrorToast = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: SystemPagesTheme.background(isDark),
       body: SafeArea(
-        child: Padding(
-          padding: AppSpacings.paddingLg,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Main content
-              Expanded(
-                child: _buildContent(context, localizations),
-              ),
-            ],
-          ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isLandscape = constraints.maxWidth > constraints.maxHeight;
+
+            return Stack(
+              children: [
+                // Main content
+                _buildContent(context, isDark, isLandscape),
+
+                // Error toast
+                if (_showErrorToast && widget.errorMessage != null)
+                  Positioned(
+                    left: AppSpacings.pLg + AppSpacings.pMd,
+                    right: AppSpacings.pLg + AppSpacings.pMd,
+                    bottom: _screenService.scale(isLandscape ? 100 : 160),
+                    child: Center(
+                      child: _ErrorToast(
+                        message: widget.errorMessage!,
+                        onDismiss: _dismissErrorToast,
+                        isDark: isDark,
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
       ),
-      // Fixed bottom actions
-      bottomNavigationBar: _state != DiscoveryState.connecting
-          ? SafeArea(
-              child: Padding(
-                padding: AppSpacings.paddingLg,
-                child: _buildBottomActions(context, localizations),
-              ),
-            )
-          : null,
     );
   }
 
-  Widget _buildContent(BuildContext context, AppLocalizations localizations) {
+  Widget _buildContent(BuildContext context, bool isDark, bool isLandscape) {
     if (_state == DiscoveryState.connecting) {
-      return _buildConnectingState(context);
+      return _buildConnectingState(context, isDark, isLandscape);
     }
 
     if (_showManualEntry) {
-      return _buildManualEntryForm(context, localizations);
+      return _buildManualEntryForm(context, isDark, isLandscape);
     }
 
-    return _buildDiscoveryContent(context, localizations);
-  }
-
-  Widget _buildDiscoveryContent(
-    BuildContext context,
-    AppLocalizations localizations,
-  ) {
     switch (_state) {
       case DiscoveryState.initial:
       case DiscoveryState.searching:
-        return _buildSearchingState(context);
+        return _buildSearchingState(context, isDark, isLandscape);
 
       case DiscoveryState.found:
-        return _buildFoundState(context);
+        return _buildFoundState(context, isDark, isLandscape);
 
       case DiscoveryState.notFound:
-        return _buildNotFoundState(context);
+        return _buildNotFoundState(context, isDark, isLandscape);
 
       case DiscoveryState.error:
-        return _buildErrorState(context);
+        return _buildErrorState(context, isDark, isLandscape);
 
       case DiscoveryState.connecting:
-        return _buildConnectingState(context);
+        // Handled by early return above; this case is for exhaustiveness only
+        throw StateError('Unreachable: connecting state handled above');
     }
   }
 
-  Widget _buildSearchingState(BuildContext context) {
+  Widget _buildSearchingState(
+    BuildContext context,
+    bool isDark,
+    bool isLandscape,
+  ) {
     final localizations = AppLocalizations.of(context)!;
+    final accent = SystemPagesTheme.accent(isDark);
+    final isCompact =
+        _screenService.isSmallScreen || _screenService.isMediumScreen;
+    final isCompactLandscape = isCompact && isLandscape;
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          MdiIcons.accessPointNetwork,
-          size: _screenService.scale(48),
-          color: Theme.of(context).primaryColor,
-        ),
-        AppSpacings.spacingMdVertical,
-        Text(
-          localizations.discovery_searching_title,
-          style: Theme.of(context).textTheme.headlineSmall,
-          textAlign: TextAlign.center,
-        ),
-        AppSpacings.spacingSmVertical,
-        Text(
-          localizations.discovery_searching_description,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).brightness == Brightness.light
-                    ? AppTextColorLight.secondary
-                    : AppTextColorDark.secondary,
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(SystemPagesLayout.getPagePadding(_screenService, isLandscape)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Animated icon with pulse rings
+            SizedBox(
+              width: _screenService.scale(isCompactLandscape ? 70 : 100),
+              height: _screenService.scale(isCompactLandscape ? 70 : 100),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  PulseRings(
+                    size: _screenService.scale(isCompactLandscape ? 56 : 80),
+                    color: accent,
+                  ),
+                  Icon(
+                    MdiIcons.accessPointNetwork,
+                    size: _screenService.scale(isCompactLandscape ? 32 : 48),
+                    color: accent,
+                  ),
+                ],
               ),
-          textAlign: TextAlign.center,
-        ),
-        AppSpacings.spacingLgVertical,
-        SizedBox(
-          width: _screenService.scale(32),
-          height: _screenService.scale(32),
-          child: const CircularProgressIndicator(strokeWidth: 3),
-        ),
-        if (_backends.isNotEmpty) ...[
-          AppSpacings.spacingMdVertical,
-          Text(
-            localizations.discovery_found_count(_backends.length),
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).primaryColor,
+            ),
+            SizedBox(
+              height: isCompactLandscape
+                  ? AppSpacings.pLg
+                  : AppSpacings.pLg + AppSpacings.pMd + AppSpacings.pSm,
+            ),
+            Text(
+              localizations.discovery_searching_title,
+              style: TextStyle(
+                color: SystemPagesTheme.textPrimary(isDark),
+                fontSize: AppFontSize.extraLarge,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(height: AppSpacings.pMd),
+            Text(
+              localizations.discovery_searching_description,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: SystemPagesTheme.textMuted(isDark),
+                fontSize: AppFontSize.base,
+                height: 1.5,
+              ),
+            ),
+            if (_backends.isNotEmpty) ...[
+              SizedBox(height: AppSpacings.pLg),
+              Text(
+                localizations.discovery_found_count(_backends.length),
+                style: TextStyle(
+                  color: accent,
+                  fontSize: AppFontSize.base,
                 ),
+              ),
+            ],
+            SizedBox(
+              height: isCompactLandscape
+                  ? AppSpacings.pLg
+                  : AppSpacings.pLg + AppSpacings.pMd,
+            ),
+            // Cancel button
+            _buildSearchingButtons(isDark, isLandscape, localizations),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchingButtons(
+    bool isDark,
+    bool isLandscape,
+    AppLocalizations localizations,
+  ) {
+    return Center(
+      child: SystemPageSecondaryButton(
+        label: localizations.discovery_button_cancel,
+        icon: Icons.close,
+        onPressed: _cancelDiscovery,
+        isDark: isDark,
+      ),
+    );
+  }
+
+  Widget _buildFoundState(
+    BuildContext context,
+    bool isDark,
+    bool isLandscape,
+  ) {
+    final localizations = AppLocalizations.of(context)!;
+    final accent = SystemPagesTheme.accent(isDark);
+
+    if (isLandscape) {
+      return _buildFoundStateLandscape(
+        context,
+        isDark,
+        localizations,
+        accent,
+      );
+    }
+
+    return _buildFoundStatePortrait(
+      context,
+      isDark,
+      localizations,
+      accent,
+    );
+  }
+
+  Widget _buildFoundStatePortrait(
+    BuildContext context,
+    bool isDark,
+    AppLocalizations localizations,
+    Color accent,
+  ) {
+    return Padding(
+      padding: EdgeInsets.all(SystemPagesLayout.getPagePadding(_screenService, false)),
+      child: Column(
+        children: [
+          // Header
+          SystemPagesLayout.buildIcon(
+            screenService: _screenService,
+            icon: MdiIcons.accessPointNetwork,
+            color: accent,
+            isLandscape: false,
+            useContainer: false,
+          ),
+          SizedBox(height: SystemPagesLayout.getIconBottomSpacing(_screenService, false)),
+          Text(
+            localizations.discovery_select_title,
+            style: TextStyle(
+              color: SystemPagesTheme.textPrimary(isDark),
+              fontSize: AppFontSize.extraLarge,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: AppSpacings.pSm),
+          Text(
+            localizations.discovery_select_description(_backends.length),
+            style: TextStyle(
+              color: SystemPagesTheme.textMuted(isDark),
+              fontSize: AppFontSize.small,
+            ),
+          ),
+          SizedBox(height: AppSpacings.pLg + AppSpacings.pMd),
+          // Gateway list
+          Expanded(
+            child: ListView.separated(
+              itemCount: _backends.length,
+              separatorBuilder: (_, __) =>
+                  SizedBox(height: AppSpacings.pMd + AppSpacings.pSm),
+              itemBuilder: (context, index) {
+                final backend = _backends[index];
+                return GatewayListItem(
+                  backend: backend,
+                  isSelected: _selectedBackend == backend,
+                  onTap: () => _selectBackend(backend),
+                  isDark: isDark,
+                );
+              },
+            ),
+          ),
+          SizedBox(height: AppSpacings.pLg + AppSpacings.pMd),
+          // Connect button
+          SizedBox(
+            width: double.infinity,
+            child: SystemPagePrimaryButton(
+              label: localizations.discovery_button_connect_selected,
+              icon: Icons.arrow_forward,
+              onPressed: _selectedBackend != null ? _confirmSelection : null,
+              minWidth: double.infinity,
+              isDark: isDark,
+            ),
+          ),
+          SizedBox(height: AppSpacings.pLg),
+          // Secondary actions
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              SystemPageGhostButton(
+                label: localizations.discovery_button_rescan,
+                icon: MdiIcons.cached,
+                onPressed: _startDiscovery,
+                isDark: isDark,
+              ),
+              SystemPageGhostButton(
+                label: localizations.discovery_button_manual,
+                icon: MdiIcons.pencilOutline,
+                onPressed: _showManualEntryForm,
+                isDark: isDark,
+              ),
+            ],
           ),
         ],
-      ],
+      ),
     );
   }
 
-  Widget _buildFoundState(BuildContext context) {
+  Widget _buildFoundStateLandscape(
+    BuildContext context,
+    bool isDark,
+    AppLocalizations localizations,
+    Color accent,
+  ) {
+    final isCompact =
+        _screenService.isSmallScreen || _screenService.isMediumScreen;
+
+    return Padding(
+      padding: EdgeInsets.all(SystemPagesLayout.getPagePadding(_screenService, true)),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Left: Header
+          SizedBox(
+            width: _screenService.scale(isCompact ? 160 : 240),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SystemPagesLayout.buildIcon(
+                  screenService: _screenService,
+                  icon: MdiIcons.accessPointNetwork,
+                  color: accent,
+                  isLandscape: true,
+                  useContainer: false,
+                ),
+                SizedBox(height: SystemPagesLayout.getIconBottomSpacing(_screenService, true)),
+                Text(
+                  localizations.discovery_select_title,
+                  style: TextStyle(
+                    color: SystemPagesTheme.textPrimary(isDark),
+                    fontSize: AppFontSize.extraLarge,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                SizedBox(height: AppSpacings.pSm),
+                Text(
+                  localizations.discovery_select_description(_backends.length),
+                  style: TextStyle(
+                    color: SystemPagesTheme.textMuted(isDark),
+                    fontSize: AppFontSize.small,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(
+            width: isCompact
+                ? AppSpacings.pLg + AppSpacings.pMd
+                : AppSpacings.pXl + AppSpacings.pLg,
+          ),
+          // Right: List and actions
+          Expanded(
+            child: Column(
+              children: [
+                // Gateway list
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: _backends.length,
+                    separatorBuilder: (_, __) =>
+                        SizedBox(height: AppSpacings.pMd + AppSpacings.pSm),
+                    itemBuilder: (context, index) {
+                      final backend = _backends[index];
+                      return GatewayListItem(
+                        backend: backend,
+                        isSelected: _selectedBackend == backend,
+                        onTap: () => _selectBackend(backend),
+                        isDark: isDark,
+                      );
+                    },
+                  ),
+                ),
+                SizedBox(height: AppSpacings.pLg + AppSpacings.pMd),
+                // Actions
+                SizedBox(
+                  width: double.infinity,
+                  child: SystemPagePrimaryButton(
+                    label: localizations.discovery_button_connect_selected,
+                    icon: Icons.arrow_forward,
+                    onPressed:
+                        _selectedBackend != null ? _confirmSelection : null,
+                    minWidth: double.infinity,
+                    isDark: isDark,
+                  ),
+                ),
+                SizedBox(height: AppSpacings.pLg),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    SystemPageGhostButton(
+                      label: localizations.discovery_button_rescan,
+                      icon: MdiIcons.cached,
+                      onPressed: _startDiscovery,
+                      isDark: isDark,
+                    ),
+                    SystemPageGhostButton(
+                      label: localizations.discovery_button_manual,
+                      icon: MdiIcons.pencilOutline,
+                      onPressed: _showManualEntryForm,
+                      isDark: isDark,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotFoundState(
+    BuildContext context,
+    bool isDark,
+    bool isLandscape,
+  ) {
     final localizations = AppLocalizations.of(context)!;
+    final isCompact =
+        _screenService.isSmallScreen || _screenService.isMediumScreen;
+    final isCompactLandscape = isCompact && isLandscape;
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(SystemPagesLayout.getPagePadding(_screenService, isLandscape)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Warning icon
+            SystemPagesLayout.buildIcon(
+              screenService: _screenService,
+              icon: MdiIcons.serverOff,
+              color: SystemPagesTheme.warning(isDark),
+              isLandscape: isLandscape,
+              useContainer: true,
+            ),
+            SizedBox(height: SystemPagesLayout.getIconBottomSpacing(_screenService, isLandscape)),
+            // Title
+            Text(
+              localizations.discovery_not_found_title,
+              style: TextStyle(
+                color: SystemPagesTheme.textPrimary(isDark),
+                fontSize: AppFontSize.extraLarge,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(
+              height:
+                  isCompactLandscape ? AppSpacings.pSm : AppSpacings.pMd,
+            ),
+            // Message
+            Text(
+              localizations.discovery_not_found_description,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: SystemPagesTheme.textMuted(isDark),
+                fontSize: _screenService.scale(isCompactLandscape ? 12 : 14),
+                height: 1.5,
+              ),
+            ),
+            SizedBox(
+              height:
+                  isCompactLandscape ? AppSpacings.pLg : AppSpacings.pXl,
+            ),
+            // Buttons
+            _buildActionButtons(isDark, isLandscape, localizations),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Builds the action buttons (Rescan + Manual) for not found and error states
+  Widget _buildActionButtons(
+    bool isDark,
+    bool isLandscape,
+    AppLocalizations localizations,
+  ) {
+    if (isLandscape) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SystemPagePrimaryButton(
+            label: localizations.discovery_button_try_again,
+            icon: MdiIcons.cached,
+            onPressed: _startDiscovery,
+            isDark: isDark,
+          ),
+          SizedBox(width: AppSpacings.pLg),
+          SystemPageSecondaryButton(
+            label: localizations.discovery_button_manual,
+            icon: MdiIcons.pencilOutline,
+            onPressed: _showManualEntryForm,
+            isDark: isDark,
+          ),
+        ],
+      );
+    }
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Icon(
-          MdiIcons.accessPointNetwork,
-          size: _screenService.scale(32),
-          color: Theme.of(context).primaryColor,
+        SizedBox(
+          width: double.infinity,
+          child: SystemPagePrimaryButton(
+            label: localizations.discovery_button_try_again,
+            icon: MdiIcons.cached,
+            onPressed: _startDiscovery,
+            minWidth: double.infinity,
+            isDark: isDark,
+          ),
         ),
-        AppSpacings.spacingSmVertical,
-        Text(
-          localizations.discovery_select_title,
-          style: Theme.of(context).textTheme.headlineSmall,
-          textAlign: TextAlign.center,
-        ),
-        AppSpacings.spacingXsVertical,
-        Text(
-          localizations.discovery_select_description(_backends.length),
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).brightness == Brightness.light
-                    ? AppTextColorLight.secondary
-                    : AppTextColorDark.secondary,
-              ),
-          textAlign: TextAlign.center,
-        ),
-        AppSpacings.spacingMdVertical,
-        Expanded(
-          child: ListView.separated(
-            itemCount: _backends.length,
-            separatorBuilder: (_, __) => AppSpacings.spacingSmVertical,
-            itemBuilder: (context, index) {
-              final backend = _backends[index];
-              final isSelected = _selectedBackend == backend;
-
-              return _BackendListItem(
-                backend: backend,
-                isSelected: isSelected,
-                onTap: () => _selectBackend(backend),
-                screenService: _screenService,
-              );
-            },
+        SizedBox(height: AppSpacings.pMd + AppSpacings.pSm),
+        SizedBox(
+          width: double.infinity,
+          child: SystemPageSecondaryButton(
+            label: localizations.discovery_button_manual,
+            icon: MdiIcons.pencilOutline,
+            onPressed: _showManualEntryForm,
+            isDark: isDark,
+            minWidth: double.infinity,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildNotFoundState(BuildContext context) {
+  Widget _buildErrorState(
+    BuildContext context,
+    bool isDark,
+    bool isLandscape,
+  ) {
     final localizations = AppLocalizations.of(context)!;
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          MdiIcons.serverOff,
-          size: _screenService.scale(48),
-          color: Theme.of(context).brightness == Brightness.light
-              ? AppTextColorLight.placeholder
-              : AppTextColorDark.placeholder,
-        ),
-        AppSpacings.spacingMdVertical,
-        Text(
-          localizations.discovery_not_found_title,
-          style: Theme.of(context).textTheme.headlineSmall,
-          textAlign: TextAlign.center,
-        ),
-        AppSpacings.spacingSmVertical,
-        Text(
-          localizations.discovery_not_found_description,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).brightness == Brightness.light
-                    ? AppTextColorLight.secondary
-                    : AppTextColorDark.secondary,
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(SystemPagesLayout.getPagePadding(_screenService, isLandscape)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Error icon
+            SystemPagesLayout.buildIcon(
+              screenService: _screenService,
+              icon: MdiIcons.alertCircle,
+              color: SystemPagesTheme.error(isDark),
+              isLandscape: isLandscape,
+              useContainer: true,
+            ),
+            SizedBox(height: SystemPagesLayout.getIconBottomSpacing(_screenService, isLandscape)),
+            // Title
+            Text(
+              localizations.discovery_error_title,
+              style: TextStyle(
+                color: SystemPagesTheme.textPrimary(isDark),
+                fontSize: AppFontSize.extraLarge,
+                fontWeight: FontWeight.w500,
               ),
-          textAlign: TextAlign.center,
+            ),
+            SizedBox(height: AppSpacings.pMd),
+            // Message
+            Text(
+              localizations.discovery_error_description,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: SystemPagesTheme.textMuted(isDark),
+                fontSize: AppFontSize.base,
+                height: 1.5,
+              ),
+            ),
+            SizedBox(height: AppSpacings.pXl),
+            // Buttons
+            _buildActionButtons(isDark, isLandscape, localizations),
+          ],
         ),
-      ],
+      ),
     );
   }
 
-  Widget _buildErrorState(BuildContext context) {
+  Widget _buildConnectingState(
+    BuildContext context,
+    bool isDark,
+    bool isLandscape,
+  ) {
     final localizations = AppLocalizations.of(context)!;
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          MdiIcons.alertCircle,
-          size: _screenService.scale(48),
-          color: Theme.of(context).brightness == Brightness.light
-              ? AppColorsLight.danger
-              : AppColorsDark.danger,
-        ),
-        AppSpacings.spacingMdVertical,
-        Text(
-          localizations.discovery_error_title,
-          style: Theme.of(context).textTheme.headlineSmall,
-          textAlign: TextAlign.center,
-        ),
-        AppSpacings.spacingSmVertical,
-        Text(
-          localizations.discovery_error_description,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).brightness == Brightness.light
-                    ? AppTextColorLight.secondary
-                    : AppTextColorDark.secondary,
-              ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildConnectingState(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
+    final accent = SystemPagesTheme.accent(isDark);
 
     final address = _wasManualEntry
         ? _manualUrlController.text.trim()
-        : (_selectedBackend?.name ?? localizations.discovery_connecting_fallback);
+        : (_selectedBackend?.name ??
+            localizations.discovery_connecting_fallback);
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          MdiIcons.serverNetwork,
-          size: _screenService.scale(48),
-          color: Theme.of(context).primaryColor,
-        ),
-        AppSpacings.spacingMdVertical,
-        Text(
-          localizations.discovery_connecting_title,
-          style: Theme.of(context).textTheme.headlineSmall,
-          textAlign: TextAlign.center,
-        ),
-        AppSpacings.spacingSmVertical,
-        Text(
-          localizations.discovery_connecting_description(address),
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).brightness == Brightness.light
-                    ? AppTextColorLight.secondary
-                    : AppTextColorDark.secondary,
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(SystemPagesLayout.getPagePadding(_screenService, isLandscape)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SystemPagesLayout.buildIcon(
+              screenService: _screenService,
+              icon: MdiIcons.serverNetwork,
+              color: accent,
+              isLandscape: isLandscape,
+              useContainer: false,
+            ),
+            SizedBox(height: SystemPagesLayout.getIconBottomSpacing(_screenService, isLandscape)),
+            Text(
+              localizations.discovery_connecting_title,
+              style: TextStyle(
+                color: SystemPagesTheme.textPrimary(isDark),
+                fontSize: AppFontSize.extraLarge,
+                fontWeight: FontWeight.w500,
               ),
-          textAlign: TextAlign.center,
+            ),
+            SizedBox(height: AppSpacings.pMd),
+            Text(
+              localizations.discovery_connecting_description(address),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: SystemPagesTheme.textMuted(isDark),
+                fontSize: AppFontSize.base,
+              ),
+            ),
+            SizedBox(height: AppSpacings.pLg + AppSpacings.pMd),
+            LoadingSpinner(
+              size: _screenService.scale(48),
+              color: accent,
+            ),
+          ],
         ),
-        AppSpacings.spacingLgVertical,
-        SizedBox(
-          width: _screenService.scale(32),
-          height: _screenService.scale(32),
-          child: const CircularProgressIndicator(strokeWidth: 3),
-        ),
-      ],
+      ),
     );
   }
 
   Widget _buildManualEntryForm(
     BuildContext context,
-    AppLocalizations localizations,
+    bool isDark,
+    bool isLandscape,
   ) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          MdiIcons.keyboard,
-          size: _screenService.scale(48),
-          color: Theme.of(context).primaryColor,
-        ),
-        AppSpacings.spacingMdVertical,
-        Text(
-          localizations.discovery_manual_entry_title,
-          style: Theme.of(context).textTheme.headlineSmall,
-          textAlign: TextAlign.center,
-        ),
-        AppSpacings.spacingLgVertical,
-        TextField(
-          controller: _manualUrlController,
-          decoration: InputDecoration(
-            hintText: localizations.discovery_manual_entry_hint,
-            labelText: localizations.discovery_manual_entry_label,
-            prefixIcon: Icon(MdiIcons.serverNetwork),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppBorderRadius.base),
+    final localizations = AppLocalizations.of(context)!;
+    final accent = SystemPagesTheme.accent(isDark);
+
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(SystemPagesLayout.getPagePadding(_screenService, isLandscape)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SystemPagesLayout.buildIcon(
+              screenService: _screenService,
+              icon: MdiIcons.keyboard,
+              color: accent,
+              isLandscape: isLandscape,
+              useContainer: false,
             ),
-          ),
-          keyboardType: TextInputType.url,
-          autocorrect: false,
-          onSubmitted: (_) => _submitManualUrl(),
-        ),
-        AppSpacings.spacingMdVertical,
-        Text(
-          localizations.discovery_manual_entry_help,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).brightness == Brightness.light
-                    ? AppTextColorLight.placeholder
-                    : AppTextColorDark.placeholder,
+            SizedBox(height: SystemPagesLayout.getIconBottomSpacing(_screenService, isLandscape)),
+            Text(
+              localizations.discovery_manual_entry_title,
+              style: TextStyle(
+                color: SystemPagesTheme.textPrimary(isDark),
+                fontSize: AppFontSize.extraLarge,
+                fontWeight: FontWeight.w500,
               ),
-          textAlign: TextAlign.center,
+            ),
+            SizedBox(height: AppSpacings.pLg + AppSpacings.pMd),
+            TextField(
+              controller: _manualUrlController,
+              decoration: InputDecoration(
+                hintText: localizations.discovery_manual_entry_hint,
+                labelText: localizations.discovery_manual_entry_label,
+                prefixIcon: Icon(MdiIcons.serverNetwork),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
+                ),
+              ),
+              keyboardType: TextInputType.url,
+              autocorrect: false,
+              onSubmitted: (_) => _submitManualUrl(),
+            ),
+            SizedBox(height: AppSpacings.pLg),
+            Text(
+              localizations.discovery_manual_entry_help,
+              style: TextStyle(
+                color: SystemPagesTheme.textMuted(isDark),
+                fontSize: AppFontSize.small,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: AppSpacings.pXl),
+            // Buttons
+            _buildManualEntryButtons(isDark, isLandscape, localizations),
+          ],
         ),
-      ],
+      ),
     );
   }
 
-  Widget _buildBottomActions(
-    BuildContext context,
+  Widget _buildManualEntryButtons(
+    bool isDark,
+    bool isLandscape,
     AppLocalizations localizations,
   ) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (_showManualEntry) ...[
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _backToDiscovery,
-                  style: OutlinedButton.styleFrom(
-                    padding: AppSpacings.paddingSm,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-                    ),
-                    textStyle: TextStyle(
-                      fontSize: AppFontSize.base,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  child: Text(localizations.discovery_button_back),
-                ),
-              ),
-              AppSpacings.spacingMdHorizontal,
-              Expanded(
-                child: Theme(
-                  data: ThemeData(
-                    filledButtonTheme:
-                        Theme.of(context).brightness == Brightness.light
-                            ? AppFilledButtonsLightThemes.primary
-                            : AppFilledButtonsDarkThemes.primary,
-                  ),
-                  child: FilledButton(
-                    onPressed: _manualUrlController.text.trim().isNotEmpty
-                        ? _submitManualUrl
-                        : null,
-                    style: FilledButton.styleFrom(
-                      padding: AppSpacings.paddingSm,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-                      ),
-                      textStyle: TextStyle(
-                        fontSize: AppFontSize.base,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    child: Text(localizations.discovery_button_connect),
-                  ),
-                ),
-              ),
-            ],
+    final hasText = _manualUrlController.text.trim().isNotEmpty;
+
+    if (isLandscape) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SystemPageSecondaryButton(
+            label: localizations.discovery_button_back,
+            icon: Icons.arrow_back,
+            onPressed: _backToDiscovery,
+            isDark: isDark,
           ),
-        ] else ...[
-          if (_state == DiscoveryState.found && _selectedBackend != null) ...[
-            Theme(
-              data: ThemeData(
-                filledButtonTheme:
-                    Theme.of(context).brightness == Brightness.light
-                        ? AppFilledButtonsLightThemes.primary
-                        : AppFilledButtonsDarkThemes.primary,
-              ),
-              child: FilledButton(
-                onPressed: _confirmSelection,
-                style: FilledButton.styleFrom(
-                  padding: AppSpacings.paddingSm,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-                  ),
-                  textStyle: TextStyle(
-                    fontSize: AppFontSize.base,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                child: Text(localizations.discovery_button_connect_selected),
-              ),
-            ),
-            AppSpacings.spacingSmVertical,
-          ],
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _state == DiscoveryState.searching
-                      ? null
-                      : _startDiscovery,
-                  style: OutlinedButton.styleFrom(
-                    padding: AppSpacings.paddingSm,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-                    ),
-                    textStyle: TextStyle(
-                      fontSize: AppFontSize.base,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  child: Text(localizations.discovery_button_rescan),
-                ),
-              ),
-              AppSpacings.spacingMdHorizontal,
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _state == DiscoveryState.searching
-                      ? null
-                      : _showManualEntryForm,
-                  style: OutlinedButton.styleFrom(
-                    padding: AppSpacings.paddingSm,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-                    ),
-                    textStyle: TextStyle(
-                      fontSize: AppFontSize.base,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  child: Text(localizations.discovery_button_manual),
-                ),
-              ),
-            ],
+          SizedBox(width: AppSpacings.pLg),
+          SystemPagePrimaryButton(
+            label: localizations.discovery_button_connect,
+            icon: Icons.arrow_forward,
+            onPressed: hasText ? _submitManualUrl : null,
+            isDark: isDark,
           ),
         ],
+      );
+    }
+
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: SystemPagePrimaryButton(
+            label: localizations.discovery_button_connect,
+            icon: Icons.arrow_forward,
+            onPressed: hasText ? _submitManualUrl : null,
+            minWidth: double.infinity,
+            isDark: isDark,
+          ),
+        ),
+        SizedBox(height: AppSpacings.pMd + AppSpacings.pSm),
+        SizedBox(
+          width: double.infinity,
+          child: SystemPageSecondaryButton(
+            label: localizations.discovery_button_back,
+            icon: Icons.arrow_back,
+            onPressed: _backToDiscovery,
+            isDark: isDark,
+            minWidth: double.infinity,
+          ),
+        ),
       ],
     );
   }
 }
 
-/// List item widget for displaying a discovered backend
-class _BackendListItem extends StatelessWidget {
-  final DiscoveredBackend backend;
-  final bool isSelected;
-  final VoidCallback onTap;
-  final ScreenService screenService;
+/// Error toast widget
+class _ErrorToast extends StatelessWidget {
+  final String message;
+  final VoidCallback? onDismiss;
+  final bool isDark;
 
-  const _BackendListItem({
-    required this.backend,
-    required this.isSelected,
-    required this.onTap,
-    required this.screenService,
+  const _ErrorToast({
+    required this.message,
+    this.onDismiss,
+    this.isDark = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = isSelected
-        ? Theme.of(context).primaryColor
-        : Theme.of(context).brightness == Brightness.light
-            ? AppBorderColorLight.base
-            : AppBorderColorDark.base;
-
-    final bgColor = isSelected
-        ? Theme.of(context).brightness == Brightness.light
-            ? AppColorsLight.primaryLight9
-            : AppColorsDark.primaryLight9
-        : AppColors.blank;
-
-    return Material(
-      color: bgColor,
-      borderRadius: BorderRadius.circular(AppBorderRadius.base),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        child: Container(
-          padding: AppSpacings.paddingMd,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppBorderRadius.base),
-            border: Border.all(
-              color: borderColor,
-              width: isSelected ? 2 : 1,
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacings.pMd,
+        vertical: AppSpacings.pSm,
+      ),
+      decoration: BoxDecoration(
+        color: SystemPagesTheme.error(isDark),
+        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.black.withValues(alpha: 0.3),
+            blurRadius: 32,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.error_outline, color: AppColors.white, size: 20),
+          SizedBox(width: AppSpacings.pSm),
+          Flexible(
+            child: Text(
+              message,
+              style: TextStyle(
+                color: AppColors.white,
+                fontSize: AppFontSize.small,
+              ),
             ),
           ),
-          child: Row(
-            children: [
-              Icon(
-                isSelected ? MdiIcons.checkCircle : MdiIcons.server,
-                color: isSelected
-                    ? Theme.of(context).primaryColor
-                    : Theme.of(context).brightness == Brightness.light
-                        ? AppTextColorLight.secondary
-                        : AppTextColorDark.secondary,
-                size: screenService.scale(24),
+          if (onDismiss != null) ...[
+            SizedBox(width: AppSpacings.pXs),
+            GestureDetector(
+              onTap: onDismiss,
+              child: Icon(
+                Icons.close,
+                color: AppColors.white.withValues(alpha: 0.7),
+                size: 20,
               ),
-              AppSpacings.spacingMdHorizontal,
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      backend.name,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight:
-                                isSelected ? FontWeight.bold : FontWeight.normal,
-                          ),
-                    ),
-                    AppSpacings.spacingXsVertical,
-                    Text(
-                      backend.displayAddress,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color:
-                                Theme.of(context).brightness == Brightness.light
-                                    ? AppTextColorLight.secondary
-                                    : AppTextColorDark.secondary,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-              if (backend.version != null)
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: AppSpacings.pSm,
-                    vertical: AppSpacings.pXs,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).brightness == Brightness.light
-                        ? AppFillColorLight.light
-                        : AppFillColorDark.light,
-                    borderRadius: BorderRadius.circular(AppBorderRadius.small),
-                  ),
-                  child: Text(
-                    'v${backend.version}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontSize: AppFontSize.extraSmall,
-                          color:
-                              Theme.of(context).brightness == Brightness.light
-                                  ? AppTextColorLight.secondary
-                                  : AppTextColorDark.secondary,
-                        ),
-                  ),
-                ),
-            ],
-          ),
-        ),
+            ),
+          ],
+        ],
       ),
     );
   }

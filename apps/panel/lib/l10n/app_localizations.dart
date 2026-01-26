@@ -1739,17 +1739,29 @@ abstract class AppLocalizations {
   /// **'Connect to Selected Gateway'**
   String get discovery_button_connect_selected;
 
-  /// Rescan button text
+  /// Label for rescan button in discovery screen
   ///
   /// In en, this message translates to:
   /// **'Rescan'**
   String get discovery_button_rescan;
 
+  /// Rescan button text
+  ///
+  /// In en, this message translates to:
+  /// **'Try Again'**
+  String get discovery_button_try_again;
+
   /// Manual entry button text
   ///
   /// In en, this message translates to:
-  /// **'Manual'**
+  /// **'Enter Manually'**
   String get discovery_button_manual;
+
+  /// Cancel search button text
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get discovery_button_cancel;
 
   /// Success message when an action completes
   ///
@@ -2219,11 +2231,41 @@ abstract class AppLocalizations {
   /// **'Configuration Required'**
   String get config_error_title;
 
-  /// Hint text explaining how to fix configuration error
+  /// First part of hint text explaining how to fix configuration error
   ///
   /// In en, this message translates to:
-  /// **'Configure this display in Admin > Displays'**
-  String get config_error_hint;
+  /// **'Configure this display in'**
+  String get config_error_hint_prefix;
+
+  /// Path part of hint text (Admin > Displays)
+  ///
+  /// In en, this message translates to:
+  /// **'Admin > Displays'**
+  String get config_error_hint_path;
+
+  /// Title shown when connection to gateway is lost
+  ///
+  /// In en, this message translates to:
+  /// **'Connection Lost'**
+  String get connection_lost_title;
+
+  /// Message explaining the connection lost error
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to connect to the gateway. Please check your network connection and try again.'**
+  String get connection_lost_message;
+
+  /// Button label to attempt reconnection
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect'**
+  String get connection_lost_button_reconnect;
+
+  /// Button label to select a different gateway
+  ///
+  /// In en, this message translates to:
+  /// **'Change Gateway'**
+  String get connection_lost_button_change_gateway;
 
   /// Text for Retry button
   ///

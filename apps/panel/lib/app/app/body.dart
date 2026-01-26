@@ -3,8 +3,11 @@ import 'dart:async';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/app/routes.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
+import 'package:fastybird_smart_panel/core/services/socket.dart';
+import 'package:fastybird_smart_panel/core/services/startup_manager.dart';
 import 'package:fastybird_smart_panel/core/services/system_actions.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/screen_connection_lost.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
 import 'package:fastybird_smart_panel/features/overlay/presentation/lock.dart';
 import 'package:fastybird_smart_panel/features/overlay/presentation/screen_saver.dart';
@@ -33,11 +36,13 @@ class _AppBodyState extends State<AppBody> {
       _configModule.getModuleRepository<SystemConfigModel>('system-module');
   final NavigationService _navigator = locator<NavigationService>();
   final DeckService _deckService = locator<DeckService>();
+  final SocketService _socketService = locator<SocketService>();
 
   bool _hasDarkMode = false;
   Language _language = Language.english;
   int _screenLockDuration = 30;
   bool _hasScreenSaver = true;
+  bool _isSocketConnected = true;
 
   Timer? _inactivityTimer;
 
@@ -58,7 +63,32 @@ class _AppBodyState extends State<AppBody> {
     _displayRepository.addListener(_onDisplayChanged);
     _systemConfigRepository.addListener(_syncStateWithRepository);
 
+    // Listen for socket connection changes
+    // Note: We keep _isSocketConnected = true initially because AppBody is only
+    // shown after successful initialization when socket should already be connected.
+    // The listener will handle actual disconnections.
+    _socketService.addConnectionListener(_onSocketConnectionChanged);
+
     locator<SystemActionsService>().init();
+  }
+
+  void _onSocketConnectionChanged(bool isConnected) {
+    if (mounted) {
+      setState(() {
+        _isSocketConnected = isConnected;
+      });
+    }
+  }
+
+  void _handleReconnect() {
+    // Trigger manual reconnection attempt
+    _socketService.reconnect();
+  }
+
+  void _handleChangeGateway() {
+    // Reset to discovery state with proper cleanup
+    // This clears credentials, backend URL, and disposes socket
+    locator<StartupManagerService>().resetToDiscovery();
   }
 
   /// Initialize the deck with display settings
@@ -88,6 +118,7 @@ class _AppBodyState extends State<AppBody> {
     _displayRepository.removeListener(_syncStateWithRepository);
     _displayRepository.removeListener(_onDisplayChanged);
     _systemConfigRepository.removeListener(_syncStateWithRepository);
+    _socketService.removeConnectionListener(_onSocketConnectionChanged);
 
     locator<SystemActionsService>().dispose();
 
@@ -167,50 +198,60 @@ class _AppBodyState extends State<AppBody> {
         ),
       ],
       builder: (context, child) {
-        return GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onTap: () => _resetInactivityTimer(),
-          onPanDown: (DragDownDetails details) => _resetInactivityTimer(),
-          onPanStart: (details) {
-            // Reset flag at the start of each new gesture
-            _swipeActionTriggered = false;
-            _swipeStartPosition = details.globalPosition;
-          },
-          onPanUpdate: (details) {
-            if (_swipeStartPosition == null || _swipeActionTriggered) return;
+        return Stack(
+          children: [
+            GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: () => _resetInactivityTimer(),
+              onPanDown: (DragDownDetails details) => _resetInactivityTimer(),
+              onPanStart: (details) {
+                // Reset flag at the start of each new gesture
+                _swipeActionTriggered = false;
+                _swipeStartPosition = details.globalPosition;
+              },
+              onPanUpdate: (details) {
+                if (_swipeStartPosition == null || _swipeActionTriggered) return;
 
-            final delta = details.globalPosition - _swipeStartPosition!;
-            // Check if the swipe is vertical enough
-            if (!_isSwipingVertically && delta.dy.abs() > delta.dx.abs()) {
-              _isSwipingVertically = true;
-            }
-
-            // Once confirmed vertical, decide swipe direction
-            if (_isSwipingVertically) {
-              if (delta.dy > 20) {
-                // Swipe down detected - only trigger once per gesture
-                // Set flag immediately to prevent multiple triggers
-                _swipeActionTriggered = true;
-                // Check if settings is already open to prevent multiple navigations
-                if (!_isSettingsOpen) {
-                  _navigator.navigateTo(AppRouteNames.settings);
+                final delta = details.globalPosition - _swipeStartPosition!;
+                // Check if the swipe is vertical enough
+                if (!_isSwipingVertically && delta.dy.abs() > delta.dx.abs()) {
+                  _isSwipingVertically = true;
                 }
-              } else if (delta.dy < -20) {
-                // Swipe up detected
-              }
-            }
-          },
-          onPanEnd: (_) {
-            _swipeStartPosition = null;
-            _isSwipingVertically = false;
-            _swipeActionTriggered = false;
-          },
-          onPanCancel: () {
-            _swipeStartPosition = null;
-            _isSwipingVertically = false;
-            _swipeActionTriggered = false;
-          },
-          child: child,
+
+                // Once confirmed vertical, decide swipe direction
+                if (_isSwipingVertically) {
+                  if (delta.dy > 20) {
+                    // Swipe down detected - only trigger once per gesture
+                    // Set flag immediately to prevent multiple triggers
+                    _swipeActionTriggered = true;
+                    // Check if settings is already open to prevent multiple navigations
+                    if (!_isSettingsOpen) {
+                      _navigator.navigateTo(AppRouteNames.settings);
+                    }
+                  } else if (delta.dy < -20) {
+                    // Swipe up detected
+                  }
+                }
+              },
+              onPanEnd: (_) {
+                _swipeStartPosition = null;
+                _isSwipingVertically = false;
+                _swipeActionTriggered = false;
+              },
+              onPanCancel: () {
+                _swipeStartPosition = null;
+                _isSwipingVertically = false;
+                _swipeActionTriggered = false;
+              },
+              child: child,
+            ),
+            // Show connection lost screen when socket is disconnected
+            if (!_isSocketConnected)
+              ConnectionLostScreen(
+                onReconnect: _handleReconnect,
+                onChangeGateway: _handleChangeGateway,
+              ),
+          ],
         );
       },
       initialRoute: AppRouteNames.root,

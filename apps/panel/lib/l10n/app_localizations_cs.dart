@@ -848,7 +848,13 @@ class AppLocalizationsCs extends AppLocalizations {
   String get discovery_button_rescan => 'Znovu vyhledat';
 
   @override
-  String get discovery_button_manual => 'Ručně';
+  String get discovery_button_try_again => 'Zkusit znovu';
+
+  @override
+  String get discovery_button_manual => 'Zadat ručně';
+
+  @override
+  String get discovery_button_cancel => 'Zrušit';
 
   @override
   String get action_success => 'Akce byla úspěšně dokončena';
@@ -1087,7 +1093,22 @@ class AppLocalizationsCs extends AppLocalizations {
   String get config_error_title => 'Vyžadována konfigurace';
 
   @override
-  String get config_error_hint => 'Nakonfigurujte tento displej v Správci > Displeje';
+  String get config_error_hint_prefix => 'Nakonfigurujte tento displej v';
+
+  @override
+  String get config_error_hint_path => 'Správci > Displeje';
+
+  @override
+  String get connection_lost_title => 'Spojení ztraceno';
+
+  @override
+  String get connection_lost_message => 'Nelze se připojit k bráně. Zkontrolujte síťové připojení a zkuste to znovu.';
+
+  @override
+  String get connection_lost_button_reconnect => 'Znovu připojit';
+
+  @override
+  String get connection_lost_button_change_gateway => 'Změnit bránu';
 
   @override
   String get button_retry => 'Opakovat';
