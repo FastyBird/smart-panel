@@ -138,6 +138,20 @@ class AppLocalizationsCs extends AppLocalizations {
   String get device_offline_message => 'Zařízení je offline';
 
   @override
+  String get device_offline_title => 'Zařízení je offline';
+
+  @override
+  String get device_offline_description => 'Nelze komunikovat s tímto zařízením. Zkontrolujte, zda je zařízení zapnuté a připojené k síti.';
+
+  @override
+  String get device_offline_retry => 'Zkusit znovu';
+
+  @override
+  String device_offline_last_seen(String time) {
+    return 'Naposledy viděno $time';
+  }
+
+  @override
   String get device_config_issue => 'Problém s konfigurací';
 
   @override

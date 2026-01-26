@@ -353,6 +353,30 @@ abstract class AppLocalizations {
   /// **'Device is offline'**
   String get device_offline_message;
 
+  /// Title shown on device offline overlay
+  ///
+  /// In en, this message translates to:
+  /// **'Device Offline'**
+  String get device_offline_title;
+
+  /// Description shown on device offline overlay
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to communicate with this device. Check if the device is powered on and connected to your network.'**
+  String get device_offline_description;
+
+  /// Button label to retry connection to offline device
+  ///
+  /// In en, this message translates to:
+  /// **'Retry Connection'**
+  String get device_offline_retry;
+
+  /// Shows when device was last online
+  ///
+  /// In en, this message translates to:
+  /// **'Last seen {time}'**
+  String device_offline_last_seen(String time);
+
   /// Message shown when a device has configuration problems
   ///
   /// In en, this message translates to:

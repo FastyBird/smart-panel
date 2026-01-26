@@ -172,6 +172,28 @@
   "@device_offline_message": {
     "description": "Message shown when a device is not connected"
   },
+  "device_offline_title": "Device Offline",
+  "@device_offline_title": {
+    "description": "Title shown on device offline overlay"
+  },
+  "device_offline_description": "Unable to communicate with this device. Check if the device is powered on and connected to your network.",
+  "@device_offline_description": {
+    "description": "Description shown on device offline overlay"
+  },
+  "device_offline_retry": "Retry Connection",
+  "@device_offline_retry": {
+    "description": "Button label to retry connection to offline device"
+  },
+  "device_offline_last_seen": "Last seen {time}",
+  "@device_offline_last_seen": {
+    "description": "Shows when device was last online",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "5 min ago"
+      }
+    }
+  },
   "device_config_issue": "Configuration issue",
   "@device_config_issue": {
     "description": "Message shown when a device has configuration problems"

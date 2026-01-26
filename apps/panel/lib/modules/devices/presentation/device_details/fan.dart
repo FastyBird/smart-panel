@@ -7,6 +7,7 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/device_offline_overlay.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
@@ -351,12 +352,18 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
           children: [
             _buildHeader(context, isDark),
             Expanded(
-              child: OrientationBuilder(
-                builder: (context, orientation) {
-                  return orientation == Orientation.landscape
-                      ? _buildLandscape(context, isDark)
-                      : _buildPortrait(context, isDark);
-                },
+              child: Stack(
+                children: [
+                  OrientationBuilder(
+                    builder: (context, orientation) {
+                      return orientation == Orientation.landscape
+                          ? _buildLandscape(context, isDark)
+                          : _buildPortrait(context, isDark);
+                    },
+                  ),
+                  if (!widget._device.isOnline)
+                    DeviceOfflineOverlay(isDark: isDark),
+                ],
               ),
             ),
           ],

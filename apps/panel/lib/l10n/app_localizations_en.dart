@@ -138,6 +138,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get device_offline_message => 'Device is offline';
 
   @override
+  String get device_offline_title => 'Device Offline';
+
+  @override
+  String get device_offline_description => 'Unable to communicate with this device. Check if the device is powered on and connected to your network.';
+
+  @override
+  String get device_offline_retry => 'Retry Connection';
+
+  @override
+  String device_offline_last_seen(String time) {
+    return 'Last seen $time';
+  }
+
+  @override
   String get device_config_issue => 'Configuration issue';
 
   @override

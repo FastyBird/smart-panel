@@ -7,6 +7,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/device_offline_overlay.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
@@ -293,13 +294,19 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           children: [
             _buildHeader(context, isDark),
             Expanded(
-              child: OrientationBuilder(
-                builder: (context, orientation) {
-                  final isLandscape = orientation == Orientation.landscape;
-                  return isLandscape
-                      ? _buildLandscapeLayout(context)
-                      : _buildPortraitLayout(context);
-                },
+              child: Stack(
+                children: [
+                  OrientationBuilder(
+                    builder: (context, orientation) {
+                      final isLandscape = orientation == Orientation.landscape;
+                      return isLandscape
+                          ? _buildLandscapeLayout(context)
+                          : _buildPortraitLayout(context);
+                    },
+                  ),
+                  if (!widget._device.isOnline)
+                    DeviceOfflineOverlay(isDark: isDark),
+                ],
               ),
             ),
           ],
