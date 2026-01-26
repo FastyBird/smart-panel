@@ -736,14 +736,15 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
             ),
             SizedBox(height: _screenService.scale(32)),
             // Buttons
-            _buildNotFoundButtons(isDark, isLandscape, localizations),
+            _buildActionButtons(isDark, isLandscape, localizations),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildNotFoundButtons(
+  /// Builds the action buttons (Rescan + Manual) for not found and error states
+  Widget _buildActionButtons(
     bool isDark,
     bool isLandscape,
     AppLocalizations localizations,
@@ -843,63 +844,10 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
             ),
             SizedBox(height: _screenService.scale(32)),
             // Buttons
-            _buildErrorButtons(isDark, isLandscape, localizations),
+            _buildActionButtons(isDark, isLandscape, localizations),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildErrorButtons(
-    bool isDark,
-    bool isLandscape,
-    AppLocalizations localizations,
-  ) {
-    if (isLandscape) {
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SystemPagePrimaryButton(
-            label: localizations.discovery_button_rescan,
-            icon: Icons.refresh,
-            onPressed: _startDiscovery,
-            isDark: isDark,
-          ),
-          SizedBox(width: _screenService.scale(16)),
-          SystemPageSecondaryButton(
-            label: localizations.discovery_button_manual,
-            icon: Icons.edit_outlined,
-            onPressed: _showManualEntryForm,
-            isDark: isDark,
-          ),
-        ],
-      );
-    }
-
-    return Column(
-      children: [
-        SizedBox(
-          width: double.infinity,
-          child: SystemPagePrimaryButton(
-            label: localizations.discovery_button_rescan,
-            icon: Icons.refresh,
-            onPressed: _startDiscovery,
-            minWidth: double.infinity,
-            isDark: isDark,
-          ),
-        ),
-        SizedBox(height: _screenService.scale(12)),
-        SizedBox(
-          width: double.infinity,
-          child: SystemPageSecondaryButton(
-            label: localizations.discovery_button_manual,
-            icon: Icons.edit_outlined,
-            onPressed: _showManualEntryForm,
-            isDark: isDark,
-            minWidth: double.infinity,
-          ),
-        ),
-      ],
     );
   }
 
