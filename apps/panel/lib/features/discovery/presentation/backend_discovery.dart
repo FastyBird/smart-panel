@@ -571,7 +571,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
           SizedBox(height: _screenService.scale(16)),
           // Secondary actions
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               SystemPageGhostButton(
                 label: localizations.discovery_button_rescan,
@@ -676,6 +676,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                 ),
                 SizedBox(height: _screenService.scale(16)),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     SystemPageGhostButton(
                       label: localizations.discovery_button_rescan,
