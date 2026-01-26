@@ -198,8 +198,11 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		let result: CoversIntentResult;
 		const targetResults: IntentTargetResult[] = [];
 
-		// Add SKIPPED results for offline devices
-		for (const deviceId of offlineIds) {
+		// Filter offline devices by role for role-specific intents
+		const targetedOfflineIds = this.filterOfflineIdsByRole(allCovers, offlineIds, intent);
+
+		// Add SKIPPED results for offline devices that were actually targeted
+		for (const deviceId of targetedOfflineIds) {
 			const offlineCover = allCovers.find((c) => c.device.id === deviceId);
 
 			if (offlineCover) {
@@ -252,11 +255,11 @@ export class CoversIntentService extends SpaceIntentBaseService {
 				return { success: false, affectedDevices: 0, failedDevices: 0, skippedOfflineDevices: 0, newPosition: null };
 		}
 
-		// Add skipped offline devices info to result
-		result.skippedOfflineDevices = offlineIds.length;
+		// Add skipped offline devices info to result (only those actually targeted)
+		result.skippedOfflineDevices = targetedOfflineIds.length;
 
-		if (offlineIds.length > 0) {
-			result.offlineDeviceIds = offlineIds;
+		if (targetedOfflineIds.length > 0) {
+			result.offlineDeviceIds = targetedOfflineIds;
 		}
 
 		// Complete intent with results (emits Intent.Completed event)
@@ -307,6 +310,24 @@ export class CoversIntentService extends SpaceIntentBaseService {
 			deviceId: cover.device.id,
 			channelId: cover.coverChannel.id,
 		}));
+	}
+
+	/**
+	 * Filter offline device IDs by role for role-specific intents.
+	 * Returns only the offline device IDs that would have been targeted by this intent.
+	 */
+	private filterOfflineIdsByRole(allCovers: CoverDevice[], offlineIds: string[], intent: CoversIntentDto): string[] {
+		// For non-role-specific intents, all offline devices are targeted
+		if (intent.type !== CoversIntentType.ROLE_POSITION || !intent.role) {
+			return offlineIds;
+		}
+
+		// Filter offline IDs to only those with the matching role
+		return offlineIds.filter((deviceId) => {
+			const cover = allCovers.find((c) => c.device.id === deviceId);
+
+			return cover?.role === intent.role;
+		});
 	}
 
 	/**

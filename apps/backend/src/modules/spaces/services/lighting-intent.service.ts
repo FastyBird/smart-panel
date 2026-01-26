@@ -229,8 +229,11 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		let result: IntentExecutionResult;
 		const targetResults: IntentTargetResult[] = [];
 
-		// Add SKIPPED results for offline devices
-		for (const deviceId of offlineIds) {
+		// Filter offline devices by role for role-specific intents
+		const targetedOfflineIds = this.filterOfflineIdsByRole(allLights, offlineIds, intent);
+
+		// Add SKIPPED results for offline devices that were actually targeted
+		for (const deviceId of targetedOfflineIds) {
 			const offlineLight = allLights.find((l) => l.device.id === deviceId);
 
 			if (offlineLight) {
@@ -273,7 +276,7 @@ export class LightingIntentService extends SpaceIntentBaseService {
 			const overallSuccess = failedDevices === 0 || affectedDevices > 0;
 
 			this.logger.debug(
-				`Lighting intent completed spaceId=${spaceId} affected=${affectedDevices} failed=${failedDevices} skipped=${offlineIds.length}`,
+				`Lighting intent completed spaceId=${spaceId} affected=${affectedDevices} failed=${failedDevices} skipped=${targetedOfflineIds.length}`,
 			);
 
 			// When turning off all lights, store "off" as the mode
@@ -291,11 +294,11 @@ export class LightingIntentService extends SpaceIntentBaseService {
 			result = { success: overallSuccess, affectedDevices, failedDevices };
 		}
 
-		// Add skipped offline devices info to result
-		result.skippedOfflineDevices = offlineIds.length;
+		// Add skipped offline devices info to result (only those actually targeted)
+		result.skippedOfflineDevices = targetedOfflineIds.length;
 
-		if (offlineIds.length > 0) {
-			result.offlineDeviceIds = offlineIds;
+		if (targetedOfflineIds.length > 0) {
+			result.offlineDeviceIds = targetedOfflineIds;
 		}
 
 		// Complete intent with results (emits Intent.Completed event)
@@ -332,6 +335,32 @@ export class LightingIntentService extends SpaceIntentBaseService {
 			deviceId: light.device.id,
 			channelId: light.lightChannel.id,
 		}));
+	}
+
+	/**
+	 * Filter offline device IDs by role for role-specific intents.
+	 * Returns only the offline device IDs that would have been targeted by this intent.
+	 */
+	private filterOfflineIdsByRole(allLights: LightDevice[], offlineIds: string[], intent: LightingIntentDto): string[] {
+		// For non-role-specific intents, all offline devices are targeted
+		if (!this.isRoleSpecificIntent(intent.type) || !intent.role) {
+			return offlineIds;
+		}
+
+		// Filter offline IDs to only those with the matching role
+		return offlineIds.filter((deviceId) => {
+			const light = allLights.find((l) => l.device.id === deviceId);
+
+			if (!light) {
+				return false;
+			}
+
+			if (intent.role === LightingRole.OTHER) {
+				return light.role === LightingRole.OTHER || light.role === null;
+			}
+
+			return light.role === intent.role;
+		});
 	}
 
 	/**
