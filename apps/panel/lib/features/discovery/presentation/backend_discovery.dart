@@ -404,11 +404,6 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                   ),
                 ),
               ),
-              SizedBox(height: _screenService.scale(24)),
-              LoadingSpinner(
-                size: _screenService.scale(48),
-                color: accent,
-              ),
               if (_backends.isNotEmpty) ...[
                 SizedBox(height: _screenService.scale(16)),
                 Text(
