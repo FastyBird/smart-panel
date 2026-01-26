@@ -60,6 +60,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
   bool _showManualEntry = false;
   bool _wasManualEntry = false;
   bool _showErrorToast = false;
+  bool _discoveryCancelled = false;
 
   // Validation patterns
   static final RegExp _ipAddressPattern = RegExp(
@@ -96,6 +97,8 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
   }
 
   Future<void> _startDiscovery() async {
+    _discoveryCancelled = false;
+
     setState(() {
       _state = DiscoveryState.searching;
       _backends = [];
@@ -117,7 +120,8 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
         },
       );
 
-      if (mounted) {
+      // Skip state update if discovery was cancelled
+      if (mounted && !_discoveryCancelled) {
         setState(() {
           _backends = backends;
 
@@ -140,7 +144,8 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
         });
       }
     } catch (e) {
-      if (mounted) {
+      // Skip error handling if discovery was cancelled
+      if (mounted && !_discoveryCancelled) {
         setState(() {
           _state = DiscoveryState.error;
         });
@@ -160,6 +165,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
   }
 
   Future<void> _cancelDiscovery() async {
+    _discoveryCancelled = true;
     await _discoveryService.stop();
     if (mounted) {
       setState(() {
