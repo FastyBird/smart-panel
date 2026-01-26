@@ -59,7 +59,7 @@ class ConnectionLostScreen extends StatelessWidget {
                       localizations.connection_lost_title,
                       style: TextStyle(
                         color: SystemPagesTheme.textPrimary(isDark),
-                        fontSize: screenService.scale(24),
+                        fontSize: AppFontSize.extraLarge,
                         fontWeight: FontWeight.w500,
                       ),
                       textAlign: TextAlign.center,

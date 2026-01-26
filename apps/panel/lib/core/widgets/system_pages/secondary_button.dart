@@ -62,7 +62,7 @@ class _SystemPageSecondaryButtonState extends State<SystemPageSecondaryButton> {
               color: _isPressed
                   ? accent
                   : SystemPagesTheme.border(widget.isDark),
-              width: _screenService.scale(1.5),
+              width: _screenService.scale(2),
             ),
           ),
           child: Row(

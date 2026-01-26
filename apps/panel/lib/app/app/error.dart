@@ -74,7 +74,7 @@ class AppError extends StatelessWidget {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: SystemPagesTheme.textPrimary(isDark),
-                          fontSize: _screenService.scale(24),
+                          fontSize: AppFontSize.extraLarge,
                           fontWeight: FontWeight.w500,
                         ),
                       ),

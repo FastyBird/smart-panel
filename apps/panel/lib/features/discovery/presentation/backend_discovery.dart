@@ -391,7 +391,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               localizations.discovery_searching_title,
               style: TextStyle(
                 color: SystemPagesTheme.textPrimary(isDark),
-                fontSize: _screenService.scale(24),
+                fontSize: AppFontSize.extraLarge,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -491,7 +491,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
             localizations.discovery_select_title,
             style: TextStyle(
               color: SystemPagesTheme.textPrimary(isDark),
-              fontSize: _screenService.scale(24),
+              fontSize: AppFontSize.extraLarge,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -500,7 +500,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
             localizations.discovery_select_description(_backends.length),
             style: TextStyle(
               color: SystemPagesTheme.textMuted(isDark),
-              fontSize: _screenService.scale(13),
+              fontSize: AppFontSize.small,
             ),
           ),
           SizedBox(height: AppSpacings.pLg + AppSpacings.pMd),
@@ -589,7 +589,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                   localizations.discovery_select_title,
                   style: TextStyle(
                     color: SystemPagesTheme.textPrimary(isDark),
-                    fontSize: _screenService.scale(24),
+                    fontSize: AppFontSize.extraLarge,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -598,7 +598,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                   localizations.discovery_select_description(_backends.length),
                   style: TextStyle(
                     color: SystemPagesTheme.textMuted(isDark),
-                    fontSize: _screenService.scale(13),
+                    fontSize: AppFontSize.small,
                   ),
                 ),
               ],
@@ -698,7 +698,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               localizations.discovery_not_found_title,
               style: TextStyle(
                 color: SystemPagesTheme.textPrimary(isDark),
-                fontSize: _screenService.scale(24),
+                fontSize: AppFontSize.extraLarge,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -809,7 +809,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               localizations.discovery_error_title,
               style: TextStyle(
                 color: SystemPagesTheme.textPrimary(isDark),
-                fontSize: _screenService.scale(24),
+                fontSize: AppFontSize.extraLarge,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -864,7 +864,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               localizations.discovery_connecting_title,
               style: TextStyle(
                 color: SystemPagesTheme.textPrimary(isDark),
-                fontSize: _screenService.scale(24),
+                fontSize: AppFontSize.extraLarge,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -914,7 +914,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               localizations.discovery_manual_entry_title,
               style: TextStyle(
                 color: SystemPagesTheme.textPrimary(isDark),
-                fontSize: _screenService.scale(24),
+                fontSize: AppFontSize.extraLarge,
                 fontWeight: FontWeight.w500,
               ),
             ),
