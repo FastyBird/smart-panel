@@ -72,6 +72,10 @@ export const transformIntentResponse = (response: IIntentRes): IIntent => {
 		roleKey: ctx?.roleKey ?? null,
 	};
 
+	// Note: completedAt and results preprocessing is handled by the schema:
+	// - nullableDate uses z.preprocess to handle null/undefined/empty string
+	// - results uses .nullish().transform() to convert undefined to null
+
 	const parsed = IntentSchema.safeParse(transformed);
 
 	if (!parsed.success) {

@@ -120,6 +120,13 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
           settlingWindowMs: LightingConstants.settlingWindowMs,
           tolerance: LightingConstants.hueTolerance,
         ),
+        LightingConstants.saturationChannelId: ControlChannelConfig(
+          id: LightingConstants.saturationChannelId,
+          convergenceChecker: _checkSaturationConvergence,
+          intentLockChecker: _anySaturationLocked,
+          settlingWindowMs: LightingConstants.settlingWindowMs,
+          tolerance: LightingConstants.saturationTolerance,
+        ),
         LightingConstants.temperatureChannelId: ControlChannelConfig(
           id: LightingConstants.temperatureChannelId,
           convergenceChecker: _checkTemperatureConvergence,
@@ -235,6 +242,15 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     return _allHueMatch(targets, desiredValue, tolerance);
   }
 
+  /// Wrapper for saturation convergence check (adapts _allSaturationMatch signature).
+  bool _checkSaturationConvergence(
+    List<LightTargetView> targets,
+    double desiredValue,
+    double tolerance,
+  ) {
+    return _allSaturationMatch(targets, desiredValue, tolerance);
+  }
+
   /// Wrapper for temperature convergence check (adapts _allTemperatureMatch signature).
   bool _checkTemperatureConvergence(
     List<LightTargetView> targets,
@@ -345,6 +361,37 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     return false;
   }
 
+  bool _anySaturationLocked(List<LightTargetView> targets) {
+    final service = _intentOverlayService;
+    final devicesService = _devicesService;
+    if (service == null || devicesService == null) return false;
+
+    for (final target in targets) {
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is LightingDeviceView) {
+        final channel = findLightChannel(device, target.channelId);
+        if (channel == null) continue;
+        if (!channel.hasColor) continue;
+
+        // Check HSV saturation property
+        final satProp = channel.saturationProp;
+        if (satProp != null &&
+            service.isPropertyLocked(target.deviceId, target.channelId, satProp.id)) {
+          return true;
+        }
+
+        // For RGB mode, saturation is encoded in RGB values - check if any RGB property is locked
+        // This is consistent with _anyColorLocked which checks both modes
+        final redProp = channel.colorRedProp;
+        if (redProp != null &&
+            service.isPropertyLocked(target.deviceId, target.channelId, redProp.id)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   bool _anyTemperatureLocked(List<LightTargetView> targets) {
     final service = _intentOverlayService;
     final devicesService = _devicesService;
@@ -407,6 +454,10 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       targets,
     );
     _controlStateService.updateIntentLockStatus(
+      LightingConstants.saturationChannelId,
+      targets,
+    );
+    _controlStateService.updateIntentLockStatus(
       LightingConstants.temperatureChannelId,
       targets,
     );
@@ -438,6 +489,10 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       );
       _controlStateService.checkConvergence(
         LightingConstants.hueChannelId,
+        targets,
+      );
+      _controlStateService.checkConvergence(
+        LightingConstants.saturationChannelId,
         targets,
       );
       _controlStateService.checkConvergence(
@@ -491,6 +546,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     // Get initial values from devices as fallback
     double? initialBrightness;
     double? initialHue;
+    double? initialSaturation;
     double? initialTemperature;
     double? initialWhite;
 
@@ -508,6 +564,13 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
         if (initialHue == null && channel.hasColor) {
           initialHue = _getChannelHue(channel);
         }
+        if (initialSaturation == null && channel.hasColor) {
+          final sat = _getChannelSaturation(channel);
+          if (sat != null) {
+            // Convert from 0-100 scale to 0.0-1.0 scale for cache
+            initialSaturation = sat / 100.0;
+          }
+        }
         if (initialTemperature == null && channel.hasTemperature) {
           final tempProp = channel.temperatureProp;
           if (tempProp?.value is NumberValueType) {
@@ -519,7 +582,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
         }
 
         if (initialBrightness != null && initialHue != null &&
-            initialTemperature != null && initialWhite != null) {
+            initialSaturation != null && initialTemperature != null && initialWhite != null) {
           break;
         }
       }
@@ -548,6 +611,15 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       );
     }
 
+    final saturation = cached.saturation ?? initialSaturation;
+    if (saturation != null &&
+        _controlStateService.getDesiredValue(LightingConstants.saturationChannelId) == null) {
+      _controlStateService.setMixed(
+        LightingConstants.saturationChannelId,
+        saturation,
+      );
+    }
+
     final temperature = cached.temperature ?? initialTemperature;
     if (temperature != null &&
         _controlStateService.getDesiredValue(LightingConstants.temperatureChannelId) == null) {
@@ -570,6 +642,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
   void _saveToCache({
     double? brightness,
     double? hue,
+    double? saturation,
     double? temperature,
     double? white,
   }) {
@@ -577,6 +650,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       _cacheKey,
       brightness: brightness,
       hue: hue,
+      saturation: saturation,
       temperature: temperature,
       white: white,
     );
@@ -588,6 +662,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     if (roleMixedState.isSynced && !roleMixedState.onStateMixed) {
       double? commonBrightness;
       double? commonHue;
+      double? commonSaturation;
       double? commonTemperature;
       double? commonWhite;
 
@@ -605,6 +680,11 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
             }
             if (channel.hasColor) {
               commonHue = _getChannelHue(channel);
+              final sat = _getChannelSaturation(channel);
+              if (sat != null) {
+                // Convert from 0-100 scale to 0.0-1.0 scale for cache
+                commonSaturation = sat / 100.0;
+              }
             }
             if (channel.hasTemperature) {
               final tempProp = channel.temperatureProp;
@@ -621,11 +701,12 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       }
 
       if (commonBrightness != null || commonHue != null ||
-          commonTemperature != null || commonWhite != null) {
+          commonSaturation != null || commonTemperature != null || commonWhite != null) {
         _roleControlStateRepository?.updateFromSync(
           _cacheKey,
           brightness: commonBrightness,
           hue: commonHue,
+          saturation: commonSaturation,
           temperature: commonTemperature,
           white: commonWhite,
         );
@@ -678,6 +759,35 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
           if (hue != null) {
             totalCount++;
             if ((hue - targetValue).abs() <= tolerance) {
+              matchCount++;
+            }
+          }
+        }
+      }
+    }
+
+    return totalCount == 0 || matchCount == totalCount;
+  }
+
+  bool _allSaturationMatch(List<LightTargetView> targets, double targetValue, double tolerance) {
+    int matchCount = 0;
+    int totalCount = 0;
+
+    // targetValue is in 0.0-1.0 scale, device saturation is 0-100
+    final targetSat = targetValue * 100.0;
+
+    for (final target in targets) {
+      final device = _devicesService?.getDevice(target.deviceId);
+      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+        final channel = device.lightChannels.firstWhere(
+          (c) => c.id == target.channelId,
+          orElse: () => device.lightChannels.first,
+        );
+        if (channel.hasColor && channel.on) {
+          final sat = _getChannelSaturation(channel);
+          if (sat != null) {
+            totalCount++;
+            if ((sat - targetSat).abs() <= tolerance) {
               matchCount++;
             }
           }
@@ -885,6 +995,19 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       final color = _getChannelColorSafe(channel);
       if (color != null) {
         return ColorUtils.toHSV(color).hue;
+      }
+    }
+    return null;
+  }
+
+  double? _getChannelSaturation(LightChannelView channel) {
+    if (channel.hasSaturation) {
+      return channel.saturation.toDouble();
+    }
+    if (channel.hasColorRed) {
+      final color = _getChannelColorSafe(channel);
+      if (color != null) {
+        return HSVColor.fromColor(color).saturation * 100.0;
       }
     }
     return null;
@@ -1338,7 +1461,12 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     );
   }
 
-  Future<void> _setHueForAll(List<LightTargetView> targets, double hue) async {
+  Future<void> _setHueForAll(List<LightTargetView> targets, double hue, double saturation) async {
+    await _setColorForAll(targets, hue, saturation);
+  }
+
+  Future<void> _setColorForAll(
+      List<LightTargetView> targets, double hue, double saturation) async {
     final devicesService = _devicesService;
     final spacesService = _spacesService;
     if (devicesService == null) return;
@@ -1347,8 +1475,8 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     final stateRole = mapTargetRoleToStateRole(widget.role);
 
     try {
-      // Convert hue to hex color for backend intent
-      final color = HSVColor.fromAHSV(1.0, hue, 1.0, 1.0).toColor();
+      // Convert hue + saturation to hex color for backend intent
+      final color = HSVColor.fromAHSV(1.0, hue, saturation, 1.0).toColor();
       final r = (color.r * 255).toInt().toRadixString(16).padLeft(2, '0');
       final g = (color.g * 255).toInt().toRadixString(16).padLeft(2, '0');
       final b = (color.b * 255).toInt().toRadixString(16).padLeft(2, '0');
@@ -1365,7 +1493,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
         success = result != null;
       } else {
         // Fallback to direct device control
-        success = await _setColorViaDevices(targets, hue);
+        success = await _setColorViaDevices(targets, hue, saturation);
       }
 
       if (!mounted) return;
@@ -1390,11 +1518,12 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
   /// Used when backend intents are unavailable (see class documentation).
   ///
   /// Handles two color representations:
-  /// - **HSV**: If device supports hue property, sets it directly
-  /// - **RGB**: Otherwise, converts hue to RGB and sets red/green/blue properties
+  /// - **HSV**: If device supports hue property, sets hue and saturation directly
+  /// - **RGB**: Otherwise, converts hue + saturation to RGB and sets red/green/blue properties
   ///
   /// Returns `true` if command was sent successfully (or no devices needed update).
-  Future<bool> _setColorViaDevices(List<LightTargetView> targets, double hue) async {
+  Future<bool> _setColorViaDevices(
+      List<LightTargetView> targets, double hue, double saturation) async {
     final devicesService = _devicesService;
     if (devicesService == null) return false;
 
@@ -1406,8 +1535,9 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
         final channel = findLightChannel(device, target.channelId);
         if (channel == null || !channel.hasColor) continue;
 
-        // Prefer HSV hue if available
+        // Prefer HSV hue/saturation if available
         final hueProp = channel.hueProp;
+        final satProp = channel.saturationProp;
         if (hueProp != null) {
           properties.add(PropertyCommandItem(
             deviceId: target.deviceId,
@@ -1415,9 +1545,18 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
             propertyId: hueProp.id,
             value: hue.round(),
           ));
+          // Also set saturation if device supports it
+          if (satProp != null) {
+            properties.add(PropertyCommandItem(
+              deviceId: target.deviceId,
+              channelId: target.channelId,
+              propertyId: satProp.id,
+              value: (saturation * 100).round(),
+            ));
+          }
         } else if (channel.hasColorRed) {
-          // Convert hue to RGB
-          final color = HSVColor.fromAHSV(1.0, hue, 1.0, 1.0).toColor();
+          // Convert hue + saturation to RGB
+          final color = HSVColor.fromAHSV(1.0, hue, saturation, 1.0).toColor();
 
           final redProp = channel.colorRedProp;
           final greenProp = channel.colorGreenProp;
@@ -1620,6 +1759,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     int? firstColorTemp;
     Color? firstColor;
     int? firstWhite;
+    int? firstSaturation;
 
     for (final target in targets) {
       final device = devicesService.getDevice(target.deviceId);
@@ -1699,6 +1839,10 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
         if (channel.hasColorWhite && firstWhite == null) {
           firstWhite = channel.colorWhite;
         }
+
+        if (channel.hasSaturation && firstSaturation == null) {
+          firstSaturation = channel.saturation;
+        }
       }
     }
 
@@ -1707,6 +1851,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     final baseColorTemp = firstColorTemp ?? 4000;
     final baseColor = firstColor;
     final baseWhite = firstWhite ?? 100;
+    final baseSaturation = firstSaturation ?? 100;
 
     // Determine state based on device values and state machine
     final roleMixedState = _getRoleMixedState(targets);
@@ -1725,6 +1870,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     // Check if we're actively settling (waiting for device sync)
     final isSettling = isChannelSettling(LightingConstants.brightnessChannelId) ||
         isChannelSettling(LightingConstants.hueChannelId) ||
+        isChannelSettling(LightingConstants.saturationChannelId) ||
         isChannelSettling(LightingConstants.temperatureChannelId) ||
         isChannelSettling(LightingConstants.whiteChannelId) ||
         isChannelSettling(LightingConstants.onOffChannelId);
@@ -1733,6 +1879,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     // (settling timer expired without convergence - only happens after user made a role command)
     final hasSyncError = isChannelMixed(LightingConstants.brightnessChannelId) ||
         isChannelMixed(LightingConstants.hueChannelId) ||
+        isChannelMixed(LightingConstants.saturationChannelId) ||
         isChannelMixed(LightingConstants.temperatureChannelId) ||
         isChannelMixed(LightingConstants.whiteChannelId) ||
         isChannelMixed(LightingConstants.onOffChannelId);
@@ -1769,12 +1916,38 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     // Determine on/off state (use pending state if available)
     final displayIsOn = _pendingOnState ?? anyOn;
 
+    // Get saturation - check pending state first, then device property, then extract from RGB color
+    double saturation;
+    final satDesiredValue =
+        _controlStateService.getDesiredValue(LightingConstants.saturationChannelId);
+    if (_controlStateService.isLocked(LightingConstants.saturationChannelId) &&
+        satDesiredValue != null) {
+      // Use pending saturation value (already in 0.0-1.0 scale from callback)
+      saturation = (satDesiredValue as num).toDouble();
+    } else if (firstSaturation != null) {
+      // HSV mode: use saturation property (0-100 scale, convert to 0.0-1.0)
+      saturation = baseSaturation / 100.0;
+    } else if (baseColor != null) {
+      // RGB mode: extract saturation from the current color
+      saturation = HSVColor.fromColor(baseColor).saturation;
+    } else {
+      saturation = 1.0;
+    }
+
     // Get hue and convert to color if needed
     Color? displayColor = baseColor;
-    double saturation = 1.0;
-    final hueDesiredValue = _controlStateService.getDesiredValue(LightingConstants.hueChannelId);
-    if (_controlStateService.isLocked(LightingConstants.hueChannelId) && hueDesiredValue != null) {
-      displayColor = HSVColor.fromAHSV(1.0, hueDesiredValue, 1.0, 1.0).toColor();
+    final hueDesiredValue =
+        _controlStateService.getDesiredValue(LightingConstants.hueChannelId);
+    if (_controlStateService.isLocked(LightingConstants.hueChannelId) &&
+        hueDesiredValue != null) {
+      displayColor =
+          HSVColor.fromAHSV(1.0, hueDesiredValue, saturation, 1.0).toColor();
+    } else if (_controlStateService.isLocked(LightingConstants.saturationChannelId) &&
+        baseColor != null) {
+      // Saturation changed but not hue - rebuild color with new saturation
+      final baseHue = HSVColor.fromColor(baseColor).hue;
+      displayColor =
+          HSVColor.fromAHSV(1.0, baseHue, saturation, 1.0).toColor();
     }
 
     return LightingControlPanel(
@@ -1838,19 +2011,25 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
           },
         );
       },
-      onColorChanged: (color, saturation) {
-        final hue = HSVColor.fromColor(color).hue;
+      onColorChanged: (color, saturationValue) {
+        final hsv = HSVColor.fromColor(color);
+        final hue = hsv.hue;
+        // Set pending state for both hue and saturation
         _controlStateService.setPending(
           LightingConstants.hueChannelId,
           hue,
         );
-        _saveToCache(hue: hue);
+        _controlStateService.setPending(
+          LightingConstants.saturationChannelId,
+          saturationValue,
+        );
+        _saveToCache(hue: hue, saturation: saturationValue);
         _hueDebounceTimer?.cancel();
         _hueDebounceTimer = Timer(
           const Duration(milliseconds: LightingConstants.sliderDebounceMs),
           () {
             if (!mounted) return;
-            _setHueForAll(targets, hue);
+            _setColorForAll(targets, hue, saturationValue);
           },
         );
       },
@@ -1903,7 +2082,8 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
         if (allCapabilities.contains(LightCapability.color) && baseColor != null) {
           final hue = _controlStateService.getDesiredValue(LightingConstants.hueChannelId) ??
               HSVColor.fromColor(baseColor).hue;
-          _setHueForAll(targets, hue);
+          // Use the displayed saturation value (already calculated earlier in build)
+          _setHueForAll(targets, hue, saturation);
         }
         if (allCapabilities.contains(LightCapability.white)) {
           _setSimplePropertyForAll(

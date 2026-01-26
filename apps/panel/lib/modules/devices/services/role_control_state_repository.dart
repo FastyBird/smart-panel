@@ -16,6 +16,9 @@ class RoleCacheEntry {
   /// Hue value (0-360, null = not set by user)
   final double? hue;
 
+  /// Saturation value (0.0-1.0, null = not set by user)
+  final double? saturation;
+
   /// Color temperature in Kelvin (null = not set by user)
   final double? temperature;
 
@@ -32,6 +35,7 @@ class RoleCacheEntry {
     this.isOn,
     this.brightness,
     this.hue,
+    this.saturation,
     this.temperature,
     this.white,
     required this.timestamp,
@@ -46,6 +50,7 @@ class RoleCacheEntry {
       isOn != null ||
       brightness != null ||
       hue != null ||
+      saturation != null ||
       temperature != null ||
       white != null;
 
@@ -54,6 +59,7 @@ class RoleCacheEntry {
     bool? isOn,
     double? brightness,
     double? hue,
+    double? saturation,
     double? temperature,
     double? white,
     DateTime? timestamp,
@@ -61,6 +67,7 @@ class RoleCacheEntry {
     bool clearIsOn = false,
     bool clearBrightness = false,
     bool clearHue = false,
+    bool clearSaturation = false,
     bool clearTemperature = false,
     bool clearWhite = false,
   }) {
@@ -68,6 +75,7 @@ class RoleCacheEntry {
       isOn: clearIsOn ? null : (isOn ?? this.isOn),
       brightness: clearBrightness ? null : (brightness ?? this.brightness),
       hue: clearHue ? null : (hue ?? this.hue),
+      saturation: clearSaturation ? null : (saturation ?? this.saturation),
       temperature: clearTemperature ? null : (temperature ?? this.temperature),
       white: clearWhite ? null : (white ?? this.white),
       timestamp: timestamp ?? DateTime.now(),
@@ -77,7 +85,7 @@ class RoleCacheEntry {
 
   @override
   String toString() =>
-      'RoleCacheEntry(isOn: $isOn, brightness: $brightness, hue: $hue, temp: $temperature, white: $white, age: ${DateTime.now().difference(timestamp).inSeconds}s)';
+      'RoleCacheEntry(isOn: $isOn, brightness: $brightness, hue: $hue, sat: $saturation, temp: $temperature, white: $white, age: ${DateTime.now().difference(timestamp).inSeconds}s)';
 }
 
 /// Repository for caching role control state.
@@ -168,6 +176,7 @@ class RoleControlStateRepository extends ChangeNotifier {
     bool? isOn,
     double? brightness,
     double? hue,
+    double? saturation,
     double? temperature,
     double? white,
   }) {
@@ -182,6 +191,7 @@ class RoleControlStateRepository extends ChangeNotifier {
         isOn: isOn,
         brightness: brightness,
         hue: hue,
+        saturation: saturation,
         temperature: temperature,
         white: white,
         timestamp: DateTime.now(),
@@ -195,6 +205,7 @@ class RoleControlStateRepository extends ChangeNotifier {
         isOn: isOn,
         brightness: brightness,
         hue: hue,
+        saturation: saturation,
         temperature: temperature,
         white: white,
         timestamp: DateTime.now(),
@@ -236,6 +247,7 @@ class RoleControlStateRepository extends ChangeNotifier {
     bool? isOn,
     double? brightness,
     double? hue,
+    double? saturation,
     double? temperature,
     double? white,
   }) {
@@ -244,6 +256,7 @@ class RoleControlStateRepository extends ChangeNotifier {
       isOn: isOn,
       brightness: brightness,
       hue: hue,
+      saturation: saturation,
       temperature: temperature,
       white: white,
     );
@@ -258,6 +271,7 @@ class RoleControlStateRepository extends ChangeNotifier {
     bool? isOn,
     double? brightness,
     double? hue,
+    double? saturation,
     double? temperature,
     double? white,
   }) {
@@ -266,6 +280,7 @@ class RoleControlStateRepository extends ChangeNotifier {
     final hasValues = isOn != null ||
         brightness != null ||
         hue != null ||
+        saturation != null ||
         temperature != null ||
         white != null;
 
@@ -275,6 +290,7 @@ class RoleControlStateRepository extends ChangeNotifier {
       isOn: isOn,
       brightness: brightness,
       hue: hue,
+      saturation: saturation,
       temperature: temperature,
       white: white,
       timestamp: DateTime.now(),
@@ -297,6 +313,7 @@ class RoleControlStateRepository extends ChangeNotifier {
     bool? isOn,
     double? brightness,
     double? hue,
+    double? saturation,
     double? temperature,
     double? white,
   }) {
@@ -305,6 +322,7 @@ class RoleControlStateRepository extends ChangeNotifier {
       isOn: isOn,
       brightness: brightness,
       hue: hue,
+      saturation: saturation,
       temperature: temperature,
       white: white,
     );

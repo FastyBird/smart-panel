@@ -25,6 +25,12 @@ export const IntentContextSchema = z.object({
 	roleKey: z.string().nullable(),
 });
 
+// Helper for nullable dates - handles null/undefined before coercion
+const nullableDate = z.preprocess(
+	(val) => (val === null || val === undefined || val === '' ? null : val),
+	z.coerce.date().nullable()
+);
+
 export const IntentSchema = z.object({
 	id: z.string().uuid(),
 	requestId: z.string().uuid().nullable(),
@@ -36,8 +42,8 @@ export const IntentSchema = z.object({
 	ttlMs: z.number(),
 	createdAt: z.coerce.date(),
 	expiresAt: z.coerce.date(),
-	completedAt: z.coerce.date().nullable(),
-	results: z.array(IntentTargetResultSchema).nullable(),
+	completedAt: nullableDate,
+	results: z.array(IntentTargetResultSchema).nullish().transform((val) => val ?? null),
 });
 
 export type IntentSchemaType = z.infer<typeof IntentSchema>;
