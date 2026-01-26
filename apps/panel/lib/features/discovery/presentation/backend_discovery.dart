@@ -155,7 +155,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
 
   void _selectBackend(DiscoveredBackend backend) {
     setState(() {
-      _selectedBackend = backend;
+      _selectedBackend = _selectedBackend == backend ? null : backend;
     });
   }
 
