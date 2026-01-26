@@ -212,9 +212,10 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 	 * Filter out offline devices from a list of primary climate devices.
 	 * Returns online devices and list of offline device IDs.
 	 */
-	private filterOfflineClimateDevices(
-		devices: PrimaryClimateDevice[],
-	): { online: PrimaryClimateDevice[]; offlineIds: string[] } {
+	private filterOfflineClimateDevices(devices: PrimaryClimateDevice[]): {
+		online: PrimaryClimateDevice[];
+		offlineIds: string[];
+	} {
 		const online: PrimaryClimateDevice[] = [];
 		const offlineIds: string[] = [];
 

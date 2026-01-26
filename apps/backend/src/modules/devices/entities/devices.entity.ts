@@ -40,6 +40,18 @@ export class DeviceConnectionStatus {
 	@Expose()
 	@IsEnum(ConnectionState)
 	status: ConnectionState = ConnectionState.UNKNOWN;
+
+	@ApiPropertyOptional({
+		name: 'last_changed',
+		description: 'Timestamp when connection state last changed',
+		type: 'string',
+		format: 'date-time',
+		example: '2026-01-26T19:30:00.000Z',
+		nullable: true,
+	})
+	@Expose({ name: 'last_changed' })
+	@IsOptional()
+	lastChanged: Date | null = null;
 }
 
 @ApiSchema({ name: 'DevicesModuleDataDevice' })

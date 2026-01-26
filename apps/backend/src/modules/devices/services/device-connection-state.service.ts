@@ -9,7 +9,8 @@ import { ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity'
 export class DeviceConnectionStateService {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'DeviceConnectionStateService');
 
-	private statusMap: Map<DeviceEntity['id'], { online: boolean; status: ConnectionState }> = new Map();
+	private statusMap: Map<DeviceEntity['id'], { online: boolean; status: ConnectionState; lastChanged: Date }> =
+		new Map();
 	private statusPropertyMap: Map<DeviceEntity['id'], ChannelPropertyEntity['id']> = new Map();
 
 	constructor(private readonly influxDbService: InfluxDbService) {}
@@ -29,9 +30,10 @@ export class DeviceConnectionStateService {
 		}
 
 		const isOnline = OnlineDeviceState.includes(status);
+		const lastChanged = new Date();
 
 		// Update local cache regardless of InfluxDB availability
-		this.statusMap.set(device.id, { online: isOnline, status });
+		this.statusMap.set(device.id, { online: isOnline, status, lastChanged });
 		this.statusPropertyMap.set(device.id, property.id);
 
 		if (!this.influxDbService.isConnected()) {
@@ -61,7 +63,9 @@ export class DeviceConnectionStateService {
 		}
 	}
 
-	async readLatest(device: DeviceEntity): Promise<{ online: boolean; status: ConnectionState }> {
+	async readLatest(
+		device: DeviceEntity,
+	): Promise<{ online: boolean; status: ConnectionState; lastChanged: Date | null }> {
 		// Check local cache first
 		if (this.statusMap.has(device.id)) {
 			this.logger.debug(
@@ -77,6 +81,7 @@ export class DeviceConnectionStateService {
 			return {
 				online: false,
 				status: ConnectionState.UNKNOWN,
+				lastChanged: null,
 			};
 		}
 
@@ -91,6 +96,7 @@ export class DeviceConnectionStateService {
 			this.logger.debug(`Fetching latest status id=${device.id}`, { resource: device.id });
 
 			const result = await this.influxDbService.query<{
+				time: string;
 				online: boolean;
 				onlineI: number;
 				status: ConnectionState;
@@ -104,17 +110,19 @@ export class DeviceConnectionStateService {
 				return {
 					online: false,
 					status: ConnectionState.UNKNOWN,
+					lastChanged: null,
 				};
 			}
 
 			const latest = result[0];
+			const lastChanged = latest.time ? new Date(latest.time) : new Date();
 
 			this.logger.debug(`Read latest value id=${device.id} status=${latest.status}`, { resource: device.id });
 
-			this.statusMap.set(device.id, { online: latest.online, status: latest.status });
+			this.statusMap.set(device.id, { online: latest.online, status: latest.status, lastChanged });
 			this.statusPropertyMap.set(device.id, latest.propertyId);
 
-			return latest;
+			return { online: latest.online, status: latest.status, lastChanged };
 		} catch (error) {
 			const err = error as Error;
 
@@ -126,6 +134,7 @@ export class DeviceConnectionStateService {
 			return {
 				online: false,
 				status: ConnectionState.UNKNOWN,
+				lastChanged: null,
 			};
 		}
 	}
