@@ -158,12 +158,14 @@ class ClimateSensor {
   final String label;
   final String value;
   final String type;
+  final bool isOnline;
 
   const ClimateSensor({
     required this.id,
     required this.label,
     required this.value,
     required this.type,
+    this.isOnline = true,
   });
 
   IconData get icon {
@@ -636,6 +638,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           value:
               '${NumberFormatUtils.defaultFormat.formatDecimal(climateState!.currentTemperature!, decimalPlaces: 1)}°C',
           type: 'temp',
+          isOnline: true,
         ),
       );
     }
@@ -650,6 +653,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           value:
               '${NumberFormatUtils.defaultFormat.formatInteger(climateState!.currentHumidity!.toInt())}%',
           type: 'humidity',
+          isOnline: true,
         ),
       );
     }
@@ -702,6 +706,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             value:
                 '${NumberFormatUtils.defaultFormat.formatDecimal(tempValue, decimalPlaces: 1)}°C',
             type: 'temp',
+            isOnline: device.isOnline,
           ));
         }
       }
@@ -728,6 +733,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             value:
                 '${NumberFormatUtils.defaultFormat.formatInteger(humidityValue.toInt())}%',
             type: 'humidity',
+            isOnline: device.isOnline,
           ));
         }
       }
@@ -762,6 +768,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           label: target.displayName,
           value: formatter.formatInteger(device.airQualityChannel!.aqi),
           type: 'aqi',
+          isOnline: device.isOnline,
         ));
       }
     }
@@ -777,6 +784,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             value:
                 '${formatter.formatInteger(pmChannel.concentration.toInt())} µg/m³',
             type: 'pm',
+            isOnline: device.isOnline,
           ));
         }
       } else if (device is AirPurifierDeviceView &&
@@ -789,6 +797,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             value:
                 '${formatter.formatInteger(pmChannel.concentration.toInt())} µg/m³',
             type: 'pm',
+            isOnline: device.isOnline,
           ));
         }
       }
@@ -804,6 +813,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             label: target.displayName,
             value: '${formatter.formatInteger(co2Channel.concentration.toInt())} ppm',
             type: 'co2',
+            isOnline: device.isOnline,
           ));
         }
       } else if (device is AirPurifierDeviceView &&
@@ -815,6 +825,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             label: target.displayName,
             value: '${formatter.formatInteger(co2Channel.concentration.toInt())} ppm',
             type: 'co2',
+            isOnline: device.isOnline,
           ));
         }
       }
@@ -831,6 +842,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             label: target.displayName,
             value: '${formatter.formatInteger(vocChannel.concentration.toInt())} ppb',
             type: 'voc',
+            isOnline: device.isOnline,
           ));
         }
       } else if (device is AirPurifierDeviceView &&
@@ -842,6 +854,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             label: target.displayName,
             value: '${formatter.formatInteger(vocChannel.concentration.toInt())} ppb',
             type: 'voc',
+            isOnline: device.isOnline,
           ));
         }
       }
@@ -857,6 +870,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           value:
               '${formatter.formatInteger(pressureChannel.pressure.toInt())} hPa',
           type: 'pressure',
+          isOnline: device.isOnline,
         ));
       }
     }
@@ -1669,9 +1683,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
         return HorizontalTileCompact(
           icon: sensor.icon,
-          name: sensor.value,
-          status: _translateSensorLabel(localizations, sensor),
+          name: sensor.isOnline ? sensor.value : _translateSensorLabel(localizations, sensor),
+          status: sensor.isOnline ? _translateSensorLabel(localizations, sensor) : localizations.device_status_offline,
           iconAccentColor: _getSensorColor(context, sensor.type),
+          isOffline: !sensor.isOnline,
+          showWarningBadge: true,
           onTileTap: () {
             // TODO: Sensor detail
           },
@@ -1821,9 +1837,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         children: sensors.map((sensor) {
           return VerticalTileLarge(
             icon: sensor.icon,
-            name: sensor.value,
-            status: _translateSensorLabel(localizations, sensor),
+            name: sensor.isOnline ? sensor.value : _translateSensorLabel(localizations, sensor),
+            status: sensor.isOnline ? _translateSensorLabel(localizations, sensor) : localizations.device_status_offline,
             iconAccentColor: _getSensorColor(context, sensor.type),
+            isOffline: !sensor.isOnline,
+            showWarningBadge: true,
             onTileTap: () {
               // TODO: Sensor detail
             },
@@ -1843,9 +1861,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
           child: HorizontalTileStretched(
             icon: sensor.icon,
-            name: sensor.value,
-            status: _translateSensorLabel(localizations, sensor),
+            name: sensor.isOnline ? sensor.value : _translateSensorLabel(localizations, sensor),
+            status: sensor.isOnline ? _translateSensorLabel(localizations, sensor) : localizations.device_status_offline,
             iconAccentColor: _getSensorColor(context, sensor.type),
+            isOffline: !sensor.isOnline,
+            showWarningBadge: true,
             onTileTap: () {
               // TODO: Sensor detail
             },
