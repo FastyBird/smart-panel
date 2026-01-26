@@ -285,6 +285,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                       child: _ErrorToast(
                         message: widget.errorMessage!,
                         onDismiss: _dismissErrorToast,
+                        isDark: isDark,
                       ),
                     ),
                   ),
@@ -704,7 +705,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
             // Warning WiFi icon
             IconContainer(
               icon: MdiIcons.serverOff,
-              color: SystemPagesTheme.warning,
+              color: SystemPagesTheme.warning(isDark),
               size: _screenService.scale(80),
               iconSize: _screenService.scale(40),
             ),
@@ -811,7 +812,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
             // Error icon
             IconContainer(
               icon: MdiIcons.alertCircle,
-              color: SystemPagesTheme.error,
+              color: SystemPagesTheme.error(isDark),
               size: _screenService.scale(80),
               iconSize: _screenService.scale(40),
             ),
@@ -1073,22 +1074,27 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
 class _ErrorToast extends StatelessWidget {
   final String message;
   final VoidCallback? onDismiss;
+  final bool isDark;
 
   const _ErrorToast({
     required this.message,
     this.onDismiss,
+    this.isDark = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacings.pMd,
+        vertical: AppSpacings.pSm,
+      ),
       decoration: BoxDecoration(
-        color: SystemPagesTheme.error,
-        borderRadius: BorderRadius.circular(SystemPagesTheme.radiusLg),
+        color: SystemPagesTheme.error(isDark),
+        borderRadius: BorderRadius.circular(AppBorderRadius.large),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
+            color: AppColors.black.withValues(alpha: 0.3),
             blurRadius: 32,
             offset: const Offset(0, 8),
           ),
@@ -1097,19 +1103,26 @@ class _ErrorToast extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline, color: Colors.white, size: 20),
-          const SizedBox(width: 12),
+          Icon(Icons.error_outline, color: AppColors.white, size: 20),
+          SizedBox(width: AppSpacings.pSm),
           Flexible(
             child: Text(
               message,
-              style: const TextStyle(color: Colors.white, fontSize: 14),
+              style: TextStyle(
+                color: AppColors.white,
+                fontSize: AppFontSize.small,
+              ),
             ),
           ),
           if (onDismiss != null) ...[
-            const SizedBox(width: 8),
+            SizedBox(width: AppSpacings.pXs),
             GestureDetector(
               onTap: onDismiss,
-              child: const Icon(Icons.close, color: Colors.white70, size: 20),
+              child: Icon(
+                Icons.close,
+                color: AppColors.white.withValues(alpha: 0.7),
+                size: 20,
+              ),
             ),
           ],
         ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/system_pages/theme.dart';
 
 /// Primary action button for system pages
@@ -41,26 +42,29 @@ class _SystemPagePrimaryButtonState extends State<SystemPagePrimaryButton> {
         duration: const Duration(milliseconds: 100),
         child: Container(
           constraints: BoxConstraints(minWidth: widget.minWidth),
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacings.pLg,
+            vertical: AppSpacings.pMd,
+          ),
           decoration: BoxDecoration(
             color: widget.onPressed != null
                 ? accent
                 : accent.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(SystemPagesTheme.radiusLg),
+            borderRadius: BorderRadius.circular(AppBorderRadius.large),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (widget.icon != null) ...[
-                Icon(widget.icon, color: Colors.white, size: 20),
-                const SizedBox(width: 10),
+                Icon(widget.icon, color: AppColors.white, size: 20),
+                SizedBox(width: AppSpacings.pSm),
               ],
               Text(
                 widget.label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
+                style: TextStyle(
+                  color: AppColors.white,
+                  fontSize: AppFontSize.base,
                   fontWeight: FontWeight.w500,
                 ),
               ),

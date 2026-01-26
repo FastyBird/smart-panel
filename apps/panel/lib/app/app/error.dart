@@ -60,7 +60,7 @@ class AppError extends StatelessWidget {
                       // Error icon
                       IconContainer(
                         icon: MdiIcons.alertCircle,
-                        color: SystemPagesTheme.error,
+                        color: SystemPagesTheme.error(isDark),
                         size: _screenService.scale(80),
                         iconSize: _screenService.scale(40),
                       ),
@@ -125,12 +125,12 @@ class AppError extends StatelessWidget {
       padding: EdgeInsets.all(_screenService.scale(16)),
       decoration: BoxDecoration(
         color: SystemPagesTheme.card(isDark),
-        borderRadius: BorderRadius.circular(SystemPagesTheme.radiusMd),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
         boxShadow: isDark
             ? null
             : [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
+                  color: AppColors.black.withValues(alpha: 0.05),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -142,12 +142,12 @@ class AppError extends StatelessWidget {
             width: _screenService.scale(40),
             height: _screenService.scale(40),
             decoration: BoxDecoration(
-              color: SystemPagesTheme.infoLight,
-              borderRadius: BorderRadius.circular(10),
+              color: SystemPagesTheme.infoLight(isDark),
+              borderRadius: BorderRadius.circular(AppBorderRadius.small),
             ),
             child: Icon(
               Icons.info_outline,
-              color: SystemPagesTheme.info,
+              color: SystemPagesTheme.info(isDark),
               size: _screenService.scale(22),
             ),
           ),
@@ -156,7 +156,7 @@ class AppError extends StatelessWidget {
             child: Text(
               'Please ask the administrator to activate "Permit Join" in the admin panel, then restart the application.',
               style: TextStyle(
-                color: SystemPagesTheme.info,
+                color: SystemPagesTheme.info(isDark),
                 fontSize: _screenService.scale(14),
               ),
             ),
@@ -179,7 +179,7 @@ class AppError extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: SystemPagesTheme.card(isDark),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppBorderRadius.small),
       ),
       child: Text(
         errorCode,

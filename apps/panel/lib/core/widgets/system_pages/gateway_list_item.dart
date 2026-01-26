@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 import 'package:fastybird_smart_panel/core/models/discovered_backend.dart';
+import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/system_pages/theme.dart';
 
 /// List item widget for displaying a discovered backend/gateway
@@ -28,19 +29,22 @@ class GatewayListItem extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        padding: EdgeInsets.symmetric(
+          horizontal: AppSpacings.pMd,
+          vertical: AppSpacings.pMd,
+        ),
         decoration: BoxDecoration(
           color: isSelected ? accentLight : SystemPagesTheme.card(isDark),
-          borderRadius: BorderRadius.circular(SystemPagesTheme.radiusMd),
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: Border.all(
-            color: isSelected ? accent : Colors.transparent,
+            color: isSelected ? accent : AppColors.blank,
             width: 2,
           ),
           boxShadow: isDark
               ? null
               : [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
+                    color: AppColors.black.withValues(alpha: 0.05),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -56,17 +60,17 @@ class GatewayListItem extends StatelessWidget {
                 color: isSelected
                     ? accent
                     : SystemPagesTheme.cardSecondary(isDark),
-                borderRadius: BorderRadius.circular(SystemPagesTheme.radiusSm),
+                borderRadius: BorderRadius.circular(AppBorderRadius.small),
               ),
               child: Icon(
                 isSelected ? Icons.check : MdiIcons.server,
                 color: isSelected
-                    ? Colors.white
+                    ? AppColors.white
                     : SystemPagesTheme.textSecondary(isDark),
                 size: 24,
               ),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: AppSpacings.pMd),
             // Info
             Expanded(
               child: Column(
@@ -76,16 +80,16 @@ class GatewayListItem extends StatelessWidget {
                     backend.name,
                     style: TextStyle(
                       color: SystemPagesTheme.textPrimary(isDark),
-                      fontSize: 15,
+                      fontSize: AppFontSize.base,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: AppSpacings.pXxs),
                   Text(
                     backend.displayAddress,
                     style: TextStyle(
                       color: SystemPagesTheme.textMuted(isDark),
-                      fontSize: 13,
+                      fontSize: AppFontSize.small,
                     ),
                   ),
                 ],
@@ -94,17 +98,19 @@ class GatewayListItem extends StatelessWidget {
             // Badge
             if (backend.version != null)
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacings.pSm,
+                  vertical: AppSpacings.pXxs,
+                ),
                 decoration: BoxDecoration(
                   color: SystemPagesTheme.cardSecondary(isDark),
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(AppBorderRadius.small),
                 ),
                 child: Text(
                   'v${backend.version}',
                   style: TextStyle(
                     color: SystemPagesTheme.textMuted(isDark),
-                    fontSize: 11,
+                    fontSize: AppFontSize.extraSmall,
                     fontWeight: FontWeight.w500,
                     letterSpacing: 0.5,
                   ),

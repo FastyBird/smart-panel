@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/system_pages/theme.dart';
 
 /// Subtle ghost button for tertiary actions
@@ -37,19 +38,22 @@ class _SystemPageGhostButtonState extends State<SystemPageGhostButton> {
       onTapCancel: () => setState(() => _isHovered = false),
       onTap: widget.onPressed,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        padding: EdgeInsets.symmetric(
+          horizontal: AppSpacings.pMd,
+          vertical: AppSpacings.pSm,
+        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (widget.icon != null) ...[
               Icon(widget.icon, color: color, size: 18),
-              const SizedBox(width: 8),
+              SizedBox(width: AppSpacings.pXs),
             ],
             Text(
               widget.label,
               style: TextStyle(
                 color: color,
-                fontSize: 14,
+                fontSize: AppFontSize.small,
                 fontWeight: FontWeight.w500,
               ),
             ),

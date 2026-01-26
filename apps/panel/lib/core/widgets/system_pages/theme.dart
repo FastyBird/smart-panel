@@ -2,27 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 
-/// Theme constants for system pages (discovery, error, configuration screens)
-/// Provides consistent styling across all system-level pages
+/// Theme utilities for system pages (discovery, error, configuration screens)
+/// Uses existing app theme colors and utilities for consistency
 class SystemPagesTheme {
-  // Status colors
-  static const Color success = Color(0xFF66BB6A);
-  static const Color successLight = Color(0x2666BB6A);
-  static const Color warning = Color(0xFFFF9800);
-  static const Color warningLight = Color(0x26FF9800);
-  static const Color error = Color(0xFFEF5350);
-  static const Color errorLight = Color(0x26EF5350);
-  static const Color info = Color(0xFF42A5F5);
-  static const Color infoLight = Color(0x2642A5F5);
-  static const Color offline = Color(0xFF78909C);
-
-  // Border radii
-  static const double radiusSm = 12.0;
-  static const double radiusMd = 16.0;
-  static const double radiusLg = 20.0;
-  static const double radiusXl = 24.0;
-
-  // Helper methods for theme-aware colors
+  // Helper methods for theme-aware colors using existing app theme
   static Color background(bool isDark) =>
       isDark ? AppBgColorDark.base : AppBgColorLight.base;
 
@@ -49,4 +32,29 @@ class SystemPagesTheme {
 
   static Color accentLight(bool isDark) =>
       isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9;
+
+  // Status colors using existing app theme colors
+  static Color success(bool isDark) =>
+      isDark ? AppColorsDark.success : AppColorsLight.success;
+
+  static Color successLight(bool isDark) =>
+      isDark ? AppColorsDark.successLight9 : AppColorsLight.successLight9;
+
+  static Color warning(bool isDark) =>
+      isDark ? AppColorsDark.warning : AppColorsLight.warning;
+
+  static Color warningLight(bool isDark) =>
+      isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9;
+
+  static Color error(bool isDark) =>
+      isDark ? AppColorsDark.error : AppColorsLight.error;
+
+  static Color errorLight(bool isDark) =>
+      isDark ? AppColorsDark.errorLight9 : AppColorsLight.errorLight9;
+
+  static Color info(bool isDark) =>
+      isDark ? AppColorsDark.info : AppColorsLight.info;
+
+  static Color infoLight(bool isDark) =>
+      isDark ? AppColorsDark.infoLight9 : AppColorsLight.infoLight9;
 }

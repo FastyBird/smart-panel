@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/system_pages/theme.dart';
 
 /// Secondary action button for system pages
@@ -47,10 +48,13 @@ class _SystemPageSecondaryButtonState extends State<SystemPageSecondaryButton> {
         duration: const Duration(milliseconds: 100),
         child: Container(
           constraints: BoxConstraints(minWidth: widget.minWidth),
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacings.pLg,
+            vertical: AppSpacings.pMd,
+          ),
           decoration: BoxDecoration(
             color: SystemPagesTheme.card(widget.isDark),
-            borderRadius: BorderRadius.circular(SystemPagesTheme.radiusLg),
+            borderRadius: BorderRadius.circular(AppBorderRadius.large),
             border: Border.all(
               color: _isPressed
                   ? accent
@@ -70,7 +74,7 @@ class _SystemPageSecondaryButtonState extends State<SystemPageSecondaryButton> {
                       : SystemPagesTheme.textMuted(widget.isDark),
                   size: 20,
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: AppSpacings.pSm),
               ],
               Text(
                 widget.label,
@@ -78,7 +82,7 @@ class _SystemPageSecondaryButtonState extends State<SystemPageSecondaryButton> {
                   color: widget.onPressed != null
                       ? SystemPagesTheme.textPrimary(widget.isDark)
                       : SystemPagesTheme.textMuted(widget.isDark),
-                  fontSize: 15,
+                  fontSize: AppFontSize.base,
                   fontWeight: FontWeight.w500,
                 ),
               ),
