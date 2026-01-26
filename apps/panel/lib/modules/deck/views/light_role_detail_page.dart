@@ -1870,6 +1870,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     // Check if we're actively settling (waiting for device sync)
     final isSettling = isChannelSettling(LightingConstants.brightnessChannelId) ||
         isChannelSettling(LightingConstants.hueChannelId) ||
+        isChannelSettling(LightingConstants.saturationChannelId) ||
         isChannelSettling(LightingConstants.temperatureChannelId) ||
         isChannelSettling(LightingConstants.whiteChannelId) ||
         isChannelSettling(LightingConstants.onOffChannelId);
@@ -1878,6 +1879,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     // (settling timer expired without convergence - only happens after user made a role command)
     final hasSyncError = isChannelMixed(LightingConstants.brightnessChannelId) ||
         isChannelMixed(LightingConstants.hueChannelId) ||
+        isChannelMixed(LightingConstants.saturationChannelId) ||
         isChannelMixed(LightingConstants.temperatureChannelId) ||
         isChannelMixed(LightingConstants.whiteChannelId) ||
         isChannelMixed(LightingConstants.onOffChannelId);
