@@ -187,8 +187,12 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 
 			default:
 				this.logger.warn(`Unknown climate intent type: ${String(intent.type)}`);
-				this.intentsService.completeIntent(intentRecord.id, []);
-				return defaultResult;
+				this.intentsService.completeIntent(intentRecord.id, targetResults);
+				return {
+					...defaultResult,
+					skippedOfflineDevices: offlineIds.length,
+					offlineDeviceIds: offlineIds.length > 0 ? offlineIds : undefined,
+				};
 		}
 
 		// Add skipped offline devices info to result
@@ -211,28 +215,31 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 
 	/**
 	 * Filter out offline devices from a list of primary climate devices.
-	 * Returns online devices and list of offline device IDs.
+	 * Returns online devices and list of unique offline device IDs.
 	 *
 	 * Devices with UNKNOWN status are treated as potentially online and included
 	 * in the online list (commands will fail naturally if device is truly offline).
+	 *
+	 * Note: A device may have multiple channels, so we use a Set to ensure
+	 * each device ID appears only once in offlineIds.
 	 */
 	private filterOfflineClimateDevices(devices: PrimaryClimateDevice[]): {
 		online: PrimaryClimateDevice[];
 		offlineIds: string[];
 	} {
 		const online: PrimaryClimateDevice[] = [];
-		const offlineIds: string[] = [];
+		const offlineIdSet = new Set<string>();
 
 		for (const device of devices) {
 			// Treat UNKNOWN status as potentially online - allow commands to attempt
 			if (device.device.status.online || device.device.status.status === ConnectionState.UNKNOWN) {
 				online.push(device);
 			} else {
-				offlineIds.push(device.device.id);
+				offlineIdSet.add(device.device.id);
 			}
 		}
 
-		return { online, offlineIds };
+		return { online, offlineIds: [...offlineIdSet] };
 	}
 
 	/**

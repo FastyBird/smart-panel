@@ -1337,25 +1337,28 @@ export class LightingIntentService extends SpaceIntentBaseService {
 
 	/**
 	 * Filter out offline devices from a list of light devices.
-	 * Returns online devices and list of offline device IDs.
+	 * Returns online devices and list of unique offline device IDs.
 	 *
 	 * Devices with UNKNOWN status are treated as potentially online and included
 	 * in the online list (commands will fail naturally if device is truly offline).
+	 *
+	 * Note: A device may have multiple channels (e.g., multi-output light fixture),
+	 * so we use a Set to ensure each device ID appears only once in offlineIds.
 	 */
 	private filterOfflineDevices(lights: LightDevice[]): { online: LightDevice[]; offlineIds: string[] } {
 		const online: LightDevice[] = [];
-		const offlineIds: string[] = [];
+		const offlineIdSet = new Set<string>();
 
 		for (const light of lights) {
 			// Treat UNKNOWN status as potentially online - allow commands to attempt
 			if (light.device.status.online || light.device.status.status === ConnectionState.UNKNOWN) {
 				online.push(light);
 			} else {
-				offlineIds.push(light.device.id);
+				offlineIdSet.add(light.device.id);
 			}
 		}
 
-		return { online, offlineIds };
+		return { online, offlineIds: [...offlineIdSet] };
 	}
 
 	/**

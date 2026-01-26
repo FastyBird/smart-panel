@@ -258,8 +258,15 @@ export class CoversIntentService extends SpaceIntentBaseService {
 
 			default:
 				this.logger.warn(`Unknown covers intent type: ${String(intent.type)}`);
-				this.intentsService.completeIntent(intentRecord.id, []);
-				return { success: false, affectedDevices: 0, failedDevices: 0, skippedOfflineDevices: 0, newPosition: null };
+				this.intentsService.completeIntent(intentRecord.id, targetResults);
+				return {
+					success: false,
+					affectedDevices: 0,
+					failedDevices: 0,
+					skippedOfflineDevices: targetedOfflineIds.length,
+					offlineDeviceIds: targetedOfflineIds.length > 0 ? targetedOfflineIds : undefined,
+					newPosition: null,
+				};
 		}
 
 		// Add skipped offline devices info to result (only those actually targeted)
@@ -282,25 +289,28 @@ export class CoversIntentService extends SpaceIntentBaseService {
 
 	/**
 	 * Filter out offline devices from a list of cover devices.
-	 * Returns online devices and list of offline device IDs.
+	 * Returns online devices and list of unique offline device IDs.
 	 *
 	 * Devices with UNKNOWN status are treated as potentially online and included
 	 * in the online list (commands will fail naturally if device is truly offline).
+	 *
+	 * Note: A device may have multiple channels, so we use a Set to ensure
+	 * each device ID appears only once in offlineIds.
 	 */
 	private filterOfflineCoverDevices(covers: CoverDevice[]): { online: CoverDevice[]; offlineIds: string[] } {
 		const online: CoverDevice[] = [];
-		const offlineIds: string[] = [];
+		const offlineIdSet = new Set<string>();
 
 		for (const cover of covers) {
 			// Treat UNKNOWN status as potentially online - allow commands to attempt
 			if (cover.device.status.online || cover.device.status.status === ConnectionState.UNKNOWN) {
 				online.push(cover);
 			} else {
-				offlineIds.push(cover.device.id);
+				offlineIdSet.add(cover.device.id);
 			}
 		}
 
-		return { online, offlineIds };
+		return { online, offlineIds: [...offlineIdSet] };
 	}
 
 	/**
