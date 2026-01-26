@@ -278,9 +278,9 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                 // Error toast
                 if (_showErrorToast && widget.errorMessage != null)
                   Positioned(
-                    left: 24,
-                    right: 24,
-                    bottom: isLandscape ? 100 : 160,
+                    left: _screenService.scale(24),
+                    right: _screenService.scale(24),
+                    bottom: _screenService.scale(isLandscape ? 100 : 160),
                     child: Center(
                       child: _ErrorToast(
                         message: widget.errorMessage!,

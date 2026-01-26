@@ -80,9 +80,13 @@ class AppError extends StatelessWidget {
                       ),
                       SizedBox(height: _screenService.scale(8)),
                       // Subtitle/error message
+                      // For long errors, show generic message here; details go in error code box
                       Text(
-                        _errorMessage ??
-                            'An unexpected error occurred while starting the application.',
+                        _errorMessage == null
+                            ? 'An unexpected error occurred while starting the application.'
+                            : (_errorMessage!.length > 100 && !hasPermitJoinError)
+                                ? 'An error occurred. See details below.'
+                                : _errorMessage!,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: SystemPagesTheme.textMuted(isDark),
@@ -95,7 +99,7 @@ class AppError extends StatelessWidget {
                         SizedBox(height: _screenService.scale(24)),
                         _buildPermitJoinHint(context, isDark),
                       ],
-                      // Error code if present
+                      // Error details box for long error messages
                       if (_errorMessage != null &&
                           !hasPermitJoinError &&
                           _errorMessage!.length > 100) ...[
