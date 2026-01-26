@@ -385,10 +385,11 @@ class _LightSingleChannelControlPanelState
         ));
       }
       if (satProp != null) {
+        // Use saturation parameter directly to avoid precision loss from RGB-to-HSV conversion
         colorProperties.add(PropertyConfig(
           channelId: channel.id,
           propertyId: satProp.id,
-          desiredValue: (hsv.saturation * 100).round(),
+          desiredValue: (saturation * 100).round(),
         ));
       }
     }
@@ -818,10 +819,11 @@ class _LightMultiChannelControlPanelState
         ));
       }
       if (satProp != null) {
+        // Use saturation parameter directly to avoid precision loss from RGB-to-HSV conversion
         colorProperties.add(PropertyConfig(
           channelId: channel.id,
           propertyId: satProp.id,
-          desiredValue: (hsv.saturation * 100).round(),
+          desiredValue: (saturation * 100).round(),
         ));
       }
     }
