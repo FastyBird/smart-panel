@@ -350,8 +350,8 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                 // Error toast
                 if (_showErrorToast && widget.errorMessage != null)
                   Positioned(
-                    left: _screenService.scale(24),
-                    right: _screenService.scale(24),
+                    left: AppSpacings.pLg + AppSpacings.pMd,
+                    right: AppSpacings.pLg + AppSpacings.pMd,
                     bottom: _screenService.scale(isLandscape ? 100 : 160),
                     child: Center(
                       child: _ErrorToast(
@@ -443,23 +443,23 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            SizedBox(height: _screenService.scale(8)),
+            SizedBox(height: AppSpacings.pMd),
             Text(
               localizations.discovery_searching_description,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: SystemPagesTheme.textMuted(isDark),
-                fontSize: _screenService.scale(14),
+                fontSize: AppFontSize.base,
                 height: 1.5,
               ),
             ),
             if (_backends.isNotEmpty) ...[
-              SizedBox(height: _screenService.scale(16)),
+              SizedBox(height: AppSpacings.pLg),
               Text(
                 localizations.discovery_found_count(_backends.length),
                 style: TextStyle(
                   color: accent,
-                  fontSize: _screenService.scale(14),
+                  fontSize: AppFontSize.base,
                 ),
               ),
             ],
@@ -537,7 +537,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               fontWeight: FontWeight.w500,
             ),
           ),
-          SizedBox(height: _screenService.scale(4)),
+          SizedBox(height: AppSpacings.pSm),
           Text(
             localizations.discovery_select_description(_backends.length),
             style: TextStyle(
@@ -545,13 +545,13 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               fontSize: _screenService.scale(13),
             ),
           ),
-          SizedBox(height: _screenService.scale(24)),
+          SizedBox(height: AppSpacings.pLg + AppSpacings.pMd),
           // Gateway list
           Expanded(
             child: ListView.separated(
               itemCount: _backends.length,
               separatorBuilder: (_, __) =>
-                  SizedBox(height: _screenService.scale(12)),
+                  SizedBox(height: AppSpacings.pMd + AppSpacings.pSm),
               itemBuilder: (context, index) {
                 final backend = _backends[index];
                 return GatewayListItem(
@@ -563,7 +563,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               },
             ),
           ),
-          SizedBox(height: _screenService.scale(24)),
+          SizedBox(height: AppSpacings.pLg + AppSpacings.pMd),
           // Connect button
           SizedBox(
             width: double.infinity,
@@ -575,7 +575,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               isDark: isDark,
             ),
           ),
-          SizedBox(height: _screenService.scale(16)),
+          SizedBox(height: AppSpacings.pLg),
           // Secondary actions
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -633,7 +633,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                SizedBox(height: _screenService.scale(4)),
+                SizedBox(height: AppSpacings.pSm),
                 Text(
                   localizations.discovery_select_description(_backends.length),
                   style: TextStyle(
@@ -654,7 +654,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                   child: ListView.separated(
                     itemCount: _backends.length,
                     separatorBuilder: (_, __) =>
-                        SizedBox(height: _screenService.scale(12)),
+                        SizedBox(height: AppSpacings.pMd + AppSpacings.pSm),
                     itemBuilder: (context, index) {
                       final backend = _backends[index];
                       return GatewayListItem(
@@ -666,7 +666,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                     },
                   ),
                 ),
-                SizedBox(height: _screenService.scale(24)),
+                SizedBox(height: AppSpacings.pLg + AppSpacings.pMd),
                 // Actions
                 SizedBox(
                   width: double.infinity,
@@ -679,7 +679,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                     isDark: isDark,
                   ),
                 ),
-                SizedBox(height: _screenService.scale(16)),
+                SizedBox(height: AppSpacings.pLg),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -711,6 +711,9 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     bool isLandscape,
   ) {
     final localizations = AppLocalizations.of(context)!;
+    final isCompact =
+        _screenService.isSmallScreen || _screenService.isMediumScreen;
+    final isCompactLandscape = isCompact && isLandscape;
     return Center(
       child: Padding(
         padding: EdgeInsets.all(_getSystemPagePadding(isLandscape)),
@@ -770,7 +773,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
             onPressed: _startDiscovery,
             isDark: isDark,
           ),
-          SizedBox(width: _screenService.scale(16)),
+          SizedBox(width: AppSpacings.pLg),
           SystemPageSecondaryButton(
             label: localizations.discovery_button_manual,
             icon: Icons.edit_outlined,
@@ -793,7 +796,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
             isDark: isDark,
           ),
         ),
-        SizedBox(height: _screenService.scale(12)),
+        SizedBox(height: AppSpacings.pMd + AppSpacings.pSm),
         SizedBox(
           width: double.infinity,
           child: SystemPageSecondaryButton(
@@ -838,18 +841,18 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            SizedBox(height: _screenService.scale(8)),
+            SizedBox(height: AppSpacings.pMd),
             // Message
             Text(
               localizations.discovery_error_description,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: SystemPagesTheme.textMuted(isDark),
-                fontSize: _screenService.scale(14),
+                fontSize: AppFontSize.base,
                 height: 1.5,
               ),
             ),
-            SizedBox(height: _screenService.scale(32)),
+            SizedBox(height: AppSpacings.pXl),
             // Buttons
             _buildActionButtons(isDark, isLandscape, localizations),
           ],
@@ -891,16 +894,16 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            SizedBox(height: _screenService.scale(8)),
+            SizedBox(height: AppSpacings.pMd),
             Text(
               localizations.discovery_connecting_description(address),
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: SystemPagesTheme.textMuted(isDark),
-                fontSize: _screenService.scale(14),
+                fontSize: AppFontSize.base,
               ),
             ),
-            SizedBox(height: _screenService.scale(24)),
+            SizedBox(height: AppSpacings.pLg + AppSpacings.pMd),
             LoadingSpinner(
               size: _screenService.scale(48),
               color: accent,
@@ -939,7 +942,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            SizedBox(height: _screenService.scale(24)),
+            SizedBox(height: AppSpacings.pLg + AppSpacings.pMd),
             TextField(
               controller: _manualUrlController,
               decoration: InputDecoration(
@@ -954,16 +957,16 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               autocorrect: false,
               onSubmitted: (_) => _submitManualUrl(),
             ),
-            SizedBox(height: _screenService.scale(16)),
+            SizedBox(height: AppSpacings.pLg),
             Text(
               localizations.discovery_manual_entry_help,
               style: TextStyle(
                 color: SystemPagesTheme.textMuted(isDark),
-                fontSize: _screenService.scale(12),
+                fontSize: AppFontSize.small,
               ),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: _screenService.scale(32)),
+            SizedBox(height: AppSpacings.pXl),
             // Buttons
             _buildManualEntryButtons(isDark, isLandscape, localizations),
           ],
@@ -989,7 +992,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
             onPressed: _backToDiscovery,
             isDark: isDark,
           ),
-          SizedBox(width: _screenService.scale(16)),
+          SizedBox(width: AppSpacings.pLg),
           SystemPagePrimaryButton(
             label: localizations.discovery_button_connect,
             icon: Icons.arrow_forward,
@@ -1012,7 +1015,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
             isDark: isDark,
           ),
         ),
-        SizedBox(height: _screenService.scale(12)),
+        SizedBox(height: AppSpacings.pMd + AppSpacings.pSm),
         SizedBox(
           width: double.infinity,
           child: SystemPageSecondaryButton(

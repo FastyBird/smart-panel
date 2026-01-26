@@ -1472,9 +1472,13 @@
   "@config_error_title": {
     "description": "Title shown when display configuration is invalid"
   },
-  "config_error_hint": "Configure this display in Admin > Displays",
-  "@config_error_hint": {
-    "description": "Hint text explaining how to fix configuration error"
+  "config_error_hint_prefix": "Configure this display in",
+  "@config_error_hint_prefix": {
+    "description": "First part of hint text explaining how to fix configuration error"
+  },
+  "config_error_hint_path": "Admin > Displays",
+  "@config_error_hint_path": {
+    "description": "Path part of hint text (Admin > Displays)"
   },
   "button_retry": "Retry",
   "@button_retry": {

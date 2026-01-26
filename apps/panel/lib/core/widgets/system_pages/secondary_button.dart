@@ -75,7 +75,7 @@ class _SystemPageSecondaryButtonState extends State<SystemPageSecondaryButton> {
                   color: widget.onPressed != null
                       ? SystemPagesTheme.textPrimary(widget.isDark)
                       : SystemPagesTheme.textMuted(widget.isDark),
-                  size: _screenService.scale(20),
+                  size: AppSpacings.pLg + AppSpacings.pSm,
                 ),
                 SizedBox(width: AppSpacings.pSm),
               ],

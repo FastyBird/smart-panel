@@ -41,15 +41,15 @@ class GatewayListItem extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: Border.all(
             color: isSelected ? accent : AppColors.blank,
-            width: _screenService.scale(2),
+            width: AppSpacings.pXs,
           ),
           boxShadow: isDark
               ? null
               : [
                   BoxShadow(
                     color: AppColors.black.withValues(alpha: 0.05),
-                    blurRadius: _screenService.scale(8),
-                    offset: Offset(0, _screenService.scale(2)),
+                    blurRadius: AppSpacings.pMd,
+                    offset: Offset(0, AppSpacings.pXs),
                   ),
                 ],
         ),
@@ -71,7 +71,7 @@ class GatewayListItem extends StatelessWidget {
                 color: isSelected
                     ? AppColors.white
                     : SystemPagesTheme.textSecondary(isDark),
-                size: _screenService.scale(24),
+                size: AppSpacings.pLg + AppSpacings.pMd,
               ),
             ),
             SizedBox(width: AppSpacings.pMd),

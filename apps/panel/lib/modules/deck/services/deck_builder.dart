@@ -145,8 +145,7 @@ String? validateDisplayConfig(DisplayModel display) {
   final roomId = display.roomId;
   if (display.role == DisplayRole.room &&
       (roomId == null || roomId.isEmpty)) {
-    return 'Room display requires a space (room) to be assigned. '
-        'Please configure this in Admin > Displays.';
+    return 'Room display requires a space (room) to be assigned.';
   }
 
   return null;

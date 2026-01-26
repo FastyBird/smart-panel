@@ -1090,7 +1090,10 @@ class AppLocalizationsCs extends AppLocalizations {
   String get config_error_title => 'Vyžadována konfigurace';
 
   @override
-  String get config_error_hint => 'Nakonfigurujte tento displej v Správci > Displeje';
+  String get config_error_hint_prefix => 'Nakonfigurujte tento displej v';
+
+  @override
+  String get config_error_hint_path => 'Správci > Displeje';
 
   @override
   String get button_retry => 'Opakovat';

@@ -1090,7 +1090,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get config_error_title => 'Configuration Required';
 
   @override
-  String get config_error_hint => 'Configure this display in Admin > Displays';
+  String get config_error_hint_prefix => 'Configure this display in';
+
+  @override
+  String get config_error_hint_path => 'Admin > Displays';
 
   @override
   String get button_retry => 'Retry';

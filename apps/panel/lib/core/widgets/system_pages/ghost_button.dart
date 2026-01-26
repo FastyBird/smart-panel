@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/system_pages/theme.dart';
 
@@ -25,7 +23,6 @@ class SystemPageGhostButton extends StatefulWidget {
 }
 
 class _SystemPageGhostButtonState extends State<SystemPageGhostButton> {
-  final ScreenService _screenService = locator<ScreenService>();
   bool _isHovered = false;
 
   @override
@@ -58,7 +55,7 @@ class _SystemPageGhostButtonState extends State<SystemPageGhostButton> {
               Icon(
                 widget.icon,
                 color: color,
-                size: _screenService.scale(18),
+                size: AppFontSize.extraLarge,
               ),
               SizedBox(width: AppSpacings.pXs),
             ],

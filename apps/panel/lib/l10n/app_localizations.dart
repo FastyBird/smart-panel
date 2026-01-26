@@ -2225,11 +2225,17 @@ abstract class AppLocalizations {
   /// **'Configuration Required'**
   String get config_error_title;
 
-  /// Hint text explaining how to fix configuration error
+  /// First part of hint text explaining how to fix configuration error
   ///
   /// In en, this message translates to:
-  /// **'Configure this display in Admin > Displays'**
-  String get config_error_hint;
+  /// **'Configure this display in'**
+  String get config_error_hint_prefix;
+
+  /// Path part of hint text (Admin > Displays)
+  ///
+  /// In en, this message translates to:
+  /// **'Admin > Displays'**
+  String get config_error_hint_path;
 
   /// Text for Retry button
   ///
