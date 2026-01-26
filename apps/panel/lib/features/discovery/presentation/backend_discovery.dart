@@ -1092,7 +1092,7 @@ class _ErrorToast extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: SystemPagesTheme.error(isDark),
-        borderRadius: BorderRadius.circular(AppBorderRadius.large),
+        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
         boxShadow: [
           BoxShadow(
             color: AppColors.black.withValues(alpha: 0.3),

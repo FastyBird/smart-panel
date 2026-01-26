@@ -56,7 +56,7 @@ class _SystemPagePrimaryButtonState extends State<SystemPagePrimaryButton> {
             color: widget.onPressed != null
                 ? accent
                 : accent.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(AppBorderRadius.large),
+            borderRadius: BorderRadius.circular(AppBorderRadius.medium),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

@@ -84,7 +84,7 @@ class GatewayListItem extends StatelessWidget {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  SizedBox(height: AppSpacings.pXxs),
+                  SizedBox(height: AppSpacings.pXs),
                   Text(
                     backend.displayAddress,
                     style: TextStyle(
@@ -100,7 +100,7 @@ class GatewayListItem extends StatelessWidget {
               Container(
                 padding: EdgeInsets.symmetric(
                   horizontal: AppSpacings.pSm,
-                  vertical: AppSpacings.pXxs,
+                  vertical: AppSpacings.pXs,
                 ),
                 decoration: BoxDecoration(
                   color: SystemPagesTheme.cardSecondary(isDark),

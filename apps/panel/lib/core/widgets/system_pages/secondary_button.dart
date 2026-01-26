@@ -54,7 +54,7 @@ class _SystemPageSecondaryButtonState extends State<SystemPageSecondaryButton> {
           ),
           decoration: BoxDecoration(
             color: SystemPagesTheme.card(widget.isDark),
-            borderRadius: BorderRadius.circular(AppBorderRadius.large),
+            borderRadius: BorderRadius.circular(AppBorderRadius.medium),
             border: Border.all(
               color: _isPressed
                   ? accent

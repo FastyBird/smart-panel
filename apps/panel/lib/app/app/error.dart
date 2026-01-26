@@ -84,9 +84,9 @@ class AppError extends StatelessWidget {
                       Text(
                         _errorMessage == null
                             ? 'An unexpected error occurred while starting the application.'
-                            : (_errorMessage!.length > 100 && !hasPermitJoinError)
+                            : (_errorMessage.length > 100 && !hasPermitJoinError)
                                 ? 'An error occurred. See details below.'
-                                : _errorMessage!,
+                                : _errorMessage,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: SystemPagesTheme.textMuted(isDark),
@@ -102,7 +102,7 @@ class AppError extends StatelessWidget {
                       // Error details box for long error messages
                       if (_errorMessage != null &&
                           !hasPermitJoinError &&
-                          _errorMessage!.length > 100) ...[
+                          _errorMessage.length > 100) ...[
                         SizedBox(height: _screenService.scale(16)),
                         _buildErrorCodeBox(context, isDark),
                       ],
@@ -173,8 +173,8 @@ class AppError extends StatelessWidget {
 
   Widget _buildErrorCodeBox(BuildContext context, bool isDark) {
     // Truncate long error messages for display in the error code box
-    final errorCode = _errorMessage != null && _errorMessage!.length > 200
-        ? '${_errorMessage!.substring(0, 200)}...'
+    final errorCode = _errorMessage != null && _errorMessage.length > 200
+        ? '${_errorMessage.substring(0, 200)}...'
         : _errorMessage ?? '';
 
     return Container(
