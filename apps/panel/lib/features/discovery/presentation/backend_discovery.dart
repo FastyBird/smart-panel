@@ -321,7 +321,8 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
         return _buildErrorState(context, isDark, isLandscape);
 
       case DiscoveryState.connecting:
-        return _buildConnectingState(context, isDark, isLandscape);
+        // Handled by early return above; this case is for exhaustiveness only
+        throw StateError('Unreachable: connecting state handled above');
     }
   }
 
