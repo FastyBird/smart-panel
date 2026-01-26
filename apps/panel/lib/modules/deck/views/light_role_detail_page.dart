@@ -373,9 +373,18 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
         if (channel == null) continue;
         if (!channel.hasColor) continue;
 
+        // Check HSV saturation property
         final satProp = channel.saturationProp;
         if (satProp != null &&
             service.isPropertyLocked(target.deviceId, target.channelId, satProp.id)) {
+          return true;
+        }
+
+        // For RGB mode, saturation is encoded in RGB values - check if any RGB property is locked
+        // This is consistent with _anyColorLocked which checks both modes
+        final redProp = channel.colorRedProp;
+        if (redProp != null &&
+            service.isPropertyLocked(target.deviceId, target.channelId, redProp.id)) {
           return true;
         }
       }

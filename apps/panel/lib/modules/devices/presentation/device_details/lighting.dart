@@ -372,11 +372,11 @@ class _LightSingleChannelControlPanelState
         ));
       }
     } else if (channel.hasHue && channel.hasSaturation) {
-      // HSV mode
+      // HSV mode - only update hue and saturation, not brightness
+      // Brightness is controlled by a separate slider and shouldn't change during color selection
       final hsv = HSVColor.fromColor(color);
       final hueProp = channel.hueProp;
       final satProp = channel.saturationProp;
-      final brightProp = channel.brightnessProp;
       if (hueProp != null) {
         colorProperties.add(PropertyConfig(
           channelId: channel.id,
@@ -389,13 +389,6 @@ class _LightSingleChannelControlPanelState
           channelId: channel.id,
           propertyId: satProp.id,
           desiredValue: (hsv.saturation * 100).round(),
-        ));
-      }
-      if (brightProp != null) {
-        colorProperties.add(PropertyConfig(
-          channelId: channel.id,
-          propertyId: brightProp.id,
-          desiredValue: (hsv.value * 100).round(),
         ));
       }
     }
@@ -424,6 +417,7 @@ class _LightSingleChannelControlPanelState
         }
 
         // Controller handles RGB vs HSV mode internally
+        // Note: setColor only updates hue/saturation for HSV, not brightness
         _controller.setColor(color);
 
         // Transition to settling state after command is sent (for the group)
@@ -811,11 +805,11 @@ class _LightMultiChannelControlPanelState
         ));
       }
     } else if (channel.hasHue && channel.hasSaturation) {
-      // HSV mode
+      // HSV mode - only update hue and saturation, not brightness
+      // Brightness is controlled by a separate slider and shouldn't change during color selection
       final hsv = HSVColor.fromColor(color);
       final hueProp = channel.hueProp;
       final satProp = channel.saturationProp;
-      final brightProp = channel.brightnessProp;
       if (hueProp != null) {
         colorProperties.add(PropertyConfig(
           channelId: channel.id,
@@ -828,13 +822,6 @@ class _LightMultiChannelControlPanelState
           channelId: channel.id,
           propertyId: satProp.id,
           desiredValue: (hsv.saturation * 100).round(),
-        ));
-      }
-      if (brightProp != null) {
-        colorProperties.add(PropertyConfig(
-          channelId: channel.id,
-          propertyId: brightProp.id,
-          desiredValue: (hsv.value * 100).round(),
         ));
       }
     }
@@ -863,6 +850,7 @@ class _LightMultiChannelControlPanelState
         }
 
         // Controller handles RGB vs HSV mode internally
+        // Note: setColor only updates hue/saturation for HSV, not brightness
         _selectedController.setColor(color);
 
         // Transition to settling state after command is sent (for the group)
