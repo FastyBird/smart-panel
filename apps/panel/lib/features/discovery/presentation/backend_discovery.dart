@@ -586,7 +586,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
         children: [
           // Left: Header
           SizedBox(
-            width: _screenService.scale(240),
+            width: _screenService.scale(isCompact ? 160 : 240),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -615,7 +615,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               ],
             ),
           ),
-          SizedBox(width: _screenService.scale(48)),
+          SizedBox(width: _screenService.scale(isCompact ? 24 : 48)),
           // Right: List and actions
           Expanded(
             child: Column(
@@ -639,16 +639,16 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                 ),
                 SizedBox(height: _screenService.scale(24)),
                 // Actions
-                Row(
-                  children: [
-                    SystemPagePrimaryButton(
-                      label: localizations.discovery_button_connect_selected,
-                      icon: Icons.arrow_forward,
-                      onPressed:
-                          _selectedBackend != null ? _confirmSelection : null,
-                      isDark: isDark,
-                    ),
-                  ],
+                SizedBox(
+                  width: double.infinity,
+                  child: SystemPagePrimaryButton(
+                    label: localizations.discovery_button_connect_selected,
+                    icon: Icons.arrow_forward,
+                    onPressed:
+                        _selectedBackend != null ? _confirmSelection : null,
+                    minWidth: double.infinity,
+                    isDark: isDark,
+                  ),
                 ),
                 SizedBox(height: _screenService.scale(16)),
                 Row(
