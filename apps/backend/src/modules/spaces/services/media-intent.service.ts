@@ -201,8 +201,11 @@ export class MediaIntentService extends SpaceIntentBaseService {
 		const targets = this.buildMediaTargets(allDevices);
 		const targetResults: IntentTargetResult[] = [];
 
-		// Add SKIPPED results for offline devices
-		for (const deviceId of offlineIds) {
+		// Filter offline devices by role for role-specific intents
+		const targetedOfflineIds = this.filterOfflineIdsByRole(allDevices, offlineIds, intent);
+
+		// Add SKIPPED results for offline devices that were actually targeted
+		for (const deviceId of targetedOfflineIds) {
 			targetResults.push({
 				deviceId,
 				status: IntentTargetStatus.SKIPPED,
@@ -234,11 +237,11 @@ export class MediaIntentService extends SpaceIntentBaseService {
 			result = await this.executeGlobalIntent(spaceId, devices, intent, targetResults);
 		}
 
-		// Add skipped offline devices info to result
-		result.skippedOfflineDevices = offlineIds.length;
+		// Add skipped offline devices info to result (only those actually targeted)
+		result.skippedOfflineDevices = targetedOfflineIds.length;
 
-		if (offlineIds.length > 0) {
-			result.offlineDeviceIds = offlineIds;
+		if (targetedOfflineIds.length > 0) {
+			result.offlineDeviceIds = targetedOfflineIds;
 		}
 
 		this.intentsService.completeIntent(intentRecord.id, targetResults);
@@ -321,6 +324,24 @@ export class MediaIntentService extends SpaceIntentBaseService {
 	 */
 	private buildMediaTargets(devices: MediaDevice[]): IntentTarget[] {
 		return devices.map((device) => ({ deviceId: device.device.id }));
+	}
+
+	/**
+	 * Filter offline device IDs by role for role-specific intents.
+	 * Returns only the offline device IDs that would have been targeted by this intent.
+	 */
+	private filterOfflineIdsByRole(allDevices: MediaDevice[], offlineIds: string[], intent: MediaIntentDto): string[] {
+		// For non-role-specific intents, all offline devices are targeted
+		if (!this.isRoleSpecificIntent(intent.type) || !intent.role) {
+			return offlineIds;
+		}
+
+		// Filter offline IDs to only those with the matching role
+		return offlineIds.filter((deviceId) => {
+			const device = allDevices.find((d) => d.device.id === deviceId);
+
+			return device?.role === intent.role;
+		});
 	}
 
 	/**
