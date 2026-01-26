@@ -917,38 +917,45 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
             localizations.discovery_connecting_fallback);
 
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            MdiIcons.serverNetwork,
-            size: _screenService.scale(48),
-            color: accent,
-          ),
-          SizedBox(height: _screenService.scale(16)),
-          Text(
-            localizations.discovery_connecting_title,
-            style: TextStyle(
-              color: SystemPagesTheme.textPrimary(isDark),
-              fontSize: _screenService.scale(24),
-              fontWeight: FontWeight.w500,
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: isLandscape
+              ? _screenService.scale(80)
+              : _screenService.scale(40),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              MdiIcons.serverNetwork,
+              size: _screenService.scale(48),
+              color: accent,
             ),
-          ),
-          SizedBox(height: _screenService.scale(8)),
-          Text(
-            localizations.discovery_connecting_description(address),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: SystemPagesTheme.textMuted(isDark),
-              fontSize: _screenService.scale(14),
+            SizedBox(height: _screenService.scale(16)),
+            Text(
+              localizations.discovery_connecting_title,
+              style: TextStyle(
+                color: SystemPagesTheme.textPrimary(isDark),
+                fontSize: _screenService.scale(24),
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
-          SizedBox(height: _screenService.scale(24)),
-          LoadingSpinner(
-            size: _screenService.scale(48),
-            color: accent,
-          ),
-        ],
+            SizedBox(height: _screenService.scale(8)),
+            Text(
+              localizations.discovery_connecting_description(address),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: SystemPagesTheme.textMuted(isDark),
+                fontSize: _screenService.scale(14),
+              ),
+            ),
+            SizedBox(height: _screenService.scale(24)),
+            LoadingSpinner(
+              size: _screenService.scale(48),
+              color: accent,
+            ),
+          ],
+        ),
       ),
     );
   }
