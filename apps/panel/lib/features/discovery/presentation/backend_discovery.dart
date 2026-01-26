@@ -101,6 +101,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
       _backends = [];
       _selectedBackend = null;
       _showManualEntry = false;
+      _showErrorToast = false;
     });
 
     try {
@@ -163,6 +164,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
       setState(() {
         _state = DiscoveryState.connecting;
         _wasManualEntry = false;
+        _showErrorToast = false;
       });
       widget.onBackendSelected(_selectedBackend!);
     }
@@ -230,6 +232,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     setState(() {
       _state = DiscoveryState.connecting;
       _wasManualEntry = true;
+      _showErrorToast = false;
     });
 
     widget.onManualUrlEntered(url);
