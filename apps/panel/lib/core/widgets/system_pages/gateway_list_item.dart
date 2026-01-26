@@ -59,6 +59,7 @@ class GatewayListItem extends StatelessWidget {
             Container(
               width: _screenService.scale(44),
               height: _screenService.scale(44),
+              alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: isSelected
                     ? accent

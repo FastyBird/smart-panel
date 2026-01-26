@@ -146,6 +146,7 @@ class AppError extends StatelessWidget {
           Container(
             width: _screenService.scale(40),
             height: _screenService.scale(40),
+            alignment: Alignment.center,
             decoration: BoxDecoration(
               color: SystemPagesTheme.infoLight(isDark),
               borderRadius: BorderRadius.circular(AppBorderRadius.small),
