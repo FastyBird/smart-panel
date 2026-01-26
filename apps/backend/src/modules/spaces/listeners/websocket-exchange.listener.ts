@@ -237,7 +237,7 @@ export class WebsocketExchangeListener implements OnModuleInit {
 				data: {
 					affectedDevices: result.affectedDevices,
 					failedDevices: result.failedDevices,
-					position: result.position,
+					newPosition: result.newPosition,
 				},
 			};
 		} catch (error) {
@@ -282,8 +282,8 @@ export class WebsocketExchangeListener implements OnModuleInit {
 				data: {
 					affectedDevices: result.affectedDevices,
 					failedDevices: result.failedDevices,
-					volume: result.volume,
-					muted: result.muted,
+					newVolume: result.newVolume,
+					isMuted: result.isMuted,
 				},
 			};
 		} catch (error) {
@@ -313,7 +313,7 @@ export class WebsocketExchangeListener implements OnModuleInit {
 				return { success: false, reason: `Space with id=${spaceId} was not found` };
 			}
 
-			const result = await this.undoHistoryService.undo(spaceId);
+			const result = await this.undoHistoryService.executeUndo(spaceId);
 
 			if (!result) {
 				return { success: false, reason: 'No undo available or undo failed' };
@@ -322,9 +322,9 @@ export class WebsocketExchangeListener implements OnModuleInit {
 			return {
 				success: true,
 				data: {
-					affectedDevices: result.affectedDevices,
+					restoredDevices: result.restoredDevices,
 					failedDevices: result.failedDevices,
-					domain: result.domain,
+					message: result.message,
 				},
 			};
 		} catch (error) {
