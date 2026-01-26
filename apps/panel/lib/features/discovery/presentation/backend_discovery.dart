@@ -382,7 +382,11 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                 ],
               ),
             ),
-            SizedBox(height: _screenService.scale(isCompactLandscape ? 16 : 28)),
+            SizedBox(
+              height: isCompactLandscape
+                  ? AppSpacings.pLg
+                  : AppSpacings.pLg + AppSpacings.pMd + AppSpacings.pSm,
+            ),
             Text(
               localizations.discovery_searching_title,
               style: TextStyle(
@@ -411,7 +415,11 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                 ),
               ),
             ],
-            SizedBox(height: _screenService.scale(isCompactLandscape ? 16 : 24)),
+            SizedBox(
+              height: isCompactLandscape
+                  ? AppSpacings.pLg
+                  : AppSpacings.pLg + AppSpacings.pMd,
+            ),
             // Cancel button
             _buildSearchingButtons(isDark, isLandscape, localizations),
           ],
@@ -596,7 +604,11 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               ],
             ),
           ),
-          SizedBox(width: _screenService.scale(isCompact ? 24 : 48)),
+          SizedBox(
+            width: isCompact
+                ? AppSpacings.pLg + AppSpacings.pMd
+                : AppSpacings.pXl + AppSpacings.pLg,
+          ),
           // Right: List and actions
           Expanded(
             child: Column(
@@ -690,7 +702,10 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            SizedBox(height: _screenService.scale(isCompactLandscape ? 4 : 8)),
+            SizedBox(
+              height:
+                  isCompactLandscape ? AppSpacings.pSm : AppSpacings.pMd,
+            ),
             // Message
             Text(
               localizations.discovery_not_found_description,
@@ -701,7 +716,10 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                 height: 1.5,
               ),
             ),
-            SizedBox(height: _screenService.scale(isCompactLandscape ? 16 : 32)),
+            SizedBox(
+              height:
+                  isCompactLandscape ? AppSpacings.pLg : AppSpacings.pXl,
+            ),
             // Buttons
             _buildActionButtons(isDark, isLandscape, localizations),
           ],
