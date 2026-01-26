@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/devices_module/devices_module_client.dart';
+import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/devices/constants.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
@@ -11,6 +12,9 @@ class _FakeSocketService extends SocketService {
   dynamic lastData;
   String? lastHandler;
   int callCount = 0;
+
+  @override
+  bool get isConnected => true;
 
   @override
   Future<void> sendCommand(
@@ -32,7 +36,10 @@ void main() {
     test('builds payload with request_id, properties and context', () async {
       final apiClient = DevicesModuleClient(Dio(), baseUrl: 'http://localhost');
       final socket = _FakeSocketService();
-      final repo = ChannelPropertiesRepository(apiClient: apiClient, socketService: socket);
+      final repo = ChannelPropertiesRepository(
+        apiClient: apiClient,
+        commandDispatch: CommandDispatchService(socketService: socket),
+      );
 
       final success = await repo.setMultipleValues(
         properties: const [
@@ -94,7 +101,10 @@ void main() {
     test('omits context when not provided', () async {
       final apiClient = DevicesModuleClient(Dio(), baseUrl: 'http://localhost');
       final socket = _FakeSocketService();
-      final repo = ChannelPropertiesRepository(apiClient: apiClient, socketService: socket);
+      final repo = ChannelPropertiesRepository(
+        apiClient: apiClient,
+        commandDispatch: CommandDispatchService(socketService: socket),
+      );
 
       final success = await repo.setMultipleValues(
         properties: const [
@@ -115,7 +125,10 @@ void main() {
     test('returns true and does not send when properties list is empty', () async {
       final apiClient = DevicesModuleClient(Dio(), baseUrl: 'http://localhost');
       final socket = _FakeSocketService();
-      final repo = ChannelPropertiesRepository(apiClient: apiClient, socketService: socket);
+      final repo = ChannelPropertiesRepository(
+        apiClient: apiClient,
+        commandDispatch: CommandDispatchService(socketService: socket),
+      );
 
       final success = await repo.setMultipleValues(properties: const []);
       expect(success, isTrue);

@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
+import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/modules/spaces/constants.dart';
@@ -20,6 +21,22 @@ class MockSpacesModuleClient extends Mock implements SpacesModuleClient {}
 class MockSocketService extends Mock implements SocketService {}
 
 class MockIntentsRepository extends Mock implements IntentsRepository {}
+
+/// Fake SocketService that provides minimal implementation for testing
+class FakeSocketService extends SocketService {
+  @override
+  bool get isConnected => true;
+
+  @override
+  Future<void> sendCommand(
+    String event,
+    dynamic data,
+    String handler, {
+    Function(SocketCommandResponseModel?)? onAck,
+  }) async {
+    onAck?.call(SocketCommandResponseModel(status: true, message: 'ok'));
+  }
+}
 
 /// Test harness for testing WebSocket event handling
 ///
@@ -95,6 +112,7 @@ class SpacesModuleEventHandler {
 void main() {
   late MockSpacesModuleClient mockApiClient;
   late MockIntentsRepository mockIntentsRepository;
+  late FakeSocketService fakeSocketService;
   late SpacesRepository spacesRepository;
   late LightTargetsRepository lightTargetsRepository;
   late ClimateTargetsRepository climateTargetsRepository;
@@ -104,12 +122,14 @@ void main() {
   setUp(() {
     mockApiClient = MockSpacesModuleClient();
     mockIntentsRepository = MockIntentsRepository();
+    fakeSocketService = FakeSocketService();
     spacesRepository = SpacesRepository(apiClient: mockApiClient);
     lightTargetsRepository = LightTargetsRepository(apiClient: mockApiClient);
     climateTargetsRepository = ClimateTargetsRepository(apiClient: mockApiClient);
     spaceStateRepository = SpaceStateRepository(
       apiClient: mockApiClient,
       intentsRepository: mockIntentsRepository,
+      commandDispatch: CommandDispatchService(socketService: fakeSocketService),
     );
 
     eventHandler = SpacesModuleEventHandler(

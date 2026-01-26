@@ -7,8 +7,8 @@ import { CoversIntentDto } from '../dto/covers-intent.dto';
 import { LightingIntentDto } from '../dto/lighting-intent.dto';
 import { MediaIntentDto } from '../dto/media-intent.dto';
 import { SpaceIntentService } from '../services/space-intent.service';
-import { SpacesService } from '../services/spaces.service';
 import { SpaceUndoHistoryService } from '../services/space-undo-history.service';
+import { SpacesService } from '../services/spaces.service';
 
 /**
  * WebSocket command event types for spaces module intents
@@ -52,7 +52,7 @@ interface MediaIntentPayload extends SpaceIntentPayload {
 	intent: MediaIntentDto;
 }
 
-interface UndoIntentPayload extends SpaceIntentPayload {}
+type UndoIntentPayload = SpaceIntentPayload;
 
 /**
  * WebSocket exchange listener for spaces module.

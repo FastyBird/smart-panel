@@ -461,7 +461,11 @@ class SpaceStateRepository extends ChangeNotifier {
         // For WebSocket, we get basic success info; for API, we get full result
         final result = dispatchResult.data != null
             ? LightingIntentResult.fromJson(dispatchResult.data!)
-            : LightingIntentResult(affectedDevices: 0, failedDevices: 0);
+            : LightingIntentResult(
+                success: true,
+                affectedDevices: 0,
+                failedDevices: 0,
+              );
 
         MetricsService.instance.trackIntent(
           intentName,
@@ -708,7 +712,11 @@ class SpaceStateRepository extends ChangeNotifier {
       if (dispatchResult.success) {
         final result = dispatchResult.data != null
             ? ClimateIntentResult.fromJson(dispatchResult.data!)
-            : ClimateIntentResult(affectedDevices: 0, failedDevices: 0);
+            : ClimateIntentResult(
+                success: true,
+                affectedDevices: 0,
+                failedDevices: 0,
+              );
 
         MetricsService.instance.trackIntent(
           intentName,
@@ -903,7 +911,11 @@ class SpaceStateRepository extends ChangeNotifier {
       if (dispatchResult.success) {
         final result = dispatchResult.data != null
             ? MediaIntentResult.fromJson(dispatchResult.data!)
-            : MediaIntentResult(affectedDevices: 0, failedDevices: 0);
+            : MediaIntentResult(
+                success: true,
+                affectedDevices: 0,
+                failedDevices: 0,
+              );
 
         MetricsService.instance.trackIntent(
           intentName,
@@ -1143,7 +1155,11 @@ class SpaceStateRepository extends ChangeNotifier {
       if (dispatchResult.success) {
         final result = dispatchResult.data != null
             ? CoversIntentResult.fromJson(dispatchResult.data!)
-            : CoversIntentResult(affectedDevices: 0, failedDevices: 0);
+            : CoversIntentResult(
+                success: true,
+                affectedDevices: 0,
+                failedDevices: 0,
+              );
 
         MetricsService.instance.trackIntent(
           intentName,

@@ -1,4 +1,6 @@
 import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
+import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
+import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/light_targets.dart';
@@ -17,6 +19,22 @@ import 'package:mocktail/mocktail.dart';
 class MockSpacesModuleClient extends Mock implements SpacesModuleClient {}
 
 class MockIntentsRepository extends Mock implements IntentsRepository {}
+
+/// Fake SocketService that provides minimal implementation for testing
+class FakeSocketService extends SocketService {
+  @override
+  bool get isConnected => true;
+
+  @override
+  Future<void> sendCommand(
+    String event,
+    dynamic data,
+    String handler, {
+    Function(SocketCommandResponseModel?)? onAck,
+  }) async {
+    onAck?.call(SocketCommandResponseModel(status: true, message: 'ok'));
+  }
+}
 
 /// Test harness for simulating lighting mode selection flows
 /// This mirrors the behavior of SpacesService.setLightingMode and turnLightsOff
@@ -129,6 +147,7 @@ class LightingModeTestHarness {
 void main() {
   late MockSpacesModuleClient mockApiClient;
   late MockIntentsRepository mockIntentsRepository;
+  late FakeSocketService fakeSocketService;
   late SpacesRepository spacesRepository;
   late LightTargetsRepository lightTargetsRepository;
   late SpaceStateRepository spaceStateRepository;
@@ -139,11 +158,13 @@ void main() {
   setUp(() {
     mockApiClient = MockSpacesModuleClient();
     mockIntentsRepository = MockIntentsRepository();
+    fakeSocketService = FakeSocketService();
     spacesRepository = SpacesRepository(apiClient: mockApiClient);
     lightTargetsRepository = LightTargetsRepository(apiClient: mockApiClient);
     spaceStateRepository = SpaceStateRepository(
       apiClient: mockApiClient,
       intentsRepository: mockIntentsRepository,
+      commandDispatch: CommandDispatchService(socketService: fakeSocketService),
     );
 
     harness = LightingModeTestHarness(

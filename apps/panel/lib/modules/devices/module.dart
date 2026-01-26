@@ -59,7 +59,6 @@ class DevicesModuleService {
 
     _channelPropertiesRepository = ChannelPropertiesRepository(
       apiClient: apiClient.devicesModule,
-      socketService: _socketService,
       commandDispatch: CommandDispatchService(socketService: socketService),
     );
     _channelControlsRepository = ChannelControlsRepository(

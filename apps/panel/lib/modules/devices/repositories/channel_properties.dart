@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/models/devices_module_data_type.dart';
 import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
-import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/devices/constants.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/property.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/channels/channel.dart';
@@ -17,7 +16,6 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
-  final SocketService _socketService;
   final CommandDispatchService _commandDispatch;
 
   ChannelsRepository? _channelsRepository;
@@ -28,10 +26,8 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
 
   ChannelPropertiesRepository({
     required super.apiClient,
-    required SocketService socketService,
     required CommandDispatchService commandDispatch,
-  })  : _socketService = socketService,
-        _commandDispatch = commandDispatch;
+  }) : _commandDispatch = commandDispatch;
 
   /// Set the channels repository after construction to avoid circular dependency
   void setChannelsRepository(ChannelsRepository channelsRepository) {
@@ -308,32 +304,21 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
   }
 
   /// Set property value via API (used as fallback when WebSocket is unavailable)
+  ///
+  /// Note: Device property updates are primarily handled via WebSocket.
+  /// The REST API for individual property updates is not currently available,
+  /// so this fallback returns null to indicate the operation should fail gracefully.
   Future<Map<String, dynamic>?> _setPropertyValueViaApi(
     String channelId,
     String propertyId,
     dynamic value,
   ) async {
-    try {
-      final response = await apiClient.updateDevicesModuleChannelProperty(
-        channelId: channelId,
-        id: propertyId,
-        body: {
-          'data': {
-            'value': value,
-          },
-        },
+    // REST API for property updates is not available - WebSocket is the only channel
+    // Return null to indicate fallback is not available
+    if (kDebugMode) {
+      debugPrint(
+        '[DEVICES MODULE][CHANNEL PROPERTIES] API fallback not available for property updates',
       );
-
-      if (response.response.statusCode == 200 ||
-          response.response.statusCode == 201) {
-        return response.response.data['data'] as Map<String, dynamic>?;
-      }
-    } on DioException catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          '[DEVICES MODULE][CHANNEL PROPERTIES] API error setting property value: ${e.response?.statusCode}',
-        );
-      }
     }
     return null;
   }
@@ -423,8 +408,9 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
 
   /// Set multiple properties via API (used as fallback when WebSocket is unavailable)
   ///
-  /// Since there's no batch API endpoint, this executes individual API calls
-  /// for each property sequentially.
+  /// Note: Device property updates are primarily handled via WebSocket.
+  /// The REST API for batch property updates is not currently available,
+  /// so this fallback returns null to indicate the operation should fail gracefully.
   Future<Map<String, dynamic>?> _setMultiplePropertiesViaApi(
     List<PropertyCommandItem> properties,
   ) async {
@@ -433,8 +419,8 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
 
       for (final prop in properties) {
         final result = await _setPropertyValueViaApi(
-          prop.channel,
-          prop.property,
+          prop.channelId,
+          prop.propertyId,
           prop.value,
         );
 
@@ -442,7 +428,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
           allSuccess = false;
           if (kDebugMode) {
             debugPrint(
-              '[DEVICES MODULE][CHANNEL PROPERTIES] API fallback failed for property: ${prop.property}',
+              '[DEVICES MODULE][CHANNEL PROPERTIES] API fallback failed for property: ${prop.propertyId}',
             );
           }
         }
