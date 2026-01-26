@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/app/routes.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
@@ -38,7 +37,6 @@ class _AppBodyState extends State<AppBody> {
   final NavigationService _navigator = locator<NavigationService>();
   final DeckService _deckService = locator<DeckService>();
   final SocketService _socketService = locator<SocketService>();
-  final EventBus _eventBus = locator<EventBus>();
 
   bool _hasDarkMode = false;
   Language _language = Language.english;
@@ -65,8 +63,10 @@ class _AppBodyState extends State<AppBody> {
     _displayRepository.addListener(_onDisplayChanged);
     _systemConfigRepository.addListener(_syncStateWithRepository);
 
-    // Sync initial socket connection state and listen for changes
-    _isSocketConnected = _socketService.isConnected;
+    // Listen for socket connection changes
+    // Note: We keep _isSocketConnected = true initially because AppBody is only
+    // shown after successful initialization when socket should already be connected.
+    // The listener will handle actual disconnections.
     _socketService.addConnectionListener(_onSocketConnectionChanged);
 
     locator<SystemActionsService>().init();
@@ -86,8 +86,9 @@ class _AppBodyState extends State<AppBody> {
   }
 
   void _handleChangeGateway() {
-    // Fire event to reset app to discovery state
-    _eventBus.fire(ResetToDiscoveryEvent());
+    // Reset to discovery state with proper cleanup
+    // This clears credentials, backend URL, and disposes socket
+    locator<StartupManagerService>().resetToDiscovery();
   }
 
   /// Initialize the deck with display settings
