@@ -33,9 +33,15 @@ class _SystemPageGhostButtonState extends State<SystemPageGhostButton> {
         : SystemPagesTheme.textSecondary(widget.isDark);
 
     return GestureDetector(
-      onTapDown: (_) => setState(() => _isHovered = true),
-      onTapUp: (_) => setState(() => _isHovered = false),
-      onTapCancel: () => setState(() => _isHovered = false),
+      onTapDown: widget.onPressed != null
+          ? (_) => setState(() => _isHovered = true)
+          : null,
+      onTapUp: widget.onPressed != null
+          ? (_) => setState(() => _isHovered = false)
+          : null,
+      onTapCancel: widget.onPressed != null
+          ? () => setState(() => _isHovered = false)
+          : null,
       onTap: widget.onPressed,
       child: Padding(
         padding: EdgeInsets.symmetric(

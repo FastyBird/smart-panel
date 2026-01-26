@@ -33,9 +33,15 @@ class _SystemPagePrimaryButtonState extends State<SystemPagePrimaryButton> {
     final accent = SystemPagesTheme.accent(widget.isDark);
 
     return GestureDetector(
-      onTapDown: (_) => setState(() => _isPressed = true),
-      onTapUp: (_) => setState(() => _isPressed = false),
-      onTapCancel: () => setState(() => _isPressed = false),
+      onTapDown: widget.onPressed != null
+          ? (_) => setState(() => _isPressed = true)
+          : null,
+      onTapUp: widget.onPressed != null
+          ? (_) => setState(() => _isPressed = false)
+          : null,
+      onTapCancel: widget.onPressed != null
+          ? () => setState(() => _isPressed = false)
+          : null,
       onTap: widget.onPressed,
       child: AnimatedScale(
         scale: _isPressed ? 0.96 : 1.0,

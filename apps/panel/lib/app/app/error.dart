@@ -25,7 +25,8 @@ class AppError extends StatelessWidget {
   Widget build(BuildContext context) {
     final errorMsg = _errorMessage ?? '';
     final hasPermitJoinError = errorMsg.toLowerCase().contains('permit join');
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark =
+        MediaQuery.platformBrightnessOf(context) == Brightness.dark;
 
     return MaterialApp(
       theme: AppTheme.lightTheme,
