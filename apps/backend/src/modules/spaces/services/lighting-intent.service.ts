@@ -248,7 +248,7 @@ export class LightingIntentService extends SpaceIntentBaseService {
 
 		// For SET_MODE, use role-based orchestration
 		if (intent.type === LightingIntentType.SET_MODE && intent.mode) {
-			result = await this.executeModeIntentWithResults(spaceId, lights, intent.mode, targetResults);
+			result = await this.executeModeIntentWithResults(spaceId, lights, intent.mode, allLights.length, targetResults);
 		} else if (this.isRoleSpecificIntent(intent.type)) {
 			// For role-specific intents, only affect lights with the specified role
 			result = await this.executeRoleIntentWithResults(spaceId, lights, intent, targetResults);
@@ -517,6 +517,7 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		spaceId: string,
 		lights: LightDevice[],
 		mode: LightingMode,
+		totalLightsCount: number,
 		targetResults: IntentTargetResult[],
 	): Promise<IntentExecutionResult> {
 		// Get mode orchestration config from YAML spec
@@ -570,11 +571,12 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		);
 
 		// Store mode change to InfluxDB for historical tracking (fire and forget)
+		// Use totalLightsCount (includes offline) for consistent semantics with OFF intent
 		if (overallSuccess) {
 			void this.intentTimeseriesService.storeLightingModeChange(
 				spaceId,
 				mode,
-				selections.length,
+				totalLightsCount,
 				affectedDevices,
 				failedDevices,
 			);
