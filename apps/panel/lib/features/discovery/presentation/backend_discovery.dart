@@ -62,58 +62,6 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
   bool _showErrorToast = false;
   bool _discoveryCancelled = false;
 
-  /// Returns the appropriate padding for system pages based on screen size and orientation
-  /// LANDSCAPE - LARGE: pXl, MEDIUM/SMALL: pLg
-  /// PORTRAIT - LARGE/MEDIUM: pXl, SMALL: pLg
-  double _getSystemPagePadding(bool isLandscape) {
-    if (isLandscape) {
-      return _screenService.isLargeScreen ? AppSpacings.pXl : AppSpacings.pLg;
-    } else {
-      return _screenService.isSmallScreen ? AppSpacings.pLg : AppSpacings.pXl;
-    }
-  }
-
-  /// Builds a system page icon with responsive sizing
-  /// [useContainer] - wraps icon in IconContainer with background
-  Widget _buildSystemPageIcon({
-    required IconData icon,
-    required Color color,
-    required bool isLandscape,
-    bool useContainer = false,
-  }) {
-    final isCompact =
-        _screenService.isSmallScreen || _screenService.isMediumScreen;
-    final isCompactLandscape = isCompact && isLandscape;
-
-    // Icon sizes: compact landscape uses smaller sizes
-    final containerSize = _screenService.scale(isCompactLandscape ? 56 : 80);
-    final iconSize = _screenService.scale(
-      useContainer
-          ? (isCompactLandscape ? 28 : 40)
-          : (isCompactLandscape ? 32 : 48),
-    );
-
-    if (useContainer) {
-      return IconContainer(
-        icon: icon,
-        color: color,
-        size: containerSize,
-        iconSize: iconSize,
-      );
-    }
-
-    return Icon(icon, color: color, size: iconSize);
-  }
-
-  /// Returns the spacing below the icon based on orientation and size
-  double _getIconBottomSpacing(bool isLandscape) {
-    final isCompact =
-        _screenService.isSmallScreen || _screenService.isMediumScreen;
-    final isCompactLandscape = isCompact && isLandscape;
-
-    return _screenService.scale(isCompactLandscape ? 12 : 24);
-  }
-
   // Validation patterns
   static final RegExp _ipAddressPattern = RegExp(
     r'^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$',
@@ -411,7 +359,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
 
     return Center(
       child: Padding(
-        padding: EdgeInsets.all(_getSystemPagePadding(isLandscape)),
+        padding: EdgeInsets.all(SystemPagesLayout.getPagePadding(_screenService, isLandscape)),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -519,16 +467,18 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     Color accent,
   ) {
     return Padding(
-      padding: EdgeInsets.all(_getSystemPagePadding(false)),
+      padding: EdgeInsets.all(SystemPagesLayout.getPagePadding(_screenService, false)),
       child: Column(
         children: [
           // Header
-          _buildSystemPageIcon(
+          SystemPagesLayout.buildIcon(
+            screenService: _screenService,
             icon: MdiIcons.accessPointNetwork,
             color: accent,
             isLandscape: false,
+            useContainer: false,
           ),
-          SizedBox(height: _getIconBottomSpacing(false)),
+          SizedBox(height: SystemPagesLayout.getIconBottomSpacing(_screenService, false)),
           Text(
             localizations.discovery_select_title,
             style: TextStyle(
@@ -609,7 +559,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
         _screenService.isSmallScreen || _screenService.isMediumScreen;
 
     return Padding(
-      padding: EdgeInsets.all(_getSystemPagePadding(true)),
+      padding: EdgeInsets.all(SystemPagesLayout.getPagePadding(_screenService, true)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -619,12 +569,14 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSystemPageIcon(
+                SystemPagesLayout.buildIcon(
+                  screenService: _screenService,
                   icon: MdiIcons.accessPointNetwork,
                   color: accent,
                   isLandscape: true,
+                  useContainer: false,
                 ),
-                SizedBox(height: _getIconBottomSpacing(true)),
+                SizedBox(height: SystemPagesLayout.getIconBottomSpacing(_screenService, true)),
                 Text(
                   localizations.discovery_select_title,
                   style: TextStyle(
@@ -716,18 +668,19 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     final isCompactLandscape = isCompact && isLandscape;
     return Center(
       child: Padding(
-        padding: EdgeInsets.all(_getSystemPagePadding(isLandscape)),
+        padding: EdgeInsets.all(SystemPagesLayout.getPagePadding(_screenService, isLandscape)),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Warning icon
-            _buildSystemPageIcon(
+            SystemPagesLayout.buildIcon(
+              screenService: _screenService,
               icon: MdiIcons.serverOff,
               color: SystemPagesTheme.warning(isDark),
               isLandscape: isLandscape,
               useContainer: true,
             ),
-            SizedBox(height: _getIconBottomSpacing(isLandscape)),
+            SizedBox(height: SystemPagesLayout.getIconBottomSpacing(_screenService, isLandscape)),
             // Title
             Text(
               localizations.discovery_not_found_title,
@@ -820,18 +773,19 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
 
     return Center(
       child: Padding(
-        padding: EdgeInsets.all(_getSystemPagePadding(isLandscape)),
+        padding: EdgeInsets.all(SystemPagesLayout.getPagePadding(_screenService, isLandscape)),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Error icon
-            _buildSystemPageIcon(
+            SystemPagesLayout.buildIcon(
+              screenService: _screenService,
               icon: MdiIcons.alertCircle,
               color: SystemPagesTheme.error(isDark),
               isLandscape: isLandscape,
               useContainer: true,
             ),
-            SizedBox(height: _getIconBottomSpacing(isLandscape)),
+            SizedBox(height: SystemPagesLayout.getIconBottomSpacing(_screenService, isLandscape)),
             // Title
             Text(
               localizations.discovery_error_title,
@@ -876,16 +830,18 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
 
     return Center(
       child: Padding(
-        padding: EdgeInsets.all(_getSystemPagePadding(isLandscape)),
+        padding: EdgeInsets.all(SystemPagesLayout.getPagePadding(_screenService, isLandscape)),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildSystemPageIcon(
+            SystemPagesLayout.buildIcon(
+              screenService: _screenService,
               icon: MdiIcons.serverNetwork,
               color: accent,
               isLandscape: isLandscape,
+              useContainer: false,
             ),
-            SizedBox(height: _getIconBottomSpacing(isLandscape)),
+            SizedBox(height: SystemPagesLayout.getIconBottomSpacing(_screenService, isLandscape)),
             Text(
               localizations.discovery_connecting_title,
               style: TextStyle(
@@ -924,16 +880,18 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
 
     return Center(
       child: Padding(
-        padding: EdgeInsets.all(_getSystemPagePadding(isLandscape)),
+        padding: EdgeInsets.all(SystemPagesLayout.getPagePadding(_screenService, isLandscape)),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildSystemPageIcon(
+            SystemPagesLayout.buildIcon(
+              screenService: _screenService,
               icon: MdiIcons.keyboard,
               color: accent,
               isLandscape: isLandscape,
+              useContainer: false,
             ),
-            SizedBox(height: _getIconBottomSpacing(isLandscape)),
+            SizedBox(height: SystemPagesLayout.getIconBottomSpacing(_screenService, isLandscape)),
             Text(
               localizations.discovery_manual_entry_title,
               style: TextStyle(

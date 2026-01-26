@@ -36,20 +36,23 @@ class ConfigErrorScreen extends StatelessWidget {
             return Center(
               child: Padding(
                 padding: EdgeInsets.all(
-                  _getSystemPagePadding(screenService, isLandscape),
+                  SystemPagesLayout.getPagePadding(screenService, isLandscape),
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     // Warning icon
-                    _buildSystemPageIcon(
+                    SystemPagesLayout.buildIcon(
                       screenService: screenService,
                       icon: MdiIcons.cogOff,
                       color: SystemPagesTheme.warning(isDark),
                       isLandscape: isLandscape,
                     ),
                     SizedBox(
-                      height: _getIconBottomSpacing(screenService, isLandscape),
+                      height: SystemPagesLayout.getIconBottomSpacing(
+                        screenService,
+                        isLandscape,
+                      ),
                     ),
                     // Title
                     Text(
@@ -89,46 +92,6 @@ class ConfigErrorScreen extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  /// Returns the appropriate padding for system pages based on screen size and orientation
-  double _getSystemPagePadding(ScreenService screenService, bool isLandscape) {
-    if (isLandscape) {
-      return screenService.isLargeScreen ? AppSpacings.pXl : AppSpacings.pLg;
-    } else {
-      return screenService.isSmallScreen ? AppSpacings.pLg : AppSpacings.pXl;
-    }
-  }
-
-  /// Builds the system page icon with responsive sizing
-  Widget _buildSystemPageIcon({
-    required ScreenService screenService,
-    required IconData icon,
-    required Color color,
-    required bool isLandscape,
-  }) {
-    final isCompact =
-        screenService.isSmallScreen || screenService.isMediumScreen;
-    final isCompactLandscape = isCompact && isLandscape;
-
-    final containerSize = screenService.scale(isCompactLandscape ? 56 : 80);
-    final iconSize = screenService.scale(isCompactLandscape ? 28 : 40);
-
-    return IconContainer(
-      icon: icon,
-      color: color,
-      size: containerSize,
-      iconSize: iconSize,
-    );
-  }
-
-  /// Returns the spacing below the icon based on orientation and size
-  double _getIconBottomSpacing(ScreenService screenService, bool isLandscape) {
-    final isCompact =
-        screenService.isSmallScreen || screenService.isMediumScreen;
-    final isCompactLandscape = isCompact && isLandscape;
-
-    return screenService.scale(isCompactLandscape ? 12 : 24);
   }
 
   /// Builds the info hint card
