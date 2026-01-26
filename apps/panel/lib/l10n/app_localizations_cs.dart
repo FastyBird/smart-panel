@@ -851,6 +851,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get discovery_button_manual => 'Ručně';
 
   @override
+  String get discovery_button_cancel => 'Zrušit';
+
+  @override
   String get action_success => 'Akce byla úspěšně dokončena';
 
   @override

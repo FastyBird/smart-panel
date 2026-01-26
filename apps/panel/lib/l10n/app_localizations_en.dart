@@ -851,6 +851,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get discovery_button_manual => 'Manual';
 
   @override
+  String get discovery_button_cancel => 'Cancel';
+
+  @override
   String get action_success => 'Action completed successfully';
 
   @override

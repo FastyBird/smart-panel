@@ -1147,6 +1147,10 @@
   "@discovery_button_manual": {
     "description": "Manual entry button text"
   },
+  "discovery_button_cancel": "Cancel",
+  "@discovery_button_cancel": {
+    "description": "Cancel search button text"
+  },
 
   "action_success": "Action completed successfully",
   "@action_success": {

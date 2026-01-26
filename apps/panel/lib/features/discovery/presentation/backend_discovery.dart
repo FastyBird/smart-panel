@@ -159,6 +159,17 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     });
   }
 
+  Future<void> _cancelDiscovery() async {
+    await _discoveryService.stop();
+    if (mounted) {
+      setState(() {
+        _state = _backends.isEmpty
+            ? DiscoveryState.notFound
+            : DiscoveryState.found;
+      });
+    }
+  }
+
   void _confirmSelection() {
     if (_selectedBackend != null) {
       setState(() {
@@ -424,53 +435,12 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     bool isLandscape,
     AppLocalizations localizations,
   ) {
-    if (isLandscape) {
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SystemPageSecondaryButton(
-            label: localizations.discovery_button_rescan,
-            icon: Icons.refresh,
-            onPressed: null, // Disabled during search
-            isDark: isDark,
-          ),
-          SizedBox(width: _screenService.scale(16)),
-          SystemPageSecondaryButton(
-            label: localizations.discovery_button_manual,
-            icon: Icons.edit_outlined,
-            onPressed: null, // Disabled during search
-            isDark: isDark,
-          ),
-        ],
-      );
-    }
-
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: _screenService.scale(40)),
-      child: Column(
-        children: [
-          SizedBox(
-            width: double.infinity,
-            child: SystemPageSecondaryButton(
-              label: localizations.discovery_button_rescan,
-              icon: Icons.refresh,
-              onPressed: null, // Disabled during search
-              isDark: isDark,
-              minWidth: double.infinity,
-            ),
-          ),
-          SizedBox(height: _screenService.scale(12)),
-          SizedBox(
-            width: double.infinity,
-            child: SystemPageSecondaryButton(
-              label: localizations.discovery_button_manual,
-              icon: Icons.edit_outlined,
-              onPressed: null, // Disabled during search
-              isDark: isDark,
-              minWidth: double.infinity,
-            ),
-          ),
-        ],
+    return Center(
+      child: SystemPageSecondaryButton(
+        label: localizations.discovery_button_cancel,
+        icon: Icons.close,
+        onPressed: _cancelDiscovery,
+        isDark: isDark,
       ),
     );
   }

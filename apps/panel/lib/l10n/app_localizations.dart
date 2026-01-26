@@ -1751,6 +1751,12 @@ abstract class AppLocalizations {
   /// **'Manual'**
   String get discovery_button_manual;
 
+  /// Cancel search button text
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get discovery_button_cancel;
+
   /// Success message when an action completes
   ///
   /// In en, this message translates to:
