@@ -1,3 +1,5 @@
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -12,82 +14,75 @@ class AlertBar {
     IconData? icon,
     Duration duration = const Duration(seconds: 10),
   }) {
+    final screenService = locator<ScreenService>();
     final theme = Theme.of(context);
     final isLight = theme.brightness == Brightness.light;
 
     final backgroundColor = _getBackgroundColor(type, isLight);
-    final textColor = _getTextColor(type, isLight);
-    final closeIconColor = isLight ? AppColors.white : textColor;
+    final iconToUse = icon ?? _getDefaultIcon(type);
 
-    late Widget content;
-
-    if (icon != null) {
-      content = Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: AppSpacings.pMd,
-          vertical: AppSpacings.pSm,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          spacing: AppSpacings.pSm,
-          children: [
-            Baseline(
-              baseline: AppFontSize.extraSmall,
-              baselineType: TextBaseline.alphabetic,
-              child: Icon(
-                icon,
-                size: AppFontSize.extraSmall,
-                color: textColor,
+    final content = Stack(
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacings.pLg,
+            vertical: AppSpacings.pMd + AppSpacings.pSm + AppSpacings.pXs,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              Icon(
+                iconToUse,
+                size: AppSpacings.pLg + AppSpacings.pSm,
+                color: AppColors.white,
               ),
-            ),
-            Expanded(
-              child: Baseline(
-                baseline: AppFontSize.extraSmall,
-                baselineType: TextBaseline.alphabetic,
-                child: Text(
-                  message,
-                  style: TextStyle(
-                    color: textColor,
-                    fontSize: AppFontSize.extraSmall,
+              SizedBox(width: AppSpacings.pMd + AppSpacings.pSm),
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(right: AppSpacings.pLg),
+                  child: Text(
+                    message,
+                    style: TextStyle(
+                      color: AppColors.white,
+                      fontSize: AppFontSize.base,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
                   ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 2,
                 ),
               ),
-            ),
-          ],
-        ),
-      );
-    } else {
-      content = Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: AppSpacings.pMd,
-          vertical: AppSpacings.pSm,
-        ),
-        child: Text(
-          message,
-          style: TextStyle(
-            color: textColor,
-            fontSize: AppFontSize.extraSmall,
+            ],
           ),
-          overflow: TextOverflow.ellipsis,
-          maxLines: 2,
         ),
-      );
-    }
+        // Close button in top right corner
+        Positioned(
+          top: screenService.scale(5),
+          right: screenService.scale(5),
+          child: GestureDetector(
+            onTap: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
+            child: Icon(
+              Icons.close,
+              size: AppSpacings.pLg + AppSpacings.pSm,
+              color: AppColors.white.withValues(alpha: 0.7),
+            ),
+          ),
+        ),
+      ],
+    );
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: content,
         behavior: SnackBarBehavior.floating,
-        showCloseIcon: true,
+        showCloseIcon: false,
         backgroundColor: backgroundColor,
-        closeIconColor: closeIconColor,
         duration: duration,
-        margin: AppSpacings.paddingXs,
-        padding: EdgeInsets.all(0),
+        elevation: screenService.scale(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+        ),
+        margin: EdgeInsets.all(AppSpacings.pLg),
+        padding: EdgeInsets.zero,
       ),
     );
   }
@@ -101,7 +96,6 @@ class AlertBar {
         context,
         message: message,
         type: AlertType.success,
-        icon: MdiIcons.checkCircle,
         duration: duration,
       );
 
@@ -114,7 +108,6 @@ class AlertBar {
         context,
         message: message,
         type: AlertType.info,
-        icon: MdiIcons.information,
         duration: duration,
       );
 
@@ -127,7 +120,6 @@ class AlertBar {
         context,
         message: message,
         type: AlertType.warning,
-        icon: MdiIcons.alert,
         duration: duration,
       );
 
@@ -140,33 +132,32 @@ class AlertBar {
         context,
         message: message,
         type: AlertType.error,
-        icon: MdiIcons.alertCircle,
         duration: duration,
       );
+
+  static IconData _getDefaultIcon(AlertType type) {
+    switch (type) {
+      case AlertType.success:
+        return MdiIcons.checkCircleOutline;
+      case AlertType.info:
+        return MdiIcons.informationOutline;
+      case AlertType.warning:
+        return MdiIcons.alertOutline;
+      case AlertType.error:
+        return MdiIcons.alertCircleOutline;
+    }
+  }
 
   static Color _getBackgroundColor(AlertType type, bool isLight) {
     switch (type) {
       case AlertType.success:
-        return isLight ? AppColorsLight.success : AppColorsDark.successLight9;
+        return isLight ? AppColorsLight.success : AppColorsDark.success;
       case AlertType.info:
-        return isLight ? AppColorsLight.info : AppColorsDark.infoLight9;
+        return isLight ? AppColorsLight.info : AppColorsDark.info;
       case AlertType.warning:
-        return isLight ? AppColorsLight.warning : AppColorsDark.warningLight9;
+        return isLight ? AppColorsLight.warning : AppColorsDark.warning;
       case AlertType.error:
-        return isLight ? AppColorsLight.error : AppColorsDark.errorLight9;
-    }
-  }
-
-  static Color _getTextColor(AlertType type, bool isLight) {
-    switch (type) {
-      case AlertType.success:
-        return isLight ? AppColors.white : AppColorsDark.success;
-      case AlertType.info:
-        return isLight ? AppColors.white : AppColorsDark.info;
-      case AlertType.warning:
-        return isLight ? AppColors.white : AppColorsDark.warning;
-      case AlertType.error:
-        return isLight ? AppColors.white : AppColorsDark.error;
+        return isLight ? AppColorsLight.error : AppColorsDark.error;
     }
   }
 }
