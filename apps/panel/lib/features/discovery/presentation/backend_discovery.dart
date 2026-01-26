@@ -357,80 +357,68 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
         _screenService.isSmallScreen || _screenService.isMediumScreen;
     final isCompactLandscape = isCompact && isLandscape;
 
-    return Stack(
-      children: [
-        // Main content
-        Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Animated icon with pulse rings
-              SizedBox(
-                width: _screenService.scale(isCompactLandscape ? 70 : 100),
-                height: _screenService.scale(isCompactLandscape ? 70 : 100),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    PulseRings(
-                      size: _screenService.scale(isCompactLandscape ? 56 : 80),
-                      color: accent,
-                    ),
-                    Icon(
-                      MdiIcons.accessPointNetwork,
-                      size: _screenService.scale(isCompactLandscape ? 32 : 48),
-                      color: accent,
-                    ),
-                  ],
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Animated icon with pulse rings
+          SizedBox(
+            width: _screenService.scale(isCompactLandscape ? 70 : 100),
+            height: _screenService.scale(isCompactLandscape ? 70 : 100),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                PulseRings(
+                  size: _screenService.scale(isCompactLandscape ? 56 : 80),
+                  color: accent,
                 ),
-              ),
-              SizedBox(height: _screenService.scale(isCompactLandscape ? 16 : 28)),
-              Text(
-                localizations.discovery_searching_title,
-                style: TextStyle(
-                  color: SystemPagesTheme.textPrimary(isDark),
-                  fontSize: _screenService.scale(24),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              SizedBox(height: _screenService.scale(8)),
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: _screenService.scale(40),
-                ),
-                child: Text(
-                  localizations.discovery_searching_description,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: SystemPagesTheme.textMuted(isDark),
-                    fontSize: _screenService.scale(14),
-                    height: 1.5,
-                  ),
-                ),
-              ),
-              if (_backends.isNotEmpty) ...[
-                SizedBox(height: _screenService.scale(16)),
-                Text(
-                  localizations.discovery_found_count(_backends.length),
-                  style: TextStyle(
-                    color: accent,
-                    fontSize: _screenService.scale(14),
-                  ),
+                Icon(
+                  MdiIcons.accessPointNetwork,
+                  size: _screenService.scale(isCompactLandscape ? 32 : 48),
+                  color: accent,
                 ),
               ],
-            ],
+            ),
           ),
-        ),
-
-        // Bottom buttons
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: isLandscape
-              ? _screenService.scale(32)
-              : _screenService.scale(48),
-          child: _buildSearchingButtons(isDark, isLandscape, localizations),
-        ),
-      ],
+          SizedBox(height: _screenService.scale(isCompactLandscape ? 16 : 28)),
+          Text(
+            localizations.discovery_searching_title,
+            style: TextStyle(
+              color: SystemPagesTheme.textPrimary(isDark),
+              fontSize: _screenService.scale(24),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: _screenService.scale(8)),
+          Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: _screenService.scale(40),
+            ),
+            child: Text(
+              localizations.discovery_searching_description,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: SystemPagesTheme.textMuted(isDark),
+                fontSize: _screenService.scale(14),
+                height: 1.5,
+              ),
+            ),
+          ),
+          if (_backends.isNotEmpty) ...[
+            SizedBox(height: _screenService.scale(16)),
+            Text(
+              localizations.discovery_found_count(_backends.length),
+              style: TextStyle(
+                color: accent,
+                fontSize: _screenService.scale(14),
+              ),
+            ),
+          ],
+          SizedBox(height: _screenService.scale(isCompactLandscape ? 16 : 24)),
+          // Cancel button
+          _buildSearchingButtons(isDark, isLandscape, localizations),
+        ],
+      ),
     );
   }
 
