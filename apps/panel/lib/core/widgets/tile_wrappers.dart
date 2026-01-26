@@ -225,6 +225,7 @@ class VerticalTileCompact extends StatelessWidget {
   final bool isOffline;
   final bool isSelected;
   final bool showSelectionIndicator;
+  final bool showWarningBadge;
   final Color? activeColor;
   final Color? iconAccentColor;
   final VoidCallback? onIconTap;
@@ -240,6 +241,7 @@ class VerticalTileCompact extends StatelessWidget {
     this.isOffline = false,
     this.isSelected = false,
     this.showSelectionIndicator = false,
+    this.showWarningBadge = false,
     this.activeColor,
     this.iconAccentColor,
     this.onIconTap,
@@ -272,7 +274,7 @@ class VerticalTileCompact extends StatelessWidget {
         onTileTap: onTileTap,
         showGlow: false,
         showDoubleBorder: false,
-        showWarningBadge: false,
+        showWarningBadge: showWarningBadge,
         showInactiveBorder: true,
         showSelectionIndicator: showSelectionIndicator,
       ),

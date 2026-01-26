@@ -521,6 +521,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
                     ? () => widget.onChannelIconTap?.call(channel)
                     : null,
                 showSelectionIndicator: true,
+                showWarningBadge: true,
               );
             }).toList(),
           ),
@@ -556,6 +557,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
                   ? () => widget.onChannelIconTap?.call(channel)
                   : null,
               showSelectionIndicator: true,
+              showWarningBadge: true,
             ),
           );
         }),
@@ -1191,6 +1193,7 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
                     ? () => widget.onChannelIconTap?.call(channel)
                     : null,
                 showSelectionIndicator: true,
+                showWarningBadge: true,
               );
             },
           ),
