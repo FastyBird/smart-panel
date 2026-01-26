@@ -103,6 +103,9 @@ class LightingConstants {
   /// Control channel ID for hue/color control.
   static const String hueChannelId = 'hue';
 
+  /// Control channel ID for saturation control.
+  static const String saturationChannelId = 'saturation';
+
   /// Control channel ID for color temperature control.
   static const String temperatureChannelId = 'temperature';
 

@@ -6,6 +6,7 @@ import 'package:fastybird_smart_panel/core/widgets/lighting/export.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/channels/light.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/devices/lighting.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/control_state.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/light_channel_detail.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
@@ -254,7 +255,21 @@ class _LightSingleChannelControlPanelState
   }
 
   void _handleBrightnessChanged(int value) {
-    // Debounce the actual command, but set optimistic state immediately
+    // Set optimistic state IMMEDIATELY for smooth slider feedback
+    final prop = _controller.channel.brightnessProp;
+    if (prop != null) {
+      _deviceControlStateService?.setPending(
+        widget.controller.deviceId,
+        _controller.channel.id,
+        prop.id,
+        value,
+      );
+    }
+
+    // Trigger rebuild for immediate visual feedback
+    setState(() {});
+
+    // Debounce the actual API command
     _brightnessDebounceTimer?.cancel();
     _brightnessDebounceTimer = Timer(
       const Duration(milliseconds: 150),
@@ -267,15 +282,26 @@ class _LightSingleChannelControlPanelState
         }
 
         _controller.setBrightness(value);
-        setState(() {});
       },
     );
-
-    // Trigger rebuild for immediate visual feedback
-    setState(() {});
   }
 
   void _handleColorTempChanged(int value) {
+    // Set optimistic state IMMEDIATELY for smooth slider feedback
+    final prop = _controller.channel.temperatureProp;
+    if (prop != null) {
+      _deviceControlStateService?.setPending(
+        widget.controller.deviceId,
+        _controller.channel.id,
+        prop.id,
+        value,
+      );
+    }
+
+    // Trigger rebuild for immediate visual feedback
+    setState(() {});
+
+    // Debounce the actual API command
     _temperatureDebounceTimer?.cancel();
     _temperatureDebounceTimer = Timer(
       const Duration(milliseconds: 150),
@@ -288,14 +314,84 @@ class _LightSingleChannelControlPanelState
         }
 
         _controller.setColorTemperature(value);
-        setState(() {});
       },
     );
-
-    setState(() {});
   }
 
   void _handleColorChanged(Color color, double saturation) {
+    // Set optimistic state IMMEDIATELY for smooth slider feedback
+    final channel = _controller.channel;
+    final deviceId = widget.controller.deviceId;
+
+    // Build property configs based on channel's color mode
+    final List<PropertyConfig> colorProperties = [];
+    if (channel.hasColorRed && channel.hasColorGreen && channel.hasColorBlue) {
+      // RGB mode
+      final redProp = channel.colorRedProp;
+      final greenProp = channel.colorGreenProp;
+      final blueProp = channel.colorBlueProp;
+      if (redProp != null) {
+        colorProperties.add(PropertyConfig(
+          channelId: channel.id,
+          propertyId: redProp.id,
+          desiredValue: (color.r * 255).round(),
+        ));
+      }
+      if (greenProp != null) {
+        colorProperties.add(PropertyConfig(
+          channelId: channel.id,
+          propertyId: greenProp.id,
+          desiredValue: (color.g * 255).round(),
+        ));
+      }
+      if (blueProp != null) {
+        colorProperties.add(PropertyConfig(
+          channelId: channel.id,
+          propertyId: blueProp.id,
+          desiredValue: (color.b * 255).round(),
+        ));
+      }
+    } else if (channel.hasHue && channel.hasSaturation) {
+      // HSV mode
+      final hsv = HSVColor.fromColor(color);
+      final hueProp = channel.hueProp;
+      final satProp = channel.saturationProp;
+      final brightProp = channel.brightnessProp;
+      if (hueProp != null) {
+        colorProperties.add(PropertyConfig(
+          channelId: channel.id,
+          propertyId: hueProp.id,
+          desiredValue: hsv.hue,
+        ));
+      }
+      if (satProp != null) {
+        colorProperties.add(PropertyConfig(
+          channelId: channel.id,
+          propertyId: satProp.id,
+          desiredValue: (hsv.saturation * 100).round(),
+        ));
+      }
+      if (brightProp != null) {
+        colorProperties.add(PropertyConfig(
+          channelId: channel.id,
+          propertyId: brightProp.id,
+          desiredValue: (hsv.value * 100).round(),
+        ));
+      }
+    }
+
+    if (colorProperties.isNotEmpty) {
+      _deviceControlStateService?.setGroupPending(
+        deviceId,
+        LightChannelController.colorGroupId,
+        colorProperties,
+      );
+    }
+
+    // Trigger rebuild for immediate visual feedback
+    setState(() {});
+
+    // Debounce the actual API command
     _colorDebounceTimer?.cancel();
     _colorDebounceTimer = Timer(
       const Duration(milliseconds: 150),
@@ -309,14 +405,26 @@ class _LightSingleChannelControlPanelState
 
         // Controller handles RGB vs HSV mode internally
         _controller.setColor(color);
-        setState(() {});
       },
     );
-
-    setState(() {});
   }
 
   void _handleWhiteChannelChanged(int value) {
+    // Set optimistic state IMMEDIATELY for smooth slider feedback
+    final prop = _controller.channel.colorWhiteProp;
+    if (prop != null) {
+      _deviceControlStateService?.setPending(
+        widget.controller.deviceId,
+        _controller.channel.id,
+        prop.id,
+        value,
+      );
+    }
+
+    // Trigger rebuild for immediate visual feedback
+    setState(() {});
+
+    // Debounce the actual API command
     _whiteDebounceTimer?.cancel();
     _whiteDebounceTimer = Timer(
       const Duration(milliseconds: 150),
@@ -329,11 +437,8 @@ class _LightSingleChannelControlPanelState
         }
 
         _controller.setColorWhite(value);
-        setState(() {});
       },
     );
-
-    setState(() {});
   }
 
   // ============================================================================
@@ -349,6 +454,18 @@ class _LightSingleChannelControlPanelState
     final white = _controller.colorWhite;
     final capabilities = _buildCapabilities();
 
+    // Get saturation - either from HSV property or extract from RGB color
+    double saturation;
+    if (_controller.hasSaturation) {
+      // HSV mode: use saturation property (0-100 scale, convert to 0.0-1.0)
+      saturation = _controller.saturation / 100.0;
+    } else if (color != null) {
+      // RGB mode: extract saturation from the current color
+      saturation = HSVColor.fromColor(color).saturation;
+    } else {
+      saturation = 1.0;
+    }
+
     // Single-channel device: use device name as title (no subtitle needed)
     return LightingControlPanel(
       // Header configuration
@@ -363,7 +480,7 @@ class _LightSingleChannelControlPanelState
       brightness: brightness,
       colorTemp: colorTemp,
       color: color,
-      saturation: 1.0,
+      saturation: saturation,
       whiteChannel: white,
 
       // Configuration
@@ -541,6 +658,21 @@ class _LightMultiChannelControlPanelState
   }
 
   void _handleSelectedChannelBrightnessChanged(int value) {
+    // Set optimistic state IMMEDIATELY for smooth slider feedback
+    final prop = _selectedController.channel.brightnessProp;
+    if (prop != null) {
+      _deviceControlStateService?.setPending(
+        _selectedController.deviceId,
+        _selectedController.channel.id,
+        prop.id,
+        value,
+      );
+    }
+
+    // Trigger rebuild for immediate visual feedback
+    setState(() {});
+
+    // Debounce the actual API command
     _brightnessDebounceTimer?.cancel();
     _brightnessDebounceTimer = Timer(
       const Duration(milliseconds: 150),
@@ -553,14 +685,26 @@ class _LightMultiChannelControlPanelState
         }
 
         _selectedController.setBrightness(value);
-        setState(() {});
       },
     );
-
-    setState(() {});
   }
 
   void _handleSelectedChannelColorTempChanged(int value) {
+    // Set optimistic state IMMEDIATELY for smooth slider feedback
+    final prop = _selectedController.channel.temperatureProp;
+    if (prop != null) {
+      _deviceControlStateService?.setPending(
+        _selectedController.deviceId,
+        _selectedController.channel.id,
+        prop.id,
+        value,
+      );
+    }
+
+    // Trigger rebuild for immediate visual feedback
+    setState(() {});
+
+    // Debounce the actual API command
     _temperatureDebounceTimer?.cancel();
     _temperatureDebounceTimer = Timer(
       const Duration(milliseconds: 150),
@@ -573,14 +717,84 @@ class _LightMultiChannelControlPanelState
         }
 
         _selectedController.setColorTemperature(value);
-        setState(() {});
       },
     );
-
-    setState(() {});
   }
 
   void _handleSelectedChannelColorChanged(Color color, double saturation) {
+    // Set optimistic state IMMEDIATELY for smooth slider feedback
+    final channel = _selectedController.channel;
+    final deviceId = _selectedController.deviceId;
+
+    // Build property configs based on channel's color mode
+    final List<PropertyConfig> colorProperties = [];
+    if (channel.hasColorRed && channel.hasColorGreen && channel.hasColorBlue) {
+      // RGB mode
+      final redProp = channel.colorRedProp;
+      final greenProp = channel.colorGreenProp;
+      final blueProp = channel.colorBlueProp;
+      if (redProp != null) {
+        colorProperties.add(PropertyConfig(
+          channelId: channel.id,
+          propertyId: redProp.id,
+          desiredValue: (color.r * 255).round(),
+        ));
+      }
+      if (greenProp != null) {
+        colorProperties.add(PropertyConfig(
+          channelId: channel.id,
+          propertyId: greenProp.id,
+          desiredValue: (color.g * 255).round(),
+        ));
+      }
+      if (blueProp != null) {
+        colorProperties.add(PropertyConfig(
+          channelId: channel.id,
+          propertyId: blueProp.id,
+          desiredValue: (color.b * 255).round(),
+        ));
+      }
+    } else if (channel.hasHue && channel.hasSaturation) {
+      // HSV mode
+      final hsv = HSVColor.fromColor(color);
+      final hueProp = channel.hueProp;
+      final satProp = channel.saturationProp;
+      final brightProp = channel.brightnessProp;
+      if (hueProp != null) {
+        colorProperties.add(PropertyConfig(
+          channelId: channel.id,
+          propertyId: hueProp.id,
+          desiredValue: hsv.hue,
+        ));
+      }
+      if (satProp != null) {
+        colorProperties.add(PropertyConfig(
+          channelId: channel.id,
+          propertyId: satProp.id,
+          desiredValue: (hsv.saturation * 100).round(),
+        ));
+      }
+      if (brightProp != null) {
+        colorProperties.add(PropertyConfig(
+          channelId: channel.id,
+          propertyId: brightProp.id,
+          desiredValue: (hsv.value * 100).round(),
+        ));
+      }
+    }
+
+    if (colorProperties.isNotEmpty) {
+      _deviceControlStateService?.setGroupPending(
+        deviceId,
+        LightChannelController.colorGroupId,
+        colorProperties,
+      );
+    }
+
+    // Trigger rebuild for immediate visual feedback
+    setState(() {});
+
+    // Debounce the actual API command
     _colorDebounceTimer?.cancel();
     _colorDebounceTimer = Timer(
       const Duration(milliseconds: 150),
@@ -594,14 +808,26 @@ class _LightMultiChannelControlPanelState
 
         // Controller handles RGB vs HSV mode internally
         _selectedController.setColor(color);
-        setState(() {});
       },
     );
-
-    setState(() {});
   }
 
   void _handleSelectedChannelWhiteChanged(int value) {
+    // Set optimistic state IMMEDIATELY for smooth slider feedback
+    final prop = _selectedController.channel.colorWhiteProp;
+    if (prop != null) {
+      _deviceControlStateService?.setPending(
+        _selectedController.deviceId,
+        _selectedController.channel.id,
+        prop.id,
+        value,
+      );
+    }
+
+    // Trigger rebuild for immediate visual feedback
+    setState(() {});
+
+    // Debounce the actual API command
     _whiteDebounceTimer?.cancel();
     _whiteDebounceTimer = Timer(
       const Duration(milliseconds: 150),
@@ -614,11 +840,8 @@ class _LightMultiChannelControlPanelState
         }
 
         _selectedController.setColorWhite(value);
-        setState(() {});
       },
     );
-
-    setState(() {});
   }
 
   // ============================================================================
@@ -652,6 +875,18 @@ class _LightMultiChannelControlPanelState
     final capabilities = _buildSelectedChannelCapabilities();
     final channelsList = _buildChannelsList();
 
+    // Get saturation - either from HSV property or extract from RGB color
+    double saturation;
+    if (controller.hasSaturation) {
+      // HSV mode: use saturation property (0-100 scale, convert to 0.0-1.0)
+      saturation = controller.saturation / 100.0;
+    } else if (color != null) {
+      // RGB mode: extract saturation from the current color
+      saturation = HSVColor.fromColor(color).saturation;
+    } else {
+      saturation = 1.0;
+    }
+
     // Header: channel name as title, device name as subtitle (if different)
     final channelName = controller.channel.name;
     final showSubtitle =
@@ -670,7 +905,7 @@ class _LightMultiChannelControlPanelState
       brightness: brightness,
       colorTemp: colorTemp,
       color: color,
-      saturation: 1.0,
+      saturation: saturation,
       whiteChannel: white,
 
       // Configuration
