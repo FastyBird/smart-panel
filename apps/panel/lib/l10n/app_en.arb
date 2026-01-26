@@ -2555,5 +2555,103 @@
   "light_color_pink": "Pink",
   "@light_color_pink": {
     "description": "Pink color preset label"
+  },
+
+  "connection_banner_reconnecting": "Reconnecting...",
+  "@connection_banner_reconnecting": {
+    "description": "Banner text shown during reconnection attempts"
+  },
+  "connection_banner_connecting": "Connecting...",
+  "@connection_banner_connecting": {
+    "description": "Banner text shown during initial connection"
+  },
+  "connection_banner_authenticating": "Authenticating...",
+  "@connection_banner_authenticating": {
+    "description": "Banner text shown during authentication"
+  },
+  "connection_banner_retry": "Retry",
+  "@connection_banner_retry": {
+    "description": "Retry link text in connection banner"
+  },
+
+  "connection_overlay_title_reconnecting": "Reconnecting",
+  "@connection_overlay_title_reconnecting": {
+    "description": "Overlay title during reconnection"
+  },
+  "connection_overlay_title_offline": "Connection Lost",
+  "@connection_overlay_title_offline": {
+    "description": "Overlay title when offline"
+  },
+  "connection_overlay_message_reconnecting": "Attempting to reconnect...",
+  "@connection_overlay_message_reconnecting": {
+    "description": "Overlay message during reconnection"
+  },
+  "connection_overlay_message_still_trying": "Still trying to reconnect...",
+  "@connection_overlay_message_still_trying": {
+    "description": "Overlay message during prolonged reconnection"
+  },
+  "connection_overlay_message_offline": "Connection interrupted. Tap retry to reconnect manually.",
+  "@connection_overlay_message_offline": {
+    "description": "Overlay message when offline"
+  },
+  "connection_overlay_retry": "Retry Now",
+  "@connection_overlay_retry": {
+    "description": "Retry button text in overlay"
+  },
+  "connection_overlay_open_settings": "Open Settings",
+  "@connection_overlay_open_settings": {
+    "description": "Open settings link text in overlay"
+  },
+
+  "connection_recovery_connected": "Connected",
+  "@connection_recovery_connected": {
+    "description": "Toast message shown when connection is restored"
+  },
+
+  "connection_auth_error_title": "Session Expired",
+  "@connection_auth_error_title": {
+    "description": "Title for authentication error screen"
+  },
+  "connection_auth_error_message": "Your session has expired. Please sign in again to continue using the panel.",
+  "@connection_auth_error_message": {
+    "description": "Message for authentication error screen"
+  },
+  "connection_auth_error_button_reauth": "Sign In",
+  "@connection_auth_error_button_reauth": {
+    "description": "Re-authenticate button text"
+  },
+  "connection_auth_error_button_change_gateway": "Change Gateway",
+  "@connection_auth_error_button_change_gateway": {
+    "description": "Change gateway button text on auth error screen"
+  },
+
+  "connection_network_error_title": "Network Unavailable",
+  "@connection_network_error_title": {
+    "description": "Title for network error screen"
+  },
+  "connection_network_error_message": "Unable to reach the server. Please check your network connection.",
+  "@connection_network_error_message": {
+    "description": "Message for network error screen"
+  },
+  "connection_network_error_button_retry": "Try Again",
+  "@connection_network_error_button_retry": {
+    "description": "Retry button text on network error screen"
+  },
+  "connection_network_error_button_settings": "Network Settings",
+  "@connection_network_error_button_settings": {
+    "description": "Settings button text on network error screen"
+  },
+
+  "connection_server_error_title": "Server Unavailable",
+  "@connection_server_error_title": {
+    "description": "Title for server error screen"
+  },
+  "connection_server_error_message": "The server is temporarily unavailable. Please try again later.",
+  "@connection_server_error_message": {
+    "description": "Message for server error screen"
+  },
+  "connection_server_error_button_retry": "Try Again",
+  "@connection_server_error_button_retry": {
+    "description": "Retry button text on server error screen"
   }
 }

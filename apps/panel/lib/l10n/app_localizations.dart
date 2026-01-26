@@ -3712,6 +3712,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pink'**
   String get light_color_pink;
+
+  /// Banner text shown during reconnection attempts
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnecting...'**
+  String get connection_banner_reconnecting;
+
+  /// Banner text shown during initial connection
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting...'**
+  String get connection_banner_connecting;
+
+  /// Banner text shown during authentication
+  ///
+  /// In en, this message translates to:
+  /// **'Authenticating...'**
+  String get connection_banner_authenticating;
+
+  /// Retry link text in connection banner
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get connection_banner_retry;
+
+  /// Overlay title during reconnection
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnecting'**
+  String get connection_overlay_title_reconnecting;
+
+  /// Overlay title when offline
+  ///
+  /// In en, this message translates to:
+  /// **'Connection Lost'**
+  String get connection_overlay_title_offline;
+
+  /// Overlay message during reconnection
+  ///
+  /// In en, this message translates to:
+  /// **'Attempting to reconnect...'**
+  String get connection_overlay_message_reconnecting;
+
+  /// Overlay message during prolonged reconnection
+  ///
+  /// In en, this message translates to:
+  /// **'Still trying to reconnect...'**
+  String get connection_overlay_message_still_trying;
+
+  /// Overlay message when offline
+  ///
+  /// In en, this message translates to:
+  /// **'Connection interrupted. Tap retry to reconnect manually.'**
+  String get connection_overlay_message_offline;
+
+  /// Retry button text in overlay
+  ///
+  /// In en, this message translates to:
+  /// **'Retry Now'**
+  String get connection_overlay_retry;
+
+  /// Open settings link text in overlay
+  ///
+  /// In en, this message translates to:
+  /// **'Open Settings'**
+  String get connection_overlay_open_settings;
+
+  /// Toast message shown when connection is restored
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get connection_recovery_connected;
+
+  /// Title for authentication error screen
+  ///
+  /// In en, this message translates to:
+  /// **'Session Expired'**
+  String get connection_auth_error_title;
+
+  /// Message for authentication error screen
+  ///
+  /// In en, this message translates to:
+  /// **'Your session has expired. Please sign in again to continue using the panel.'**
+  String get connection_auth_error_message;
+
+  /// Re-authenticate button text
+  ///
+  /// In en, this message translates to:
+  /// **'Sign In'**
+  String get connection_auth_error_button_reauth;
+
+  /// Change gateway button text on auth error screen
+  ///
+  /// In en, this message translates to:
+  /// **'Change Gateway'**
+  String get connection_auth_error_button_change_gateway;
+
+  /// Title for network error screen
+  ///
+  /// In en, this message translates to:
+  /// **'Network Unavailable'**
+  String get connection_network_error_title;
+
+  /// Message for network error screen
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to reach the server. Please check your network connection.'**
+  String get connection_network_error_message;
+
+  /// Retry button text on network error screen
+  ///
+  /// In en, this message translates to:
+  /// **'Try Again'**
+  String get connection_network_error_button_retry;
+
+  /// Settings button text on network error screen
+  ///
+  /// In en, this message translates to:
+  /// **'Network Settings'**
+  String get connection_network_error_button_settings;
+
+  /// Title for server error screen
+  ///
+  /// In en, this message translates to:
+  /// **'Server Unavailable'**
+  String get connection_server_error_title;
+
+  /// Message for server error screen
+  ///
+  /// In en, this message translates to:
+  /// **'The server is temporarily unavailable. Please try again later.'**
+  String get connection_server_error_message;
+
+  /// Retry button text on server error screen
+  ///
+  /// In en, this message translates to:
+  /// **'Try Again'**
+  String get connection_server_error_button_retry;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

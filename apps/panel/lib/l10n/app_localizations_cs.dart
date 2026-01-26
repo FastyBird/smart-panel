@@ -1881,4 +1881,73 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get light_color_pink => 'Růžová';
+
+  @override
+  String get connection_banner_reconnecting => 'Připojování...';
+
+  @override
+  String get connection_banner_connecting => 'Připojování...';
+
+  @override
+  String get connection_banner_authenticating => 'Ověřování...';
+
+  @override
+  String get connection_banner_retry => 'Zkusit znovu';
+
+  @override
+  String get connection_overlay_title_reconnecting => 'Připojování';
+
+  @override
+  String get connection_overlay_title_offline => 'Spojení ztraceno';
+
+  @override
+  String get connection_overlay_message_reconnecting => 'Pokus o opětovné připojení...';
+
+  @override
+  String get connection_overlay_message_still_trying => 'Stále se pokoušíme připojit...';
+
+  @override
+  String get connection_overlay_message_offline => 'Spojení přerušeno. Klepnutím na tlačítko se pokuste znovu připojit.';
+
+  @override
+  String get connection_overlay_retry => 'Zkusit znovu';
+
+  @override
+  String get connection_overlay_open_settings => 'Otevřít nastavení';
+
+  @override
+  String get connection_recovery_connected => 'Připojeno';
+
+  @override
+  String get connection_auth_error_title => 'Relace vypršela';
+
+  @override
+  String get connection_auth_error_message => 'Vaše relace vypršela. Pro pokračování se prosím znovu přihlaste.';
+
+  @override
+  String get connection_auth_error_button_reauth => 'Přihlásit se';
+
+  @override
+  String get connection_auth_error_button_change_gateway => 'Změnit bránu';
+
+  @override
+  String get connection_network_error_title => 'Síť nedostupná';
+
+  @override
+  String get connection_network_error_message => 'Nelze se připojit k serveru. Zkontrolujte prosím síťové připojení.';
+
+  @override
+  String get connection_network_error_button_retry => 'Zkusit znovu';
+
+  @override
+  String get connection_network_error_button_settings => 'Nastavení sítě';
+
+  @override
+  String get connection_server_error_title => 'Server nedostupný';
+
+  @override
+  String get connection_server_error_message => 'Server je dočasně nedostupný. Zkuste to prosím později.';
+
+  @override
+  String get connection_server_error_button_retry => 'Zkusit znovu';
 }

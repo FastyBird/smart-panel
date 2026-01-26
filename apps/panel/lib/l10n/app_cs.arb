@@ -628,5 +628,34 @@
   "light_color_cyan": "Azurová",
   "light_color_blue": "Modrá",
   "light_color_purple": "Fialová",
-  "light_color_pink": "Růžová"
+  "light_color_pink": "Růžová",
+
+  "connection_banner_reconnecting": "Připojování...",
+  "connection_banner_connecting": "Připojování...",
+  "connection_banner_authenticating": "Ověřování...",
+  "connection_banner_retry": "Zkusit znovu",
+
+  "connection_overlay_title_reconnecting": "Připojování",
+  "connection_overlay_title_offline": "Spojení ztraceno",
+  "connection_overlay_message_reconnecting": "Pokus o opětovné připojení...",
+  "connection_overlay_message_still_trying": "Stále se pokoušíme připojit...",
+  "connection_overlay_message_offline": "Spojení přerušeno. Klepnutím na tlačítko se pokuste znovu připojit.",
+  "connection_overlay_retry": "Zkusit znovu",
+  "connection_overlay_open_settings": "Otevřít nastavení",
+
+  "connection_recovery_connected": "Připojeno",
+
+  "connection_auth_error_title": "Relace vypršela",
+  "connection_auth_error_message": "Vaše relace vypršela. Pro pokračování se prosím znovu přihlaste.",
+  "connection_auth_error_button_reauth": "Přihlásit se",
+  "connection_auth_error_button_change_gateway": "Změnit bránu",
+
+  "connection_network_error_title": "Síť nedostupná",
+  "connection_network_error_message": "Nelze se připojit k serveru. Zkontrolujte prosím síťové připojení.",
+  "connection_network_error_button_retry": "Zkusit znovu",
+  "connection_network_error_button_settings": "Nastavení sítě",
+
+  "connection_server_error_title": "Server nedostupný",
+  "connection_server_error_message": "Server je dočasně nedostupný. Zkuste to prosím později.",
+  "connection_server_error_button_retry": "Zkusit znovu"
 }

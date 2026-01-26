@@ -4,6 +4,8 @@ import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
+import 'package:fastybird_smart_panel/core/types/connection_state.dart';
+
 class SocketEventMetadataModel {
   final DateTime _timestamp;
 
@@ -174,6 +176,9 @@ class SocketService {
 
   // Connection state listeners
   final List<void Function(bool)> _connectionListeners = [];
+
+  // Connection error type listeners
+  final List<void Function(ConnectionErrorType)> _errorTypeListeners = [];
 
   void initialize(
     String apiSecret,
@@ -431,6 +436,16 @@ class SocketService {
     _connectionListeners.remove(listener);
   }
 
+  /// Add a listener for connection error types
+  void addErrorTypeListener(void Function(ConnectionErrorType errorType) listener) {
+    _errorTypeListeners.add(listener);
+  }
+
+  /// Remove a connection error type listener
+  void removeErrorTypeListener(void Function(ConnectionErrorType errorType) listener) {
+    _errorTypeListeners.remove(listener);
+  }
+
   /// Check if socket is currently connected
   bool get isConnected => _socket?.connected ?? false;
 
@@ -493,6 +508,20 @@ class SocketService {
     }
   }
 
+  /// Notify all error type listeners of an error
+  void _notifyErrorTypeListeners(ConnectionErrorType errorType) {
+    for (final listener in _errorTypeListeners) {
+      try {
+        listener(errorType);
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('[SOCKETS] Error type listener threw exception: $e');
+        }
+        // Continue notifying other listeners even if one fails
+      }
+    }
+  }
+
   void dispose() {
     // Disable reconnection before disposing to prevent reconnection attempts
     _shouldReconnect = false;
@@ -514,6 +543,7 @@ class SocketService {
     _retryAttempt = 0;
     _reconnectInProgress = false;
     _connectionListeners.clear();
+    _errorTypeListeners.clear();
   }
 
   void _dispatchEvent(SocketEventModel event) {
@@ -548,25 +578,13 @@ class SocketService {
       return;
     }
 
-    // Check if this is an authentication error
-    final errorString = error.toString().toLowerCase();
-    final errorData = error is Map ? error : null;
-    final errorMessage = errorData?['message']?.toString().toLowerCase() ?? '';
-    final errorType = errorData?['type']?.toString().toLowerCase() ?? '';
+    // Classify the error type
+    final classifiedError = _classifyConnectionError(error);
 
-    // Detect authentication errors (401, 403, unauthorized, forbidden, etc.)
-    final isAuthError = errorString.contains('unauthorized') ||
-        errorString.contains('forbidden') ||
-        errorString.contains('401') ||
-        errorString.contains('403') ||
-        errorMessage.contains('unauthorized') ||
-        errorMessage.contains('forbidden') ||
-        errorMessage.contains('authentication') ||
-        errorMessage.contains('token') ||
-        errorType.contains('unauthorized') ||
-        errorType.contains('forbidden');
+    // Notify error type listeners
+    _notifyErrorTypeListeners(classifiedError);
 
-    if (isAuthError) {
+    if (classifiedError == ConnectionErrorType.auth) {
       if (kDebugMode) {
         debugPrint('[SOCKETS] Authentication error detected, token invalid. Triggering re-registration.');
       }
@@ -586,6 +604,58 @@ class SocketService {
     if (_shouldReconnect) {
       _attemptReconnectWithBackoff();
     }
+  }
+
+  /// Classify the connection error into a specific type
+  ConnectionErrorType _classifyConnectionError(dynamic error) {
+    final errorString = error.toString().toLowerCase();
+    final errorData = error is Map ? error : null;
+    final errorMessage = errorData?['message']?.toString().toLowerCase() ?? '';
+    final errorType = errorData?['type']?.toString().toLowerCase() ?? '';
+
+    // Detect authentication errors (401, 403, unauthorized, forbidden, etc.)
+    final isAuthError = errorString.contains('unauthorized') ||
+        errorString.contains('forbidden') ||
+        errorString.contains('401') ||
+        errorString.contains('403') ||
+        errorMessage.contains('unauthorized') ||
+        errorMessage.contains('forbidden') ||
+        errorMessage.contains('authentication') ||
+        errorMessage.contains('token') ||
+        errorType.contains('unauthorized') ||
+        errorType.contains('forbidden');
+
+    if (isAuthError) {
+      return ConnectionErrorType.auth;
+    }
+
+    // Detect server unavailable errors (503, maintenance, etc.)
+    final isServerUnavailable = errorString.contains('503') ||
+        errorString.contains('service unavailable') ||
+        errorString.contains('maintenance') ||
+        errorMessage.contains('503') ||
+        errorMessage.contains('service unavailable') ||
+        errorMessage.contains('maintenance');
+
+    if (isServerUnavailable) {
+      return ConnectionErrorType.serverUnavailable;
+    }
+
+    // Detect network errors
+    final isNetworkError = errorString.contains('network') ||
+        errorString.contains('unreachable') ||
+        errorString.contains('dns') ||
+        errorString.contains('timeout') ||
+        errorString.contains('econnrefused') ||
+        errorString.contains('enetunreach') ||
+        errorMessage.contains('network') ||
+        errorMessage.contains('unreachable');
+
+    if (isNetworkError) {
+      return ConnectionErrorType.network;
+    }
+
+    return ConnectionErrorType.unknown;
   }
 
   void _attemptReconnectWithBackoff() {
