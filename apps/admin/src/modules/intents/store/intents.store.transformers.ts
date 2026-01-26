@@ -72,6 +72,17 @@ export const transformIntentResponse = (response: IIntentRes): IIntent => {
 		roleKey: ctx?.roleKey ?? null,
 	};
 
+	// Ensure results is an array or null (backend may omit it entirely)
+	if (transformed.results === undefined) {
+		transformed.results = null;
+	}
+
+	// Ensure completedAt is null if not a valid date string
+	// (z.coerce.date() fails on null before .nullable() is checked)
+	if (!transformed.completedAt || transformed.completedAt === '') {
+		transformed.completedAt = null;
+	}
+
 	const parsed = IntentSchema.safeParse(transformed);
 
 	if (!parsed.success) {
