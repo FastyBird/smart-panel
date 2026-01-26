@@ -1459,17 +1459,28 @@ class SpaceStateRepository extends ChangeNotifier {
         apiFallback: () => _executeUndoViaApi(spaceId),
       );
 
-      // Always clear undo state after attempting execution
-      _undoStates.remove(spaceId);
-      notifyListeners();
+      if (dispatchResult.success) {
+        // Only clear undo state after successful execution
+        // This preserves the ability to retry on transient failures
+        _undoStates.remove(spaceId);
+        notifyListeners();
 
-      if (dispatchResult.success && dispatchResult.data != null) {
+        // For WebSocket, data may be null; for API, we get full result
+        final result = dispatchResult.data != null
+            ? UndoResultModel.fromJson(dispatchResult.data!)
+            : UndoResultModel(
+                success: true,
+                restoredDevices: 0,
+                failedDevices: 0,
+                message: 'Undo executed',
+              );
+
         if (kDebugMode) {
           debugPrint(
             '[SPACES MODULE][STATE] Undo executed via ${dispatchResult.channel.name} for $spaceId',
           );
         }
-        return UndoResultModel.fromJson(dispatchResult.data!);
+        return result;
       } else {
         if (kDebugMode) {
           debugPrint(

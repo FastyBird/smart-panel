@@ -134,6 +134,7 @@ class CommandDispatchService {
           completer.complete(CommandDispatchResult(
             success: true,
             reason: response.message,
+            data: response.data,
             channel: CommandDispatchChannel.websocket,
           ));
         }
