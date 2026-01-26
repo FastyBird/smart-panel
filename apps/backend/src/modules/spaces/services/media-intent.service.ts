@@ -2,7 +2,7 @@ import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { ChannelCategory, PropertyCategory } from '../../devices/devices.constants';
+import { ChannelCategory, ConnectionState, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
@@ -169,17 +169,61 @@ export class MediaIntentService extends SpaceIntentBaseService {
 		}
 
 		// Get all media devices in the space
-		const devices = await this.getMediaDevicesInSpace(spaceId);
+		const allDevices = await this.getMediaDevicesInSpace(spaceId);
 
-		if (devices.length === 0) {
+		if (allDevices.length === 0) {
 			this.logger.debug(`No media devices found in space id=${spaceId}`);
-			return { success: true, affectedDevices: 0, failedDevices: 0 };
+			return { success: true, affectedDevices: 0, failedDevices: 0, skippedOfflineDevices: 0 };
 		}
 
-		this.logger.debug(`Found ${devices.length} media devices in space id=${spaceId}`);
+		// Filter out offline devices
+		const { online: devices, offlineIds } = this.filterOfflineMediaDevices(allDevices);
 
-		const targets = this.buildMediaTargets(devices);
+		if (offlineIds.length > 0) {
+			this.logger.debug(`Skipping ${offlineIds.length} offline media device(s) in space id=${spaceId}`);
+		}
+
+		// Filter offline IDs by role for role-specific intents (applied early for all-offline check)
+		const targetedOfflineIds = this.filterOfflineIdsByRole(allDevices, offlineIds, intent);
+
+		// For role-specific intents, check if there are any online devices with the target role
+		const hasOnlineTargetedDevices =
+			this.isRoleSpecificIntent(intent.type) && intent.role
+				? devices.some((d) => d.role === intent.role)
+				: devices.length > 0;
+
+		// If all targeted devices are offline, return early with appropriate result
+		if (!hasOnlineTargetedDevices && targetedOfflineIds.length > 0) {
+			this.logger.warn(`All ${targetedOfflineIds.length} targeted media device(s) are offline in space id=${spaceId}`);
+
+			return {
+				success: false,
+				affectedDevices: 0,
+				failedDevices: 0,
+				skippedOfflineDevices: targetedOfflineIds.length,
+				offlineDeviceIds: targetedOfflineIds,
+			};
+		}
+
+		this.logger.debug(`Found ${devices.length} online media devices in space id=${spaceId}`);
+
+		const targets = this.buildMediaTargets(allDevices);
 		const targetResults: IntentTargetResult[] = [];
+
+		// Add SKIPPED results for offline devices that were actually targeted
+		// Use filter() to get all channels of multi-channel devices, matching how targets are built
+		for (const deviceId of targetedOfflineIds) {
+			const offlineDevices = allDevices.filter((d) => d.device.id === deviceId);
+
+			for (const offlineDevice of offlineDevices) {
+				targetResults.push({
+					deviceId: offlineDevice.device.id,
+					channelId: offlineDevice.mediaChannel.id,
+					status: IntentTargetStatus.SKIPPED,
+					error: 'Device offline',
+				});
+			}
+		}
 
 		const intentRecord = this.intentsService.createIntent({
 			type: this.mapMediaIntentType(intent.type),
@@ -205,6 +249,13 @@ export class MediaIntentService extends SpaceIntentBaseService {
 			result = await this.executeGlobalIntent(spaceId, devices, intent, targetResults);
 		}
 
+		// Add skipped offline devices info to result (only those actually targeted)
+		result.skippedOfflineDevices = targetedOfflineIds.length;
+
+		if (targetedOfflineIds.length > 0) {
+			result.offlineDeviceIds = targetedOfflineIds;
+		}
+
 		this.intentsService.completeIntent(intentRecord.id, targetResults);
 
 		// Emit state change event for WebSocket clients (fire and forget)
@@ -219,6 +270,32 @@ export class MediaIntentService extends SpaceIntentBaseService {
 		}
 
 		return result;
+	}
+
+	/**
+	 * Filter out offline devices from a list of media devices.
+	 * Returns online devices and list of unique offline device IDs.
+	 *
+	 * Devices with UNKNOWN status are treated as potentially online and included
+	 * in the online list (commands will fail naturally if device is truly offline).
+	 *
+	 * Note: A device may have multiple channels, so we use a Set to ensure
+	 * each device ID appears only once in offlineIds.
+	 */
+	private filterOfflineMediaDevices(devices: MediaDevice[]): { online: MediaDevice[]; offlineIds: string[] } {
+		const online: MediaDevice[] = [];
+		const offlineIdSet = new Set<string>();
+
+		for (const device of devices) {
+			// Treat UNKNOWN status as potentially online - allow commands to attempt
+			if (device.device.status.online || device.device.status.status === ConnectionState.UNKNOWN) {
+				online.push(device);
+			} else {
+				offlineIdSet.add(device.device.id);
+			}
+		}
+
+		return { online, offlineIds: [...offlineIdSet] };
 	}
 
 	/**
@@ -266,6 +343,32 @@ export class MediaIntentService extends SpaceIntentBaseService {
 	 */
 	private buildMediaTargets(devices: MediaDevice[]): IntentTarget[] {
 		return devices.map((device) => ({ deviceId: device.device.id }));
+	}
+
+	/**
+	 * Filter offline device IDs by role for role-specific intents.
+	 *
+	 * For role-specific intents (ROLE_POWER, ROLE_VOLUME), only returns offline
+	 * device IDs that match the target role. For non-role-specific intents,
+	 * returns all offline device IDs unchanged.
+	 *
+	 * @param allDevices - All media devices in the space (including offline)
+	 * @param offlineIds - IDs of offline devices
+	 * @param intent - The media intent being executed
+	 * @returns Filtered list of offline device IDs that would have been targeted
+	 */
+	private filterOfflineIdsByRole(allDevices: MediaDevice[], offlineIds: string[], intent: MediaIntentDto): string[] {
+		// For non-role-specific intents, all offline devices are targeted
+		if (!this.isRoleSpecificIntent(intent.type) || !intent.role) {
+			return offlineIds;
+		}
+
+		// Filter offline IDs to only those with at least one channel matching the target role
+		// Uses some() instead of find() to check if ANY channel matches, since multi-channel
+		// devices may have different roles per channel (e.g., TV with TELEVISION and SPEAKER)
+		return offlineIds.filter((deviceId) => {
+			return allDevices.some((d) => d.device.id === deviceId && d.role === intent.role);
+		});
 	}
 
 	/**

@@ -9,6 +9,8 @@ export interface IntentExecutionResult {
 	success: boolean;
 	affectedDevices: number;
 	failedDevices: number;
+	skippedOfflineDevices?: number;
+	offlineDeviceIds?: string[];
 }
 
 /**

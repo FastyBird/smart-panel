@@ -226,6 +226,25 @@ export class LightingIntentResultDataModel {
 	})
 	@Expose({ name: 'failed_devices' })
 	failedDevices: number;
+
+	@ApiPropertyOptional({
+		name: 'skipped_offline_devices',
+		description: 'Number of devices skipped because they are offline',
+		type: 'integer',
+		example: 1,
+	})
+	@Expose({ name: 'skipped_offline_devices' })
+	skippedOfflineDevices?: number;
+
+	@ApiPropertyOptional({
+		name: 'offline_device_ids',
+		description: 'IDs of devices that were skipped because they are offline',
+		type: 'array',
+		items: { type: 'string', format: 'uuid' },
+		example: ['a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7'],
+	})
+	@Expose({ name: 'offline_device_ids' })
+	offlineDeviceIds?: string[];
 }
 
 /**
@@ -442,6 +461,25 @@ export class ClimateIntentResultDataModel {
 	})
 	@Expose({ name: 'failed_devices' })
 	failedDevices: number;
+
+	@ApiPropertyOptional({
+		name: 'skipped_offline_devices',
+		description: 'Number of devices skipped because they are offline',
+		type: 'integer',
+		example: 1,
+	})
+	@Expose({ name: 'skipped_offline_devices' })
+	skippedOfflineDevices?: number;
+
+	@ApiPropertyOptional({
+		name: 'offline_device_ids',
+		description: 'IDs of devices that were skipped because they are offline',
+		type: 'array',
+		items: { type: 'string', format: 'uuid' },
+		example: ['a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7'],
+	})
+	@Expose({ name: 'offline_device_ids' })
+	offlineDeviceIds?: string[];
 
 	@ApiProperty({
 		name: 'mode',
@@ -1432,6 +1470,25 @@ export class CoversIntentResultDataModel {
 	})
 	@Expose({ name: 'failed_devices' })
 	failedDevices: number;
+
+	@ApiPropertyOptional({
+		name: 'skipped_offline_devices',
+		description: 'Number of devices skipped because they are offline',
+		type: 'integer',
+		example: 1,
+	})
+	@Expose({ name: 'skipped_offline_devices' })
+	skippedOfflineDevices?: number;
+
+	@ApiPropertyOptional({
+		name: 'offline_device_ids',
+		description: 'IDs of devices that were skipped because they are offline',
+		type: 'array',
+		items: { type: 'string', format: 'uuid' },
+		example: ['a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7'],
+	})
+	@Expose({ name: 'offline_device_ids' })
+	offlineDeviceIds?: string[];
 
 	@ApiPropertyOptional({
 		name: 'new_position',
@@ -3647,6 +3704,25 @@ export class MediaIntentResultDataModel {
 	})
 	@Expose({ name: 'failed_devices' })
 	failedDevices: number;
+
+	@ApiPropertyOptional({
+		name: 'skipped_offline_devices',
+		description: 'Number of devices skipped because they are offline',
+		type: 'integer',
+		example: 1,
+	})
+	@Expose({ name: 'skipped_offline_devices' })
+	skippedOfflineDevices?: number;
+
+	@ApiPropertyOptional({
+		name: 'offline_device_ids',
+		description: 'IDs of devices that were skipped because they are offline',
+		type: 'array',
+		items: { type: 'string', format: 'uuid' },
+		example: ['a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7'],
+	})
+	@Expose({ name: 'offline_device_ids' })
+	offlineDeviceIds?: string[];
 
 	@ApiPropertyOptional({
 		name: 'skipped_devices',

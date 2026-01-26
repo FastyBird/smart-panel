@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
+import { ConnectionState } from '../../devices/devices.constants';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { DEFAULT_TTL_SPACE_COMMAND, IntentTargetStatus, IntentType } from '../../intents/intents.constants';
@@ -85,6 +86,7 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 			success: false,
 			affectedDevices: 0,
 			failedDevices: 0,
+			skippedOfflineDevices: 0,
 			mode: ClimateMode.OFF,
 			heatingSetpoint: null,
 			coolingSetpoint: null,
@@ -109,16 +111,34 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		}
 
 		// Get primary devices
-		const primaryDevices = await this.climateStateService.getPrimaryClimateDevicesInSpace(spaceId);
+		const allPrimaryDevices = await this.climateStateService.getPrimaryClimateDevicesInSpace(spaceId);
 
-		if (primaryDevices.length === 0) {
+		if (allPrimaryDevices.length === 0) {
 			this.logger.debug(`No controllable climate devices in space id=${spaceId}`);
 
 			return { ...defaultResult, success: true };
 		}
 
-		// Build targets for intent (all climate devices that will be affected)
-		const targets = this.buildClimateTargets(primaryDevices);
+		// Filter out offline devices
+		const { online: primaryDevices, offlineIds } = this.filterOfflineClimateDevices(allPrimaryDevices);
+
+		if (offlineIds.length > 0) {
+			this.logger.debug(`Skipping ${offlineIds.length} offline climate device(s) in space id=${spaceId}`);
+		}
+
+		// If all devices are offline, return early with appropriate result
+		if (primaryDevices.length === 0 && offlineIds.length > 0) {
+			this.logger.warn(`All ${offlineIds.length} climate device(s) are offline in space id=${spaceId}`);
+
+			return {
+				...defaultResult,
+				skippedOfflineDevices: offlineIds.length,
+				offlineDeviceIds: offlineIds,
+			};
+		}
+
+		// Build targets for intent (all climate devices including offline for tracking)
+		const targets = this.buildClimateTargets(allPrimaryDevices);
 
 		// Create intent before executing (emits Intent.Created event)
 		const intentRecord = this.intentsService.createIntent({
@@ -139,6 +159,15 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		let result: ClimateIntentResult;
 		const targetResults: IntentTargetResult[] = [];
 
+		// Add SKIPPED results for offline devices
+		for (const deviceId of offlineIds) {
+			targetResults.push({
+				deviceId,
+				status: IntentTargetStatus.SKIPPED,
+				error: 'Device offline',
+			});
+		}
+
 		switch (intent.type) {
 			case ClimateIntentType.SET_MODE:
 				result = await this.executeSetModeIntent(spaceId, primaryDevices, intent, climateState, targetResults);
@@ -158,8 +187,19 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 
 			default:
 				this.logger.warn(`Unknown climate intent type: ${String(intent.type)}`);
-				this.intentsService.completeIntent(intentRecord.id, []);
-				return defaultResult;
+				this.intentsService.completeIntent(intentRecord.id, targetResults);
+				return {
+					...defaultResult,
+					skippedOfflineDevices: offlineIds.length,
+					offlineDeviceIds: offlineIds.length > 0 ? offlineIds : undefined,
+				};
+		}
+
+		// Add skipped offline devices info to result
+		result.skippedOfflineDevices = offlineIds.length;
+
+		if (offlineIds.length > 0) {
+			result.offlineDeviceIds = offlineIds;
 		}
 
 		// Complete intent with results (emits Intent.Completed event)
@@ -171,6 +211,35 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		}
 
 		return result;
+	}
+
+	/**
+	 * Filter out offline devices from a list of primary climate devices.
+	 * Returns online devices and list of unique offline device IDs.
+	 *
+	 * Devices with UNKNOWN status are treated as potentially online and included
+	 * in the online list (commands will fail naturally if device is truly offline).
+	 *
+	 * Note: A device may have multiple channels, so we use a Set to ensure
+	 * each device ID appears only once in offlineIds.
+	 */
+	private filterOfflineClimateDevices(devices: PrimaryClimateDevice[]): {
+		online: PrimaryClimateDevice[];
+		offlineIds: string[];
+	} {
+		const online: PrimaryClimateDevice[] = [];
+		const offlineIdSet = new Set<string>();
+
+		for (const device of devices) {
+			// Treat UNKNOWN status as potentially online - allow commands to attempt
+			if (device.device.status.online || device.device.status.status === ConnectionState.UNKNOWN) {
+				online.push(device);
+			} else {
+				offlineIdSet.add(device.device.id);
+			}
+		}
+
+		return { online, offlineIds: [...offlineIdSet] };
 	}
 
 	/**

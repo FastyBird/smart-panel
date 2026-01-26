@@ -4,7 +4,7 @@ import { v4 as uuid } from 'uuid';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { DeviceCategory } from '../../devices/devices.constants';
+import { ConnectionState, DeviceCategory } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
@@ -60,6 +60,7 @@ describe('ClimateIntentService', () => {
 			name: 'Test Device',
 			category: DeviceCategory.HEATING_UNIT,
 			type: 'test-device',
+			status: { online: true, status: ConnectionState.CONNECTED },
 		} as DeviceEntity,
 		deviceCategory: DeviceCategory.HEATING_UNIT,
 		role: ClimateRole.AUTO,
@@ -91,6 +92,7 @@ describe('ClimateIntentService', () => {
 	const mockPlatform = {
 		getType: jest.fn().mockReturnValue('test-device'),
 		setPropertyValue: jest.fn().mockResolvedValue(true),
+		processBatch: jest.fn().mockResolvedValue(true),
 	};
 
 	beforeEach(async () => {
@@ -165,6 +167,7 @@ describe('ClimateIntentService', () => {
 		// Reset mock between tests
 		jest.clearAllMocks();
 		mockPlatform.setPropertyValue.mockResolvedValue(true);
+		mockPlatform.processBatch.mockResolvedValue(true);
 	});
 
 	describe('getClimateState', () => {
@@ -385,6 +388,130 @@ describe('ClimateIntentService', () => {
 			const result = await service.getPrimaryThermostatId(mockSpaceId);
 
 			expect(result).toBeNull();
+		});
+	});
+
+	describe('offline device handling', () => {
+		it('skips offline devices and reports them in result', async () => {
+			const onlineDevice = createMockPrimaryClimateDevice({
+				device: {
+					id: 'online-device',
+					name: 'Online Thermostat',
+					category: DeviceCategory.THERMOSTAT,
+					type: 'test-device',
+					status: { online: true, status: ConnectionState.CONNECTED },
+				} as DeviceEntity,
+			});
+			const offlineDevice = createMockPrimaryClimateDevice({
+				device: {
+					id: 'offline-device',
+					name: 'Offline Thermostat',
+					category: DeviceCategory.THERMOSTAT,
+					type: 'test-device',
+					status: { online: false, status: ConnectionState.DISCONNECTED },
+				} as DeviceEntity,
+			});
+
+			climateStateService.getPrimaryClimateDevicesInSpace.mockResolvedValue([onlineDevice, offlineDevice]);
+
+			const intent: ClimateIntentDto = {
+				type: ClimateIntentType.SET_MODE,
+				mode: ClimateMode.HEAT,
+			};
+
+			const result = await service.executeClimateIntent(mockSpaceId, intent);
+
+			expect(result?.success).toBe(true);
+			expect(result?.skippedOfflineDevices).toBe(1);
+			expect(result?.offlineDeviceIds).toContain('offline-device');
+		});
+
+		it('returns early when all devices are offline', async () => {
+			const offlineDevice = createMockPrimaryClimateDevice({
+				device: {
+					id: 'offline-device',
+					name: 'Offline Thermostat',
+					category: DeviceCategory.THERMOSTAT,
+					type: 'test-device',
+					status: { online: false, status: ConnectionState.DISCONNECTED },
+				} as DeviceEntity,
+			});
+
+			climateStateService.getPrimaryClimateDevicesInSpace.mockResolvedValue([offlineDevice]);
+
+			const intent: ClimateIntentDto = {
+				type: ClimateIntentType.SET_MODE,
+				mode: ClimateMode.HEAT,
+			};
+
+			const result = await service.executeClimateIntent(mockSpaceId, intent);
+
+			expect(result?.success).toBe(false);
+			expect(result?.affectedDevices).toBe(0);
+			expect(result?.skippedOfflineDevices).toBe(1);
+			expect(result?.offlineDeviceIds).toContain('offline-device');
+		});
+
+		it('treats UNKNOWN status as potentially online', async () => {
+			const unknownStatusDevice = createMockPrimaryClimateDevice({
+				device: {
+					id: 'unknown-device',
+					name: 'Unknown Status Thermostat',
+					category: DeviceCategory.THERMOSTAT,
+					type: 'test-device',
+					status: { online: false, status: ConnectionState.UNKNOWN },
+				} as DeviceEntity,
+			});
+
+			climateStateService.getPrimaryClimateDevicesInSpace.mockResolvedValue([unknownStatusDevice]);
+
+			const intent: ClimateIntentDto = {
+				type: ClimateIntentType.SET_MODE,
+				mode: ClimateMode.HEAT,
+			};
+
+			const result = await service.executeClimateIntent(mockSpaceId, intent);
+
+			// Device with UNKNOWN status should be treated as potentially online
+			expect(result?.skippedOfflineDevices).toBe(0);
+			expect(result?.offlineDeviceIds).toBeUndefined();
+		});
+
+		it('deduplicates offline device IDs for multi-channel devices', async () => {
+			// Simulate a device appearing multiple times (e.g., multi-channel)
+			const deviceId = 'multi-channel-device';
+			const offlineDevice1 = createMockPrimaryClimateDevice({
+				device: {
+					id: deviceId,
+					name: 'Multi-Channel Thermostat',
+					category: DeviceCategory.THERMOSTAT,
+					type: 'test-device',
+					status: { online: false, status: ConnectionState.DISCONNECTED },
+				} as DeviceEntity,
+			});
+			const offlineDevice2 = createMockPrimaryClimateDevice({
+				device: {
+					id: deviceId,
+					name: 'Multi-Channel Thermostat',
+					category: DeviceCategory.THERMOSTAT,
+					type: 'test-device',
+					status: { online: false, status: ConnectionState.DISCONNECTED },
+				} as DeviceEntity,
+			});
+
+			climateStateService.getPrimaryClimateDevicesInSpace.mockResolvedValue([offlineDevice1, offlineDevice2]);
+
+			const intent: ClimateIntentDto = {
+				type: ClimateIntentType.SET_MODE,
+				mode: ClimateMode.HEAT,
+			};
+
+			const result = await service.executeClimateIntent(mockSpaceId, intent);
+
+			// Should only count the device once, not twice
+			expect(result?.skippedOfflineDevices).toBe(1);
+			expect(result?.offlineDeviceIds).toHaveLength(1);
+			expect(result?.offlineDeviceIds).toContain(deviceId);
 		});
 	});
 });

@@ -96,8 +96,8 @@ describe('PropertyCommandService', () => {
 		room: null,
 		deviceZones: [],
 		status: {
-			online: false,
-			status: ConnectionState.UNKNOWN,
+			online: true,
+			status: ConnectionState.CONNECTED,
 		},
 		createdAt: new Date(),
 		updatedAt: new Date(),
@@ -387,6 +387,62 @@ describe('PropertyCommandService', () => {
 			await expect(service.handleInternal(thirdPartyToken, validPayload)).rejects.toThrow(
 				'This action is not allowed for this user',
 			);
+		});
+	});
+
+	describe('offline device handling', () => {
+		it('should reject commands to offline devices', async () => {
+			const offlineDevice = {
+				...mockDevice,
+				id: uuid().toString(),
+				status: {
+					online: false,
+					status: ConnectionState.DISCONNECTED,
+				},
+			};
+
+			jest.spyOn(devicesService, 'findOne').mockResolvedValue(toInstance(MockDevice, offlineDevice));
+			jest.spyOn(channelsService, 'findOne').mockResolvedValue(toInstance(MockChannel, mockChannel));
+			jest
+				.spyOn(channelsPropertiesService, 'findOne')
+				.mockResolvedValue(toInstance(MockChannelProperty, mockChannelProperty));
+
+			const offlinePayload: PropertyCommandDto = {
+				request_id: '550e8400-e29b-41d4-a716-446655440000',
+				properties: [
+					{
+						device: offlineDevice.id,
+						channel: mockChannel.id,
+						property: mockChannelProperty.id,
+						value: true,
+					},
+				],
+			};
+
+			const result = await service.handleInternal(mockWsUser, offlinePayload);
+
+			expect(result.success).toBe(false);
+			expect(result.results).toEqual([{ device: offlineDevice.id, success: false, reason: 'Device is offline' }]);
+			expect(loggerWarnSpy).toHaveBeenCalledWith(
+				expect.stringContaining('Device is offline'),
+				expect.objectContaining({ tag: 'devices-module' }),
+			);
+		});
+
+		it('should process commands to online devices normally', async () => {
+			jest.spyOn(devicesService, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
+			jest.spyOn(channelsService, 'findOne').mockResolvedValue(toInstance(MockChannel, mockChannel));
+			jest
+				.spyOn(channelsPropertiesService, 'findOne')
+				.mockResolvedValue(toInstance(MockChannelProperty, mockChannelProperty));
+			jest.spyOn(platformRegistryService, 'get').mockReturnValue(mockPlatform);
+			jest.spyOn(mockPlatform, 'processBatch').mockResolvedValue(true);
+
+			const result = await service.handleInternal(mockWsUser, validPayload);
+
+			expect(result.success).toBe(true);
+			// eslint-disable-next-line @typescript-eslint/unbound-method
+			expect(mockPlatform.processBatch).toHaveBeenCalled();
 		});
 	});
 });

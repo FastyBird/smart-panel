@@ -2,6 +2,7 @@ import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { ConnectionState } from '../../devices/devices.constants';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { DEFAULT_TTL_SPACE_COMMAND, IntentTargetStatus, IntentType } from '../../intents/intents.constants';
@@ -146,17 +147,47 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		}
 
 		// Get all covers in the space
-		const covers = await this.coversStateService.getCoversInSpace(spaceId);
+		const allCovers = await this.coversStateService.getCoversInSpace(spaceId);
 
-		if (covers.length === 0) {
+		if (allCovers.length === 0) {
 			this.logger.debug(`No covers found in space id=${spaceId}`);
-			return { success: true, affectedDevices: 0, failedDevices: 0, newPosition: null };
+			return { success: true, affectedDevices: 0, failedDevices: 0, skippedOfflineDevices: 0, newPosition: null };
 		}
 
-		this.logger.debug(`Found ${covers.length} covers in space id=${spaceId}`);
+		// Filter out offline devices
+		const { online: covers, offlineIds } = this.filterOfflineCoverDevices(allCovers);
 
-		// Build targets for intent (all covers that will be affected)
-		const targets = this.buildCoversTargets(covers, intent);
+		if (offlineIds.length > 0) {
+			this.logger.debug(`Skipping ${offlineIds.length} offline cover device(s) in space id=${spaceId}`);
+		}
+
+		// Filter offline IDs by role for role-specific intents (applied early for all-offline check)
+		const targetedOfflineIds = this.filterOfflineIdsByRole(allCovers, offlineIds, intent);
+
+		// For role-specific intents, also check if there are any online devices with the target role
+		const hasOnlineTargetedDevices =
+			intent.type === CoversIntentType.ROLE_POSITION && intent.role
+				? covers.some((c) => c.role === intent.role)
+				: covers.length > 0;
+
+		// If all targeted devices are offline, return early with appropriate result
+		if (!hasOnlineTargetedDevices && targetedOfflineIds.length > 0) {
+			this.logger.warn(`All ${targetedOfflineIds.length} targeted cover device(s) are offline in space id=${spaceId}`);
+
+			return {
+				success: false,
+				affectedDevices: 0,
+				failedDevices: 0,
+				skippedOfflineDevices: targetedOfflineIds.length,
+				offlineDeviceIds: targetedOfflineIds,
+				newPosition: null,
+			};
+		}
+
+		this.logger.debug(`Found ${covers.length} online covers in space id=${spaceId}`);
+
+		// Build targets for intent (all covers including offline for tracking)
+		const targets = this.buildCoversTargets(allCovers, intent);
 
 		// Create intent before executing (emits Intent.Created event)
 		const intentRecord = this.intentsService.createIntent({
@@ -176,6 +207,21 @@ export class CoversIntentService extends SpaceIntentBaseService {
 
 		let result: CoversIntentResult;
 		const targetResults: IntentTargetResult[] = [];
+
+		// Add SKIPPED results for offline devices that were actually targeted
+		// Use filter() to get all channels of multi-channel devices, matching how targets are built
+		for (const deviceId of targetedOfflineIds) {
+			const offlineCovers = allCovers.filter((c) => c.device.id === deviceId);
+
+			for (const offlineCover of offlineCovers) {
+				targetResults.push({
+					deviceId: offlineCover.device.id,
+					channelId: offlineCover.coverChannel.id,
+					status: IntentTargetStatus.SKIPPED,
+					error: 'Device offline',
+				});
+			}
+		}
 
 		switch (intent.type) {
 			case CoversIntentType.OPEN:
@@ -213,8 +259,22 @@ export class CoversIntentService extends SpaceIntentBaseService {
 
 			default:
 				this.logger.warn(`Unknown covers intent type: ${String(intent.type)}`);
-				this.intentsService.completeIntent(intentRecord.id, []);
-				return { success: false, affectedDevices: 0, failedDevices: 0, newPosition: null };
+				this.intentsService.completeIntent(intentRecord.id, targetResults);
+				return {
+					success: false,
+					affectedDevices: 0,
+					failedDevices: 0,
+					skippedOfflineDevices: targetedOfflineIds.length,
+					offlineDeviceIds: targetedOfflineIds.length > 0 ? targetedOfflineIds : undefined,
+					newPosition: null,
+				};
+		}
+
+		// Add skipped offline devices info to result (only those actually targeted)
+		result.skippedOfflineDevices = targetedOfflineIds.length;
+
+		if (targetedOfflineIds.length > 0) {
+			result.offlineDeviceIds = targetedOfflineIds;
 		}
 
 		// Complete intent with results (emits Intent.Completed event)
@@ -226,6 +286,32 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		}
 
 		return result;
+	}
+
+	/**
+	 * Filter out offline devices from a list of cover devices.
+	 * Returns online devices and list of unique offline device IDs.
+	 *
+	 * Devices with UNKNOWN status are treated as potentially online and included
+	 * in the online list (commands will fail naturally if device is truly offline).
+	 *
+	 * Note: A device may have multiple channels, so we use a Set to ensure
+	 * each device ID appears only once in offlineIds.
+	 */
+	private filterOfflineCoverDevices(covers: CoverDevice[]): { online: CoverDevice[]; offlineIds: string[] } {
+		const online: CoverDevice[] = [];
+		const offlineIdSet = new Set<string>();
+
+		for (const cover of covers) {
+			// Treat UNKNOWN status as potentially online - allow commands to attempt
+			if (cover.device.status.online || cover.device.status.status === ConnectionState.UNKNOWN) {
+				online.push(cover);
+			} else {
+				offlineIdSet.add(cover.device.id);
+			}
+		}
+
+		return { online, offlineIds: [...offlineIdSet] };
 	}
 
 	/**
@@ -246,6 +332,34 @@ export class CoversIntentService extends SpaceIntentBaseService {
 			deviceId: cover.device.id,
 			channelId: cover.coverChannel.id,
 		}));
+	}
+
+	/**
+	 * Filter offline device IDs by role for role-specific intents.
+	 *
+	 * For the ROLE_POSITION intent, only returns offline device IDs that match
+	 * the target role. For non-role-specific intents, returns all offline device
+	 * IDs unchanged.
+	 *
+	 * Uses some() instead of find() to check if ANY channel of the device matches
+	 * the target role, since multi-channel devices may have different roles per channel.
+	 *
+	 * @param allCovers - All cover devices in the space (including offline)
+	 * @param offlineIds - IDs of offline devices
+	 * @param intent - The covers intent being executed
+	 * @returns Filtered list of offline device IDs that would have been targeted
+	 */
+	private filterOfflineIdsByRole(allCovers: CoverDevice[], offlineIds: string[], intent: CoversIntentDto): string[] {
+		// For non-role-specific intents, all offline devices are targeted
+		if (intent.type !== CoversIntentType.ROLE_POSITION || !intent.role) {
+			return offlineIds;
+		}
+
+		// Filter offline IDs to only those with at least one channel matching the target role
+		return offlineIds.filter((deviceId) => {
+			// Check if ANY channel of this device matches the target role
+			return allCovers.some((c) => c.device.id === deviceId && c.role === intent.role);
+		});
 	}
 
 	/**

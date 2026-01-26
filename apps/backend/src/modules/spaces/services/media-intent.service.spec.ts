@@ -67,6 +67,7 @@ describe('MediaIntentService', () => {
 			{
 				id: 'device-1',
 				category: DeviceCategory.MEDIA,
+				status: { online: true, status: 'connected' },
 				channels: [
 					{
 						id: 'channel-1',
@@ -268,6 +269,7 @@ describe('MediaIntentService - volume delta edge cases', () => {
 		return {
 			id: 'device-1',
 			category: DeviceCategory.MEDIA,
+			status: { online: true, status: 'connected' },
 			channels: [
 				{
 					id: 'channel-1',
@@ -396,6 +398,7 @@ describe('MediaIntentService - volume delta edge cases', () => {
 			{
 				id: 'device-1',
 				category: DeviceCategory.MEDIA,
+				status: { online: true, status: 'connected' },
 				channels: [
 					{
 						id: 'channel-1',
@@ -418,5 +421,162 @@ describe('MediaIntentService - volume delta edge cases', () => {
 
 		// Should succeed but no commands sent
 		expect(result?.success).toBe(true);
+	});
+
+	describe('offline device handling', () => {
+		it('skips offline devices and reports them in result', async () => {
+			spacesService.findOne.mockResolvedValue({ id: 'space-1' });
+			spacesService.findDevicesBySpace.mockResolvedValue([
+				{
+					id: 'online-device',
+					category: DeviceCategory.MEDIA,
+					status: { online: true, status: 'connected' },
+					channels: [
+						{
+							id: 'channel-1',
+							category: ChannelCategory.SPEAKER,
+							properties: [
+								{ category: PropertyCategory.ON, value: true },
+								{ category: PropertyCategory.VOLUME, value: 50 },
+							],
+						},
+					],
+				},
+				{
+					id: 'offline-device',
+					category: DeviceCategory.MEDIA,
+					status: { online: false, status: 'disconnected' },
+					channels: [
+						{
+							id: 'channel-2',
+							category: ChannelCategory.SPEAKER,
+							properties: [
+								{ category: PropertyCategory.ON, value: true },
+								{ category: PropertyCategory.VOLUME, value: 50 },
+							],
+						},
+					],
+				},
+			]);
+			mediaRoleService.getRoleMap.mockResolvedValue(new Map());
+
+			const dto: MediaIntentDto = {
+				type: MediaIntentType.SET_MODE,
+				mode: MediaMode.PARTY,
+			};
+
+			const result = await service.executeMediaIntent('space-1', dto);
+
+			expect(result?.success).toBe(true);
+			expect(result?.skippedOfflineDevices).toBe(1);
+			expect(result?.offlineDeviceIds).toContain('offline-device');
+		});
+
+		it('filters offline devices by role for role-specific intents', async () => {
+			spacesService.findOne.mockResolvedValue({ id: 'space-1' });
+			spacesService.findDevicesBySpace.mockResolvedValue([
+				{
+					id: 'online-primary',
+					category: DeviceCategory.MEDIA,
+					status: { online: true, status: 'connected' },
+					channels: [
+						{
+							id: 'channel-1',
+							category: ChannelCategory.SPEAKER,
+							properties: [
+								{ category: PropertyCategory.ON, value: true },
+								{ category: PropertyCategory.VOLUME, value: 50 },
+							],
+						},
+					],
+				},
+				{
+					id: 'offline-primary',
+					category: DeviceCategory.MEDIA,
+					status: { online: false, status: 'disconnected' },
+					channels: [
+						{
+							id: 'channel-2',
+							category: ChannelCategory.SPEAKER,
+							properties: [
+								{ category: PropertyCategory.ON, value: true },
+								{ category: PropertyCategory.VOLUME, value: 50 },
+							],
+						},
+					],
+				},
+				{
+					id: 'offline-secondary',
+					category: DeviceCategory.MEDIA,
+					status: { online: false, status: 'disconnected' },
+					channels: [
+						{
+							id: 'channel-3',
+							category: ChannelCategory.SPEAKER,
+							properties: [
+								{ category: PropertyCategory.ON, value: true },
+								{ category: PropertyCategory.VOLUME, value: 50 },
+							],
+						},
+					],
+				},
+			]);
+			// Set up roles: online-primary and offline-primary are PRIMARY, offline-secondary is SECONDARY
+			// roleMap returns entities with { role: MediaRole } structure
+			mediaRoleService.getRoleMap.mockResolvedValue(
+				new Map([
+					['online-primary', { role: MediaRole.PRIMARY }],
+					['offline-primary', { role: MediaRole.PRIMARY }],
+					['offline-secondary', { role: MediaRole.SECONDARY }],
+				]),
+			);
+
+			const dto: MediaIntentDto = {
+				type: MediaIntentType.ROLE_VOLUME,
+				role: MediaRole.PRIMARY,
+				volume: 70,
+			};
+
+			const result = await service.executeMediaIntent('space-1', dto);
+
+			// Should only report offline-primary as skipped (not offline-secondary since it's not PRIMARY)
+			expect(result?.skippedOfflineDevices).toBe(1);
+			expect(result?.offlineDeviceIds).toContain('offline-primary');
+			expect(result?.offlineDeviceIds).not.toContain('offline-secondary');
+		});
+
+		it('returns early when all devices are offline', async () => {
+			spacesService.findOne.mockResolvedValue({ id: 'space-1' });
+			spacesService.findDevicesBySpace.mockResolvedValue([
+				{
+					id: 'offline-device',
+					category: DeviceCategory.MEDIA,
+					status: { online: false, status: 'disconnected' },
+					channels: [
+						{
+							id: 'channel-1',
+							category: ChannelCategory.SPEAKER,
+							properties: [
+								{ category: PropertyCategory.ON, value: true },
+								{ category: PropertyCategory.VOLUME, value: 50 },
+							],
+						},
+					],
+				},
+			]);
+			mediaRoleService.getRoleMap.mockResolvedValue(new Map());
+
+			const dto: MediaIntentDto = {
+				type: MediaIntentType.SET_MODE,
+				mode: MediaMode.PARTY,
+			};
+
+			const result = await service.executeMediaIntent('space-1', dto);
+
+			expect(result?.success).toBe(false);
+			expect(result?.affectedDevices).toBe(0);
+			expect(result?.skippedOfflineDevices).toBe(1);
+			expect(result?.offlineDeviceIds).toContain('offline-device');
+		});
 	});
 });

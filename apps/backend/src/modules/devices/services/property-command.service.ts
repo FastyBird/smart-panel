@@ -11,7 +11,7 @@ import { IntentsService } from '../../intents/services/intents.service';
 import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../../websocket/dto/client-user.dto';
 import { WebsocketNotAllowedException } from '../../websocket/websocket.exceptions';
-import { DEVICES_MODULE_NAME, DataTypeType } from '../devices.constants';
+import { ConnectionState, DEVICES_MODULE_NAME, DataTypeType } from '../devices.constants';
 import { PropertyCommandDto, PropertyCommandValueDto } from '../dto/property-command.dto';
 import { IDevicePropertyData } from '../platforms/device.platform';
 
@@ -190,6 +190,15 @@ export class PropertyCommandService {
 			this.logger.warn(`Device not found id=${deviceId}`);
 
 			return { device: deviceId, success: false, reason: 'Device not found' };
+		}
+
+		// Check device online status before processing commands
+		// Allow commands through if status is UNKNOWN (e.g., InfluxDB unavailable or no data)
+		// Only reject when device is definitively offline
+		if (!device.status.online && device.status.status !== ConnectionState.UNKNOWN) {
+			this.logger.warn(`Device is offline id=${deviceId} status=${device.status.status}`);
+
+			return { device: deviceId, success: false, reason: 'Device is offline' };
 		}
 
 		const platform = this.platformRegistryService.get(device);
