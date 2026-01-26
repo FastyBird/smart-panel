@@ -1484,6 +1484,22 @@
   "@config_error_hint_path": {
     "description": "Path part of hint text (Admin > Displays)"
   },
+  "connection_lost_title": "Connection Lost",
+  "@connection_lost_title": {
+    "description": "Title shown when connection to gateway is lost"
+  },
+  "connection_lost_message": "Unable to connect to the gateway. Please check your network connection and try again.",
+  "@connection_lost_message": {
+    "description": "Message explaining the connection lost error"
+  },
+  "connection_lost_button_reconnect": "Reconnect",
+  "@connection_lost_button_reconnect": {
+    "description": "Button label to attempt reconnection"
+  },
+  "connection_lost_button_change_gateway": "Change Gateway",
+  "@connection_lost_button_change_gateway": {
+    "description": "Button label to select a different gateway"
+  },
   "button_retry": "Retry",
   "@button_retry": {
     "description": "Text for Retry button"

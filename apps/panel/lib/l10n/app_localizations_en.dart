@@ -1099,6 +1099,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get config_error_hint_path => 'Admin > Displays';
 
   @override
+  String get connection_lost_title => 'Connection Lost';
+
+  @override
+  String get connection_lost_message => 'Unable to connect to the gateway. Please check your network connection and try again.';
+
+  @override
+  String get connection_lost_button_reconnect => 'Reconnect';
+
+  @override
+  String get connection_lost_button_change_gateway => 'Change Gateway';
+
+  @override
   String get button_retry => 'Retry';
 
   @override

@@ -2243,6 +2243,30 @@ abstract class AppLocalizations {
   /// **'Admin > Displays'**
   String get config_error_hint_path;
 
+  /// Title shown when connection to gateway is lost
+  ///
+  /// In en, this message translates to:
+  /// **'Connection Lost'**
+  String get connection_lost_title;
+
+  /// Message explaining the connection lost error
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to connect to the gateway. Please check your network connection and try again.'**
+  String get connection_lost_message;
+
+  /// Button label to attempt reconnection
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect'**
+  String get connection_lost_button_reconnect;
+
+  /// Button label to select a different gateway
+  ///
+  /// In en, this message translates to:
+  /// **'Change Gateway'**
+  String get connection_lost_button_change_gateway;
+
   /// Text for Retry button
   ///
   /// In en, this message translates to:

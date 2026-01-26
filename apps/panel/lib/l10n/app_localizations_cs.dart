@@ -1099,6 +1099,18 @@ class AppLocalizationsCs extends AppLocalizations {
   String get config_error_hint_path => 'Správci > Displeje';
 
   @override
+  String get connection_lost_title => 'Spojení ztraceno';
+
+  @override
+  String get connection_lost_message => 'Nelze se připojit k bráně. Zkontrolujte síťové připojení a zkuste to znovu.';
+
+  @override
+  String get connection_lost_button_reconnect => 'Znovu připojit';
+
+  @override
+  String get connection_lost_button_change_gateway => 'Změnit bránu';
+
+  @override
   String get button_retry => 'Opakovat';
 
   @override
