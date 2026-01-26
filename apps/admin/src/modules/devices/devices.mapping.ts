@@ -368,6 +368,29 @@ export const channelChannelsPropertiesSpecificationMappers: Record<
 	)
 );
 
+// Raw property spec from channels.ts - may have data_types array instead of data_type
+type RawChannelPropertySpec = {
+	category: DevicesModuleChannelPropertyCategory;
+	required: boolean;
+	description?: { en: string };
+	permissions: DevicesModuleChannelPropertyPermissions[];
+	// Single data type format
+	data_type?: DevicesModuleChannelPropertyDataType;
+	unit?: string | null;
+	format?: string[] | number[] | null;
+	invalid?: string | number | null;
+	step?: number | null;
+	// Multiple data types format (e.g., brightness with percentage or level options)
+	data_types?: Array<{
+		id: string;
+		data_type: DevicesModuleChannelPropertyDataType;
+		unit?: string | null;
+		format?: string[] | number[] | null;
+		step?: number | null;
+		description?: { en: string };
+	}>;
+};
+
 export const getChannelPropertySpecification = (
 	channelCategory: DevicesModuleChannelCategory,
 	propertyCategory: DevicesModuleChannelPropertyCategory
@@ -378,5 +401,41 @@ export const getChannelPropertySpecification = (
 		return undefined;
 	}
 
-	return Object.values<ChannelPropertySpec>(channelSpec.properties).find((prop) => prop.category === propertyCategory);
+	const rawProp = Object.values<RawChannelPropertySpec>(channelSpec.properties as unknown as Record<string, RawChannelPropertySpec>).find(
+		(prop) => prop.category === propertyCategory
+	);
+
+	if (!rawProp) {
+		return undefined;
+	}
+
+	// Handle properties with multiple data type options (e.g., brightness)
+	// Use the first data type option as the default
+	const firstDataType = rawProp.data_types?.[0];
+	if (firstDataType) {
+		return {
+			category: rawProp.category,
+			required: rawProp.required,
+			description: firstDataType.description ?? rawProp.description ?? { en: '' },
+			permissions: rawProp.permissions,
+			data_type: firstDataType.data_type,
+			unit: firstDataType.unit ?? null,
+			format: firstDataType.format ?? null,
+			invalid: rawProp.invalid,
+			step: firstDataType.step ?? null,
+		};
+	}
+
+	// Handle properties with single data type
+	return {
+		category: rawProp.category,
+		required: rawProp.required,
+		description: rawProp.description ?? { en: '' },
+		permissions: rawProp.permissions,
+		data_type: rawProp.data_type!,
+		unit: rawProp.unit ?? null,
+		format: rawProp.format ?? null,
+		invalid: rawProp.invalid,
+		step: rawProp.step ?? null,
+	};
 };
