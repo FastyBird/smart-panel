@@ -875,9 +875,12 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
               return VerticalTileCompact(
                 icon: device.icon,
                 name: device.name,
-                status: _translateDeviceStatus(localizations, device.status, device.isActive),
+                status: isOffline
+                    ? localizations.device_status_offline
+                    : _translateDeviceStatus(localizations, device.status, device.isActive),
                 isActive: device.isActive,
                 isOffline: isOffline,
+                showWarningBadge: true,
                 activeColor: device.isActive ? modeColor : null,
                 onIconTap: isOffline ? null : () {
                   // TODO: Toggle device
@@ -940,9 +943,12 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
         return VerticalTileLarge(
           icon: device.icon,
           name: device.name,
-          status: _translateDeviceStatus(localizations, device.status, device.isActive),
+          status: isOffline
+              ? localizations.device_status_offline
+              : _translateDeviceStatus(localizations, device.status, device.isActive),
           isActive: device.isActive,
           isOffline: isOffline,
+          showWarningBadge: true,
           activeColor: device.isActive ? modeColor : null,
           onIconTap: isOffline
               ? null
@@ -974,9 +980,12 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
           child: HorizontalTileStretched(
             icon: device.icon,
             name: device.name,
-            status: _translateDeviceStatus(localizations, device.status, device.isActive),
+            status: isOffline
+                ? localizations.device_status_offline
+                : _translateDeviceStatus(localizations, device.status, device.isActive),
             isActive: device.isActive,
             isOffline: isOffline,
+            showWarningBadge: true,
             activeColor: device.isActive ? modeColor : null,
             onIconTap: isOffline
                 ? null
