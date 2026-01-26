@@ -146,17 +146,38 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		}
 
 		// Get all covers in the space
-		const covers = await this.coversStateService.getCoversInSpace(spaceId);
+		const allCovers = await this.coversStateService.getCoversInSpace(spaceId);
 
-		if (covers.length === 0) {
+		if (allCovers.length === 0) {
 			this.logger.debug(`No covers found in space id=${spaceId}`);
-			return { success: true, affectedDevices: 0, failedDevices: 0, newPosition: null };
+			return { success: true, affectedDevices: 0, failedDevices: 0, skippedOfflineDevices: 0, newPosition: null };
 		}
 
-		this.logger.debug(`Found ${covers.length} covers in space id=${spaceId}`);
+		// Filter out offline devices
+		const { online: covers, offlineIds } = this.filterOfflineCoverDevices(allCovers);
 
-		// Build targets for intent (all covers that will be affected)
-		const targets = this.buildCoversTargets(covers, intent);
+		if (offlineIds.length > 0) {
+			this.logger.debug(`Skipping ${offlineIds.length} offline cover device(s) in space id=${spaceId}`);
+		}
+
+		// If all devices are offline, return early with appropriate result
+		if (covers.length === 0 && offlineIds.length > 0) {
+			this.logger.warn(`All ${offlineIds.length} cover device(s) are offline in space id=${spaceId}`);
+
+			return {
+				success: false,
+				affectedDevices: 0,
+				failedDevices: 0,
+				skippedOfflineDevices: offlineIds.length,
+				offlineDeviceIds: offlineIds,
+				newPosition: null,
+			};
+		}
+
+		this.logger.debug(`Found ${covers.length} online covers in space id=${spaceId}`);
+
+		// Build targets for intent (all covers including offline for tracking)
+		const targets = this.buildCoversTargets(allCovers, intent);
 
 		// Create intent before executing (emits Intent.Created event)
 		const intentRecord = this.intentsService.createIntent({
@@ -176,6 +197,20 @@ export class CoversIntentService extends SpaceIntentBaseService {
 
 		let result: CoversIntentResult;
 		const targetResults: IntentTargetResult[] = [];
+
+		// Add SKIPPED results for offline devices
+		for (const deviceId of offlineIds) {
+			const offlineCover = allCovers.find((c) => c.device.id === deviceId);
+
+			if (offlineCover) {
+				targetResults.push({
+					deviceId: offlineCover.device.id,
+					channelId: offlineCover.coverChannel.id,
+					status: IntentTargetStatus.SKIPPED,
+					error: 'Device offline',
+				});
+			}
+		}
 
 		switch (intent.type) {
 			case CoversIntentType.OPEN:
@@ -214,7 +249,14 @@ export class CoversIntentService extends SpaceIntentBaseService {
 			default:
 				this.logger.warn(`Unknown covers intent type: ${String(intent.type)}`);
 				this.intentsService.completeIntent(intentRecord.id, []);
-				return { success: false, affectedDevices: 0, failedDevices: 0, newPosition: null };
+				return { success: false, affectedDevices: 0, failedDevices: 0, skippedOfflineDevices: 0, newPosition: null };
+		}
+
+		// Add skipped offline devices info to result
+		result.skippedOfflineDevices = offlineIds.length;
+
+		if (offlineIds.length > 0) {
+			result.offlineDeviceIds = offlineIds;
 		}
 
 		// Complete intent with results (emits Intent.Completed event)
@@ -226,6 +268,25 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		}
 
 		return result;
+	}
+
+	/**
+	 * Filter out offline devices from a list of cover devices.
+	 * Returns online devices and list of offline device IDs.
+	 */
+	private filterOfflineCoverDevices(covers: CoverDevice[]): { online: CoverDevice[]; offlineIds: string[] } {
+		const online: CoverDevice[] = [];
+		const offlineIds: string[] = [];
+
+		for (const cover of covers) {
+			if (cover.device.status.online) {
+				online.push(cover);
+			} else {
+				offlineIds.push(cover.device.id);
+			}
+		}
+
+		return { online, offlineIds };
 	}
 
 	/**

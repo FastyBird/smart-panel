@@ -85,6 +85,7 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 			success: false,
 			affectedDevices: 0,
 			failedDevices: 0,
+			skippedOfflineDevices: 0,
 			mode: ClimateMode.OFF,
 			heatingSetpoint: null,
 			coolingSetpoint: null,
@@ -109,16 +110,34 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		}
 
 		// Get primary devices
-		const primaryDevices = await this.climateStateService.getPrimaryClimateDevicesInSpace(spaceId);
+		const allPrimaryDevices = await this.climateStateService.getPrimaryClimateDevicesInSpace(spaceId);
 
-		if (primaryDevices.length === 0) {
+		if (allPrimaryDevices.length === 0) {
 			this.logger.debug(`No controllable climate devices in space id=${spaceId}`);
 
 			return { ...defaultResult, success: true };
 		}
 
-		// Build targets for intent (all climate devices that will be affected)
-		const targets = this.buildClimateTargets(primaryDevices);
+		// Filter out offline devices
+		const { online: primaryDevices, offlineIds } = this.filterOfflineClimateDevices(allPrimaryDevices);
+
+		if (offlineIds.length > 0) {
+			this.logger.debug(`Skipping ${offlineIds.length} offline climate device(s) in space id=${spaceId}`);
+		}
+
+		// If all devices are offline, return early with appropriate result
+		if (primaryDevices.length === 0 && offlineIds.length > 0) {
+			this.logger.warn(`All ${offlineIds.length} climate device(s) are offline in space id=${spaceId}`);
+
+			return {
+				...defaultResult,
+				skippedOfflineDevices: offlineIds.length,
+				offlineDeviceIds: offlineIds,
+			};
+		}
+
+		// Build targets for intent (all climate devices including offline for tracking)
+		const targets = this.buildClimateTargets(allPrimaryDevices);
 
 		// Create intent before executing (emits Intent.Created event)
 		const intentRecord = this.intentsService.createIntent({
@@ -138,6 +157,15 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		// Handle different intent types
 		let result: ClimateIntentResult;
 		const targetResults: IntentTargetResult[] = [];
+
+		// Add SKIPPED results for offline devices
+		for (const deviceId of offlineIds) {
+			targetResults.push({
+				deviceId,
+				status: IntentTargetStatus.SKIPPED,
+				error: 'Device offline',
+			});
+		}
 
 		switch (intent.type) {
 			case ClimateIntentType.SET_MODE:
@@ -162,6 +190,13 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 				return defaultResult;
 		}
 
+		// Add skipped offline devices info to result
+		result.skippedOfflineDevices = offlineIds.length;
+
+		if (offlineIds.length > 0) {
+			result.offlineDeviceIds = offlineIds;
+		}
+
 		// Complete intent with results (emits Intent.Completed event)
 		this.intentsService.completeIntent(intentRecord.id, targetResults);
 
@@ -171,6 +206,27 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		}
 
 		return result;
+	}
+
+	/**
+	 * Filter out offline devices from a list of primary climate devices.
+	 * Returns online devices and list of offline device IDs.
+	 */
+	private filterOfflineClimateDevices(
+		devices: PrimaryClimateDevice[],
+	): { online: PrimaryClimateDevice[]; offlineIds: string[] } {
+		const online: PrimaryClimateDevice[] = [];
+		const offlineIds: string[] = [];
+
+		for (const device of devices) {
+			if (device.device.status.online) {
+				online.push(device);
+			} else {
+				offlineIds.push(device.device.id);
+			}
+		}
+
+		return { online, offlineIds };
 	}
 
 	/**

@@ -4,7 +4,7 @@ import { v4 as uuid } from 'uuid';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { DeviceCategory } from '../../devices/devices.constants';
+import { ConnectionState, DeviceCategory } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
@@ -60,6 +60,7 @@ describe('ClimateIntentService', () => {
 			name: 'Test Device',
 			category: DeviceCategory.HEATING_UNIT,
 			type: 'test-device',
+			status: { online: true, status: ConnectionState.CONNECTED },
 		} as DeviceEntity,
 		deviceCategory: DeviceCategory.HEATING_UNIT,
 		role: ClimateRole.AUTO,

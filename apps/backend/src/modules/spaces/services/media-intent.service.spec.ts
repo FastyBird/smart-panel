@@ -67,6 +67,7 @@ describe('MediaIntentService', () => {
 			{
 				id: 'device-1',
 				category: DeviceCategory.MEDIA,
+				status: { online: true, status: 'connected' },
 				channels: [
 					{
 						id: 'channel-1',
@@ -268,6 +269,7 @@ describe('MediaIntentService - volume delta edge cases', () => {
 		return {
 			id: 'device-1',
 			category: DeviceCategory.MEDIA,
+			status: { online: true, status: 'connected' },
 			channels: [
 				{
 					id: 'channel-1',
@@ -396,6 +398,7 @@ describe('MediaIntentService - volume delta edge cases', () => {
 			{
 				id: 'device-1',
 				category: DeviceCategory.MEDIA,
+				status: { online: true, status: 'connected' },
 				channels: [
 					{
 						id: 'channel-1',

@@ -96,8 +96,8 @@ describe('PropertyCommandService', () => {
 		room: null,
 		deviceZones: [],
 		status: {
-			online: false,
-			status: ConnectionState.UNKNOWN,
+			online: true,
+			status: ConnectionState.CONNECTED,
 		},
 		createdAt: new Date(),
 		updatedAt: new Date(),

@@ -177,18 +177,38 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		}
 
 		// Get all lights in the space
-		const lights = await this.getLightsInSpace(spaceId);
+		const allLights = await this.getLightsInSpace(spaceId);
 
-		if (lights.length === 0) {
+		if (allLights.length === 0) {
 			this.logger.debug(`No lights found in space id=${spaceId}`);
 
-			return { success: true, affectedDevices: 0, failedDevices: 0 };
+			return { success: true, affectedDevices: 0, failedDevices: 0, skippedOfflineDevices: 0 };
 		}
 
-		this.logger.debug(`Found ${lights.length} lights in space id=${spaceId}`);
+		// Filter out offline devices
+		const { online: lights, offlineIds } = this.filterOfflineDevices(allLights);
 
-		// Build targets for intent (all lights that will be affected)
-		const targets = this.buildLightingTargets(lights, intent);
+		if (offlineIds.length > 0) {
+			this.logger.debug(`Skipping ${offlineIds.length} offline device(s) in space id=${spaceId}`);
+		}
+
+		// If all devices are offline, return early with appropriate result
+		if (lights.length === 0 && offlineIds.length > 0) {
+			this.logger.warn(`All ${offlineIds.length} device(s) are offline in space id=${spaceId}`);
+
+			return {
+				success: false,
+				affectedDevices: 0,
+				failedDevices: 0,
+				skippedOfflineDevices: offlineIds.length,
+				offlineDeviceIds: offlineIds,
+			};
+		}
+
+		this.logger.debug(`Found ${lights.length} online lights in space id=${spaceId}`);
+
+		// Build targets for intent (all lights including offline for tracking)
+		const targets = this.buildLightingTargets(allLights, intent);
 
 		// Create intent before executing (emits Intent.Created event)
 		const intentRecord = this.intentsService.createIntent({
@@ -209,6 +229,20 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		let result: IntentExecutionResult;
 		const targetResults: IntentTargetResult[] = [];
 
+		// Add SKIPPED results for offline devices
+		for (const deviceId of offlineIds) {
+			const offlineLight = allLights.find((l) => l.device.id === deviceId);
+
+			if (offlineLight) {
+				targetResults.push({
+					deviceId: offlineLight.device.id,
+					channelId: offlineLight.lightChannel.id,
+					status: IntentTargetStatus.SKIPPED,
+					error: 'Device offline',
+				});
+			}
+		}
+
 		// For SET_MODE, use role-based orchestration
 		if (intent.type === LightingIntentType.SET_MODE && intent.mode) {
 			result = await this.executeModeIntentWithResults(spaceId, lights, intent.mode, targetResults);
@@ -216,7 +250,7 @@ export class LightingIntentService extends SpaceIntentBaseService {
 			// For role-specific intents, only affect lights with the specified role
 			result = await this.executeRoleIntentWithResults(spaceId, lights, intent, targetResults);
 		} else {
-			// For other intents (ON, OFF, BRIGHTNESS_DELTA), apply to all lights
+			// For other intents (ON, OFF, BRIGHTNESS_DELTA), apply to all online lights
 			let affectedDevices = 0;
 			let failedDevices = 0;
 
@@ -239,7 +273,7 @@ export class LightingIntentService extends SpaceIntentBaseService {
 			const overallSuccess = failedDevices === 0 || affectedDevices > 0;
 
 			this.logger.debug(
-				`Lighting intent completed spaceId=${spaceId} affected=${affectedDevices} failed=${failedDevices}`,
+				`Lighting intent completed spaceId=${spaceId} affected=${affectedDevices} failed=${failedDevices} skipped=${offlineIds.length}`,
 			);
 
 			// When turning off all lights, store "off" as the mode
@@ -247,7 +281,7 @@ export class LightingIntentService extends SpaceIntentBaseService {
 				void this.intentTimeseriesService.storeLightingModeChange(
 					spaceId,
 					LightingMode.OFF,
-					lights.length,
+					allLights.length,
 					affectedDevices,
 					failedDevices,
 				);
@@ -255,6 +289,13 @@ export class LightingIntentService extends SpaceIntentBaseService {
 			}
 
 			result = { success: overallSuccess, affectedDevices, failedDevices };
+		}
+
+		// Add skipped offline devices info to result
+		result.skippedOfflineDevices = offlineIds.length;
+
+		if (offlineIds.length > 0) {
+			result.offlineDeviceIds = offlineIds;
 		}
 
 		// Complete intent with results (emits Intent.Completed event)
@@ -1242,6 +1283,25 @@ export class LightingIntentService extends SpaceIntentBaseService {
 			this.logger.error(`Error executing role intent for device id=${light.device.id}: ${error}`);
 			return false;
 		}
+	}
+
+	/**
+	 * Filter out offline devices from a list of light devices.
+	 * Returns online devices and list of offline device IDs.
+	 */
+	private filterOfflineDevices(lights: LightDevice[]): { online: LightDevice[]; offlineIds: string[] } {
+		const online: LightDevice[] = [];
+		const offlineIds: string[] = [];
+
+		for (const light of lights) {
+			if (light.device.status.online) {
+				online.push(light);
+			} else {
+				offlineIds.push(light.device.id);
+			}
+		}
+
+		return { online, offlineIds };
 	}
 
 	/**

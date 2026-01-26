@@ -192,6 +192,13 @@ export class PropertyCommandService {
 			return { device: deviceId, success: false, reason: 'Device not found' };
 		}
 
+		// Check device online status before processing commands
+		if (!device.status.online) {
+			this.logger.warn(`Device is offline id=${deviceId} status=${device.status.status}`);
+
+			return { device: deviceId, success: false, reason: 'Device is offline' };
+		}
+
 		const platform = this.platformRegistryService.get(device);
 
 		if (!platform) {

@@ -169,17 +169,46 @@ export class MediaIntentService extends SpaceIntentBaseService {
 		}
 
 		// Get all media devices in the space
-		const devices = await this.getMediaDevicesInSpace(spaceId);
+		const allDevices = await this.getMediaDevicesInSpace(spaceId);
 
-		if (devices.length === 0) {
+		if (allDevices.length === 0) {
 			this.logger.debug(`No media devices found in space id=${spaceId}`);
-			return { success: true, affectedDevices: 0, failedDevices: 0 };
+			return { success: true, affectedDevices: 0, failedDevices: 0, skippedOfflineDevices: 0 };
 		}
 
-		this.logger.debug(`Found ${devices.length} media devices in space id=${spaceId}`);
+		// Filter out offline devices
+		const { online: devices, offlineIds } = this.filterOfflineMediaDevices(allDevices);
 
-		const targets = this.buildMediaTargets(devices);
+		if (offlineIds.length > 0) {
+			this.logger.debug(`Skipping ${offlineIds.length} offline media device(s) in space id=${spaceId}`);
+		}
+
+		// If all devices are offline, return early with appropriate result
+		if (devices.length === 0 && offlineIds.length > 0) {
+			this.logger.warn(`All ${offlineIds.length} media device(s) are offline in space id=${spaceId}`);
+
+			return {
+				success: false,
+				affectedDevices: 0,
+				failedDevices: 0,
+				skippedOfflineDevices: offlineIds.length,
+				offlineDeviceIds: offlineIds,
+			};
+		}
+
+		this.logger.debug(`Found ${devices.length} online media devices in space id=${spaceId}`);
+
+		const targets = this.buildMediaTargets(allDevices);
 		const targetResults: IntentTargetResult[] = [];
+
+		// Add SKIPPED results for offline devices
+		for (const deviceId of offlineIds) {
+			targetResults.push({
+				deviceId,
+				status: IntentTargetStatus.SKIPPED,
+				error: 'Device offline',
+			});
+		}
 
 		const intentRecord = this.intentsService.createIntent({
 			type: this.mapMediaIntentType(intent.type),
@@ -205,6 +234,13 @@ export class MediaIntentService extends SpaceIntentBaseService {
 			result = await this.executeGlobalIntent(spaceId, devices, intent, targetResults);
 		}
 
+		// Add skipped offline devices info to result
+		result.skippedOfflineDevices = offlineIds.length;
+
+		if (offlineIds.length > 0) {
+			result.offlineDeviceIds = offlineIds;
+		}
+
 		this.intentsService.completeIntent(intentRecord.id, targetResults);
 
 		// Emit state change event for WebSocket clients (fire and forget)
@@ -219,6 +255,25 @@ export class MediaIntentService extends SpaceIntentBaseService {
 		}
 
 		return result;
+	}
+
+	/**
+	 * Filter out offline devices from a list of media devices.
+	 * Returns online devices and list of offline device IDs.
+	 */
+	private filterOfflineMediaDevices(devices: MediaDevice[]): { online: MediaDevice[]; offlineIds: string[] } {
+		const online: MediaDevice[] = [];
+		const offlineIds: string[] = [];
+
+		for (const device of devices) {
+			if (device.device.status.online) {
+				online.push(device);
+			} else {
+				offlineIds.push(device.device.id);
+			}
+		}
+
+		return { online, offlineIds };
 	}
 
 	/**
