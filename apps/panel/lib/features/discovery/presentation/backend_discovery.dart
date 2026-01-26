@@ -60,7 +60,11 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
   bool _showManualEntry = false;
   bool _wasManualEntry = false;
   bool _showErrorToast = false;
-  bool _discoveryCancelled = false;
+
+  // Discovery session tracking to prevent race conditions
+  // Each discovery operation gets a unique session ID; only the current session
+  // can update state, preventing stale results from cancelled operations
+  int _discoverySessionId = 0;
 
   // Validation patterns
   static final RegExp _ipAddressPattern = RegExp(
@@ -97,7 +101,8 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
   }
 
   Future<void> _startDiscovery() async {
-    _discoveryCancelled = false;
+    // Increment session ID to invalidate any pending discovery operations
+    final currentSession = ++_discoverySessionId;
 
     setState(() {
       _state = DiscoveryState.searching;
@@ -110,7 +115,8 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     try {
       final backends = await _discoveryService.discover(
         onBackendFound: (backend) {
-          if (mounted) {
+          // Only update if this is still the current session
+          if (mounted && currentSession == _discoverySessionId) {
             setState(() {
               if (!_backends.contains(backend)) {
                 _backends = [..._backends, backend];
@@ -120,8 +126,8 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
         },
       );
 
-      // Skip state update if discovery was cancelled
-      if (mounted && !_discoveryCancelled) {
+      // Skip state update if this session was superseded by a newer one
+      if (mounted && currentSession == _discoverySessionId) {
         setState(() {
           _backends = backends;
 
@@ -144,8 +150,8 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
         });
       }
     } catch (e) {
-      // Skip error handling if discovery was cancelled
-      if (mounted && !_discoveryCancelled) {
+      // Skip error handling if this session was superseded
+      if (mounted && currentSession == _discoverySessionId) {
         setState(() {
           _state = DiscoveryState.error;
         });
@@ -165,7 +171,8 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
   }
 
   Future<void> _cancelDiscovery() async {
-    _discoveryCancelled = true;
+    // Increment session ID to invalidate the current discovery operation
+    _discoverySessionId++;
     await _discoveryService.stop();
     if (mounted) {
       setState(() {
