@@ -209,10 +209,11 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		const targetResults: IntentTargetResult[] = [];
 
 		// Add SKIPPED results for offline devices that were actually targeted
+		// Use filter() to get all channels of multi-channel devices, matching how targets are built
 		for (const deviceId of targetedOfflineIds) {
-			const offlineCover = allCovers.find((c) => c.device.id === deviceId);
+			const offlineCovers = allCovers.filter((c) => c.device.id === deviceId);
 
-			if (offlineCover) {
+			for (const offlineCover of offlineCovers) {
 				targetResults.push({
 					deviceId: offlineCover.device.id,
 					channelId: offlineCover.coverChannel.id,

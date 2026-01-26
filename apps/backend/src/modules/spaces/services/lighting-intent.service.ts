@@ -244,10 +244,11 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		const targetResults: IntentTargetResult[] = [];
 
 		// Add SKIPPED results for offline devices that were actually targeted
+		// Use filter() to get all channels of multi-channel devices, matching how targets are built
 		for (const deviceId of targetedOfflineIds) {
-			const offlineLight = allLights.find((l) => l.device.id === deviceId);
+			const offlineLights = allLights.filter((l) => l.device.id === deviceId);
 
-			if (offlineLight) {
+			for (const offlineLight of offlineLights) {
 				targetResults.push({
 					deviceId: offlineLight.device.id,
 					channelId: offlineLight.lightChannel.id,
