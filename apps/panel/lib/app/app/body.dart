@@ -78,9 +78,8 @@ class _AppBodyState extends State<AppBody> {
   }
 
   void _handleReconnect() {
-    // The socket service will automatically attempt to reconnect
-    // with exponential backoff. This callback is here for future use
-    // if manual reconnection logic is needed.
+    // Trigger manual reconnection attempt
+    _socketService.reconnect();
   }
 
   void _handleChangeGateway() {

@@ -415,6 +415,54 @@ class SocketService {
     _connectionListeners.remove(listener);
   }
 
+  /// Check if socket is currently connected
+  bool get isConnected => _socket?.connected ?? false;
+
+  /// Manually trigger a reconnection attempt
+  /// Resets the backoff counter and attempts to connect immediately
+  void reconnect() {
+    if (_socket == null || _currentApiSecret == null || _currentBackendUrl == null) {
+      if (kDebugMode) {
+        debugPrint('[SOCKETS] Cannot reconnect: socket not initialized');
+      }
+      return;
+    }
+
+    if (_socket!.connected) {
+      if (kDebugMode) {
+        debugPrint('[SOCKETS] Already connected, skipping manual reconnection');
+      }
+      return;
+    }
+
+    if (kDebugMode) {
+      debugPrint('[SOCKETS] Manual reconnection triggered');
+    }
+
+    // Cancel any pending reconnection timers
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+    _reconnectCheckTimer?.cancel();
+    _reconnectCheckTimer = null;
+
+    // Reset retry state for immediate attempt
+    _retryAttempt = 0;
+    _reconnectInProgress = false;
+
+    // Enable reconnection if it was disabled
+    _shouldReconnect = true;
+
+    // Attempt to connect immediately
+    _socket!.connect();
+
+    // Schedule backoff retry if this immediate attempt fails
+    _reconnectCheckTimer = Timer(const Duration(seconds: 2), () {
+      if (_socket != null && !_socket!.connected && _shouldReconnect) {
+        _attemptReconnectWithBackoff();
+      }
+    });
+  }
+
   /// Notify all connection listeners of state change
   void _notifyConnectionListeners(bool isConnected) {
     for (final listener in _connectionListeners) {
