@@ -48,7 +48,7 @@ export class WsAuthService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error('JWT authentication failed', { message: err.message, stack: err.stack });
+			this.logger.warn('JWT authentication failed', { message: err.message });
 
 			throw new WebsocketNotAllowedException('Invalid or expired token');
 		}
