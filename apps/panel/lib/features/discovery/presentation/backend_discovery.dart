@@ -63,13 +63,13 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
   bool _discoveryCancelled = false;
 
   /// Returns the appropriate padding for system pages based on screen size and orientation
-  /// LANDSCAPE - LARGE: pXl, MEDIUM/SMALL: pMd
-  /// PORTRAIT - LARGE/MEDIUM: pXl, SMALL: pMd
+  /// LANDSCAPE - LARGE: pXl, MEDIUM/SMALL: pLg
+  /// PORTRAIT - LARGE/MEDIUM: pXl, SMALL: pLg
   double _getSystemPagePadding(bool isLandscape) {
     if (isLandscape) {
-      return _screenService.isLargeScreen ? AppSpacings.pXl : AppSpacings.pMd;
+      return _screenService.isLargeScreen ? AppSpacings.pXl : AppSpacings.pLg;
     } else {
-      return _screenService.isSmallScreen ? AppSpacings.pMd : AppSpacings.pXl;
+      return _screenService.isSmallScreen ? AppSpacings.pLg : AppSpacings.pXl;
     }
   }
 
