@@ -144,8 +144,9 @@ export class WebsocketExchangeListener implements OnModuleInit {
 			return {
 				success: true,
 				data: {
-					affectedDevices: result.affectedDevices,
-					failedDevices: result.failedDevices,
+					success: true,
+					affected_devices: result.affectedDevices,
+					failed_devices: result.failedDevices,
 				},
 			};
 		} catch (error) {
@@ -188,10 +189,11 @@ export class WebsocketExchangeListener implements OnModuleInit {
 			return {
 				success: true,
 				data: {
-					affectedDevices: result.affectedDevices,
-					failedDevices: result.failedDevices,
-					heatingSetpoint: result.heatingSetpoint,
-					coolingSetpoint: result.coolingSetpoint,
+					success: true,
+					affected_devices: result.affectedDevices,
+					failed_devices: result.failedDevices,
+					heating_setpoint: result.heatingSetpoint,
+					cooling_setpoint: result.coolingSetpoint,
 					mode: result.mode,
 				},
 			};
@@ -235,9 +237,10 @@ export class WebsocketExchangeListener implements OnModuleInit {
 			return {
 				success: true,
 				data: {
-					affectedDevices: result.affectedDevices,
-					failedDevices: result.failedDevices,
-					newPosition: result.newPosition,
+					success: true,
+					affected_devices: result.affectedDevices,
+					failed_devices: result.failedDevices,
+					new_position: result.newPosition,
 				},
 			};
 		} catch (error) {
@@ -280,10 +283,11 @@ export class WebsocketExchangeListener implements OnModuleInit {
 			return {
 				success: true,
 				data: {
-					affectedDevices: result.affectedDevices,
-					failedDevices: result.failedDevices,
-					newVolume: result.newVolume,
-					isMuted: result.isMuted,
+					success: true,
+					affected_devices: result.affectedDevices,
+					failed_devices: result.failedDevices,
+					new_volume: result.newVolume,
+					is_muted: result.isMuted,
 				},
 			};
 		} catch (error) {
@@ -322,8 +326,9 @@ export class WebsocketExchangeListener implements OnModuleInit {
 			return {
 				success: true,
 				data: {
-					restoredDevices: result.restoredDevices,
-					failedDevices: result.failedDevices,
+					success: true,
+					restored_devices: result.restoredDevices,
+					failed_devices: result.failedDevices,
 					message: result.message,
 				},
 			};
