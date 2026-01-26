@@ -682,12 +682,15 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     bool isLandscape,
   ) {
     final localizations = AppLocalizations.of(context)!;
+    final isCompact =
+        _screenService.isSmallScreen || _screenService.isMediumScreen;
+    final isCompactLandscape = isCompact && isLandscape;
 
     return Center(
       child: Padding(
         padding: EdgeInsets.symmetric(
           horizontal: isLandscape
-              ? _screenService.scale(80)
+              ? _screenService.scale(isCompact ? 40 : 80)
               : _screenService.scale(40),
         ),
         child: Column(
@@ -697,31 +700,31 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
             IconContainer(
               icon: MdiIcons.serverOff,
               color: SystemPagesTheme.warning(isDark),
-              size: _screenService.scale(80),
-              iconSize: _screenService.scale(40),
+              size: _screenService.scale(isCompactLandscape ? 56 : 80),
+              iconSize: _screenService.scale(isCompactLandscape ? 28 : 40),
             ),
-            SizedBox(height: _screenService.scale(24)),
+            SizedBox(height: _screenService.scale(isCompactLandscape ? 12 : 24)),
             // Title
             Text(
               localizations.discovery_not_found_title,
               style: TextStyle(
                 color: SystemPagesTheme.textPrimary(isDark),
-                fontSize: _screenService.scale(24),
+                fontSize: _screenService.scale(isCompactLandscape ? 20 : 24),
                 fontWeight: FontWeight.w500,
               ),
             ),
-            SizedBox(height: _screenService.scale(8)),
+            SizedBox(height: _screenService.scale(isCompactLandscape ? 4 : 8)),
             // Message
             Text(
               localizations.discovery_not_found_description,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: SystemPagesTheme.textMuted(isDark),
-                fontSize: _screenService.scale(14),
+                fontSize: _screenService.scale(isCompactLandscape ? 12 : 14),
                 height: 1.5,
               ),
             ),
-            SizedBox(height: _screenService.scale(32)),
+            SizedBox(height: _screenService.scale(isCompactLandscape ? 16 : 32)),
             // Buttons
             _buildActionButtons(isDark, isLandscape, localizations),
           ],
