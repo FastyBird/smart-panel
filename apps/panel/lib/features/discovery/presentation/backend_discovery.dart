@@ -353,6 +353,9 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
   ) {
     final localizations = AppLocalizations.of(context)!;
     final accent = SystemPagesTheme.accent(isDark);
+    final isCompact =
+        _screenService.isSmallScreen || _screenService.isMediumScreen;
+    final isCompactLandscape = isCompact && isLandscape;
 
     return Stack(
       children: [
@@ -363,24 +366,24 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
             children: [
               // Animated icon with pulse rings
               SizedBox(
-                width: _screenService.scale(100),
-                height: _screenService.scale(100),
+                width: _screenService.scale(isCompactLandscape ? 70 : 100),
+                height: _screenService.scale(isCompactLandscape ? 70 : 100),
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
                     PulseRings(
-                      size: _screenService.scale(80),
+                      size: _screenService.scale(isCompactLandscape ? 56 : 80),
                       color: accent,
                     ),
                     Icon(
                       MdiIcons.accessPointNetwork,
-                      size: _screenService.scale(48),
+                      size: _screenService.scale(isCompactLandscape ? 32 : 48),
                       color: accent,
                     ),
                   ],
                 ),
               ),
-              SizedBox(height: _screenService.scale(28)),
+              SizedBox(height: _screenService.scale(isCompactLandscape ? 16 : 28)),
               Text(
                 localizations.discovery_searching_title,
                 style: TextStyle(
