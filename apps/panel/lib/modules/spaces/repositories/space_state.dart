@@ -10,9 +10,11 @@ import 'package:fastybird_smart_panel/api/models/spaces_module_req_media_intent.
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_suggestion_feedback.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_suggestion_feedback.dart';
 import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
+import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
 import 'package:fastybird_smart_panel/core/services/metrics_service.dart';
 import 'package:fastybird_smart_panel/modules/intents/models/intents/intent.dart';
 import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
+import 'package:fastybird_smart_panel/modules/spaces/constants.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/covers_state/covers_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/intent_result/intent_result.dart';
@@ -57,6 +59,7 @@ import 'package:flutter/foundation.dart';
 class SpaceStateRepository extends ChangeNotifier {
   final SpacesModuleClient _apiClient;
   final IntentsRepository _intentsRepository;
+  final CommandDispatchService _commandDispatch;
 
   /// Cached lighting states by space ID
   final Map<String, LightingStateModel> _lightingStates = {};
@@ -85,8 +88,10 @@ class SpaceStateRepository extends ChangeNotifier {
   SpaceStateRepository({
     required SpacesModuleClient apiClient,
     required IntentsRepository intentsRepository,
+    required CommandDispatchService commandDispatch,
   })  : _apiClient = apiClient,
-        _intentsRepository = intentsRepository;
+        _intentsRepository = intentsRepository,
+        _commandDispatch = commandDispatch;
 
   SpacesModuleClient get apiClient => _apiClient;
 
@@ -399,6 +404,8 @@ class SpaceStateRepository extends ChangeNotifier {
   // ============================================
 
   /// Execute a lighting intent
+  ///
+  /// Uses WebSocket as primary channel with API fallback when WebSocket is unavailable.
   Future<LightingIntentResult?> executeLightingIntent({
     required String spaceId,
     required LightingIntentType type,
@@ -415,8 +422,8 @@ class SpaceStateRepository extends ChangeNotifier {
     final stopwatch = Stopwatch()..start();
     final intentName = 'lighting_${lightingIntentTypeToString(type)}';
 
-    // Build intent value for optimistic UI
-    final intentValue = <String, dynamic>{
+    // Build intent body for both WebSocket and API
+    final Map<String, dynamic> intentBody = {
       'type': lightingIntentTypeToString(type),
       if (mode != null) 'mode': lightingModeToString(mode),
       if (delta != null) 'delta': brightnessDeltaToString(delta),
@@ -425,64 +432,37 @@ class SpaceStateRepository extends ChangeNotifier {
       if (on != null) 'on': on,
       if (brightness != null) 'brightness': brightness,
       if (color != null) 'color': color,
-      if (colorTemperature != null) 'colorTemperature': colorTemperature,
+      if (colorTemperature != null) 'color_temperature': colorTemperature,
       if (white != null) 'white': white,
     };
 
-    // Create local intent for optimistic UI before API call
+    // Create local intent for optimistic UI before sending command
     _intentsRepository.createLocalSpaceIntent(
       spaceId: spaceId,
       type: _mapLightingIntentType(type),
-      value: intentValue,
+      value: intentBody,
     );
 
     try {
-      final Map<String, dynamic> body = {
-        'type': lightingIntentTypeToString(type),
-      };
-
-      if (mode != null) {
-        body['mode'] = lightingModeToString(mode);
-      }
-      if (delta != null) {
-        body['delta'] = brightnessDeltaToString(delta);
-      }
-      if (increase != null) {
-        body['increase'] = increase;
-      }
-      if (role != null) {
-        body['role'] = lightingRoleToString(role);
-      }
-      if (on != null) {
-        body['on'] = on;
-      }
-      if (brightness != null) {
-        body['brightness'] = brightness;
-      }
-      if (color != null) {
-        body['color'] = color;
-      }
-      if (colorTemperature != null) {
-        body['color_temperature'] = colorTemperature;
-      }
-      if (white != null) {
-        body['white'] = white;
-      }
-
-      final response = await _apiClient.createSpacesModuleSpaceLightingIntent(
-        id: spaceId,
-        body: SpacesModuleReqLightingIntent(
-          data: SpacesModuleLightingIntent.fromJson(body),
-        ),
+      // Use command dispatch with WebSocket primary and API fallback
+      final dispatchResult = await _commandDispatch.dispatch(
+        event: SpacesModuleConstants.lightingIntentEvent,
+        handler: SpacesModuleEventHandlerName.lightingIntent,
+        payload: {
+          'spaceId': spaceId,
+          'intent': intentBody,
+        },
+        apiFallback: () => _executeLightingIntentViaApi(spaceId, intentBody),
       );
 
-      if (response.response.statusCode == 200 ||
-          response.response.statusCode == 201) {
-        final data = response.response.data['data'] as Map<String, dynamic>;
-        final result = LightingIntentResult.fromJson(data);
+      stopwatch.stop();
 
-        // Track successful intent execution
-        stopwatch.stop();
+      if (dispatchResult.success) {
+        // For WebSocket, we get basic success info; for API, we get full result
+        final result = dispatchResult.data != null
+            ? LightingIntentResult.fromJson(dispatchResult.data!)
+            : LightingIntentResult(affectedDevices: 0, failedDevices: 0);
+
         MetricsService.instance.trackIntent(
           intentName,
           result.failedDevices > 0 ? MetricStatus.partial : MetricStatus.success,
@@ -492,25 +472,28 @@ class SpaceStateRepository extends ChangeNotifier {
           failedDevices: result.failedDevices,
         );
 
+        if (kDebugMode) {
+          debugPrint(
+            '[SPACES MODULE][STATE] Lighting intent executed via ${dispatchResult.channel.name} for $spaceId',
+          );
+        }
+
         // Refresh undo state after successful intent execution
-        // (a new undo window may now be available)
-        // Note: Lighting state refresh is handled by WebSocket events
         fetchUndoState(spaceId);
 
         return result;
-      }
-    } on DioException catch (e) {
-      stopwatch.stop();
-      MetricsService.instance.trackIntent(
-        intentName,
-        MetricStatus.failure,
-        stopwatch.elapsed,
-        spaceId: spaceId,
-      );
-      if (kDebugMode) {
-        debugPrint(
-          '[SPACES MODULE][STATE] API error executing lighting intent for $spaceId: ${e.response?.statusCode}',
+      } else {
+        MetricsService.instance.trackIntent(
+          intentName,
+          MetricStatus.failure,
+          stopwatch.elapsed,
+          spaceId: spaceId,
         );
+        if (kDebugMode) {
+          debugPrint(
+            '[SPACES MODULE][STATE] Lighting intent failed for $spaceId: ${dispatchResult.reason}',
+          );
+        }
       }
     } catch (e) {
       stopwatch.stop();
@@ -523,6 +506,33 @@ class SpaceStateRepository extends ChangeNotifier {
       if (kDebugMode) {
         debugPrint(
           '[SPACES MODULE][STATE] Error executing lighting intent for $spaceId: $e',
+        );
+      }
+    }
+    return null;
+  }
+
+  /// Execute lighting intent via API (used as fallback)
+  Future<Map<String, dynamic>?> _executeLightingIntentViaApi(
+    String spaceId,
+    Map<String, dynamic> intentBody,
+  ) async {
+    try {
+      final response = await _apiClient.createSpacesModuleSpaceLightingIntent(
+        id: spaceId,
+        body: SpacesModuleReqLightingIntent(
+          data: SpacesModuleLightingIntent.fromJson(intentBody),
+        ),
+      );
+
+      if (response.response.statusCode == 200 ||
+          response.response.statusCode == 201) {
+        return response.response.data['data'] as Map<String, dynamic>;
+      }
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][STATE] API error executing lighting intent: ${e.response?.statusCode}',
         );
       }
     }
@@ -642,6 +652,8 @@ class SpaceStateRepository extends ChangeNotifier {
   // ============================================
 
   /// Execute a climate intent
+  ///
+  /// Uses WebSocket as primary channel with API fallback when WebSocket is unavailable.
   Future<ClimateIntentResult?> executeClimateIntent({
     required String spaceId,
     required ClimateIntentType type,
@@ -655,68 +667,49 @@ class SpaceStateRepository extends ChangeNotifier {
     final stopwatch = Stopwatch()..start();
     final intentName = 'climate_${climateIntentTypeToString(type)}';
 
-    // Build intent value for optimistic UI
-    final intentValue = <String, dynamic>{
+    // Build intent body for both WebSocket and API
+    final Map<String, dynamic> intentBody = {
       'type': climateIntentTypeToString(type),
       if (delta != null) 'delta': setpointDeltaToString(delta),
       if (increase != null) 'increase': increase,
       if (value != null) 'value': value,
-      if (heatingSetpoint != null) 'heatingSetpoint': heatingSetpoint,
-      if (coolingSetpoint != null) 'coolingSetpoint': coolingSetpoint,
+      if (heatingSetpoint != null) 'heating_setpoint': heatingSetpoint,
+      if (coolingSetpoint != null) 'cooling_setpoint': coolingSetpoint,
       if (mode != null) 'mode': climateModeToString(mode),
     };
 
-    // Create local intent for optimistic UI before API call
+    // Create local intent for optimistic UI before sending command
     _intentsRepository.createLocalSpaceIntent(
       spaceId: spaceId,
       type: _mapClimateIntentType(type),
-      value: intentValue,
+      value: intentBody,
     );
 
+    if (kDebugMode) {
+      debugPrint(
+        '[SPACES MODULE][STATE] executeClimateIntent: body=$intentBody',
+      );
+    }
+
     try {
-      final Map<String, dynamic> body = {
-        'type': climateIntentTypeToString(type),
-      };
-
-      if (delta != null) {
-        body['delta'] = setpointDeltaToString(delta);
-      }
-      if (increase != null) {
-        body['increase'] = increase;
-      }
-      if (value != null) {
-        body['value'] = value;
-      }
-      if (heatingSetpoint != null) {
-        body['heating_setpoint'] = heatingSetpoint;
-      }
-      if (coolingSetpoint != null) {
-        body['cooling_setpoint'] = coolingSetpoint;
-      }
-      if (mode != null) {
-        body['mode'] = climateModeToString(mode);
-      }
-
-      if (kDebugMode) {
-        debugPrint(
-          '[SPACES MODULE][STATE] executeClimateIntent: body=$body',
-        );
-      }
-
-      final response = await _apiClient.createSpacesModuleSpaceClimateIntent(
-        id: spaceId,
-        body: SpacesModuleReqClimateIntent(
-          data: SpacesModuleClimateIntent.fromJson(body),
-        ),
+      // Use command dispatch with WebSocket primary and API fallback
+      final dispatchResult = await _commandDispatch.dispatch(
+        event: SpacesModuleConstants.climateIntentEvent,
+        handler: SpacesModuleEventHandlerName.climateIntent,
+        payload: {
+          'spaceId': spaceId,
+          'intent': intentBody,
+        },
+        apiFallback: () => _executeClimateIntentViaApi(spaceId, intentBody),
       );
 
-      if (response.response.statusCode == 200 ||
-          response.response.statusCode == 201) {
-        final data = response.response.data['data'] as Map<String, dynamic>;
-        final result = ClimateIntentResult.fromJson(data);
+      stopwatch.stop();
 
-        // Track successful intent execution
-        stopwatch.stop();
+      if (dispatchResult.success) {
+        final result = dispatchResult.data != null
+            ? ClimateIntentResult.fromJson(dispatchResult.data!)
+            : ClimateIntentResult(affectedDevices: 0, failedDevices: 0);
+
         MetricsService.instance.trackIntent(
           intentName,
           result.failedDevices > 0 ? MetricStatus.partial : MetricStatus.success,
@@ -726,25 +719,27 @@ class SpaceStateRepository extends ChangeNotifier {
           failedDevices: result.failedDevices,
         );
 
-        // Refresh undo state after successful intent execution
-        // (a new undo window may now be available)
-        // Note: Climate state refresh is handled by WebSocket events
+        if (kDebugMode) {
+          debugPrint(
+            '[SPACES MODULE][STATE] Climate intent executed via ${dispatchResult.channel.name} for $spaceId',
+          );
+        }
+
         fetchUndoState(spaceId);
 
         return result;
-      }
-    } on DioException catch (e) {
-      stopwatch.stop();
-      MetricsService.instance.trackIntent(
-        intentName,
-        MetricStatus.failure,
-        stopwatch.elapsed,
-        spaceId: spaceId,
-      );
-      if (kDebugMode) {
-        debugPrint(
-          '[SPACES MODULE][STATE] API error executing climate intent for $spaceId: ${e.response?.statusCode}',
+      } else {
+        MetricsService.instance.trackIntent(
+          intentName,
+          MetricStatus.failure,
+          stopwatch.elapsed,
+          spaceId: spaceId,
         );
+        if (kDebugMode) {
+          debugPrint(
+            '[SPACES MODULE][STATE] Climate intent failed for $spaceId: ${dispatchResult.reason}',
+          );
+        }
       }
     } catch (e) {
       stopwatch.stop();
@@ -757,6 +752,33 @@ class SpaceStateRepository extends ChangeNotifier {
       if (kDebugMode) {
         debugPrint(
           '[SPACES MODULE][STATE] Error executing climate intent for $spaceId: $e',
+        );
+      }
+    }
+    return null;
+  }
+
+  /// Execute climate intent via API (used as fallback)
+  Future<Map<String, dynamic>?> _executeClimateIntentViaApi(
+    String spaceId,
+    Map<String, dynamic> intentBody,
+  ) async {
+    try {
+      final response = await _apiClient.createSpacesModuleSpaceClimateIntent(
+        id: spaceId,
+        body: SpacesModuleReqClimateIntent(
+          data: SpacesModuleClimateIntent.fromJson(intentBody),
+        ),
+      );
+
+      if (response.response.statusCode == 200 ||
+          response.response.statusCode == 201) {
+        return response.response.data['data'] as Map<String, dynamic>;
+      }
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][STATE] API error executing climate intent: ${e.response?.statusCode}',
         );
       }
     }
@@ -830,6 +852,8 @@ class SpaceStateRepository extends ChangeNotifier {
   // ============================================
 
   /// Execute a media intent
+  ///
+  /// Uses WebSocket as primary channel with API fallback when WebSocket is unavailable.
   Future<MediaIntentResult?> executeMediaIntent({
     required String spaceId,
     required MediaIntentType type,
@@ -844,7 +868,8 @@ class SpaceStateRepository extends ChangeNotifier {
     final stopwatch = Stopwatch()..start();
     final intentName = 'media_${mediaIntentTypeToString(type)}';
 
-    final intentValue = <String, dynamic>{
+    // Build intent body for both WebSocket and API
+    final Map<String, dynamic> intentBody = {
       'type': mediaIntentTypeToString(type),
       if (mode != null) 'mode': mediaModeToString(mode),
       if (volume != null) 'volume': volume,
@@ -858,49 +883,28 @@ class SpaceStateRepository extends ChangeNotifier {
     _intentsRepository.createLocalSpaceIntent(
       spaceId: spaceId,
       type: _mapMediaIntentType(type),
-      value: intentValue,
+      value: intentBody,
     );
 
     try {
-      final Map<String, dynamic> body = {
-        'type': mediaIntentTypeToString(type),
-      };
-
-      if (mode != null) {
-        body['mode'] = mediaModeToString(mode);
-      }
-      if (volume != null) {
-        body['volume'] = volume;
-      }
-      if (delta != null) {
-        body['delta'] = volumeDeltaToString(delta);
-      }
-      if (increase != null) {
-        body['increase'] = increase;
-      }
-      if (role != null) {
-        body['role'] = mediaRoleToString(role);
-      }
-      if (on != null) {
-        body['on'] = on;
-      }
-      if (source != null) {
-        body['source'] = source;
-      }
-
-      final response = await _apiClient.createSpacesModuleSpaceMediaIntent(
-        id: spaceId,
-        body: SpacesModuleReqMediaIntent(
-          data: SpacesModuleMediaIntent.fromJson(body),
-        ),
+      // Use command dispatch with WebSocket primary and API fallback
+      final dispatchResult = await _commandDispatch.dispatch(
+        event: SpacesModuleConstants.mediaIntentEvent,
+        handler: SpacesModuleEventHandlerName.mediaIntent,
+        payload: {
+          'spaceId': spaceId,
+          'intent': intentBody,
+        },
+        apiFallback: () => _executeMediaIntentViaApi(spaceId, intentBody),
       );
 
-      if (response.response.statusCode == 200 ||
-          response.response.statusCode == 201) {
-        final data = response.response.data['data'] as Map<String, dynamic>;
-        final result = MediaIntentResult.fromJson(data);
+      stopwatch.stop();
 
-        stopwatch.stop();
+      if (dispatchResult.success) {
+        final result = dispatchResult.data != null
+            ? MediaIntentResult.fromJson(dispatchResult.data!)
+            : MediaIntentResult(affectedDevices: 0, failedDevices: 0);
+
         MetricsService.instance.trackIntent(
           intentName,
           result.failedDevices > 0 ? MetricStatus.partial : MetricStatus.success,
@@ -910,22 +914,27 @@ class SpaceStateRepository extends ChangeNotifier {
           failedDevices: result.failedDevices,
         );
 
+        if (kDebugMode) {
+          debugPrint(
+            '[SPACES MODULE][STATE] Media intent executed via ${dispatchResult.channel.name} for $spaceId',
+          );
+        }
+
         fetchUndoState(spaceId);
 
         return result;
-      }
-    } on DioException catch (e) {
-      stopwatch.stop();
-      MetricsService.instance.trackIntent(
-        intentName,
-        MetricStatus.failure,
-        stopwatch.elapsed,
-        spaceId: spaceId,
-      );
-      if (kDebugMode) {
-        debugPrint(
-          '[SPACES MODULE][STATE] API error executing media intent for $spaceId: ${e.response?.statusCode}',
+      } else {
+        MetricsService.instance.trackIntent(
+          intentName,
+          MetricStatus.failure,
+          stopwatch.elapsed,
+          spaceId: spaceId,
         );
+        if (kDebugMode) {
+          debugPrint(
+            '[SPACES MODULE][STATE] Media intent failed for $spaceId: ${dispatchResult.reason}',
+          );
+        }
       }
     } catch (e) {
       stopwatch.stop();
@@ -938,6 +947,33 @@ class SpaceStateRepository extends ChangeNotifier {
       if (kDebugMode) {
         debugPrint(
           '[SPACES MODULE][STATE] Error executing media intent for $spaceId: $e',
+        );
+      }
+    }
+    return null;
+  }
+
+  /// Execute media intent via API (used as fallback)
+  Future<Map<String, dynamic>?> _executeMediaIntentViaApi(
+    String spaceId,
+    Map<String, dynamic> intentBody,
+  ) async {
+    try {
+      final response = await _apiClient.createSpacesModuleSpaceMediaIntent(
+        id: spaceId,
+        body: SpacesModuleReqMediaIntent(
+          data: SpacesModuleMediaIntent.fromJson(intentBody),
+        ),
+      );
+
+      if (response.response.statusCode == 200 ||
+          response.response.statusCode == 201) {
+        return response.response.data['data'] as Map<String, dynamic>;
+      }
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][STATE] API error executing media intent: ${e.response?.statusCode}',
         );
       }
     }
@@ -1059,6 +1095,8 @@ class SpaceStateRepository extends ChangeNotifier {
   // ============================================
 
   /// Execute a covers intent
+  ///
+  /// Uses WebSocket as primary channel with API fallback when WebSocket is unavailable.
   Future<CoversIntentResult?> executeCoversIntent({
     required String spaceId,
     required CoversIntentType type,
@@ -1071,8 +1109,8 @@ class SpaceStateRepository extends ChangeNotifier {
     final stopwatch = Stopwatch()..start();
     final intentName = 'covers_${coversIntentTypeToString(type)}';
 
-    // Build intent value for optimistic UI
-    final intentValue = <String, dynamic>{
+    // Build intent body for both WebSocket and API
+    final Map<String, dynamic> intentBody = {
       'type': coversIntentTypeToString(type),
       if (delta != null) 'delta': positionDeltaToString(delta),
       if (increase != null) 'increase': increase,
@@ -1081,48 +1119,32 @@ class SpaceStateRepository extends ChangeNotifier {
       if (mode != null) 'mode': mode,
     };
 
-    // Create local intent for optimistic UI before API call
+    // Create local intent for optimistic UI before sending command
     _intentsRepository.createLocalSpaceIntent(
       spaceId: spaceId,
       type: _mapCoversIntentType(type),
-      value: intentValue,
+      value: intentBody,
     );
 
     try {
-      final Map<String, dynamic> body = {
-        'type': coversIntentTypeToString(type),
-      };
-
-      if (delta != null) {
-        body['delta'] = positionDeltaToString(delta);
-      }
-      if (increase != null) {
-        body['increase'] = increase;
-      }
-      if (position != null) {
-        body['position'] = position;
-      }
-      if (role != null) {
-        body['role'] = coversRoleToString(role);
-      }
-      if (mode != null) {
-        body['mode'] = mode;
-      }
-
-      final response = await _apiClient.createSpacesModuleSpaceCoversIntent(
-        id: spaceId,
-        body: SpacesModuleReqCoversIntent(
-          data: SpacesModuleCoversIntent.fromJson(body),
-        ),
+      // Use command dispatch with WebSocket primary and API fallback
+      final dispatchResult = await _commandDispatch.dispatch(
+        event: SpacesModuleConstants.coversIntentEvent,
+        handler: SpacesModuleEventHandlerName.coversIntent,
+        payload: {
+          'spaceId': spaceId,
+          'intent': intentBody,
+        },
+        apiFallback: () => _executeCoversIntentViaApi(spaceId, intentBody),
       );
 
-      if (response.response.statusCode == 200 ||
-          response.response.statusCode == 201) {
-        final data = response.response.data['data'] as Map<String, dynamic>;
-        final result = CoversIntentResult.fromJson(data);
+      stopwatch.stop();
 
-        // Track successful intent execution
-        stopwatch.stop();
+      if (dispatchResult.success) {
+        final result = dispatchResult.data != null
+            ? CoversIntentResult.fromJson(dispatchResult.data!)
+            : CoversIntentResult(affectedDevices: 0, failedDevices: 0);
+
         MetricsService.instance.trackIntent(
           intentName,
           result.failedDevices > 0 ? MetricStatus.partial : MetricStatus.success,
@@ -1132,25 +1154,27 @@ class SpaceStateRepository extends ChangeNotifier {
           failedDevices: result.failedDevices,
         );
 
-        // Refresh undo state after successful intent execution
-        // (a new undo window may now be available)
-        // Note: Covers state refresh is handled by WebSocket events
+        if (kDebugMode) {
+          debugPrint(
+            '[SPACES MODULE][STATE] Covers intent executed via ${dispatchResult.channel.name} for $spaceId',
+          );
+        }
+
         fetchUndoState(spaceId);
 
         return result;
-      }
-    } on DioException catch (e) {
-      stopwatch.stop();
-      MetricsService.instance.trackIntent(
-        intentName,
-        MetricStatus.failure,
-        stopwatch.elapsed,
-        spaceId: spaceId,
-      );
-      if (kDebugMode) {
-        debugPrint(
-          '[SPACES MODULE][STATE] API error executing covers intent for $spaceId: ${e.response?.statusCode}',
+      } else {
+        MetricsService.instance.trackIntent(
+          intentName,
+          MetricStatus.failure,
+          stopwatch.elapsed,
+          spaceId: spaceId,
         );
+        if (kDebugMode) {
+          debugPrint(
+            '[SPACES MODULE][STATE] Covers intent failed for $spaceId: ${dispatchResult.reason}',
+          );
+        }
       }
     } catch (e) {
       stopwatch.stop();
@@ -1163,6 +1187,33 @@ class SpaceStateRepository extends ChangeNotifier {
       if (kDebugMode) {
         debugPrint(
           '[SPACES MODULE][STATE] Error executing covers intent for $spaceId: $e',
+        );
+      }
+    }
+    return null;
+  }
+
+  /// Execute covers intent via API (used as fallback)
+  Future<Map<String, dynamic>?> _executeCoversIntentViaApi(
+    String spaceId,
+    Map<String, dynamic> intentBody,
+  ) async {
+    try {
+      final response = await _apiClient.createSpacesModuleSpaceCoversIntent(
+        id: spaceId,
+        body: SpacesModuleReqCoversIntent(
+          data: SpacesModuleCoversIntent.fromJson(intentBody),
+        ),
+      );
+
+      if (response.response.statusCode == 200 ||
+          response.response.statusCode == 201) {
+        return response.response.data['data'] as Map<String, dynamic>;
+      }
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][STATE] API error executing covers intent: ${e.response?.statusCode}',
         );
       }
     }
@@ -1394,7 +1445,50 @@ class SpaceStateRepository extends ChangeNotifier {
   }
 
   /// Execute undo
+  ///
+  /// Uses WebSocket as primary channel with API fallback when WebSocket is unavailable.
   Future<UndoResultModel?> executeUndo(String spaceId) async {
+    try {
+      // Use command dispatch with WebSocket primary and API fallback
+      final dispatchResult = await _commandDispatch.dispatch(
+        event: SpacesModuleConstants.undoIntentEvent,
+        handler: SpacesModuleEventHandlerName.undoIntent,
+        payload: {
+          'spaceId': spaceId,
+        },
+        apiFallback: () => _executeUndoViaApi(spaceId),
+      );
+
+      // Always clear undo state after attempting execution
+      _undoStates.remove(spaceId);
+      notifyListeners();
+
+      if (dispatchResult.success && dispatchResult.data != null) {
+        if (kDebugMode) {
+          debugPrint(
+            '[SPACES MODULE][STATE] Undo executed via ${dispatchResult.channel.name} for $spaceId',
+          );
+        }
+        return UndoResultModel.fromJson(dispatchResult.data!);
+      } else {
+        if (kDebugMode) {
+          debugPrint(
+            '[SPACES MODULE][STATE] Undo failed for $spaceId: ${dispatchResult.reason}',
+          );
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][STATE] Error executing undo for $spaceId: $e',
+        );
+      }
+    }
+    return null;
+  }
+
+  /// Execute undo via API (used as fallback)
+  Future<Map<String, dynamic>?> _executeUndoViaApi(String spaceId) async {
     try {
       final response = await _apiClient.createSpacesModuleSpaceUndo(
         id: spaceId,
@@ -1403,30 +1497,14 @@ class SpaceStateRepository extends ChangeNotifier {
       if (response.response.statusCode == 200 ||
           response.response.statusCode == 201) {
         final rawData = response.response.data['data'];
-
-        // Always clear undo state after attempting execution
-        // (whether successful or expired/invalid)
-        _undoStates.remove(spaceId);
-        notifyListeners();
-
-        // Handle null response (undo expired or could not be executed)
-        if (rawData == null) {
-          return null;
+        if (rawData != null) {
+          return rawData as Map<String, dynamic>;
         }
-        final data = rawData as Map<String, dynamic>;
-
-        return UndoResultModel.fromJson(data);
       }
     } on DioException catch (e) {
       if (kDebugMode) {
         debugPrint(
-          '[SPACES MODULE][STATE] API error executing undo for $spaceId: ${e.response?.statusCode}',
-        );
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          '[SPACES MODULE][STATE] Error executing undo for $spaceId: $e',
+          '[SPACES MODULE][STATE] API error executing undo: ${e.response?.statusCode}',
         );
       }
     }

@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/devices/constants.dart';
 import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
@@ -53,6 +54,7 @@ class SpacesModuleService {
     _spaceStateRepository = SpaceStateRepository(
       apiClient: apiClient.spacesModule,
       intentsRepository: locator<IntentsRepository>(),
+      commandDispatch: CommandDispatchService(socketService: socketService),
     );
 
     _spacesService = SpacesService(

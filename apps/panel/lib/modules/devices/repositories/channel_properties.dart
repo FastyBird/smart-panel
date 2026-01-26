@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/models/devices_module_data_type.dart';
+import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/devices/constants.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/property.dart';
@@ -16,6 +18,7 @@ import 'package:uuid/uuid.dart';
 
 class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
   final SocketService _socketService;
+  final CommandDispatchService _commandDispatch;
 
   ChannelsRepository? _channelsRepository;
   DevicesRepository? _devicesRepository;
@@ -26,7 +29,9 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
   ChannelPropertiesRepository({
     required super.apiClient,
     required SocketService socketService,
-  }) : _socketService = socketService;
+    required CommandDispatchService commandDispatch,
+  })  : _socketService = socketService,
+        _commandDispatch = commandDispatch;
 
   /// Set the channels repository after construction to avoid circular dependency
   void setChannelsRepository(ChannelsRepository channelsRepository) {
@@ -226,6 +231,10 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
     return false;
   }
 
+  /// Send command to backend via WebSocket with API fallback.
+  ///
+  /// Uses WebSocket as primary channel. If WebSocket is unavailable or fails,
+  /// falls back to API call.
   Future<void> _sendCommandToBackend(
     ChannelModel channel,
     ChannelPropertyModel property,
@@ -234,52 +243,106 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
     // Generate a unique request ID for tracking this command through the intent system
     final requestId = const Uuid().v4();
 
-    await _socketService.sendCommand(
-      DevicesModuleConstants.channelPropertySetEvent,
-      {
-        'request_id': requestId,
-        'properties': [
-          {
-            'device': channel.device,
-            'channel': property.channel,
-            'property': property.id,
-            'value': property.value?.value,
-          },
-        ],
-      },
-      DevicesModuleEventHandlerName.internalSetProperty,
-      onAck: (SocketCommandResponseModel? response) {
-        if (response == null || response.status == false) {
-          if (kDebugMode) {
-            debugPrint(
-              '[DEVICES MODULE][CHANNEL PROPERTIES] Failed process command by backend for property: ${property.id}, reason: ${response?.message ?? 'N/A'}',
-            );
-          }
+    final payload = {
+      'request_id': requestId,
+      'properties': [
+        {
+          'device': channel.device,
+          'channel': property.channel,
+          'property': property.id,
+          'value': property.value?.value,
+        },
+      ],
+    };
 
-          _revertValue(id: property.id);
+    try {
+      // Use command dispatch with WebSocket primary and API fallback
+      final result = await _commandDispatch.dispatch(
+        event: DevicesModuleConstants.channelPropertySetEvent,
+        handler: DevicesModuleEventHandlerName.internalSetProperty,
+        payload: payload,
+        apiFallback: () => _setPropertyValueViaApi(
+          channel.id,
+          property.id,
+          property.value?.value,
+        ),
+      );
 
-          // Clear backup after revert
-          _valueBackup.remove(property.id);
-
-          completer.complete(false);
-        } else {
-          if (kDebugMode) {
-            debugPrint(
-              '[DEVICES MODULE][CHANNEL PROPERTIES] Successfully send command to backend for property: ${property.id}, requestId: $requestId',
-            );
-          }
-
-          // Clear backup on success - server now has the new value
-          _valueBackup.remove(property.id);
-
-          completer.complete(true);
+      if (result.success) {
+        if (kDebugMode) {
+          debugPrint(
+            '[DEVICES MODULE][CHANNEL PROPERTIES] Successfully sent command via ${result.channel.name} for property: ${property.id}, requestId: $requestId',
+          );
         }
-      },
-    );
+
+        // Clear backup on success - server now has the new value
+        _valueBackup.remove(property.id);
+
+        completer.complete(true);
+      } else {
+        if (kDebugMode) {
+          debugPrint(
+            '[DEVICES MODULE][CHANNEL PROPERTIES] Failed to process command for property: ${property.id}, reason: ${result.reason}',
+          );
+        }
+
+        _revertValue(id: property.id);
+
+        // Clear backup after revert
+        _valueBackup.remove(property.id);
+
+        completer.complete(false);
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[DEVICES MODULE][CHANNEL PROPERTIES] Exception sending command for property: ${property.id}: $e',
+        );
+      }
+
+      _revertValue(id: property.id);
+      _valueBackup.remove(property.id);
+
+      completer.complete(false);
+    }
+  }
+
+  /// Set property value via API (used as fallback when WebSocket is unavailable)
+  Future<Map<String, dynamic>?> _setPropertyValueViaApi(
+    String channelId,
+    String propertyId,
+    dynamic value,
+  ) async {
+    try {
+      final response = await apiClient.updateDevicesModuleChannelProperty(
+        channelId: channelId,
+        id: propertyId,
+        body: {
+          'data': {
+            'value': value,
+          },
+        },
+      );
+
+      if (response.response.statusCode == 200 ||
+          response.response.statusCode == 201) {
+        return response.response.data['data'] as Map<String, dynamic>?;
+      }
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[DEVICES MODULE][CHANNEL PROPERTIES] API error setting property value: ${e.response?.statusCode}',
+        );
+      }
+    }
+    return null;
   }
 
   /// Set multiple property values in a single command
-  /// This creates a single intent on the backend for all properties
+  ///
+  /// This creates a single intent on the backend for all properties.
+  /// Uses WebSocket as primary channel with API fallback for each property
+  /// when WebSocket is unavailable.
   Future<bool> setMultipleValues({
     required List<PropertyCommandItem> properties,
     PropertyCommandContext? context,
@@ -316,8 +379,6 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
         contextPayload = context.toJson();
       }
 
-      final completer = Completer<bool>();
-
       // Build command payload
       final payload = <String, dynamic>{
         'request_id': requestId,
@@ -327,30 +388,29 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
         payload['context'] = contextPayload;
       }
 
-      await _socketService.sendCommand(
-        DevicesModuleConstants.channelPropertySetEvent,
-        payload,
-        DevicesModuleEventHandlerName.internalSetProperty,
-        onAck: (SocketCommandResponseModel? response) {
-          if (response == null || response.status == false) {
-            if (kDebugMode) {
-              debugPrint(
-                '[DEVICES MODULE][CHANNEL PROPERTIES] Failed batch command for ${properties.length} properties, reason: ${response?.message ?? 'N/A'}',
-              );
-            }
-            completer.complete(false);
-          } else {
-            if (kDebugMode) {
-              debugPrint(
-                '[DEVICES MODULE][CHANNEL PROPERTIES] Successfully sent batch command for ${properties.length} properties, requestId: $requestId',
-              );
-            }
-            completer.complete(true);
-          }
-        },
+      // Use command dispatch with WebSocket primary and API fallback
+      final result = await _commandDispatch.dispatch(
+        event: DevicesModuleConstants.channelPropertySetEvent,
+        handler: DevicesModuleEventHandlerName.internalSetProperty,
+        payload: payload,
+        apiFallback: () => _setMultiplePropertiesViaApi(properties),
       );
 
-      return completer.future;
+      if (result.success) {
+        if (kDebugMode) {
+          debugPrint(
+            '[DEVICES MODULE][CHANNEL PROPERTIES] Successfully sent batch command via ${result.channel.name} for ${properties.length} properties, requestId: $requestId',
+          );
+        }
+        return true;
+      } else {
+        if (kDebugMode) {
+          debugPrint(
+            '[DEVICES MODULE][CHANNEL PROPERTIES] Failed batch command for ${properties.length} properties, reason: ${result.reason}',
+          );
+        }
+        return false;
+      }
     } catch (e) {
       if (kDebugMode) {
         debugPrint(
@@ -358,6 +418,45 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
         );
       }
       return false;
+    }
+  }
+
+  /// Set multiple properties via API (used as fallback when WebSocket is unavailable)
+  ///
+  /// Since there's no batch API endpoint, this executes individual API calls
+  /// for each property sequentially.
+  Future<Map<String, dynamic>?> _setMultiplePropertiesViaApi(
+    List<PropertyCommandItem> properties,
+  ) async {
+    try {
+      bool allSuccess = true;
+
+      for (final prop in properties) {
+        final result = await _setPropertyValueViaApi(
+          prop.channel,
+          prop.property,
+          prop.value,
+        );
+
+        if (result == null) {
+          allSuccess = false;
+          if (kDebugMode) {
+            debugPrint(
+              '[DEVICES MODULE][CHANNEL PROPERTIES] API fallback failed for property: ${prop.property}',
+            );
+          }
+        }
+      }
+
+      // Return a result map to indicate success/failure
+      return allSuccess ? {'success': true} : null;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[DEVICES MODULE][CHANNEL PROPERTIES] API batch fallback error: $e',
+        );
+      }
+      return null;
     }
   }
 

@@ -6,6 +6,13 @@ class SpacesModuleConstants {
   static const String spaceUpdatedEvent = 'SpacesModule.Space.Updated';
   static const String spaceDeletedEvent = 'SpacesModule.Space.Deleted';
 
+  // WebSocket command events for intents
+  static const String lightingIntentEvent = 'SpacesModule.LightingIntent';
+  static const String climateIntentEvent = 'SpacesModule.ClimateIntent';
+  static const String coversIntentEvent = 'SpacesModule.CoversIntent';
+  static const String mediaIntentEvent = 'SpacesModule.MediaIntent';
+  static const String undoIntentEvent = 'SpacesModule.UndoIntent';
+
   static const String lightTargetCreatedEvent =
       'SpacesModule.LightTarget.Created';
   static const String lightTargetUpdatedEvent =
@@ -45,4 +52,13 @@ class SpacesModuleConstants {
       'SpacesModule.Space.CoversStateChanged';
   static const String sensorStateChangedEvent =
       'SpacesModule.Space.SensorStateChanged';
+}
+
+/// WebSocket command handler names for spaces module intents
+class SpacesModuleEventHandlerName {
+  static const String lightingIntent = 'SpacesModule.LightingIntentHandler';
+  static const String climateIntent = 'SpacesModule.ClimateIntentHandler';
+  static const String coversIntent = 'SpacesModule.CoversIntentHandler';
+  static const String mediaIntent = 'SpacesModule.MediaIntentHandler';
+  static const String undoIntent = 'SpacesModule.UndoIntentHandler';
 }
