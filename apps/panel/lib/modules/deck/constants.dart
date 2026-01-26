@@ -73,6 +73,7 @@ class LightingConstants {
   /// Tolerances for considering values "equal" across devices.
   static const double brightnessTolerance = 3.0;
   static const double hueTolerance = 5.0;
+  static const double saturationTolerance = 3.0;
   static const double temperatureTolerance = 100.0;
   static const double whiteTolerance = 5.0;
 

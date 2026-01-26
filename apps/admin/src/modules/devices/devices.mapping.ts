@@ -427,12 +427,17 @@ export const getChannelPropertySpecification = (
 	}
 
 	// Handle properties with single data type
+	// If neither data_type nor data_types is defined, return undefined
+	if (!rawProp.data_type) {
+		return undefined;
+	}
+
 	return {
 		category: rawProp.category,
 		required: rawProp.required,
 		description: rawProp.description ?? { en: '' },
 		permissions: rawProp.permissions,
-		data_type: rawProp.data_type!,
+		data_type: rawProp.data_type,
 		unit: rawProp.unit ?? null,
 		format: rawProp.format ?? null,
 		invalid: rawProp.invalid,

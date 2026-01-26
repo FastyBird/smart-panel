@@ -282,6 +282,16 @@ class _LightSingleChannelControlPanelState
         }
 
         _controller.setBrightness(value);
+
+        // Transition to settling state after command is sent
+        final brightnessProperty = _controller.channel.brightnessProp;
+        if (brightnessProperty != null) {
+          _deviceControlStateService?.setSettling(
+            widget.controller.deviceId,
+            _controller.channel.id,
+            brightnessProperty.id,
+          );
+        }
       },
     );
   }
@@ -314,6 +324,16 @@ class _LightSingleChannelControlPanelState
         }
 
         _controller.setColorTemperature(value);
+
+        // Transition to settling state after command is sent
+        final tempProperty = _controller.channel.temperatureProp;
+        if (tempProperty != null) {
+          _deviceControlStateService?.setSettling(
+            widget.controller.deviceId,
+            _controller.channel.id,
+            tempProperty.id,
+          );
+        }
       },
     );
   }
@@ -405,6 +425,14 @@ class _LightSingleChannelControlPanelState
 
         // Controller handles RGB vs HSV mode internally
         _controller.setColor(color);
+
+        // Transition to settling state after command is sent (for the group)
+        if (colorProperties.isNotEmpty) {
+          _deviceControlStateService?.setGroupSettling(
+            widget.controller.deviceId,
+            LightChannelController.colorGroupId,
+          );
+        }
       },
     );
   }
@@ -437,6 +465,16 @@ class _LightSingleChannelControlPanelState
         }
 
         _controller.setColorWhite(value);
+
+        // Transition to settling state after command is sent
+        final whiteProperty = _controller.channel.colorWhiteProp;
+        if (whiteProperty != null) {
+          _deviceControlStateService?.setSettling(
+            widget.controller.deviceId,
+            _controller.channel.id,
+            whiteProperty.id,
+          );
+        }
       },
     );
   }
@@ -685,6 +723,15 @@ class _LightMultiChannelControlPanelState
         }
 
         _selectedController.setBrightness(value);
+
+        // Transition to settling state after command is sent
+        if (prop != null) {
+          _deviceControlStateService?.setSettling(
+            _selectedController.deviceId,
+            _selectedController.channel.id,
+            prop.id,
+          );
+        }
       },
     );
   }
@@ -717,6 +764,15 @@ class _LightMultiChannelControlPanelState
         }
 
         _selectedController.setColorTemperature(value);
+
+        // Transition to settling state after command is sent
+        if (prop != null) {
+          _deviceControlStateService?.setSettling(
+            _selectedController.deviceId,
+            _selectedController.channel.id,
+            prop.id,
+          );
+        }
       },
     );
   }
@@ -808,6 +864,14 @@ class _LightMultiChannelControlPanelState
 
         // Controller handles RGB vs HSV mode internally
         _selectedController.setColor(color);
+
+        // Transition to settling state after command is sent (for the group)
+        if (colorProperties.isNotEmpty) {
+          _deviceControlStateService?.setGroupSettling(
+            deviceId,
+            LightChannelController.colorGroupId,
+          );
+        }
       },
     );
   }
@@ -840,6 +904,15 @@ class _LightMultiChannelControlPanelState
         }
 
         _selectedController.setColorWhite(value);
+
+        // Transition to settling state after command is sent
+        if (prop != null) {
+          _deviceControlStateService?.setSettling(
+            _selectedController.deviceId,
+            _selectedController.channel.id,
+            prop.id,
+          );
+        }
       },
     );
   }
