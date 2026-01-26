@@ -2,7 +2,7 @@ import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
+import { ChannelCategory, ConnectionState, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
@@ -192,16 +192,30 @@ export class LightingIntentService extends SpaceIntentBaseService {
 			this.logger.debug(`Skipping ${offlineIds.length} offline device(s) in space id=${spaceId}`);
 		}
 
-		// If all devices are offline, return early with appropriate result
-		if (lights.length === 0 && offlineIds.length > 0) {
-			this.logger.warn(`All ${offlineIds.length} device(s) are offline in space id=${spaceId}`);
+		// Filter offline IDs by role for role-specific intents (applied early for all-offline check)
+		const targetedOfflineIds = this.filterOfflineIdsByRole(allLights, offlineIds, intent);
+
+		// For role-specific intents, also check if there are any online devices with the target role
+		const hasOnlineTargetedDevices =
+			this.isRoleSpecificIntent(intent.type) && intent.role
+				? lights.some((l) => {
+						if (intent.role === LightingRole.OTHER) {
+							return l.role === LightingRole.OTHER || l.role === null;
+						}
+						return l.role === intent.role;
+					})
+				: lights.length > 0;
+
+		// If all targeted devices are offline, return early with appropriate result
+		if (!hasOnlineTargetedDevices && targetedOfflineIds.length > 0) {
+			this.logger.warn(`All ${targetedOfflineIds.length} targeted device(s) are offline in space id=${spaceId}`);
 
 			return {
 				success: false,
 				affectedDevices: 0,
 				failedDevices: 0,
-				skippedOfflineDevices: offlineIds.length,
-				offlineDeviceIds: offlineIds,
+				skippedOfflineDevices: targetedOfflineIds.length,
+				offlineDeviceIds: targetedOfflineIds,
 			};
 		}
 
@@ -228,9 +242,6 @@ export class LightingIntentService extends SpaceIntentBaseService {
 
 		let result: IntentExecutionResult;
 		const targetResults: IntentTargetResult[] = [];
-
-		// Filter offline devices by role for role-specific intents
-		const targetedOfflineIds = this.filterOfflineIdsByRole(allLights, offlineIds, intent);
 
 		// Add SKIPPED results for offline devices that were actually targeted
 		for (const deviceId of targetedOfflineIds) {
@@ -1327,13 +1338,17 @@ export class LightingIntentService extends SpaceIntentBaseService {
 	/**
 	 * Filter out offline devices from a list of light devices.
 	 * Returns online devices and list of offline device IDs.
+	 *
+	 * Devices with UNKNOWN status are treated as potentially online and included
+	 * in the online list (commands will fail naturally if device is truly offline).
 	 */
 	private filterOfflineDevices(lights: LightDevice[]): { online: LightDevice[]; offlineIds: string[] } {
 		const online: LightDevice[] = [];
 		const offlineIds: string[] = [];
 
 		for (const light of lights) {
-			if (light.device.status.online) {
+			// Treat UNKNOWN status as potentially online - allow commands to attempt
+			if (light.device.status.online || light.device.status.status === ConnectionState.UNKNOWN) {
 				online.push(light);
 			} else {
 				offlineIds.push(light.device.id);

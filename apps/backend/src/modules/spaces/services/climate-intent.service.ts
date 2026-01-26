@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
+import { ConnectionState } from '../../devices/devices.constants';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { DEFAULT_TTL_SPACE_COMMAND, IntentTargetStatus, IntentType } from '../../intents/intents.constants';
@@ -211,6 +212,9 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 	/**
 	 * Filter out offline devices from a list of primary climate devices.
 	 * Returns online devices and list of offline device IDs.
+	 *
+	 * Devices with UNKNOWN status are treated as potentially online and included
+	 * in the online list (commands will fail naturally if device is truly offline).
 	 */
 	private filterOfflineClimateDevices(devices: PrimaryClimateDevice[]): {
 		online: PrimaryClimateDevice[];
@@ -220,7 +224,8 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		const offlineIds: string[] = [];
 
 		for (const device of devices) {
-			if (device.device.status.online) {
+			// Treat UNKNOWN status as potentially online - allow commands to attempt
+			if (device.device.status.online || device.device.status.status === ConnectionState.UNKNOWN) {
 				online.push(device);
 			} else {
 				offlineIds.push(device.device.id);
