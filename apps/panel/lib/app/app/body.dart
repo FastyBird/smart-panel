@@ -64,6 +64,9 @@ class _AppBodyState extends State<AppBody> {
     _displayRepository.addListener(_syncStateWithRepository);
     _displayRepository.addListener(_onDisplayChanged);
     _systemConfigRepository.addListener(_syncStateWithRepository);
+
+    // Sync initial socket connection state and listen for changes
+    _isSocketConnected = _socketService.isConnected;
     _socketService.addConnectionListener(_onSocketConnectionChanged);
 
     locator<SystemActionsService>().init();
