@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/system_pages/theme.dart';
 
@@ -26,6 +28,7 @@ class SystemPageSecondaryButton extends StatefulWidget {
 }
 
 class _SystemPageSecondaryButtonState extends State<SystemPageSecondaryButton> {
+  final ScreenService _screenService = locator<ScreenService>();
   bool _isPressed = false;
 
   @override
@@ -59,7 +62,7 @@ class _SystemPageSecondaryButtonState extends State<SystemPageSecondaryButton> {
               color: _isPressed
                   ? accent
                   : SystemPagesTheme.border(widget.isDark),
-              width: 1.5,
+              width: _screenService.scale(1.5),
             ),
           ),
           child: Row(
@@ -72,7 +75,7 @@ class _SystemPageSecondaryButtonState extends State<SystemPageSecondaryButton> {
                   color: widget.onPressed != null
                       ? SystemPagesTheme.textPrimary(widget.isDark)
                       : SystemPagesTheme.textMuted(widget.isDark),
-                  size: 20,
+                  size: _screenService.scale(20),
                 ),
                 SizedBox(width: AppSpacings.pSm),
               ],

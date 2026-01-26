@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/system_pages/theme.dart';
 
@@ -26,6 +28,7 @@ class SystemPagePrimaryButton extends StatefulWidget {
 }
 
 class _SystemPagePrimaryButtonState extends State<SystemPagePrimaryButton> {
+  final ScreenService _screenService = locator<ScreenService>();
   bool _isPressed = false;
 
   @override
@@ -63,7 +66,11 @@ class _SystemPagePrimaryButtonState extends State<SystemPagePrimaryButton> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (widget.icon != null) ...[
-                Icon(widget.icon, color: AppColors.white, size: 20),
+                Icon(
+                  widget.icon,
+                  color: AppColors.white,
+                  size: _screenService.scale(20),
+                ),
                 SizedBox(width: AppSpacings.pSm),
               ],
               Text(
