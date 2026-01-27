@@ -106,6 +106,7 @@ class PortraitViewLayout extends StatelessWidget {
         itemCount: 1,
         separatorHeight: 0,
         itemBuilder: (context, index) => content,
+        controller: scrollController,
       );
     } else if (contentPadding != null) {
       contentWidget = Padding(
