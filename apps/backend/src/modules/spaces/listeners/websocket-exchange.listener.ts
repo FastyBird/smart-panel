@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../../websocket/dto/client-user.dto';
@@ -153,13 +154,16 @@ export class WebsocketExchangeListener implements OnModuleInit {
 				return { success: false, reason: 'Intent with type is required' };
 			}
 
+			// Transform intent payload to handle snake_case to camelCase conversion
+			const transformedIntent = toInstance(LightingIntentDto, intent);
+
 			// Verify space exists
 			const space = await this.spacesService.findOne(spaceId);
 			if (!space) {
 				return { success: false, reason: `Space with id=${spaceId} was not found` };
 			}
 
-			const result = await this.spaceIntentService.executeLightingIntent(spaceId, intent);
+			const result = await this.spaceIntentService.executeLightingIntent(spaceId, transformedIntent);
 
 			if (!result) {
 				return { success: false, reason: 'Failed to execute lighting intent' };
@@ -202,13 +206,16 @@ export class WebsocketExchangeListener implements OnModuleInit {
 				return { success: false, reason: 'Intent with type is required' };
 			}
 
+			// Transform intent payload to handle snake_case to camelCase conversion
+			const transformedIntent = toInstance(ClimateIntentDto, intent);
+
 			// Verify space exists
 			const space = await this.spacesService.findOne(spaceId);
 			if (!space) {
 				return { success: false, reason: `Space with id=${spaceId} was not found` };
 			}
 
-			const result = await this.spaceIntentService.executeClimateIntent(spaceId, intent);
+			const result = await this.spaceIntentService.executeClimateIntent(spaceId, transformedIntent);
 
 			if (!result) {
 				return { success: false, reason: 'Failed to execute climate intent' };
@@ -254,13 +261,16 @@ export class WebsocketExchangeListener implements OnModuleInit {
 				return { success: false, reason: 'Intent with type is required' };
 			}
 
+			// Transform intent payload to handle snake_case to camelCase conversion
+			const transformedIntent = toInstance(CoversIntentDto, intent);
+
 			// Verify space exists
 			const space = await this.spacesService.findOne(spaceId);
 			if (!space) {
 				return { success: false, reason: `Space with id=${spaceId} was not found` };
 			}
 
-			const result = await this.spaceIntentService.executeCoversIntent(spaceId, intent);
+			const result = await this.spaceIntentService.executeCoversIntent(spaceId, transformedIntent);
 
 			if (!result) {
 				return { success: false, reason: 'Failed to execute covers intent' };
@@ -304,13 +314,16 @@ export class WebsocketExchangeListener implements OnModuleInit {
 				return { success: false, reason: 'Intent with type is required' };
 			}
 
+			// Transform intent payload to handle snake_case to camelCase conversion
+			const transformedIntent = toInstance(MediaIntentDto, intent);
+
 			// Verify space exists
 			const space = await this.spacesService.findOne(spaceId);
 			if (!space) {
 				return { success: false, reason: `Space with id=${spaceId} was not found` };
 			}
 
-			const result = await this.spaceIntentService.executeMediaIntent(spaceId, intent);
+			const result = await this.spaceIntentService.executeMediaIntent(spaceId, transformedIntent);
 
 			if (!result) {
 				return { success: false, reason: 'Failed to execute media intent' };
