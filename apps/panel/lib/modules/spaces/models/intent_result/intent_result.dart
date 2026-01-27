@@ -109,6 +109,7 @@ class MediaIntentResult {
   final int? skippedOfflineDevices;
   final List<String>? offlineDeviceIds;
   final int? skippedDevices;
+  final List<String>? failedTargets;
   final int? newVolume;
   final bool? isMuted;
 
@@ -119,6 +120,7 @@ class MediaIntentResult {
     this.skippedOfflineDevices,
     this.offlineDeviceIds,
     this.skippedDevices,
+    this.failedTargets,
     this.newVolume,
     this.isMuted,
   });
@@ -133,6 +135,9 @@ class MediaIntentResult {
           ?.map((e) => e as String)
           .toList(),
       skippedDevices: json['skipped_devices'] as int?,
+      failedTargets: (json['failed_targets'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
       newVolume: (json['new_volume'] as num?)?.toInt(),
       isMuted: json['is_muted'] as bool?,
     );
