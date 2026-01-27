@@ -178,6 +178,7 @@ class ConnectionStateManager extends ChangeNotifier {
     }
 
     _debounceTimer?.cancel();
+    _escalationTimer?.cancel();
     _disconnectedAt ??= DateTime.now();
     _hasIncrementedFailureForCurrentDisconnect = false;
     _updateState(SocketConnectionState.networkUnavailable);
