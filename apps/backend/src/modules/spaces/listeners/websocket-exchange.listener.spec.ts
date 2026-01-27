@@ -239,6 +239,8 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 				success: true,
 				affectedDevices: 3,
 				failedDevices: 1,
+				skippedOfflineDevices: 2,
+				offlineDeviceIds: ['device-1', 'device-2'],
 			});
 
 			const result = await handleLightingIntent(user, { spaceId: mockSpace.id, intent: { type: 'on' } });
@@ -249,6 +251,8 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 					success: true,
 					affected_devices: 3,
 					failed_devices: 1,
+					skipped_offline_devices: 2,
+					offline_device_ids: ['device-1', 'device-2'],
 				},
 			});
 		});
@@ -307,6 +311,8 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 				success: true,
 				affectedDevices: 2,
 				failedDevices: 0,
+				skippedOfflineDevices: 1,
+				offlineDeviceIds: ['thermostat-1'],
 				heatingSetpoint: 22,
 				coolingSetpoint: 24,
 				mode: ClimateMode.HEAT,
@@ -320,6 +326,8 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 					success: true,
 					affected_devices: 2,
 					failed_devices: 0,
+					skipped_offline_devices: 1,
+					offline_device_ids: ['thermostat-1'],
 					heating_setpoint: 22,
 					cooling_setpoint: 24,
 					mode: ClimateMode.HEAT,
@@ -354,6 +362,8 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 				success: true,
 				affectedDevices: 1,
 				failedDevices: 0,
+				skippedOfflineDevices: 0,
+				offlineDeviceIds: [],
 				newPosition: 100,
 			});
 
@@ -365,6 +375,8 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 					success: true,
 					affected_devices: 1,
 					failed_devices: 0,
+					skipped_offline_devices: 0,
+					offline_device_ids: [],
 					new_position: 100,
 				},
 			});
@@ -397,6 +409,10 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 				success: true,
 				affectedDevices: 1,
 				failedDevices: 0,
+				skippedOfflineDevices: 0,
+				offlineDeviceIds: [],
+				skippedDevices: 1,
+				failedTargets: ['speaker-2'],
 				newVolume: 50,
 				isMuted: false,
 			});
@@ -409,6 +425,10 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 					success: true,
 					affected_devices: 1,
 					failed_devices: 0,
+					skipped_offline_devices: 0,
+					offline_device_ids: [],
+					skipped_devices: 1,
+					failed_targets: ['speaker-2'],
 					new_volume: 50,
 					is_muted: false,
 				},
