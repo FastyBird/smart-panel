@@ -15,6 +15,10 @@ export class HandlerResultDto {
 	@IsString()
 	@ValidateIf((o: { success: boolean }) => !o.success)
 	reason?: string;
+
+	@Expose()
+	@IsOptional()
+	data?: Record<string, unknown>;
 }
 
 export class CommandResultDto {
