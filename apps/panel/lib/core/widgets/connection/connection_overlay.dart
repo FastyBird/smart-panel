@@ -3,7 +3,6 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/types/connection_state.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/system_pages/export.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -14,14 +13,12 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 /// It allows users to see the cached device state underneath while clearly
 /// indicating that the panel is attempting to reconnect.
 class ConnectionOverlay extends StatelessWidget {
-  final SocketConnectionState state;
   final Duration disconnectedDuration;
   final VoidCallback onRetry;
   final VoidCallback? onOpenSettings;
 
   const ConnectionOverlay({
     super.key,
-    required this.state,
     required this.disconnectedDuration,
     required this.onRetry,
     this.onOpenSettings,
@@ -115,35 +112,30 @@ class ConnectionOverlay extends StatelessWidget {
   }
 
   Widget _buildIcon(bool isDark, ScreenService screenService) {
-    final isOffline = state == SocketConnectionState.offline;
-
+    // Note: This overlay is only shown for 'reconnecting' state (severity: overlay).
+    // The 'offline' state maps to fullScreen severity and renders ConnectionLostScreen.
     return Stack(
       alignment: Alignment.center,
       children: [
-        if (!isOffline)
-          SizedBox(
-            width: screenService.scale(56),
-            height: screenService.scale(56),
-            child: CircularProgressIndicator(
-              strokeWidth: 3,
-              color: SystemPagesTheme.warning(isDark),
-            ),
+        SizedBox(
+          width: screenService.scale(56),
+          height: screenService.scale(56),
+          child: CircularProgressIndicator(
+            strokeWidth: 3,
+            color: SystemPagesTheme.warning(isDark),
           ),
+        ),
         Container(
           width: screenService.scale(48),
           height: screenService.scale(48),
           decoration: BoxDecoration(
-            color: isOffline
-                ? SystemPagesTheme.errorLight(isDark)
-                : SystemPagesTheme.warningLight(isDark),
+            color: SystemPagesTheme.warningLight(isDark),
             shape: BoxShape.circle,
           ),
           child: Icon(
-            isOffline ? MdiIcons.wifiOff : MdiIcons.wifiStrength2,
+            MdiIcons.wifiStrength2,
             size: screenService.scale(24),
-            color: isOffline
-                ? SystemPagesTheme.error(isDark)
-                : SystemPagesTheme.warning(isDark),
+            color: SystemPagesTheme.warning(isDark),
           ),
         ),
       ],
@@ -151,17 +143,11 @@ class ConnectionOverlay extends StatelessWidget {
   }
 
   String _getTitle(AppLocalizations localizations) {
-    return state == SocketConnectionState.offline
-        ? localizations.connection_overlay_title_offline
-        : localizations.connection_overlay_title_reconnecting;
+    return localizations.connection_overlay_title_reconnecting;
   }
 
   String _getSubtitle(AppLocalizations localizations) {
     final seconds = disconnectedDuration.inSeconds;
-
-    if (state == SocketConnectionState.offline) {
-      return localizations.connection_overlay_message_offline;
-    }
 
     if (seconds < 30) {
       return localizations.connection_overlay_message_reconnecting;

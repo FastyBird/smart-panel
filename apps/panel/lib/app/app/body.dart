@@ -250,7 +250,6 @@ class _AppBodyState extends State<AppBody> {
       ConnectionUISeverity.overlay => [
         Positioned.fill(
           child: ConnectionOverlay(
-            state: state,
             disconnectedDuration: _connectionManager.disconnectedDuration,
             onRetry: _handleReconnect,
             onOpenSettings: _handleOpenSettings,

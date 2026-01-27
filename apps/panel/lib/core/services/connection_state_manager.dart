@@ -201,17 +201,6 @@ class ConnectionStateManager extends ChangeNotifier {
     }
   }
 
-  /// Called when initialization/connection attempt starts.
-  void onConnecting() {
-    if (kDebugMode) {
-      debugPrint('[ConnectionStateManager] onConnecting called');
-    }
-
-    if (_state == SocketConnectionState.initializing) {
-      _updateState(SocketConnectionState.connecting);
-    }
-  }
-
   /// Reset to initial state (e.g., when changing gateway).
   void reset() {
     if (kDebugMode) {
