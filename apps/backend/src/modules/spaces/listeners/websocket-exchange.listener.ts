@@ -8,7 +8,6 @@ import { CommandEventRegistryService } from '../../websocket/services/command-ev
 import { ClimateIntentDto } from '../dto/climate-intent.dto';
 import { CoversIntentDto } from '../dto/covers-intent.dto';
 import { LightingIntentDto } from '../dto/lighting-intent.dto';
-import { MediaIntentDto } from '../dto/media-intent.dto';
 import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceUndoHistoryService } from '../services/space-undo-history.service';
 import { SpacesService } from '../services/spaces.service';
@@ -20,8 +19,8 @@ export const SpacesWsEventType = {
 	LIGHTING_INTENT: 'SpacesModule.LightingIntent',
 	CLIMATE_INTENT: 'SpacesModule.ClimateIntent',
 	COVERS_INTENT: 'SpacesModule.CoversIntent',
-	MEDIA_INTENT: 'SpacesModule.MediaIntent',
 	UNDO_INTENT: 'SpacesModule.UndoIntent',
+	// Note: Media domain uses routing-based architecture via SpaceMediaRoutingService
 } as const;
 
 /**
@@ -31,8 +30,8 @@ export const SpacesWsHandlerName = {
 	LIGHTING_INTENT: 'SpacesModule.LightingIntentHandler',
 	CLIMATE_INTENT: 'SpacesModule.ClimateIntentHandler',
 	COVERS_INTENT: 'SpacesModule.CoversIntentHandler',
-	MEDIA_INTENT: 'SpacesModule.MediaIntentHandler',
 	UNDO_INTENT: 'SpacesModule.UndoIntentHandler',
+	// Note: Media domain uses routing-based architecture via SpaceMediaRoutingService
 } as const;
 
 interface SpaceIntentPayload {
@@ -51,10 +50,6 @@ interface CoversIntentPayload extends SpaceIntentPayload {
 	intent: CoversIntentDto;
 }
 
-interface MediaIntentPayload extends SpaceIntentPayload {
-	intent: MediaIntentDto;
-}
-
 type UndoIntentPayload = SpaceIntentPayload;
 
 /**
@@ -63,6 +58,9 @@ type UndoIntentPayload = SpaceIntentPayload;
  *
  * This provides an alternative to REST API for executing space intents,
  * allowing for faster response times and better real-time feedback.
+ *
+ * Note: Media domain now uses routing-based architecture via SpaceMediaRoutingService
+ * and is not included in the WebSocket intent handlers.
  */
 @Injectable()
 export class WebsocketExchangeListener implements OnModuleInit {
@@ -95,13 +93,6 @@ export class WebsocketExchangeListener implements OnModuleInit {
 			SpacesWsEventType.COVERS_INTENT,
 			SpacesWsHandlerName.COVERS_INTENT,
 			this.handleCoversIntent.bind(this),
-		);
-
-		// Register command handler for media intents
-		this.commandEventRegistry.register(
-			SpacesWsEventType.MEDIA_INTENT,
-			SpacesWsHandlerName.MEDIA_INTENT,
-			this.handleMediaIntent.bind(this),
 		);
 
 		// Register command handler for undo
@@ -297,63 +288,6 @@ export class WebsocketExchangeListener implements OnModuleInit {
 		} catch (error) {
 			const err = error as Error;
 			this.logger.error(`[WS EXCHANGE] Failed to execute covers intent: ${err.message}`);
-			return { success: false, reason: err.message };
-		}
-	}
-
-	/**
-	 * Handle media intent command via WebSocket
-	 */
-	private async handleMediaIntent(
-		user: ClientUserDto | undefined,
-		payload: MediaIntentPayload,
-	): Promise<{ success: boolean; reason?: string; data?: Record<string, unknown> } | null> {
-		try {
-			if (!this.isAuthorized(user)) {
-				return { success: false, reason: 'Unauthorized: insufficient permissions' };
-			}
-
-			const { spaceId, intent } = payload;
-
-			if (!spaceId) {
-				return { success: false, reason: 'Space ID is required' };
-			}
-
-			if (!intent || !intent.type) {
-				return { success: false, reason: 'Intent with type is required' };
-			}
-
-			// Transform intent payload to handle snake_case to camelCase conversion
-			const transformedIntent = toInstance(MediaIntentDto, intent);
-
-			// Verify space exists
-			const space = await this.spacesService.findOne(spaceId);
-			if (!space) {
-				return { success: false, reason: `Space with id=${spaceId} was not found` };
-			}
-
-			const result = await this.spaceIntentService.executeMediaIntent(spaceId, transformedIntent);
-
-			if (!result) {
-				return { success: false, reason: 'Failed to execute media intent' };
-			}
-
-			return {
-				success: true,
-				data: {
-					success: result.success,
-					affected_devices: result.affectedDevices,
-					failed_devices: result.failedDevices,
-					skipped_offline_devices: result.skippedOfflineDevices,
-					offline_device_ids: result.offlineDeviceIds,
-					failed_targets: result.failedTargets,
-					new_volume: result.newVolume,
-					is_muted: result.isMuted,
-				},
-			};
-		} catch (error) {
-			const err = error as Error;
-			this.logger.error(`[WS EXCHANGE] Failed to execute media intent: ${err.message}`);
 			return { success: false, reason: err.message };
 		}
 	}
