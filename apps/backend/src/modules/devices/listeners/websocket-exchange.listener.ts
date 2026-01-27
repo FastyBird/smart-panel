@@ -1,5 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 
+import { TokenOwnerType } from '../../auth/auth.constants';
+import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../../websocket/dto/client-user.dto';
 import { CommandEventRegistryService } from '../../websocket/services/command-event-registry.service';
 import { PropertyCommandService } from '../services/property-command.service';
@@ -39,13 +41,35 @@ export class WebsocketExchangeListener implements OnModuleInit {
 	}
 
 	/**
+	 * Check if user is authorized to execute device commands.
+	 * Allows display clients and admin/owner users.
+	 */
+	private isAuthorized(user: ClientUserDto | undefined): boolean {
+		if (!user) {
+			return false;
+		}
+
+		// Allow display clients to control devices via WebSocket
+		const isDisplayClient = user.type === 'token' && user.ownerType === TokenOwnerType.DISPLAY;
+
+		// Allow admin/owner users to control devices via WebSocket
+		const isAdminUser = user.type === 'user' && (user.role === UserRole.ADMIN || user.role === UserRole.OWNER);
+
+		return isDisplayClient || isAdminUser;
+	}
+
+	/**
 	 * Handle set property command via WebSocket
 	 */
 	private async handleSetProperty(
-		user: ClientUserDto,
+		user: ClientUserDto | undefined,
 		payload: object | undefined,
 	): Promise<{ success: boolean; reason?: string; data?: Record<string, unknown> } | null> {
 		try {
+			if (!this.isAuthorized(user)) {
+				return { success: false, reason: 'Unauthorized: insufficient permissions' };
+			}
+
 			const result = await this.propertyCommandService.handleInternal(user, payload);
 
 			return {

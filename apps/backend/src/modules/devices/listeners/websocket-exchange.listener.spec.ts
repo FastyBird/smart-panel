@@ -1,8 +1,12 @@
 /*
-eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment
+eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment,
+@typescript-eslint/no-unsafe-member-access
 */
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { TokenOwnerType } from '../../auth/auth.constants';
+import { UserRole } from '../../users/users.constants';
+import { ClientUserDto } from '../../websocket/dto/client-user.dto';
 import { CommandEventRegistryService } from '../../websocket/services/command-event-registry.service';
 import { PropertyCommandService } from '../services/property-command.service';
 
@@ -12,6 +16,14 @@ describe('WebsocketExchangeListener (Devices)', () => {
 	let listener: WebsocketExchangeListener;
 	let commandEventRegistry: jest.Mocked<CommandEventRegistryService>;
 	let propertyCommandService: jest.Mocked<PropertyCommandService>;
+
+	const createMockUser = (overrides: Partial<ClientUserDto> = {}): ClientUserDto => ({
+		id: 'user-123',
+		role: UserRole.USER,
+		type: 'token',
+		ownerType: TokenOwnerType.DISPLAY,
+		...overrides,
+	});
 
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
@@ -66,8 +78,75 @@ describe('WebsocketExchangeListener (Devices)', () => {
 			handleSetProperty = commandEventRegistry.register.mock.calls[0][2];
 		});
 
+		it('should return unauthorized for undefined user', async () => {
+			const result = await handleSetProperty(undefined, { properties: [] });
+
+			expect(result).toEqual({
+				success: false,
+				reason: 'Unauthorized: insufficient permissions',
+			});
+			expect(propertyCommandService.handleInternal).not.toHaveBeenCalled();
+		});
+
+		it('should return unauthorized for regular user', async () => {
+			const user = createMockUser({ type: 'user', role: UserRole.USER, ownerType: undefined });
+
+			const result = await handleSetProperty(user, { properties: [] });
+
+			expect(result).toEqual({
+				success: false,
+				reason: 'Unauthorized: insufficient permissions',
+			});
+			expect(propertyCommandService.handleInternal).not.toHaveBeenCalled();
+		});
+
+		it('should allow display client', async () => {
+			const user = createMockUser({ type: 'token', ownerType: TokenOwnerType.DISPLAY });
+			const mockPayload = { properties: [] };
+
+			propertyCommandService.handleInternal.mockResolvedValue({
+				success: true,
+				results: [],
+			});
+
+			const result = await handleSetProperty(user, mockPayload);
+
+			expect(result.success).toBe(true);
+			expect(propertyCommandService.handleInternal).toHaveBeenCalledWith(user, mockPayload);
+		});
+
+		it('should allow admin user', async () => {
+			const user = createMockUser({ type: 'user', role: UserRole.ADMIN, ownerType: undefined });
+			const mockPayload = { properties: [] };
+
+			propertyCommandService.handleInternal.mockResolvedValue({
+				success: true,
+				results: [],
+			});
+
+			const result = await handleSetProperty(user, mockPayload);
+
+			expect(result.success).toBe(true);
+			expect(propertyCommandService.handleInternal).toHaveBeenCalledWith(user, mockPayload);
+		});
+
+		it('should allow owner user', async () => {
+			const user = createMockUser({ type: 'user', role: UserRole.OWNER, ownerType: undefined });
+			const mockPayload = { properties: [] };
+
+			propertyCommandService.handleInternal.mockResolvedValue({
+				success: true,
+				results: [],
+			});
+
+			const result = await handleSetProperty(user, mockPayload);
+
+			expect(result.success).toBe(true);
+			expect(propertyCommandService.handleInternal).toHaveBeenCalledWith(user, mockPayload);
+		});
+
 		it('should return success with results data on successful command', async () => {
-			const mockUser = { id: 'user-123', type: 'token', ownerType: 'display' };
+			const user = createMockUser();
 			const mockPayload = {
 				properties: [{ device: 'dev-1', channel: 'ch-1', property: 'prop-1', value: true }],
 			};
@@ -77,7 +156,7 @@ describe('WebsocketExchangeListener (Devices)', () => {
 				results: [{ device: 'dev-1', success: true }],
 			});
 
-			const result = await handleSetProperty(mockUser, mockPayload);
+			const result = await handleSetProperty(user, mockPayload);
 
 			expect(result).toEqual({
 				success: true,
@@ -86,11 +165,11 @@ describe('WebsocketExchangeListener (Devices)', () => {
 					results: [{ device: 'dev-1', success: true }],
 				},
 			});
-			expect(propertyCommandService.handleInternal).toHaveBeenCalledWith(mockUser, mockPayload);
+			expect(propertyCommandService.handleInternal).toHaveBeenCalledWith(user, mockPayload);
 		});
 
 		it('should return error with reason when command fails with string result', async () => {
-			const mockUser = { id: 'user-123', type: 'token', ownerType: 'display' };
+			const user = createMockUser();
 			const mockPayload = { properties: [] };
 
 			propertyCommandService.handleInternal.mockResolvedValue({
@@ -98,7 +177,7 @@ describe('WebsocketExchangeListener (Devices)', () => {
 				results: 'Invalid payload',
 			});
 
-			const result = await handleSetProperty(mockUser, mockPayload);
+			const result = await handleSetProperty(user, mockPayload);
 
 			expect(result).toEqual({
 				success: false,
@@ -108,12 +187,12 @@ describe('WebsocketExchangeListener (Devices)', () => {
 		});
 
 		it('should return error when service throws exception', async () => {
-			const mockUser = { id: 'user-123', type: 'token', ownerType: 'display' };
+			const user = createMockUser();
 			const mockPayload = { properties: [] };
 
 			propertyCommandService.handleInternal.mockRejectedValue(new Error('Service error'));
 
-			const result = await handleSetProperty(mockUser, mockPayload);
+			const result = await handleSetProperty(user, mockPayload);
 
 			expect(result).toEqual({
 				success: false,
@@ -122,16 +201,16 @@ describe('WebsocketExchangeListener (Devices)', () => {
 		});
 
 		it('should pass undefined payload to service', async () => {
-			const mockUser = { id: 'user-123', type: 'token', ownerType: 'display' };
+			const user = createMockUser();
 
 			propertyCommandService.handleInternal.mockResolvedValue({
 				success: false,
 				results: 'Invalid payload',
 			});
 
-			await handleSetProperty(mockUser, undefined);
+			await handleSetProperty(user, undefined);
 
-			expect(propertyCommandService.handleInternal).toHaveBeenCalledWith(mockUser, undefined);
+			expect(propertyCommandService.handleInternal).toHaveBeenCalledWith(user, undefined);
 		});
 	});
 });
