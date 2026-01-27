@@ -132,6 +132,9 @@ class ConnectionStateManager extends ChangeNotifier {
 
     _debounceTimer?.cancel();
     _escalationTimer?.cancel();
+    _recoveryCooldownTimer?.cancel();
+    _isInRecoveryCooldown = false;
+    _pendingDisconnectDuringCooldown = false;
     _disconnectedAt ??= DateTime.now();
     _updateState(SocketConnectionState.authError);
   }
@@ -148,6 +151,9 @@ class ConnectionStateManager extends ChangeNotifier {
 
     _debounceTimer?.cancel();
     _escalationTimer?.cancel();
+    _recoveryCooldownTimer?.cancel();
+    _isInRecoveryCooldown = false;
+    _pendingDisconnectDuringCooldown = false;
     _disconnectedAt ??= DateTime.now();
     _updateState(SocketConnectionState.serverUnavailable);
   }
@@ -162,6 +168,9 @@ class ConnectionStateManager extends ChangeNotifier {
 
     _debounceTimer?.cancel();
     _escalationTimer?.cancel();
+    _recoveryCooldownTimer?.cancel();
+    _isInRecoveryCooldown = false;
+    _pendingDisconnectDuringCooldown = false;
     _disconnectedAt ??= DateTime.now();
     _updateState(SocketConnectionState.networkUnavailable);
   }
