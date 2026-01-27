@@ -61,7 +61,6 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 						executeLightingIntent: jest.fn(),
 						executeClimateIntent: jest.fn(),
 						executeCoversIntent: jest.fn(),
-						executeMediaIntent: jest.fn(),
 					},
 				},
 				{
@@ -92,7 +91,8 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 		it('should register all command handlers', () => {
 			listener.onModuleInit();
 
-			expect(commandEventRegistry.register).toHaveBeenCalledTimes(5);
+			// Note: Media domain uses routing-based architecture via SpaceMediaRoutingService
+			expect(commandEventRegistry.register).toHaveBeenCalledTimes(4);
 			expect(commandEventRegistry.register).toHaveBeenCalledWith(
 				SpacesWsEventType.LIGHTING_INTENT,
 				SpacesWsHandlerName.LIGHTING_INTENT,
@@ -106,11 +106,6 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 			expect(commandEventRegistry.register).toHaveBeenCalledWith(
 				SpacesWsEventType.COVERS_INTENT,
 				SpacesWsHandlerName.COVERS_INTENT,
-				expect.any(Function),
-			);
-			expect(commandEventRegistry.register).toHaveBeenCalledWith(
-				SpacesWsEventType.MEDIA_INTENT,
-				SpacesWsHandlerName.MEDIA_INTENT,
 				expect.any(Function),
 			);
 			expect(commandEventRegistry.register).toHaveBeenCalledWith(
@@ -389,56 +384,7 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 		});
 	});
 
-	describe('handleMediaIntent', () => {
-		let handleMediaIntent: (user: any, payload: any) => Promise<any>;
-
-		beforeEach(() => {
-			listener.onModuleInit();
-			const call = commandEventRegistry.register.mock.calls.find((c) => c[0] === SpacesWsEventType.MEDIA_INTENT);
-			handleMediaIntent = call![2];
-		});
-
-		it('should return unauthorized for undefined user', async () => {
-			const result = await handleMediaIntent(undefined, { spaceId: 'space-1', intent: { type: 'volume' } });
-
-			expect(result).toEqual({
-				success: false,
-				reason: 'Unauthorized: insufficient permissions',
-			});
-		});
-
-		it('should return success with media data', async () => {
-			const user = createMockUser();
-
-			spacesService.findOne.mockResolvedValue(mockSpace as SpaceEntity);
-			spaceIntentService.executeMediaIntent.mockResolvedValue({
-				success: true,
-				affectedDevices: 1,
-				failedDevices: 0,
-				skippedOfflineDevices: 0,
-				offlineDeviceIds: [],
-				failedTargets: ['speaker-2'],
-				newVolume: 50,
-				isMuted: false,
-			});
-
-			const result = await handleMediaIntent(user, { spaceId: mockSpace.id, intent: { type: 'volume' } });
-
-			expect(result).toEqual({
-				success: true,
-				data: {
-					success: true,
-					affected_devices: 1,
-					failed_devices: 0,
-					skipped_offline_devices: 0,
-					offline_device_ids: [],
-					failed_targets: ['speaker-2'],
-					new_volume: 50,
-					is_muted: false,
-				},
-			});
-		});
-	});
+	// Note: Media domain now uses routing-based architecture via SpaceMediaRoutingService
 
 	describe('handleUndoIntent', () => {
 		let handleUndoIntent: (user: any, payload: any) => Promise<any>;

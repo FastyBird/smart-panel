@@ -638,7 +638,7 @@ export class IntentTimeseriesService {
 
 	/**
 	 * Store a media intent state change (mode/volume/muted).
-	 * Called by MediaIntentService after successfully applying an intent.
+	 * Called by SpaceMediaRoutingService after successfully applying a routing activation.
 	 */
 	async storeMediaStateChange(
 		spaceId: string,
