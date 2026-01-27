@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
@@ -344,6 +345,11 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
+
+    final lastSeenText = widget._device.lastStateChange != null
+        ? DatetimeUtils.formatTimeAgo(widget._device.lastStateChange!, localizations)
+        : null;
 
     return Scaffold(
       backgroundColor: isDark ? AppBgColorDark.base : AppBgColorLight.page,
@@ -362,7 +368,10 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
                     },
                   ),
                   if (!widget._device.isOnline)
-                    DeviceOfflineOverlay(isDark: isDark),
+                    DeviceOfflineState(
+                      isDark: isDark,
+                      lastSeenText: lastSeenText,
+                    ),
                 ],
               ),
             ),

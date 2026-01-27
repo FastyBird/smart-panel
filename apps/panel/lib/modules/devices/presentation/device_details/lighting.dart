@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/device_offline_overlay.dart';
 import 'package:fastybird_smart_panel/core/widgets/lighting/export.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/channels/light.dart';
@@ -102,35 +104,49 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
   @override
   Widget build(BuildContext context) {
     final controller = _controller;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
 
     // Guard against missing controller or empty channels
     if (controller == null || controller.lights.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    // Multi-channel device: tiles grid
-    if (_isMultiChannel) {
-      return _buildMultiChannelLayout(context, controller);
-    }
+    final lastSeenText = widget._device.lastStateChange != null
+        ? DatetimeUtils.formatTimeAgo(widget._device.lastStateChange!, localizations)
+        : null;
 
-    // Single channel (simple or with capabilities)
-    return _buildSingleChannelLayout(context, controller);
+    // Build offline overlay if device is offline
+    final offlineOverlay = !widget._device.isOnline
+        ? DeviceOfflineState(
+            isDark: isDark,
+            lastSeenText: lastSeenText,
+          )
+        : null;
+
+    // Build the main content with overlay passed through
+    if (_isMultiChannel) {
+      return _buildMultiChannelLayout(context, controller, offlineOverlay);
+    } else {
+      return _buildSingleChannelLayout(context, controller, offlineOverlay);
+    }
   }
 
   /// Layout for single channel devices (both simple ON/OFF and with capabilities)
   Widget _buildSingleChannelLayout(
-      BuildContext context, LightingDeviceController controller) {
+      BuildContext context, LightingDeviceController controller, Widget? overlay) {
     return LightSingleChannelControlPanel(
       controller: controller.light,
       deviceName: widget._device.name,
       showHeader: true,
       onBack: () => Navigator.pop(context),
+      overlay: overlay,
     );
   }
 
   /// Layout for multi-channel devices using LightMultiChannelControlPanel
   Widget _buildMultiChannelLayout(
-      BuildContext context, LightingDeviceController controller) {
+      BuildContext context, LightingDeviceController controller, Widget? overlay) {
     return LightMultiChannelControlPanel(
       controllers: controller.lights,
       deviceName: widget._device.name,
@@ -140,6 +156,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       onChannelTap: (channelController) =>
           _openChannelDetail(context, channelController),
       initialChannelId: widget.initialChannelId,
+      overlay: overlay,
     );
   }
 
@@ -178,12 +195,16 @@ class LightSingleChannelControlPanel extends StatefulWidget {
   /// Callback when back button is pressed (only used if showHeader is true)
   final VoidCallback? onBack;
 
+  /// Optional overlay widget displayed on top of the body content
+  final Widget? overlay;
+
   const LightSingleChannelControlPanel({
     super.key,
     required this.controller,
     required this.deviceName,
     this.showHeader = false,
     this.onBack,
+    this.overlay,
   });
 
   @override
@@ -528,6 +549,9 @@ class _LightSingleChannelControlPanelState
       onColorChanged: _handleColorChanged,
       onWhiteChannelChanged: _handleWhiteChannelChanged,
       // No channel callbacks needed (channels list is empty)
+
+      // Overlay
+      overlay: widget.overlay,
     );
   }
 }
@@ -559,6 +583,9 @@ class LightMultiChannelControlPanel extends StatefulWidget {
   /// Initial channel ID to select (for preselecting a specific channel)
   final String? initialChannelId;
 
+  /// Optional overlay widget displayed on top of the body content
+  final Widget? overlay;
+
   const LightMultiChannelControlPanel({
     super.key,
     required this.controllers,
@@ -568,6 +595,7 @@ class LightMultiChannelControlPanel extends StatefulWidget {
     this.onBack,
     this.onChannelTap,
     this.initialChannelId,
+    this.overlay,
   });
 
   @override
@@ -985,6 +1013,9 @@ class _LightMultiChannelControlPanelState
       onWhiteChannelChanged: _handleSelectedChannelWhiteChanged,
       onChannelIconTap: _handleChannelIconTap,
       onChannelTileTap: _handleChannelTileTap,
+
+      // Overlay
+      overlay: widget.overlay,
     );
   }
 }

@@ -377,6 +377,30 @@ abstract class AppLocalizations {
   /// **'Last seen {time}'**
   String device_offline_last_seen(String time);
 
+  /// Time ago label for less than a minute
+  ///
+  /// In en, this message translates to:
+  /// **'just now'**
+  String get time_ago_just_now;
+
+  /// Time ago label for minutes
+  ///
+  /// In en, this message translates to:
+  /// **'{count} min ago'**
+  String time_ago_minutes(int count);
+
+  /// Time ago label for hours
+  ///
+  /// In en, this message translates to:
+  /// **'{count} h ago'**
+  String time_ago_hours(int count);
+
+  /// Time ago label for days
+  ///
+  /// In en, this message translates to:
+  /// **'{count} d ago'**
+  String time_ago_days(int count);
+
   /// Message shown when a device has configuration problems
   ///
   /// In en, this message translates to:

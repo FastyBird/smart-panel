@@ -152,6 +152,24 @@ class AppLocalizationsCs extends AppLocalizations {
   }
 
   @override
+  String get time_ago_just_now => 'právě teď';
+
+  @override
+  String time_ago_minutes(int count) {
+    return 'před $count min';
+  }
+
+  @override
+  String time_ago_hours(int count) {
+    return 'před $count h';
+  }
+
+  @override
+  String time_ago_days(int count) {
+    return 'před $count d';
+  }
+
+  @override
   String get device_config_issue => 'Problém s konfigurací';
 
   @override

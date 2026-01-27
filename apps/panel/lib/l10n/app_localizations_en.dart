@@ -152,6 +152,24 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get time_ago_just_now => 'just now';
+
+  @override
+  String time_ago_minutes(int count) {
+    return '$count min ago';
+  }
+
+  @override
+  String time_ago_hours(int count) {
+    return '$count h ago';
+  }
+
+  @override
+  String time_ago_days(int count) {
+    return '$count d ago';
+  }
+
+  @override
   String get device_config_issue => 'Configuration issue';
 
   @override

@@ -1,8 +1,27 @@
 import 'dart:async';
 
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 
 class DatetimeUtils {
+  /// Formats a DateTime as a relative "time ago" string.
+  ///
+  /// Returns strings like "just now", "5 min ago", "2 h ago", "3 d ago".
+  static String formatTimeAgo(DateTime dateTime, AppLocalizations localizations) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inMinutes < 1) {
+      return localizations.time_ago_just_now;
+    } else if (difference.inHours < 1) {
+      return localizations.time_ago_minutes(difference.inMinutes);
+    } else if (difference.inDays < 1) {
+      return localizations.time_ago_hours(difference.inHours);
+    } else {
+      return localizations.time_ago_days(difference.inDays);
+    }
+  }
+
   // Stream that emits the current time every second
   static Stream<DateTime> getTimeStream() {
     return Stream.periodic(const Duration(seconds: 1), (_) => DateTime.now());

@@ -116,7 +116,7 @@ class _DomainViewPageState extends State<DomainViewPage> {
       decoration: BoxDecoration(
         color: Theme.of(context).brightness == Brightness.light
             ? AppBgColorLight.pageOverlay50
-            : AppBgColorDark.overlayOverlay50,
+            : AppBgColorDark.pageOverlay50,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
       child: Row(

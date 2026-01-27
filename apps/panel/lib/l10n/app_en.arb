@@ -194,6 +194,37 @@
       }
     }
   },
+  "time_ago_just_now": "just now",
+  "@time_ago_just_now": {
+    "description": "Time ago label for less than a minute"
+  },
+  "time_ago_minutes": "{count} min ago",
+  "@time_ago_minutes": {
+    "description": "Time ago label for minutes",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "time_ago_hours": "{count} h ago",
+  "@time_ago_hours": {
+    "description": "Time ago label for hours",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "time_ago_days": "{count} d ago",
+  "@time_ago_days": {
+    "description": "Time ago label for days",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "device_config_issue": "Configuration issue",
   "@device_config_issue": {
     "description": "Message shown when a device has configuration problems"

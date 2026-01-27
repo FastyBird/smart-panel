@@ -174,6 +174,10 @@ class LightingControlPanel extends StatefulWidget {
   /// When false, only the control panel body is rendered (no Scaffold wrapper)
   final bool showHeader;
 
+  /// Optional overlay widget displayed on top of the body content
+  /// Useful for showing offline state, loading indicators, etc.
+  final Widget? overlay;
+
   const LightingControlPanel({
     super.key,
     required this.title,
@@ -199,6 +203,7 @@ class LightingControlPanel extends StatefulWidget {
     this.onChannelTileTap,
     this.onSyncAll,
     this.showHeader = true,
+    this.overlay,
   });
 
   @override
@@ -283,13 +288,22 @@ class _LightingControlPanelState extends State<LightingControlPanel> {
             final isLandscape = orientation == Orientation.landscape;
             return LayoutBuilder(
               builder: (context, constraints) {
+                final bodyContent = isLandscape
+                    ? _buildLandscapeLayout(context, isDark)
+                    : _buildPortraitLayout(context, isDark);
+
                 return Column(
                   children: [
                     _buildHeader(context, isDark, isLandscape),
                     Expanded(
-                      child: isLandscape
-                          ? _buildLandscapeLayout(context, isDark)
-                          : _buildPortraitLayout(context, isDark),
+                      child: widget.overlay != null
+                          ? Stack(
+                              children: [
+                                bodyContent,
+                                widget.overlay!,
+                              ],
+                            )
+                          : bodyContent,
                     ),
                   ],
                 );

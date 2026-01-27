@@ -16,6 +16,7 @@ class DeviceView {
   final List<ChannelView> _channels;
   final bool _enabled;
   final bool _isOnline;
+  final DateTime? _lastStateChange;
   final bool _isValid;
   final List<ValidationIssue> _validationIssues;
 
@@ -31,6 +32,7 @@ class DeviceView {
     required List<ChannelView> channels,
     bool enabled = true,
     bool isOnline = false,
+    DateTime? lastStateChange,
     bool isValid = true,
     List<ValidationIssue> validationIssues = const [],
   })  : _id = id,
@@ -44,6 +46,7 @@ class DeviceView {
         _channels = channels,
         _enabled = enabled,
         _isOnline = isOnline,
+        _lastStateChange = lastStateChange,
         _isValid = isValid,
         _validationIssues = validationIssues;
 
@@ -68,6 +71,8 @@ class DeviceView {
   bool get enabled => _enabled;
 
   bool get isOnline => _isOnline;
+
+  DateTime? get lastStateChange => _lastStateChange;
 
   bool? get isOn => null;
 
