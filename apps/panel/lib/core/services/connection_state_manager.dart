@@ -21,7 +21,7 @@ import 'package:fastybird_smart_panel/core/types/connection_state.dart';
 /// manager.onConnected();
 /// ```
 class ConnectionStateManager extends ChangeNotifier {
-  ConnectionState _state = ConnectionState.initializing;
+  SocketConnectionState _state = SocketConnectionState.initializing;
   DateTime? _disconnectedAt;
   DateTime? _lastConnectedAt;
   Timer? _escalationTimer;
@@ -36,12 +36,13 @@ class ConnectionStateManager extends ChangeNotifier {
   static const Duration _overlayThreshold = Duration(seconds: 10);
   static const Duration _offlineThreshold = Duration(seconds: 30);
   static const Duration _fullScreenThreshold = Duration(seconds: 60);
+  // ignore: unused_field - reserved for future hysteresis implementation
   static const Duration _recoveryHysteresis = Duration(seconds: 5);
   static const Duration _recoveryCooldown = Duration(seconds: 3);
   static const Duration _escalationCheckInterval = Duration(seconds: 5);
 
   /// Current connection state
-  ConnectionState get state => _state;
+  SocketConnectionState get state => _state;
 
   /// Duration since disconnection started, or zero if connected
   Duration get disconnectedDuration => _disconnectedAt != null
@@ -59,18 +60,18 @@ class ConnectionStateManager extends ChangeNotifier {
 
   /// Called when socket connects successfully.
   ///
-  /// Resets failure counters and transitions to [ConnectionState.online].
+  /// Resets failure counters and transitions to [SocketConnectionState.online].
   void onConnected() {
     if (kDebugMode) {
-      debugPrint('[ConnectionStateManager] onConnected called');
+      debugPrint('[SocketConnectionStateManager] onConnected called');
     }
 
     _debounceTimer?.cancel();
     _escalationTimer?.cancel();
     _recoveryHysteresisTimer?.cancel();
 
-    final wasDisconnected = _state != ConnectionState.online &&
-        _state != ConnectionState.initializing;
+    final wasDisconnected = _state != SocketConnectionState.online &&
+        _state != SocketConnectionState.initializing;
 
     _disconnectedAt = null;
     _lastConnectedAt = DateTime.now();
@@ -84,107 +85,107 @@ class ConnectionStateManager extends ChangeNotifier {
       });
     }
 
-    _updateState(ConnectionState.online);
+    _updateState(SocketConnectionState.online);
   }
 
   /// Called when socket connection is lost.
   ///
-  /// Starts debounce timer before transitioning to [ConnectionState.reconnecting].
+  /// Starts debounce timer before transitioning to [SocketConnectionState.reconnecting].
   void onDisconnected() {
     if (kDebugMode) {
-      debugPrint('[ConnectionStateManager] onDisconnected called, current state: $_state');
+      debugPrint('[SocketConnectionStateManager] onDisconnected called, current state: $_state');
     }
 
     // Ignore disconnects during recovery cooldown
     if (_isInRecoveryCooldown) {
       if (kDebugMode) {
-        debugPrint('[ConnectionStateManager] Ignoring disconnect during recovery cooldown');
+        debugPrint('[SocketConnectionStateManager] Ignoring disconnect during recovery cooldown');
       }
       return;
     }
 
-    if (_state == ConnectionState.online) {
+    if (_state == SocketConnectionState.online) {
       // Start debounce - don't immediately change state
       _debounceTimer?.cancel();
       _debounceTimer = Timer(_debounceDelay, () {
         _disconnectedAt = DateTime.now();
-        _updateState(ConnectionState.reconnecting);
+        _updateState(SocketConnectionState.reconnecting);
         _startEscalationTimer();
       });
-    } else if (_state == ConnectionState.initializing ||
-        _state == ConnectionState.connecting) {
+    } else if (_state == SocketConnectionState.initializing ||
+        _state == SocketConnectionState.connecting) {
       // During initialization, don't debounce - show connecting state
       _disconnectedAt = DateTime.now();
-      _updateState(ConnectionState.reconnecting);
+      _updateState(SocketConnectionState.reconnecting);
       _startEscalationTimer();
     }
   }
 
   /// Called when authentication fails.
   ///
-  /// Immediately transitions to [ConnectionState.authError] without debouncing.
+  /// Immediately transitions to [SocketConnectionState.authError] without debouncing.
   void onAuthError() {
     if (kDebugMode) {
-      debugPrint('[ConnectionStateManager] onAuthError called');
+      debugPrint('[SocketConnectionStateManager] onAuthError called');
     }
 
     _debounceTimer?.cancel();
     _escalationTimer?.cancel();
-    _updateState(ConnectionState.authError);
+    _updateState(SocketConnectionState.authError);
   }
 
   /// Called when server returns 503 or similar.
   ///
-  /// Transitions to [ConnectionState.serverUnavailable].
+  /// Transitions to [SocketConnectionState.serverUnavailable].
   void onServerUnavailable() {
     if (kDebugMode) {
-      debugPrint('[ConnectionStateManager] onServerUnavailable called');
+      debugPrint('[SocketConnectionStateManager] onServerUnavailable called');
     }
 
     _debounceTimer?.cancel();
-    _updateState(ConnectionState.serverUnavailable);
+    _updateState(SocketConnectionState.serverUnavailable);
     _startEscalationTimer();
   }
 
   /// Called when network is unreachable.
   ///
-  /// Transitions to [ConnectionState.networkUnavailable].
+  /// Transitions to [SocketConnectionState.networkUnavailable].
   void onNetworkUnavailable() {
     if (kDebugMode) {
-      debugPrint('[ConnectionStateManager] onNetworkUnavailable called');
+      debugPrint('[SocketConnectionStateManager] onNetworkUnavailable called');
     }
 
     _debounceTimer?.cancel();
-    _updateState(ConnectionState.networkUnavailable);
+    _updateState(SocketConnectionState.networkUnavailable);
   }
 
   /// Called when a reconnection attempt starts.
   void onReconnecting() {
     if (kDebugMode) {
-      debugPrint('[ConnectionStateManager] onReconnecting called');
+      debugPrint('[SocketConnectionStateManager] onReconnecting called');
     }
 
-    if (_state != ConnectionState.online) {
+    if (_state != SocketConnectionState.online) {
       _disconnectedAt ??= DateTime.now();
-      _updateState(ConnectionState.reconnecting);
+      _updateState(SocketConnectionState.reconnecting);
     }
   }
 
   /// Called when initialization/connection attempt starts.
   void onConnecting() {
     if (kDebugMode) {
-      debugPrint('[ConnectionStateManager] onConnecting called');
+      debugPrint('[SocketConnectionStateManager] onConnecting called');
     }
 
-    if (_state == ConnectionState.initializing) {
-      _updateState(ConnectionState.connecting);
+    if (_state == SocketConnectionState.initializing) {
+      _updateState(SocketConnectionState.connecting);
     }
   }
 
   /// Reset to initial state (e.g., when changing gateway).
   void reset() {
     if (kDebugMode) {
-      debugPrint('[ConnectionStateManager] reset called');
+      debugPrint('[SocketConnectionStateManager] reset called');
     }
 
     _debounceTimer?.cancel();
@@ -194,7 +195,7 @@ class ConnectionStateManager extends ChangeNotifier {
     _disconnectedAt = null;
     _consecutiveFailures = 0;
     _isInRecoveryCooldown = false;
-    _updateState(ConnectionState.initializing);
+    _updateState(SocketConnectionState.initializing);
   }
 
   void _startEscalationTimer() {
@@ -204,26 +205,26 @@ class ConnectionStateManager extends ChangeNotifier {
 
       if (kDebugMode) {
         debugPrint(
-          '[ConnectionStateManager] Escalation check - duration: ${duration.inSeconds}s, state: $_state',
+          '[SocketConnectionStateManager] Escalation check - duration: ${duration.inSeconds}s, state: $_state',
         );
       }
 
       // Escalate to offline after threshold
-      if (duration >= _offlineThreshold && _state == ConnectionState.reconnecting) {
+      if (duration >= _offlineThreshold && _state == SocketConnectionState.reconnecting) {
         _consecutiveFailures++;
 
         if (duration >= _fullScreenThreshold) {
-          _updateState(ConnectionState.offline);
+          _updateState(SocketConnectionState.offline);
           _escalationTimer?.cancel();
         }
       }
     });
   }
 
-  void _updateState(ConnectionState newState) {
+  void _updateState(SocketConnectionState newState) {
     if (_state != newState) {
       if (kDebugMode) {
-        debugPrint('[ConnectionStateManager] State transition: $_state -> $newState');
+        debugPrint('[SocketConnectionStateManager] State transition: $_state -> $newState');
       }
       _state = newState;
       notifyListeners();
@@ -240,26 +241,26 @@ class ConnectionStateManager extends ChangeNotifier {
   /// - [ConnectionUISeverity.fullScreen]: Full blocking error screen
   ConnectionUISeverity get uiSeverity {
     switch (_state) {
-      case ConnectionState.online:
+      case SocketConnectionState.online:
         return ConnectionUISeverity.none;
 
-      case ConnectionState.initializing:
-      case ConnectionState.connecting:
-      case ConnectionState.authenticating:
+      case SocketConnectionState.initializing:
+      case SocketConnectionState.connecting:
+      case SocketConnectionState.authenticating:
         return ConnectionUISeverity.splash;
 
-      case ConnectionState.reconnecting:
+      case SocketConnectionState.reconnecting:
         final duration = disconnectedDuration;
         if (duration < _bannerThreshold) return ConnectionUISeverity.none;
         if (duration < _overlayThreshold) return ConnectionUISeverity.banner;
         return ConnectionUISeverity.overlay;
 
-      case ConnectionState.offline:
+      case SocketConnectionState.offline:
         return ConnectionUISeverity.fullScreen;
 
-      case ConnectionState.authError:
-      case ConnectionState.serverUnavailable:
-      case ConnectionState.networkUnavailable:
+      case SocketConnectionState.authError:
+      case SocketConnectionState.serverUnavailable:
+      case SocketConnectionState.networkUnavailable:
         return ConnectionUISeverity.fullScreen;
     }
   }
@@ -267,11 +268,11 @@ class ConnectionStateManager extends ChangeNotifier {
   /// Whether a recovery toast should be shown.
   ///
   /// Returns true when transitioning from a disconnected state to online.
-  bool shouldShowRecoveryToast(ConnectionState previousState) {
-    return _state == ConnectionState.online &&
-        previousState != ConnectionState.online &&
-        previousState != ConnectionState.initializing &&
-        previousState != ConnectionState.connecting;
+  bool shouldShowRecoveryToast(SocketConnectionState previousState) {
+    return _state == SocketConnectionState.online &&
+        previousState != SocketConnectionState.online &&
+        previousState != SocketConnectionState.initializing &&
+        previousState != SocketConnectionState.connecting;
   }
 
   @override

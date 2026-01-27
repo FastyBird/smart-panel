@@ -48,7 +48,7 @@ class _AppBodyState extends State<AppBody> {
 
   // Connection state management
   final ConnectionStateManager _connectionManager = ConnectionStateManager();
-  ConnectionState? _previousConnectionState;
+  SocketConnectionState? _previousSocketConnectionState;
   bool _showRecoveryToast = false;
 
   Timer? _inactivityTimer;
@@ -75,7 +75,7 @@ class _AppBodyState extends State<AppBody> {
     _socketService.addErrorTypeListener(_onSocketErrorType);
 
     // Listen to connection state manager for UI updates
-    _connectionManager.addListener(_onConnectionStateChanged);
+    _connectionManager.addListener(_onSocketConnectionStateChanged);
 
     // Initialize connection state based on current socket status
     if (_socketService.isConnected) {
@@ -110,19 +110,19 @@ class _AppBodyState extends State<AppBody> {
     }
   }
 
-  void _onConnectionStateChanged() {
+  void _onSocketConnectionStateChanged() {
     if (!mounted) return;
 
     final currentState = _connectionManager.state;
 
     // Check if we should show recovery toast
-    if (_connectionManager.shouldShowRecoveryToast(_previousConnectionState ?? ConnectionState.initializing)) {
+    if (_connectionManager.shouldShowRecoveryToast(_previousSocketConnectionState ?? SocketConnectionState.initializing)) {
       setState(() {
         _showRecoveryToast = true;
       });
     }
 
-    _previousConnectionState = currentState;
+    _previousSocketConnectionState = currentState;
     setState(() {});
   }
 
@@ -181,7 +181,7 @@ class _AppBodyState extends State<AppBody> {
     _systemConfigRepository.removeListener(_syncStateWithRepository);
     _socketService.removeConnectionListener(_onSocketConnectionChanged);
     _socketService.removeErrorTypeListener(_onSocketErrorType);
-    _connectionManager.removeListener(_onConnectionStateChanged);
+    _connectionManager.removeListener(_onSocketConnectionStateChanged);
     _connectionManager.dispose();
 
     locator<SystemActionsService>().dispose();
@@ -234,69 +234,60 @@ class _AppBodyState extends State<AppBody> {
     final severity = _connectionManager.uiSeverity;
     final state = _connectionManager.state;
 
-    switch (severity) {
-      case ConnectionUISeverity.none:
-        return [];
-
-      case ConnectionUISeverity.banner:
-        return [
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: ConnectionBanner(
-              state: state,
-              onRetry: _handleReconnect,
-            ),
+    return switch (severity) {
+      ConnectionUISeverity.none => [],
+      ConnectionUISeverity.banner => [
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: ConnectionBanner(
+            state: state,
+            onRetry: _handleReconnect,
           ),
-        ];
-
-      case ConnectionUISeverity.overlay:
-        return [
-          Positioned.fill(
-            child: ConnectionOverlay(
-              state: state,
-              disconnectedDuration: _connectionManager.disconnectedDuration,
-              onRetry: _handleReconnect,
-              onOpenSettings: _handleOpenSettings,
-            ),
+        ),
+      ],
+      ConnectionUISeverity.overlay => [
+        Positioned.fill(
+          child: ConnectionOverlay(
+            state: state,
+            disconnectedDuration: _connectionManager.disconnectedDuration,
+            onRetry: _handleReconnect,
+            onOpenSettings: _handleOpenSettings,
           ),
-        ];
-
-      case ConnectionUISeverity.splash:
-        // During initialization, don't show anything extra
-        // The app is already showing initialization UI
-        return [];
-
-      case ConnectionUISeverity.fullScreen:
-        return [
-          Positioned.fill(
-            child: _buildFullScreenError(state),
-          ),
-        ];
-    }
+        ),
+      ],
+      // During initialization, don't show anything extra
+      // The app is already showing initialization UI
+      ConnectionUISeverity.splash => [],
+      ConnectionUISeverity.fullScreen => [
+        Positioned.fill(
+          child: _buildFullScreenError(state),
+        ),
+      ],
+    };
   }
 
-  Widget _buildFullScreenError(ConnectionState state) {
+  Widget _buildFullScreenError(SocketConnectionState state) {
     switch (state) {
-      case ConnectionState.authError:
+      case SocketConnectionState.authError:
         return AuthErrorScreen(
           onReAuthenticate: _handleChangeGateway,
           onChangeGateway: _handleChangeGateway,
         );
 
-      case ConnectionState.networkUnavailable:
+      case SocketConnectionState.networkUnavailable:
         return NetworkErrorScreen(
           onRetry: _handleReconnect,
           onOpenSettings: _handleOpenSettings,
         );
 
-      case ConnectionState.serverUnavailable:
+      case SocketConnectionState.serverUnavailable:
         return ServerErrorScreen(
           onRetry: _handleReconnect,
         );
 
-      case ConnectionState.offline:
+      case SocketConnectionState.offline:
       default:
         return ConnectionLostScreen(
           onReconnect: _handleReconnect,

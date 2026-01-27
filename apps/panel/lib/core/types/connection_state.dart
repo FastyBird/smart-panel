@@ -2,7 +2,10 @@
 ///
 /// This enum provides granular connection states beyond a simple boolean,
 /// enabling appropriate UI responses for different connection scenarios.
-enum ConnectionState {
+///
+/// Named `SocketConnectionState` to avoid conflict with Flutter's built-in
+/// `ConnectionState` enum from the async library.
+enum SocketConnectionState {
   /// App starting, attempting first connection
   initializing,
 
@@ -32,55 +35,55 @@ enum ConnectionState {
 }
 
 /// Extension providing UI-related state queries for [ConnectionState].
-extension ConnectionStateExtension on ConnectionState {
+extension SocketConnectionStateExtension on SocketConnectionState {
   /// Whether the panel can be used (even if in degraded state).
   ///
   /// Returns true for [online] and [reconnecting] states where
   /// cached data may still be displayed.
   bool get isUsable =>
-      this == ConnectionState.online || this == ConnectionState.reconnecting;
+      this == SocketConnectionState.online || this == SocketConnectionState.reconnecting;
 
   /// Whether device controls should be disabled.
   ///
   /// Only [online] state allows active control of devices.
-  bool get controlsDisabled => this != ConnectionState.online;
+  bool get controlsDisabled => this != SocketConnectionState.online;
 
   /// Whether to show any connection status indicator.
   ///
   /// Returns false only when fully [online].
-  bool get showIndicator => this != ConnectionState.online;
+  bool get showIndicator => this != SocketConnectionState.online;
 
   /// Whether this is a blocking error state requiring user attention.
   ///
   /// These states typically require full-screen error displays.
   bool get isBlockingError => switch (this) {
-        ConnectionState.offline => true,
-        ConnectionState.authError => true,
-        ConnectionState.serverUnavailable => true,
-        ConnectionState.networkUnavailable => true,
+        SocketConnectionState.offline => true,
+        SocketConnectionState.authError => true,
+        SocketConnectionState.serverUnavailable => true,
+        SocketConnectionState.networkUnavailable => true,
         _ => false,
       };
 
   /// Whether automatic reconnection should be attempted.
   bool get shouldAutoReconnect => switch (this) {
-        ConnectionState.reconnecting => true,
-        ConnectionState.connecting => true,
-        ConnectionState.networkUnavailable => true,
-        ConnectionState.serverUnavailable => true,
+        SocketConnectionState.reconnecting => true,
+        SocketConnectionState.connecting => true,
+        SocketConnectionState.networkUnavailable => true,
+        SocketConnectionState.serverUnavailable => true,
         _ => false,
       };
 
   /// Human-readable description for debugging.
   String get debugLabel => switch (this) {
-        ConnectionState.initializing => 'Initializing',
-        ConnectionState.connecting => 'Connecting',
-        ConnectionState.authenticating => 'Authenticating',
-        ConnectionState.online => 'Online',
-        ConnectionState.reconnecting => 'Reconnecting',
-        ConnectionState.offline => 'Offline',
-        ConnectionState.authError => 'Authentication Error',
-        ConnectionState.serverUnavailable => 'Server Unavailable',
-        ConnectionState.networkUnavailable => 'Network Unavailable',
+        SocketConnectionState.initializing => 'Initializing',
+        SocketConnectionState.connecting => 'Connecting',
+        SocketConnectionState.authenticating => 'Authenticating',
+        SocketConnectionState.online => 'Online',
+        SocketConnectionState.reconnecting => 'Reconnecting',
+        SocketConnectionState.offline => 'Offline',
+        SocketConnectionState.authError => 'Authentication Error',
+        SocketConnectionState.serverUnavailable => 'Server Unavailable',
+        SocketConnectionState.networkUnavailable => 'Network Unavailable',
       };
 }
 

@@ -14,7 +14,7 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 /// It allows users to see the cached device state underneath while clearly
 /// indicating that the panel is attempting to reconnect.
 class ConnectionOverlay extends StatelessWidget {
-  final ConnectionState state;
+  final SocketConnectionState state;
   final Duration disconnectedDuration;
   final VoidCallback onRetry;
   final VoidCallback? onOpenSettings;
@@ -115,7 +115,7 @@ class ConnectionOverlay extends StatelessWidget {
   }
 
   Widget _buildIcon(bool isDark, ScreenService screenService) {
-    final isOffline = state == ConnectionState.offline;
+    final isOffline = state == SocketConnectionState.offline;
 
     return Stack(
       alignment: Alignment.center,
@@ -151,7 +151,7 @@ class ConnectionOverlay extends StatelessWidget {
   }
 
   String _getTitle(AppLocalizations localizations) {
-    return state == ConnectionState.offline
+    return state == SocketConnectionState.offline
         ? localizations.connection_overlay_title_offline
         : localizations.connection_overlay_title_reconnecting;
   }
@@ -159,7 +159,7 @@ class ConnectionOverlay extends StatelessWidget {
   String _getSubtitle(AppLocalizations localizations) {
     final seconds = disconnectedDuration.inSeconds;
 
-    if (state == ConnectionState.offline) {
+    if (state == SocketConnectionState.offline) {
       return localizations.connection_overlay_message_offline;
     }
 

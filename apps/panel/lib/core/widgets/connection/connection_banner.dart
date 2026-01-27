@@ -10,7 +10,7 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 /// the user that the connection is being re-established, without blocking
 /// interaction with the rest of the UI.
 class ConnectionBanner extends StatelessWidget {
-  final ConnectionState state;
+  final SocketConnectionState state;
   final VoidCallback? onRetry;
 
   const ConnectionBanner({
@@ -89,9 +89,9 @@ class ConnectionBanner extends StatelessWidget {
 
   String _getMessage(AppLocalizations localizations) {
     return switch (state) {
-      ConnectionState.reconnecting => localizations.connection_banner_reconnecting,
-      ConnectionState.connecting => localizations.connection_banner_connecting,
-      ConnectionState.authenticating => localizations.connection_banner_authenticating,
+      SocketConnectionState.reconnecting => localizations.connection_banner_reconnecting,
+      SocketConnectionState.connecting => localizations.connection_banner_connecting,
+      SocketConnectionState.authenticating => localizations.connection_banner_authenticating,
       _ => localizations.connection_banner_connecting,
     };
   }

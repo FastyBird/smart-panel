@@ -76,13 +76,24 @@ class ServerErrorScreen extends StatelessWidget {
                     ),
                     SizedBox(height: AppSpacings.pXl),
                     // Retry button
-                    SystemPagePrimaryButton(
-                      label: localizations.connection_server_error_button_retry,
-                      icon: MdiIcons.refresh,
-                      onPressed: onRetry,
-                      isDark: isDark,
-                      minWidth: isLandscape ? null : double.infinity,
-                    ),
+                    if (isLandscape)
+                      SystemPagePrimaryButton(
+                        label: localizations.connection_server_error_button_retry,
+                        icon: MdiIcons.refresh,
+                        onPressed: onRetry,
+                        isDark: isDark,
+                      )
+                    else
+                      SizedBox(
+                        width: double.infinity,
+                        child: SystemPagePrimaryButton(
+                          label: localizations.connection_server_error_button_retry,
+                          icon: MdiIcons.refresh,
+                          onPressed: onRetry,
+                          isDark: isDark,
+                          minWidth: double.infinity,
+                        ),
+                      ),
                   ],
                 ),
               ),
