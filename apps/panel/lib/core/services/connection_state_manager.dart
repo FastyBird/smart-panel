@@ -155,16 +155,18 @@ class ConnectionStateManager extends ChangeNotifier {
   /// Called when server returns 503 or similar.
   ///
   /// Transitions to [SocketConnectionState.serverUnavailable].
+  /// Note: Does not start escalation timer since serverUnavailable is already
+  /// a full-screen error state - no further escalation needed.
   void onServerUnavailable() {
     if (kDebugMode) {
       debugPrint('[ConnectionStateManager] onServerUnavailable called');
     }
 
     _debounceTimer?.cancel();
+    _escalationTimer?.cancel();
     _disconnectedAt ??= DateTime.now();
     _hasIncrementedFailureForCurrentDisconnect = false;
     _updateState(SocketConnectionState.serverUnavailable);
-    _startEscalationTimer();
   }
 
   /// Called when network is unreachable.
@@ -238,19 +240,28 @@ class ConnectionStateManager extends ChangeNotifier {
         );
       }
 
-      // Escalate to offline after threshold
-      if (duration >= _offlineThreshold && _state == SocketConnectionState.reconnecting) {
-        // Only increment failure counter once per disconnection episode
-        if (!_hasIncrementedFailureForCurrentDisconnect) {
-          _consecutiveFailures++;
-          _hasIncrementedFailureForCurrentDisconnect = true;
-        }
-
-        if (duration >= _fullScreenThreshold) {
-          _updateState(SocketConnectionState.offline);
-          _escalationTimer?.cancel();
-        }
+      // Only process escalation for reconnecting state
+      if (_state != SocketConnectionState.reconnecting) {
+        return;
       }
+
+      // Increment failure counter once we pass the offline threshold (30s)
+      if (duration >= _offlineThreshold && !_hasIncrementedFailureForCurrentDisconnect) {
+        _consecutiveFailures++;
+        _hasIncrementedFailureForCurrentDisconnect = true;
+      }
+
+      // Escalate to offline state after full-screen threshold (60s)
+      if (duration >= _fullScreenThreshold) {
+        _updateState(SocketConnectionState.offline);
+        _escalationTimer?.cancel();
+        return;
+      }
+
+      // Notify listeners on each tick so UI can update based on new
+      // disconnectedDuration (banner at 2s, overlay at 10s, etc.)
+      // This is necessary because uiSeverity depends on duration, not just state.
+      notifyListeners();
     });
   }
 
