@@ -1,5 +1,14 @@
 import { Expose, Transform, Type } from 'class-transformer';
-import { ArrayNotEmpty, IsArray, IsEnum, IsOptional, IsString, IsUUID, MaxLength, ValidateNested } from 'class-validator';
+import {
+	ArrayNotEmpty,
+	IsArray,
+	IsEnum,
+	IsOptional,
+	IsString,
+	IsUUID,
+	MaxLength,
+	ValidateNested,
+} from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -69,9 +78,12 @@ export class CreateMediaEndpointDto {
 	@IsOptional()
 	@IsArray({ message: '[{"field":"preferred_for","reason":"Preferred for must be an array."}]' })
 	@IsString({ each: true, message: '[{"field":"preferred_for","reason":"Each value must be a string."}]' })
-	@Transform(({ obj }: { obj: { preferred_for?: string[]; preferredFor?: string[] } }) => obj.preferred_for ?? obj.preferredFor, {
-		toClassOnly: true,
-	})
+	@Transform(
+		({ obj }: { obj: { preferred_for?: string[]; preferredFor?: string[] } }) => obj.preferred_for ?? obj.preferredFor,
+		{
+			toClassOnly: true,
+		},
+	)
 	preferredFor?: string[];
 }
 
@@ -116,9 +128,12 @@ export class UpdateMediaEndpointDto {
 	@IsOptional()
 	@IsArray({ message: '[{"field":"preferred_for","reason":"Preferred for must be an array."}]' })
 	@IsString({ each: true, message: '[{"field":"preferred_for","reason":"Each value must be a string."}]' })
-	@Transform(({ obj }: { obj: { preferred_for?: string[]; preferredFor?: string[] } }) => obj.preferred_for ?? obj.preferredFor, {
-		toClassOnly: true,
-	})
+	@Transform(
+		({ obj }: { obj: { preferred_for?: string[]; preferredFor?: string[] } }) => obj.preferred_for ?? obj.preferredFor,
+		{
+			toClassOnly: true,
+		},
+	)
 	preferredFor?: string[];
 }
 

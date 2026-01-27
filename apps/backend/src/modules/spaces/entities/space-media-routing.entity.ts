@@ -169,9 +169,12 @@ export class SpaceMediaRoutingEntity extends BaseEntity {
 	@IsOptional()
 	@IsString()
 	@MaxLength(50)
-	@Transform(({ obj }: { obj: { display_input?: string; displayInput?: string } }) => obj.display_input ?? obj.displayInput, {
-		toClassOnly: true,
-	})
+	@Transform(
+		({ obj }: { obj: { display_input?: string; displayInput?: string } }) => obj.display_input ?? obj.displayInput,
+		{
+			toClassOnly: true,
+		},
+	)
 	@Column({ type: 'varchar', length: 50, nullable: true })
 	displayInput: string | null;
 
@@ -221,9 +224,12 @@ export class SpaceMediaRoutingEntity extends BaseEntity {
 	})
 	@Expose({ name: 'power_policy' })
 	@IsEnum(MediaPowerPolicy)
-	@Transform(({ obj }: { obj: { power_policy?: string; powerPolicy?: string } }) => obj.power_policy ?? obj.powerPolicy, {
-		toClassOnly: true,
-	})
+	@Transform(
+		({ obj }: { obj: { power_policy?: string; powerPolicy?: string } }) => obj.power_policy ?? obj.powerPolicy,
+		{
+			toClassOnly: true,
+		},
+	)
 	@Column({
 		type: 'varchar',
 		default: MediaPowerPolicy.ON,

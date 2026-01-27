@@ -1,5 +1,16 @@
 import { Expose, Transform, Type } from 'class-transformer';
-import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min, ValidateNested } from 'class-validator';
+import {
+	IsBoolean,
+	IsEnum,
+	IsInt,
+	IsOptional,
+	IsString,
+	IsUUID,
+	Max,
+	MaxLength,
+	Min,
+	ValidateNested,
+} from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -97,7 +108,9 @@ export class CreateMediaRoutingDto {
 	})
 	@Expose({ name: 'remote_target_endpoint_id' })
 	@IsOptional()
-	@IsUUID('4', { message: '[{"field":"remote_target_endpoint_id","reason":"Remote target endpoint ID must be a valid UUID."}]' })
+	@IsUUID('4', {
+		message: '[{"field":"remote_target_endpoint_id","reason":"Remote target endpoint ID must be a valid UUID."}]',
+	})
 	@Transform(
 		({ obj }: { obj: { remote_target_endpoint_id?: string; remoteTargetEndpointId?: string } }) =>
 			obj.remote_target_endpoint_id ?? obj.remoteTargetEndpointId,
@@ -115,9 +128,12 @@ export class CreateMediaRoutingDto {
 	@IsOptional()
 	@IsString({ message: '[{"field":"display_input","reason":"Display input must be a string."}]' })
 	@MaxLength(50, { message: '[{"field":"display_input","reason":"Display input must not exceed 50 characters."}]' })
-	@Transform(({ obj }: { obj: { display_input?: string; displayInput?: string } }) => obj.display_input ?? obj.displayInput, {
-		toClassOnly: true,
-	})
+	@Transform(
+		({ obj }: { obj: { display_input?: string; displayInput?: string } }) => obj.display_input ?? obj.displayInput,
+		{
+			toClassOnly: true,
+		},
+	)
 	displayInput?: string;
 
 	@ApiPropertyOptional({
@@ -162,9 +178,12 @@ export class CreateMediaRoutingDto {
 	@Expose({ name: 'power_policy' })
 	@IsOptional()
 	@IsEnum(MediaPowerPolicy, { message: '[{"field":"power_policy","reason":"Power policy must be a valid policy."}]' })
-	@Transform(({ obj }: { obj: { power_policy?: string; powerPolicy?: string } }) => obj.power_policy ?? obj.powerPolicy, {
-		toClassOnly: true,
-	})
+	@Transform(
+		({ obj }: { obj: { power_policy?: string; powerPolicy?: string } }) => obj.power_policy ?? obj.powerPolicy,
+		{
+			toClassOnly: true,
+		},
+	)
 	powerPolicy?: MediaPowerPolicy;
 }
 
@@ -266,7 +285,9 @@ export class UpdateMediaRoutingDto {
 	})
 	@Expose({ name: 'remote_target_endpoint_id' })
 	@IsOptional()
-	@IsUUID('4', { message: '[{"field":"remote_target_endpoint_id","reason":"Remote target endpoint ID must be a valid UUID."}]' })
+	@IsUUID('4', {
+		message: '[{"field":"remote_target_endpoint_id","reason":"Remote target endpoint ID must be a valid UUID."}]',
+	})
 	@Transform(
 		({ obj }: { obj: { remote_target_endpoint_id?: string; remoteTargetEndpointId?: string } }) =>
 			obj.remote_target_endpoint_id ?? obj.remoteTargetEndpointId,
@@ -284,9 +305,12 @@ export class UpdateMediaRoutingDto {
 	@IsOptional()
 	@IsString({ message: '[{"field":"display_input","reason":"Display input must be a string."}]' })
 	@MaxLength(50, { message: '[{"field":"display_input","reason":"Display input must not exceed 50 characters."}]' })
-	@Transform(({ obj }: { obj: { display_input?: string; displayInput?: string } }) => obj.display_input ?? obj.displayInput, {
-		toClassOnly: true,
-	})
+	@Transform(
+		({ obj }: { obj: { display_input?: string; displayInput?: string } }) => obj.display_input ?? obj.displayInput,
+		{
+			toClassOnly: true,
+		},
+	)
 	displayInput?: string | null;
 
 	@ApiPropertyOptional({
@@ -331,9 +355,12 @@ export class UpdateMediaRoutingDto {
 	@Expose({ name: 'power_policy' })
 	@IsOptional()
 	@IsEnum(MediaPowerPolicy, { message: '[{"field":"power_policy","reason":"Power policy must be a valid policy."}]' })
-	@Transform(({ obj }: { obj: { power_policy?: string; powerPolicy?: string } }) => obj.power_policy ?? obj.powerPolicy, {
-		toClassOnly: true,
-	})
+	@Transform(
+		({ obj }: { obj: { power_policy?: string; powerPolicy?: string } }) => obj.power_policy ?? obj.powerPolicy,
+		{
+			toClassOnly: true,
+		},
+	)
 	powerPolicy?: MediaPowerPolicy;
 
 	@ApiPropertyOptional({

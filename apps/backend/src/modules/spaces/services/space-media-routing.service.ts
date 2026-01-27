@@ -5,10 +5,9 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { ChannelPropertyEntity } from '../../devices/entities/devices.entity';
+import { PropertyCategory } from '../../devices/devices.constants';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
-import { IntentTargetStatus } from '../../intents/intents.constants';
 import { CreateMediaRoutingDto, UpdateMediaRoutingDto } from '../dto/media-routing.dto';
 import { SpaceMediaEndpointEntity } from '../entities/space-media-endpoint.entity';
 import { SpaceMediaRoutingEntity } from '../entities/space-media-routing.entity';
@@ -16,8 +15,8 @@ import {
 	MediaCapabilityMappingModel,
 	MediaExecutionPlanModel,
 	MediaExecutionStepModel,
-	MediaRoutingActivationResultModel,
 	MediaExecutionStepResultModel,
+	MediaRoutingActivationResultModel,
 	MediaStateV2Model,
 } from '../models/media-routing.model';
 import {
@@ -321,11 +320,11 @@ export class SpaceMediaRoutingService {
 			relations: ['device', 'device.channels', 'device.channels.properties'],
 		});
 
-		const endpointMap = new Map(endpoints.map((e) => [e.id, e]));
-
 		// Build steps based on power policy and routing configuration
 		for (const endpoint of endpoints) {
-			const capabilities = endpoint.capabilities ? JSON.parse(endpoint.capabilities) as Record<string, MediaCapabilityMappingModel> : null;
+			const capabilities = endpoint.capabilities
+				? (JSON.parse(endpoint.capabilities) as Record<string, MediaCapabilityMappingModel>)
+				: null;
 
 			if (!capabilities) {
 				continue;
@@ -621,9 +620,17 @@ export class SpaceMediaRoutingService {
 		for (const device of devices) {
 			if (device.status?.online) {
 				onlineCount++;
-				// Check if device is powered on (simplified check)
-				// In a real implementation, we'd check the power property
-				// For now, we just track online status
+				// Check if any device is powered on by looking at power properties
+				for (const channel of device.channels ?? []) {
+					for (const property of channel.properties ?? []) {
+						if (
+							(property.category === PropertyCategory.ON || property.category === PropertyCategory.ACTIVE) &&
+							property.value === true
+						) {
+							anyOn = true;
+						}
+					}
+				}
 			} else {
 				offlineCount++;
 			}
@@ -639,10 +646,10 @@ export class SpaceMediaRoutingService {
 				// Find volume and mute properties
 				for (const channel of audioDevice.channels ?? []) {
 					for (const property of channel.properties ?? []) {
-						if (property.category === 'volume' && property.value !== undefined) {
+						if (property.category === PropertyCategory.VOLUME && property.value !== undefined) {
 							currentVolume = Number(property.value);
 						}
-						if (property.category === 'mute' && property.value !== undefined) {
+						if (property.category === PropertyCategory.MUTE && property.value !== undefined) {
 							isMuted = Boolean(property.value);
 						}
 					}

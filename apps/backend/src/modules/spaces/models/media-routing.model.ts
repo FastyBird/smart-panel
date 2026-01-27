@@ -5,7 +5,7 @@ import { ApiExtraModels, ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaP
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 import { SpaceMediaEndpointEntity } from '../entities/space-media-endpoint.entity';
 import { SpaceMediaRoutingEntity } from '../entities/space-media-routing.entity';
-import { MediaCapability, MediaCapabilityPermission, MediaEndpointType, MediaPowerPolicy, MediaRoutingType } from '../spaces.constants';
+import { MediaCapabilityPermission, MediaEndpointType, MediaRoutingType } from '../spaces.constants';
 
 // ========================
 // Capability Models

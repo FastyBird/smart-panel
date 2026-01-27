@@ -114,11 +114,7 @@ describe('SpaceIntentService', () => {
 			executeCoversIntent: jest.fn(),
 		} as unknown as jest.Mocked<CoversIntentService>;
 
-		service = new SpaceIntentService(
-			mockLightingIntentService,
-			mockClimateIntentService,
-			mockCoversIntentService,
-		);
+		service = new SpaceIntentService(mockLightingIntentService, mockClimateIntentService, mockCoversIntentService);
 	});
 
 	afterEach(() => {

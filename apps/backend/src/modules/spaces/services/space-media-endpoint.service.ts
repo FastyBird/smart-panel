@@ -9,10 +9,7 @@ import { ChannelCategory, DeviceCategory, PermissionType, PropertyCategory } fro
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { CreateMediaEndpointDto, UpdateMediaEndpointDto } from '../dto/media-endpoint.dto';
 import { SpaceMediaEndpointEntity } from '../entities/space-media-endpoint.entity';
-import {
-	MediaCapabilitySummaryModel,
-	MediaCapabilityMappingModel,
-} from '../models/media-routing.model';
+import { MediaCapabilityMappingModel, MediaCapabilitySummaryModel } from '../models/media-routing.model';
 import {
 	EventType,
 	MEDIA_CHANNEL_CATEGORIES,
@@ -288,12 +285,13 @@ export class SpaceMediaEndpointService {
 		const capabilities: Record<string, MediaCapabilityMappingModel> = {};
 
 		// Find relevant media channels
-		const mediaChannels = device.channels?.filter((ch) => {
-			if (preferredChannelId && ch.id === preferredChannelId) {
-				return true;
-			}
-			return MEDIA_CHANNEL_CATEGORIES.includes(ch.category as (typeof MEDIA_CHANNEL_CATEGORIES)[number]);
-		}) ?? [];
+		const mediaChannels =
+			device.channels?.filter((ch) => {
+				if (preferredChannelId && ch.id === preferredChannelId) {
+					return true;
+				}
+				return MEDIA_CHANNEL_CATEGORIES.includes(ch.category as (typeof MEDIA_CHANNEL_CATEGORIES)[number]);
+			}) ?? [];
 
 		for (const channel of mediaChannels) {
 			const isTelevision = channel.category === ChannelCategory.TELEVISION;
@@ -306,7 +304,10 @@ export class SpaceMediaEndpointService {
 				const permission = this.mapPermissions(property.permissions);
 
 				// Power (from television/switcher)
-				if ((isTelevision || isSwitcher) && (property.category === PropertyCategory.ON || property.category === PropertyCategory.ACTIVE)) {
+				if (
+					(isTelevision || isSwitcher) &&
+					(property.category === PropertyCategory.ON || property.category === PropertyCategory.ACTIVE)
+				) {
 					if (!capabilities.power) {
 						capabilities.power = { propertyId: property.id, channelId: channel.id, permission };
 					}

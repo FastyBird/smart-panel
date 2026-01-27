@@ -105,7 +105,8 @@ export class SpaceMediaEndpointEntity extends BaseEntity {
 	@ApiPropertyOptional({
 		description: 'JSON object describing detected capabilities and their property mappings',
 		type: 'string',
-		example: '{"power":{"propertyId":"...","permission":"read_write"},"volume":{"propertyId":"...","permission":"read_write"}}',
+		example:
+			'{"power":{"propertyId":"...","permission":"read_write"},"volume":{"propertyId":"...","permission":"read_write"}}',
 	})
 	@Expose()
 	@IsOptional()
@@ -122,9 +123,12 @@ export class SpaceMediaEndpointEntity extends BaseEntity {
 	@Expose({ name: 'preferred_for' })
 	@IsOptional()
 	@IsString()
-	@Transform(({ obj }: { obj: { preferred_for?: string; preferredFor?: string } }) => obj.preferred_for ?? obj.preferredFor, {
-		toClassOnly: true,
-	})
+	@Transform(
+		({ obj }: { obj: { preferred_for?: string; preferredFor?: string } }) => obj.preferred_for ?? obj.preferredFor,
+		{
+			toClassOnly: true,
+		},
+	)
 	@Column({ type: 'text', nullable: true })
 	preferredFor: string | null;
 }
