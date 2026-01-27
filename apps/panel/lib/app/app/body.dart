@@ -105,7 +105,10 @@ class _AppBodyState extends State<AppBody> {
         _connectionManager.onNetworkUnavailable();
         break;
       case ConnectionErrorType.unknown:
-        // Unknown errors will be handled by the reconnection logic
+        // For unknown errors, trigger disconnect to start escalation timer.
+        // This ensures the UI shows reconnecting state instead of staying
+        // stuck in initializing with no feedback to the user.
+        _connectionManager.onDisconnected();
         break;
     }
   }
