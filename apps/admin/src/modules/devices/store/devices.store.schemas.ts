@@ -36,6 +36,7 @@ export const DeviceSchema = z.object({
 	status: z.object({
 		online: z.boolean().default(false),
 		status: z.nativeEnum(DevicesModuleDeviceConnectionStatus).default(DevicesModuleDeviceConnectionStatus.unknown),
+		lastChanged: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))).nullable().default(null),
 	}),
 	createdAt: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
 	updatedAt: z
@@ -84,6 +85,7 @@ export const DevicesSetActionPayloadSchema = z.object({
 			status: z.object({
 				online: z.boolean(),
 				status: z.nativeEnum(DevicesModuleDeviceConnectionStatus),
+				lastChanged: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))).nullable().optional(),
 			}),
 		})
 		.passthrough(),
@@ -204,6 +206,7 @@ export const DeviceResSchema: ZodType<ApiDevice> = z.object({
 	status: z.object({
 		online: z.boolean(),
 		status: z.nativeEnum(DevicesModuleDeviceConnectionStatus),
+		last_changed: z.string().datetime({ offset: true }).nullable().optional(),
 	}),
 	created_at: z.string().date(),
 	updated_at: z.string().date().nullable(),
