@@ -101,6 +101,7 @@ T _createDeviceView<T extends DeviceView>(
     required List<ChannelView> channels,
     bool enabled,
     bool isOnline,
+    DateTime? lastStateChange,
     bool isValid,
     List<ValidationIssue> validationIssues,
   }) constructor,
@@ -117,6 +118,7 @@ T _createDeviceView<T extends DeviceView>(
     channels: channels,
     enabled: model.enabled,
     isOnline: model.isOnline,
+    lastStateChange: model.lastStateChange,
     isValid: isValid,
     validationIssues: validationIssues,
   );

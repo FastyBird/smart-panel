@@ -98,7 +98,7 @@ class LandscapeViewLayout extends StatelessWidget {
               // Main content takes remaining space
               Expanded(
                 child: Padding(
-                  padding: mainContentPadding ?? EdgeInsets.all(AppSpacings.pLg),
+                  padding: mainContentPadding ?? AppSpacings.paddingLg,
                   child: mainContent,
                 ),
               ),

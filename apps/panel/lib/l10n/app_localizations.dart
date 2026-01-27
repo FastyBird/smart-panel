@@ -353,6 +353,66 @@ abstract class AppLocalizations {
   /// **'Device is offline'**
   String get device_offline_message;
 
+  /// Title shown on device offline overlay
+  ///
+  /// In en, this message translates to:
+  /// **'Device Offline'**
+  String get device_offline_title;
+
+  /// Description shown on device offline overlay
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to communicate with this device. Check if the device is powered on and connected to your network.'**
+  String get device_offline_description;
+
+  /// Button label to retry connection to offline device
+  ///
+  /// In en, this message translates to:
+  /// **'Retry Connection'**
+  String get device_offline_retry;
+
+  /// Shows when device was last online
+  ///
+  /// In en, this message translates to:
+  /// **'Last seen {time}'**
+  String device_offline_last_seen(String time);
+
+  /// Message shown when devices are skipped due to being offline
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Skipped 1 offline device} other{Skipped {count} offline devices}}'**
+  String devices_offline_skipped(int count);
+
+  /// Message shown when all targeted devices are offline
+  ///
+  /// In en, this message translates to:
+  /// **'All devices are offline'**
+  String get all_devices_offline;
+
+  /// Time ago label for less than a minute
+  ///
+  /// In en, this message translates to:
+  /// **'just now'**
+  String get time_ago_just_now;
+
+  /// Time ago label for minutes
+  ///
+  /// In en, this message translates to:
+  /// **'{count} min ago'**
+  String time_ago_minutes(int count);
+
+  /// Time ago label for hours
+  ///
+  /// In en, this message translates to:
+  /// **'{count} h ago'**
+  String time_ago_hours(int count);
+
+  /// Time ago label for days
+  ///
+  /// In en, this message translates to:
+  /// **'{count} d ago'**
+  String time_ago_days(int count);
+
   /// Message shown when a device has configuration problems
   ///
   /// In en, this message translates to:

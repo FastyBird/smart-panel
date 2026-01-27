@@ -656,7 +656,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
         decoration: BoxDecoration(
           color: Theme.of(context).brightness == Brightness.light
               ? AppBgColorLight.pageOverlay50
-              : AppBgColorDark.overlayOverlay50,
+              : AppBgColorDark.pageOverlay50,
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
         ),
         child: Column(
@@ -701,7 +701,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
       elevation: 0,
       color: Theme.of(context).brightness == Brightness.light
           ? AppBgColorLight.pageOverlay50
-          : AppBgColorDark.overlayOverlay50,
+          : AppBgColorDark.pageOverlay50,
       child: Padding(
         padding: AppSpacings.paddingMd,
         child: Column(
@@ -768,7 +768,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
                       borderRadius: BorderRadius.circular(AppBorderRadius.base),
                       color: Theme.of(context).brightness == Brightness.light
                           ? AppBgColorLight.pageOverlay70
-                          : AppBgColorDark.overlayOverlay70,
+                          : AppBgColorDark.pageOverlay70,
                     ),
                     child: Center(
                       child: SizedBox(

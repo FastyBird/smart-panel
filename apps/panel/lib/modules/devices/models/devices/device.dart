@@ -19,6 +19,7 @@ abstract class DeviceModel extends Model {
 
   final bool _enabled;
   final bool _isOnline;
+  final DateTime? _lastStateChange;
 
   DeviceModel({
     required super.id,
@@ -33,6 +34,7 @@ abstract class DeviceModel extends Model {
     List<String> channels = const [],
     bool enabled = true,
     bool isOnline = false,
+    DateTime? lastStateChange,
     super.createdAt,
     super.updatedAt,
   })  : _type = type,
@@ -45,7 +47,8 @@ abstract class DeviceModel extends Model {
         _controls = controls,
         _channels = channels,
         _enabled = enabled,
-        _isOnline = isOnline;
+        _isOnline = isOnline,
+        _lastStateChange = lastStateChange;
 
   String get type => _type;
 
@@ -68,4 +71,7 @@ abstract class DeviceModel extends Model {
   bool get enabled => _enabled;
 
   bool get isOnline => _isOnline;
+
+  /// Timestamp when the device connection state last changed
+  DateTime? get lastStateChange => _lastStateChange;
 }

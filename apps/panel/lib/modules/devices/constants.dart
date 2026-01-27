@@ -5,6 +5,8 @@ class DevicesModuleConstants {
   static const String deviceCreatedEvent = 'DevicesModule.Device.Created';
   static const String deviceUpdatedEvent = 'DevicesModule.Device.Updated';
   static const String deviceDeletedEvent = 'DevicesModule.Device.Deleted';
+  static const String deviceConnectionChangedEvent =
+      'DevicesModule.Device.ConnectionChanged';
   static const String deviceControlCreatedEvent =
       'DevicesModule.DeviceControl.Created';
   static const String deviceControlDeletedEvent =

@@ -8,6 +8,7 @@ import 'package:fastybird_smart_panel/modules/devices/models/channels/channel.da
 import 'package:fastybird_smart_panel/modules/devices/models/properties/properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/channels.dart';
+import 'package:fastybird_smart_panel/modules/devices/repositories/devices.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/repository.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:flutter/foundation.dart';
@@ -17,6 +18,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
   final SocketService _socketService;
 
   ChannelsRepository? _channelsRepository;
+  DevicesRepository? _devicesRepository;
 
   final Map<String, ValueType?> _valueBackup = {};
   final Map<String, Timer> _debounceTimers = {};
@@ -29,6 +31,11 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
   /// Set the channels repository after construction to avoid circular dependency
   void setChannelsRepository(ChannelsRepository channelsRepository) {
     _channelsRepository = channelsRepository;
+  }
+
+  /// Set the devices repository after construction to avoid circular dependency
+  void setDevicesRepository(DevicesRepository devicesRepository) {
+    _devicesRepository = devicesRepository;
   }
 
   void insert(List<Map<String, dynamic>> json) {
@@ -114,6 +121,20 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
       return false;
     }
 
+    // Check if the device is offline before proceeding
+    ChannelModel? channel = _channelsRepository?.getItem(property.channel);
+    if (channel != null && _devicesRepository != null) {
+      final device = _devicesRepository!.getItem(channel.device);
+      if (device != null && !device.isOnline) {
+        if (kDebugMode) {
+          debugPrint(
+            '[DEVICES MODULE][CHANNEL PROPERTIES] Rejecting command for property: $id - device is offline',
+          );
+        }
+        return false;
+      }
+    }
+
     if (!_valueBackup.containsKey(id)) {
       _valueBackup[id] = property.value;
     }
@@ -160,7 +181,8 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
 
     replaceItem(property);
 
-    ChannelModel? channel = _channelsRepository?.getItem(property.channel);
+    // Reuse the channel from offline check, or fetch if not already loaded
+    channel ??= _channelsRepository?.getItem(property.channel);
 
     if (channel != null) {
       final completer = Completer<bool>();
@@ -171,7 +193,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
       // Start new debounce timer
       _debounceTimers[id] = Timer(const Duration(milliseconds: 300), () async {
         // Send command and wait for result
-        await _sendCommandToBackend(channel, property!, completer);
+        await _sendCommandToBackend(channel!, property!, completer);
 
         _debounceTimers.remove(id);
 
@@ -264,6 +286,21 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
   }) async {
     if (properties.isEmpty) {
       return true;
+    }
+
+    // Check if any target device is offline before proceeding
+    if (_devicesRepository != null) {
+      for (final prop in properties) {
+        final device = _devicesRepository!.getItem(prop.deviceId);
+        if (device != null && !device.isOnline) {
+          if (kDebugMode) {
+            debugPrint(
+              '[DEVICES MODULE][CHANNEL PROPERTIES] Rejecting batch command - device ${prop.deviceId} is offline',
+            );
+          }
+          return false;
+        }
+      }
     }
 
     try {

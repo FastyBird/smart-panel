@@ -138,6 +138,52 @@ class AppLocalizationsEn extends AppLocalizations {
   String get device_offline_message => 'Device is offline';
 
   @override
+  String get device_offline_title => 'Device Offline';
+
+  @override
+  String get device_offline_description => 'Unable to communicate with this device. Check if the device is powered on and connected to your network.';
+
+  @override
+  String get device_offline_retry => 'Retry Connection';
+
+  @override
+  String device_offline_last_seen(String time) {
+    return 'Last seen $time';
+  }
+
+  @override
+  String devices_offline_skipped(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Skipped $count offline devices',
+      one: 'Skipped 1 offline device',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get all_devices_offline => 'All devices are offline';
+
+  @override
+  String get time_ago_just_now => 'just now';
+
+  @override
+  String time_ago_minutes(int count) {
+    return '$count min ago';
+  }
+
+  @override
+  String time_ago_hours(int count) {
+    return '$count h ago';
+  }
+
+  @override
+  String time_ago_days(int count) {
+    return '$count d ago';
+  }
+
+  @override
   String get device_config_issue => 'Configuration issue';
 
   @override

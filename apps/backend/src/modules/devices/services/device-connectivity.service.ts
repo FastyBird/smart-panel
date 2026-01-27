@@ -6,6 +6,7 @@ import {
 	ConnectionState,
 	DataTypeType,
 	EventType,
+	OnlineDeviceState,
 	PermissionType,
 	PropertyCategory,
 } from '../devices.constants';
@@ -87,6 +88,11 @@ export class DeviceConnectivityService {
 		}
 
 		if (changed) {
+			// Update device status before emitting so the event contains the new values
+			device.status.online = OnlineDeviceState.includes(state.state);
+			device.status.status = state.state;
+			device.status.lastChanged = new Date();
+
 			this.eventEmitter.emit(EventType.DEVICE_CONNECTION_CHANGED, { device, state: state.state, reason: state.reason });
 		}
 	}

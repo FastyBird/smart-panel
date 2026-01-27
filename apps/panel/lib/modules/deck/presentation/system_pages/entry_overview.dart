@@ -674,7 +674,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                     borderRadius: BorderRadius.circular(AppBorderRadius.base),
                     color: Theme.of(context).brightness == Brightness.light
                         ? AppBgColorLight.pageOverlay70
-                        : AppBgColorDark.overlayOverlay70,
+                        : AppBgColorDark.pageOverlay70,
                   ),
                   child: Center(
                     child: SizedBox(
@@ -758,7 +758,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
         elevation: 0,
         color: Theme.of(context).brightness == Brightness.light
             ? AppBgColorLight.pageOverlay50
-            : AppBgColorDark.overlayOverlay50,
+            : AppBgColorDark.pageOverlay50,
         child: Padding(
           padding: AppSpacings.paddingMd,
           child: Column(

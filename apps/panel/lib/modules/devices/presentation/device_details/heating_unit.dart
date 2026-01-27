@@ -4,12 +4,14 @@ import 'dart:math' as math;
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/device_offline_overlay.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
@@ -395,6 +397,11 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
+
+    final lastSeenText = widget._device.lastStateChange != null
+        ? DatetimeUtils.formatTimeAgo(widget._device.lastStateChange!, localizations)
+        : null;
 
     return Scaffold(
       backgroundColor: isDark ? AppBgColorDark.base : AppBgColorLight.page,
@@ -403,12 +410,21 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
           children: [
             _buildHeader(context, isDark),
             Expanded(
-              child: OrientationBuilder(
-                builder: (context, orientation) {
-                  return orientation == Orientation.landscape
-                      ? _buildLandscapeLayout(context, isDark)
-                      : _buildPortraitLayout(context, isDark);
-                },
+              child: Stack(
+                children: [
+                  OrientationBuilder(
+                    builder: (context, orientation) {
+                      return orientation == Orientation.landscape
+                          ? _buildLandscapeLayout(context, isDark)
+                          : _buildPortraitLayout(context, isDark);
+                    },
+                  ),
+                  if (!widget._device.isOnline)
+                    DeviceOfflineState(
+                      isDark: isDark,
+                      lastSeenText: lastSeenText,
+                    ),
+                ],
               ),
             ),
           ],

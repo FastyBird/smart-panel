@@ -138,6 +138,53 @@ class AppLocalizationsCs extends AppLocalizations {
   String get device_offline_message => 'Zařízení je offline';
 
   @override
+  String get device_offline_title => 'Zařízení je offline';
+
+  @override
+  String get device_offline_description => 'Nelze komunikovat s tímto zařízením. Zkontrolujte, zda je zařízení zapnuté a připojené k síti.';
+
+  @override
+  String get device_offline_retry => 'Zkusit znovu';
+
+  @override
+  String device_offline_last_seen(String time) {
+    return 'Naposledy viděno $time';
+  }
+
+  @override
+  String devices_offline_skipped(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Přeskočeno $count offline zařízení',
+      few: 'Přeskočena $count offline zařízení',
+      one: 'Přeskočeno 1 offline zařízení',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get all_devices_offline => 'Všechna zařízení jsou offline';
+
+  @override
+  String get time_ago_just_now => 'právě teď';
+
+  @override
+  String time_ago_minutes(int count) {
+    return 'před $count min';
+  }
+
+  @override
+  String time_ago_hours(int count) {
+    return 'před $count h';
+  }
+
+  @override
+  String time_ago_days(int count) {
+    return 'před $count d';
+  }
+
+  @override
   String get device_config_issue => 'Problém s konfigurací';
 
   @override

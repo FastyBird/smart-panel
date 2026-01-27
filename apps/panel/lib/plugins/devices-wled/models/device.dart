@@ -19,6 +19,7 @@ class WledDeviceModel extends DeviceModel {
     super.channels = const [],
     super.enabled = true,
     super.isOnline = false,
+    super.lastStateChange,
     super.createdAt,
     super.updatedAt,
     required String? hostname,
@@ -73,10 +74,14 @@ class WledDeviceModel extends DeviceModel {
     // Parse enabled field (defaults to true if not present)
     final bool enabled = json['enabled'] ?? true;
 
-    // Parse online status from nested status object
+    // Parse online status and last state change from nested status object
     bool isOnline = false;
+    DateTime? lastStateChange;
     if (json['status'] is Map<String, dynamic>) {
       isOnline = json['status']['online'] ?? false;
+      if (json['status']['last_changed'] != null) {
+        lastStateChange = DateTime.tryParse(json['status']['last_changed']);
+      }
     }
 
     return WledDeviceModel(
@@ -93,6 +98,7 @@ class WledDeviceModel extends DeviceModel {
       channels: UuidUtils.validateUuidList(channels),
       enabled: enabled,
       isOnline: isOnline,
+      lastStateChange: lastStateChange,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,

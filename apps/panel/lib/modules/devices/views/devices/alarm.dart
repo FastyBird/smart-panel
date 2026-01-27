@@ -15,6 +15,7 @@ class AlarmDeviceView extends DeviceView with DeviceDeviceInformationMixin {
     required super.channels,
     super.enabled,
     super.isOnline,
+    super.lastStateChange,
     super.isValid,
     super.validationIssues,
   });

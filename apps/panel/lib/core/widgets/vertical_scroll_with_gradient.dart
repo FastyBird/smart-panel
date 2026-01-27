@@ -36,6 +36,9 @@ class VerticalScrollWithGradient extends StatelessWidget {
   /// and to first/last items vertically)
   final EdgeInsetsGeometry padding;
 
+  /// Optional scroll controller for programmatic scroll control
+  final ScrollController? controller;
+
   const VerticalScrollWithGradient({
     super.key,
     required this.gradientHeight,
@@ -44,6 +47,7 @@ class VerticalScrollWithGradient extends StatelessWidget {
     this.separatorHeight = 0,
     this.backgroundColor,
     this.padding = EdgeInsets.zero,
+    this.controller,
   });
 
   @override
@@ -59,6 +63,7 @@ class VerticalScrollWithGradient extends StatelessWidget {
       children: [
         // Scrollable list
         ListView.separated(
+          controller: controller,
           scrollDirection: Axis.vertical,
           itemCount: itemCount,
           separatorBuilder: (_, __) => SizedBox(height: separatorHeight),

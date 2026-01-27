@@ -172,6 +172,72 @@
   "@device_offline_message": {
     "description": "Message shown when a device is not connected"
   },
+  "device_offline_title": "Device Offline",
+  "@device_offline_title": {
+    "description": "Title shown on device offline overlay"
+  },
+  "device_offline_description": "Unable to communicate with this device. Check if the device is powered on and connected to your network.",
+  "@device_offline_description": {
+    "description": "Description shown on device offline overlay"
+  },
+  "device_offline_retry": "Retry Connection",
+  "@device_offline_retry": {
+    "description": "Button label to retry connection to offline device"
+  },
+  "device_offline_last_seen": "Last seen {time}",
+  "@device_offline_last_seen": {
+    "description": "Shows when device was last online",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "5 min ago"
+      }
+    }
+  },
+  "devices_offline_skipped": "{count, plural, =1{Skipped 1 offline device} other{Skipped {count} offline devices}}",
+  "@devices_offline_skipped": {
+    "description": "Message shown when devices are skipped due to being offline",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "all_devices_offline": "All devices are offline",
+  "@all_devices_offline": {
+    "description": "Message shown when all targeted devices are offline"
+  },
+  "time_ago_just_now": "just now",
+  "@time_ago_just_now": {
+    "description": "Time ago label for less than a minute"
+  },
+  "time_ago_minutes": "{count} min ago",
+  "@time_ago_minutes": {
+    "description": "Time ago label for minutes",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "time_ago_hours": "{count} h ago",
+  "@time_ago_hours": {
+    "description": "Time ago label for hours",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "time_ago_days": "{count} d ago",
+  "@time_ago_days": {
+    "description": "Time ago label for days",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "device_config_issue": "Configuration issue",
   "@device_config_issue": {
     "description": "Message shown when a device has configuration problems"

@@ -32,6 +32,7 @@ import 'package:fastybird_smart_panel/modules/scenes/service.dart';
 import 'package:fastybird_smart_panel/modules/scenes/views/scenes/view.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/service.dart';
+import 'package:fastybird_smart_panel/modules/spaces/utils/intent_result_handler.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/light_targets/view.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -1705,11 +1706,17 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         // Turn all lights off
         final result = await _spacesService?.turnLightsOff(_roomId);
         success = result != null;
+        if (mounted) {
+          IntentResultHandler.showOfflineAlertIfNeeded(context, result);
+        }
       } else {
         // Set the mode - backend handles turning on appropriate lights
         final backendMode = mode.toBackendMode();
         final result = await _spacesService?.setLightingMode(_roomId, backendMode);
         success = result != null;
+        if (mounted) {
+          IntentResultHandler.showOfflineAlertIfNeeded(context, result);
+        }
       }
 
       if (success && mounted) {
@@ -1806,9 +1813,15 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       if (anyOn) {
         final result = await spacesService.turnRoleOff(_roomId, stateRole);
         success = result != null;
+        if (mounted) {
+          IntentResultHandler.showOfflineAlertIfNeeded(context, result);
+        }
       } else {
         final result = await spacesService.turnRoleOn(_roomId, stateRole);
         success = result != null;
+        if (mounted) {
+          IntentResultHandler.showOfflineAlertIfNeeded(context, result);
+        }
       }
 
       if (success && mounted) {

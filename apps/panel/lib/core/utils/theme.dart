@@ -306,10 +306,10 @@ class AppBgColorLight {
   static const Color overlay = Color(0xFFffffff);
 
   /// Semi-transparent page overlay (50% opacity)
-  static const Color pageOverlay50 = Color.fromRGBO(242, 243, 245, 0.5);
+  static const Color pageOverlay50 = Color.fromRGBO(0, 0, 0, 0.5);
 
   /// Semi-transparent page overlay (70% opacity)
-  static const Color pageOverlay70 = Color.fromRGBO(242, 243, 245, 0.7);
+  static const Color pageOverlay70 = Color.fromRGBO(0, 0, 0, 0.7);
 }
 
 class AppTextColorLight {
@@ -459,11 +459,11 @@ class AppBgColorDark {
   static const Color base = Color(0xFF141414);
   static const Color overlay = Color(0xFF1d1e1f);
 
-  /// Semi-transparent overlay (50% opacity)
-  static const Color overlayOverlay50 = Color.fromRGBO(29, 30, 31, 0.5);
+  /// Semi-transparent page overlay (50% opacity)
+  static const Color pageOverlay50 = Color.fromRGBO(0, 0, 0, 0.5);
 
-  /// Semi-transparent overlay (70% opacity)
-  static const Color overlayOverlay70 = Color.fromRGBO(29, 30, 31, 0.7);
+  /// Semi-transparent page overlay (70% opacity)
+  static const Color pageOverlay70 = Color.fromRGBO(0, 0, 0, 0.7);
 }
 
 class AppTextColorDark {

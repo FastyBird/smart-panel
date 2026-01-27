@@ -5,11 +5,15 @@ class LightingIntentResult {
   final bool success;
   final int affectedDevices;
   final int failedDevices;
+  final int? skippedOfflineDevices;
+  final List<String>? offlineDeviceIds;
 
   LightingIntentResult({
     required this.success,
     required this.affectedDevices,
     required this.failedDevices,
+    this.skippedOfflineDevices,
+    this.offlineDeviceIds,
   });
 
   factory LightingIntentResult.fromJson(Map<String, dynamic> json) {
@@ -17,6 +21,10 @@ class LightingIntentResult {
       success: json['success'] as bool? ?? false,
       affectedDevices: json['affected_devices'] as int? ?? 0,
       failedDevices: json['failed_devices'] as int? ?? 0,
+      skippedOfflineDevices: json['skipped_offline_devices'] as int?,
+      offlineDeviceIds: (json['offline_device_ids'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
     );
   }
 }
@@ -26,6 +34,8 @@ class ClimateIntentResult {
   final bool success;
   final int affectedDevices;
   final int failedDevices;
+  final int? skippedOfflineDevices;
+  final List<String>? offlineDeviceIds;
   final ClimateMode? mode;
   /// Heating setpoint (used in HEAT and AUTO modes)
   final double? heatingSetpoint;
@@ -36,6 +46,8 @@ class ClimateIntentResult {
     required this.success,
     required this.affectedDevices,
     required this.failedDevices,
+    this.skippedOfflineDevices,
+    this.offlineDeviceIds,
     this.mode,
     this.heatingSetpoint,
     this.coolingSetpoint,
@@ -46,6 +58,10 @@ class ClimateIntentResult {
       success: json['success'] as bool? ?? false,
       affectedDevices: json['affected_devices'] as int? ?? 0,
       failedDevices: json['failed_devices'] as int? ?? 0,
+      skippedOfflineDevices: json['skipped_offline_devices'] as int?,
+      offlineDeviceIds: (json['offline_device_ids'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
       mode: parseClimateMode(json['mode'] as String?),
       heatingSetpoint: (json['heating_setpoint'] as num?)?.toDouble(),
       coolingSetpoint: (json['cooling_setpoint'] as num?)?.toDouble(),
@@ -58,12 +74,16 @@ class CoversIntentResult {
   final bool success;
   final int affectedDevices;
   final int failedDevices;
+  final int? skippedOfflineDevices;
+  final List<String>? offlineDeviceIds;
   final int? newPosition;
 
   CoversIntentResult({
     required this.success,
     required this.affectedDevices,
     required this.failedDevices,
+    this.skippedOfflineDevices,
+    this.offlineDeviceIds,
     this.newPosition,
   });
 
@@ -72,6 +92,10 @@ class CoversIntentResult {
       success: json['success'] as bool? ?? false,
       affectedDevices: json['affected_devices'] as int? ?? 0,
       failedDevices: json['failed_devices'] as int? ?? 0,
+      skippedOfflineDevices: json['skipped_offline_devices'] as int?,
+      offlineDeviceIds: (json['offline_device_ids'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
       newPosition: json['new_position'] as int?,
     );
   }
@@ -82,6 +106,8 @@ class MediaIntentResult {
   final bool success;
   final int affectedDevices;
   final int failedDevices;
+  final int? skippedOfflineDevices;
+  final List<String>? offlineDeviceIds;
   final int? skippedDevices;
   final int? newVolume;
   final bool? isMuted;
@@ -90,6 +116,8 @@ class MediaIntentResult {
     required this.success,
     required this.affectedDevices,
     required this.failedDevices,
+    this.skippedOfflineDevices,
+    this.offlineDeviceIds,
     this.skippedDevices,
     this.newVolume,
     this.isMuted,
@@ -100,6 +128,10 @@ class MediaIntentResult {
       success: json['success'] as bool? ?? false,
       affectedDevices: json['affected_devices'] as int? ?? 0,
       failedDevices: json['failed_devices'] as int? ?? 0,
+      skippedOfflineDevices: json['skipped_offline_devices'] as int?,
+      offlineDeviceIds: (json['offline_device_ids'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
       skippedDevices: json['skipped_devices'] as int?,
       newVolume: (json['new_volume'] as num?)?.toInt(),
       isMuted: json['is_muted'] as bool?,
