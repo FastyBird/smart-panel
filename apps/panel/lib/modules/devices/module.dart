@@ -167,6 +167,14 @@ class DevicesModuleService {
         event == DevicesModuleConstants.deviceUpdatedEvent) {
       _devicesRepository.insert([payload]);
 
+      /// Device CONNECTION CHANGED
+    } else if (event == DevicesModuleConstants.deviceConnectionChangedEvent &&
+        payload.containsKey('device')) {
+      final device = payload['device'];
+      if (device is Map<String, dynamic>) {
+        _devicesRepository.insert([device]);
+      }
+
       /// Device DELETE
     } else if (event == DevicesModuleConstants.deviceDeletedEvent &&
         payload.containsKey('id')) {
