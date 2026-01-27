@@ -1886,12 +1886,6 @@ class AppLocalizationsCs extends AppLocalizations {
   String get connection_banner_reconnecting => 'Připojování...';
 
   @override
-  String get connection_banner_connecting => 'Připojování...';
-
-  @override
-  String get connection_banner_authenticating => 'Ověřování...';
-
-  @override
   String get connection_banner_retry => 'Zkusit znovu';
 
   @override

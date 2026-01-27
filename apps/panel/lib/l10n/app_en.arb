@@ -2561,14 +2561,6 @@
   "@connection_banner_reconnecting": {
     "description": "Banner text shown during reconnection attempts"
   },
-  "connection_banner_connecting": "Connecting...",
-  "@connection_banner_connecting": {
-    "description": "Banner text shown during initial connection"
-  },
-  "connection_banner_authenticating": "Authenticating...",
-  "@connection_banner_authenticating": {
-    "description": "Banner text shown during authentication"
-  },
   "connection_banner_retry": "Retry",
   "@connection_banner_retry": {
     "description": "Retry link text in connection banner"

@@ -9,12 +9,6 @@ enum SocketConnectionState {
   /// App starting, attempting first connection
   initializing,
 
-  /// Actively establishing connection
-  connecting,
-
-  /// Connection open, validating authentication
-  authenticating,
-
   /// Fully connected and operational
   online,
 

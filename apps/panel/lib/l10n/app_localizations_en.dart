@@ -1883,12 +1883,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get connection_banner_reconnecting => 'Reconnecting...';
 
   @override
-  String get connection_banner_connecting => 'Connecting...';
-
-  @override
-  String get connection_banner_authenticating => 'Authenticating...';
-
-  @override
   String get connection_banner_retry => 'Retry';
 
   @override

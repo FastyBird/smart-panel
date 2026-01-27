@@ -111,9 +111,8 @@ class ConnectionStateManager extends ChangeNotifier {
         _updateState(SocketConnectionState.reconnecting);
         _startEscalationTimer();
       });
-    } else if (_state == SocketConnectionState.initializing ||
-        _state == SocketConnectionState.connecting) {
-      // During initialization, don't debounce - show connecting state
+    } else if (_state == SocketConnectionState.initializing) {
+      // During initialization, don't debounce - show reconnecting state immediately
       _disconnectedAt = DateTime.now();
       _updateState(SocketConnectionState.reconnecting);
       _startEscalationTimer();
@@ -172,6 +171,8 @@ class ConnectionStateManager extends ChangeNotifier {
     if (kDebugMode) {
       debugPrint('[ConnectionStateManager] onReconnecting called');
     }
+
+    _debounceTimer?.cancel();
 
     if (_state != SocketConnectionState.online) {
       // Reset timestamp to give reconnection a fresh escalation window.
@@ -252,8 +253,6 @@ class ConnectionStateManager extends ChangeNotifier {
         return ConnectionUISeverity.none;
 
       case SocketConnectionState.initializing:
-      case SocketConnectionState.connecting:
-      case SocketConnectionState.authenticating:
         return ConnectionUISeverity.splash;
 
       case SocketConnectionState.reconnecting:
@@ -278,8 +277,7 @@ class ConnectionStateManager extends ChangeNotifier {
   bool shouldShowRecoveryToast(SocketConnectionState previousState) {
     return _state == SocketConnectionState.online &&
         previousState != SocketConnectionState.online &&
-        previousState != SocketConnectionState.initializing &&
-        previousState != SocketConnectionState.connecting;
+        previousState != SocketConnectionState.initializing;
   }
 
   @override

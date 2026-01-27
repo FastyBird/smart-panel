@@ -3719,18 +3719,6 @@ abstract class AppLocalizations {
   /// **'Reconnecting...'**
   String get connection_banner_reconnecting;
 
-  /// Banner text shown during initial connection
-  ///
-  /// In en, this message translates to:
-  /// **'Connecting...'**
-  String get connection_banner_connecting;
-
-  /// Banner text shown during authentication
-  ///
-  /// In en, this message translates to:
-  /// **'Authenticating...'**
-  String get connection_banner_authenticating;
-
   /// Retry link text in connection banner
   ///
   /// In en, this message translates to:

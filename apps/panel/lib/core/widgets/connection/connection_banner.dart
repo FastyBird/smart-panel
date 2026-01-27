@@ -88,11 +88,7 @@ class ConnectionBanner extends StatelessWidget {
   }
 
   String _getMessage(AppLocalizations localizations) {
-    return switch (state) {
-      SocketConnectionState.reconnecting => localizations.connection_banner_reconnecting,
-      SocketConnectionState.connecting => localizations.connection_banner_connecting,
-      SocketConnectionState.authenticating => localizations.connection_banner_authenticating,
-      _ => localizations.connection_banner_connecting,
-    };
+    // Banner is only shown for reconnecting state (severity: banner)
+    return localizations.connection_banner_reconnecting;
   }
 }

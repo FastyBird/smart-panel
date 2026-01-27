@@ -631,8 +631,6 @@
   "light_color_pink": "Růžová",
 
   "connection_banner_reconnecting": "Připojování...",
-  "connection_banner_connecting": "Připojování...",
-  "connection_banner_authenticating": "Ověřování...",
   "connection_banner_retry": "Zkusit znovu",
 
   "connection_overlay_title_reconnecting": "Připojování",
