@@ -11,15 +11,14 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 ///
 /// This screen is displayed when the WebSocket connection fails due to
 /// an authentication error (invalid token, expired session, etc.).
-/// It provides options to re-authenticate or change the gateway.
+/// The user must go through the gateway discovery and registration flow again.
 class AuthErrorScreen extends StatelessWidget {
-  final VoidCallback? onReAuthenticate;
-  final VoidCallback? onChangeGateway;
+  /// Callback to initiate re-authentication flow (resets to gateway discovery)
+  final VoidCallback? onSignIn;
 
   const AuthErrorScreen({
     super.key,
-    this.onReAuthenticate,
-    this.onChangeGateway,
+    this.onSignIn,
   });
 
   @override
@@ -78,13 +77,25 @@ class AuthErrorScreen extends StatelessWidget {
                       ),
                     ),
                     SizedBox(height: AppSpacings.pXl),
-                    // Buttons
-                    _buildButtons(
-                      screenService: screenService,
-                      localizations: localizations,
-                      isDark: isDark,
-                      isLandscape: isLandscape,
-                    ),
+                    // Single sign-in button
+                    if (isLandscape)
+                      SystemPagePrimaryButton(
+                        label: localizations.connection_auth_error_button_reauth,
+                        icon: MdiIcons.login,
+                        onPressed: onSignIn,
+                        isDark: isDark,
+                      )
+                    else
+                      SizedBox(
+                        width: double.infinity,
+                        child: SystemPagePrimaryButton(
+                          label: localizations.connection_auth_error_button_reauth,
+                          icon: MdiIcons.login,
+                          onPressed: onSignIn,
+                          minWidth: double.infinity,
+                          isDark: isDark,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -92,60 +103,6 @@ class AuthErrorScreen extends StatelessWidget {
           },
         ),
       ),
-    );
-  }
-
-  Widget _buildButtons({
-    required ScreenService screenService,
-    required AppLocalizations localizations,
-    required bool isDark,
-    required bool isLandscape,
-  }) {
-    if (isLandscape) {
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SystemPagePrimaryButton(
-            label: localizations.connection_auth_error_button_reauth,
-            icon: MdiIcons.login,
-            onPressed: onReAuthenticate,
-            isDark: isDark,
-          ),
-          SizedBox(width: AppSpacings.pLg),
-          SystemPageSecondaryButton(
-            label: localizations.connection_auth_error_button_change_gateway,
-            icon: MdiIcons.wifi,
-            onPressed: onChangeGateway,
-            isDark: isDark,
-          ),
-        ],
-      );
-    }
-
-    return Column(
-      children: [
-        SizedBox(
-          width: double.infinity,
-          child: SystemPagePrimaryButton(
-            label: localizations.connection_auth_error_button_reauth,
-            icon: MdiIcons.login,
-            onPressed: onReAuthenticate,
-            minWidth: double.infinity,
-            isDark: isDark,
-          ),
-        ),
-        SizedBox(height: AppSpacings.pMd + AppSpacings.pSm),
-        SizedBox(
-          width: double.infinity,
-          child: SystemPageSecondaryButton(
-            label: localizations.connection_auth_error_button_change_gateway,
-            icon: MdiIcons.wifi,
-            onPressed: onChangeGateway,
-            isDark: isDark,
-            minWidth: double.infinity,
-          ),
-        ),
-      ],
     );
   }
 }

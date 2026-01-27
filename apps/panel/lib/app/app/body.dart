@@ -272,8 +272,7 @@ class _AppBodyState extends State<AppBody> {
     switch (state) {
       case SocketConnectionState.authError:
         return AuthErrorScreen(
-          onReAuthenticate: _handleChangeGateway,
-          onChangeGateway: _handleChangeGateway,
+          onSignIn: _handleChangeGateway,
         );
 
       case SocketConnectionState.networkUnavailable:
