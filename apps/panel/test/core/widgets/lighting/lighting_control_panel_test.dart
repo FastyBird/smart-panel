@@ -1,8 +1,8 @@
-import 'package:fastybird_smart_panel/core/widgets/lighting/lighting_control_panel.dart';
+import 'package:fastybird_smart_panel/core/widgets/lighting/export.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 // =============================================================================
-// Tests for LightingControlPanel
+// Tests for Lighting Types
 // =============================================================================
 
 void main() {

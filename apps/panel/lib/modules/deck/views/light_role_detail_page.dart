@@ -1,9 +1,15 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/color.dart';
+import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/lighting/export.dart';
+import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
@@ -66,11 +72,18 @@ class LightRoleDetailPage extends StatefulWidget {
 }
 
 class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
+  final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
+
   SpacesService? _spacesService;
   DevicesService? _devicesService;
   IntentOverlayService? _intentOverlayService;
   RoleControlStateRepository? _roleControlStateRepository;
   DeviceControlStateService? _deviceControlStateService;
+
+  double _scale(double size) =>
+      _screenService.scale(size, density: _visualDensityService.density);
 
   // Domain control state service for optimistic UI (role-level)
   late DomainControlStateService<LightTargetView> _controlStateService;
@@ -88,6 +101,9 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
 
   // Flag to track if we've loaded cached values
   bool _cacheLoaded = false;
+
+  // Selected capability for mode selector
+  LightCapability _selectedCapability = LightCapability.brightness;
 
   // Debounce timers for sliders
   Timer? _brightnessDebounceTimer;
@@ -1731,6 +1747,8 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
   Widget build(BuildContext context) {
     final spacesService = _spacesService;
     final devicesService = _devicesService;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? AppBgColorDark.page : AppBgColorLight.page;
 
     if (spacesService == null || devicesService == null) {
       return const Scaffold(
@@ -1950,149 +1968,362 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
           HSVColor.fromAHSV(1.0, baseHue, saturation, 1.0).toColor();
     }
 
-    return LightingControlPanel(
-      // Header
+    return Scaffold(
+      backgroundColor: bgColor,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildHeader(context, isDark, displayIsOn, roleMixedState, () => _toggleAllLights(targets)),
+            Expanded(
+              child: OrientationBuilder(
+                builder: (context, orientation) {
+                  final isLandscape = orientation == Orientation.landscape;
+
+                  // Callbacks for value changes
+                  void onBrightnessChanged(int value) {
+                    _controlStateService.setPending(
+                      LightingConstants.brightnessChannelId,
+                      value.toDouble(),
+                    );
+                    _saveToCache(brightness: value.toDouble());
+                    _brightnessDebounceTimer?.cancel();
+                    _brightnessDebounceTimer = Timer(
+                      const Duration(milliseconds: LightingConstants.sliderDebounceMs),
+                      () {
+                        if (!mounted) return;
+                        _setSimplePropertyForAll(
+                          targets: targets,
+                          propertyType: SimplePropertyType.brightness,
+                          value: value,
+                        );
+                      },
+                    );
+                  }
+
+                  void onColorTempChanged(int value) {
+                    _controlStateService.setPending(
+                      LightingConstants.temperatureChannelId,
+                      value.toDouble(),
+                    );
+                    _saveToCache(temperature: value.toDouble());
+                    _temperatureDebounceTimer?.cancel();
+                    _temperatureDebounceTimer = Timer(
+                      const Duration(milliseconds: LightingConstants.sliderDebounceMs),
+                      () {
+                        if (!mounted) return;
+                        _setSimplePropertyForAll(
+                          targets: targets,
+                          propertyType: SimplePropertyType.temperature,
+                          value: value,
+                        );
+                      },
+                    );
+                  }
+
+                  void onColorChanged(Color color, double saturationValue) {
+                    final hsv = HSVColor.fromColor(color);
+                    final hue = hsv.hue;
+                    _controlStateService.setPending(
+                      LightingConstants.hueChannelId,
+                      hue,
+                    );
+                    _controlStateService.setPending(
+                      LightingConstants.saturationChannelId,
+                      saturationValue,
+                    );
+                    _saveToCache(hue: hue, saturation: saturationValue);
+                    _hueDebounceTimer?.cancel();
+                    _hueDebounceTimer = Timer(
+                      const Duration(milliseconds: LightingConstants.sliderDebounceMs),
+                      () {
+                        if (!mounted) return;
+                        _setColorForAll(targets, hue, saturationValue);
+                      },
+                    );
+                  }
+
+                  void onWhiteChannelChanged(int value) {
+                    _controlStateService.setPending(
+                      LightingConstants.whiteChannelId,
+                      value.toDouble(),
+                    );
+                    _saveToCache(white: value.toDouble());
+                    _whiteDebounceTimer?.cancel();
+                    _whiteDebounceTimer = Timer(
+                      const Duration(milliseconds: LightingConstants.sliderDebounceMs),
+                      () {
+                        if (!mounted) return;
+                        _setSimplePropertyForAll(
+                          targets: targets,
+                          propertyType: SimplePropertyType.white,
+                          value: value,
+                        );
+                      },
+                    );
+                  }
+
+                  void onSyncAll() {
+                    if (!displayIsOn) {
+                      _setAllLightsOff(targets);
+                      return;
+                    }
+                    _setAllLightsOn(targets);
+                    if (allCapabilities.contains(LightCapability.brightness)) {
+                      _setSimplePropertyForAll(
+                        targets: targets,
+                        propertyType: SimplePropertyType.brightness,
+                        value: displayBrightness,
+                      );
+                    }
+                    if (allCapabilities.contains(LightCapability.colorTemp)) {
+                      _setSimplePropertyForAll(
+                        targets: targets,
+                        propertyType: SimplePropertyType.temperature,
+                        value: displayColorTemp,
+                      );
+                    }
+                    if (allCapabilities.contains(LightCapability.color) && baseColor != null) {
+                      final hue = _controlStateService.getDesiredValue(LightingConstants.hueChannelId) ??
+                          HSVColor.fromColor(baseColor).hue;
+                      _setHueForAll(targets, hue, saturation);
+                    }
+                    if (allCapabilities.contains(LightCapability.white)) {
+                      _setSimplePropertyForAll(
+                        targets: targets,
+                        propertyType: SimplePropertyType.white,
+                        value: displayWhite,
+                      );
+                    }
+                  }
+
+                  // Helper to check if simple device (power only)
+                  final isSimple = allCapabilities.length == 1 &&
+                      allCapabilities.contains(LightCapability.power);
+
+                  // Get enabled capabilities (excluding power)
+                  final enabledCapabilities = [
+                    LightCapability.brightness,
+                    LightCapability.colorTemp,
+                    LightCapability.color,
+                    LightCapability.white,
+                  ].where((cap) => allCapabilities.contains(cap)).toList();
+
+                  // Ensure selected capability is valid
+                  if (enabledCapabilities.isNotEmpty &&
+                      !enabledCapabilities.contains(_selectedCapability)) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        setState(() => _selectedCapability = enabledCapabilities.first);
+                      }
+                    });
+                  }
+
+                  final showModeSelector = !isSimple && enabledCapabilities.length > 1;
+                  final showPresets = !isSimple;
+
+                  if (isLandscape) {
+                    // Build additional content (presets + channels)
+                    final additionalContent = Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (showPresets)
+                          LightingPresetsPanel(
+                            selectedCapability: _selectedCapability,
+                            brightness: displayBrightness,
+                            colorTemp: displayColorTemp,
+                            color: displayColor,
+                            whiteChannel: displayWhite,
+                            isLandscape: true,
+                            onBrightnessChanged: onBrightnessChanged,
+                            onColorTempChanged: onColorTempChanged,
+                            onColorChanged: onColorChanged,
+                            onWhiteChannelChanged: onWhiteChannelChanged,
+                          ),
+                        if (showPresets) SizedBox(height: AppSpacings.pLg),
+                        LightingChannelsList(
+                          channels: channels,
+                          state: state,
+                          isLandscape: true,
+                          onChannelIconTap: (channel) => _toggleChannel(channel),
+                          onChannelTileTap: (channel) => _navigateToChannelDetail(channel),
+                          onSyncAll: onSyncAll,
+                        ),
+                      ],
+                    );
+
+                    return LandscapeViewLayout(
+                      mainContentPadding: EdgeInsets.zero,
+                      mainContent: LightingMainControl(
+                        selectedCapability: _selectedCapability,
+                        isOn: displayIsOn,
+                        brightness: displayBrightness,
+                        colorTemp: displayColorTemp,
+                        color: displayColor,
+                        saturation: saturation,
+                        whiteChannel: displayWhite,
+                        capabilities: allCapabilities,
+                        isLandscape: true,
+                        onPowerToggle: () => _toggleAllLights(targets),
+                        onBrightnessChanged: onBrightnessChanged,
+                        onColorTempChanged: onColorTempChanged,
+                        onColorChanged: onColorChanged,
+                        onWhiteChannelChanged: onWhiteChannelChanged,
+                      ),
+                      modeSelector: showModeSelector
+                          ? LightingModeSelector(
+                              capabilities: allCapabilities,
+                              selectedCapability: _selectedCapability,
+                              onCapabilityChanged: (value) {
+                                setState(() => _selectedCapability = value);
+                              },
+                              isVertical: true,
+                            )
+                          : null,
+                      additionalContent: additionalContent,
+                    );
+                  }
+
+                  // Portrait layout - build main content
+                  final mainContent = Column(
+                    spacing: AppSpacings.pMd,
+                    children: [
+                      if (showModeSelector)
+                        LightingModeSelector(
+                            capabilities: allCapabilities,
+                            selectedCapability: _selectedCapability,
+                            onCapabilityChanged: (value) {
+                              setState(() => _selectedCapability = value);
+                            },
+                            isVertical: false,
+                          ),
+                      // Main control
+                      Expanded(
+                        child: LightingMainControl(
+                          selectedCapability: _selectedCapability,
+                          isOn: displayIsOn,
+                          brightness: displayBrightness,
+                          colorTemp: displayColorTemp,
+                          color: displayColor,
+                          saturation: saturation,
+                          whiteChannel: displayWhite,
+                          capabilities: allCapabilities,
+                          isLandscape: false,
+                          onPowerToggle: () => _toggleAllLights(targets),
+                          onBrightnessChanged: onBrightnessChanged,
+                          onColorTempChanged: onColorTempChanged,
+                          onColorChanged: onColorChanged,
+                          onWhiteChannelChanged: onWhiteChannelChanged,
+                        ),
+                      ),
+                      // Presets
+                      if (showPresets)
+                        LightingPresetsPanel(
+                          selectedCapability: _selectedCapability,
+                          brightness: displayBrightness,
+                          colorTemp: displayColorTemp,
+                          color: displayColor,
+                          whiteChannel: displayWhite,
+                          isLandscape: false,
+                          onBrightnessChanged: onBrightnessChanged,
+                          onColorTempChanged: onColorTempChanged,
+                          onColorChanged: onColorChanged,
+                          onWhiteChannelChanged: onWhiteChannelChanged,
+                        ),
+                    ],
+                  );
+
+                  return PortraitViewLayout(
+                    contentPadding: AppSpacings.paddingLg,
+                    scrollable: false,
+                    content: mainContent,
+                    stickyBottom: LightingChannelsList(
+                      channels: channels,
+                      state: state,
+                      isLandscape: false,
+                      onChannelIconTap: (channel) => _toggleChannel(channel),
+                      onChannelTileTap: (channel) => _navigateToChannelDetail(channel),
+                      onSyncAll: onSyncAll,
+                    ),
+                    useStickyBottomPadding: false,
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(
+    BuildContext context,
+    bool isDark,
+    bool isOn,
+    RoleMixedState roleMixedState,
+    VoidCallback onPowerToggle,
+  ) {
+    final primaryColor =
+        isDark ? AppColorsDark.primary : AppColorsLight.primary;
+    final primaryBgColor =
+        isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9;
+    final inactiveBgColor =
+        isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
+    final inactiveIconColor =
+        isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled;
+
+    return PageHeader(
       title: _getRoleName(widget.role),
       subtitle: _getLightStateSubtitle(roleMixedState),
-      icon: getLightRoleIcon(widget.role),
-      onBack: () => Navigator.pop(context),
-
-      // Current values
-      isOn: displayIsOn,
-      brightness: displayBrightness,
-      colorTemp: displayColorTemp,
-      color: displayColor,
-      saturation: saturation,
-      whiteChannel: displayWhite,
-
-      // Configuration
-      capabilities: allCapabilities,
-      state: state,
-      channels: channels,
-      channelsPanelIcon: Icons.check_circle,
-
-      // Callbacks
-      onPowerToggle: () => _toggleAllLights(targets),
-      onBrightnessChanged: (value) {
-        _controlStateService.setPending(
-          LightingConstants.brightnessChannelId,
-          value.toDouble(),
-        );
-        _saveToCache(brightness: value.toDouble());
-        _brightnessDebounceTimer?.cancel();
-        _brightnessDebounceTimer = Timer(
-          const Duration(milliseconds: LightingConstants.sliderDebounceMs),
-          () {
-            if (!mounted) return;
-            _setSimplePropertyForAll(
-              targets: targets,
-              propertyType: SimplePropertyType.brightness,
-              value: value,
-            );
-          },
-        );
-      },
-      onColorTempChanged: (value) {
-        _controlStateService.setPending(
-          LightingConstants.temperatureChannelId,
-          value.toDouble(),
-        );
-        _saveToCache(temperature: value.toDouble());
-        _temperatureDebounceTimer?.cancel();
-        _temperatureDebounceTimer = Timer(
-          const Duration(milliseconds: LightingConstants.sliderDebounceMs),
-          () {
-            if (!mounted) return;
-            _setSimplePropertyForAll(
-              targets: targets,
-              propertyType: SimplePropertyType.temperature,
-              value: value,
-            );
-          },
-        );
-      },
-      onColorChanged: (color, saturationValue) {
-        final hsv = HSVColor.fromColor(color);
-        final hue = hsv.hue;
-        // Set pending state for both hue and saturation
-        _controlStateService.setPending(
-          LightingConstants.hueChannelId,
-          hue,
-        );
-        _controlStateService.setPending(
-          LightingConstants.saturationChannelId,
-          saturationValue,
-        );
-        _saveToCache(hue: hue, saturation: saturationValue);
-        _hueDebounceTimer?.cancel();
-        _hueDebounceTimer = Timer(
-          const Duration(milliseconds: LightingConstants.sliderDebounceMs),
-          () {
-            if (!mounted) return;
-            _setColorForAll(targets, hue, saturationValue);
-          },
-        );
-      },
-      onWhiteChannelChanged: (value) {
-        _controlStateService.setPending(
-          LightingConstants.whiteChannelId,
-          value.toDouble(),
-        );
-        _saveToCache(white: value.toDouble());
-        _whiteDebounceTimer?.cancel();
-        _whiteDebounceTimer = Timer(
-          const Duration(milliseconds: LightingConstants.sliderDebounceMs),
-          () {
-            if (!mounted) return;
-            _setSimplePropertyForAll(
-              targets: targets,
-              propertyType: SimplePropertyType.white,
-              value: value,
-            );
-          },
-        );
-      },
-      onChannelIconTap: (channel) => _toggleChannel(channel),
-      onChannelTileTap: (channel) => _navigateToChannelDetail(channel),
-      onSyncAll: () {
-        // When state is off, only send off command (avoid sending brightness etc. which would turn lights on)
-        if (!displayIsOn) {
-          _setAllLightsOff(targets);
-          return;
-        }
-
-        // Turn all lights on first, then sync property values
-        _setAllLightsOn(targets);
-
-        // Sync all devices to current displayed values for all capabilities
-        if (allCapabilities.contains(LightCapability.brightness)) {
-          _setSimplePropertyForAll(
-            targets: targets,
-            propertyType: SimplePropertyType.brightness,
-            value: displayBrightness,
-          );
-        }
-        if (allCapabilities.contains(LightCapability.colorTemp)) {
-          _setSimplePropertyForAll(
-            targets: targets,
-            propertyType: SimplePropertyType.temperature,
-            value: displayColorTemp,
-          );
-        }
-        if (allCapabilities.contains(LightCapability.color) && baseColor != null) {
-          final hue = _controlStateService.getDesiredValue(LightingConstants.hueChannelId) ??
-              HSVColor.fromColor(baseColor).hue;
-          // Use the displayed saturation value (already calculated earlier in build)
-          _setHueForAll(targets, hue, saturation);
-        }
-        if (allCapabilities.contains(LightCapability.white)) {
-          _setSimplePropertyForAll(
-            targets: targets,
-            propertyType: SimplePropertyType.white,
-            value: displayWhite,
-          );
-        }
-      },
+      backgroundColor: AppColors.blank,
+      leading: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          HeaderIconButton(
+            icon: Icons.arrow_back_ios_new,
+            onTap: () => Navigator.pop(context),
+          ),
+          AppSpacings.spacingMdHorizontal,
+          Container(
+            width: _scale(44),
+            height: _scale(44),
+            decoration: BoxDecoration(
+              color: isOn ? primaryBgColor : inactiveBgColor,
+              borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+            ),
+            child: Icon(
+              getLightRoleIcon(widget.role),
+              color: isOn ? primaryColor : inactiveIconColor,
+              size: _scale(24),
+            ),
+          ),
+        ],
+      ),
+      trailing: GestureDetector(
+        onTap: onPowerToggle,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: _scale(48),
+          height: _scale(32),
+          decoration: BoxDecoration(
+            color: isOn
+                ? primaryColor
+                : (isDark ? AppFillColorDark.light : AppFillColorLight.light),
+            borderRadius: BorderRadius.circular(AppBorderRadius.round),
+            border: (!isOn && !isDark)
+                ? Border.all(color: AppBorderColorLight.base, width: _scale(1))
+                : null,
+          ),
+          child: Icon(
+            Icons.power_settings_new,
+            size: _scale(18),
+            color: isOn
+                ? AppColors.white
+                : (isDark
+                    ? AppTextColorDark.secondary
+                    : AppTextColorLight.secondary),
+          ),
+        ),
+      ),
     );
   }
 }
