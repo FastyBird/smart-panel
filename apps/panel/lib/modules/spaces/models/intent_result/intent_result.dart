@@ -7,6 +7,7 @@ class LightingIntentResult {
   final int failedDevices;
   final int? skippedOfflineDevices;
   final List<String>? offlineDeviceIds;
+  final List<String>? failedTargets;
 
   LightingIntentResult({
     required this.success,
@@ -14,6 +15,7 @@ class LightingIntentResult {
     required this.failedDevices,
     this.skippedOfflineDevices,
     this.offlineDeviceIds,
+    this.failedTargets,
   });
 
   factory LightingIntentResult.fromJson(Map<String, dynamic> json) {
@@ -23,6 +25,9 @@ class LightingIntentResult {
       failedDevices: json['failed_devices'] as int? ?? 0,
       skippedOfflineDevices: json['skipped_offline_devices'] as int?,
       offlineDeviceIds: (json['offline_device_ids'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
+      failedTargets: (json['failed_targets'] as List<dynamic>?)
           ?.map((e) => e as String)
           .toList(),
     );
@@ -36,6 +41,7 @@ class ClimateIntentResult {
   final int failedDevices;
   final int? skippedOfflineDevices;
   final List<String>? offlineDeviceIds;
+  final List<String>? failedTargets;
   final ClimateMode? mode;
   /// Heating setpoint (used in HEAT and AUTO modes)
   final double? heatingSetpoint;
@@ -48,6 +54,7 @@ class ClimateIntentResult {
     required this.failedDevices,
     this.skippedOfflineDevices,
     this.offlineDeviceIds,
+    this.failedTargets,
     this.mode,
     this.heatingSetpoint,
     this.coolingSetpoint,
@@ -60,6 +67,9 @@ class ClimateIntentResult {
       failedDevices: json['failed_devices'] as int? ?? 0,
       skippedOfflineDevices: json['skipped_offline_devices'] as int?,
       offlineDeviceIds: (json['offline_device_ids'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
+      failedTargets: (json['failed_targets'] as List<dynamic>?)
           ?.map((e) => e as String)
           .toList(),
       mode: parseClimateMode(json['mode'] as String?),
@@ -76,6 +86,7 @@ class CoversIntentResult {
   final int failedDevices;
   final int? skippedOfflineDevices;
   final List<String>? offlineDeviceIds;
+  final List<String>? failedTargets;
   final int? newPosition;
 
   CoversIntentResult({
@@ -84,6 +95,7 @@ class CoversIntentResult {
     required this.failedDevices,
     this.skippedOfflineDevices,
     this.offlineDeviceIds,
+    this.failedTargets,
     this.newPosition,
   });
 
@@ -94,6 +106,9 @@ class CoversIntentResult {
       failedDevices: json['failed_devices'] as int? ?? 0,
       skippedOfflineDevices: json['skipped_offline_devices'] as int?,
       offlineDeviceIds: (json['offline_device_ids'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
+      failedTargets: (json['failed_targets'] as List<dynamic>?)
           ?.map((e) => e as String)
           .toList(),
       newPosition: json['new_position'] as int?,
@@ -108,7 +123,6 @@ class MediaIntentResult {
   final int failedDevices;
   final int? skippedOfflineDevices;
   final List<String>? offlineDeviceIds;
-  final int? skippedDevices;
   final List<String>? failedTargets;
   final int? newVolume;
   final bool? isMuted;
@@ -119,7 +133,6 @@ class MediaIntentResult {
     required this.failedDevices,
     this.skippedOfflineDevices,
     this.offlineDeviceIds,
-    this.skippedDevices,
     this.failedTargets,
     this.newVolume,
     this.isMuted,
@@ -134,7 +147,6 @@ class MediaIntentResult {
       offlineDeviceIds: (json['offline_device_ids'] as List<dynamic>?)
           ?.map((e) => e as String)
           .toList(),
-      skippedDevices: json['skipped_devices'] as int?,
       failedTargets: (json['failed_targets'] as List<dynamic>?)
           ?.map((e) => e as String)
           .toList(),

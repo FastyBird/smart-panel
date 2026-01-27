@@ -276,6 +276,9 @@ export class CoversIntentService extends SpaceIntentBaseService {
 			result.offlineDeviceIds = targetedOfflineIds;
 		}
 
+		// Extract failed device IDs from target results
+		result.failedTargets = targetResults.filter((t) => t.status === IntentTargetStatus.FAILED).map((t) => t.deviceId);
+
 		// Complete intent with results (emits Intent.Completed event)
 		this.intentsService.completeIntent(intentRecord.id, targetResults);
 

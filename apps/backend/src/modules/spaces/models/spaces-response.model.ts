@@ -245,6 +245,16 @@ export class LightingIntentResultDataModel {
 	})
 	@Expose({ name: 'offline_device_ids' })
 	offlineDeviceIds?: string[];
+
+	@ApiPropertyOptional({
+		name: 'failed_targets',
+		description: 'List of device IDs where command execution failed',
+		type: [String],
+		nullable: true,
+		example: ['device-uuid-1'],
+	})
+	@Expose({ name: 'failed_targets' })
+	failedTargets: string[] | null;
 }
 
 /**
@@ -480,6 +490,16 @@ export class ClimateIntentResultDataModel {
 	})
 	@Expose({ name: 'offline_device_ids' })
 	offlineDeviceIds?: string[];
+
+	@ApiPropertyOptional({
+		name: 'failed_targets',
+		description: 'List of device IDs where command execution failed',
+		type: [String],
+		nullable: true,
+		example: ['device-uuid-1'],
+	})
+	@Expose({ name: 'failed_targets' })
+	failedTargets: string[] | null;
 
 	@ApiProperty({
 		name: 'mode',
@@ -1489,6 +1509,16 @@ export class CoversIntentResultDataModel {
 	})
 	@Expose({ name: 'offline_device_ids' })
 	offlineDeviceIds?: string[];
+
+	@ApiPropertyOptional({
+		name: 'failed_targets',
+		description: 'List of device IDs where command execution failed',
+		type: [String],
+		nullable: true,
+		example: ['device-uuid-1'],
+	})
+	@Expose({ name: 'failed_targets' })
+	failedTargets: string[] | null;
 
 	@ApiPropertyOptional({
 		name: 'new_position',
@@ -3723,16 +3753,6 @@ export class MediaIntentResultDataModel {
 	})
 	@Expose({ name: 'offline_device_ids' })
 	offlineDeviceIds?: string[];
-
-	@ApiPropertyOptional({
-		name: 'skipped_devices',
-		description: 'Number of devices skipped (no capability)',
-		type: 'integer',
-		nullable: true,
-		example: 1,
-	})
-	@Expose({ name: 'skipped_devices' })
-	skippedDevices: number | null;
 
 	@ApiPropertyOptional({
 		name: 'new_volume',

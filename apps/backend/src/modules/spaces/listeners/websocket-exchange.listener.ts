@@ -177,6 +177,7 @@ export class WebsocketExchangeListener implements OnModuleInit {
 					failed_devices: result.failedDevices,
 					skipped_offline_devices: result.skippedOfflineDevices,
 					offline_device_ids: result.offlineDeviceIds,
+					failed_targets: result.failedTargets,
 				},
 			};
 		} catch (error) {
@@ -231,6 +232,7 @@ export class WebsocketExchangeListener implements OnModuleInit {
 					failed_devices: result.failedDevices,
 					skipped_offline_devices: result.skippedOfflineDevices,
 					offline_device_ids: result.offlineDeviceIds,
+					failed_targets: result.failedTargets,
 					heating_setpoint: result.heatingSetpoint,
 					cooling_setpoint: result.coolingSetpoint,
 					mode: result.mode,
@@ -288,6 +290,7 @@ export class WebsocketExchangeListener implements OnModuleInit {
 					failed_devices: result.failedDevices,
 					skipped_offline_devices: result.skippedOfflineDevices,
 					offline_device_ids: result.offlineDeviceIds,
+					failed_targets: result.failedTargets,
 					new_position: result.newPosition,
 				},
 			};
@@ -343,7 +346,6 @@ export class WebsocketExchangeListener implements OnModuleInit {
 					failed_devices: result.failedDevices,
 					skipped_offline_devices: result.skippedOfflineDevices,
 					offline_device_ids: result.offlineDeviceIds,
-					skipped_devices: result.skippedDevices,
 					failed_targets: result.failedTargets,
 					new_volume: result.newVolume,
 					is_muted: result.isMuted,

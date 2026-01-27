@@ -117,8 +117,6 @@ export function selectMediaForMode(devices: MediaDevice[], mode: MediaMode): Med
 export interface MediaIntentResult extends IntentExecutionResult {
 	newVolume?: number;
 	isMuted?: boolean;
-	skippedDevices?: number;
-	failedTargets?: string[];
 }
 
 export type MediaState = SpaceMediaState;
@@ -678,7 +676,6 @@ export class MediaIntentService extends SpaceIntentBaseService {
 			success: overallSuccess,
 			affectedDevices,
 			failedDevices,
-			skippedDevices,
 			newVolume,
 			isMuted,
 			failedTargets,
@@ -743,7 +740,7 @@ export class MediaIntentService extends SpaceIntentBaseService {
 
 		const failedTargets = targetResults.filter((t) => t.status === IntentTargetStatus.FAILED).map((t) => t.deviceId);
 
-		return { success: overallSuccess, affectedDevices, failedDevices, skippedDevices, failedTargets };
+		return { success: overallSuccess, affectedDevices, failedDevices, failedTargets };
 	}
 
 	/**
@@ -1220,7 +1217,7 @@ export class MediaIntentService extends SpaceIntentBaseService {
 
 		const failedTargets = targetResults.filter((t) => t.status === IntentTargetStatus.FAILED).map((t) => t.deviceId);
 
-		return { success: overallSuccess, affectedDevices, failedDevices, skippedDevices, failedTargets };
+		return { success: overallSuccess, affectedDevices, failedDevices, failedTargets };
 	}
 
 	/**

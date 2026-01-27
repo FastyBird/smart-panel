@@ -241,6 +241,7 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 				failedDevices: 1,
 				skippedOfflineDevices: 2,
 				offlineDeviceIds: ['device-1', 'device-2'],
+				failedTargets: ['device-3'],
 			});
 
 			const result = await handleLightingIntent(user, { spaceId: mockSpace.id, intent: { type: 'on' } });
@@ -253,6 +254,7 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 					failed_devices: 1,
 					skipped_offline_devices: 2,
 					offline_device_ids: ['device-1', 'device-2'],
+					failed_targets: ['device-3'],
 				},
 			});
 		});
@@ -313,6 +315,7 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 				failedDevices: 0,
 				skippedOfflineDevices: 1,
 				offlineDeviceIds: ['thermostat-1'],
+				failedTargets: [],
 				heatingSetpoint: 22,
 				coolingSetpoint: 24,
 				mode: ClimateMode.HEAT,
@@ -328,6 +331,7 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 					failed_devices: 0,
 					skipped_offline_devices: 1,
 					offline_device_ids: ['thermostat-1'],
+					failed_targets: [],
 					heating_setpoint: 22,
 					cooling_setpoint: 24,
 					mode: ClimateMode.HEAT,
@@ -364,6 +368,7 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 				failedDevices: 0,
 				skippedOfflineDevices: 0,
 				offlineDeviceIds: [],
+				failedTargets: [],
 				newPosition: 100,
 			});
 
@@ -377,6 +382,7 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 					failed_devices: 0,
 					skipped_offline_devices: 0,
 					offline_device_ids: [],
+					failed_targets: [],
 					new_position: 100,
 				},
 			});
@@ -411,7 +417,6 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 				failedDevices: 0,
 				skippedOfflineDevices: 0,
 				offlineDeviceIds: [],
-				skippedDevices: 1,
 				failedTargets: ['speaker-2'],
 				newVolume: 50,
 				isMuted: false,
@@ -427,7 +432,6 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 					failed_devices: 0,
 					skipped_offline_devices: 0,
 					offline_device_ids: [],
-					skipped_devices: 1,
 					failed_targets: ['speaker-2'],
 					new_volume: 50,
 					is_muted: false,
