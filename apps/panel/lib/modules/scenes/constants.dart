@@ -11,4 +11,12 @@ class ScenesModuleConstants {
   static const String actionCreatedEvent = 'ScenesModule.SceneAction.Created';
   static const String actionUpdatedEvent = 'ScenesModule.SceneAction.Updated';
   static const String actionDeletedEvent = 'ScenesModule.SceneAction.Deleted';
+
+  // WebSocket command events
+  static const String triggerSceneEvent = 'ScenesModule.TriggerScene';
+}
+
+/// WebSocket command handler names for scenes module
+class ScenesModuleEventHandlerName {
+  static const String triggerScene = 'ScenesModule.TriggerSceneHandler';
 }

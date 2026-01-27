@@ -4,7 +4,6 @@ import { ClientUserDto } from '../../websocket/dto/client-user.dto';
 import { CommandEventRegistryService } from '../../websocket/services/command-event-registry.service';
 import { SceneExecutionStatus } from '../scenes.constants';
 import { SceneExecutorService } from '../services/scene-executor.service';
-import { ScenesService } from '../services/scenes.service';
 
 @Injectable()
 export class WebsocketExchangeListener implements OnModuleInit {
@@ -12,7 +11,6 @@ export class WebsocketExchangeListener implements OnModuleInit {
 
 	constructor(
 		private readonly commandEventRegistry: CommandEventRegistryService,
-		private readonly scenesService: ScenesService,
 		private readonly sceneExecutorService: SceneExecutorService,
 	) {}
 
@@ -22,20 +20,6 @@ export class WebsocketExchangeListener implements OnModuleInit {
 			'ScenesModule.TriggerScene',
 			'ScenesModule.TriggerSceneHandler',
 			this.handleTriggerScene.bind(this),
-		);
-
-		// Register command handler for getting all scenes
-		this.commandEventRegistry.register(
-			'ScenesModule.GetScenes',
-			'ScenesModule.GetScenesHandler',
-			this.handleGetScenes.bind(this),
-		);
-
-		// Register command handler for getting a single scene
-		this.commandEventRegistry.register(
-			'ScenesModule.GetScene',
-			'ScenesModule.GetSceneHandler',
-			this.handleGetScene.bind(this),
 		);
 	}
 
@@ -72,85 +56,6 @@ export class WebsocketExchangeListener implements OnModuleInit {
 			const err = error as Error;
 
 			this.logger.error(`[WS EXCHANGE LISTENER] Failed to trigger scene: ${err.message}`);
-
-			return { success: false, reason: err.message };
-		}
-	}
-
-	private async handleGetScenes(
-		_user: ClientUserDto | undefined,
-		_payload: Record<string, unknown>,
-	): Promise<{ success: boolean; reason?: string; data?: Record<string, unknown> } | null> {
-		try {
-			const scenes = await this.scenesService.findAll();
-
-			return {
-				success: true,
-				data: {
-					scenes: scenes.map((scene) => ({
-						id: scene.id,
-						category: scene.category,
-						name: scene.name,
-						description: scene.description,
-						enabled: scene.enabled,
-						triggerable: scene.triggerable,
-						editable: scene.editable,
-						lastTriggeredAt:
-							scene.lastTriggeredAt instanceof Date
-								? scene.lastTriggeredAt.toISOString()
-								: scene.lastTriggeredAt || null,
-					})),
-				},
-			};
-		} catch (error) {
-			const err = error as Error;
-
-			this.logger.error(`[WS EXCHANGE LISTENER] Failed to get scenes: ${err.message}`);
-
-			return { success: false, reason: err.message };
-		}
-	}
-
-	private async handleGetScene(
-		_user: ClientUserDto | undefined,
-		payload: { sceneId: string },
-	): Promise<{ success: boolean; reason?: string; data?: Record<string, unknown> } | null> {
-		try {
-			const { sceneId } = payload;
-
-			if (!sceneId) {
-				return { success: false, reason: 'Scene ID is required' };
-			}
-
-			const scene = await this.scenesService.findOne(sceneId);
-
-			if (!scene) {
-				return { success: false, reason: `Scene with id=${sceneId} was not found` };
-			}
-
-			return {
-				success: true,
-				data: {
-					scene: {
-						id: scene.id,
-						category: scene.category,
-						name: scene.name,
-						description: scene.description,
-						enabled: scene.enabled,
-						triggerable: scene.triggerable,
-						editable: scene.editable,
-						lastTriggeredAt:
-							scene.lastTriggeredAt instanceof Date
-								? scene.lastTriggeredAt.toISOString()
-								: scene.lastTriggeredAt || null,
-						actionsCount: scene.actions?.length || 0,
-					},
-				},
-			};
-		} catch (error) {
-			const err = error as Error;
-
-			this.logger.error(`[WS EXCHANGE LISTENER] Failed to get scene: ${err.message}`);
 
 			return { success: false, reason: err.message };
 		}
