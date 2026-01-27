@@ -184,20 +184,22 @@ class ConnectionStateManager extends ChangeNotifier {
     _updateState(SocketConnectionState.networkUnavailable);
   }
 
-  /// Called when a reconnection attempt starts.
+  /// Called when a reconnection attempt starts (e.g., user clicks Retry).
+  ///
+  /// Resets the disconnect timestamp to give reconnection a fresh window
+  /// before escalating back to offline state.
   void onReconnecting() {
     if (kDebugMode) {
       debugPrint('[ConnectionStateManager] onReconnecting called');
     }
 
     if (_state != SocketConnectionState.online) {
-      // Only set _disconnectedAt if not already set (preserves original disconnect time)
-      _disconnectedAt ??= DateTime.now();
+      // Reset timestamp to give reconnection a fresh escalation window.
+      // This prevents immediate jump back to offline when retrying after 60+ seconds.
+      _disconnectedAt = DateTime.now();
+      _hasIncrementedFailureForCurrentDisconnect = false;
       _updateState(SocketConnectionState.reconnecting);
-      // Restart escalation timer if not already running
-      if (_escalationTimer == null || !_escalationTimer!.isActive) {
-        _startEscalationTimer();
-      }
+      _startEscalationTimer();
     }
   }
 

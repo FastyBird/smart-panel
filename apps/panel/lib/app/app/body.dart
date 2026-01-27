@@ -114,11 +114,20 @@ class _AppBodyState extends State<AppBody> {
     if (!mounted) return;
 
     final currentState = _connectionManager.state;
+    final severity = _connectionManager.uiSeverity;
 
     // Check if we should show recovery toast
     if (_connectionManager.shouldShowRecoveryToast(_previousSocketConnectionState ?? SocketConnectionState.initializing)) {
       setState(() {
         _showRecoveryToast = true;
+      });
+    }
+
+    // Dismiss recovery toast if entering a full-screen error state
+    // This prevents confusing UX where "Connected" toast appears with an error screen
+    if (severity == ConnectionUISeverity.fullScreen && _showRecoveryToast) {
+      setState(() {
+        _showRecoveryToast = false;
       });
     }
 
