@@ -37,6 +37,7 @@ const validDeviceResponse: IDeviceRes = {
 	status: {
 		online: false,
 		status: DevicesModuleDeviceConnectionStatus.unknown,
+		last_changed: null,
 	},
 	created_at: '2024-03-01T12:00:00Z',
 	updated_at: '2024-03-02T12:00:00Z',
@@ -73,6 +74,7 @@ describe('Devices Transformers', (): void => {
 				status: {
 					online: false,
 					status: DevicesModuleDeviceConnectionStatus.unknown,
+					lastChanged: null,
 				},
 				draft: false,
 				createdAt: new Date('2024-03-01T12:00:00Z'),
