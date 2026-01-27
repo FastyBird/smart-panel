@@ -1,5 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 
+import { TokenOwnerType } from '../../auth/auth.constants';
+import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../../websocket/dto/client-user.dto';
 import { CommandEventRegistryService } from '../../websocket/services/command-event-registry.service';
 import { ClimateIntentDto } from '../dto/climate-intent.dto';
@@ -112,6 +114,24 @@ export class WebsocketExchangeListener implements OnModuleInit {
 	}
 
 	/**
+	 * Check if user is authorized to execute space commands.
+	 * Allows display clients and admin/owner users.
+	 */
+	private isAuthorized(user: ClientUserDto | undefined): boolean {
+		if (!user) {
+			return false;
+		}
+
+		// Allow display clients to control spaces via WebSocket
+		const isDisplayClient = user.type === 'token' && user.ownerType === TokenOwnerType.DISPLAY;
+
+		// Allow admin/owner users to control spaces via WebSocket
+		const isAdminUser = user.type === 'user' && (user.role === UserRole.ADMIN || user.role === UserRole.OWNER);
+
+		return isDisplayClient || isAdminUser;
+	}
+
+	/**
 	 * Handle lighting intent command via WebSocket
 	 */
 	private async handleLightingIntent(
@@ -119,6 +139,10 @@ export class WebsocketExchangeListener implements OnModuleInit {
 		payload: LightingIntentPayload,
 	): Promise<{ success: boolean; reason?: string; data?: Record<string, unknown> } | null> {
 		try {
+			if (!this.isAuthorized(user)) {
+				return { success: false, reason: 'Unauthorized: insufficient permissions' };
+			}
+
 			const { spaceId, intent } = payload;
 
 			if (!spaceId) {
@@ -144,7 +168,6 @@ export class WebsocketExchangeListener implements OnModuleInit {
 			return {
 				success: true,
 				data: {
-					success: true,
 					affected_devices: result.affectedDevices,
 					failed_devices: result.failedDevices,
 				},
@@ -164,6 +187,10 @@ export class WebsocketExchangeListener implements OnModuleInit {
 		payload: ClimateIntentPayload,
 	): Promise<{ success: boolean; reason?: string; data?: Record<string, unknown> } | null> {
 		try {
+			if (!this.isAuthorized(user)) {
+				return { success: false, reason: 'Unauthorized: insufficient permissions' };
+			}
+
 			const { spaceId, intent } = payload;
 
 			if (!spaceId) {
@@ -189,7 +216,6 @@ export class WebsocketExchangeListener implements OnModuleInit {
 			return {
 				success: true,
 				data: {
-					success: true,
 					affected_devices: result.affectedDevices,
 					failed_devices: result.failedDevices,
 					heating_setpoint: result.heatingSetpoint,
@@ -212,6 +238,10 @@ export class WebsocketExchangeListener implements OnModuleInit {
 		payload: CoversIntentPayload,
 	): Promise<{ success: boolean; reason?: string; data?: Record<string, unknown> } | null> {
 		try {
+			if (!this.isAuthorized(user)) {
+				return { success: false, reason: 'Unauthorized: insufficient permissions' };
+			}
+
 			const { spaceId, intent } = payload;
 
 			if (!spaceId) {
@@ -237,7 +267,6 @@ export class WebsocketExchangeListener implements OnModuleInit {
 			return {
 				success: true,
 				data: {
-					success: true,
 					affected_devices: result.affectedDevices,
 					failed_devices: result.failedDevices,
 					new_position: result.newPosition,
@@ -258,6 +287,10 @@ export class WebsocketExchangeListener implements OnModuleInit {
 		payload: MediaIntentPayload,
 	): Promise<{ success: boolean; reason?: string; data?: Record<string, unknown> } | null> {
 		try {
+			if (!this.isAuthorized(user)) {
+				return { success: false, reason: 'Unauthorized: insufficient permissions' };
+			}
+
 			const { spaceId, intent } = payload;
 
 			if (!spaceId) {
@@ -283,7 +316,6 @@ export class WebsocketExchangeListener implements OnModuleInit {
 			return {
 				success: true,
 				data: {
-					success: true,
 					affected_devices: result.affectedDevices,
 					failed_devices: result.failedDevices,
 					new_volume: result.newVolume,
@@ -305,6 +337,10 @@ export class WebsocketExchangeListener implements OnModuleInit {
 		payload: UndoIntentPayload,
 	): Promise<{ success: boolean; reason?: string; data?: Record<string, unknown> } | null> {
 		try {
+			if (!this.isAuthorized(user)) {
+				return { success: false, reason: 'Unauthorized: insufficient permissions' };
+			}
+
 			const { spaceId } = payload;
 
 			if (!spaceId) {
@@ -326,7 +362,6 @@ export class WebsocketExchangeListener implements OnModuleInit {
 			return {
 				success: true,
 				data: {
-					success: true,
 					restored_devices: result.restoredDevices,
 					failed_devices: result.failedDevices,
 					message: result.message,

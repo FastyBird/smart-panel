@@ -1,5 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 
+import { TokenOwnerType } from '../../auth/auth.constants';
+import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../../websocket/dto/client-user.dto';
 import { CommandEventRegistryService } from '../../websocket/services/command-event-registry.service';
 import { SceneExecutionStatus } from '../scenes.constants';
@@ -39,11 +41,33 @@ export class WebsocketExchangeListener implements OnModuleInit {
 		this.logger.log('Scenes WebSocket exchange listener initialized');
 	}
 
+	/**
+	 * Check if user is authorized to trigger scenes.
+	 * Allows display clients and admin/owner users.
+	 */
+	private isAuthorized(user: ClientUserDto | undefined): boolean {
+		if (!user) {
+			return false;
+		}
+
+		// Allow display clients to trigger scenes via WebSocket
+		const isDisplayClient = user.type === 'token' && user.ownerType === TokenOwnerType.DISPLAY;
+
+		// Allow admin/owner users to trigger scenes via WebSocket
+		const isAdminUser = user.type === 'user' && (user.role === UserRole.ADMIN || user.role === UserRole.OWNER);
+
+		return isDisplayClient || isAdminUser;
+	}
+
 	private async handleTriggerScene(
 		user: ClientUserDto | undefined,
 		payload: { sceneId: string },
 	): Promise<{ success: boolean; reason?: string; data?: Record<string, unknown> } | null> {
 		try {
+			if (!this.isAuthorized(user)) {
+				return { success: false, reason: 'Unauthorized: insufficient permissions' };
+			}
+
 			const { sceneId } = payload;
 
 			if (!sceneId) {
@@ -59,13 +83,13 @@ export class WebsocketExchangeListener implements OnModuleInit {
 					result.status === SceneExecutionStatus.COMPLETED ||
 					result.status === SceneExecutionStatus.PARTIALLY_COMPLETED,
 				data: {
-					sceneId: result.sceneId,
+					scene_id: result.sceneId,
 					status: result.status,
-					totalActions: result.totalActions,
-					successfulActions: result.successfulActions,
-					failedActions: result.failedActions,
-					triggeredAt: result.triggeredAt,
-					completedAt: result.completedAt,
+					total_actions: result.totalActions,
+					successful_actions: result.successfulActions,
+					failed_actions: result.failedActions,
+					triggered_at: result.triggeredAt,
+					completed_at: result.completedAt,
 				},
 			};
 		} catch (error) {

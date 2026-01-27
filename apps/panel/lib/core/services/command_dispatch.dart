@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:flutter/foundation.dart';
 
+/// WebSocket command timeout duration
+const Duration kWebSocketCommandTimeout = Duration(seconds: 10);
+
 /// Result of a command dispatch operation
 class CommandDispatchResult {
   final bool success;
@@ -143,7 +146,7 @@ class CommandDispatchService {
 
     // Add timeout for WebSocket response
     return completer.future.timeout(
-      const Duration(seconds: 10),
+      kWebSocketCommandTimeout,
       onTimeout: () {
         if (kDebugMode) {
           debugPrint('[COMMAND DISPATCH] WebSocket command timed out');
