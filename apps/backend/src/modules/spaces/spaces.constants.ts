@@ -2050,6 +2050,222 @@ export const MEDIA_INTENT_CATALOG: IntentTypeMeta[] = [
 	},
 ];
 
+// ========================
+// Media Domain V2 - Endpoint/Routing Architecture
+// ========================
+
+/**
+ * Media Endpoint Types - functional projections of media devices
+ * A single device can expose multiple endpoints (e.g., TV as both display and audio_output)
+ */
+export enum MediaEndpointType {
+	/** Display endpoint (TV, projector) - provides visual output */
+	DISPLAY = 'display',
+	/** Audio output endpoint (receiver, speaker, TV speaker) - provides audio output */
+	AUDIO_OUTPUT = 'audio_output',
+	/** Source endpoint (streamer, console, TV apps, HDMI input) - provides media content */
+	SOURCE = 'source',
+	/** Remote target endpoint (TV, streamer) - accepts remote control commands */
+	REMOTE_TARGET = 'remote_target',
+}
+
+/**
+ * Media Routing Types - activity presets that define endpoint configurations
+ */
+export enum MediaRoutingType {
+	/** Watch routing - optimized for video content (TV + AVR + source) */
+	WATCH = 'watch',
+	/** Listen routing - optimized for audio content (speakers/AVR only) */
+	LISTEN = 'listen',
+	/** Gaming routing - optimized for gaming (low latency, game console) */
+	GAMING = 'gaming',
+	/** Background routing - ambient audio at low volume */
+	BACKGROUND = 'background',
+	/** Off routing - all media devices powered off */
+	OFF = 'off',
+	/** Custom routing - user-defined configuration */
+	CUSTOM = 'custom',
+}
+
+/**
+ * Media Power Policy - defines how power is handled during routing activation
+ */
+export enum MediaPowerPolicy {
+	/** Power on all endpoints in the routing */
+	ON = 'on',
+	/** Power off all endpoints in the routing */
+	OFF = 'off',
+	/** Leave power state unchanged */
+	UNCHANGED = 'unchanged',
+}
+
+/**
+ * Media Capability - individual capability that an endpoint can have
+ */
+export enum MediaCapability {
+	POWER = 'power',
+	VOLUME = 'volume',
+	MUTE = 'mute',
+	PLAYBACK = 'playback',
+	PLAYBACK_STATE = 'playback_state',
+	INPUT = 'input',
+	REMOTE = 'remote',
+	TRACK_METADATA = 'track_metadata',
+}
+
+/**
+ * Media Capability Permission - read/write permissions for capabilities
+ */
+export enum MediaCapabilityPermission {
+	READ = 'read',
+	WRITE = 'write',
+	READ_WRITE = 'read_write',
+}
+
+/**
+ * Metadata for media endpoint types
+ */
+export const MEDIA_ENDPOINT_TYPE_META: Record<MediaEndpointType, IntentEnumValueMeta> = {
+	[MediaEndpointType.DISPLAY]: {
+		value: MediaEndpointType.DISPLAY,
+		label: 'Display',
+		description: 'Visual output device (TV, projector)',
+		icon: 'mdi:television',
+	},
+	[MediaEndpointType.AUDIO_OUTPUT]: {
+		value: MediaEndpointType.AUDIO_OUTPUT,
+		label: 'Audio Output',
+		description: 'Audio output device (receiver, speaker)',
+		icon: 'mdi:speaker',
+	},
+	[MediaEndpointType.SOURCE]: {
+		value: MediaEndpointType.SOURCE,
+		label: 'Source',
+		description: 'Media content source (streamer, console)',
+		icon: 'mdi:play-box',
+	},
+	[MediaEndpointType.REMOTE_TARGET]: {
+		value: MediaEndpointType.REMOTE_TARGET,
+		label: 'Remote Target',
+		description: 'Device that accepts remote commands',
+		icon: 'mdi:remote',
+	},
+};
+
+/**
+ * Metadata for media routing types
+ */
+export const MEDIA_ROUTING_TYPE_META: Record<MediaRoutingType, IntentEnumValueMeta> = {
+	[MediaRoutingType.WATCH]: {
+		value: MediaRoutingType.WATCH,
+		label: 'Watch',
+		description: 'Watch video content (TV + audio)',
+		icon: 'mdi:television-play',
+	},
+	[MediaRoutingType.LISTEN]: {
+		value: MediaRoutingType.LISTEN,
+		label: 'Listen',
+		description: 'Listen to audio content',
+		icon: 'mdi:music',
+	},
+	[MediaRoutingType.GAMING]: {
+		value: MediaRoutingType.GAMING,
+		label: 'Gaming',
+		description: 'Play video games',
+		icon: 'mdi:gamepad-variant',
+	},
+	[MediaRoutingType.BACKGROUND]: {
+		value: MediaRoutingType.BACKGROUND,
+		label: 'Background',
+		description: 'Background ambient audio',
+		icon: 'mdi:music-note',
+	},
+	[MediaRoutingType.OFF]: {
+		value: MediaRoutingType.OFF,
+		label: 'Off',
+		description: 'Turn off all media',
+		icon: 'mdi:power-off',
+	},
+	[MediaRoutingType.CUSTOM]: {
+		value: MediaRoutingType.CUSTOM,
+		label: 'Custom',
+		description: 'Custom configuration',
+		icon: 'mdi:cog',
+	},
+};
+
+/**
+ * Default routing configurations - used when auto-creating routings
+ */
+export interface MediaRoutingDefaults {
+	name: string;
+	icon: string;
+	powerPolicy: MediaPowerPolicy;
+	audioVolumePreset: number | null;
+}
+
+export const MEDIA_ROUTING_DEFAULTS: Record<MediaRoutingType, MediaRoutingDefaults> = {
+	[MediaRoutingType.WATCH]: {
+		name: 'Watch',
+		icon: 'mdi:television-play',
+		powerPolicy: MediaPowerPolicy.ON,
+		audioVolumePreset: 50,
+	},
+	[MediaRoutingType.LISTEN]: {
+		name: 'Listen',
+		icon: 'mdi:music',
+		powerPolicy: MediaPowerPolicy.ON,
+		audioVolumePreset: 40,
+	},
+	[MediaRoutingType.GAMING]: {
+		name: 'Gaming',
+		icon: 'mdi:gamepad-variant',
+		powerPolicy: MediaPowerPolicy.ON,
+		audioVolumePreset: 60,
+	},
+	[MediaRoutingType.BACKGROUND]: {
+		name: 'Background',
+		icon: 'mdi:music-note',
+		powerPolicy: MediaPowerPolicy.ON,
+		audioVolumePreset: 25,
+	},
+	[MediaRoutingType.OFF]: {
+		name: 'Off',
+		icon: 'mdi:power-off',
+		powerPolicy: MediaPowerPolicy.OFF,
+		audioVolumePreset: null,
+	},
+	[MediaRoutingType.CUSTOM]: {
+		name: 'Custom',
+		icon: 'mdi:cog',
+		powerPolicy: MediaPowerPolicy.UNCHANGED,
+		audioVolumePreset: null,
+	},
+};
+
+/**
+ * Media Intent Types V2 - routing-based intents
+ */
+export enum MediaIntentTypeV2 {
+	/** Activate a specific routing */
+	ROUTING_ACTIVATE = 'routing_activate',
+	/** Deactivate current routing (same as activating OFF) */
+	ROUTING_DEACTIVATE = 'routing_deactivate',
+	/** Volume control (applies to active routing's audio endpoint) */
+	VOLUME_SET = 'volume_set',
+	VOLUME_DELTA = 'volume_delta',
+	MUTE = 'mute',
+	UNMUTE = 'unmute',
+	/** Playback control (applies to active routing's source endpoint) */
+	PLAY = 'play',
+	PAUSE = 'pause',
+	STOP = 'stop',
+	NEXT = 'next',
+	PREVIOUS = 'previous',
+	/** Input control (applies to specific endpoint) */
+	INPUT_SET = 'input_set',
+}
+
 /**
  * Complete intent category catalog
  */

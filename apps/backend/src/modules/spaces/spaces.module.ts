@@ -20,7 +20,9 @@ import { UpdateSpacesConfigDto } from './dto/update-config.dto';
 import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
 import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
+import { SpaceMediaEndpointEntity } from './entities/space-media-endpoint.entity';
 import { SpaceMediaRoleEntity } from './entities/space-media-role.entity';
+import { SpaceMediaRoutingEntity } from './entities/space-media-routing.entity';
 import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
 import { SpaceEntity } from './entities/space.entity';
 import { SpaceActivityListener } from './listeners/space-activity.listener';
@@ -42,7 +44,9 @@ import { SpaceIntentBaseService } from './services/space-intent-base.service';
 import { SpaceIntentService } from './services/space-intent.service';
 import { SpaceLightingRoleService } from './services/space-lighting-role.service';
 import { SpaceLightingStateService } from './services/space-lighting-state.service';
+import { SpaceMediaEndpointService } from './services/space-media-endpoint.service';
 import { SpaceMediaRoleService } from './services/space-media-role.service';
+import { SpaceMediaRoutingService } from './services/space-media-routing.service';
 import { SpaceMediaStateService } from './services/space-media-state.service';
 import { SpaceSensorRoleService } from './services/space-sensor-role.service';
 import { SpaceSensorStateService } from './services/space-sensor-state.service';
@@ -67,6 +71,8 @@ import { IntentSpecLoaderService } from './spec';
 			SpaceClimateRoleEntity,
 			SpaceCoversRoleEntity,
 			SpaceMediaRoleEntity,
+			SpaceMediaEndpointEntity,
+			SpaceMediaRoutingEntity,
 			SpaceSensorRoleEntity,
 			DeviceEntity,
 			ChannelEntity,
@@ -95,6 +101,8 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceCoversRoleService,
 		SpaceCoversStateService,
 		SpaceMediaRoleService,
+		SpaceMediaEndpointService,
+		SpaceMediaRoutingService,
 		SpaceMediaStateService,
 		SpaceSensorRoleService,
 		SpaceSensorStateService,
@@ -116,6 +124,8 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceClimateRoleService,
 		SpaceCoversRoleService,
 		SpaceMediaRoleService,
+		SpaceMediaEndpointService,
+		SpaceMediaRoutingService,
 		SpaceSensorRoleService,
 		SpaceSuggestionService,
 		SpaceContextSnapshotService,
