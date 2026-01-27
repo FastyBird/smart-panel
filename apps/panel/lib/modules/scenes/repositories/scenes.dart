@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/models/scenes_module_req_trigger_scene.dart';
 import 'package:fastybird_smart_panel/api/models/scenes_module_trigger_scene.dart';
+import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
+import 'package:fastybird_smart_panel/modules/scenes/constants.dart';
 import 'package:fastybird_smart_panel/modules/scenes/models/scenes/scene.dart';
 import 'package:fastybird_smart_panel/modules/scenes/repositories/actions.dart';
 import 'package:fastybird_smart_panel/modules/scenes/repositories/repository.dart';
@@ -8,13 +10,16 @@ import 'package:flutter/foundation.dart';
 
 class ScenesRepository extends Repository<SceneModel> {
   final ActionsRepository _actionsRepository;
+  final CommandDispatchService _commandDispatch;
 
   bool _isLoading = false;
 
   ScenesRepository({
     required super.apiClient,
     required ActionsRepository actionsRepository,
-  }) : _actionsRepository = actionsRepository;
+    required CommandDispatchService commandDispatch,
+  })  : _actionsRepository = actionsRepository,
+        _commandDispatch = commandDispatch;
 
   bool get isLoading => _isLoading;
 
@@ -130,7 +135,66 @@ class ScenesRepository extends Repository<SceneModel> {
   }
 
   /// Trigger a scene
+  ///
+  /// Uses WebSocket as primary channel with API fallback when WebSocket is unavailable.
   Future<TriggerSceneResult> triggerScene(String sceneId) async {
+    try {
+      // Use command dispatch with WebSocket primary and API fallback
+      final dispatchResult = await _commandDispatch.dispatch(
+        event: ScenesModuleConstants.triggerSceneEvent,
+        handler: ScenesModuleEventHandlerName.triggerScene,
+        payload: {
+          'sceneId': sceneId,
+        },
+        apiFallback: () => _triggerSceneViaApi(sceneId),
+      );
+
+      if (dispatchResult.success) {
+        // Parse result from response data
+        final data = dispatchResult.data;
+        final successCount = data?['successfulActions'] as int? ??
+            data?['successful_actions'] as int? ??
+            0;
+        final failureCount = data?['failedActions'] as int? ??
+            data?['failed_actions'] as int? ??
+            0;
+
+        if (kDebugMode) {
+          debugPrint(
+            '[SCENES MODULE][SCENES] Scene triggered via ${dispatchResult.channel.name}: '
+            'successCount=$successCount, failureCount=$failureCount',
+          );
+        }
+
+        return TriggerSceneResult(
+          success: failureCount == 0,
+          successCount: successCount,
+          failureCount: failureCount,
+        );
+      } else {
+        if (kDebugMode) {
+          debugPrint(
+            '[SCENES MODULE][SCENES] Failed to trigger scene: ${dispatchResult.reason}',
+          );
+        }
+
+        return TriggerSceneResult.error(
+          dispatchResult.reason ?? 'Failed to trigger scene',
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[SCENES MODULE][SCENES] Unexpected error triggering scene: $e',
+        );
+      }
+
+      return TriggerSceneResult.error('Unexpected error');
+    }
+  }
+
+  /// Trigger scene via API (used as fallback)
+  Future<Map<String, dynamic>?> _triggerSceneViaApi(String sceneId) async {
     try {
       final response = await apiClient.triggerScenesModuleScene(
         id: sceneId,
@@ -144,47 +208,29 @@ class ScenesRepository extends Repository<SceneModel> {
       if (response.response.statusCode == 200) {
         final result = response.data.data;
 
-        if (kDebugMode) {
-          debugPrint(
-            '[SCENES MODULE][SCENES] Scene triggered: status=${result.status}, '
-            'successCount=${result.successfulActions}, failureCount=${result.failedActions}',
-          );
-        }
-
-        return TriggerSceneResult(
-          success: result.failedActions == 0,
-          successCount: result.successfulActions,
-          failureCount: result.failedActions,
-        );
+        return {
+          'sceneId': sceneId,
+          'status': result.status.name,
+          'totalActions': result.totalActions,
+          'successfulActions': result.successfulActions,
+          'failedActions': result.failedActions,
+        };
       }
-
-      return TriggerSceneResult.error(
-        'Failed to trigger scene: ${response.response.statusCode}',
-      );
     } on DioException catch (e) {
       if (kDebugMode) {
         debugPrint(
-          '[SCENES MODULE][SCENES] Failed to trigger scene: ${e.response?.statusCode} - ${e.message}',
+          '[SCENES MODULE][SCENES] API error triggering scene: ${e.response?.statusCode} - ${e.message}',
         );
       }
 
       final statusCode = e.response?.statusCode;
       if (statusCode == 404) {
-        return TriggerSceneResult.error('Scene not found');
+        throw Exception('Scene not found');
       } else if (statusCode == 400) {
-        return TriggerSceneResult.error('Scene cannot be triggered');
+        throw Exception('Scene cannot be triggered');
       }
-
-      return TriggerSceneResult.error('Network error');
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          '[SCENES MODULE][SCENES] Unexpected error triggering scene: $e',
-        );
-      }
-
-      return TriggerSceneResult.error('Unexpected error');
     }
+    return null;
   }
 }
 

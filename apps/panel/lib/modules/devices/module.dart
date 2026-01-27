@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/devices/constants.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/channel_controls.dart';
@@ -58,7 +59,7 @@ class DevicesModuleService {
 
     _channelPropertiesRepository = ChannelPropertiesRepository(
       apiClient: apiClient.devicesModule,
-      socketService: _socketService,
+      commandDispatch: CommandDispatchService(socketService: socketService),
     );
     _channelControlsRepository = ChannelControlsRepository(
       apiClient: apiClient.devicesModule,

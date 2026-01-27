@@ -20,8 +20,6 @@ import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models
 import { SwaggerModule } from '../swagger/swagger.module';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
 import { SystemModule } from '../system/system.module';
-import { ClientUserDto } from '../websocket/dto/client-user.dto';
-import { CommandEventRegistryService } from '../websocket/services/command-event-registry.service';
 import { WebsocketModule } from '../websocket/websocket.module';
 
 import { ChannelsController } from './controllers/channels.controller';
@@ -37,8 +35,6 @@ import {
 	DEVICES_MODULE_API_TAG_NAME,
 	DEVICES_MODULE_NAME,
 	DeviceStatusInfluxDbSchema,
-	EventHandlerName,
-	EventType,
 	PropertyInfluxDbSchema,
 } from './devices.constants';
 import { DEVICES_SWAGGER_EXTRA_MODELS } from './devices.openapi';
@@ -51,6 +47,7 @@ import {
 	DeviceControlEntity,
 	DeviceEntity,
 } from './entities/devices.entity';
+import { WebsocketExchangeListener } from './listeners/websocket-exchange.listener';
 import { DevicesConfigModel } from './models/config.model';
 import { DevicesStatsProvider } from './providers/devices-stats.provider';
 import { ChannelsTypeMapperService } from './services/channels-type-mapper.service';
@@ -137,6 +134,7 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		ModuleResetService,
 		DevicesStatsProvider,
 		DeviceConnectivityService,
+		WebsocketExchangeListener,
 	],
 	controllers: [
 		DevicesController,
@@ -171,10 +169,8 @@ export class DevicesModule implements OnModuleInit {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'DevicesModule');
 
 	constructor(
-		private readonly eventRegistry: CommandEventRegistryService,
 		private readonly moduleSeeder: DevicesSeederService,
 		private readonly moduleReset: ModuleResetService,
-		private readonly propertyCommandService: PropertyCommandService,
 		private readonly devicesStatsProvider: DevicesStatsProvider,
 		private readonly influxDbService: InfluxDbService,
 		private readonly seedRegistry: SeedRegistryService,
@@ -188,12 +184,6 @@ export class DevicesModule implements OnModuleInit {
 	onModuleInit() {
 		this.influxDbService.registerSchema(PropertyInfluxDbSchema);
 		this.influxDbService.registerSchema(DeviceStatusInfluxDbSchema);
-
-		this.eventRegistry.register(
-			EventType.CHANNEL_PROPERTY_SET,
-			EventHandlerName.INTERNAL_SET_PROPERTY,
-			(user: ClientUserDto, payload?: object) => this.propertyCommandService.handleInternal(user, payload),
-		);
 
 		this.seedRegistry.register(
 			DEVICES_MODULE_NAME,

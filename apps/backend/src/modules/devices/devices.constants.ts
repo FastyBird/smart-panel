@@ -9,22 +9,6 @@ export const DEVICES_MODULE_API_TAG_NAME = 'Devices module';
 export const DEVICES_MODULE_API_TAG_DESCRIPTION =
 	'A collection of endpoints that provide device-related functionalities, acting as a central module for handling device interactions.';
 
-export enum EventHandlerName {
-	/**
-	 * Internal command sent from the UI (Flutter Display App or Vue Admin Panel)
-	 * to request a property value change. The backend will validate and forward
-	 * it to the appropriate platform (e.g., third-party API, virtual device, etc.).
-	 */
-	INTERNAL_SET_PROPERTY = 'DevicesModule.Internal.SetPropertyValue',
-
-	/**
-	 * Public command sent from third-party clients to update a device property.
-	 * This is intended for external integrations, allowing external platforms
-	 * to modify property values via an API or WebSocket request.
-	 */
-	PUBLIC_SET_PROPERTY = 'DevicesModule.Public.SetPropertyValue',
-}
-
 export enum EventType {
 	DEVICE_CREATED = 'DevicesModule.Device.Created',
 	DEVICE_UPDATED = 'DevicesModule.Device.Updated',

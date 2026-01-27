@@ -117,8 +117,6 @@ export function selectMediaForMode(devices: MediaDevice[], mode: MediaMode): Med
 export interface MediaIntentResult extends IntentExecutionResult {
 	newVolume?: number;
 	isMuted?: boolean;
-	skippedDevices?: number;
-	failedTargets?: string[];
 }
 
 export type MediaState = SpaceMediaState;
@@ -586,7 +584,6 @@ export class MediaIntentService extends SpaceIntentBaseService {
 	): Promise<MediaIntentResult> {
 		let affectedDevices = 0;
 		let failedDevices = 0;
-		let skippedDevices = 0;
 		let newVolume: number | undefined;
 		let isMuted: boolean | undefined;
 		const volumeDeltaVolumes: number[] = [];
@@ -641,7 +638,6 @@ export class MediaIntentService extends SpaceIntentBaseService {
 				failedDevices++;
 				targetResults.push({ deviceId: device.device.id, status: IntentTargetStatus.FAILED });
 			} else {
-				skippedDevices++;
 				targetResults.push({ deviceId: device.device.id, status: IntentTargetStatus.SKIPPED });
 			}
 		}
@@ -678,7 +674,6 @@ export class MediaIntentService extends SpaceIntentBaseService {
 			success: overallSuccess,
 			affectedDevices,
 			failedDevices,
-			skippedDevices,
 			newVolume,
 			isMuted,
 			failedTargets,
@@ -712,7 +707,6 @@ export class MediaIntentService extends SpaceIntentBaseService {
 
 		let affectedDevices = 0;
 		let failedDevices = 0;
-		let skippedDevices = 0;
 
 		// Execute commands for each device based on its selection
 		for (const selection of selections) {
@@ -725,7 +719,6 @@ export class MediaIntentService extends SpaceIntentBaseService {
 				failedDevices++;
 				targetResults.push({ deviceId: selection.media.device.id, status: IntentTargetStatus.FAILED });
 			} else {
-				skippedDevices++;
 				targetResults.push({ deviceId: selection.media.device.id, status: IntentTargetStatus.SKIPPED });
 			}
 		}
@@ -743,7 +736,7 @@ export class MediaIntentService extends SpaceIntentBaseService {
 
 		const failedTargets = targetResults.filter((t) => t.status === IntentTargetStatus.FAILED).map((t) => t.deviceId);
 
-		return { success: overallSuccess, affectedDevices, failedDevices, skippedDevices, failedTargets };
+		return { success: overallSuccess, affectedDevices, failedDevices, failedTargets };
 	}
 
 	/**
@@ -1195,7 +1188,6 @@ export class MediaIntentService extends SpaceIntentBaseService {
 
 		let affectedDevices = 0;
 		let failedDevices = 0;
-		let skippedDevices = 0;
 
 		for (const device of roleDevices) {
 			const outcome = await this.executeRoleIntentForDevice(device, intent);
@@ -1207,7 +1199,6 @@ export class MediaIntentService extends SpaceIntentBaseService {
 				failedDevices++;
 				targetResults.push({ deviceId: device.device.id, status: IntentTargetStatus.FAILED });
 			} else {
-				skippedDevices++;
 				targetResults.push({ deviceId: device.device.id, status: IntentTargetStatus.SKIPPED });
 			}
 		}
@@ -1220,7 +1211,7 @@ export class MediaIntentService extends SpaceIntentBaseService {
 
 		const failedTargets = targetResults.filter((t) => t.status === IntentTargetStatus.FAILED).map((t) => t.deviceId);
 
-		return { success: overallSuccess, affectedDevices, failedDevices, skippedDevices, failedTargets };
+		return { success: overallSuccess, affectedDevices, failedDevices, failedTargets };
 	}
 
 	/**

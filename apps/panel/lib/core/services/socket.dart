@@ -55,14 +55,17 @@ class SocketCommandAckResultModel {
   final String _handler;
   final bool _success;
   final String? _reason;
+  final Map<String, dynamic>? _data;
 
   SocketCommandAckResultModel({
     required String handler,
     required bool success,
     required String? reason,
+    Map<String, dynamic>? data,
   })  : _handler = handler,
         _success = success,
-        _reason = reason;
+        _reason = reason,
+        _data = data;
 
   String get handler => _handler;
 
@@ -70,11 +73,14 @@ class SocketCommandAckResultModel {
 
   String? get reason => _reason;
 
+  Map<String, dynamic>? get data => _data;
+
   factory SocketCommandAckResultModel.fromJson(Map<String, dynamic> json) {
     return SocketCommandAckResultModel(
       handler: json['handler'],
       success: json['success'],
       reason: json['reason'],
+      data: json['data'] is Map<String, dynamic> ? json['data'] : null,
     );
   }
 }
@@ -118,21 +124,27 @@ class SocketCommandAckModel {
 class SocketCommandResponseModel {
   final bool _status;
   final String _message;
+  final Map<String, dynamic>? _data;
 
   SocketCommandResponseModel({
     required bool status,
     required String message,
+    Map<String, dynamic>? data,
   })  : _status = status,
-        _message = message;
+        _message = message,
+        _data = data;
 
   bool get status => _status;
 
   String get message => _message;
 
+  Map<String, dynamic>? get data => _data;
+
   factory SocketCommandResponseModel.fromJson(Map<String, dynamic> json) {
     return SocketCommandResponseModel(
       status: json['status'],
       message: json['message'],
+      data: json['data'] is Map<String, dynamic> ? json['data'] : null,
     );
   }
 }
@@ -359,14 +371,18 @@ class SocketService {
                 SocketCommandResponseModel.fromJson({
                   "status": false,
                   "message": result?.reason ?? 'Unknown error',
+                  "data": result?.data,
                 }),
               );
+
+              return;
             }
 
             onAck(
               SocketCommandResponseModel.fromJson({
                 "status": true,
-                "message": result?.reason ?? 'ok',
+                "message": result.reason ?? 'ok',
+                "data": result.data,
               }),
             );
           } catch (e) {

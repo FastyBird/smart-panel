@@ -4,6 +4,8 @@ import 'package:fastybird_smart_panel/api/models/spaces_module_res_lighting_stat
 import 'package:fastybird_smart_panel/api/models/spaces_module_res_suggestion.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_res_undo_state.dart';
 import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
+import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
+import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/intents/models/intents/intent.dart';
 import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart';
@@ -17,6 +19,22 @@ import 'package:retrofit/retrofit.dart';
 
 // Mock classes
 class MockSpacesModuleClient extends Mock implements SpacesModuleClient {}
+
+/// Fake SocketService that provides minimal implementation for testing
+class FakeSocketService extends SocketService {
+  @override
+  bool get isConnected => true;
+
+  @override
+  Future<void> sendCommand(
+    String event,
+    dynamic data,
+    String handler, {
+    Function(SocketCommandResponseModel?)? onAck,
+  }) async {
+    onAck?.call(SocketCommandResponseModel(status: true, message: 'ok'));
+  }
+}
 
 /// Fake IntentsRepository that provides minimal implementation for testing
 class FakeIntentsRepository extends Fake implements IntentsRepository {
@@ -80,15 +98,18 @@ HttpResponse<T> createMockHttpResponse<T>(
 void main() {
   late MockSpacesModuleClient mockClient;
   late FakeIntentsRepository fakeIntentsRepository;
+  late FakeSocketService fakeSocketService;
   late SpaceStateRepository repository;
 
   setUp(() {
     mockClient = MockSpacesModuleClient();
     fakeIntentsRepository = FakeIntentsRepository();
+    fakeSocketService = FakeSocketService();
 
     repository = SpaceStateRepository(
       apiClient: mockClient,
       intentsRepository: fakeIntentsRepository,
+      commandDispatch: CommandDispatchService(socketService: fakeSocketService),
     );
   });
 

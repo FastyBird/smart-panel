@@ -660,6 +660,7 @@ export class SpacesController {
 		resultData.failedDevices = result.failedDevices;
 		resultData.skippedOfflineDevices = result.skippedOfflineDevices;
 		resultData.offlineDeviceIds = result.offlineDeviceIds;
+		resultData.failedTargets = result.failedTargets ?? null;
 
 		const response = new LightingIntentResponseModel();
 		response.data = resultData;
@@ -747,6 +748,7 @@ export class SpacesController {
 		resultData.failedDevices = result.failedDevices;
 		resultData.skippedOfflineDevices = result.skippedOfflineDevices;
 		resultData.offlineDeviceIds = result.offlineDeviceIds;
+		resultData.failedTargets = result.failedTargets ?? null;
 		resultData.mode = result.mode;
 		resultData.heatingSetpoint = result.heatingSetpoint;
 		resultData.coolingSetpoint = result.coolingSetpoint;
@@ -1280,6 +1282,7 @@ export class SpacesController {
 		resultData.failedDevices = result.failedDevices;
 		resultData.skippedOfflineDevices = result.skippedOfflineDevices;
 		resultData.offlineDeviceIds = result.offlineDeviceIds;
+		resultData.failedTargets = result.failedTargets ?? null;
 		resultData.newPosition = result.newPosition;
 
 		const response = new CoversIntentResponseModel();
@@ -2066,7 +2069,6 @@ export class SpacesController {
 		resultData.failedDevices = result.failedDevices;
 		resultData.skippedOfflineDevices = result.skippedOfflineDevices;
 		resultData.offlineDeviceIds = result.offlineDeviceIds;
-		resultData.skippedDevices = result.skippedDevices ?? null;
 		resultData.newVolume = result.newVolume ?? null;
 		resultData.isMuted = result.isMuted ?? null;
 		resultData.failedTargets = result.failedTargets ?? null;

@@ -25,15 +25,14 @@ class DevicesModuleConstants {
   static const String channelPropertyDeletedEvent =
       'DevicesModule.ChannelProperty.Deleted';
 
-  static const String channelPropertySetEvent =
-      'DevicesModule.ChannelProperty.Set';
   static const String channelPropertyValueSetEvent =
       'DevicesModule.ChannelProperty.ValueSet';
+
+  // WebSocket command events
+  static const String setPropertyEvent = 'DevicesModule.SetProperty';
 }
 
+/// WebSocket command handler names for devices module
 class DevicesModuleEventHandlerName {
-  static const String internalSetProperty =
-      'DevicesModule.Internal.SetPropertyValue';
-  static const String publicSetProperty =
-      'DevicesModule.Public.SetPropertyValue';
+  static const String setProperty = 'DevicesModule.SetPropertyHandler';
 }

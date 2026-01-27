@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/scenes/constants.dart';
 import 'package:fastybird_smart_panel/modules/scenes/repositories/actions.dart';
@@ -29,10 +30,11 @@ class ScenesModuleService {
       apiClient: apiClient.scenesModule,
     );
 
-    // Initialize ScenesRepository with ActionsRepository dependency
+    // Initialize ScenesRepository with ActionsRepository and CommandDispatch dependencies
     _scenesRepository = ScenesRepository(
       apiClient: apiClient.scenesModule,
       actionsRepository: _actionsRepository,
+      commandDispatch: CommandDispatchService(socketService: socketService),
     );
 
     _scenesService = ScenesService(

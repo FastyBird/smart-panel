@@ -13,6 +13,7 @@ import { SeedModule } from '../seed/seeding.module';
 import { SeedRegistryService } from '../seed/services/seed-registry.service';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
+import { WebsocketModule } from '../websocket/websocket.module';
 
 import { SpacesController } from './controllers/spaces.controller';
 import { UpdateSpacesConfigDto } from './dto/update-config.dto';
@@ -26,6 +27,7 @@ import { SpaceActivityListener } from './listeners/space-activity.listener';
 import { SpaceClimateStateListener } from './listeners/space-climate-state.listener';
 import { SpaceMediaStateListener } from './listeners/space-media-state.listener';
 import { SpaceSensorStateListener } from './listeners/space-sensor-state.listener';
+import { WebsocketExchangeListener } from './listeners/websocket-exchange.listener';
 import { SpacesConfigModel } from './models/config.model';
 import { ClimateIntentService } from './services/climate-intent.service';
 import { CoversIntentService } from './services/covers-intent.service';
@@ -74,6 +76,7 @@ import { IntentSpecLoaderService } from './spec';
 		forwardRef(() => IntentsModule),
 		forwardRef(() => ExtensionsModule),
 		forwardRef(() => ConfigModule),
+		forwardRef(() => WebsocketModule),
 		SeedModule,
 	],
 	controllers: [SpacesController],
@@ -102,6 +105,7 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceClimateStateListener,
 		SpaceMediaStateListener,
 		SpaceSensorStateListener,
+		WebsocketExchangeListener,
 		IntentSpecLoaderService,
 		SpacesSeederService,
 	],
