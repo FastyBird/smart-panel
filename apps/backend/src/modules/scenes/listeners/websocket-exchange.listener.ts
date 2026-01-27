@@ -5,6 +5,20 @@ import { CommandEventRegistryService } from '../../websocket/services/command-ev
 import { SceneExecutionStatus } from '../scenes.constants';
 import { SceneExecutorService } from '../services/scene-executor.service';
 
+/**
+ * WebSocket command event types for scenes module
+ */
+export const ScenesWsEventType = {
+	TRIGGER_SCENE: 'ScenesModule.TriggerScene',
+} as const;
+
+/**
+ * WebSocket command handler names for scenes module
+ */
+export const ScenesWsHandlerName = {
+	TRIGGER_SCENE: 'ScenesModule.TriggerSceneHandler',
+} as const;
+
 @Injectable()
 export class WebsocketExchangeListener implements OnModuleInit {
 	private readonly logger = new Logger(WebsocketExchangeListener.name);
@@ -17,10 +31,12 @@ export class WebsocketExchangeListener implements OnModuleInit {
 	onModuleInit(): void {
 		// Register command handler for triggering scenes
 		this.commandEventRegistry.register(
-			'ScenesModule.TriggerScene',
-			'ScenesModule.TriggerSceneHandler',
+			ScenesWsEventType.TRIGGER_SCENE,
+			ScenesWsHandlerName.TRIGGER_SCENE,
 			this.handleTriggerScene.bind(this),
 		);
+
+		this.logger.log('Scenes WebSocket exchange listener initialized');
 	}
 
 	private async handleTriggerScene(

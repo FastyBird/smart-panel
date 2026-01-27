@@ -67,8 +67,8 @@ void main() {
 
       expect(success, isTrue);
       expect(socket.callCount, 1);
-      expect(socket.lastEvent, DevicesModuleConstants.channelPropertySetEvent);
-      expect(socket.lastHandler, DevicesModuleEventHandlerName.internalSetProperty);
+      expect(socket.lastEvent, DevicesModuleConstants.setPropertyEvent);
+      expect(socket.lastHandler, DevicesModuleEventHandlerName.setProperty);
 
       final data = socket.lastData as Map<String, dynamic>;
       expect(data['request_id'], isA<String>());

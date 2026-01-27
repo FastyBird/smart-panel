@@ -253,8 +253,8 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
     try {
       // Use command dispatch with WebSocket primary and API fallback
       final result = await _commandDispatch.dispatch(
-        event: DevicesModuleConstants.channelPropertySetEvent,
-        handler: DevicesModuleEventHandlerName.internalSetProperty,
+        event: DevicesModuleConstants.setPropertyEvent,
+        handler: DevicesModuleEventHandlerName.setProperty,
         payload: payload,
         apiFallback: () => _setPropertyValueViaApi(
           channel.id,
@@ -374,8 +374,8 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
 
       // Use command dispatch with WebSocket primary and API fallback
       final result = await _commandDispatch.dispatch(
-        event: DevicesModuleConstants.channelPropertySetEvent,
-        handler: DevicesModuleEventHandlerName.internalSetProperty,
+        event: DevicesModuleConstants.setPropertyEvent,
+        handler: DevicesModuleEventHandlerName.setProperty,
         payload: payload,
         apiFallback: () => _setMultiplePropertiesViaApi(properties),
       );
