@@ -60,6 +60,8 @@ class _ConnectionRecoveryToastState extends State<ConnectionRecoveryToast>
   }
 
   void _dismiss() {
+    // Cancel timer to prevent double-dismiss if user taps as auto-dismiss fires
+    _dismissTimer?.cancel();
     _controller.reverse().then((_) {
       if (mounted) {
         widget.onDismiss();

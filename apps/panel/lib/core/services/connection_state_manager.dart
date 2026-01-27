@@ -176,6 +176,9 @@ class ConnectionStateManager extends ChangeNotifier {
     }
 
     _debounceTimer?.cancel();
+    _recoveryCooldownTimer?.cancel();
+    _isInRecoveryCooldown = false;
+    _pendingDisconnectDuringCooldown = false;
 
     if (_state != SocketConnectionState.online) {
       // Reset timestamp to give reconnection a fresh escalation window.
