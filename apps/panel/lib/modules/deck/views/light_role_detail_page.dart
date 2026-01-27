@@ -1264,102 +1264,31 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
 
   Future<void> _setAllLightsPower(List<LightTargetView> targets, bool on) async {
     final devicesService = _devicesService;
+    final spacesService = _spacesService;
     if (devicesService == null) return;
 
     final localizations = AppLocalizations.of(context)!;
+    final stateRole = mapTargetRoleToStateRole(widget.role);
 
     try {
-      final List<PropertyCommandItem> properties = [];
-      int offlineCount = 0;
-
-      for (final target in targets) {
-        final device = devicesService.getDevice(target.deviceId);
-        if (device is LightingDeviceView) {
-          // Skip offline devices
-          if (!device.isOnline) {
-            offlineCount++;
-            continue;
-          }
-
-          final channel = findLightChannel(device, target.channelId);
-          if (channel == null) continue;
-
-          final onProp = channel.onProp;
-          properties.add(PropertyCommandItem(
-            deviceId: target.deviceId,
-            channelId: target.channelId,
-            propertyId: onProp.id,
-            value: on,
-          ));
-        }
-      }
-
-      // If all devices are offline, show warning and return
-      if (properties.isEmpty && offlineCount > 0) {
+      // Use backend intent if available
+      bool success = false;
+      if (spacesService != null && stateRole != null) {
+        final result = on
+            ? await spacesService.turnRoleOn(widget.roomId, stateRole)
+            : await spacesService.turnRoleOff(widget.roomId, stateRole);
+        success = result != null;
         if (mounted) {
-          AlertBar.showWarning(
-            context,
-            message: localizations.all_devices_offline,
-          );
+          IntentResultHandler.showOfflineAlertIfNeeded(context, result);
         }
-        return;
+      } else {
+        // Fallback to direct device control
+        success = await _setPowerViaDevices(targets, on);
       }
 
-      if (properties.isEmpty) return;
+      if (!mounted) return;
 
-      // Show info if some devices were skipped
-      if (offlineCount > 0 && mounted) {
-        AlertBar.showInfo(
-          context,
-          message: localizations.devices_offline_skipped(offlineCount),
-        );
-      }
-
-      final displayRepository = locator<DisplayRepository>();
-      final displayId = displayRepository.display?.id;
-
-      final commandContext = PropertyCommandContext(
-        origin: 'panel.system.room',
-        displayId: displayId,
-        spaceId: widget.roomId,
-        roleKey: widget.role.name,
-      );
-
-      // Set pending state for immediate optimistic UI
-      for (final property in properties) {
-        _deviceControlStateService?.setPending(
-          property.deviceId,
-          property.channelId,
-          property.propertyId,
-          property.value,
-        );
-        _intentOverlayService?.createLocalOverlay(
-          deviceId: property.deviceId,
-          channelId: property.channelId,
-          propertyId: property.propertyId,
-          value: property.value,
-          ttlMs: 5000,
-        );
-      }
-
-      // Force immediate UI update
-      if (mounted) setState(() {});
-
-      final success = await devicesService.setMultiplePropertyValues(
-        properties: properties,
-        context: commandContext,
-      );
-
-      // Transition to settling state after command is sent
-      for (final property in properties) {
-        _deviceControlStateService?.setSettling(
-          property.deviceId,
-          property.channelId,
-          property.propertyId,
-        );
-      }
-
-      if (!success && mounted) {
+      if (!success) {
         AlertBar.showError(
           context,
           message: localizations.action_failed,
@@ -1373,6 +1302,111 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
         );
       }
     }
+  }
+
+  /// Fallback method to set power directly on individual devices.
+  ///
+  /// Used when backend intents are unavailable:
+  /// - [SpacesService] not registered
+  /// - Role doesn't map to a [LightingStateRole]
+  ///
+  /// Returns `true` if command was sent successfully (or no devices needed update).
+  Future<bool> _setPowerViaDevices(List<LightTargetView> targets, bool on) async {
+    final devicesService = _devicesService;
+    if (devicesService == null) return false;
+
+    final localizations = AppLocalizations.of(context)!;
+    final List<PropertyCommandItem> properties = [];
+    int offlineCount = 0;
+
+    for (final target in targets) {
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is LightingDeviceView) {
+        // Skip offline devices
+        if (!device.isOnline) {
+          offlineCount++;
+          continue;
+        }
+
+        final channel = findLightChannel(device, target.channelId);
+        if (channel == null) continue;
+
+        final onProp = channel.onProp;
+        properties.add(PropertyCommandItem(
+          deviceId: target.deviceId,
+          channelId: target.channelId,
+          propertyId: onProp.id,
+          value: on,
+        ));
+      }
+    }
+
+    // If all devices are offline, show warning
+    if (properties.isEmpty && offlineCount > 0) {
+      if (mounted) {
+        AlertBar.showWarning(
+          context,
+          message: localizations.all_devices_offline,
+        );
+      }
+      return false;
+    }
+
+    if (properties.isEmpty) return true; // No devices to update
+
+    // Show info if some devices were skipped
+    if (offlineCount > 0 && mounted) {
+      AlertBar.showInfo(
+        context,
+        message: localizations.devices_offline_skipped(offlineCount),
+      );
+    }
+
+    final displayRepository = locator<DisplayRepository>();
+    final displayId = displayRepository.display?.id;
+
+    final commandContext = PropertyCommandContext(
+      origin: 'panel.system.room',
+      displayId: displayId,
+      spaceId: widget.roomId,
+      roleKey: widget.role.name,
+    );
+
+    // Set pending state for immediate optimistic UI
+    for (final property in properties) {
+      _deviceControlStateService?.setPending(
+        property.deviceId,
+        property.channelId,
+        property.propertyId,
+        property.value,
+      );
+      _intentOverlayService?.createLocalOverlay(
+        deviceId: property.deviceId,
+        channelId: property.channelId,
+        propertyId: property.propertyId,
+        value: property.value,
+        ttlMs: 5000,
+      );
+    }
+
+    // Force immediate UI update
+    if (mounted) setState(() {});
+
+    final success = await devicesService.setMultiplePropertyValues(
+      properties: properties,
+      context: commandContext,
+    );
+
+    // Transition to settling state after command is sent
+    for (final property in properties) {
+      _deviceControlStateService?.setSettling(
+        property.deviceId,
+        property.channelId,
+        property.propertyId,
+      );
+    }
+
+    return success;
   }
 
   Future<void> _setSimplePropertyForAll({
