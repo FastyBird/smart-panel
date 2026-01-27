@@ -1898,16 +1898,10 @@ class AppLocalizationsCs extends AppLocalizations {
   String get connection_overlay_title_reconnecting => 'Připojování';
 
   @override
-  String get connection_overlay_title_offline => 'Spojení ztraceno';
-
-  @override
   String get connection_overlay_message_reconnecting => 'Pokus o opětovné připojení...';
 
   @override
   String get connection_overlay_message_still_trying => 'Stále se pokoušíme připojit...';
-
-  @override
-  String get connection_overlay_message_offline => 'Spojení přerušeno. Klepnutím na tlačítko se pokuste znovu připojit.';
 
   @override
   String get connection_overlay_retry => 'Zkusit znovu';
@@ -1926,9 +1920,6 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get connection_auth_error_button_reauth => 'Přihlásit se';
-
-  @override
-  String get connection_auth_error_button_change_gateway => 'Změnit bránu';
 
   @override
   String get connection_network_error_title => 'Síť nedostupná';

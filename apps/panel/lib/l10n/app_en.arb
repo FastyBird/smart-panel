@@ -2578,10 +2578,6 @@
   "@connection_overlay_title_reconnecting": {
     "description": "Overlay title during reconnection"
   },
-  "connection_overlay_title_offline": "Connection Lost",
-  "@connection_overlay_title_offline": {
-    "description": "Overlay title when offline"
-  },
   "connection_overlay_message_reconnecting": "Attempting to reconnect...",
   "@connection_overlay_message_reconnecting": {
     "description": "Overlay message during reconnection"
@@ -2589,10 +2585,6 @@
   "connection_overlay_message_still_trying": "Still trying to reconnect...",
   "@connection_overlay_message_still_trying": {
     "description": "Overlay message during prolonged reconnection"
-  },
-  "connection_overlay_message_offline": "Connection interrupted. Tap retry to reconnect manually.",
-  "@connection_overlay_message_offline": {
-    "description": "Overlay message when offline"
   },
   "connection_overlay_retry": "Retry Now",
   "@connection_overlay_retry": {
@@ -2619,10 +2611,6 @@
   "connection_auth_error_button_reauth": "Sign In",
   "@connection_auth_error_button_reauth": {
     "description": "Re-authenticate button text"
-  },
-  "connection_auth_error_button_change_gateway": "Change Gateway",
-  "@connection_auth_error_button_change_gateway": {
-    "description": "Change gateway button text on auth error screen"
   },
 
   "connection_network_error_title": "Network Unavailable",

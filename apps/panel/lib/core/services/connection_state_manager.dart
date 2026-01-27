@@ -23,20 +23,16 @@ import 'package:fastybird_smart_panel/core/types/connection_state.dart';
 class ConnectionStateManager extends ChangeNotifier {
   SocketConnectionState _state = SocketConnectionState.initializing;
   DateTime? _disconnectedAt;
-  DateTime? _lastConnectedAt;
   Timer? _escalationTimer;
   Timer? _debounceTimer;
   Timer? _recoveryCooldownTimer;
-  int _consecutiveFailures = 0;
   bool _isInRecoveryCooldown = false;
-  bool _hasIncrementedFailureForCurrentDisconnect = false;
   bool _pendingDisconnectDuringCooldown = false;
 
   // Timing configuration - can be adjusted for different UX requirements
   static const Duration _debounceDelay = Duration(seconds: 2);
   static const Duration _bannerThreshold = Duration(seconds: 2);
   static const Duration _overlayThreshold = Duration(seconds: 10);
-  static const Duration _offlineThreshold = Duration(seconds: 30);
   static const Duration _fullScreenThreshold = Duration(seconds: 60);
   static const Duration _recoveryCooldown = Duration(seconds: 3);
   static const Duration _escalationCheckInterval = Duration(seconds: 5);
@@ -48,15 +44,6 @@ class ConnectionStateManager extends ChangeNotifier {
   Duration get disconnectedDuration => _disconnectedAt != null
       ? DateTime.now().difference(_disconnectedAt!)
       : Duration.zero;
-
-  /// Timestamp of last successful connection
-  DateTime? get lastConnectedAt => _lastConnectedAt;
-
-  /// Number of consecutive connection failures (disconnection episodes)
-  int get consecutiveFailures => _consecutiveFailures;
-
-  /// Whether currently in recovery cooldown (suppress warnings briefly after reconnection)
-  bool get isInRecoveryCooldown => _isInRecoveryCooldown;
 
   /// Called when socket connects successfully.
   ///
@@ -74,9 +61,6 @@ class ConnectionStateManager extends ChangeNotifier {
         _state != SocketConnectionState.initializing;
 
     _disconnectedAt = null;
-    _lastConnectedAt = DateTime.now();
-    _consecutiveFailures = 0;
-    _hasIncrementedFailureForCurrentDisconnect = false;
     _pendingDisconnectDuringCooldown = false;
 
     // Start recovery cooldown to suppress brief disconnect warnings
@@ -120,7 +104,6 @@ class ConnectionStateManager extends ChangeNotifier {
     if (_state == SocketConnectionState.online) {
       // Record disconnect time immediately for accurate duration tracking
       _disconnectedAt = DateTime.now();
-      _hasIncrementedFailureForCurrentDisconnect = false;
 
       // Start debounce - don't immediately change state, but time is already tracked
       _debounceTimer?.cancel();
@@ -132,7 +115,6 @@ class ConnectionStateManager extends ChangeNotifier {
         _state == SocketConnectionState.connecting) {
       // During initialization, don't debounce - show connecting state
       _disconnectedAt = DateTime.now();
-      _hasIncrementedFailureForCurrentDisconnect = false;
       _updateState(SocketConnectionState.reconnecting);
       _startEscalationTimer();
     }
@@ -165,7 +147,6 @@ class ConnectionStateManager extends ChangeNotifier {
     _debounceTimer?.cancel();
     _escalationTimer?.cancel();
     _disconnectedAt ??= DateTime.now();
-    _hasIncrementedFailureForCurrentDisconnect = false;
     _updateState(SocketConnectionState.serverUnavailable);
   }
 
@@ -180,7 +161,6 @@ class ConnectionStateManager extends ChangeNotifier {
     _debounceTimer?.cancel();
     _escalationTimer?.cancel();
     _disconnectedAt ??= DateTime.now();
-    _hasIncrementedFailureForCurrentDisconnect = false;
     _updateState(SocketConnectionState.networkUnavailable);
   }
 
@@ -197,7 +177,6 @@ class ConnectionStateManager extends ChangeNotifier {
       // Reset timestamp to give reconnection a fresh escalation window.
       // This prevents immediate jump back to offline when retrying after 60+ seconds.
       _disconnectedAt = DateTime.now();
-      _hasIncrementedFailureForCurrentDisconnect = false;
       _updateState(SocketConnectionState.reconnecting);
       _startEscalationTimer();
     }
@@ -214,9 +193,7 @@ class ConnectionStateManager extends ChangeNotifier {
     _recoveryCooldownTimer?.cancel();
 
     _disconnectedAt = null;
-    _consecutiveFailures = 0;
     _isInRecoveryCooldown = false;
-    _hasIncrementedFailureForCurrentDisconnect = false;
     _pendingDisconnectDuringCooldown = false;
     _updateState(SocketConnectionState.initializing);
   }
@@ -235,12 +212,6 @@ class ConnectionStateManager extends ChangeNotifier {
       // Only process escalation for reconnecting state
       if (_state != SocketConnectionState.reconnecting) {
         return;
-      }
-
-      // Increment failure counter once we pass the offline threshold (30s)
-      if (duration >= _offlineThreshold && !_hasIncrementedFailureForCurrentDisconnect) {
-        _consecutiveFailures++;
-        _hasIncrementedFailureForCurrentDisconnect = true;
       }
 
       // Escalate to offline state after full-screen threshold (60s)

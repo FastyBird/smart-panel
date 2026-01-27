@@ -34,59 +34,6 @@ enum SocketConnectionState {
   networkUnavailable,
 }
 
-/// Extension providing UI-related state queries for [ConnectionState].
-extension SocketConnectionStateExtension on SocketConnectionState {
-  /// Whether the panel can be used (even if in degraded state).
-  ///
-  /// Returns true for [online] and [reconnecting] states where
-  /// cached data may still be displayed.
-  bool get isUsable =>
-      this == SocketConnectionState.online || this == SocketConnectionState.reconnecting;
-
-  /// Whether device controls should be disabled.
-  ///
-  /// Only [online] state allows active control of devices.
-  bool get controlsDisabled => this != SocketConnectionState.online;
-
-  /// Whether to show any connection status indicator.
-  ///
-  /// Returns false only when fully [online].
-  bool get showIndicator => this != SocketConnectionState.online;
-
-  /// Whether this is a blocking error state requiring user attention.
-  ///
-  /// These states typically require full-screen error displays.
-  bool get isBlockingError => switch (this) {
-        SocketConnectionState.offline => true,
-        SocketConnectionState.authError => true,
-        SocketConnectionState.serverUnavailable => true,
-        SocketConnectionState.networkUnavailable => true,
-        _ => false,
-      };
-
-  /// Whether automatic reconnection should be attempted.
-  bool get shouldAutoReconnect => switch (this) {
-        SocketConnectionState.reconnecting => true,
-        SocketConnectionState.connecting => true,
-        SocketConnectionState.networkUnavailable => true,
-        SocketConnectionState.serverUnavailable => true,
-        _ => false,
-      };
-
-  /// Human-readable description for debugging.
-  String get debugLabel => switch (this) {
-        SocketConnectionState.initializing => 'Initializing',
-        SocketConnectionState.connecting => 'Connecting',
-        SocketConnectionState.authenticating => 'Authenticating',
-        SocketConnectionState.online => 'Online',
-        SocketConnectionState.reconnecting => 'Reconnecting',
-        SocketConnectionState.offline => 'Offline',
-        SocketConnectionState.authError => 'Authentication Error',
-        SocketConnectionState.serverUnavailable => 'Server Unavailable',
-        SocketConnectionState.networkUnavailable => 'Network Unavailable',
-      };
-}
-
 /// Severity levels for connection UI feedback.
 ///
 /// Determines what type of UI element should be shown based on

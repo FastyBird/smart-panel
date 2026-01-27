@@ -1895,16 +1895,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get connection_overlay_title_reconnecting => 'Reconnecting';
 
   @override
-  String get connection_overlay_title_offline => 'Connection Lost';
-
-  @override
   String get connection_overlay_message_reconnecting => 'Attempting to reconnect...';
 
   @override
   String get connection_overlay_message_still_trying => 'Still trying to reconnect...';
-
-  @override
-  String get connection_overlay_message_offline => 'Connection interrupted. Tap retry to reconnect manually.';
 
   @override
   String get connection_overlay_retry => 'Retry Now';
@@ -1923,9 +1917,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get connection_auth_error_button_reauth => 'Sign In';
-
-  @override
-  String get connection_auth_error_button_change_gateway => 'Change Gateway';
 
   @override
   String get connection_network_error_title => 'Network Unavailable';

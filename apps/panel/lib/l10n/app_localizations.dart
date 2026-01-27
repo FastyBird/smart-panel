@@ -3743,12 +3743,6 @@ abstract class AppLocalizations {
   /// **'Reconnecting'**
   String get connection_overlay_title_reconnecting;
 
-  /// Overlay title when offline
-  ///
-  /// In en, this message translates to:
-  /// **'Connection Lost'**
-  String get connection_overlay_title_offline;
-
   /// Overlay message during reconnection
   ///
   /// In en, this message translates to:
@@ -3760,12 +3754,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Still trying to reconnect...'**
   String get connection_overlay_message_still_trying;
-
-  /// Overlay message when offline
-  ///
-  /// In en, this message translates to:
-  /// **'Connection interrupted. Tap retry to reconnect manually.'**
-  String get connection_overlay_message_offline;
 
   /// Retry button text in overlay
   ///
@@ -3802,12 +3790,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sign In'**
   String get connection_auth_error_button_reauth;
-
-  /// Change gateway button text on auth error screen
-  ///
-  /// In en, this message translates to:
-  /// **'Change Gateway'**
-  String get connection_auth_error_button_change_gateway;
 
   /// Title for network error screen
   ///
