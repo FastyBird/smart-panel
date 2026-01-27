@@ -1,7 +1,7 @@
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 
 import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -307,6 +307,27 @@ export class SpacesService {
 
 			return devices;
 		}
+	}
+
+	/**
+	 * Find multiple devices by their IDs
+	 * Returns devices with channels and properties loaded
+	 */
+	async findDevicesByIds(deviceIds: string[]): Promise<DeviceEntity[]> {
+		if (deviceIds.length === 0) {
+			return [];
+		}
+
+		this.logger.debug(`Fetching ${deviceIds.length} devices by IDs`);
+
+		const devices = await this.deviceRepository.find({
+			where: { id: In(deviceIds) },
+			relations: ['channels', 'channels.properties'],
+		});
+
+		this.logger.debug(`Found ${devices.length} of ${deviceIds.length} requested devices`);
+
+		return devices;
 	}
 
 	/**

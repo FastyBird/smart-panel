@@ -5,7 +5,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { ChannelCategory, DeviceCategory, PropertyCategory, PropertyPermission } from '../../devices/devices.constants';
+import { ChannelCategory, DeviceCategory, PermissionType, PropertyCategory } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { CreateMediaEndpointDto, UpdateMediaEndpointDto } from '../dto/media-endpoint.dto';
 import { SpaceMediaEndpointEntity } from '../entities/space-media-endpoint.entity';
@@ -303,7 +303,7 @@ export class SpaceMediaEndpointService {
 			const isInput = channel.category === ChannelCategory.MEDIA_INPUT;
 
 			for (const property of channel.properties ?? []) {
-				const permission = this.mapPermission(property.permission);
+				const permission = this.mapPermissions(property.permissions);
 
 				// Power (from television/switcher)
 				if ((isTelevision || isSwitcher) && (property.category === PropertyCategory.ON || property.category === PropertyCategory.ACTIVE)) {
@@ -465,17 +465,18 @@ export class SpaceMediaEndpointService {
 	}
 
 	/**
-	 * Map property permission to capability permission
+	 * Map property permissions array to capability permission
 	 */
-	private mapPermission(permission: PropertyPermission): MediaCapabilityPermission {
-		switch (permission) {
-			case PropertyPermission.READ_ONLY:
-				return MediaCapabilityPermission.READ;
-			case PropertyPermission.WRITE_ONLY:
-				return MediaCapabilityPermission.WRITE;
-			case PropertyPermission.READ_WRITE:
-			default:
-				return MediaCapabilityPermission.READ_WRITE;
+	private mapPermissions(permissions: PermissionType[]): MediaCapabilityPermission {
+		const hasRead = permissions.includes(PermissionType.READ_ONLY) || permissions.includes(PermissionType.READ_WRITE);
+		const hasWrite = permissions.includes(PermissionType.WRITE_ONLY) || permissions.includes(PermissionType.READ_WRITE);
+
+		if (hasRead && hasWrite) {
+			return MediaCapabilityPermission.READ_WRITE;
+		} else if (hasWrite) {
+			return MediaCapabilityPermission.WRITE;
+		} else {
+			return MediaCapabilityPermission.READ;
 		}
 	}
 

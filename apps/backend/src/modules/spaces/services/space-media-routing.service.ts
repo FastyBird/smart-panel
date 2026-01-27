@@ -487,7 +487,7 @@ export class SpaceMediaRoutingService {
 					device,
 					channel,
 					property,
-					value: step.value,
+					value: step.value as string | number | boolean,
 				};
 
 				const success = await platform.processBatch([command]);
@@ -639,11 +639,11 @@ export class SpaceMediaRoutingService {
 				// Find volume and mute properties
 				for (const channel of audioDevice.channels ?? []) {
 					for (const property of channel.properties ?? []) {
-						if (property.category === 'volume' && property.actualValue !== undefined) {
-							currentVolume = Number(property.actualValue);
+						if (property.category === 'volume' && property.value !== undefined) {
+							currentVolume = Number(property.value);
 						}
-						if (property.category === 'mute' && property.actualValue !== undefined) {
-							isMuted = Boolean(property.actualValue);
+						if (property.category === 'mute' && property.value !== undefined) {
+							isMuted = Boolean(property.value);
 						}
 					}
 				}
