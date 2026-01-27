@@ -191,6 +191,7 @@ describe('WebsocketExchangeListener (Scenes)', () => {
 			expect(result).toEqual({
 				success: true,
 				data: {
+					success: true,
 					scene_id: sceneId,
 					status: SceneExecutionStatus.COMPLETED,
 					total_actions: 5,

@@ -168,6 +168,7 @@ export class WebsocketExchangeListener implements OnModuleInit {
 			return {
 				success: true,
 				data: {
+					success: result.success,
 					affected_devices: result.affectedDevices,
 					failed_devices: result.failedDevices,
 				},
@@ -216,6 +217,7 @@ export class WebsocketExchangeListener implements OnModuleInit {
 			return {
 				success: true,
 				data: {
+					success: result.success,
 					affected_devices: result.affectedDevices,
 					failed_devices: result.failedDevices,
 					heating_setpoint: result.heatingSetpoint,
@@ -267,6 +269,7 @@ export class WebsocketExchangeListener implements OnModuleInit {
 			return {
 				success: true,
 				data: {
+					success: result.success,
 					affected_devices: result.affectedDevices,
 					failed_devices: result.failedDevices,
 					new_position: result.newPosition,
@@ -316,6 +319,7 @@ export class WebsocketExchangeListener implements OnModuleInit {
 			return {
 				success: true,
 				data: {
+					success: result.success,
 					affected_devices: result.affectedDevices,
 					failed_devices: result.failedDevices,
 					new_volume: result.newVolume,
@@ -362,6 +366,7 @@ export class WebsocketExchangeListener implements OnModuleInit {
 			return {
 				success: true,
 				data: {
+					success: result.success,
 					restored_devices: result.restoredDevices,
 					failed_devices: result.failedDevices,
 					message: result.message,

@@ -245,6 +245,7 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 			expect(result).toEqual({
 				success: true,
 				data: {
+					success: true,
 					affected_devices: 3,
 					failed_devices: 1,
 				},
@@ -317,6 +318,7 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 			expect(result).toEqual({
 				success: true,
 				data: {
+					success: true,
 					affected_devices: 2,
 					failed_devices: 0,
 					heating_setpoint: 22,
@@ -363,6 +365,7 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 			expect(result).toEqual({
 				success: true,
 				data: {
+					success: true,
 					affected_devices: 1,
 					failed_devices: 0,
 					new_position: 100,
@@ -406,6 +409,7 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 			expect(result).toEqual({
 				success: true,
 				data: {
+					success: true,
 					affected_devices: 1,
 					failed_devices: 0,
 					new_volume: 50,
@@ -449,6 +453,7 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 			expect(result).toEqual({
 				success: true,
 				data: {
+					success: true,
 					restored_devices: 2,
 					failed_devices: 0,
 					message: 'Undo successful',
