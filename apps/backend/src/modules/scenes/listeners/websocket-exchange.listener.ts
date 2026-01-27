@@ -79,8 +79,7 @@ export class WebsocketExchangeListener implements OnModuleInit {
 			const result = await this.sceneExecutorService.triggerScene(sceneId, triggeredBy);
 
 			const success =
-				result.status === SceneExecutionStatus.COMPLETED ||
-				result.status === SceneExecutionStatus.PARTIALLY_COMPLETED;
+				result.status === SceneExecutionStatus.COMPLETED || result.status === SceneExecutionStatus.PARTIALLY_COMPLETED;
 
 			return {
 				success,

@@ -1,4 +1,6 @@
-/* eslint-disable @typescript-eslint/unbound-method */
+/*
+eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment
+*/
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { CommandEventRegistryService } from '../../websocket/services/command-event-registry.service';

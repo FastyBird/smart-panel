@@ -1,4 +1,7 @@
-/* eslint-disable @typescript-eslint/unbound-method */
+/*
+eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment,
+@typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unnecessary-type-assertion
+*/
 import { v4 as uuid } from 'uuid';
 
 import { Test, TestingModule } from '@nestjs/testing';
@@ -124,9 +127,7 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 		beforeEach(() => {
 			listener.onModuleInit();
 			// Find the lighting intent handler
-			const call = commandEventRegistry.register.mock.calls.find(
-				(c) => c[0] === SpacesWsEventType.LIGHTING_INTENT,
-			);
+			const call = commandEventRegistry.register.mock.calls.find((c) => c[0] === SpacesWsEventType.LIGHTING_INTENT);
 			handleLightingIntent = call![2];
 		});
 
@@ -285,9 +286,7 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 
 		beforeEach(() => {
 			listener.onModuleInit();
-			const call = commandEventRegistry.register.mock.calls.find(
-				(c) => c[0] === SpacesWsEventType.CLIMATE_INTENT,
-			);
+			const call = commandEventRegistry.register.mock.calls.find((c) => c[0] === SpacesWsEventType.CLIMATE_INTENT);
 			handleClimateIntent = call![2];
 		});
 
@@ -334,9 +333,7 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 
 		beforeEach(() => {
 			listener.onModuleInit();
-			const call = commandEventRegistry.register.mock.calls.find(
-				(c) => c[0] === SpacesWsEventType.COVERS_INTENT,
-			);
+			const call = commandEventRegistry.register.mock.calls.find((c) => c[0] === SpacesWsEventType.COVERS_INTENT);
 			handleCoversIntent = call![2];
 		});
 
