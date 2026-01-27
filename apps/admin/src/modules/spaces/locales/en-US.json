@@ -210,6 +210,7 @@
 			"mediaRoles": {
 				"title": "Media roles",
 				"description": "Assign roles to media devices so the panel knows which devices are primary, background, or gaming focused.",
+				"v2Notice": "Media roles are being redesigned. The new routing-based system will be available soon.",
 				"noDevices": "No media devices found in this space",
 				"role": {
 					"title": "Role",
