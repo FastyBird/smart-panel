@@ -1270,10 +1270,17 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
 
     try {
       final List<PropertyCommandItem> properties = [];
+      int offlineCount = 0;
 
       for (final target in targets) {
         final device = devicesService.getDevice(target.deviceId);
         if (device is LightingDeviceView) {
+          // Skip offline devices
+          if (!device.isOnline) {
+            offlineCount++;
+            continue;
+          }
+
           final channel = findLightChannel(device, target.channelId);
           if (channel == null) continue;
 
@@ -1287,7 +1294,26 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
         }
       }
 
+      // If all devices are offline, show warning and return
+      if (properties.isEmpty && offlineCount > 0) {
+        if (mounted) {
+          AlertBar.showWarning(
+            context,
+            message: localizations.all_devices_offline,
+          );
+        }
+        return;
+      }
+
       if (properties.isEmpty) return;
+
+      // Show info if some devices were skipped
+      if (offlineCount > 0 && mounted) {
+        AlertBar.showInfo(
+          context,
+          message: localizations.devices_offline_skipped(offlineCount),
+        );
+      }
 
       final displayRepository = locator<DisplayRepository>();
       final displayId = displayRepository.display?.id;
@@ -1436,7 +1462,9 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     final devicesService = _devicesService;
     if (devicesService == null) return false;
 
+    final localizations = AppLocalizations.of(context)!;
     final List<PropertyCommandItem> properties = [];
+    int offlineCount = 0;
 
     for (final target in targets) {
       final hasCapability = switch (propertyType) {
@@ -1448,6 +1476,12 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
 
       final device = devicesService.getDevice(target.deviceId);
       if (device is LightingDeviceView) {
+        // Skip offline devices
+        if (!device.isOnline) {
+          offlineCount++;
+          continue;
+        }
+
         final channel = findLightChannel(device, target.channelId);
         if (channel == null) continue;
 
@@ -1468,7 +1502,26 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       }
     }
 
+    // If all devices are offline, show warning
+    if (properties.isEmpty && offlineCount > 0) {
+      if (mounted) {
+        AlertBar.showWarning(
+          context,
+          message: localizations.all_devices_offline,
+        );
+      }
+      return false;
+    }
+
     if (properties.isEmpty) return true; // No devices to update
+
+    // Show info if some devices were skipped
+    if (offlineCount > 0 && mounted) {
+      AlertBar.showInfo(
+        context,
+        message: localizations.devices_offline_skipped(offlineCount),
+      );
+    }
 
     final displayRepository = locator<DisplayRepository>();
     final displayId = displayRepository.display?.id;
@@ -1555,11 +1608,19 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     final devicesService = _devicesService;
     if (devicesService == null) return false;
 
+    final localizations = AppLocalizations.of(context)!;
     final List<PropertyCommandItem> properties = [];
+    int offlineCount = 0;
 
     for (final target in targets) {
       final device = devicesService.getDevice(target.deviceId);
       if (device is LightingDeviceView) {
+        // Skip offline devices
+        if (!device.isOnline) {
+          offlineCount++;
+          continue;
+        }
+
         final channel = findLightChannel(device, target.channelId);
         if (channel == null || !channel.hasColor) continue;
 
@@ -1618,7 +1679,26 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       }
     }
 
+    // If all devices are offline, show warning
+    if (properties.isEmpty && offlineCount > 0) {
+      if (mounted) {
+        AlertBar.showWarning(
+          context,
+          message: localizations.all_devices_offline,
+        );
+      }
+      return false;
+    }
+
     if (properties.isEmpty) return true; // No devices to update
+
+    // Show info if some devices were skipped
+    if (offlineCount > 0 && mounted) {
+      AlertBar.showInfo(
+        context,
+        message: localizations.devices_offline_skipped(offlineCount),
+      );
+    }
 
     final displayRepository = locator<DisplayRepository>();
     final displayId = displayRepository.display?.id;
