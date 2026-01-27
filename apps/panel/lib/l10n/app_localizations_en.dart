@@ -152,6 +152,20 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String devices_offline_skipped(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Skipped $count offline devices',
+      one: 'Skipped 1 offline device',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get all_devices_offline => 'All devices are offline';
+
+  @override
   String get time_ago_just_now => 'just now';
 
   @override

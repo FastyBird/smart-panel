@@ -1163,6 +1163,9 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
             ? await spacesService.turnRoleOn(widget.roomId, stateRole)
             : await spacesService.turnRoleOff(widget.roomId, stateRole);
         success = result != null;
+        if (mounted) {
+          IntentResultHandler.showOfflineAlertIfNeeded(context, result);
+        }
       } else {
         // Fallback to direct device control
         final List<PropertyCommandItem> properties = [];
@@ -1371,6 +1374,9 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
               intValue,
             );
             success = result != null;
+            if (mounted) {
+              IntentResultHandler.showOfflineAlertIfNeeded(context, result);
+            }
             break;
           case SimplePropertyType.temperature:
             final result = await spacesService.setRoleColorTemp(
@@ -1379,6 +1385,9 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
               intValue,
             );
             success = result != null;
+            if (mounted) {
+              IntentResultHandler.showOfflineAlertIfNeeded(context, result);
+            }
             break;
           case SimplePropertyType.white:
             // White channel not yet implemented in backend intents, use fallback
@@ -1507,6 +1516,9 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
           hexColor,
         );
         success = result != null;
+        if (mounted) {
+          IntentResultHandler.showOfflineAlertIfNeeded(context, result);
+        }
       } else {
         // Fallback to direct device control
         success = await _setColorViaDevices(targets, hue, saturation);

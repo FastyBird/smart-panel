@@ -2,7 +2,7 @@ import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { ChannelCategory, ConnectionState, PropertyCategory } from '../../devices/devices.constants';
+import { ChannelCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
@@ -276,8 +276,9 @@ export class MediaIntentService extends SpaceIntentBaseService {
 	 * Filter out offline devices from a list of media devices.
 	 * Returns online devices and list of unique offline device IDs.
 	 *
-	 * Devices with UNKNOWN status are treated as potentially online and included
-	 * in the online list (commands will fail naturally if device is truly offline).
+	 * Only devices with status.online = true are considered online.
+	 * Devices with UNKNOWN or other non-online statuses are treated as offline
+	 * and skipped to provide better user feedback.
 	 *
 	 * Note: A device may have multiple channels, so we use a Set to ensure
 	 * each device ID appears only once in offlineIds.
@@ -287,8 +288,8 @@ export class MediaIntentService extends SpaceIntentBaseService {
 		const offlineIdSet = new Set<string>();
 
 		for (const device of devices) {
-			// Treat UNKNOWN status as potentially online - allow commands to attempt
-			if (device.device.status.online || device.device.status.status === ConnectionState.UNKNOWN) {
+			// Only treat devices as online if status.online is explicitly true
+			if (device.device.status.online) {
 				online.push(device);
 			} else {
 				offlineIdSet.add(device.device.id);

@@ -44,6 +44,8 @@
   "device_offline_description": "Nelze komunikovat s tímto zařízením. Zkontrolujte, zda je zařízení zapnuté a připojené k síti.",
   "device_offline_retry": "Zkusit znovu",
   "device_offline_last_seen": "Naposledy viděno {time}",
+  "devices_offline_skipped": "{count, plural, =1{Přeskočeno 1 offline zařízení} few{Přeskočena {count} offline zařízení} other{Přeskočeno {count} offline zařízení}}",
+  "all_devices_offline": "Všechna zařízení jsou offline",
   "time_ago_just_now": "právě teď",
   "time_ago_minutes": "před {count} min",
   "time_ago_hours": "před {count} h",

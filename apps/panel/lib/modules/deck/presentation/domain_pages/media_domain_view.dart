@@ -13,6 +13,7 @@ import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/media_state/media_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/intent_types.dart';
 import 'package:fastybird_smart_panel/modules/spaces/service.dart';
+import 'package:fastybird_smart_panel/modules/spaces/utils/intent_result_handler.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/media_targets/view.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -119,7 +120,10 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
     if (_spacesService == null) return;
     setState(() => _isSending = true);
     try {
-      await _spacesService!.setMediaMode(_roomId, mode);
+      final result = await _spacesService!.setMediaMode(_roomId, mode);
+      if (mounted) {
+        IntentResultHandler.showOfflineAlertIfNeededForMedia(context, result);
+      }
     } finally {
       setState(() => _isSending = false);
     }
@@ -129,7 +133,10 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
     if (_spacesService == null) return;
     setState(() => _isSending = true);
     try {
-      await _spacesService!.setMediaVolume(_roomId, volume.clamp(0, 100));
+      final result = await _spacesService!.setMediaVolume(_roomId, volume.clamp(0, 100));
+      if (mounted) {
+        IntentResultHandler.showOfflineAlertIfNeededForMedia(context, result);
+      }
     } finally {
       setState(() => _isSending = false);
     }
@@ -139,8 +146,11 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
     if (_spacesService == null) return;
     setState(() => _isSending = true);
     try {
-      await _spacesService!
+      final result = await _spacesService!
           .adjustMediaVolume(_roomId, delta: delta, increase: increase);
+      if (mounted) {
+        IntentResultHandler.showOfflineAlertIfNeededForMedia(context, result);
+      }
     } finally {
       setState(() => _isSending = false);
     }
@@ -150,9 +160,12 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
     if (_spacesService == null) return;
     setState(() => _isSending = true);
     try {
-      await (on
+      final result = await (on
           ? _spacesService!.powerOnMedia(_roomId)
           : _spacesService!.powerOffMedia(_roomId));
+      if (mounted) {
+        IntentResultHandler.showOfflineAlertIfNeededForMedia(context, result);
+      }
     } finally {
       setState(() => _isSending = false);
     }
@@ -162,9 +175,12 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
     if (_spacesService == null) return;
     setState(() => _isSending = true);
     try {
-      await (muted
+      final result = await (muted
           ? _spacesService!.muteMedia(_roomId)
           : _spacesService!.unmuteMedia(_roomId));
+      if (mounted) {
+        IntentResultHandler.showOfflineAlertIfNeededForMedia(context, result);
+      }
     } finally {
       setState(() => _isSending = false);
     }

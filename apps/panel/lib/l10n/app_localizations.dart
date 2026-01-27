@@ -377,6 +377,18 @@ abstract class AppLocalizations {
   /// **'Last seen {time}'**
   String device_offline_last_seen(String time);
 
+  /// Message shown when devices are skipped due to being offline
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Skipped 1 offline device} other{Skipped {count} offline devices}}'**
+  String devices_offline_skipped(int count);
+
+  /// Message shown when all targeted devices are offline
+  ///
+  /// In en, this message translates to:
+  /// **'All devices are offline'**
+  String get all_devices_offline;
+
   /// Time ago label for less than a minute
   ///
   /// In en, this message translates to:

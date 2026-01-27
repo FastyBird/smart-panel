@@ -19,6 +19,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/channels/window_cove
 import 'package:fastybird_smart_panel/modules/devices/views/devices/window_covering.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/covers_state/covers_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/service.dart';
+import 'package:fastybird_smart_panel/modules/spaces/utils/intent_result_handler.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/covers_targets/view.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -944,6 +945,10 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   Future<void> _setCoversMode(CoversMode mode) async {
     try {
       final result = await _spacesService?.setCoversMode(_roomId, mode);
+
+      if (mounted) {
+        IntentResultHandler.showOfflineAlertIfNeededForCovers(context, result);
+      }
 
       if (result == null || result.failedDevices > 0) {
         if (mounted) {

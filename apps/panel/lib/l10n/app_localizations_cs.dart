@@ -152,6 +152,21 @@ class AppLocalizationsCs extends AppLocalizations {
   }
 
   @override
+  String devices_offline_skipped(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Přeskočeno $count offline zařízení',
+      few: 'Přeskočena $count offline zařízení',
+      one: 'Přeskočeno 1 offline zařízení',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get all_devices_offline => 'Všechna zařízení jsou offline';
+
+  @override
   String get time_ago_just_now => 'právě teď';
 
   @override

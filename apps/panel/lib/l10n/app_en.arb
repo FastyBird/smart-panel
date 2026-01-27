@@ -194,6 +194,19 @@
       }
     }
   },
+  "devices_offline_skipped": "{count, plural, =1{Skipped 1 offline device} other{Skipped {count} offline devices}}",
+  "@devices_offline_skipped": {
+    "description": "Message shown when devices are skipped due to being offline",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "all_devices_offline": "All devices are offline",
+  "@all_devices_offline": {
+    "description": "Message shown when all targeted devices are offline"
+  },
   "time_ago_just_now": "just now",
   "@time_ago_just_now": {
     "description": "Time ago label for less than a minute"

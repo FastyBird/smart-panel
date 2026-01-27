@@ -452,7 +452,7 @@ describe('ClimateIntentService', () => {
 			expect(result?.offlineDeviceIds).toContain('offline-device');
 		});
 
-		it('treats UNKNOWN status as potentially online', async () => {
+		it('treats UNKNOWN status as offline', async () => {
 			const unknownStatusDevice = createMockPrimaryClimateDevice({
 				device: {
 					id: 'unknown-device',
@@ -472,9 +472,11 @@ describe('ClimateIntentService', () => {
 
 			const result = await service.executeClimateIntent(mockSpaceId, intent);
 
-			// Device with UNKNOWN status should be treated as potentially online
-			expect(result?.skippedOfflineDevices).toBe(0);
-			expect(result?.offlineDeviceIds).toBeUndefined();
+			// Device with UNKNOWN status should be treated as offline and skipped
+			expect(result?.success).toBe(false);
+			expect(result?.affectedDevices).toBe(0);
+			expect(result?.skippedOfflineDevices).toBe(1);
+			expect(result?.offlineDeviceIds).toContain('unknown-device');
 		});
 
 		it('deduplicates offline device IDs for multi-channel devices', async () => {

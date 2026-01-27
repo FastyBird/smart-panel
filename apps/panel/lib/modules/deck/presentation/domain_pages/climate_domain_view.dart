@@ -34,6 +34,7 @@ import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart'
 import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart'
     as spaces_climate;
 import 'package:fastybird_smart_panel/modules/spaces/service.dart';
+import 'package:fastybird_smart_panel/modules/spaces/utils/intent_result_handler.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/climate_targets/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
@@ -1409,6 +1410,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       if (kDebugMode) {
         debugPrint(
             '[ClimateDomainViewPage] setSetpoint result: affected=${result?.affectedDevices}, failed=${result?.failedDevices}');
+      }
+      if (mounted) {
+        IntentResultHandler.showOfflineAlertIfNeededForClimate(context, result);
       }
     }).catchError((e) {
       if (kDebugMode) {

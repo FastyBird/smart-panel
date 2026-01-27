@@ -38,5 +38,8 @@ export 'package:fastybird_smart_panel/modules/spaces/repositories/intent_types.d
 // Services
 export 'package:fastybird_smart_panel/modules/spaces/service.dart';
 
+// Utils
+export 'package:fastybird_smart_panel/modules/spaces/utils/intent_result_handler.dart';
+
 // Module
 export 'package:fastybird_smart_panel/modules/spaces/module.dart';
