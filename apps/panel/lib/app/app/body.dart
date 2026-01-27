@@ -254,7 +254,6 @@ class _AppBodyState extends State<AppBody> {
           left: 0,
           right: 0,
           child: ConnectionBanner(
-            state: state,
             onRetry: _handleReconnect,
           ),
         ),

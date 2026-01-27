@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:fastybird_smart_panel/core/types/connection_state.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 
@@ -9,13 +8,14 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 /// This widget displays a slim banner at the top of the screen to inform
 /// the user that the connection is being re-established, without blocking
 /// interaction with the rest of the UI.
+///
+/// Note: This banner is only shown when [ConnectionUISeverity.banner] is active,
+/// which only occurs during the `reconnecting` state (2-10 seconds after disconnect).
 class ConnectionBanner extends StatelessWidget {
-  final SocketConnectionState state;
   final VoidCallback? onRetry;
 
   const ConnectionBanner({
     super.key,
-    required this.state,
     this.onRetry,
   });
 

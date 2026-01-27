@@ -62,6 +62,9 @@ class ConnectionStateManager extends ChangeNotifier {
 
     _disconnectedAt = null;
     _pendingDisconnectDuringCooldown = false;
+    // Always reset cooldown flag when connected to prevent it getting stuck
+    // (e.g., duplicate connect events while already online and in cooldown)
+    _isInRecoveryCooldown = false;
 
     // Start recovery cooldown to suppress brief disconnect warnings
     if (wasDisconnected) {
