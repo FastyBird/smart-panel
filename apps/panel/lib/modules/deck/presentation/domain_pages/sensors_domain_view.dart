@@ -1291,7 +1291,10 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => _SensorDetailPage(sensor: sensor),
+        builder: (_) => _SensorDetailPage(
+          sensor: sensor,
+          roomId: _roomId,
+        ),
       ),
     );
   }
@@ -1303,9 +1306,11 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
 
 class _SensorDetailPage extends StatefulWidget {
   final SensorData sensor;
+  final String roomId;
 
   const _SensorDetailPage({
     required this.sensor,
+    required this.roomId,
   });
 
   @override
@@ -1317,14 +1322,39 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
 
+  SpaceStateRepository? _spaceStateRepository;
+  SpacesService? _spacesService;
   PropertyTimeseriesService? _timeseriesService;
 
   int _selectedPeriod = 1; // 0=1H, 1=24H, 2=7D, 3=30D
   bool _isLoadingTimeseries = false;
   PropertyTimeseries? _timeseries;
+
+  /// Live sensor data, updated from repository on WebSocket changes
+  late SensorData _sensor;
+
   @override
   void initState() {
     super.initState();
+
+    _sensor = widget.sensor;
+
+    try {
+      _spacesService = locator<SpacesService>();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[SensorDetailPage] Failed to get SpacesService: $e');
+      }
+    }
+
+    try {
+      _spaceStateRepository = locator<SpaceStateRepository>();
+      _spaceStateRepository?.addListener(_onStateChanged);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[SensorDetailPage] Failed to get SpaceStateRepository: $e');
+      }
+    }
 
     try {
       _timeseriesService = locator<PropertyTimeseriesService>();
@@ -1336,6 +1366,74 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
 
     // Fetch initial time series data
     _fetchTimeseries();
+  }
+
+  @override
+  void dispose() {
+    _spaceStateRepository?.removeListener(_onStateChanged);
+    super.dispose();
+  }
+
+  void _onStateChanged() {
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _refreshSensorData();
+      }
+    });
+  }
+
+  /// Find updated reading from live state and rebuild SensorData
+  void _refreshSensorData() {
+    final sensorState = _spaceStateRepository?.getSensorState(widget.roomId);
+    if (sensorState == null) return;
+
+    final roomName = _spacesService?.getSpace(widget.roomId)?.name ?? 'Room';
+
+    for (final roleReadings in sensorState.readings) {
+      for (final reading in roleReadings.readings) {
+        if (reading.channelId == _sensor.id) {
+          // Found matching reading — rebuild SensorData with fresh values
+          var deviceLabel = reading.deviceName;
+          if (deviceLabel.toLowerCase().startsWith(roomName.toLowerCase())) {
+            deviceLabel = deviceLabel.substring(roomName.length).trim();
+            if (deviceLabel.startsWith('-') || deviceLabel.startsWith('–')) {
+              deviceLabel = deviceLabel.substring(1).trim();
+            }
+          }
+          if (deviceLabel.isEmpty) {
+            deviceLabel = reading.deviceName;
+          }
+
+          setState(() {
+            _sensor = SensorData(
+              id: reading.channelId,
+              propertyId: reading.propertyId,
+              name: reading.channelName,
+              location: deviceLabel,
+              category: _sensor.category,
+              value: _formatReadingValue(reading.value, reading.channelCategory),
+              unit: reading.unit ?? '',
+              status: _sensor.status,
+              lastUpdated: reading.updatedAt ?? DateTime.now(),
+            );
+          });
+          return;
+        }
+      }
+    }
+  }
+
+  /// Format a reading value the same way the list page does
+  String _formatReadingValue(dynamic value, String channelCategory) {
+    if (value == null) return '--';
+    if (value is bool) return value ? 'Detected' : 'Normal';
+    if (value is num) {
+      return value == value.toInt()
+          ? NumberFormatUtils.defaultFormat.formatInteger(value.toInt())
+          : NumberFormatUtils.defaultFormat.formatDecimal(value.toDouble(), decimalPlaces: 1);
+    }
+    return value.toString();
   }
 
   /// Map selected period to TimeRange
@@ -1357,7 +1455,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
   /// Fetch time series data for the current sensor and period
   Future<void> _fetchTimeseries() async {
     // Skip if no property ID or no timeseries service
-    if (widget.sensor.propertyId == null || _timeseriesService == null) {
+    if (_sensor.propertyId == null || _timeseriesService == null) {
       return;
     }
 
@@ -1369,8 +1467,8 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
 
     try {
       final timeseries = await _timeseriesService!.getTimeseries(
-        channelId: widget.sensor.id,
-        propertyId: widget.sensor.propertyId!,
+        channelId: _sensor.id,
+        propertyId: _sensor.propertyId!,
         timeRange: _getTimeRange(),
       );
 
@@ -1409,7 +1507,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
   // Theme-aware color getters - computed locally to support theme changes
   Color _getCategoryColor(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    switch (widget.sensor.category) {
+    switch (_sensor.category) {
       case SensorCategory.temperature:
         return isDark ? AppColorsDark.info : AppColorsLight.info;
       case SensorCategory.humidity:
@@ -1429,7 +1527,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
 
   Color _getCategoryBgColor(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    switch (widget.sensor.category) {
+    switch (_sensor.category) {
       case SensorCategory.temperature:
         return isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight5;
       case SensorCategory.humidity:
@@ -1486,8 +1584,8 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
 
   Widget _buildHeader(BuildContext context) {
     return PageHeader(
-      title: widget.sensor.name,
-      subtitle: '${widget.sensor.location} • Online',
+      title: _sensor.name,
+      subtitle: '${_sensor.location} • Online',
       backgroundColor: AppColors.blank,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1498,7 +1596,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
           ),
           AppSpacings.spacingMdHorizontal,
           HeaderDeviceIcon(
-            icon: widget.sensor.icon,
+            icon: _sensor.icon,
             backgroundColor: _getCategoryBgColor(context),
             iconColor: _getCategoryColor(context),
           ),
@@ -1578,9 +1676,9 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
                 color: _getCategoryColor(context),
               ),
               children: [
-                TextSpan(text: widget.sensor.value),
+                TextSpan(text: _sensor.value),
                 TextSpan(
-                  text: widget.sensor.unit,
+                  text: _sensor.unit,
                   style: TextStyle(
                     fontSize: _scale(24),
                     fontWeight: FontWeight.w300,
@@ -1591,7 +1689,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
           ),
           AppSpacings.spacingSmVertical,
           Text(
-            'Current ${widget.sensor.name}',
+            'Current ${_sensor.name}',
             style: TextStyle(
               color: isDark
                   ? AppTextColorDark.placeholder
@@ -1601,7 +1699,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
           ),
           AppSpacings.spacingXsVertical,
           Text(
-            'Updated ${DatetimeUtils.formatTimeAgo(widget.sensor.lastUpdated, AppLocalizations.of(context)!, format: TimeAgoFormat.medium)}',
+            'Updated ${DatetimeUtils.formatTimeAgo(_sensor.lastUpdated, AppLocalizations.of(context)!, format: TimeAgoFormat.medium)}',
             style: TextStyle(
               color: isDark
                   ? AppTextColorDark.placeholder
@@ -1616,7 +1714,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
 
   /// Get formatted value string for stats
   String _getStatsValue(String type) {
-    final unit = widget.sensor.unit;
+    final unit = _sensor.unit;
 
     // Use time series data if available
     if (_timeseries != null && _timeseries!.isNotEmpty) {
