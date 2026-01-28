@@ -28,6 +28,9 @@ export 'package:fastybird_smart_panel/modules/devices/services/intent_overlay_se
 // Role control state cache
 export 'package:fastybird_smart_panel/modules/devices/services/role_control_state_repository.dart';
 
+// Time series
+export 'package:fastybird_smart_panel/modules/devices/services/property_timeseries.dart';
+
 // Device control state (optimistic UI)
 export 'package:fastybird_smart_panel/modules/devices/types/control_ui_state.dart';
 export 'package:fastybird_smart_panel/modules/devices/models/control_state.dart';

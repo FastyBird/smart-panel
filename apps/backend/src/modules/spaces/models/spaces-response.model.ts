@@ -3429,6 +3429,17 @@ export class SensorReadingDataModel {
 	channelCategory: ChannelCategory;
 
 	@ApiPropertyOptional({
+		name: 'property_id',
+		description: 'ID of the primary property (for time series queries)',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: 'd4e30fc5-743g-6f9d-d5bg-efe9c0f7d1g9',
+	})
+	@Expose({ name: 'property_id' })
+	propertyId: string | null;
+
+	@ApiPropertyOptional({
 		description: 'Current sensor value (type depends on sensor)',
 		oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
 		nullable: true,

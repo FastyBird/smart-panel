@@ -17,7 +17,6 @@ import 'package:fastybird_smart_panel/modules/spaces/views/media_targets/view.da
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
-import 'package:provider/provider.dart';
 
 class MediaDomainViewPage extends StatefulWidget {
   final DomainViewItem viewItem;
@@ -187,53 +186,49 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<SpacesService>(
-      builder: (context, spacesService, _) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        final state = spacesService.getMediaState(_roomId);
-        final targets = spacesService.getMediaTargetsForSpace(_roomId);
-        final deviceCount = state?.devicesCount ?? targets.length;
-        final devicesOn = state?.devicesOn ?? 0;
-        final roomName = spacesService.getSpace(_roomId)?.name ?? '';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final state = _spacesService?.getMediaState(_roomId);
+    final targets = _spacesService?.getMediaTargetsForSpace(_roomId) ?? [];
+    final deviceCount = state?.devicesCount ?? targets.length;
+    final devicesOn = state?.devicesOn ?? 0;
+    final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
 
-        if (_isLoading) {
-          return Scaffold(
-            backgroundColor:
-                isDark ? AppBgColorDark.page : AppBgColorLight.page,
-            body: const Center(child: CircularProgressIndicator()),
-          );
-        }
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor:
+            isDark ? AppBgColorDark.page : AppBgColorLight.page,
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
 
-        return Scaffold(
-          backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
-          body: SafeArea(
-            child: Column(
-              children: [
-                _buildHeader(context, roomName, deviceCount, devicesOn),
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: _refresh,
-                    child: ListView(
-                      padding: const EdgeInsets.all(16),
-                      children: [
-                        _buildModeSelector(context, state),
-                        const SizedBox(height: 12),
-                        _buildPowerMuteRow(context, state),
-                        const SizedBox(height: 12),
-                        _buildVolumeCard(context, state),
-                        const SizedBox(height: 16),
-                        _buildRoles(context, state),
-                        const SizedBox(height: 16),
-                        _buildTargets(context, targets),
-                      ],
-                    ),
-                  ),
+    return Scaffold(
+      backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildHeader(context, roomName, deviceCount, devicesOn),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: _refresh,
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    _buildModeSelector(context, state),
+                    const SizedBox(height: 12),
+                    _buildPowerMuteRow(context, state),
+                    const SizedBox(height: 12),
+                    _buildVolumeCard(context, state),
+                    const SizedBox(height: 16),
+                    _buildRoles(context, state),
+                    const SizedBox(height: 16),
+                    _buildTargets(context, targets),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 

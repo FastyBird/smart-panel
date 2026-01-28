@@ -56,6 +56,7 @@ class SensorReadingModel {
   final String channelId;
   final String channelName;
   final String channelCategory;
+  final String? propertyId;
   final dynamic value;
   final String? unit;
   final String? role;
@@ -66,6 +67,7 @@ class SensorReadingModel {
     required this.channelId,
     required this.channelName,
     required this.channelCategory,
+    this.propertyId,
     this.value,
     this.unit,
     this.role,
@@ -78,6 +80,7 @@ class SensorReadingModel {
       channelId: json['channel_id'] as String? ?? '',
       channelName: json['channel_name'] as String? ?? '',
       channelCategory: json['channel_category'] as String? ?? '',
+      propertyId: json['property_id'] as String?,
       value: json['value'],
       unit: json['unit'] as String?,
       role: json['role'] as String?,
