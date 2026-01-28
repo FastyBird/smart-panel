@@ -14,6 +14,7 @@ import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { SpaceEntity } from '../entities/space.entity';
 import { DerivedMediaEndpointService } from '../services/derived-media-endpoint.service';
+import { SpaceMediaActivityBindingService } from '../services/space-media-activity-binding.service';
 import { SpaceClimateRoleService } from '../services/space-climate-role.service';
 import { SpaceContextSnapshotService } from '../services/space-context-snapshot.service';
 import { SpaceCoversRoleService } from '../services/space-covers-role.service';
@@ -454,6 +455,18 @@ describe('SpacesController', () => {
 							spaceId: mockSpace.id,
 							endpoints: [],
 						}),
+					},
+				},
+				{
+					provide: SpaceMediaActivityBindingService,
+					useValue: {
+						findBySpace: jest.fn().mockResolvedValue([]),
+						findOne: jest.fn().mockResolvedValue(null),
+						getOneOrThrow: jest.fn().mockResolvedValue(null),
+						create: jest.fn().mockResolvedValue(null),
+						update: jest.fn().mockResolvedValue(null),
+						delete: jest.fn().mockResolvedValue(undefined),
+						applyDefaults: jest.fn().mockResolvedValue([]),
 					},
 				},
 			],
