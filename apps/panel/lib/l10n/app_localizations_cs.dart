@@ -1901,6 +1901,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get connection_overlay_retry => 'Zkusit znovu';
 
   @override
+  String get connection_overlay_retrying => 'Připojování...';
+
+  @override
   String get connection_recovery_connected => 'Připojeno';
 
   @override

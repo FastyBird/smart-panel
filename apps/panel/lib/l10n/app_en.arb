@@ -2582,6 +2582,10 @@
   "@connection_overlay_retry": {
     "description": "Retry button text in overlay"
   },
+  "connection_overlay_retrying": "Retrying...",
+  "@connection_overlay_retrying": {
+    "description": "Retry button text while attempting reconnection"
+  },
 
   "connection_recovery_connected": "Connected",
   "@connection_recovery_connected": {

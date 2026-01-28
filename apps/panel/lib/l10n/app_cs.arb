@@ -637,6 +637,7 @@
   "connection_overlay_message_reconnecting": "Pokus o opětovné připojení...",
   "connection_overlay_message_still_trying": "Stále se pokoušíme připojit...",
   "connection_overlay_retry": "Zkusit znovu",
+  "connection_overlay_retrying": "Připojování...",
 
   "connection_recovery_connected": "Připojeno",
 

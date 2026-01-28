@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -12,7 +14,7 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 /// This widget is shown during prolonged reconnection attempts (10-30 seconds).
 /// It allows users to see the cached device state underneath while clearly
 /// indicating that the panel is attempting to reconnect.
-class ConnectionOverlay extends StatelessWidget {
+class ConnectionOverlay extends StatefulWidget {
   final Duration disconnectedDuration;
   final VoidCallback onRetry;
 
@@ -21,6 +23,39 @@ class ConnectionOverlay extends StatelessWidget {
     required this.disconnectedDuration,
     required this.onRetry,
   });
+
+  @override
+  State<ConnectionOverlay> createState() => _ConnectionOverlayState();
+}
+
+class _ConnectionOverlayState extends State<ConnectionOverlay> {
+  bool _isRetrying = false;
+  Timer? _retryTimer;
+
+  @override
+  void dispose() {
+    _retryTimer?.cancel();
+    super.dispose();
+  }
+
+  void _handleRetry() {
+    if (_isRetrying) return;
+
+    setState(() {
+      _isRetrying = true;
+    });
+
+    widget.onRetry();
+
+    // Reset after 2 seconds to allow another retry
+    _retryTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() {
+          _isRetrying = false;
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,62 +71,65 @@ class ConnectionOverlay extends StatelessWidget {
             : AppOverlayColorLight.lighter,
         child: Center(
           child: Container(
-          margin: EdgeInsets.all(AppSpacings.pXl),
-          padding: EdgeInsets.all(AppSpacings.pLg + AppSpacings.pMd),
-          constraints: BoxConstraints(
-            maxWidth: screenService.scale(320),
-          ),
-          decoration: BoxDecoration(
-            color: SystemPagesTheme.card(isDark),
-            borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-            boxShadow: [
-              BoxShadow(
-                color: AppShadowColor.strong,
-                blurRadius: screenService.scale(20),
-                offset: Offset(0, screenService.scale(4)),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Animated icon
-              _buildIcon(isDark, screenService),
-              SizedBox(height: AppSpacings.pLg),
-              // Title
-              Text(
-                _getTitle(localizations),
-                style: TextStyle(
-                  color: SystemPagesTheme.textPrimary(isDark),
-                  fontSize: AppFontSize.extraLarge,
-                  fontWeight: FontWeight.w600,
+            margin: EdgeInsets.all(AppSpacings.pXl),
+            padding: EdgeInsets.all(AppSpacings.pLg + AppSpacings.pMd),
+            constraints: BoxConstraints(
+              maxWidth: screenService.scale(320),
+            ),
+            decoration: BoxDecoration(
+              color: SystemPagesTheme.card(isDark),
+              borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+              boxShadow: [
+                BoxShadow(
+                  color: AppShadowColor.strong,
+                  blurRadius: screenService.scale(20),
+                  offset: Offset(0, screenService.scale(4)),
                 ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: AppSpacings.pMd),
-              // Subtitle
-              Text(
-                _getSubtitle(localizations),
-                style: TextStyle(
-                  color: SystemPagesTheme.textMuted(isDark),
-                  fontSize: AppFontSize.base,
-                  height: 1.4,
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Animated icon
+                _buildIcon(isDark, screenService),
+                SizedBox(height: AppSpacings.pLg),
+                // Title
+                Text(
+                  _getTitle(localizations),
+                  style: TextStyle(
+                    color: SystemPagesTheme.textPrimary(isDark),
+                    fontSize: AppFontSize.extraLarge,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: AppSpacings.pLg + AppSpacings.pMd),
-              // Retry button
-              SizedBox(
-                width: double.infinity,
-                child: SystemPagePrimaryButton(
-                  label: localizations.connection_overlay_retry,
-                  icon: MdiIcons.refresh,
-                  onPressed: onRetry,
-                  isDark: isDark,
+                SizedBox(height: AppSpacings.pMd),
+                // Subtitle
+                Text(
+                  _getSubtitle(localizations),
+                  style: TextStyle(
+                    color: SystemPagesTheme.textMuted(isDark),
+                    fontSize: AppFontSize.base,
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-              ),
-            ],
-          ),
+                SizedBox(height: AppSpacings.pLg + AppSpacings.pMd),
+                // Retry button
+                SizedBox(
+                  width: double.infinity,
+                  child: SystemPagePrimaryButton(
+                    label: _isRetrying
+                        ? localizations.connection_overlay_retrying
+                        : localizations.connection_overlay_retry,
+                    icon: _isRetrying ? null : MdiIcons.refresh,
+                    onPressed: _handleRetry,
+                    isLoading: _isRetrying,
+                    isDark: isDark,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -134,7 +172,7 @@ class ConnectionOverlay extends StatelessWidget {
   }
 
   String _getSubtitle(AppLocalizations localizations) {
-    final seconds = disconnectedDuration.inSeconds;
+    final seconds = widget.disconnectedDuration.inSeconds;
 
     if (seconds < 30) {
       return localizations.connection_overlay_message_reconnecting;

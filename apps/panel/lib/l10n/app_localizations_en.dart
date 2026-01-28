@@ -1898,6 +1898,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get connection_overlay_retry => 'Retry Now';
 
   @override
+  String get connection_overlay_retrying => 'Retrying...';
+
+  @override
   String get connection_recovery_connected => 'Connected';
 
   @override

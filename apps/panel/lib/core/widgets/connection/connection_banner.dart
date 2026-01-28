@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
@@ -27,6 +29,8 @@ class _ConnectionBannerState extends State<ConnectionBanner>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<Offset> _slideAnimation;
+  bool _isRetrying = false;
+  Timer? _retryTimer;
 
   @override
   void initState() {
@@ -48,7 +52,27 @@ class _ConnectionBannerState extends State<ConnectionBanner>
   @override
   void dispose() {
     _controller.dispose();
+    _retryTimer?.cancel();
     super.dispose();
+  }
+
+  void _handleRetry() {
+    if (_isRetrying || widget.onRetry == null) return;
+
+    setState(() {
+      _isRetrying = true;
+    });
+
+    widget.onRetry!();
+
+    // Reset after 2 seconds to allow another retry
+    _retryTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() {
+          _isRetrying = false;
+        });
+      }
+    });
   }
 
   @override
@@ -65,6 +89,9 @@ class _ConnectionBannerState extends State<ConnectionBanner>
     final spinnerColor = isDark
         ? AppColorsDark.warning
         : AppColorsLight.warning;
+    final buttonBorderColor = isDark
+        ? AppColorsDark.warningDark2
+        : AppColorsLight.warningDark2;
 
     return SlideTransition(
       position: _slideAnimation,
@@ -101,15 +128,44 @@ class _ConnectionBannerState extends State<ConnectionBanner>
                 ),
                 if (widget.onRetry != null) ...[
                   SizedBox(width: AppSpacings.pMd),
-                  GestureDetector(
-                    onTap: widget.onRetry,
-                    child: Text(
-                      localizations.connection_banner_retry,
-                      style: TextStyle(
-                        color: spinnerColor,
-                        fontSize: AppFontSize.base,
-                        fontWeight: FontWeight.w600,
+                  SizedBox(
+                    height: AppSpacings.pXl,
+                    child: OutlinedButton(
+                      onPressed: _isRetrying ? null : _handleRetry,
+                      style: OutlinedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppSpacings.pMd,
+                        ),
+                        backgroundColor: Colors.transparent,
+                        side: BorderSide(
+                          color: _isRetrying
+                              ? buttonBorderColor.withValues(alpha: 0.5)
+                              : buttonBorderColor,
+                          width: 1,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            AppBorderRadius.small,
+                          ),
+                        ),
                       ),
+                      child: _isRetrying
+                          ? SizedBox(
+                              width: AppFontSize.base,
+                              height: AppFontSize.base,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: spinnerColor.withValues(alpha: 0.7),
+                              ),
+                            )
+                          : Text(
+                              localizations.connection_banner_retry,
+                              style: TextStyle(
+                                color: spinnerColor,
+                                fontSize: AppFontSize.small,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                     ),
                   ),
                 ],

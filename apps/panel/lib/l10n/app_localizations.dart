@@ -3749,6 +3749,12 @@ abstract class AppLocalizations {
   /// **'Retry Now'**
   String get connection_overlay_retry;
 
+  /// Retry button text while attempting reconnection
+  ///
+  /// In en, this message translates to:
+  /// **'Retrying...'**
+  String get connection_overlay_retrying;
+
   /// Toast message shown when connection is restored
   ///
   /// In en, this message translates to:
