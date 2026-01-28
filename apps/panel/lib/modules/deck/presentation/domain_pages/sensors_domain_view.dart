@@ -61,9 +61,7 @@ class SensorData {
   final TrendDirection trend;
   final String? trendText;
   final DateTime lastUpdated;
-  final double? minValue;
-  final double? maxValue;
-  final double? avgValue;
+
   const SensorData({
     required this.id,
     this.propertyId,
@@ -76,9 +74,6 @@ class SensorData {
     this.trend = TrendDirection.stable,
     this.trendText,
     required this.lastUpdated,
-    this.minValue,
-    this.maxValue,
-    this.avgValue,
   });
 
   IconData get icon {
@@ -1619,25 +1614,6 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
     );
   }
 
-  String _getDefaultValue(String type) {
-    // Provide sensible defaults based on sensor type
-    switch (widget.sensor.category) {
-      case SensorCategory.temperature:
-        return type == 'min' ? '19.2' : (type == 'max' ? '24.8' : '22.1');
-      case SensorCategory.humidity:
-        return type == 'min' ? '35' : (type == 'max' ? '65' : '48');
-      case SensorCategory.airQuality:
-        return type == 'min' ? '400' : (type == 'max' ? '800' : '612');
-      case SensorCategory.light:
-        return type == 'min' ? '100' : (type == 'max' ? '800' : '420');
-      case SensorCategory.energy:
-        return type == 'min' ? '50' : (type == 'max' ? '500' : '245');
-      case SensorCategory.motion:
-      case SensorCategory.safety:
-        return '-';
-    }
-  }
-
   /// Get formatted value string for stats
   String _getStatsValue(String type) {
     final unit = widget.sensor.unit;
@@ -1656,21 +1632,12 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
           value = _timeseries!.avgValue;
           break;
         default:
-          return '--$unit';
+          return '--';
       }
       return '${NumberFormatUtils.defaultFormat.formatDecimal(value, decimalPlaces: 1)}$unit';
     }
 
-    // Fall back to sensor data or default
-    final sensorValue = type == 'min'
-        ? widget.sensor.minValue
-        : (type == 'max' ? widget.sensor.maxValue : widget.sensor.avgValue);
-
-    if (sensorValue != null) {
-      return '${NumberFormatUtils.defaultFormat.formatDecimal(sensorValue, decimalPlaces: 1)}$unit';
-    }
-
-    return '${_getDefaultValue(type)}$unit';
+    return '--';
   }
 
   /// Get period label for stats
@@ -1828,13 +1795,25 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
                       ),
                     ),
                   )
-                : CustomPaint(
-                    size: Size(double.infinity, _scale(160)),
-                    painter: _ChartPainter(
-                      color: _getCategoryColor(context),
-                      timeseries: _timeseries,
-                    ),
-                  ),
+                : (_timeseries != null && _timeseries!.isNotEmpty)
+                    ? CustomPaint(
+                        size: Size(double.infinity, _scale(160)),
+                        painter: _ChartPainter(
+                          color: _getCategoryColor(context),
+                          timeseries: _timeseries,
+                        ),
+                      )
+                    : Center(
+                        child: Text(
+                          'No history data available',
+                          style: TextStyle(
+                            color: isDark
+                                ? AppTextColorDark.placeholder
+                                : AppTextColorLight.placeholder,
+                            fontSize: AppFontSize.small,
+                          ),
+                        ),
+                      ),
           ),
           AppSpacings.spacingSmVertical,
           Row(
@@ -1965,10 +1944,6 @@ class _ChartPainter extends CustomPainter {
         final y = size.height * (1 - normalizedValue.clamp(0.0, 1.0));
         points.add(Offset(x, y));
       }
-    } else {
-      // No data - draw flat line in center
-      points.add(Offset(0, size.height * 0.5));
-      points.add(Offset(size.width, size.height * 0.5));
     }
 
     if (points.isEmpty) return;
