@@ -439,13 +439,20 @@ export class SpaceMediaRoutingService {
 
 	/**
 	 * Execute a routing activation
+	 * @param routingId - The routing to activate
+	 * @param skipConflictCheck - Skip conflict policy checking (used internally to prevent recursion)
 	 */
-	async activateRouting(routingId: string): Promise<MediaRoutingActivationResultModel> {
+	async activateRouting(
+		routingId: string,
+		skipConflictCheck: boolean = false,
+	): Promise<MediaRoutingActivationResultModel> {
 		const routing = await this.getOneOrThrow(routingId);
 
 		// Handle conflict policy - check if another routing is actually active
+		// Skip if called from deactivateMedia to prevent infinite recursion
 		const existingActive = await this.getActiveRoutingRecord(routing.spaceId);
 		const hasActiveRouting =
+			!skipConflictCheck &&
 			existingActive &&
 			existingActive.routingId !== null &&
 			existingActive.routingId !== routingId &&
@@ -459,11 +466,12 @@ export class SpaceMediaRoutingService {
 			}
 
 			// For DEACTIVATE_FIRST, properly deactivate the current routing before proceeding
+			// Pass skipConflictCheck=true to prevent infinite recursion if OFF routing also has DEACTIVATE_FIRST
 			if (routing.conflictPolicy === MediaConflictPolicy.DEACTIVATE_FIRST) {
 				this.logger.debug(
 					`Deactivating current routing ${existingActive.routingId} before activating ${routingId}`,
 				);
-				await this.deactivateMedia(routing.spaceId);
+				await this.deactivateMedia(routing.spaceId, true);
 			}
 			// For REPLACE, we just proceed and overwrite
 		}
@@ -537,14 +545,62 @@ export class SpaceMediaRoutingService {
 					break;
 				}
 
-				stepsSkipped++;
-				stepResults.push({
-					order: step.order,
-					deviceId: step.deviceId,
-					status: 'skipped',
-					error: 'Device offline',
-				});
-				continue;
+				// Handle WAIT policy - wait for device to come online with timeout
+				if (routing.offlinePolicy === MediaOfflinePolicy.WAIT) {
+					const WAIT_TIMEOUT_MS = 10000; // 10 second timeout
+					const POLL_INTERVAL_MS = 500;
+					const startTime = Date.now();
+					let deviceOnline = false;
+
+					this.logger.debug(`Waiting for device ${step.deviceId} to come online (timeout: ${WAIT_TIMEOUT_MS}ms)`);
+
+					while (Date.now() - startTime < WAIT_TIMEOUT_MS) {
+						await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+						const refreshedDevices = await this.spacesService.findDevicesByIds([step.deviceId]);
+						const refreshedDevice = refreshedDevices[0];
+
+						if (refreshedDevice?.status?.online) {
+							deviceOnline = true;
+							// Update the device reference for subsequent operations
+							deviceMap.set(step.deviceId, refreshedDevice);
+							this.logger.debug(`Device ${step.deviceId} came online after ${Date.now() - startTime}ms`);
+							break;
+						}
+					}
+
+					if (!deviceOnline) {
+						this.logger.warn(`Device ${step.deviceId} did not come online within timeout`);
+						if (step.critical) {
+							stepsFailed++;
+							stepResults.push({
+								order: step.order,
+								deviceId: step.deviceId,
+								status: 'failed',
+								error: 'Device offline (WAIT timeout expired)',
+							});
+							break;
+						}
+						stepsSkipped++;
+						stepResults.push({
+							order: step.order,
+							deviceId: step.deviceId,
+							status: 'skipped',
+							error: 'Device offline (WAIT timeout expired)',
+						});
+						continue;
+					}
+					// Device is now online, continue with execution
+				} else {
+					// SKIP policy (default) - skip offline devices
+					stepsSkipped++;
+					stepResults.push({
+						order: step.order,
+						deviceId: step.deviceId,
+						status: 'skipped',
+						error: 'Device offline',
+					});
+					continue;
+				}
 			}
 
 			// Handle input policy for input switching steps
@@ -559,7 +615,25 @@ export class SpaceMediaRoutingService {
 					});
 					continue;
 				}
-				// IF_DIFFERENT would require reading current value - simplified for now
+
+				// Handle IF_DIFFERENT - check current value before switching
+				if (routing.inputPolicy === MediaInputPolicy.IF_DIFFERENT) {
+					const currentDevice = deviceMap.get(step.deviceId);
+					const currentChannel = currentDevice?.channels?.find((ch) => ch.id === step.channelId);
+					const currentProperty = currentChannel?.properties?.find((p) => p.id === step.propertyId);
+
+					if (currentProperty?.value !== undefined && currentProperty.value === step.value) {
+						stepsSkipped++;
+						stepResults.push({
+							order: step.order,
+							deviceId: step.deviceId,
+							status: 'skipped',
+							error: 'Input already set to target value (input policy: IF_DIFFERENT)',
+						});
+						continue;
+					}
+				}
+				// ALWAYS policy - proceed with input switching
 			}
 
 			// Find the channel and property
@@ -688,13 +762,19 @@ export class SpaceMediaRoutingService {
 
 	/**
 	 * Deactivate media (activate OFF routing or just power off)
+	 * @param spaceId - The space to deactivate media for
+	 * @param skipConflictCheck - Skip conflict policy checking when activating OFF routing (prevents recursion)
 	 */
-	async deactivateMedia(spaceId: string): Promise<MediaRoutingActivationResultModel> {
+	async deactivateMedia(
+		spaceId: string,
+		skipConflictCheck: boolean = false,
+	): Promise<MediaRoutingActivationResultModel> {
 		// Try to find and activate OFF routing
 		const offRouting = await this.findByType(spaceId, MediaRoutingType.OFF);
 
 		if (offRouting) {
-			return this.activateRouting(offRouting.id);
+			// Pass skipConflictCheck to prevent infinite recursion if OFF routing has DEACTIVATE_FIRST policy
+			return this.activateRouting(offRouting.id, skipConflictCheck);
 		}
 
 		// If no OFF routing exists, just clear the active routing record
