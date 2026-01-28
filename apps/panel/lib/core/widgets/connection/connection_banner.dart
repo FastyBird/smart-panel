@@ -129,13 +129,16 @@ class _ConnectionBannerState extends State<ConnectionBanner>
                 if (widget.onRetry != null) ...[
                   SizedBox(width: AppSpacings.pMd),
                   SizedBox(
-                    height: AppSpacings.pXl,
+                    height: AppSpacings.pLg + AppSpacings.pSm,
                     child: OutlinedButton(
                       onPressed: _isRetrying ? null : _handleRetry,
                       style: OutlinedButton.styleFrom(
                         padding: EdgeInsets.symmetric(
-                          horizontal: AppSpacings.pMd,
+                          horizontal: AppSpacings.pSm + AppSpacings.pXs,
+                          vertical: 0,
                         ),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         backgroundColor: Colors.transparent,
                         side: BorderSide(
                           color: _isRetrying
@@ -145,16 +148,16 @@ class _ConnectionBannerState extends State<ConnectionBanner>
                         ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(
-                            AppBorderRadius.small,
+                            AppBorderRadius.round,
                           ),
                         ),
                       ),
                       child: _isRetrying
                           ? SizedBox(
-                              width: AppFontSize.base,
-                              height: AppFontSize.base,
+                              width: AppFontSize.small,
+                              height: AppFontSize.small,
                               child: CircularProgressIndicator(
-                                strokeWidth: 2,
+                                strokeWidth: 1.5,
                                 color: spinnerColor.withValues(alpha: 0.7),
                               ),
                             )
