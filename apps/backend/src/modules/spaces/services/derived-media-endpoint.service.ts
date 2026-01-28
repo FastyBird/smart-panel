@@ -204,7 +204,7 @@ export class DerivedMediaEndpointService {
 				caps.mute = false;
 				caps.playback = false;
 				caps.track = false;
-				caps.remoteCommands = !!summary.remote;
+				caps.remoteCommands = false;
 				break;
 
 			case MediaEndpointType.AUDIO_OUTPUT:
@@ -258,9 +258,6 @@ export class DerivedMediaEndpointService {
 			case MediaEndpointType.DISPLAY:
 				addLink(summary.power, 'power');
 				addLink(summary.input, 'inputSelect');
-				if (summary.remote) {
-					links.remote = { commands: { remoteKey: summary.remote.propertyId } };
-				}
 				break;
 
 			case MediaEndpointType.AUDIO_OUTPUT:
