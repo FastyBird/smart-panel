@@ -10,6 +10,7 @@ import 'package:fastybird_smart_panel/modules/spaces/models/covers_state/covers_
 import 'package:fastybird_smart_panel/modules/spaces/models/intent_result/intent_result.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/media_state/media_state.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/sensor_state/sensor_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/suggestion/suggestion.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/undo/undo_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/climate_targets.dart';
@@ -339,6 +340,20 @@ class SpacesService extends ChangeNotifier {
   /// Fetch covers state from API
   Future<CoversStateModel?> fetchCoversState(String spaceId) {
     return _spaceStateRepository.fetchCoversState(spaceId);
+  }
+
+  // ============================================
+  // SENSOR STATE
+  // ============================================
+
+  /// Get cached sensor state for a space
+  SensorStateModel? getSensorState(String spaceId) {
+    return _spaceStateRepository.getSensorState(spaceId);
+  }
+
+  /// Fetch sensor state from API
+  Future<SensorStateModel?> fetchSensorState(String spaceId) {
+    return _spaceStateRepository.fetchSensorState(spaceId);
   }
 
   // ============================================
