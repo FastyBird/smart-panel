@@ -257,6 +257,11 @@ Avoid:
 - [x] WebSocket events for routing activation states
 - [x] Default routing generation enhanced
 - [x] Database migration created
+- [x] **Convergence phase completed** - See `docs/features/media-domain-convergence.md`
+
+### Related Documentation
+- **Convergence Phase**: `docs/features/media-domain-convergence.md` - Finalized contracts, invariants, and UI/backend responsibilities
+- **Architecture Guide**: `.ai-rules/MEDIA_ARCHITECTURE.md` - Updated with V2 architecture details
 
 ### Architecture Notes
 

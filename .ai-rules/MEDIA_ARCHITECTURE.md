@@ -2,6 +2,32 @@
 
 This document describes the architecture of the media control system in the Smart Panel backend.
 
+> **Note**: The Media domain has been refactored to a **routing-based, activity-first architecture**.
+> See `docs/features/media-domain-convergence.md` for the finalized design contracts and invariants.
+
+## Architecture Summary (V2 - Routing-Based)
+
+The current Media domain architecture is based on:
+- **Endpoints**: Functional abstractions over device capabilities (display, audio_output, source, remote_target)
+- **Routings**: Activity presets that define which endpoints participate in a media activity
+- **Single Active Routing**: Only one routing can be active per space at any time
+- **Explicit Capabilities**: Capabilities are never hidden; UI renders based on what's available
+
+### Key Services (V2)
+- `SpaceMediaEndpointService` - Manages endpoints and capability detection
+- `SpaceMediaRoutingService` - Handles routing CRUD, activation, and state
+
+### Key Entities (V2)
+- `SpaceMediaEndpointEntity` - Functional device projection with capabilities
+- `SpaceMediaRoutingEntity` - Activity preset with endpoint references and policies
+- `SpaceActiveMediaRoutingEntity` - Tracks current active routing per space
+
+---
+
+## Legacy Overview (V1 - Role-Based)
+
+> **Deprecated**: The role-based system below is being phased out in favor of the routing-based architecture.
+
 ## Overview
 
 The media domain provides multi-device media control with support for:
@@ -338,9 +364,9 @@ cd apps/backend
 npx jest "media" --no-coverage
 ```
 
-## Comparison with Climate Domain
+## Comparison with Climate Domain (Legacy)
 
-| Aspect | Climate | Media |
+| Aspect | Climate | Media (V1 - Legacy) |
 |--------|---------|-------|
 | Device Types | Thermostats, Heaters, ACs | TVs, Speakers, AVRs |
 | Modes | OFF, HEAT, COOL, AUTO | OFF, BACKGROUND, FOCUSED, PARTY |
@@ -348,3 +374,78 @@ npx jest "media" --no-coverage
 | Primary Control | Temperature setpoint | Volume level |
 | Secondary Control | Mode selection | Power, Mute |
 | State Detection | Based on heating/cooling status | Based on power/volume/mute matching |
+
+---
+
+## V2 Architecture Details (Routing-Based)
+
+The V2 architecture replaces roles with explicit endpoint+routing configuration.
+
+### Endpoint Types
+
+| Type | Description | Typical Devices |
+|------|-------------|-----------------|
+| DISPLAY | Visual output | TV, Projector |
+| AUDIO_OUTPUT | Sound output | Receiver, Speaker, TV |
+| SOURCE | Content source | Streamer, Console, STB |
+| REMOTE_TARGET | Remote control target | TV, Streamer |
+
+### Routing Types
+
+| Type | Description | Default Endpoints |
+|------|-------------|-------------------|
+| WATCH | Watch video content | Display + Audio + Source |
+| LISTEN | Listen to audio | Audio + Source |
+| GAMING | Play games | Display + Audio + Console |
+| BACKGROUND | Ambient audio | Audio only |
+| OFF | All media off | All endpoints powered off |
+| CUSTOM | User-defined | Any combination |
+
+### Activation Policies
+
+| Policy | Options | Default | Description |
+|--------|---------|---------|-------------|
+| Power Policy | ON, OFF, UNCHANGED | Per routing type | Power state for endpoints |
+| Input Policy | ALWAYS, IF_DIFFERENT, NEVER | ALWAYS | When to switch inputs |
+| Conflict Policy | REPLACE, FAIL_IF_ACTIVE, DEACTIVATE_FIRST | REPLACE | How to handle existing routing |
+| Offline Policy | SKIP, FAIL, WAIT | SKIP | How to handle offline devices |
+
+### WebSocket Events (V2)
+
+| Event | Trigger | Payload |
+|-------|---------|---------|
+| `MEDIA_ROUTING_ACTIVATING` | Activation started | space_id, routing_id, routing_type |
+| `MEDIA_ROUTING_ACTIVATED` | Activation successful | space_id, routing_id, routing_type |
+| `MEDIA_ROUTING_FAILED` | Activation failed | space_id, routing_id, routing_type, error |
+| `MEDIA_ROUTING_DEACTIVATED` | Routing deactivated | space_id, routing_id, routing_type |
+| `MEDIA_STATE_CHANGED` | Media state changed | space_id, state object |
+
+### Key Differences: V1 vs V2
+
+| Aspect | V1 (Role-Based) | V2 (Routing-Based) |
+|--------|-----------------|-------------------|
+| Device Classification | Roles (PRIMARY, SECONDARY, etc.) | Endpoints (functional projections) |
+| Activity Selection | Modes (OFF, BACKGROUND, etc.) | Routings (explicit endpoint sets) |
+| Configuration | Implicit from roles | Explicit routing definitions |
+| Flexibility | Limited to predefined modes | Custom routings possible |
+| Execution | Mode rules applied to all devices | Only configured endpoints affected |
+
+### Migration Notes
+
+The V1 role-based system is deprecated but may still exist in the codebase for backward compatibility. New development should use:
+
+1. `SpaceMediaEndpointService` for endpoint management
+2. `SpaceMediaRoutingService` for routing operations
+3. `MediaRoutingType` enum for routing types
+4. `MediaEndpointType` enum for endpoint types
+
+Do NOT use:
+- `MediaRole` enum (deprecated)
+- `SpaceMediaRoleService` (deprecated)
+- `MediaMode` enum for media domain (use `MediaRoutingType` instead)
+
+### Documentation References
+
+- **Convergence Phase**: `docs/features/media-domain-convergence.md`
+- **Backend Refactor Spec**: `docs/features/media-domain-backend-refactor.md`
+- **Constants**: `apps/backend/src/modules/spaces/spaces.constants.ts`
