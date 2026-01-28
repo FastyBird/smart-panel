@@ -158,22 +158,23 @@ describe('DerivedMediaEndpointService', () => {
 			mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
 
 			const result = await service.buildEndpointsForSpace(spaceId);
-			const display = result.endpoints.find((e) => e.type === MediaEndpointType.DISPLAY)!;
+			const display = result.endpoints.find((e) => e.type === MediaEndpointType.DISPLAY);
 
-			expect(display.capabilities.power).toBe(true);
-			expect(display.capabilities.inputSelect).toBe(true);
-			expect(display.capabilities.volume).toBe(false);
-			expect(display.capabilities.mute).toBe(false);
-			expect(display.capabilities.playback).toBe(false);
-			expect(display.capabilities.track).toBe(false);
-			expect(display.capabilities.remoteCommands).toBe(false);
+			expect(display).toBeDefined();
+			expect(display?.capabilities.power).toBe(true);
+			expect(display?.capabilities.inputSelect).toBe(true);
+			expect(display?.capabilities.volume).toBe(false);
+			expect(display?.capabilities.mute).toBe(false);
+			expect(display?.capabilities.playback).toBe(false);
+			expect(display?.capabilities.track).toBe(false);
+			expect(display?.capabilities.remoteCommands).toBe(false);
 
 			// Links should only have power and inputSelect
-			expect(display.links.power).toBeDefined();
-			expect(display.links.power!.propertyId).toBe(powerPropId);
-			expect(display.links.inputSelect).toBeDefined();
-			expect(display.links.inputSelect!.propertyId).toBe(inputPropId);
-			expect(display.links.volume).toBeUndefined();
+			expect(display?.links.power).toBeDefined();
+			expect(display?.links.power?.propertyId).toBe(powerPropId);
+			expect(display?.links.inputSelect).toBeDefined();
+			expect(display?.links.inputSelect?.propertyId).toBe(inputPropId);
+			expect(display?.links.volume).toBeUndefined();
 		});
 	});
 
@@ -322,13 +323,14 @@ describe('DerivedMediaEndpointService', () => {
 			mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
 
 			const result = await service.buildEndpointsForSpace(spaceId);
-			const audioEndpoint = result.endpoints.find((e) => e.type === MediaEndpointType.AUDIO_OUTPUT)!;
+			const audioEndpoint = result.endpoints.find((e) => e.type === MediaEndpointType.AUDIO_OUTPUT);
 
-			expect(audioEndpoint.links.volume).toBeDefined();
-			expect(audioEndpoint.links.volume!.propertyId).toBe(volumePropId);
+			expect(audioEndpoint).toBeDefined();
+			expect(audioEndpoint?.links.volume).toBeDefined();
+			expect(audioEndpoint?.links.volume?.propertyId).toBe(volumePropId);
 			// No power, no mute = no links
-			expect(audioEndpoint.links.power).toBeUndefined();
-			expect(audioEndpoint.links.mute).toBeUndefined();
+			expect(audioEndpoint?.links.power).toBeUndefined();
+			expect(audioEndpoint?.links.mute).toBeUndefined();
 		});
 
 		it('should include remote links with command mapping', async () => {
@@ -341,10 +343,11 @@ describe('DerivedMediaEndpointService', () => {
 			mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
 
 			const result = await service.buildEndpointsForSpace(spaceId);
-			const remoteEndpoint = result.endpoints.find((e) => e.type === MediaEndpointType.REMOTE_TARGET)!;
+			const remoteEndpoint = result.endpoints.find((e) => e.type === MediaEndpointType.REMOTE_TARGET);
 
-			expect(remoteEndpoint.links.remote).toBeDefined();
-			expect(remoteEndpoint.links.remote!.commands.remoteKey).toBe(remotePropId);
+			expect(remoteEndpoint).toBeDefined();
+			expect(remoteEndpoint?.links.remote).toBeDefined();
+			expect(remoteEndpoint?.links.remote?.commands.remoteKey).toBe(remotePropId);
 		});
 	});
 

@@ -2,14 +2,13 @@ import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { DeviceCategory } from '../../devices/devices.constants';
-import { MediaCapabilityMappingModel, MediaCapabilitySummaryModel } from '../models/media-routing.model';
 import {
 	DerivedMediaCapabilitiesModel,
 	DerivedMediaEndpointModel,
 	DerivedMediaEndpointsResultModel,
 	DerivedMediaLinksModel,
-	DerivedRemoteLinksModel,
 } from '../models/derived-media-endpoint.model';
+import { MediaCapabilityMappingModel, MediaCapabilitySummaryModel } from '../models/media-routing.model';
 import { MediaEndpointType, SPACES_MODULE_NAME } from '../spaces.constants';
 
 import { SpaceMediaEndpointService } from './space-media-endpoint.service';
@@ -39,8 +38,8 @@ export class DerivedMediaEndpointService {
 	async buildEndpointsForSpace(spaceId: string): Promise<DerivedMediaEndpointsResultModel> {
 		this.logger.debug(`Building derived media endpoints for space id=${spaceId}`);
 
-		// Verify space exists and get its name
-		const space = await this.spacesService.getOneOrThrow(spaceId);
+		// Verify space exists
+		await this.spacesService.getOneOrThrow(spaceId);
 
 		// Get capability summaries from existing service
 		const summaries = await this.mediaEndpointService.getMediaCapabilitiesInSpace(spaceId);
@@ -96,8 +95,9 @@ export class DerivedMediaEndpointService {
 	 */
 	private determineEndpointTypes(summary: MediaCapabilitySummaryModel): MediaEndpointType[] {
 		const types: MediaEndpointType[] = [];
+		const category = summary.deviceCategory as DeviceCategory;
 
-		switch (summary.deviceCategory) {
+		switch (category) {
 			case DeviceCategory.TELEVISION:
 			case DeviceCategory.PROJECTOR:
 				types.push(MediaEndpointType.DISPLAY);
@@ -190,7 +190,10 @@ export class DerivedMediaEndpointService {
 	 * Build capability flags for an endpoint.
 	 * Only capabilities relevant to the endpoint type are set to true.
 	 */
-	private buildCapabilities(summary: MediaCapabilitySummaryModel, type: MediaEndpointType): DerivedMediaCapabilitiesModel {
+	private buildCapabilities(
+		summary: MediaCapabilitySummaryModel,
+		type: MediaEndpointType,
+	): DerivedMediaCapabilitiesModel {
 		const caps = new DerivedMediaCapabilitiesModel();
 
 		switch (type) {

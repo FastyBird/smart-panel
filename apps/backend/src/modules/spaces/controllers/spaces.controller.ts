@@ -12,8 +12,6 @@ import {
 } from '../../swagger/decorators/api-documentation.decorator';
 import { Roles } from '../../users/guards/roles.guard';
 import { UserRole } from '../../users/users.constants';
-import { DerivedMediaEndpointsResponseModel } from '../models/derived-media-endpoint.model';
-import { DerivedMediaEndpointService } from '../services/derived-media-endpoint.service';
 import { ReqBulkAssignDto } from '../dto/bulk-assign.dto';
 import { ReqClimateIntentDto } from '../dto/climate-intent.dto';
 import { ReqBulkSetClimateRolesDto, ReqSetClimateRoleDto } from '../dto/climate-role.dto';
@@ -25,6 +23,7 @@ import { ReqBulkSetLightingRolesDto, ReqSetLightingRoleDto } from '../dto/lighti
 import { ReqBulkSetSensorRolesDto, ReqSetSensorRoleDto } from '../dto/sensor-role.dto';
 import { ReqSuggestionFeedbackDto } from '../dto/suggestion.dto';
 import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
+import { DerivedMediaEndpointsResponseModel } from '../models/derived-media-endpoint.model';
 import {
 	BulkAssignmentResponseModel,
 	BulkAssignmentResultDataModel,
@@ -106,6 +105,7 @@ import {
 	UndoStateDataModel,
 	UndoStateResponseModel,
 } from '../models/spaces-response.model';
+import { DerivedMediaEndpointService } from '../services/derived-media-endpoint.service';
 import { SpaceClimateRoleService } from '../services/space-climate-role.service';
 import { SpaceContextSnapshotService } from '../services/space-context-snapshot.service';
 import { SpaceCoversRoleService } from '../services/space-covers-role.service';

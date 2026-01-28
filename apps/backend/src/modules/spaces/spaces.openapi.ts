@@ -33,15 +33,6 @@ import {
 	UpdateMediaEndpointDto,
 } from './dto/media-endpoint.dto';
 import {
-	DerivedMediaCapabilitiesModel,
-	DerivedMediaEndpointModel,
-	DerivedMediaEndpointsResponseModel,
-	DerivedMediaEndpointsResultModel,
-	DerivedMediaLinksModel,
-	DerivedMediaPropertyLinkModel,
-	DerivedRemoteLinksModel,
-} from './models/derived-media-endpoint.model';
-import {
 	ActivateMediaRoutingDto,
 	CreateMediaRoutingDto,
 	ReqActivateMediaRoutingDto,
@@ -65,6 +56,15 @@ import { SpaceMediaEndpointEntity } from './entities/space-media-endpoint.entity
 import { SpaceMediaRoutingEntity } from './entities/space-media-routing.entity';
 import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
 import { SpaceEntity } from './entities/space.entity';
+import {
+	DerivedMediaCapabilitiesModel,
+	DerivedMediaEndpointModel,
+	DerivedMediaEndpointsResponseModel,
+	DerivedMediaEndpointsResultModel,
+	DerivedMediaLinksModel,
+	DerivedMediaPropertyLinkModel,
+	DerivedRemoteLinksModel,
+} from './models/derived-media-endpoint.model';
 import {
 	ActiveMediaRoutingResponseModel,
 	ActiveMediaRoutingStateModel,
