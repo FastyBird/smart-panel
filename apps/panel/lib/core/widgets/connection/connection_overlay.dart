@@ -28,12 +28,14 @@ class ConnectionOverlay extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final screenService = locator<ScreenService>();
 
-    return Container(
-      color: isDark
-          ? AppOverlayColorDark.lighter
-          : AppOverlayColorLight.lighter,
-      child: Center(
-        child: Container(
+    return Material(
+      type: MaterialType.transparency,
+      child: Container(
+        color: isDark
+            ? AppOverlayColorDark.lighter
+            : AppOverlayColorLight.lighter,
+        child: Center(
+          child: Container(
           margin: EdgeInsets.all(AppSpacings.pXl),
           padding: EdgeInsets.all(AppSpacings.pLg + AppSpacings.pMd),
           constraints: BoxConstraints(
@@ -89,6 +91,7 @@ class ConnectionOverlay extends StatelessWidget {
                 ),
               ),
             ],
+          ),
           ),
         ),
       ),
