@@ -783,20 +783,26 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     final alertSensor =
         _sensors.firstWhere((s) => s.status == SensorStatus.alert);
     final dangerColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
-    final dangerBgColor =
-        isDark ? AppColorsDark.dangerLight5 : AppColorsLight.dangerLight5;
 
     return Container(
       padding: AppSpacings.paddingMd,
       margin: EdgeInsets.only(bottom: AppSpacings.pLg),
       decoration: BoxDecoration(
-        color: dangerBgColor,
+        color: dangerColor.withValues(alpha: isDark ? 0.15 : 0.1),
         borderRadius: BorderRadius.circular(AppBorderRadius.medium),
         border: Border.all(color: dangerColor.withValues(alpha: 0.3), width: 1),
       ),
       child: Row(
         children: [
-          Icon(Icons.warning_amber, color: dangerColor, size: _scale(24)),
+          Container(
+            width: _scale(36),
+            height: _scale(36),
+            decoration: BoxDecoration(
+              color: dangerColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.warning_amber, color: dangerColor, size: _scale(20)),
+          ),
           AppSpacings.spacingMdHorizontal,
           Expanded(
             child: Column(
@@ -1073,8 +1079,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isAlert = sensor.status == SensorStatus.alert;
     final dangerColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
-    final dangerBgColor =
-        isDark ? AppColorsDark.dangerLight5 : AppColorsLight.dangerLight5;
 
     final categoryColor = _getCategoryColor(context, sensor.category);
     final categoryBgColor = _getCategoryLightColor(context, sensor.category);
@@ -1085,7 +1089,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         padding: AppSpacings.paddingMd,
         decoration: BoxDecoration(
           color: isAlert
-              ? dangerBgColor
+              ? dangerColor.withValues(alpha: isDark ? 0.15 : 0.1)
               : (isDark ? AppFillColorDark.light : AppFillColorLight.blank),
           borderRadius: BorderRadius.circular(AppBorderRadius.medium),
           border: Border.all(
@@ -1108,7 +1112,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
                   width: _scale(36),
                   height: _scale(36),
                   decoration: BoxDecoration(
-                    color: isAlert ? dangerBgColor : categoryBgColor,
+                    color: isAlert ? dangerColor.withValues(alpha: 0.15) : categoryBgColor,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -1126,9 +1130,11 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
             Text(
               sensor.name,
               style: TextStyle(
-                color: isDark
-                    ? AppTextColorDark.secondary
-                    : AppTextColorLight.secondary,
+                color: isAlert
+                    ? dangerColor
+                    : (isDark
+                        ? AppTextColorDark.secondary
+                        : AppTextColorLight.secondary),
                 fontSize: AppFontSize.small,
               ),
               maxLines: 1,
@@ -1138,9 +1144,11 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
             Text(
               sensor.location,
               style: TextStyle(
-                color: isDark
-                    ? AppTextColorDark.placeholder
-                    : AppTextColorLight.placeholder,
+                color: isAlert
+                    ? dangerColor.withValues(alpha: 0.7)
+                    : (isDark
+                        ? AppTextColorDark.placeholder
+                        : AppTextColorLight.placeholder),
                 fontSize: AppFontSize.extraSmall,
               ),
               maxLines: 1,
