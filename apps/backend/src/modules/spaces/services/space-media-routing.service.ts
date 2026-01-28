@@ -257,12 +257,10 @@ export class SpaceMediaRoutingService {
 				await this.activeRoutingRepository.save(activeRouting);
 
 				// Emit deactivated event so clients are notified
-				this.emitRoutingEvent(
-					EventType.MEDIA_ROUTING_DEACTIVATED,
-					routing.spaceId,
-					routingId,
-					routing.type,
-				);
+				this.emitRoutingEvent(EventType.MEDIA_ROUTING_DEACTIVATED, routing.spaceId, routingId, routing.type);
+
+				// Emit state change so UI updates
+				void this.emitMediaStateChange(routing.spaceId);
 			}
 
 			await this.repository.remove(routing);
@@ -470,9 +468,7 @@ export class SpaceMediaRoutingService {
 			// For DEACTIVATE_FIRST, properly deactivate the current routing before proceeding
 			// Pass skipConflictCheck=true to prevent infinite recursion if OFF routing also has DEACTIVATE_FIRST
 			if (routing.conflictPolicy === MediaConflictPolicy.DEACTIVATE_FIRST) {
-				this.logger.debug(
-					`Deactivating current routing ${existingActive.routingId} before activating ${routingId}`,
-				);
+				this.logger.debug(`Deactivating current routing ${existingActive.routingId} before activating ${routingId}`);
 				await this.deactivateMedia(routing.spaceId, true);
 			}
 			// For REPLACE, we just proceed and overwrite
@@ -521,232 +517,232 @@ export class SpaceMediaRoutingService {
 			const devices = await this.spacesService.findDevicesByIds(deviceIds);
 			const deviceMap = new Map(devices.map((d) => [d.id, d]));
 
-		// Execute each step
-		for (const step of plan.steps) {
-			let device = deviceMap.get(step.deviceId);
+			// Execute each step
+			for (const step of plan.steps) {
+				let device = deviceMap.get(step.deviceId);
 
-			if (!device) {
-				stepsFailed++;
-				stepResults.push({
-					order: step.order,
-					deviceId: step.deviceId,
-					status: 'failed',
-					error: 'Device not found',
-				});
-				if (step.critical) {
-					criticalStepFailed = true;
-					this.logger.warn(`Critical step failed: device not found, aborting routing activation`);
-					break;
-				}
-				continue;
-			}
-
-			// Check if device is online and handle offline policy
-			if (!device.status?.online) {
-				if (!offlineDeviceIds.includes(step.deviceId)) {
-					offlineDeviceIds.push(step.deviceId);
-				}
-
-				if (routing.offlinePolicy === MediaOfflinePolicy.FAIL && step.critical) {
+				if (!device) {
 					stepsFailed++;
-					criticalStepFailed = true;
 					stepResults.push({
 						order: step.order,
 						deviceId: step.deviceId,
 						status: 'failed',
-						error: 'Device offline (offline policy: FAIL)',
+						error: 'Device not found',
 					});
-					this.logger.warn(`Critical device offline, aborting routing activation`);
-					break;
+					if (step.critical) {
+						criticalStepFailed = true;
+						this.logger.warn(`Critical step failed: device not found, aborting routing activation`);
+						break;
+					}
+					continue;
 				}
 
-				// Handle WAIT policy - wait for device to come online with timeout
-				if (routing.offlinePolicy === MediaOfflinePolicy.WAIT) {
-					const WAIT_TIMEOUT_MS = 10000; // 10 second timeout
-					const POLL_INTERVAL_MS = 500;
-					const startTime = Date.now();
-					let deviceOnline = false;
-
-					this.logger.debug(`Waiting for device ${step.deviceId} to come online (timeout: ${WAIT_TIMEOUT_MS}ms)`);
-
-					while (Date.now() - startTime < WAIT_TIMEOUT_MS) {
-						await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
-						const refreshedDevices = await this.spacesService.findDevicesByIds([step.deviceId]);
-						const refreshedDevice = refreshedDevices[0];
-
-						if (refreshedDevice?.status?.online) {
-							deviceOnline = true;
-							// Update the device reference for subsequent operations
-							deviceMap.set(step.deviceId, refreshedDevice);
-							this.logger.debug(`Device ${step.deviceId} came online after ${Date.now() - startTime}ms`);
-							break;
-						}
+				// Check if device is online and handle offline policy
+				if (!device.status?.online) {
+					if (!offlineDeviceIds.includes(step.deviceId)) {
+						offlineDeviceIds.push(step.deviceId);
 					}
 
-					if (!deviceOnline) {
-						this.logger.warn(`Device ${step.deviceId} did not come online within timeout`);
-						if (step.critical) {
-							stepsFailed++;
-							criticalStepFailed = true;
+					if (routing.offlinePolicy === MediaOfflinePolicy.FAIL && step.critical) {
+						stepsFailed++;
+						criticalStepFailed = true;
+						stepResults.push({
+							order: step.order,
+							deviceId: step.deviceId,
+							status: 'failed',
+							error: 'Device offline (offline policy: FAIL)',
+						});
+						this.logger.warn(`Critical device offline, aborting routing activation`);
+						break;
+					}
+
+					// Handle WAIT policy - wait for device to come online with timeout
+					if (routing.offlinePolicy === MediaOfflinePolicy.WAIT) {
+						const WAIT_TIMEOUT_MS = 10000; // 10 second timeout
+						const POLL_INTERVAL_MS = 500;
+						const startTime = Date.now();
+						let deviceOnline = false;
+
+						this.logger.debug(`Waiting for device ${step.deviceId} to come online (timeout: ${WAIT_TIMEOUT_MS}ms)`);
+
+						while (Date.now() - startTime < WAIT_TIMEOUT_MS) {
+							await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+							const refreshedDevices = await this.spacesService.findDevicesByIds([step.deviceId]);
+							const refreshedDevice = refreshedDevices[0];
+
+							if (refreshedDevice?.status?.online) {
+								deviceOnline = true;
+								// Update the device reference for subsequent operations
+								deviceMap.set(step.deviceId, refreshedDevice);
+								this.logger.debug(`Device ${step.deviceId} came online after ${Date.now() - startTime}ms`);
+								break;
+							}
+						}
+
+						if (!deviceOnline) {
+							this.logger.warn(`Device ${step.deviceId} did not come online within timeout`);
+							if (step.critical) {
+								stepsFailed++;
+								criticalStepFailed = true;
+								stepResults.push({
+									order: step.order,
+									deviceId: step.deviceId,
+									status: 'failed',
+									error: 'Device offline (WAIT timeout expired)',
+								});
+								break;
+							}
+							stepsSkipped++;
 							stepResults.push({
 								order: step.order,
 								deviceId: step.deviceId,
-								status: 'failed',
+								status: 'skipped',
 								error: 'Device offline (WAIT timeout expired)',
 							});
-							break;
+							continue;
 						}
+						// Device is now online - reassign from updated deviceMap
+						device = deviceMap.get(step.deviceId)!;
+					} else {
+						// SKIP policy (default) - skip offline devices
 						stepsSkipped++;
 						stepResults.push({
 							order: step.order,
 							deviceId: step.deviceId,
 							status: 'skipped',
-							error: 'Device offline (WAIT timeout expired)',
+							error: 'Device offline',
 						});
 						continue;
 					}
-					// Device is now online - reassign from updated deviceMap
-					device = deviceMap.get(step.deviceId)!;
-				} else {
-					// SKIP policy (default) - skip offline devices
-					stepsSkipped++;
-					stepResults.push({
-						order: step.order,
-						deviceId: step.deviceId,
-						status: 'skipped',
-						error: 'Device offline',
-					});
-					continue;
-				}
-			}
-
-			// Handle input policy for input switching steps
-			// Check for specific input step descriptions to avoid matching power steps for endpoints named with "input"
-			const isInputStep =
-				step.action === 'set_property' &&
-				(step.description?.startsWith('Set display input') || step.description?.startsWith('Set audio input'));
-
-			if (isInputStep) {
-				if (routing.inputPolicy === MediaInputPolicy.NEVER) {
-					stepsSkipped++;
-					stepResults.push({
-						order: step.order,
-						deviceId: step.deviceId,
-						status: 'skipped',
-						error: 'Input switching disabled (input policy: NEVER)',
-					});
-					continue;
 				}
 
-				// Handle IF_DIFFERENT - check current value before switching
-				if (routing.inputPolicy === MediaInputPolicy.IF_DIFFERENT) {
-					const currentDevice = deviceMap.get(step.deviceId);
-					const currentChannel = currentDevice?.channels?.find((ch) => ch.id === step.channelId);
-					const currentProperty = currentChannel?.properties?.find((p) => p.id === step.propertyId);
+				// Handle input policy for input switching steps
+				// Check for specific input step descriptions to avoid matching power steps for endpoints named with "input"
+				const isInputStep =
+					step.action === 'set_property' &&
+					(step.description?.startsWith('Set display input') || step.description?.startsWith('Set audio input'));
 
-					if (currentProperty?.value !== undefined && currentProperty.value === step.value) {
+				if (isInputStep) {
+					if (routing.inputPolicy === MediaInputPolicy.NEVER) {
 						stepsSkipped++;
 						stepResults.push({
 							order: step.order,
 							deviceId: step.deviceId,
 							status: 'skipped',
-							error: 'Input already set to target value (input policy: IF_DIFFERENT)',
+							error: 'Input switching disabled (input policy: NEVER)',
 						});
 						continue;
 					}
+
+					// Handle IF_DIFFERENT - check current value before switching
+					if (routing.inputPolicy === MediaInputPolicy.IF_DIFFERENT) {
+						const currentDevice = deviceMap.get(step.deviceId);
+						const currentChannel = currentDevice?.channels?.find((ch) => ch.id === step.channelId);
+						const currentProperty = currentChannel?.properties?.find((p) => p.id === step.propertyId);
+
+						if (currentProperty?.value !== undefined && currentProperty.value === step.value) {
+							stepsSkipped++;
+							stepResults.push({
+								order: step.order,
+								deviceId: step.deviceId,
+								status: 'skipped',
+								error: 'Input already set to target value (input policy: IF_DIFFERENT)',
+							});
+							continue;
+						}
+					}
+					// ALWAYS policy - proceed with input switching
 				}
-				// ALWAYS policy - proceed with input switching
-			}
 
-			// Find the channel and property
-			const channel = device.channels?.find((ch) => ch.id === step.channelId);
-			const property = channel?.properties?.find((p) => p.id === step.propertyId);
+				// Find the channel and property
+				const channel = device.channels?.find((ch) => ch.id === step.channelId);
+				const property = channel?.properties?.find((p) => p.id === step.propertyId);
 
-			if (!channel || !property) {
-				stepsFailed++;
-				stepResults.push({
-					order: step.order,
-					deviceId: step.deviceId,
-					status: 'failed',
-					error: 'Channel or property not found',
-				});
-				if (step.critical) {
-					criticalStepFailed = true;
-					this.logger.warn(`Critical step failed: channel or property not found, aborting routing activation`);
-					break;
-				}
-				continue;
-			}
-
-			// Execute the command
-			const platform = this.platformRegistryService.get(device);
-
-			if (!platform) {
-				stepsFailed++;
-				stepResults.push({
-					order: step.order,
-					deviceId: step.deviceId,
-					status: 'failed',
-					error: 'No platform for device',
-				});
-				if (step.critical) {
-					criticalStepFailed = true;
-					this.logger.warn(`Critical step failed: no platform for device, aborting routing activation`);
-					break;
-				}
-				continue;
-			}
-
-			try {
-				const command: IDevicePropertyData = {
-					device,
-					channel,
-					property,
-					value: step.value as string | number | boolean,
-				};
-
-				const success = await platform.processBatch([command]);
-
-				if (success) {
-					stepsExecuted++;
-					stepResults.push({
-						order: step.order,
-						deviceId: step.deviceId,
-						status: 'success',
-					});
-				} else {
+				if (!channel || !property) {
 					stepsFailed++;
 					stepResults.push({
 						order: step.order,
 						deviceId: step.deviceId,
 						status: 'failed',
-						error: 'Command execution failed',
+						error: 'Channel or property not found',
 					});
-
-					// If critical step failed, abort
 					if (step.critical) {
 						criticalStepFailed = true;
-						this.logger.warn(`Critical step failed, aborting routing activation`);
+						this.logger.warn(`Critical step failed: channel or property not found, aborting routing activation`);
+						break;
+					}
+					continue;
+				}
+
+				// Execute the command
+				const platform = this.platformRegistryService.get(device);
+
+				if (!platform) {
+					stepsFailed++;
+					stepResults.push({
+						order: step.order,
+						deviceId: step.deviceId,
+						status: 'failed',
+						error: 'No platform for device',
+					});
+					if (step.critical) {
+						criticalStepFailed = true;
+						this.logger.warn(`Critical step failed: no platform for device, aborting routing activation`);
+						break;
+					}
+					continue;
+				}
+
+				try {
+					const command: IDevicePropertyData = {
+						device,
+						channel,
+						property,
+						value: step.value as string | number | boolean,
+					};
+
+					const success = await platform.processBatch([command]);
+
+					if (success) {
+						stepsExecuted++;
+						stepResults.push({
+							order: step.order,
+							deviceId: step.deviceId,
+							status: 'success',
+						});
+					} else {
+						stepsFailed++;
+						stepResults.push({
+							order: step.order,
+							deviceId: step.deviceId,
+							status: 'failed',
+							error: 'Command execution failed',
+						});
+
+						// If critical step failed, abort
+						if (step.critical) {
+							criticalStepFailed = true;
+							this.logger.warn(`Critical step failed, aborting routing activation`);
+							break;
+						}
+					}
+				} catch (error) {
+					const err = error as Error;
+					stepsFailed++;
+					stepResults.push({
+						order: step.order,
+						deviceId: step.deviceId,
+						status: 'failed',
+						error: err.message,
+					});
+
+					if (step.critical) {
+						criticalStepFailed = true;
+						this.logger.warn(`Critical step threw error, aborting: ${err.message}`);
 						break;
 					}
 				}
-			} catch (error) {
-				const err = error as Error;
-				stepsFailed++;
-				stepResults.push({
-					order: step.order,
-					deviceId: step.deviceId,
-					status: 'failed',
-					error: err.message,
-				});
-
-				if (step.critical) {
-					criticalStepFailed = true;
-					this.logger.warn(`Critical step threw error, aborting: ${err.message}`);
-					break;
-				}
 			}
-		}
 		} catch (error) {
 			// Handle unexpected errors during activation (e.g., JSON.parse failures, database errors)
 			const err = error as Error;
@@ -756,13 +752,7 @@ export class SpaceMediaRoutingService {
 			activeRecord.lastError = err.message;
 			await this.activeRoutingRepository.save(activeRecord);
 
-			this.emitRoutingEvent(
-				EventType.MEDIA_ROUTING_FAILED,
-				routing.spaceId,
-				routingId,
-				routing.type,
-				err.message,
-			);
+			this.emitRoutingEvent(EventType.MEDIA_ROUTING_FAILED, routing.spaceId, routingId, routing.type, err.message);
 
 			throw error;
 		}
@@ -867,11 +857,19 @@ export class SpaceMediaRoutingService {
 
 	/**
 	 * Get the current active routing for a space
+	 * Only returns a routing if it's in ACTIVE or ACTIVATING state (not FAILED or DEACTIVATED)
 	 */
 	async getActiveRouting(spaceId: string): Promise<SpaceMediaRoutingEntity | null> {
 		const activeRecord = await this.getActiveRoutingRecord(spaceId);
 
-		if (!activeRecord || !activeRecord.routingId || activeRecord.activationState === MediaActivationState.DEACTIVATED) {
+		// Only ACTIVE and ACTIVATING states are considered "active"
+		const isActive =
+			activeRecord &&
+			activeRecord.routingId &&
+			(activeRecord.activationState === MediaActivationState.ACTIVE ||
+				activeRecord.activationState === MediaActivationState.ACTIVATING);
+
+		if (!isActive) {
 			return null;
 		}
 
