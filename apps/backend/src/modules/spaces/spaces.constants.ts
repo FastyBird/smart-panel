@@ -2075,14 +2075,6 @@ export const MEDIA_CAPABILITY_EXTRACTOR_SPECS: MediaCapabilityExtractorSpec[] = 
 		fallbackRules: [],
 	},
 ];
-
-/**
- * Get the extractor spec for a device category
- */
-export function getMediaExtractorSpec(deviceCategory: DeviceCategory): MediaCapabilityExtractorSpec | null {
-	return MEDIA_CAPABILITY_EXTRACTOR_SPECS.find((spec) => spec.deviceCategories.includes(deviceCategory)) ?? null;
-}
-
 /**
  * Media Intent Types V2 - routing-based intents
  */

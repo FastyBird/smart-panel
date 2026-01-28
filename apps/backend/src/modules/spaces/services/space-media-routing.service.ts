@@ -450,13 +450,15 @@ export class SpaceMediaRoutingService {
 
 		// Handle conflict policy - check if another routing is actually active
 		// Skip if called from deactivateMedia to prevent infinite recursion
+		// Only ACTIVE and ACTIVATING states are considered "active" - FAILED and DEACTIVATED are not
 		const existingActive = await this.getActiveRoutingRecord(routing.spaceId);
 		const hasActiveRouting =
 			!skipConflictCheck &&
 			existingActive &&
 			existingActive.routingId !== null &&
 			existingActive.routingId !== routingId &&
-			existingActive.activationState !== MediaActivationState.DEACTIVATED;
+			(existingActive.activationState === MediaActivationState.ACTIVE ||
+				existingActive.activationState === MediaActivationState.ACTIVATING);
 
 		if (hasActiveRouting) {
 			if (routing.conflictPolicy === MediaConflictPolicy.FAIL_IF_ACTIVE) {
