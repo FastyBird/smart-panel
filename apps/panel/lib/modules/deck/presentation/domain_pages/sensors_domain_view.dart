@@ -4,11 +4,13 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
+import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
@@ -762,6 +764,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
 
   Widget _buildPortraitLayout(BuildContext context) {
     final isAtLeastMedium = _screenService.isAtLeastMedium;
+    final isSmallScreen = _screenService.isSmallScreen;
     final sensorsPerRow = isAtLeastMedium ? 3 : 2;
 
     return PortraitViewLayout(
@@ -770,10 +773,10 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         children: [
           if (_hasAlerts) _buildAlertBanner(context),
           if (_selectedCategory == null) ...[
-            _buildSummaryCards(context),
+            _buildSummaryCards(context, compact: isSmallScreen),
             AppSpacings.spacingLgVertical,
           ],
-          _buildSensorGrid(context, crossAxisCount: sensorsPerRow),
+          _buildSensorGrid(context, crossAxisCount: sensorsPerRow, childAspectRatio: isSmallScreen ? 1.2 : 1.0),
         ],
       ),
       modeSelector: _buildCategorySelector(context),
@@ -913,107 +916,93 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   // SUMMARY CARDS
   // --------------------------------------------------------------------------
 
-  Widget _buildSummaryCards(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  /// Build summary data items for the environment
+  List<({String name, String status, IconData icon, Color color})> _buildSummaryItems() {
     final env = _environment;
+    final items = <({String name, String status, IconData icon, Color color})>[];
 
-    // Format temperature value
-    String tempValue = '--';
-    String tempSubtitle = 'No data';
     if (env?.averageTemperature != null) {
-      tempValue = '${_formatter.formatDecimal(env!.averageTemperature!, decimalPlaces: 1)}°';
-      if (env.averageTemperature! >= 18 && env.averageTemperature! <= 24) {
-        tempSubtitle = 'Comfortable range';
-      } else if (env.averageTemperature! < 18) {
-        tempSubtitle = 'Below comfort';
-      } else {
-        tempSubtitle = 'Above comfort';
-      }
+      items.add((
+        name: '${_formatter.formatDecimal(env!.averageTemperature!, decimalPlaces: 1)}°C',
+        status: 'Avg Temperature',
+        icon: MdiIcons.thermometer,
+        color: AppColorsLight.info,
+      ));
     }
 
-    // Format humidity value
-    String humidityValue = '--';
-    String humiditySubtitle = 'No data';
     if (env?.averageHumidity != null) {
-      humidityValue = '${_formatter.formatInteger(env!.averageHumidity!.round())}%';
-      if (env.averageHumidity! >= 40 && env.averageHumidity! <= 60) {
-        humiditySubtitle = 'Optimal level';
-      } else if (env.averageHumidity! < 40) {
-        humiditySubtitle = 'Low humidity';
-      } else {
-        humiditySubtitle = 'High humidity';
-      }
+      items.add((
+        name: '${_formatter.formatInteger(env!.averageHumidity!.round())}%',
+        status: 'Avg Humidity',
+        icon: MdiIcons.waterPercent,
+        color: AppColorsLight.success,
+      ));
     }
-
-    // Format illuminance or show air quality placeholder
-    String thirdValue = '--';
-    String thirdSubtitle = 'No data';
-    String thirdTitle = 'Illuminance';
-    IconData thirdIcon = MdiIcons.weatherSunny;
-    Color thirdColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
 
     if (env?.averageIlluminance != null) {
-      thirdValue = _formatter.formatInteger(env!.averageIlluminance!.round());
-      thirdSubtitle = 'lux';
-      if (env.averageIlluminance! < 100) {
-        thirdSubtitle = 'Low light';
-      } else if (env.averageIlluminance! > 500) {
-        thirdSubtitle = 'Bright';
-      } else {
-        thirdSubtitle = 'Normal';
-      }
+      items.add((
+        name: '${_formatter.formatInteger(env!.averageIlluminance!.round())} lux',
+        status: 'Illuminance',
+        icon: MdiIcons.weatherSunny,
+        color: AppColorsLight.warning,
+      ));
     } else if (env?.averagePressure != null) {
-      thirdTitle = 'Pressure';
-      thirdIcon = MdiIcons.gaugeEmpty;
-      thirdValue = _formatter.formatInteger(env!.averagePressure!.round());
-      thirdSubtitle = 'hPa';
-      thirdColor = isDark ? AppColorsDark.info : AppColorsLight.info;
+      items.add((
+        name: '${_formatter.formatInteger(env!.averagePressure!.round())} hPa',
+        status: 'Pressure',
+        icon: MdiIcons.gaugeEmpty,
+        color: AppColorsLight.info,
+      ));
     }
 
+    return items;
+  }
+
+  Widget _buildSummaryCards(BuildContext context, {bool compact = false}) {
+    final items = _buildSummaryItems();
+
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    // Compact: horizontal scroll tiles (small portrait)
+    if (compact) {
+      final tileHeight = _scale(AppTileHeight.horizontal);
+
+      return HorizontalScrollWithGradient(
+        height: tileHeight,
+        layoutPadding: AppSpacings.pLg,
+        itemCount: items.length,
+        separatorWidth: AppSpacings.pMd,
+        itemBuilder: (context, index) {
+          final item = items[index];
+
+          return HorizontalTileCompact(
+            icon: item.icon,
+            name: item.name,
+            status: item.status,
+            iconAccentColor: item.color,
+            onTileTap: () {},
+          );
+        },
+      );
+    }
+
+    // Standard: expanded cards in a row
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final cards = <Widget>[];
 
-    if (env?.averageTemperature != null) {
+    for (var i = 0; i < items.length; i++) {
+      if (i > 0) cards.add(AppSpacings.spacingMdHorizontal);
+      final item = items[i];
       cards.add(Expanded(
         child: _buildSummaryCard(
           context,
-          title: 'Avg Temperature',
-          value: tempValue,
-          subtitle: tempSubtitle,
-          icon: MdiIcons.thermometer,
-          color: isDark ? AppColorsDark.info : AppColorsLight.info,
+          title: item.status,
+          value: item.name,
+          icon: item.icon,
+          color: isDark ? item.color : item.color,
         ),
       ));
     }
-
-    if (env?.averageHumidity != null) {
-      if (cards.isNotEmpty) cards.add(AppSpacings.spacingMdHorizontal);
-      cards.add(Expanded(
-        child: _buildSummaryCard(
-          context,
-          title: 'Avg Humidity',
-          value: humidityValue,
-          subtitle: humiditySubtitle,
-          icon: MdiIcons.waterPercent,
-          color: isDark ? AppColorsDark.success : AppColorsLight.success,
-        ),
-      ));
-    }
-
-    if (env?.averageIlluminance != null || env?.averagePressure != null) {
-      if (cards.isNotEmpty) cards.add(AppSpacings.spacingMdHorizontal);
-      cards.add(Expanded(
-        child: _buildSummaryCard(
-          context,
-          title: thirdTitle,
-          value: thirdValue,
-          subtitle: thirdSubtitle,
-          icon: thirdIcon,
-          color: thirdColor,
-        ),
-      ));
-    }
-
-    if (cards.isEmpty) return const SizedBox.shrink();
 
     return Row(children: cards);
   }
@@ -1022,7 +1011,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     BuildContext context, {
     required String title,
     required String value,
-    required String subtitle,
     required IconData icon,
     required Color color,
   }) {
@@ -1061,22 +1049,17 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
             ],
           ),
           AppSpacings.spacingSmVertical,
-          Text(
-            value,
-            style: TextStyle(
-              color: color,
-              fontSize: _scale(28),
-              fontWeight: FontWeight.w300,
-            ),
-          ),
-          AppSpacings.spacingXsVertical,
-          Text(
-            subtitle,
-            style: TextStyle(
-              color: isDark
-                  ? AppTextColorDark.placeholder
-                  : AppTextColorLight.placeholder,
-              fontSize: AppFontSize.extraSmall,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: TextStyle(
+                color: color,
+                fontSize: _scale(28),
+                fontWeight: FontWeight.w300,
+              ),
+              maxLines: 1,
             ),
           ),
         ],
@@ -1088,7 +1071,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   // SENSOR GRID
   // --------------------------------------------------------------------------
 
-  Widget _buildSensorGrid(BuildContext context, {required int crossAxisCount}) {
+  Widget _buildSensorGrid(BuildContext context, {required int crossAxisCount, double childAspectRatio = 1.0}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final filtered = _filteredSensors;
 
@@ -1136,7 +1119,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
-            childAspectRatio: 1.0,
+            childAspectRatio: childAspectRatio,
             crossAxisSpacing: AppSpacings.pMd,
             mainAxisSpacing: AppSpacings.pMd,
           ),
