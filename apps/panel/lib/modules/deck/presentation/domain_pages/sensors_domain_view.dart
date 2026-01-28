@@ -62,9 +62,6 @@ class SensorData {
   final double? minValue;
   final double? maxValue;
   final double? avgValue;
-  final double? highThreshold;
-  final double? lowThreshold;
-
   const SensorData({
     required this.id,
     this.propertyId,
@@ -80,8 +77,6 @@ class SensorData {
     this.minValue,
     this.maxValue,
     this.avgValue,
-    this.highThreshold,
-    this.lowThreshold,
   });
 
   IconData get icon {
@@ -331,7 +326,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
           unit: reading.unit ?? '',
           status: status,
           trend: TrendDirection.stable, // Trend data not available from API yet
-          lastUpdated: DateTime.now(),
+          lastUpdated: reading.updatedAt ?? DateTime.now(),
         ));
       }
     }
@@ -1328,24 +1323,11 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
   PropertyTimeseriesService? _timeseriesService;
 
   int _selectedPeriod = 1; // 0=1H, 1=24H, 2=7D, 3=30D
-  bool _notificationsEnabled = true;
   bool _isLoadingTimeseries = false;
   PropertyTimeseries? _timeseries;
-  late double _highThreshold;
-  late double _lowThreshold;
-
-  late TextEditingController _highThresholdController;
-  late TextEditingController _lowThresholdController;
-
   @override
   void initState() {
     super.initState();
-    _highThreshold = widget.sensor.highThreshold ?? _getDefaultHighThreshold();
-    _lowThreshold = widget.sensor.lowThreshold ?? _getDefaultLowThreshold();
-    _highThresholdController =
-        TextEditingController(text: NumberFormatUtils.defaultFormat.formatInteger(_highThreshold.toInt()));
-    _lowThresholdController =
-        TextEditingController(text: NumberFormatUtils.defaultFormat.formatInteger(_lowThreshold.toInt()));
 
     try {
       _timeseriesService = locator<PropertyTimeseriesService>();
@@ -1423,48 +1405,6 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
     }
   }
 
-  double _getDefaultHighThreshold() {
-    switch (widget.sensor.category) {
-      case SensorCategory.temperature:
-        return 28.0;
-      case SensorCategory.humidity:
-        return 70.0;
-      case SensorCategory.airQuality:
-        return 1000.0;
-      case SensorCategory.light:
-        return 1000.0;
-      case SensorCategory.energy:
-        return 500.0;
-      case SensorCategory.motion:
-      case SensorCategory.safety:
-        return 1.0;
-    }
-  }
-
-  double _getDefaultLowThreshold() {
-    switch (widget.sensor.category) {
-      case SensorCategory.temperature:
-        return 16.0;
-      case SensorCategory.humidity:
-        return 30.0;
-      case SensorCategory.airQuality:
-        return 400.0;
-      case SensorCategory.light:
-        return 50.0;
-      case SensorCategory.energy:
-        return 0.0;
-      case SensorCategory.motion:
-      case SensorCategory.safety:
-        return 0.0;
-    }
-  }
-
-  @override
-  void dispose() {
-    _highThresholdController.dispose();
-    _lowThresholdController.dispose();
-    super.dispose();
-  }
 
   double _scale(double size) =>
       _screenService.scale(size, density: _visualDensityService.density);
@@ -1577,7 +1517,6 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
           _buildLargeValue(context),
           _buildStatsRow(context),
           _buildChart(context),
-          _buildThresholds(context),
         ],
       ),
     );
@@ -1619,8 +1558,6 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildChart(context, withMargin: false),
-                AppSpacings.spacingLgVertical,
-                _buildThresholdsLandscape(context),
               ],
             ),
           ),
@@ -1985,305 +1922,6 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildThresholds(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacings.pLg,
-        0,
-        AppSpacings.pLg,
-        AppSpacings.pLg,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.warning_amber,
-                size: _scale(18),
-                color: isDark
-                    ? AppTextColorDark.secondary
-                    : AppTextColorLight.secondary,
-              ),
-              AppSpacings.spacingSmHorizontal,
-              Text(
-                'ALERT THRESHOLDS',
-                style: TextStyle(
-                  color: isDark
-                      ? AppTextColorDark.secondary
-                      : AppTextColorLight.secondary,
-                  fontSize: AppFontSize.small,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ],
-          ),
-          AppSpacings.spacingMdVertical,
-          _buildThresholdRow(
-            context,
-            icon: Icons.arrow_upward,
-            label: 'High Alert',
-            controller: _highThresholdController,
-            onChanged: (v) {
-              setState(() => _highThreshold = v);
-            },
-          ),
-          AppSpacings.spacingSmVertical,
-          _buildThresholdRow(
-            context,
-            icon: Icons.arrow_downward,
-            label: 'Low Alert',
-            controller: _lowThresholdController,
-            onChanged: (v) {
-              setState(() => _lowThreshold = v);
-            },
-          ),
-          AppSpacings.spacingSmVertical,
-          _buildNotificationRow(context),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildThresholdsLandscape(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(
-              Icons.warning_amber,
-              size: _scale(18),
-              color: isDark
-                  ? AppTextColorDark.secondary
-                  : AppTextColorLight.secondary,
-            ),
-            AppSpacings.spacingSmHorizontal,
-            Text(
-              'ALERT THRESHOLDS',
-              style: TextStyle(
-                color: isDark
-                    ? AppTextColorDark.secondary
-                    : AppTextColorLight.secondary,
-                fontSize: AppFontSize.small,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
-        ),
-        AppSpacings.spacingMdVertical,
-        Row(
-          children: [
-            Expanded(
-              child: _buildThresholdRow(
-                context,
-                icon: Icons.arrow_upward,
-                label: 'High Alert',
-                controller: _highThresholdController,
-                onChanged: (v) {
-                  setState(() => _highThreshold = v);
-                },
-              ),
-            ),
-            AppSpacings.spacingMdHorizontal,
-            Expanded(
-              child: _buildThresholdRow(
-                context,
-                icon: Icons.arrow_downward,
-                label: 'Low Alert',
-                controller: _lowThresholdController,
-                onChanged: (v) {
-                  setState(() => _lowThreshold = v);
-                },
-              ),
-            ),
-            AppSpacings.spacingMdHorizontal,
-            Expanded(child: _buildNotificationRow(context)),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildThresholdRow(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required TextEditingController controller,
-    required ValueChanged<double> onChanged,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: AppSpacings.pMd,
-        vertical: AppSpacings.pMd,
-      ),
-      decoration: BoxDecoration(
-        color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-        border: Border.all(
-          color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            size: _scale(20),
-            color: isDark
-                ? AppTextColorDark.secondary
-                : AppTextColorLight.secondary,
-          ),
-          AppSpacings.spacingSmHorizontal,
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: isDark
-                    ? AppTextColorDark.primary
-                    : AppTextColorLight.primary,
-                fontSize: AppFontSize.base,
-              ),
-            ),
-          ),
-          SizedBox(
-            width: _scale(60),
-            child: TextField(
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: isDark
-                    ? AppTextColorDark.primary
-                    : AppTextColorLight.primary,
-                fontSize: AppFontSize.base,
-              ),
-              decoration: InputDecoration(
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: AppSpacings.pSm,
-                  vertical: AppSpacings.pSm,
-                ),
-                filled: true,
-                fillColor:
-                    isDark ? AppFillColorDark.base : AppFillColorLight.base,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-              controller: controller,
-              keyboardType: TextInputType.number,
-              onChanged: (text) {
-                final parsed = double.tryParse(text);
-                if (parsed != null) onChanged(parsed);
-              },
-            ),
-          ),
-          AppSpacings.spacingSmHorizontal,
-          Text(
-            widget.sensor.unit,
-            style: TextStyle(
-              color: isDark
-                  ? AppTextColorDark.placeholder
-                  : AppTextColorLight.placeholder,
-              fontSize: AppFontSize.small,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNotificationRow(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
-
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: AppSpacings.pMd,
-        vertical: AppSpacings.pMd,
-      ),
-      decoration: BoxDecoration(
-        color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-        border: Border.all(
-          color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.notifications_outlined,
-            size: _scale(20),
-            color: isDark
-                ? AppTextColorDark.secondary
-                : AppTextColorLight.secondary,
-          ),
-          AppSpacings.spacingSmHorizontal,
-          Expanded(
-            child: Text(
-              'Notifications',
-              style: TextStyle(
-                color: isDark
-                    ? AppTextColorDark.primary
-                    : AppTextColorLight.primary,
-                fontSize: AppFontSize.base,
-              ),
-            ),
-          ),
-          GestureDetector(
-            onTap: () =>
-                setState(() => _notificationsEnabled = !_notificationsEnabled),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: _scale(48),
-              height: _scale(28),
-              decoration: BoxDecoration(
-                color: _notificationsEnabled
-                    ? accentColor
-                    : (isDark
-                        ? AppFillColorDark.base
-                        : AppFillColorLight.base),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: AnimatedAlign(
-                duration: const Duration(milliseconds: 200),
-                alignment: _notificationsEnabled
-                    ? Alignment.centerRight
-                    : Alignment.centerLeft,
-                child: Container(
-                  width: _scale(22),
-                  height: _scale(22),
-                  margin: EdgeInsets.all(_scale(3)),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? AppFillColorDark.light
-                        : AppFillColorLight.light,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.2),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
