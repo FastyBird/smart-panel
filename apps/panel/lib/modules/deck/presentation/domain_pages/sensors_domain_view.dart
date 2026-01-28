@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
@@ -523,6 +524,69 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     }
   }
 
+  IconData _getCategoryIcon(SensorCategory category) {
+    switch (category) {
+      case SensorCategory.temperature:
+        return MdiIcons.thermometer;
+      case SensorCategory.humidity:
+        return MdiIcons.waterPercent;
+      case SensorCategory.airQuality:
+        return MdiIcons.airFilter;
+      case SensorCategory.motion:
+        return MdiIcons.motionSensor;
+      case SensorCategory.safety:
+        return MdiIcons.shieldCheck;
+      case SensorCategory.light:
+        return MdiIcons.weatherSunny;
+      case SensorCategory.energy:
+        return MdiIcons.flash;
+    }
+  }
+
+  ModeSelectorColor _getCategoryModeColor(SensorCategory category) {
+    switch (category) {
+      case SensorCategory.temperature:
+        return ModeSelectorColor.info;
+      case SensorCategory.humidity:
+        return ModeSelectorColor.success;
+      case SensorCategory.airQuality:
+        return ModeSelectorColor.teal;
+      case SensorCategory.motion:
+        return ModeSelectorColor.warning;
+      case SensorCategory.safety:
+        return ModeSelectorColor.danger;
+      case SensorCategory.light:
+        return ModeSelectorColor.warning;
+      case SensorCategory.energy:
+        return ModeSelectorColor.primary;
+    }
+  }
+
+  /// Get mode options for available sensor categories
+  List<ModeOption<SensorCategory?>> _getCategoryModeOptions() {
+    // Get categories that have sensors
+    final availableCategories = SensorCategory.values
+        .where((cat) => _countForCategory(cat) > 0)
+        .toList();
+
+    return [
+      // "All" option first
+      ModeOption<SensorCategory?>(
+        value: null,
+        icon: Icons.grid_view,
+        label: 'All',
+        color: ModeSelectorColor.neutral,
+      ),
+      // Then available categories
+      ...availableCategories.map((cat) => ModeOption<SensorCategory?>(
+            value: cat,
+            icon: _getCategoryIcon(cat),
+            label: _getCategoryLabel(cat),
+            color: _getCategoryModeColor(cat),
+          )),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<DevicesService>(
@@ -545,7 +609,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
             child: Column(
               children: [
                 _buildHeader(context, alertCount),
-                if (_sensors.isNotEmpty) _buildCategoryTabs(context),
+                if (_sensors.isNotEmpty) _buildCategorySelector(context),
                 Expanded(
                   child: _sensors.isEmpty
                       ? _buildEmptyState(context)
@@ -657,146 +721,42 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   }
 
   // --------------------------------------------------------------------------
-  // CATEGORY TABS
+  // CATEGORY SELECTOR
   // --------------------------------------------------------------------------
 
-  Widget _buildCategoryTabs(BuildContext context) {
+  Widget _buildCategorySelector(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final modeOptions = _getCategoryModeOptions();
 
-    return Container(
+    // Build status icons for categories with alerts
+    final Map<SensorCategory?, (IconData, Color)> statusIcons = {};
+    for (final cat in SensorCategory.values) {
+      final hasAlert = _sensors.any(
+        (s) => s.category == cat && s.status == SensorStatus.alert,
+      );
+      if (hasAlert) {
+        statusIcons[cat] = (
+          Icons.warning,
+          isDark ? AppColorsDark.danger : AppColorsLight.danger,
+        );
+      }
+    }
+
+    return Padding(
       padding: EdgeInsets.fromLTRB(
         AppSpacings.pLg,
         0,
         AppSpacings.pLg,
         AppSpacings.pMd,
       ),
-      decoration: BoxDecoration(
-        color: isDark ? AppBgColorDark.page : AppBgColorLight.page,
-        border: Border(
-          bottom: BorderSide(
-            color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
-            width: 1,
-          ),
-        ),
-      ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            _buildCategoryTab(
-              context,
-              label: 'All',
-              icon: Icons.grid_view,
-              count: _countForCategory(null),
-              isSelected: _selectedCategory == null,
-              onTap: () => setState(() => _selectedCategory = null),
-            ),
-            AppSpacings.spacingSmHorizontal,
-            ...SensorCategory.values.map((cat) {
-              final hasAlert =
-                  _sensors.any((s) => s.category == cat && s.status == SensorStatus.alert);
-              return Padding(
-                padding: EdgeInsets.only(right: AppSpacings.pSm),
-                child: _buildCategoryTab(
-                  context,
-                  label: _getCategoryLabel(cat),
-                  count: _countForCategory(cat),
-                  isSelected: _selectedCategory == cat,
-                  hasAlert: hasAlert,
-                  onTap: () => setState(() => _selectedCategory = cat),
-                ),
-              );
-            }),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCategoryTab(
-    BuildContext context, {
-    required String label,
-    IconData? icon,
-    required int count,
-    bool isSelected = false,
-    bool hasAlert = false,
-    VoidCallback? onTap,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: AppSpacings.pMd,
-          vertical: AppSpacings.pSm,
-        ),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? (isDark ? AppTextColorDark.primary : AppTextColorLight.primary)
-              : (isDark ? AppFillColorDark.base : AppFillColorLight.base),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Icon(
-                icon,
-                size: _scale(16),
-                color: isSelected
-                    ? (isDark ? AppBgColorDark.page : AppBgColorLight.page)
-                    : (isDark
-                        ? AppTextColorDark.secondary
-                        : AppTextColorLight.secondary),
-              ),
-              AppSpacings.spacingXsHorizontal,
-            ],
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: AppFontSize.small,
-                color: isSelected
-                    ? (isDark ? AppBgColorDark.page : AppBgColorLight.page)
-                    : (isDark
-                        ? AppTextColorDark.secondary
-                        : AppTextColorLight.secondary),
-              ),
-            ),
-            if (count > 0) ...[
-              AppSpacings.spacingXsHorizontal,
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: AppSpacings.pXs,
-                  vertical: 2,
-                ),
-                decoration: BoxDecoration(
-                  color: hasAlert
-                      ? (isDark ? AppColorsDark.danger : AppColorsLight.danger)
-                      : (isSelected
-                          ? Colors.white.withValues(alpha: 0.2)
-                          : (isDark
-                              ? AppFillColorDark.light
-                              : AppFillColorLight.light)),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  count.toString(),
-                  style: TextStyle(
-                    fontSize: AppFontSize.extraSmall,
-                    color: hasAlert
-                        ? Colors.white
-                        : (isSelected
-                            ? (isDark ? AppBgColorDark.page : AppBgColorLight.page)
-                            : (isDark
-                                ? AppTextColorDark.secondary
-                                : AppTextColorLight.secondary)),
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
+      child: ModeSelector<SensorCategory?>(
+        modes: modeOptions,
+        selectedValue: _selectedCategory,
+        onChanged: (category) => setState(() => _selectedCategory = category),
+        orientation: ModeSelectorOrientation.horizontal,
+        iconPlacement: ModeSelectorIconPlacement.top,
+        scrollable: true,
+        statusIcons: statusIcons,
       ),
     );
   }
