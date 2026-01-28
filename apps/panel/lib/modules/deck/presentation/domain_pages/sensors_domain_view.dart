@@ -201,25 +201,8 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       }
     }
 
-    _prefetch();
-  }
-
-  Future<void> _prefetch() async {
-    if (kDebugMode) {
-      debugPrint('[SensorsDomainViewPage] Prefetching sensor state for room: $_roomId');
-    }
-    try {
-      final result = await _spaceStateRepository?.fetchSensorState(_roomId);
-      if (kDebugMode) {
-        debugPrint('[SensorsDomainViewPage] Fetch result: hasSensors=${result?.hasSensors}, totalSensors=${result?.totalSensors}');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[SensorsDomainViewPage] Failed to fetch sensor state: $e');
-      }
-    } finally {
-      _loadSensorData();
-    }
+    // Data is prefetched by DeckService, just load from cache
+    _loadSensorData();
   }
 
   /// Map channel category string to SensorCategory
