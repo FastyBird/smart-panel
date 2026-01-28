@@ -111,7 +111,7 @@ class PropertyTimeseriesService {
       final from = now.subtract(timeRange.duration);
 
       final response = await _dio.get(
-        '/v1/channels/$channelId/properties/$propertyId/timeseries',
+        '/modules/devices/channels/$channelId/properties/$propertyId/timeseries',
         queryParameters: {
           'from': from.toUtc().toIso8601String(),
           'to': now.toUtc().toIso8601String(),
