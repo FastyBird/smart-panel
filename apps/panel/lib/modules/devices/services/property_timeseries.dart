@@ -52,9 +52,21 @@ class TimeseriesPoint {
   });
 
   factory TimeseriesPoint.fromJson(Map<String, dynamic> json) {
+    final rawValue = json['value'];
+    double numValue;
+    if (rawValue is num) {
+      numValue = rawValue.toDouble();
+    } else if (rawValue is String) {
+      numValue = double.tryParse(rawValue) ?? 0.0;
+    } else if (rawValue is bool) {
+      numValue = rawValue ? 1.0 : 0.0;
+    } else {
+      numValue = 0.0;
+    }
+
     return TimeseriesPoint(
       time: DateTime.parse(json['time'] as String),
-      numericValue: (json['value'] as num).toDouble(),
+      numericValue: numValue,
     );
   }
 }
@@ -108,13 +120,16 @@ class PropertyTimeseriesService {
       );
 
       if (response.statusCode == 200 && response.data != null) {
-        final data = response.data['data'] as List<dynamic>?;
-        if (data != null) {
-          final points = data
-              .map((item) =>
-                  TimeseriesPoint.fromJson(item as Map<String, dynamic>))
-              .toList();
-          return PropertyTimeseries(points: points);
+        final responseData = response.data['data'];
+        if (responseData is Map<String, dynamic>) {
+          final pointsList = responseData['points'] as List<dynamic>?;
+          if (pointsList != null) {
+            final points = pointsList
+                .map((item) =>
+                    TimeseriesPoint.fromJson(item as Map<String, dynamic>))
+                .toList();
+            return PropertyTimeseries(points: points);
+          }
         }
       }
 
