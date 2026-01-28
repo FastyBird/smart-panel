@@ -1,27 +1,50 @@
-import 'package:fastybird_smart_panel/api/models/spaces_module_data_media_target_device_category.dart';
-import 'package:fastybird_smart_panel/api/models/spaces_module_data_media_target_role.dart';
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
+
+// Note: Media domain now uses routing-based architecture (V2)
+// These local types replace the removed API-generated types
+
+/// Device category for media targets
+enum MediaTargetDeviceCategory {
+  television,
+  speaker,
+  media,
+  avReceiver,
+  setTopBox,
+  gameConsole,
+  projector,
+  streamingService,
+  unknown,
+}
+
+/// Role for media targets
+enum MediaTargetRole {
+  primary,
+  secondary,
+  background,
+  gaming,
+  hidden,
+}
 
 class MediaTargetModel {
   final String _deviceId;
   final String _deviceName;
-  final SpacesModuleDataMediaTargetDeviceCategory _deviceCategory;
+  final MediaTargetDeviceCategory _deviceCategory;
   final int _priority;
   final bool _hasOn;
   final bool _hasVolume;
   final bool _hasMute;
-  final SpacesModuleDataMediaTargetRole? _role;
+  final MediaTargetRole? _role;
   final String _spaceId;
 
   MediaTargetModel({
     required String deviceId,
     required String deviceName,
-    required SpacesModuleDataMediaTargetDeviceCategory deviceCategory,
+    required MediaTargetDeviceCategory deviceCategory,
     required int priority,
     required bool hasOn,
     required bool hasVolume,
     required bool hasMute,
-    SpacesModuleDataMediaTargetRole? role,
+    MediaTargetRole? role,
     required String spaceId,
   })  : _deviceId = UuidUtils.validateUuid(deviceId),
         _deviceName = deviceName,
@@ -37,8 +60,7 @@ class MediaTargetModel {
 
   String get deviceName => _deviceName;
 
-  SpacesModuleDataMediaTargetDeviceCategory get deviceCategory =>
-      _deviceCategory;
+  MediaTargetDeviceCategory get deviceCategory => _deviceCategory;
 
   int get priority => _priority;
 
@@ -48,7 +70,7 @@ class MediaTargetModel {
 
   bool get hasMute => _hasMute;
 
-  SpacesModuleDataMediaTargetRole? get role => _role;
+  MediaTargetRole? get role => _role;
 
   String get spaceId => _spaceId;
 
@@ -100,6 +122,46 @@ class MediaTargetModel {
         _spaceId,
       );
 
+  static MediaTargetDeviceCategory _parseDeviceCategory(String? value) {
+    switch (value) {
+      case 'television':
+        return MediaTargetDeviceCategory.television;
+      case 'speaker':
+        return MediaTargetDeviceCategory.speaker;
+      case 'media':
+        return MediaTargetDeviceCategory.media;
+      case 'av_receiver':
+        return MediaTargetDeviceCategory.avReceiver;
+      case 'set_top_box':
+        return MediaTargetDeviceCategory.setTopBox;
+      case 'game_console':
+        return MediaTargetDeviceCategory.gameConsole;
+      case 'projector':
+        return MediaTargetDeviceCategory.projector;
+      case 'streaming_service':
+        return MediaTargetDeviceCategory.streamingService;
+      default:
+        return MediaTargetDeviceCategory.unknown;
+    }
+  }
+
+  static MediaTargetRole? _parseRole(String? value) {
+    switch (value) {
+      case 'primary':
+        return MediaTargetRole.primary;
+      case 'secondary':
+        return MediaTargetRole.secondary;
+      case 'background':
+        return MediaTargetRole.background;
+      case 'gaming':
+        return MediaTargetRole.gaming;
+      case 'hidden':
+        return MediaTargetRole.hidden;
+      default:
+        return null;
+    }
+  }
+
   factory MediaTargetModel.fromJson(
     Map<String, dynamic> json, {
     required String spaceId,
@@ -107,16 +169,12 @@ class MediaTargetModel {
     return MediaTargetModel(
       deviceId: UuidUtils.validateUuid(json['device_id']),
       deviceName: json['device_name'] ?? '',
-      deviceCategory: SpacesModuleDataMediaTargetDeviceCategory.fromJson(
-        json['device_category'],
-      ),
+      deviceCategory: _parseDeviceCategory(json['device_category']),
       priority: json['priority'] ?? 0,
       hasOn: json['has_on'] ?? false,
       hasVolume: json['has_volume'] ?? false,
       hasMute: json['has_mute'] ?? false,
-      role: json['role'] != null
-          ? SpacesModuleDataMediaTargetRole.fromJson(json['role'])
-          : null,
+      role: _parseRole(json['role']),
       spaceId: spaceId,
     );
   }

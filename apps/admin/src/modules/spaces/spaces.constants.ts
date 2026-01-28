@@ -458,11 +458,7 @@ export enum SensorRole {
 }
 
 // Import for local use in helper arrays
-import {
-	SpacesModuleClimateRole,
-	SpacesModuleMediaRole,
-	DevicesModuleDeviceCategory,
-} from '../../openapi.constants';
+import { SpacesModuleClimateRole, DevicesModuleDeviceCategory } from '../../openapi.constants';
 
 // Helper arrays for role categorization
 export const CLIMATE_CONTROL_ROLES = [
@@ -500,14 +496,8 @@ export const MEDIA_DEVICE_CATEGORIES = [
 	DevicesModuleDeviceCategory.streaming_service,
 ] as const;
 
-// Media role ordering for consistent UI presentation
-export const MEDIA_ROLE_ORDER: SpacesModuleMediaRole[] = [
-	SpacesModuleMediaRole.primary,
-	SpacesModuleMediaRole.secondary,
-	SpacesModuleMediaRole.background,
-	SpacesModuleMediaRole.gaming,
-	SpacesModuleMediaRole.hidden,
-];
+// Note: Media domain now uses routing-based architecture (V2)
+// Old MEDIA_ROLE_ORDER has been removed
 
 // Sensor role ordering for consistent UI presentation
 export const SENSOR_ROLE_ORDER: SensorRole[] = [

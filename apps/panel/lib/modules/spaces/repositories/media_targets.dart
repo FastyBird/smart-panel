@@ -1,14 +1,17 @@
-import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/media_targets/media_target.dart';
 import 'package:flutter/foundation.dart';
+
+// Note: Media domain now uses routing-based architecture (V2)
+// API endpoints for media targets have been removed
+// This repository is stubbed until the new V2 API is available
 
 class MediaTargetsRepository extends ChangeNotifier {
   final SpacesModuleClient _apiClient;
 
   /// Media targets indexed by space ID, then by target ID.
   final Map<String, Map<String, MediaTargetModel>> _mediaTargets = {};
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   MediaTargetsRepository({
     required SpacesModuleClient apiClient,
@@ -70,19 +73,7 @@ class MediaTargetsRepository extends ChangeNotifier {
     }
   }
 
-  void deleteForSpace(String spaceId) {
-    if (_mediaTargets.containsKey(spaceId)) {
-      _mediaTargets.remove(spaceId);
-
-      if (kDebugMode) {
-        debugPrint(
-          '[SPACES MODULE][MEDIA_TARGETS] Removed all media targets for space: $spaceId',
-        );
-      }
-      notifyListeners();
-    }
-  }
-
+  /// Delete a single media target by ID
   void delete(String mediaTargetId) {
     for (final spaceId in _mediaTargets.keys) {
       if (_mediaTargets[spaceId]?.containsKey(mediaTargetId) == true) {
@@ -90,15 +81,17 @@ class MediaTargetsRepository extends ChangeNotifier {
 
         if (kDebugMode) {
           debugPrint(
-            '[SPACES MODULE][MEDIA_TARGETS] Removed media target: $mediaTargetId from space: $spaceId',
+            '[SPACES MODULE][MEDIA_TARGETS] Removed media target: $mediaTargetId',
           );
         }
+
         notifyListeners();
         return;
       }
     }
   }
 
+  /// Insert or update a single media target from raw JSON data
   void insertOne(Map<String, dynamic> json) {
     final spaceId = json['space'] is Map<String, dynamic>
         ? json['space']['id'] as String?
@@ -120,9 +113,10 @@ class MediaTargetsRepository extends ChangeNotifier {
 
       if (kDebugMode) {
         debugPrint(
-          '[SPACES MODULE][MEDIA_TARGETS] Inserted media target: ${mediaTarget.id} for space: $spaceId',
+          '[SPACES MODULE][MEDIA_TARGETS] Inserted/updated media target: ${mediaTarget.id}',
         );
       }
+
       notifyListeners();
     } catch (e) {
       if (kDebugMode) {
@@ -133,25 +127,22 @@ class MediaTargetsRepository extends ChangeNotifier {
     }
   }
 
+  /// Update device name for all media targets referencing the given device
   void updateDeviceName(String deviceId, String newDeviceName) {
     bool updated = false;
 
     for (final spaceId in _mediaTargets.keys) {
-      final targets = _mediaTargets[spaceId]!;
+      final target = _mediaTargets[spaceId]?[deviceId];
+      if (target != null && target.deviceName != newDeviceName) {
+        _mediaTargets[spaceId]![deviceId] = target.copyWith(
+          deviceName: newDeviceName,
+        );
+        updated = true;
 
-      for (final targetId in targets.keys.toList()) {
-        final target = targets[targetId]!;
-
-        if (target.deviceId == deviceId &&
-            target.deviceName != newDeviceName) {
-          targets[targetId] = target.copyWith(deviceName: newDeviceName);
-          updated = true;
-
-          if (kDebugMode) {
-            debugPrint(
-              '[SPACES MODULE][MEDIA_TARGETS] Updated device name for target: $targetId to: $newDeviceName',
-            );
-          }
+        if (kDebugMode) {
+          debugPrint(
+            '[SPACES MODULE][MEDIA_TARGETS] Updated device name for: $deviceId',
+          );
         }
       }
     }
@@ -161,68 +152,69 @@ class MediaTargetsRepository extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchForSpace(String spaceId) async {
-    _isLoading = true;
-    notifyListeners();
+  void deleteForSpace(String spaceId) {
+    if (_mediaTargets.containsKey(spaceId)) {
+      _mediaTargets.remove(spaceId);
 
-    try {
-      final response = await _apiClient.getSpacesModuleSpaceMediaTargets(
-        id: spaceId,
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][MEDIA_TARGETS] Removed all media targets for space: $spaceId',
+        );
+      }
+
+      notifyListeners();
+    }
+  }
+
+  void deleteByDevice(String spaceId, String deviceId) {
+    if (_mediaTargets[spaceId]?.containsKey(deviceId) == true) {
+      _mediaTargets[spaceId]!.remove(deviceId);
+
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][MEDIA_TARGETS] Removed media target for device: $deviceId in space: $spaceId',
+        );
+      }
+
+      notifyListeners();
+    }
+  }
+
+  void updateByDevice(String spaceId, String deviceId, MediaTargetModel model) {
+    if (_mediaTargets[spaceId] == null) {
+      _mediaTargets[spaceId] = {};
+    }
+    _mediaTargets[spaceId]![deviceId] = model;
+
+    if (kDebugMode) {
+      debugPrint(
+        '[SPACES MODULE][MEDIA_TARGETS] Updated media target for device: $deviceId in space: $spaceId',
       );
-
-      if (response.response.statusCode == 200) {
-        final raw = response.response.data['data'] as List;
-        replace(spaceId, raw.cast<Map<String, dynamic>>());
-      }
-    } on DioException catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          '[SPACES MODULE][MEDIA_TARGETS] API error for space $spaceId: ${e.response?.statusCode} - ${e.message}',
-        );
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          '[SPACES MODULE][MEDIA_TARGETS] Unexpected error for space $spaceId: $e',
-        );
-      }
     }
 
-    _isLoading = false;
     notifyListeners();
   }
 
-  Future<void> fetchForSpaces(List<String> spaceIds) async {
-    _isLoading = true;
-    notifyListeners();
-
-    for (final spaceId in spaceIds) {
-      try {
-        final response = await _apiClient.getSpacesModuleSpaceMediaTargets(
-          id: spaceId,
-        );
-
-        if (response.response.statusCode == 200) {
-          final raw = response.response.data['data'] as List;
-          replace(spaceId, raw.cast<Map<String, dynamic>>());
-        }
-      } on DioException catch (e) {
-        if (kDebugMode) {
-          debugPrint(
-            '[SPACES MODULE][MEDIA_TARGETS] API error for space $spaceId: ${e.response?.statusCode} - ${e.message}',
-          );
-        }
-      } catch (e) {
-        if (kDebugMode) {
-          debugPrint(
-            '[SPACES MODULE][MEDIA_TARGETS] Unexpected error for space $spaceId: $e',
-          );
-        }
-      }
+  /// Stub - media targets API no longer exists
+  /// Will be updated when V2 media routing API is available
+  Future<void> fetchForSpace(String spaceId) async {
+    // API endpoint removed - media domain now uses routing-based architecture
+    if (kDebugMode) {
+      debugPrint(
+        '[SPACES MODULE][MEDIA_TARGETS] fetchForSpace stubbed - API removed',
+      );
     }
+  }
 
-    _isLoading = false;
-    notifyListeners();
+  /// Stub - media targets API no longer exists
+  /// Will be updated when V2 media routing API is available
+  Future<void> fetchForSpaces(List<String> spaceIds) async {
+    // API endpoint removed - media domain now uses routing-based architecture
+    if (kDebugMode) {
+      debugPrint(
+        '[SPACES MODULE][MEDIA_TARGETS] fetchForSpaces stubbed - API removed',
+      );
+    }
   }
 
   void clearAll() {

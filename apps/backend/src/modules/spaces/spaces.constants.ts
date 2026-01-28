@@ -1620,55 +1620,6 @@ export const COVERS_INTENT_CATALOG: IntentTypeMeta[] = [
 // ========================
 
 /**
- * Media Roles - classify media devices within a space for intent-based control
- */
-export enum MediaRole {
-	PRIMARY = 'primary', // Main entertainment device (e.g., living room TV)
-	SECONDARY = 'secondary', // Secondary display/speaker
-	BACKGROUND = 'background', // Background music speakers
-	GAMING = 'gaming', // Gaming-optimized devices
-	HIDDEN = 'hidden', // Excluded from space-level control
-}
-
-/**
- * Media Intent Types - space-level intents for media device control
- */
-export enum MediaIntentType {
-	POWER_ON = 'power_on',
-	POWER_OFF = 'power_off',
-
-	VOLUME_SET = 'volume_set',
-	VOLUME_DELTA = 'volume_delta',
-	MUTE = 'mute',
-	UNMUTE = 'unmute',
-
-	ROLE_POWER = 'role_power',
-	ROLE_VOLUME = 'role_volume',
-
-	// Playback intents (high-value for media domain)
-	PLAY = 'play',
-	PAUSE = 'pause',
-	STOP = 'stop',
-	NEXT = 'next',
-	PREVIOUS = 'previous',
-
-	// Input/source intent (TV/AVR/STB)
-	INPUT_SET = 'input_set',
-
-	SET_MODE = 'set_mode',
-}
-
-/**
- * Media Modes - preset configurations for different scenarios
- */
-export enum MediaMode {
-	OFF = 'off', // All media off
-	BACKGROUND = 'background', // Background at 30%, others off
-	FOCUSED = 'focused', // Primary at 50%, others muted
-	PARTY = 'party', // All at 70%
-}
-
-/**
  * Volume delta sizes for media adjustment
  */
 export enum VolumeDelta {
@@ -1721,131 +1672,6 @@ export const MEDIA_CHANNEL_CATEGORIES = [
 ] as const;
 
 /**
- * Mode definitions for media - maps each mode to role-specific settings
- * Volume values: 0-100
- *
- * IMPORTANT:
- * - All fields are optional: apply only if the target device supports the capability.
- * - `power` is an orchestration intent, NOT a device property.
- *   (Device property remains `on` under television/switcher/etc.)
- */
-export interface MediaRoleOrchestrationRule {
-	/** Desired power state when supported (true=on, false=off) */
-	power?: boolean;
-
-	/** Desired volume percentage (0-100) when supported; null can mean "mute" preference */
-	volume?: number | null;
-
-	/** Desired mute state when supported */
-	muted?: boolean;
-}
-
-/**
- * Mode orchestration rules for media
- */
-export type MediaModeOrchestrationRules = Partial<Record<MediaRole, MediaRoleOrchestrationRule>>;
-
-/**
- * Mode orchestration configuration for media
- *
- * Notes:
- * - OFF: prefer power off, but only if device has a power capability (television.on or switcher.on)
- * - BACKGROUND/FOCUSED: do not force power for PRIMARY unless you mean it; keep intent explicit
- */
-export const MEDIA_MODE_ORCHESTRATION: Record<MediaMode, MediaModeOrchestrationRules> = {
-	[MediaMode.OFF]: {
-		[MediaRole.PRIMARY]: { power: false },
-		[MediaRole.SECONDARY]: { power: false },
-		[MediaRole.BACKGROUND]: { power: false },
-		[MediaRole.GAMING]: { power: false },
-	},
-	[MediaMode.BACKGROUND]: {
-		[MediaRole.PRIMARY]: { power: false },
-		[MediaRole.SECONDARY]: { power: false },
-		[MediaRole.BACKGROUND]: { power: true, volume: 30, muted: false },
-		[MediaRole.GAMING]: { power: false },
-	},
-	[MediaMode.FOCUSED]: {
-		[MediaRole.PRIMARY]: { power: true, volume: 50, muted: false },
-		[MediaRole.SECONDARY]: { power: false },
-		[MediaRole.BACKGROUND]: { power: true, muted: true },
-		[MediaRole.GAMING]: { power: false },
-	},
-	[MediaMode.PARTY]: {
-		[MediaRole.PRIMARY]: { power: true, volume: 70, muted: false },
-		[MediaRole.SECONDARY]: { power: true, volume: 70, muted: false },
-		[MediaRole.BACKGROUND]: { power: true, volume: 70, muted: false },
-		[MediaRole.GAMING]: { power: true, volume: 70, muted: false },
-	},
-};
-
-/**
- * Metadata for media role values
- */
-export const MEDIA_ROLE_META: Record<MediaRole, IntentEnumValueMeta> = {
-	[MediaRole.PRIMARY]: {
-		value: MediaRole.PRIMARY,
-		label: 'Primary',
-		description: 'Main entertainment device (e.g., living room TV)',
-		icon: 'mdi:television',
-	},
-	[MediaRole.SECONDARY]: {
-		value: MediaRole.SECONDARY,
-		label: 'Secondary',
-		description: 'Secondary display or speaker',
-		icon: 'mdi:monitor',
-	},
-	[MediaRole.BACKGROUND]: {
-		value: MediaRole.BACKGROUND,
-		label: 'Background',
-		description: 'Background music speakers',
-		icon: 'mdi:speaker',
-	},
-	[MediaRole.GAMING]: {
-		value: MediaRole.GAMING,
-		label: 'Gaming',
-		description: 'Gaming-optimized devices',
-		icon: 'mdi:gamepad-variant',
-	},
-	[MediaRole.HIDDEN]: {
-		value: MediaRole.HIDDEN,
-		label: 'Hidden',
-		description: 'Excluded from space-level control',
-		icon: 'mdi:eye-off',
-	},
-};
-
-/**
- * Metadata for media mode values
- */
-export const MEDIA_MODE_META: Record<MediaMode, IntentEnumValueMeta> = {
-	[MediaMode.OFF]: {
-		value: MediaMode.OFF,
-		label: 'Off',
-		description: 'All media devices off',
-		icon: 'mdi:power-off',
-	},
-	[MediaMode.BACKGROUND]: {
-		value: MediaMode.BACKGROUND,
-		label: 'Background',
-		description: 'Background music at low volume',
-		icon: 'mdi:music',
-	},
-	[MediaMode.FOCUSED]: {
-		value: MediaMode.FOCUSED,
-		label: 'Focused',
-		description: 'Primary device on, others muted',
-		icon: 'mdi:eye',
-	},
-	[MediaMode.PARTY]: {
-		value: MediaMode.PARTY,
-		label: 'Party',
-		description: 'All devices at high volume',
-		icon: 'mdi:party-popper',
-	},
-};
-
-/**
  * Metadata for volume delta values
  */
 export const VOLUME_DELTA_META: Record<VolumeDelta, IntentEnumValueMeta> = {
@@ -1866,189 +1692,208 @@ export const VOLUME_DELTA_META: Record<VolumeDelta, IntentEnumValueMeta> = {
 	},
 };
 
+// ========================
+// Media Domain V2 - Endpoint/Routing Architecture
+// ========================
+
 /**
- * Complete media intent catalog
+ * Media Endpoint Types - functional projections of media devices
+ * A single device can expose multiple endpoints (e.g., TV as both display and audio_output)
  */
-export const MEDIA_INTENT_CATALOG: IntentTypeMeta[] = [
-	{
-		type: MediaIntentType.POWER_ON,
-		label: 'Power On',
-		description: 'Turn on all media devices in the space (where supported)',
-		icon: 'mdi:power',
-		params: [],
+export enum MediaEndpointType {
+	/** Display endpoint (TV, projector) - provides visual output */
+	DISPLAY = 'display',
+	/** Audio output endpoint (receiver, speaker, TV speaker) - provides audio output */
+	AUDIO_OUTPUT = 'audio_output',
+	/** Source endpoint (streamer, console, TV apps, HDMI input) - provides media content */
+	SOURCE = 'source',
+	/** Remote target endpoint (TV, streamer) - accepts remote control commands */
+	REMOTE_TARGET = 'remote_target',
+}
+
+/**
+ * Media Routing Types - activity presets that define endpoint configurations
+ */
+export enum MediaRoutingType {
+	/** Watch routing - optimized for video content (TV + AVR + source) */
+	WATCH = 'watch',
+	/** Listen routing - optimized for audio content (speakers/AVR only) */
+	LISTEN = 'listen',
+	/** Gaming routing - optimized for gaming (low latency, game console) */
+	GAMING = 'gaming',
+	/** Background routing - ambient audio at low volume */
+	BACKGROUND = 'background',
+	/** Off routing - all media devices powered off */
+	OFF = 'off',
+	/** Custom routing - user-defined configuration */
+	CUSTOM = 'custom',
+}
+
+/**
+ * Media Power Policy - defines how power is handled during routing activation
+ */
+export enum MediaPowerPolicy {
+	/** Power on all endpoints in the routing */
+	ON = 'on',
+	/** Power off all endpoints in the routing */
+	OFF = 'off',
+	/** Leave power state unchanged */
+	UNCHANGED = 'unchanged',
+}
+
+/**
+ * Media Capability - individual capability that an endpoint can have
+ */
+export enum MediaCapability {
+	POWER = 'power',
+	VOLUME = 'volume',
+	MUTE = 'mute',
+	PLAYBACK = 'playback',
+	PLAYBACK_STATE = 'playback_state',
+	INPUT = 'input',
+	REMOTE = 'remote',
+	TRACK_METADATA = 'track_metadata',
+}
+
+/**
+ * Media Capability Permission - read/write permissions for capabilities
+ */
+export enum MediaCapabilityPermission {
+	READ = 'read',
+	WRITE = 'write',
+	READ_WRITE = 'read_write',
+}
+
+/**
+ * Metadata for media endpoint types
+ */
+export const MEDIA_ENDPOINT_TYPE_META: Record<MediaEndpointType, IntentEnumValueMeta> = {
+	[MediaEndpointType.DISPLAY]: {
+		value: MediaEndpointType.DISPLAY,
+		label: 'Display',
+		description: 'Visual output device (TV, projector)',
+		icon: 'mdi:television',
 	},
-	{
-		type: MediaIntentType.POWER_OFF,
-		label: 'Power Off',
-		description: 'Turn off all media devices in the space (where supported)',
+	[MediaEndpointType.AUDIO_OUTPUT]: {
+		value: MediaEndpointType.AUDIO_OUTPUT,
+		label: 'Audio Output',
+		description: 'Audio output device (receiver, speaker)',
+		icon: 'mdi:speaker',
+	},
+	[MediaEndpointType.SOURCE]: {
+		value: MediaEndpointType.SOURCE,
+		label: 'Source',
+		description: 'Media content source (streamer, console)',
+		icon: 'mdi:play-box',
+	},
+	[MediaEndpointType.REMOTE_TARGET]: {
+		value: MediaEndpointType.REMOTE_TARGET,
+		label: 'Remote Target',
+		description: 'Device that accepts remote commands',
+		icon: 'mdi:remote',
+	},
+};
+
+/**
+ * Metadata for media routing types
+ */
+export const MEDIA_ROUTING_TYPE_META: Record<MediaRoutingType, IntentEnumValueMeta> = {
+	[MediaRoutingType.WATCH]: {
+		value: MediaRoutingType.WATCH,
+		label: 'Watch',
+		description: 'Watch video content (TV + audio)',
+		icon: 'mdi:television-play',
+	},
+	[MediaRoutingType.LISTEN]: {
+		value: MediaRoutingType.LISTEN,
+		label: 'Listen',
+		description: 'Listen to audio content',
+		icon: 'mdi:music',
+	},
+	[MediaRoutingType.GAMING]: {
+		value: MediaRoutingType.GAMING,
+		label: 'Gaming',
+		description: 'Play video games',
+		icon: 'mdi:gamepad-variant',
+	},
+	[MediaRoutingType.BACKGROUND]: {
+		value: MediaRoutingType.BACKGROUND,
+		label: 'Background',
+		description: 'Background ambient audio',
+		icon: 'mdi:music-note',
+	},
+	[MediaRoutingType.OFF]: {
+		value: MediaRoutingType.OFF,
+		label: 'Off',
+		description: 'Turn off all media',
 		icon: 'mdi:power-off',
-		params: [],
 	},
-	{
-		type: MediaIntentType.VOLUME_SET,
-		label: 'Set Volume',
-		description: 'Set all media devices to a specific volume (0-100) where supported',
-		icon: 'mdi:volume-high',
-		params: [
-			{
-				name: 'volume',
-				type: 'number',
-				required: true,
-				description: 'Volume percentage (0-100)',
-				minValue: 0,
-				maxValue: 100,
-			},
-		],
+	[MediaRoutingType.CUSTOM]: {
+		value: MediaRoutingType.CUSTOM,
+		label: 'Custom',
+		description: 'Custom configuration',
+		icon: 'mdi:cog',
 	},
-	{
-		type: MediaIntentType.VOLUME_DELTA,
-		label: 'Adjust Volume',
-		description: 'Increase or decrease volume of all media devices where supported',
-		icon: 'mdi:volume-medium',
-		params: [
-			{
-				name: 'delta',
-				type: 'enum',
-				required: true,
-				description: 'The step size for volume adjustment',
-				enumValues: Object.values(VOLUME_DELTA_META),
-			},
-			{
-				name: 'increase',
-				type: 'boolean',
-				required: true,
-				description: 'True to increase volume, false to decrease',
-			},
-		],
-	},
-	{
-		type: MediaIntentType.MUTE,
-		label: 'Mute',
-		description: 'Mute all media devices in the space where supported',
-		icon: 'mdi:volume-off',
-		params: [],
-	},
-	{
-		type: MediaIntentType.UNMUTE,
-		label: 'Unmute',
-		description: 'Unmute all media devices in the space where supported',
-		icon: 'mdi:volume-high',
-		params: [],
-	},
+};
 
-	// Playback intents (apply only to devices with MEDIA_PLAYBACK)
-	{
-		type: MediaIntentType.PLAY,
-		label: 'Play',
-		description: 'Start playback on supported media devices',
-		icon: 'mdi:play',
-		params: [],
-	},
-	{
-		type: MediaIntentType.PAUSE,
-		label: 'Pause',
-		description: 'Pause playback on supported media devices',
-		icon: 'mdi:pause',
-		params: [],
-	},
-	{
-		type: MediaIntentType.STOP,
-		label: 'Stop',
-		description: 'Stop playback on supported media devices',
-		icon: 'mdi:stop',
-		params: [],
-	},
-	{
-		type: MediaIntentType.NEXT,
-		label: 'Next',
-		description: 'Skip to next track on supported media devices',
-		icon: 'mdi:skip-next',
-		params: [],
-	},
-	{
-		type: MediaIntentType.PREVIOUS,
-		label: 'Previous',
-		description: 'Go to previous track on supported media devices',
-		icon: 'mdi:skip-previous',
-		params: [],
-	},
+/**
+ * Default routing configurations - used when auto-creating routings
+ * Note: name and icon are derived from MEDIA_ROUTING_TYPE_META to avoid duplication
+ */
+export interface MediaRoutingDefaults {
+	powerPolicy: MediaPowerPolicy;
+	audioVolumePreset: number | null;
+}
 
-	// Input intent (apply only to devices with MEDIA_INPUT or TELEVISION input_source)
-	{
-		type: MediaIntentType.INPUT_SET,
-		label: 'Set Input',
-		description: 'Set input/source on supported devices (TV/AVR/set-top box)',
-		icon: 'mdi:video-input-hdmi',
-		params: [
-			{
-				name: 'source',
-				type: 'string',
-				required: true,
-				description: 'Input/source identifier (integration-specific)',
-			},
-		],
+export const MEDIA_ROUTING_DEFAULTS: Record<MediaRoutingType, MediaRoutingDefaults> = {
+	[MediaRoutingType.WATCH]: {
+		powerPolicy: MediaPowerPolicy.ON,
+		audioVolumePreset: 50,
 	},
+	[MediaRoutingType.LISTEN]: {
+		powerPolicy: MediaPowerPolicy.ON,
+		audioVolumePreset: 40,
+	},
+	[MediaRoutingType.GAMING]: {
+		powerPolicy: MediaPowerPolicy.ON,
+		audioVolumePreset: 60,
+	},
+	[MediaRoutingType.BACKGROUND]: {
+		powerPolicy: MediaPowerPolicy.ON,
+		audioVolumePreset: 25,
+	},
+	[MediaRoutingType.OFF]: {
+		powerPolicy: MediaPowerPolicy.OFF,
+		audioVolumePreset: null,
+	},
+	[MediaRoutingType.CUSTOM]: {
+		powerPolicy: MediaPowerPolicy.UNCHANGED,
+		audioVolumePreset: null,
+	},
+};
 
-	{
-		type: MediaIntentType.ROLE_POWER,
-		label: 'Set Role Power',
-		description: 'Set power state for media devices with a specific role (where supported)',
-		icon: 'mdi:power',
-		params: [
-			{
-				name: 'role',
-				type: 'enum',
-				required: true,
-				description: 'The media role to control',
-				enumValues: Object.values(MEDIA_ROLE_META).filter((r) => r.value !== (MediaRole.HIDDEN as string)),
-			},
-			{
-				name: 'on',
-				type: 'boolean',
-				required: true,
-				description: 'Power state (true=on, false=off)',
-			},
-		],
-	},
-	{
-		type: MediaIntentType.ROLE_VOLUME,
-		label: 'Set Role Volume',
-		description: 'Set volume for media devices with a specific role (where supported)',
-		icon: 'mdi:volume-high',
-		params: [
-			{
-				name: 'role',
-				type: 'enum',
-				required: true,
-				description: 'The media role to control',
-				enumValues: Object.values(MEDIA_ROLE_META).filter((r) => r.value !== (MediaRole.HIDDEN as string)),
-			},
-			{
-				name: 'volume',
-				type: 'number',
-				required: true,
-				description: 'Volume percentage (0-100)',
-				minValue: 0,
-				maxValue: 100,
-			},
-		],
-	},
-	{
-		type: MediaIntentType.SET_MODE,
-		label: 'Set Mode',
-		description: 'Set a media mode (off/background/focused/party) with role-based settings',
-		icon: 'mdi:television-guide',
-		params: [
-			{
-				name: 'mode',
-				type: 'enum',
-				required: true,
-				description: 'The media mode to apply',
-				enumValues: Object.values(MEDIA_MODE_META),
-			},
-		],
-	},
-];
+/**
+ * Media Intent Types V2 - routing-based intents
+ */
+export enum MediaIntentTypeV2 {
+	/** Activate a specific routing */
+	ROUTING_ACTIVATE = 'routing_activate',
+	/** Deactivate current routing (same as activating OFF) */
+	ROUTING_DEACTIVATE = 'routing_deactivate',
+	/** Volume control (applies to active routing's audio endpoint) */
+	VOLUME_SET = 'volume_set',
+	VOLUME_DELTA = 'volume_delta',
+	MUTE = 'mute',
+	UNMUTE = 'unmute',
+	/** Playback control (applies to active routing's source endpoint) */
+	PLAY = 'play',
+	PAUSE = 'pause',
+	STOP = 'stop',
+	NEXT = 'next',
+	PREVIOUS = 'previous',
+	/** Input control (applies to specific endpoint) */
+	INPUT_SET = 'input_set',
+}
 
 /**
  * Complete intent category catalog
@@ -2075,13 +1920,7 @@ export const INTENT_CATEGORY_CATALOG: IntentCategoryMeta[] = [
 		icon: 'mdi:blinds',
 		intents: COVERS_INTENT_CATALOG,
 	},
-	{
-		category: IntentCategory.MEDIA,
-		label: 'Media',
-		description: 'Control media devices (TVs, speakers, audio systems) with modes and volume adjustments',
-		icon: 'mdi:television',
-		intents: MEDIA_INTENT_CATALOG,
-	},
+	// Note: Media domain uses routing-based architecture (MediaIntentTypeV2) instead of intent catalog
 ];
 
 /**

@@ -1,7 +1,6 @@
 import 'package:event_bus/event_bus.dart';
-import 'package:fastybird_smart_panel/api/models/spaces_module_data_media_target_device_category.dart';
-import 'package:fastybird_smart_panel/api/models/spaces_module_data_media_target_role.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/media_targets/media_target.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
@@ -524,29 +523,23 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 
   IconData _targetIcon(MediaTargetView target) {
     switch (target.deviceCategory) {
-      case SpacesModuleDataMediaTargetDeviceCategory.television:
+      case MediaTargetDeviceCategory.television:
         return MdiIcons.television;
-      case SpacesModuleDataMediaTargetDeviceCategory.media:
+      case MediaTargetDeviceCategory.media:
         return MdiIcons.playCircle;
-      case SpacesModuleDataMediaTargetDeviceCategory.speaker:
+      case MediaTargetDeviceCategory.speaker:
         return MdiIcons.speaker;
-      case SpacesModuleDataMediaTargetDeviceCategory.streamingService:
+      case MediaTargetDeviceCategory.streamingService:
         return MdiIcons.cast;
-      case SpacesModuleDataMediaTargetDeviceCategory.avReceiver:
+      case MediaTargetDeviceCategory.avReceiver:
         return MdiIcons.surroundSound;
-      case SpacesModuleDataMediaTargetDeviceCategory.setTopBox:
+      case MediaTargetDeviceCategory.setTopBox:
         return MdiIcons.setTopBox;
-      case SpacesModuleDataMediaTargetDeviceCategory.gameConsole:
+      case MediaTargetDeviceCategory.gameConsole:
         return MdiIcons.gamepadVariantOutline;
-      case SpacesModuleDataMediaTargetDeviceCategory.projector:
+      case MediaTargetDeviceCategory.projector:
         return MdiIcons.projector;
-      case SpacesModuleDataMediaTargetDeviceCategory.airConditioner:
-        return MdiIcons.airConditioner;
-      case SpacesModuleDataMediaTargetDeviceCategory.generic:
-        return MdiIcons.audioVideo;
-      case SpacesModuleDataMediaTargetDeviceCategory.$unknown:
-        return MdiIcons.playOutline;
-      default:
+      case MediaTargetDeviceCategory.unknown:
         return MdiIcons.playOutline;
     }
   }
@@ -571,18 +564,16 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
     final role = target.role;
     if (role == null) return '';
     switch (role) {
-      case SpacesModuleDataMediaTargetRole.primary:
+      case MediaTargetRole.primary:
         return localizations.media_role_primary;
-      case SpacesModuleDataMediaTargetRole.secondary:
+      case MediaTargetRole.secondary:
         return localizations.media_role_secondary;
-      case SpacesModuleDataMediaTargetRole.background:
+      case MediaTargetRole.background:
         return localizations.media_role_background;
-      case SpacesModuleDataMediaTargetRole.gaming:
+      case MediaTargetRole.gaming:
         return localizations.media_role_gaming;
-      case SpacesModuleDataMediaTargetRole.hidden:
+      case MediaTargetRole.hidden:
         return localizations.media_role_hidden;
-      case SpacesModuleDataMediaTargetRole.$unknown:
-        return '';
     }
   }
 

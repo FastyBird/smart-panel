@@ -1,22 +1,27 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsUUID, Min } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { Column, Entity, JoinColumn, ManyToOne, Unique } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { ChannelEntity, DeviceEntity } from '../../devices/entities/devices.entity';
-import { MediaRole } from '../spaces.constants';
+import { MediaEndpointType } from '../spaces.constants';
 
 import { SpaceEntity } from './space.entity';
 
-@ApiSchema({ name: 'SpacesModuleDataSpaceMediaRole' })
-@Entity('spaces_module_media_roles')
-@Unique(['spaceId', 'deviceId'])
-export class SpaceMediaRoleEntity extends BaseEntity {
+/**
+ * Represents a functional media endpoint within a space.
+ * An endpoint is a projection of a device's media capabilities.
+ * A single device can have multiple endpoints (e.g., TV as display + audio_output).
+ */
+@ApiSchema({ name: 'SpacesModuleDataSpaceMediaEndpoint' })
+@Entity('spaces_module_media_endpoints')
+@Unique(['spaceId', 'deviceId', 'type'])
+export class SpaceMediaEndpointEntity extends BaseEntity {
 	@ApiProperty({
 		name: 'space_id',
-		description: 'ID of the space this role assignment belongs to',
+		description: 'ID of the space this endpoint belongs to',
 		type: 'string',
 		format: 'uuid',
 		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
@@ -54,7 +59,7 @@ export class SpaceMediaRoleEntity extends BaseEntity {
 
 	@ApiPropertyOptional({
 		name: 'channel_id',
-		description: 'ID of the media channel used for control (optional, informational)',
+		description: 'ID of the specific channel for this endpoint (optional)',
 		type: 'string',
 		format: 'uuid',
 		example: 'c3d29eb4-632f-5e8c-c4af-ded8b9e6c0f8',
@@ -73,27 +78,57 @@ export class SpaceMediaRoleEntity extends BaseEntity {
 	channel: ChannelEntity | null;
 
 	@ApiProperty({
-		description: 'The media role for this device/channel in the space',
-		enum: MediaRole,
-		example: MediaRole.PRIMARY,
+		description: 'The functional type of this endpoint',
+		enum: MediaEndpointType,
+		example: MediaEndpointType.DISPLAY,
 	})
 	@Expose()
-	@IsEnum(MediaRole)
+	@IsEnum(MediaEndpointType)
 	@Column({
 		type: 'varchar',
-		default: MediaRole.PRIMARY,
 	})
-	role: MediaRole;
+	type: MediaEndpointType;
 
 	@ApiPropertyOptional({
-		description: 'Priority for selecting defaults within the same role (lower = higher priority)',
-		type: 'integer',
-		example: 0,
+		description: 'Custom name for this endpoint (defaults to device name)',
+		type: 'string',
+		maxLength: 100,
+		example: 'Living Room TV',
 	})
 	@Expose()
 	@IsOptional()
-	@IsInt()
-	@Min(0)
-	@Column({ type: 'int', default: 0 })
-	priority: number;
+	@IsString()
+	@MaxLength(100)
+	@Column({ type: 'varchar', length: 100, nullable: true })
+	name: string | null;
+
+	@ApiPropertyOptional({
+		description: 'JSON object describing detected capabilities and their property mappings',
+		type: 'string',
+		example:
+			'{"power":{"propertyId":"...","permission":"read_write"},"volume":{"propertyId":"...","permission":"read_write"}}',
+	})
+	@Expose()
+	@IsOptional()
+	@IsString()
+	@Column({ type: 'text', nullable: true })
+	capabilities: string | null;
+
+	@ApiPropertyOptional({
+		name: 'preferred_for',
+		description: 'JSON array of routing types this endpoint is preferred for',
+		type: 'string',
+		example: '["watch","gaming"]',
+	})
+	@Expose({ name: 'preferred_for' })
+	@IsOptional()
+	@IsString()
+	@Transform(
+		({ obj }: { obj: { preferred_for?: string; preferredFor?: string } }) => obj.preferred_for ?? obj.preferredFor,
+		{
+			toClassOnly: true,
+		},
+	)
+	@Column({ type: 'text', nullable: true })
+	preferredFor: string | null;
 }

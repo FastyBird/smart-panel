@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { InfluxDbService } from '../../influxdb/services/influxdb.service';
-import { MediaMode } from '../../spaces/spaces.constants';
 import { INTENTS_MODULE_NAME, IntentStatus, IntentTargetStatus, IntentType } from '../intents.constants';
 import { IntentRecord } from '../models/intent.model';
 
@@ -639,13 +638,13 @@ export class IntentTimeseriesService {
 
 	/**
 	 * Store a media intent state change (mode/volume/muted).
-	 * Called by MediaIntentService after successfully applying an intent.
+	 * Called by SpaceMediaRoutingService after successfully applying a routing activation.
 	 */
 	async storeMediaStateChange(
 		spaceId: string,
 		intentType: string,
 		state: {
-			mode?: MediaMode | null;
+			mode?: string | null;
 			volume?: number | null;
 			muted?: boolean | null;
 			role?: string | null;

@@ -1,5 +1,3 @@
-import 'package:fastybird_smart_panel/api/models/spaces_module_data_media_target_device_category.dart';
-import 'package:fastybird_smart_panel/api/models/spaces_module_data_media_target_role.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/media_targets/media_target.dart';
 
 class MediaTargetView {
@@ -15,8 +13,7 @@ class MediaTargetView {
 
   String get deviceName => _model.deviceName;
 
-  SpacesModuleDataMediaTargetDeviceCategory get deviceCategory =>
-      _model.deviceCategory;
+  MediaTargetDeviceCategory get deviceCategory => _model.deviceCategory;
 
   int get priority => _model.priority;
 
@@ -26,11 +23,11 @@ class MediaTargetView {
 
   bool get hasMute => _model.hasMute;
 
-  SpacesModuleDataMediaTargetRole? get role => _model.role;
+  MediaTargetRole? get role => _model.role;
 
   String get spaceId => _model.spaceId;
 
-  bool get isHidden => _model.role == SpacesModuleDataMediaTargetRole.hidden;
+  bool get isHidden => _model.role == MediaTargetRole.hidden;
 
   @override
   bool operator ==(Object other) {

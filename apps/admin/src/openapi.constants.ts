@@ -379,8 +379,5 @@ export { SpacesModuleSetClimateRoleRole as SpacesModuleClimateRole } from './ope
 
 export { SpacesModuleCoversIntentRole as SpacesModuleCoversRole } from './openapi';
 
-export {
-	SpacesModuleMediaIntentRole as SpacesModuleMediaRole,
-	SpacesModuleMediaIntentMode as SpacesModuleMediaMode,
-	SpacesModuleMediaIntentType as SpacesModuleMediaIntentType,
-} from './openapi';
+// Note: Media domain now uses routing-based architecture (V2)
+// Old role-based types have been removed

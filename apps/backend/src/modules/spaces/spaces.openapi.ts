@@ -24,13 +24,22 @@ import {
 	ReqSetLightingRoleDto,
 	SetLightingRoleDto,
 } from './dto/lighting-role.dto';
-import { MediaIntentDto, ReqMediaIntentDto } from './dto/media-intent.dto';
 import {
-	BulkSetMediaRolesDto,
-	ReqBulkSetMediaRolesDto,
-	ReqSetMediaRoleDto,
-	SetMediaRoleDto,
-} from './dto/media-role.dto';
+	BulkCreateMediaEndpointsDto,
+	CreateMediaEndpointDto,
+	ReqBulkCreateMediaEndpointsDto,
+	ReqCreateMediaEndpointDto,
+	ReqUpdateMediaEndpointDto,
+	UpdateMediaEndpointDto,
+} from './dto/media-endpoint.dto';
+import {
+	ActivateMediaRoutingDto,
+	CreateMediaRoutingDto,
+	ReqActivateMediaRoutingDto,
+	ReqCreateMediaRoutingDto,
+	ReqUpdateMediaRoutingDto,
+	UpdateMediaRoutingDto,
+} from './dto/media-routing.dto';
 import {
 	BulkSetSensorRolesDto,
 	ReqBulkSetSensorRolesDto,
@@ -42,9 +51,26 @@ import { ReqUpdateSpaceDto, UpdateSpaceDto } from './dto/update-space.dto';
 import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
 import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
-import { SpaceMediaRoleEntity } from './entities/space-media-role.entity';
+import { SpaceMediaEndpointEntity } from './entities/space-media-endpoint.entity';
+import { SpaceMediaRoutingEntity } from './entities/space-media-routing.entity';
 import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
 import { SpaceEntity } from './entities/space.entity';
+import {
+	MediaCapabilitiesResponseModel,
+	MediaCapabilityMappingModel,
+	MediaCapabilitySummaryModel,
+	MediaEndpointResponseModel,
+	MediaEndpointsResponseModel,
+	MediaExecutionPlanModel,
+	MediaExecutionStepModel,
+	MediaExecutionStepResultModel,
+	MediaRoutingActivationResponseModel,
+	MediaRoutingActivationResultModel,
+	MediaRoutingResponseModel,
+	MediaRoutingsResponseModel,
+	MediaStateV2Model,
+	MediaStateV2ResponseModel,
+} from './models/media-routing.model';
 import {
 	BulkAssignmentDataModel,
 	BulkAssignmentResponseModel,
@@ -57,9 +83,6 @@ import {
 	BulkCoversRolesResultDataModel,
 	BulkLightingRolesResponseModel,
 	BulkLightingRolesResultDataModel,
-	BulkMediaRoleResultItemModel,
-	BulkMediaRolesResponseModel,
-	BulkMediaRolesResultDataModel,
 	BulkSensorRoleResultItemModel,
 	BulkSensorRolesResponseModel,
 	BulkSensorRolesResultDataModel,
@@ -98,16 +121,6 @@ import {
 	LightingRoleResponseModel,
 	LightingRolesResponseModel,
 	LightingSummaryDataModel,
-	MediaIntentResponseModel,
-	MediaIntentResultDataModel,
-	MediaRoleResponseModel,
-	MediaRoleStateDataModel,
-	// Media response models
-	MediaStateDataModel,
-	MediaStateResponseModel,
-	MediaTargetDataModel,
-	MediaTargetsResponseModel,
-	OtherMediaStateDataModel,
 	ProposedSpaceDataModel,
 	ProposedSpacesResponseModel,
 	QuickActionDataModel,
@@ -115,7 +128,6 @@ import {
 	SensorReadingDataModel,
 	SensorRoleReadingsDataModel,
 	SensorRoleResponseModel,
-	// Sensor response models
 	SensorStateDataModel,
 	SensorStateResponseModel,
 	SensorTargetDataModel,
@@ -158,12 +170,20 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	ReqSetCoversRoleDto,
 	BulkSetCoversRolesDto,
 	ReqBulkSetCoversRolesDto,
-	MediaIntentDto,
-	ReqMediaIntentDto,
-	SetMediaRoleDto,
-	ReqSetMediaRoleDto,
-	BulkSetMediaRolesDto,
-	ReqBulkSetMediaRolesDto,
+	// Media endpoint DTOs
+	CreateMediaEndpointDto,
+	ReqCreateMediaEndpointDto,
+	UpdateMediaEndpointDto,
+	ReqUpdateMediaEndpointDto,
+	BulkCreateMediaEndpointsDto,
+	ReqBulkCreateMediaEndpointsDto,
+	// Media routing DTOs
+	CreateMediaRoutingDto,
+	ReqCreateMediaRoutingDto,
+	UpdateMediaRoutingDto,
+	ReqUpdateMediaRoutingDto,
+	ActivateMediaRoutingDto,
+	ReqActivateMediaRoutingDto,
 	SuggestionFeedbackDto,
 	ReqSuggestionFeedbackDto,
 	// Sensor DTOs
@@ -208,19 +228,21 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	BulkCoversRoleResultItemModel,
 	BulkCoversRolesResultDataModel,
 	BulkCoversRolesResponseModel,
-	// Media response models
-	MediaStateDataModel,
-	MediaStateResponseModel,
-	MediaRoleStateDataModel,
-	OtherMediaStateDataModel,
-	MediaIntentResultDataModel,
-	MediaIntentResponseModel,
-	MediaTargetDataModel,
-	MediaTargetsResponseModel,
-	MediaRoleResponseModel,
-	BulkMediaRoleResultItemModel,
-	BulkMediaRolesResultDataModel,
-	BulkMediaRolesResponseModel,
+	// Media endpoint/routing response models
+	MediaCapabilityMappingModel,
+	MediaCapabilitySummaryModel,
+	MediaCapabilitiesResponseModel,
+	MediaExecutionStepModel,
+	MediaExecutionPlanModel,
+	MediaExecutionStepResultModel,
+	MediaRoutingActivationResultModel,
+	MediaRoutingActivationResponseModel,
+	MediaEndpointResponseModel,
+	MediaEndpointsResponseModel,
+	MediaRoutingResponseModel,
+	MediaRoutingsResponseModel,
+	MediaStateV2Model,
+	MediaStateV2ResponseModel,
 	// Sensor response models
 	SensorStateDataModel,
 	SensorStateResponseModel,
@@ -265,6 +287,7 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	SpaceLightingRoleEntity,
 	SpaceClimateRoleEntity,
 	SpaceCoversRoleEntity,
-	SpaceMediaRoleEntity,
+	SpaceMediaEndpointEntity,
+	SpaceMediaRoutingEntity,
 	SpaceSensorRoleEntity,
 ];

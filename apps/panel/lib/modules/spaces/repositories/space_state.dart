@@ -5,8 +5,7 @@ import 'package:fastybird_smart_panel/api/models/spaces_module_lighting_intent.d
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_climate_intent.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_covers_intent.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_lighting_intent.dart';
-import 'package:fastybird_smart_panel/api/models/spaces_module_media_intent.dart';
-import 'package:fastybird_smart_panel/api/models/spaces_module_req_media_intent.dart';
+// Note: Media intent imports removed - media domain now uses routing-based architecture (V2)
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_suggestion_feedback.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_suggestion_feedback.dart';
 import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
@@ -249,31 +248,13 @@ class SpaceStateRepository extends ChangeNotifier {
   }
 
   /// Fetch media state from API
+  /// Stub - media state API no longer exists (V2 routing architecture)
   Future<MediaStateModel?> fetchMediaState(String spaceId) async {
-    try {
-      final response = await _apiClient.getSpacesModuleSpaceMedia(
-        id: spaceId,
+    // API endpoint removed - media domain now uses routing-based architecture
+    if (kDebugMode) {
+      debugPrint(
+        '[SPACES MODULE][STATE] fetchMediaState stubbed - API removed',
       );
-
-      if (response.response.statusCode == 200) {
-        final data = response.response.data['data'] as Map<String, dynamic>;
-        final state = MediaStateModel.fromJson(data, spaceId: spaceId);
-        _mediaStates[spaceId] = state;
-        notifyListeners();
-        return state;
-      }
-    } on DioException catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          '[SPACES MODULE][STATE] API error fetching media state for $spaceId: ${e.response?.statusCode}',
-        );
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          '[SPACES MODULE][STATE] Error fetching media state for $spaceId: $e',
-        );
-      }
     }
     return null;
   }
@@ -966,28 +947,16 @@ class SpaceStateRepository extends ChangeNotifier {
   }
 
   /// Execute media intent via API (used as fallback)
+  /// Stub - media intent API no longer exists (V2 routing architecture)
   Future<Map<String, dynamic>?> _executeMediaIntentViaApi(
     String spaceId,
     Map<String, dynamic> intentBody,
   ) async {
-    try {
-      final response = await _apiClient.createSpacesModuleSpaceMediaIntent(
-        id: spaceId,
-        body: SpacesModuleReqMediaIntent(
-          data: SpacesModuleMediaIntent.fromJson(intentBody),
-        ),
+    // API endpoint removed - media domain now uses routing-based architecture
+    if (kDebugMode) {
+      debugPrint(
+        '[SPACES MODULE][STATE] _executeMediaIntentViaApi stubbed - API removed',
       );
-
-      if (response.response.statusCode == 200 ||
-          response.response.statusCode == 201) {
-        return response.response.data['data'] as Map<String, dynamic>;
-      }
-    } on DioException catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          '[SPACES MODULE][STATE] API error executing media intent: ${e.response?.statusCode}',
-        );
-      }
     }
     return null;
   }
