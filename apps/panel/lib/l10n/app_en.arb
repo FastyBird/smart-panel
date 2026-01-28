@@ -2555,5 +2555,79 @@
   "light_color_pink": "Pink",
   "@light_color_pink": {
     "description": "Pink color preset label"
+  },
+
+  "connection_banner_reconnecting": "Reconnecting...",
+  "@connection_banner_reconnecting": {
+    "description": "Banner text shown during reconnection attempts"
+  },
+  "connection_banner_retry": "Retry",
+  "@connection_banner_retry": {
+    "description": "Retry link text in connection banner"
+  },
+
+  "connection_overlay_title_reconnecting": "Reconnecting",
+  "@connection_overlay_title_reconnecting": {
+    "description": "Overlay title during reconnection"
+  },
+  "connection_overlay_message_reconnecting": "Attempting to reconnect...",
+  "@connection_overlay_message_reconnecting": {
+    "description": "Overlay message during reconnection"
+  },
+  "connection_overlay_message_still_trying": "Still trying to reconnect...",
+  "@connection_overlay_message_still_trying": {
+    "description": "Overlay message during prolonged reconnection"
+  },
+  "connection_overlay_retry": "Retry Now",
+  "@connection_overlay_retry": {
+    "description": "Retry button text in overlay"
+  },
+  "connection_overlay_retrying": "Retrying...",
+  "@connection_overlay_retrying": {
+    "description": "Retry button text while attempting reconnection"
+  },
+
+  "connection_recovery_connected": "Connected",
+  "@connection_recovery_connected": {
+    "description": "Toast message shown when connection is restored"
+  },
+
+  "connection_auth_error_title": "Session Expired",
+  "@connection_auth_error_title": {
+    "description": "Title for authentication error screen"
+  },
+  "connection_auth_error_message": "Your session has expired or was revoked. Please reset the device to reconnect.",
+  "@connection_auth_error_message": {
+    "description": "Message for authentication error screen"
+  },
+  "connection_auth_error_button_reset": "Reset Device",
+  "@connection_auth_error_button_reset": {
+    "description": "Reset device button text"
+  },
+
+  "connection_network_error_title": "Network Unavailable",
+  "@connection_network_error_title": {
+    "description": "Title for network error screen"
+  },
+  "connection_network_error_message": "Unable to reach the server. Please check your network connection.",
+  "@connection_network_error_message": {
+    "description": "Message for network error screen"
+  },
+  "connection_network_error_button_retry": "Try Again",
+  "@connection_network_error_button_retry": {
+    "description": "Retry button text on network error screen"
+  },
+
+  "connection_server_error_title": "Server Unavailable",
+  "@connection_server_error_title": {
+    "description": "Title for server error screen"
+  },
+  "connection_server_error_message": "The server is temporarily unavailable. Please try again later.",
+  "@connection_server_error_message": {
+    "description": "Message for server error screen"
+  },
+  "connection_server_error_button_retry": "Try Again",
+  "@connection_server_error_button_retry": {
+    "description": "Retry button text on server error screen"
   }
 }

@@ -1878,4 +1878,55 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get light_color_pink => 'Pink';
+
+  @override
+  String get connection_banner_reconnecting => 'Reconnecting...';
+
+  @override
+  String get connection_banner_retry => 'Retry';
+
+  @override
+  String get connection_overlay_title_reconnecting => 'Reconnecting';
+
+  @override
+  String get connection_overlay_message_reconnecting => 'Attempting to reconnect...';
+
+  @override
+  String get connection_overlay_message_still_trying => 'Still trying to reconnect...';
+
+  @override
+  String get connection_overlay_retry => 'Retry Now';
+
+  @override
+  String get connection_overlay_retrying => 'Retrying...';
+
+  @override
+  String get connection_recovery_connected => 'Connected';
+
+  @override
+  String get connection_auth_error_title => 'Session Expired';
+
+  @override
+  String get connection_auth_error_message => 'Your session has expired or was revoked. Please reset the device to reconnect.';
+
+  @override
+  String get connection_auth_error_button_reset => 'Reset Device';
+
+  @override
+  String get connection_network_error_title => 'Network Unavailable';
+
+  @override
+  String get connection_network_error_message => 'Unable to reach the server. Please check your network connection.';
+
+  @override
+  String get connection_network_error_button_retry => 'Try Again';
+
+  @override
+  String get connection_server_error_title => 'Server Unavailable';
+
+  @override
+  String get connection_server_error_message => 'The server is temporarily unavailable. Please try again later.';
+
+  @override
+  String get connection_server_error_button_retry => 'Try Again';
 }

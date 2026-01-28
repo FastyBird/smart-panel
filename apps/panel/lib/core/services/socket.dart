@@ -4,6 +4,8 @@ import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
+import 'package:fastybird_smart_panel/core/types/connection_state.dart';
+
 class SocketEventMetadataModel {
   final DateTime _timestamp;
 
@@ -160,11 +162,14 @@ class SocketService {
   bool _reconnectInProgress = false;
   static const int _maxRetryIntervalSeconds = 300; // 5 minutes max
   static const int _initialRetryIntervalSeconds = 2;
-  static const int _retryBackoffMultiplier = 2;
 
   // Timers for reconnection - tracked for proper cleanup on dispose
   Timer? _reconnectTimer;
   Timer? _reconnectCheckTimer;
+
+  // Connection stability tracking - ensures connection is stable before resetting retry counter
+  Timer? _connectionStabilityTimer;
+  static const Duration _connectionStabilityThreshold = Duration(seconds: 3);
 
   // Callback for token invalidation
   void Function()? _onTokenInvalid;
@@ -174,6 +179,9 @@ class SocketService {
 
   // Connection state listeners
   final List<void Function(bool)> _connectionListeners = [];
+
+  // Connection error type listeners
+  final List<void Function(ConnectionErrorType)> _errorTypeListeners = [];
 
   void initialize(
     String apiSecret,
@@ -203,11 +211,13 @@ class SocketService {
       _socket = null;
     }
 
-    // Cancel any pending reconnection timers from previous connection
+    // Cancel any pending timers from previous connection
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
     _reconnectCheckTimer?.cancel();
     _reconnectCheckTimer = null;
+    _connectionStabilityTimer?.cancel();
+    _connectionStabilityTimer = null;
 
     // Enable reconnection for new initialization
     _shouldReconnect = true;
@@ -222,6 +232,13 @@ class SocketService {
     // Store current credentials
     _currentApiSecret = apiSecret;
     _currentBackendUrl = backendUrl;
+
+    if (kDebugMode) {
+      // Log token prefix for debugging (don't log full token for security)
+      final tokenPrefix = apiSecret.length > 20 ? apiSecret.substring(0, 20) : apiSecret;
+      debugPrint('[SOCKETS] Initializing socket with token: $tokenPrefix...');
+      debugPrint('[SOCKETS] Backend URL: $backendUrl');
+    }
 
     // Parse the backend URL to extract host and port
     // backendUrl format: http://host:port/api/v1 or https://host:port/api/v1
@@ -241,6 +258,7 @@ class SocketService {
           .setAuth({'token': apiSecret})
           .disableAutoConnect()
           .disableReconnection()
+          .enableForceNew() // Force new connection to avoid using cached socket with old token
           .build(),
     );
 
@@ -248,17 +266,39 @@ class SocketService {
       if (kDebugMode) {
         debugPrint('[SOCKETS] Connected to Socket.IO backend');
       }
-      // Reset retry state on successful connection
-      _retryAttempt = 0;
+
+      // Cancel any pending reconnection timers
+      _reconnectTimer?.cancel();
+      _reconnectTimer = null;
+      _reconnectCheckTimer?.cancel();
+      _reconnectCheckTimer = null;
+
+      // Don't reset retry counter immediately - wait for connection stability
+      // This prevents rapid reconnect loops when server immediately rejects auth
+      _connectionStabilityTimer?.cancel();
+      _connectionStabilityTimer = Timer(_connectionStabilityThreshold, () {
+        if (_socket?.connected == true) {
+          if (kDebugMode) {
+            debugPrint('[SOCKETS] Connection stable, resetting retry counter');
+          }
+          _retryAttempt = 0;
+        }
+      });
+
       _reconnectInProgress = false;
       // Notify connection listeners
       _notifyConnectionListeners(true);
     });
 
-    _socket!.onDisconnect((_) {
+    _socket!.onDisconnect((reason) {
       if (kDebugMode) {
-        debugPrint('[SOCKETS] Disconnected from Socket.IO backend');
+        debugPrint('[SOCKETS] Disconnected from Socket.IO backend. Reason: $reason');
       }
+
+      // Cancel stability timer - connection was not stable
+      _connectionStabilityTimer?.cancel();
+      _connectionStabilityTimer = null;
+
       // Notify connection listeners
       _notifyConnectionListeners(false);
 
@@ -431,6 +471,16 @@ class SocketService {
     _connectionListeners.remove(listener);
   }
 
+  /// Add a listener for connection error types
+  void addErrorTypeListener(void Function(ConnectionErrorType errorType) listener) {
+    _errorTypeListeners.add(listener);
+  }
+
+  /// Remove a connection error type listener
+  void removeErrorTypeListener(void Function(ConnectionErrorType errorType) listener) {
+    _errorTypeListeners.remove(listener);
+  }
+
   /// Check if socket is currently connected
   bool get isConnected => _socket?.connected ?? false;
 
@@ -455,11 +505,13 @@ class SocketService {
       debugPrint('[SOCKETS] Manual reconnection triggered');
     }
 
-    // Cancel any pending reconnection timers
+    // Cancel any pending timers
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
     _reconnectCheckTimer?.cancel();
     _reconnectCheckTimer = null;
+    _connectionStabilityTimer?.cancel();
+    _connectionStabilityTimer = null;
 
     // Reset retry state for immediate attempt
     _retryAttempt = 0;
@@ -493,15 +545,31 @@ class SocketService {
     }
   }
 
+  /// Notify all error type listeners of an error
+  void _notifyErrorTypeListeners(ConnectionErrorType errorType) {
+    for (final listener in _errorTypeListeners) {
+      try {
+        listener(errorType);
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('[SOCKETS] Error type listener threw exception: $e');
+        }
+        // Continue notifying other listeners even if one fails
+      }
+    }
+  }
+
   void dispose() {
     // Disable reconnection before disposing to prevent reconnection attempts
     _shouldReconnect = false;
 
-    // Cancel any pending reconnection timers
+    // Cancel any pending timers
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
     _reconnectCheckTimer?.cancel();
     _reconnectCheckTimer = null;
+    _connectionStabilityTimer?.cancel();
+    _connectionStabilityTimer = null;
 
     if (_socket != null) {
       _socket!.disconnect();
@@ -514,6 +582,7 @@ class SocketService {
     _retryAttempt = 0;
     _reconnectInProgress = false;
     _connectionListeners.clear();
+    _errorTypeListeners.clear();
   }
 
   void _dispatchEvent(SocketEventModel event) {
@@ -548,25 +617,13 @@ class SocketService {
       return;
     }
 
-    // Check if this is an authentication error
-    final errorString = error.toString().toLowerCase();
-    final errorData = error is Map ? error : null;
-    final errorMessage = errorData?['message']?.toString().toLowerCase() ?? '';
-    final errorType = errorData?['type']?.toString().toLowerCase() ?? '';
+    // Classify the error type
+    final classifiedError = _classifyConnectionError(error);
 
-    // Detect authentication errors (401, 403, unauthorized, forbidden, etc.)
-    final isAuthError = errorString.contains('unauthorized') ||
-        errorString.contains('forbidden') ||
-        errorString.contains('401') ||
-        errorString.contains('403') ||
-        errorMessage.contains('unauthorized') ||
-        errorMessage.contains('forbidden') ||
-        errorMessage.contains('authentication') ||
-        errorMessage.contains('token') ||
-        errorType.contains('unauthorized') ||
-        errorType.contains('forbidden');
+    // Notify error type listeners
+    _notifyErrorTypeListeners(classifiedError);
 
-    if (isAuthError) {
+    if (classifiedError == ConnectionErrorType.auth) {
       if (kDebugMode) {
         debugPrint('[SOCKETS] Authentication error detected, token invalid. Triggering re-registration.');
       }
@@ -586,6 +643,58 @@ class SocketService {
     if (_shouldReconnect) {
       _attemptReconnectWithBackoff();
     }
+  }
+
+  /// Classify the connection error into a specific type
+  ConnectionErrorType _classifyConnectionError(dynamic error) {
+    final errorString = error.toString().toLowerCase();
+    final errorData = error is Map ? error : null;
+    final errorMessage = errorData?['message']?.toString().toLowerCase() ?? '';
+    final errorType = errorData?['type']?.toString().toLowerCase() ?? '';
+
+    // Detect authentication errors (401, 403, unauthorized, forbidden, etc.)
+    final isAuthError = errorString.contains('unauthorized') ||
+        errorString.contains('forbidden') ||
+        errorString.contains('401') ||
+        errorString.contains('403') ||
+        errorMessage.contains('unauthorized') ||
+        errorMessage.contains('forbidden') ||
+        errorMessage.contains('authentication') ||
+        errorMessage.contains('token') ||
+        errorType.contains('unauthorized') ||
+        errorType.contains('forbidden');
+
+    if (isAuthError) {
+      return ConnectionErrorType.auth;
+    }
+
+    // Detect server unavailable errors (503, maintenance, etc.)
+    final isServerUnavailable = errorString.contains('503') ||
+        errorString.contains('service unavailable') ||
+        errorString.contains('maintenance') ||
+        errorMessage.contains('503') ||
+        errorMessage.contains('service unavailable') ||
+        errorMessage.contains('maintenance');
+
+    if (isServerUnavailable) {
+      return ConnectionErrorType.serverUnavailable;
+    }
+
+    // Detect network errors
+    final isNetworkError = errorString.contains('network') ||
+        errorString.contains('unreachable') ||
+        errorString.contains('dns') ||
+        errorString.contains('timeout') ||
+        errorString.contains('econnrefused') ||
+        errorString.contains('enetunreach') ||
+        errorMessage.contains('network') ||
+        errorMessage.contains('unreachable');
+
+    if (isNetworkError) {
+      return ConnectionErrorType.network;
+    }
+
+    return ConnectionErrorType.unknown;
   }
 
   void _attemptReconnectWithBackoff() {
@@ -615,11 +724,13 @@ class SocketService {
     _reconnectInProgress = true;
 
     // Calculate dynamic retry interval with exponential backoff
+    // Formula: baseInterval * 2^attempt (with minimum of baseInterval)
+    // attempt 0: 2s, attempt 1: 4s, attempt 2: 8s, attempt 3: 16s, etc.
     final baseInterval = _initialRetryIntervalSeconds;
-    final backoffInterval = baseInterval * (_retryBackoffMultiplier * _retryAttempt);
-    final retryInterval = backoffInterval > _maxRetryIntervalSeconds
+    final exponentialDelay = baseInterval * (1 << _retryAttempt); // 1 << n = 2^n
+    final retryInterval = exponentialDelay > _maxRetryIntervalSeconds
         ? _maxRetryIntervalSeconds
-        : backoffInterval;
+        : exponentialDelay;
 
     _retryAttempt++;
 

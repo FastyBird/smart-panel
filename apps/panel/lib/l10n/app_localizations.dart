@@ -3712,6 +3712,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pink'**
   String get light_color_pink;
+
+  /// Banner text shown during reconnection attempts
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnecting...'**
+  String get connection_banner_reconnecting;
+
+  /// Retry link text in connection banner
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get connection_banner_retry;
+
+  /// Overlay title during reconnection
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnecting'**
+  String get connection_overlay_title_reconnecting;
+
+  /// Overlay message during reconnection
+  ///
+  /// In en, this message translates to:
+  /// **'Attempting to reconnect...'**
+  String get connection_overlay_message_reconnecting;
+
+  /// Overlay message during prolonged reconnection
+  ///
+  /// In en, this message translates to:
+  /// **'Still trying to reconnect...'**
+  String get connection_overlay_message_still_trying;
+
+  /// Retry button text in overlay
+  ///
+  /// In en, this message translates to:
+  /// **'Retry Now'**
+  String get connection_overlay_retry;
+
+  /// Retry button text while attempting reconnection
+  ///
+  /// In en, this message translates to:
+  /// **'Retrying...'**
+  String get connection_overlay_retrying;
+
+  /// Toast message shown when connection is restored
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get connection_recovery_connected;
+
+  /// Title for authentication error screen
+  ///
+  /// In en, this message translates to:
+  /// **'Session Expired'**
+  String get connection_auth_error_title;
+
+  /// Message for authentication error screen
+  ///
+  /// In en, this message translates to:
+  /// **'Your session has expired or was revoked. Please reset the device to reconnect.'**
+  String get connection_auth_error_message;
+
+  /// Reset device button text
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Device'**
+  String get connection_auth_error_button_reset;
+
+  /// Title for network error screen
+  ///
+  /// In en, this message translates to:
+  /// **'Network Unavailable'**
+  String get connection_network_error_title;
+
+  /// Message for network error screen
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to reach the server. Please check your network connection.'**
+  String get connection_network_error_message;
+
+  /// Retry button text on network error screen
+  ///
+  /// In en, this message translates to:
+  /// **'Try Again'**
+  String get connection_network_error_button_retry;
+
+  /// Title for server error screen
+  ///
+  /// In en, this message translates to:
+  /// **'Server Unavailable'**
+  String get connection_server_error_title;
+
+  /// Message for server error screen
+  ///
+  /// In en, this message translates to:
+  /// **'The server is temporarily unavailable. Please try again later.'**
+  String get connection_server_error_message;
+
+  /// Retry button text on server error screen
+  ///
+  /// In en, this message translates to:
+  /// **'Try Again'**
+  String get connection_server_error_button_retry;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

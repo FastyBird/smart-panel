@@ -521,7 +521,7 @@ void main() {
   });
 }
 
-/// Converts YamlMap to regular Map<String, dynamic>
+/// Converts YamlMap to regular `Map<String, dynamic>`
 Map<String, dynamic> _yamlToMap(YamlMap yamlMap) {
   final result = <String, dynamic>{};
   for (final entry in yamlMap.entries) {

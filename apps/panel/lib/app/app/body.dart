@@ -2,11 +2,14 @@ import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/app/routes.dart';
+import 'package:fastybird_smart_panel/core/services/connection_state_manager.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/core/services/startup_manager.dart';
 import 'package:fastybird_smart_panel/core/services/system_actions.dart';
+import 'package:fastybird_smart_panel/core/types/connection_state.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/connection/export.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_connection_lost.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
 import 'package:fastybird_smart_panel/features/overlay/presentation/lock.dart';
@@ -42,7 +45,11 @@ class _AppBodyState extends State<AppBody> {
   Language _language = Language.english;
   int _screenLockDuration = 30;
   bool _hasScreenSaver = true;
-  bool _isSocketConnected = true;
+
+  // Connection state management
+  final ConnectionStateManager _connectionManager = ConnectionStateManager();
+  SocketConnectionState? _previousSocketConnectionState;
+  bool _showRecoveryToast = false;
 
   Timer? _inactivityTimer;
 
@@ -64,31 +71,99 @@ class _AppBodyState extends State<AppBody> {
     _systemConfigRepository.addListener(_syncStateWithRepository);
 
     // Listen for socket connection changes
-    // Note: We keep _isSocketConnected = true initially because AppBody is only
-    // shown after successful initialization when socket should already be connected.
-    // The listener will handle actual disconnections.
     _socketService.addConnectionListener(_onSocketConnectionChanged);
+    _socketService.addErrorTypeListener(_onSocketErrorType);
+
+    // Listen to connection state manager for UI updates
+    _connectionManager.addListener(_onSocketConnectionStateChanged);
+
+    // Initialize connection state based on current socket status
+    if (_socketService.isConnected) {
+      _connectionManager.onConnected();
+    }
 
     locator<SystemActionsService>().init();
   }
 
   void _onSocketConnectionChanged(bool isConnected) {
-    if (mounted) {
-      setState(() {
-        _isSocketConnected = isConnected;
-      });
+    if (isConnected) {
+      _connectionManager.onConnected();
+    } else {
+      _connectionManager.onDisconnected();
     }
   }
 
+  void _onSocketErrorType(ConnectionErrorType errorType) {
+    switch (errorType) {
+      case ConnectionErrorType.auth:
+        _connectionManager.onAuthError();
+        break;
+      case ConnectionErrorType.serverUnavailable:
+        _connectionManager.onServerUnavailable();
+        break;
+      case ConnectionErrorType.network:
+        _connectionManager.onNetworkUnavailable();
+        break;
+      case ConnectionErrorType.unknown:
+        // For unknown errors, trigger disconnect to start escalation timer.
+        // This ensures the UI shows reconnecting state instead of staying
+        // stuck in initializing with no feedback to the user.
+        _connectionManager.onDisconnected();
+        break;
+    }
+  }
+
+  void _onSocketConnectionStateChanged() {
+    if (!mounted) return;
+
+    final currentState = _connectionManager.state;
+    final severity = _connectionManager.uiSeverity;
+
+    // Check if we should show recovery toast
+    if (_connectionManager.shouldShowRecoveryToast(_previousSocketConnectionState ?? SocketConnectionState.initializing)) {
+      setState(() {
+        _showRecoveryToast = true;
+      });
+    }
+
+    // Dismiss recovery toast if entering a full-screen error state
+    // This prevents confusing UX where "Connected" toast appears with an error screen
+    if (severity == ConnectionUISeverity.fullScreen && _showRecoveryToast) {
+      setState(() {
+        _showRecoveryToast = false;
+      });
+    }
+
+    _previousSocketConnectionState = currentState;
+    setState(() {});
+  }
+
   void _handleReconnect() {
+    // Check if we're in a full-screen error state before reconnecting
+    final wasFullScreen = _connectionManager.uiSeverity == ConnectionUISeverity.fullScreen;
+
     // Trigger manual reconnection attempt
     _socketService.reconnect();
+
+    // Show banner immediately if coming from full-screen to avoid
+    // confusing 2-second gap where no UI is shown
+    _connectionManager.onReconnecting(showBannerImmediately: wasFullScreen);
   }
 
   void _handleChangeGateway() {
+    // Reset connection state manager
+    _connectionManager.reset();
     // Reset to discovery state with proper cleanup
     // This clears credentials, backend URL, and disposes socket
     locator<StartupManagerService>().resetToDiscovery();
+  }
+
+  void _dismissRecoveryToast() {
+    if (mounted) {
+      setState(() {
+        _showRecoveryToast = false;
+      });
+    }
   }
 
   /// Initialize the deck with display settings
@@ -119,6 +194,9 @@ class _AppBodyState extends State<AppBody> {
     _displayRepository.removeListener(_onDisplayChanged);
     _systemConfigRepository.removeListener(_syncStateWithRepository);
     _socketService.removeConnectionListener(_onSocketConnectionChanged);
+    _socketService.removeErrorTypeListener(_onSocketErrorType);
+    _connectionManager.removeListener(_onSocketConnectionStateChanged);
+    _connectionManager.dispose();
 
     locator<SystemActionsService>().dispose();
 
@@ -162,6 +240,68 @@ class _AppBodyState extends State<AppBody> {
           _resetInactivityTimer();
         }
       });
+    }
+  }
+
+  /// Build connection UI based on current state and severity
+  List<Widget> _buildConnectionUI() {
+    final severity = _connectionManager.uiSeverity;
+    final state = _connectionManager.state;
+
+    return switch (severity) {
+      ConnectionUISeverity.none => [],
+      ConnectionUISeverity.banner => [
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: ConnectionBanner(
+            onRetry: _handleReconnect,
+          ),
+        ),
+      ],
+      ConnectionUISeverity.overlay => [
+        Positioned.fill(
+          child: ConnectionOverlay(
+            disconnectedDuration: _connectionManager.disconnectedDuration,
+            onRetry: _handleReconnect,
+          ),
+        ),
+      ],
+      // During initialization, don't show anything extra
+      // The app is already showing initialization UI
+      ConnectionUISeverity.splash => [],
+      ConnectionUISeverity.fullScreen => [
+        Positioned.fill(
+          child: _buildFullScreenError(state),
+        ),
+      ],
+    };
+  }
+
+  Widget _buildFullScreenError(SocketConnectionState state) {
+    switch (state) {
+      case SocketConnectionState.authError:
+        return AuthErrorScreen(
+          onReset: _handleChangeGateway,
+        );
+
+      case SocketConnectionState.networkUnavailable:
+        return NetworkErrorScreen(
+          onRetry: _handleReconnect,
+        );
+
+      case SocketConnectionState.serverUnavailable:
+        return ServerErrorScreen(
+          onRetry: _handleReconnect,
+        );
+
+      case SocketConnectionState.offline:
+      default:
+        return ConnectionLostScreen(
+          onReconnect: _handleReconnect,
+          onChangeGateway: _handleChangeGateway,
+        );
     }
   }
 
@@ -245,11 +385,12 @@ class _AppBodyState extends State<AppBody> {
               },
               child: child,
             ),
-            // Show connection lost screen when socket is disconnected
-            if (!_isSocketConnected)
-              ConnectionLostScreen(
-                onReconnect: _handleReconnect,
-                onChangeGateway: _handleChangeGateway,
+            // Connection UI layer (banner, overlay, or full-screen error)
+            ..._buildConnectionUI(),
+            // Recovery toast
+            if (_showRecoveryToast)
+              ConnectionRecoveryToast(
+                onDismiss: _dismissRecoveryToast,
               ),
           ],
         );
