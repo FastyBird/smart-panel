@@ -1418,6 +1418,11 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
               lastUpdated: reading.updatedAt ?? DateTime.now(),
             );
           });
+
+          // Fetch timeseries if we have propertyId but haven't loaded yet
+          if (_sensor.propertyId != null && _timeseries == null && !_isLoadingTimeseries) {
+            _fetchTimeseries();
+          }
           return;
         }
       }

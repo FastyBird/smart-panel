@@ -1519,6 +1519,7 @@ export class SpacesController {
 				readingData.channelId = reading.channelId;
 				readingData.channelName = reading.channelName;
 				readingData.channelCategory = reading.channelCategory;
+				readingData.propertyId = reading.propertyId;
 				readingData.value = reading.value;
 				readingData.unit = reading.unit;
 				readingData.role = reading.role;
