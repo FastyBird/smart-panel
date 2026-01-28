@@ -23,6 +23,17 @@ const SLOT_TYPE_MAP: Record<string, MediaEndpointType> = {
 	remoteEndpointId: MediaEndpointType.REMOTE_TARGET,
 };
 
+/**
+ * Normalize empty strings to null for endpoint ID fields
+ */
+function normalizeEndpointId(value: string | null | undefined): string | null {
+	if (value === undefined || value === null || value === '') {
+		return null;
+	}
+
+	return value;
+}
+
 @Injectable()
 export class SpaceMediaActivityBindingService {
 	private readonly logger = createExtensionLogger(SPACES_MODULE_NAME, 'SpaceMediaActivityBindingService');
@@ -67,6 +78,23 @@ export class SpaceMediaActivityBindingService {
 	}
 
 	/**
+	 * Get a single binding or throw, verifying it belongs to the given space
+	 */
+	async getOneOrThrowForSpace(spaceId: string, bindingId: string): Promise<SpaceMediaActivityBindingEntity> {
+		await this.spacesService.getOneOrThrow(spaceId);
+
+		const binding = await this.getOneOrThrow(bindingId);
+
+		if (binding.spaceId !== spaceId) {
+			throw new SpacesValidationException(
+				`Activity binding with id=${bindingId} does not belong to space ${spaceId}`,
+			);
+		}
+
+		return binding;
+	}
+
+	/**
 	 * Create a new activity binding
 	 */
 	async create(spaceId: string, dto: CreateMediaActivityBindingDto): Promise<SpaceMediaActivityBindingEntity> {
@@ -83,19 +111,29 @@ export class SpaceMediaActivityBindingService {
 			);
 		}
 
+		// Normalize empty strings to null
+		const displayEndpointId = normalizeEndpointId(dto.displayEndpointId);
+		const audioEndpointId = normalizeEndpointId(dto.audioEndpointId);
+		const sourceEndpointId = normalizeEndpointId(dto.sourceEndpointId);
+		const remoteEndpointId = normalizeEndpointId(dto.remoteEndpointId);
+		const displayInputId = normalizeEndpointId(dto.displayInputId);
+
 		// Validate endpoint IDs and overrides
 		const endpoints = await this.buildEndpointMap(spaceId);
-		this.validateSlots(dto, endpoints);
-		this.validateOverrides(dto, endpoints);
+		this.validateSlots({ displayEndpointId, audioEndpointId, sourceEndpointId, remoteEndpointId }, endpoints);
+		this.validateOverrides(
+			{ displayEndpointId, audioEndpointId, displayInputId, audioVolumePreset: dto.audioVolumePreset },
+			endpoints,
+		);
 
 		const binding = this.repository.create({
 			spaceId,
 			activityKey: dto.activityKey,
-			displayEndpointId: dto.displayEndpointId ?? null,
-			audioEndpointId: dto.audioEndpointId ?? null,
-			sourceEndpointId: dto.sourceEndpointId ?? null,
-			remoteEndpointId: dto.remoteEndpointId ?? null,
-			displayInputId: dto.displayInputId ?? null,
+			displayEndpointId,
+			audioEndpointId,
+			sourceEndpointId,
+			remoteEndpointId,
+			displayInputId,
 			audioVolumePreset: dto.audioVolumePreset ?? null,
 		});
 
@@ -107,58 +145,36 @@ export class SpaceMediaActivityBindingService {
 	}
 
 	/**
+	 * Update an existing activity binding, verifying it belongs to the given space
+	 */
+	async updateForSpace(
+		spaceId: string,
+		bindingId: string,
+		dto: UpdateMediaActivityBindingDto,
+	): Promise<SpaceMediaActivityBindingEntity> {
+		const binding = await this.getOneOrThrowForSpace(spaceId, bindingId);
+
+		return this.applyUpdate(binding, dto);
+	}
+
+	/**
 	 * Update an existing activity binding
 	 */
 	async update(bindingId: string, dto: UpdateMediaActivityBindingDto): Promise<SpaceMediaActivityBindingEntity> {
 		const binding = await this.getOneOrThrow(bindingId);
 
-		// Build effective state for validation (merge existing + updates)
-		const effective = {
-			displayEndpointId:
-				dto.displayEndpointId !== undefined ? (dto.displayEndpointId ?? undefined) : (binding.displayEndpointId ?? undefined),
-			audioEndpointId:
-				dto.audioEndpointId !== undefined ? (dto.audioEndpointId ?? undefined) : (binding.audioEndpointId ?? undefined),
-			sourceEndpointId:
-				dto.sourceEndpointId !== undefined ? (dto.sourceEndpointId ?? undefined) : (binding.sourceEndpointId ?? undefined),
-			remoteEndpointId:
-				dto.remoteEndpointId !== undefined ? (dto.remoteEndpointId ?? undefined) : (binding.remoteEndpointId ?? undefined),
-			displayInputId:
-				dto.displayInputId !== undefined ? (dto.displayInputId ?? undefined) : (binding.displayInputId ?? undefined),
-			audioVolumePreset:
-				dto.audioVolumePreset !== undefined
-					? (dto.audioVolumePreset ?? undefined)
-					: (binding.audioVolumePreset ?? undefined),
-		};
+		return this.applyUpdate(binding, dto);
+	}
 
-		const endpoints = await this.buildEndpointMap(binding.spaceId);
-		this.validateSlots(effective, endpoints);
-		this.validateOverrides(effective, endpoints);
+	/**
+	 * Delete an activity binding, verifying it belongs to the given space
+	 */
+	async deleteForSpace(spaceId: string, bindingId: string): Promise<void> {
+		const binding = await this.getOneOrThrowForSpace(spaceId, bindingId);
 
-		// Apply updates
-		if (dto.displayEndpointId !== undefined) {
-			binding.displayEndpointId = dto.displayEndpointId ?? null;
-		}
-		if (dto.audioEndpointId !== undefined) {
-			binding.audioEndpointId = dto.audioEndpointId ?? null;
-		}
-		if (dto.sourceEndpointId !== undefined) {
-			binding.sourceEndpointId = dto.sourceEndpointId ?? null;
-		}
-		if (dto.remoteEndpointId !== undefined) {
-			binding.remoteEndpointId = dto.remoteEndpointId ?? null;
-		}
-		if (dto.displayInputId !== undefined) {
-			binding.displayInputId = dto.displayInputId ?? null;
-		}
-		if (dto.audioVolumePreset !== undefined) {
-			binding.audioVolumePreset = dto.audioVolumePreset ?? null;
-		}
+		await this.repository.remove(binding);
 
-		const saved = await this.repository.save(binding);
-
-		this.logger.debug(`Updated activity binding id=${bindingId}`);
-
-		return saved;
+		this.logger.debug(`Deleted activity binding id=${bindingId}`);
 	}
 
 	/**
@@ -199,7 +215,8 @@ export class SpaceMediaActivityBindingService {
 				displayEndpointId: displays[0]?.endpointId ?? null,
 				audioEndpointId: audioOutputs[0]?.endpointId ?? null,
 				sourceEndpointId: sources[0]?.endpointId ?? null,
-				remoteEndpointId: remotes[0]?.endpointId ?? (displays[0] ? this.findRemoteForDevice(displays[0], remotes) : null),
+				remoteEndpointId:
+					remotes[0]?.endpointId ?? (displays[0] ? this.findRemoteForDevice(displays[0], remotes) : null),
 			},
 			[MediaActivityKey.LISTEN]: {
 				displayEndpointId: null,
@@ -210,7 +227,10 @@ export class SpaceMediaActivityBindingService {
 			[MediaActivityKey.GAMING]: {
 				displayEndpointId: displays[0]?.endpointId ?? null,
 				audioEndpointId: audioOutputs[0]?.endpointId ?? null,
-				sourceEndpointId: sources.find((s) => s.name.toLowerCase().includes('game'))?.endpointId ?? sources[0]?.endpointId ?? null,
+				sourceEndpointId:
+					sources.find((s) => s.name.toLowerCase().includes('game'))?.endpointId ??
+					sources[0]?.endpointId ??
+					null,
 				remoteEndpointId: remotes[0]?.endpointId ?? null,
 			},
 			[MediaActivityKey.BACKGROUND]: {
@@ -262,6 +282,73 @@ export class SpaceMediaActivityBindingService {
 	}
 
 	/**
+	 * Apply an update DTO to a binding entity
+	 */
+	private async applyUpdate(
+		binding: SpaceMediaActivityBindingEntity,
+		dto: UpdateMediaActivityBindingDto,
+	): Promise<SpaceMediaActivityBindingEntity> {
+		// Build effective state for validation (merge existing + updates)
+		// For endpoint IDs, normalize empty strings and null to consistent null
+		const effective = {
+			displayEndpointId:
+				dto.displayEndpointId !== undefined
+					? normalizeEndpointId(dto.displayEndpointId)
+					: (binding.displayEndpointId ?? undefined),
+			audioEndpointId:
+				dto.audioEndpointId !== undefined
+					? normalizeEndpointId(dto.audioEndpointId)
+					: (binding.audioEndpointId ?? undefined),
+			sourceEndpointId:
+				dto.sourceEndpointId !== undefined
+					? normalizeEndpointId(dto.sourceEndpointId)
+					: (binding.sourceEndpointId ?? undefined),
+			remoteEndpointId:
+				dto.remoteEndpointId !== undefined
+					? normalizeEndpointId(dto.remoteEndpointId)
+					: (binding.remoteEndpointId ?? undefined),
+			displayInputId:
+				dto.displayInputId !== undefined
+					? normalizeEndpointId(dto.displayInputId)
+					: (binding.displayInputId ?? undefined),
+			audioVolumePreset:
+				dto.audioVolumePreset !== undefined
+					? (dto.audioVolumePreset ?? undefined)
+					: (binding.audioVolumePreset ?? undefined),
+		};
+
+		const endpoints = await this.buildEndpointMap(binding.spaceId);
+		this.validateSlots(effective, endpoints);
+		this.validateOverrides(effective, endpoints);
+
+		// Apply updates — normalize empty strings
+		if (dto.displayEndpointId !== undefined) {
+			binding.displayEndpointId = normalizeEndpointId(dto.displayEndpointId);
+		}
+		if (dto.audioEndpointId !== undefined) {
+			binding.audioEndpointId = normalizeEndpointId(dto.audioEndpointId);
+		}
+		if (dto.sourceEndpointId !== undefined) {
+			binding.sourceEndpointId = normalizeEndpointId(dto.sourceEndpointId);
+		}
+		if (dto.remoteEndpointId !== undefined) {
+			binding.remoteEndpointId = normalizeEndpointId(dto.remoteEndpointId);
+		}
+		if (dto.displayInputId !== undefined) {
+			binding.displayInputId = normalizeEndpointId(dto.displayInputId);
+		}
+		if (dto.audioVolumePreset !== undefined) {
+			binding.audioVolumePreset = dto.audioVolumePreset ?? null;
+		}
+
+		const saved = await this.repository.save(binding);
+
+		this.logger.debug(`Updated activity binding id=${binding.id}`);
+
+		return saved;
+	}
+
+	/**
 	 * Build a map of derived endpoint ID → endpoint model for a space
 	 */
 	private async buildEndpointMap(spaceId: string): Promise<Map<string, DerivedMediaEndpointModel>> {
@@ -276,21 +363,22 @@ export class SpaceMediaActivityBindingService {
 	}
 
 	/**
-	 * Validate that all slot endpoint IDs exist and match the expected type
+	 * Validate that all slot endpoint IDs exist and match the expected type.
+	 * Null/undefined values are skipped (partial bindings are allowed).
 	 */
 	private validateSlots(
 		dto: {
-			displayEndpointId?: string;
-			audioEndpointId?: string;
-			sourceEndpointId?: string;
-			remoteEndpointId?: string;
+			displayEndpointId?: string | null;
+			audioEndpointId?: string | null;
+			sourceEndpointId?: string | null;
+			remoteEndpointId?: string | null;
 		},
 		endpoints: Map<string, DerivedMediaEndpointModel>,
 	): void {
 		for (const [field, expectedType] of Object.entries(SLOT_TYPE_MAP)) {
 			const endpointId = dto[field as keyof typeof dto];
 
-			if (!endpointId) {
+			if (endpointId === undefined || endpointId === null) {
 				continue;
 			}
 
@@ -319,9 +407,9 @@ export class SpaceMediaActivityBindingService {
 	 */
 	private validateOverrides(
 		dto: {
-			displayEndpointId?: string;
-			audioEndpointId?: string;
-			displayInputId?: string;
+			displayEndpointId?: string | null;
+			audioEndpointId?: string | null;
+			displayInputId?: string | null;
 			audioVolumePreset?: number;
 		},
 		endpoints: Map<string, DerivedMediaEndpointModel>,
@@ -329,9 +417,7 @@ export class SpaceMediaActivityBindingService {
 		// displayInputId requires display endpoint with inputSelect capability
 		if (dto.displayInputId) {
 			if (!dto.displayEndpointId) {
-				throw new SpacesValidationException(
-					'display_input_id requires a display_endpoint_id to be set',
-				);
+				throw new SpacesValidationException('display_input_id requires a display_endpoint_id to be set');
 			}
 
 			const display = endpoints.get(dto.displayEndpointId);
@@ -346,9 +432,7 @@ export class SpaceMediaActivityBindingService {
 		// audioVolumePreset requires audio endpoint with volume capability
 		if (dto.audioVolumePreset !== undefined && dto.audioVolumePreset !== null) {
 			if (!dto.audioEndpointId) {
-				throw new SpacesValidationException(
-					'audio_volume_preset requires an audio_endpoint_id to be set',
-				);
+				throw new SpacesValidationException('audio_volume_preset requires an audio_endpoint_id to be set');
 			}
 
 			const audio = endpoints.get(dto.audioEndpointId);

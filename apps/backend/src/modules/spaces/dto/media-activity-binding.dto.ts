@@ -192,8 +192,8 @@ export class UpdateMediaActivityBindingDto {
 		message: '[{"field":"display_endpoint_id","reason":"Display endpoint ID must not exceed 255 characters."}]',
 	})
 	@Transform(
-		({ obj }: { obj: { display_endpoint_id?: string; displayEndpointId?: string } }) =>
-			obj.display_endpoint_id ?? obj.displayEndpointId,
+		({ obj }: { obj: Record<string, unknown> }) =>
+			'display_endpoint_id' in obj ? obj.display_endpoint_id : obj.displayEndpointId,
 		{ toClassOnly: true },
 	)
 	displayEndpointId?: string | null;
@@ -213,8 +213,8 @@ export class UpdateMediaActivityBindingDto {
 		message: '[{"field":"audio_endpoint_id","reason":"Audio endpoint ID must not exceed 255 characters."}]',
 	})
 	@Transform(
-		({ obj }: { obj: { audio_endpoint_id?: string; audioEndpointId?: string } }) =>
-			obj.audio_endpoint_id ?? obj.audioEndpointId,
+		({ obj }: { obj: Record<string, unknown> }) =>
+			'audio_endpoint_id' in obj ? obj.audio_endpoint_id : obj.audioEndpointId,
 		{ toClassOnly: true },
 	)
 	audioEndpointId?: string | null;
@@ -234,8 +234,8 @@ export class UpdateMediaActivityBindingDto {
 		message: '[{"field":"source_endpoint_id","reason":"Source endpoint ID must not exceed 255 characters."}]',
 	})
 	@Transform(
-		({ obj }: { obj: { source_endpoint_id?: string; sourceEndpointId?: string } }) =>
-			obj.source_endpoint_id ?? obj.sourceEndpointId,
+		({ obj }: { obj: Record<string, unknown> }) =>
+			'source_endpoint_id' in obj ? obj.source_endpoint_id : obj.sourceEndpointId,
 		{ toClassOnly: true },
 	)
 	sourceEndpointId?: string | null;
@@ -255,8 +255,8 @@ export class UpdateMediaActivityBindingDto {
 		message: '[{"field":"remote_endpoint_id","reason":"Remote endpoint ID must not exceed 255 characters."}]',
 	})
 	@Transform(
-		({ obj }: { obj: { remote_endpoint_id?: string; remoteEndpointId?: string } }) =>
-			obj.remote_endpoint_id ?? obj.remoteEndpointId,
+		({ obj }: { obj: Record<string, unknown> }) =>
+			'remote_endpoint_id' in obj ? obj.remote_endpoint_id : obj.remoteEndpointId,
 		{ toClassOnly: true },
 	)
 	remoteEndpointId?: string | null;
@@ -276,8 +276,8 @@ export class UpdateMediaActivityBindingDto {
 		message: '[{"field":"display_input_id","reason":"Display input ID must not exceed 50 characters."}]',
 	})
 	@Transform(
-		({ obj }: { obj: { display_input_id?: string; displayInputId?: string } }) =>
-			obj.display_input_id ?? obj.displayInputId,
+		({ obj }: { obj: Record<string, unknown> }) =>
+			'display_input_id' in obj ? obj.display_input_id : obj.displayInputId,
 		{ toClassOnly: true },
 	)
 	displayInputId?: string | null;
@@ -301,8 +301,8 @@ export class UpdateMediaActivityBindingDto {
 		message: '[{"field":"audio_volume_preset","reason":"Audio volume preset must not exceed 100."}]',
 	})
 	@Transform(
-		({ obj }: { obj: { audio_volume_preset?: number; audioVolumePreset?: number } }) =>
-			obj.audio_volume_preset ?? obj.audioVolumePreset,
+		({ obj }: { obj: Record<string, unknown> }) =>
+			'audio_volume_preset' in obj ? obj.audio_volume_preset : obj.audioVolumePreset,
 		{ toClassOnly: true },
 	)
 	audioVolumePreset?: number | null;

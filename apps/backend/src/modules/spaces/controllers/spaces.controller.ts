@@ -2005,6 +2005,7 @@ export class SpacesController {
 		return response;
 	}
 
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@Post(':id/media/bindings/apply-defaults')
 	@ApiOperation({
 		operationId: 'create-spaces-module-space-media-bindings-apply-defaults',
@@ -2045,7 +2046,7 @@ export class SpacesController {
 	): Promise<MediaActivityBindingResponseModel> {
 		this.logger.debug(`Fetching media activity binding id=${bindingId} for space=${id}`);
 
-		const binding = await this.spaceMediaActivityBindingService.getOneOrThrow(bindingId);
+		const binding = await this.spaceMediaActivityBindingService.getOneOrThrowForSpace(id, bindingId);
 
 		const response = new MediaActivityBindingResponseModel();
 		response.data = binding;
@@ -2053,6 +2054,7 @@ export class SpacesController {
 		return response;
 	}
 
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@Post(':id/media/bindings')
 	@ApiOperation({
 		operationId: 'create-spaces-module-space-media-binding',
@@ -2081,6 +2083,7 @@ export class SpacesController {
 		return response;
 	}
 
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@Patch(':id/media/bindings/:bindingId')
 	@ApiOperation({
 		operationId: 'update-spaces-module-space-media-binding',
@@ -2102,7 +2105,7 @@ export class SpacesController {
 	): Promise<MediaActivityBindingResponseModel> {
 		this.logger.debug(`Updating media activity binding id=${bindingId} for space=${id}`);
 
-		const binding = await this.spaceMediaActivityBindingService.update(bindingId, body.data);
+		const binding = await this.spaceMediaActivityBindingService.updateForSpace(id, bindingId, body.data);
 
 		const response = new MediaActivityBindingResponseModel();
 		response.data = binding;
@@ -2110,6 +2113,7 @@ export class SpacesController {
 		return response;
 	}
 
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@Delete(':id/media/bindings/:bindingId')
 	@HttpCode(204)
 	@ApiOperation({
@@ -2127,6 +2131,6 @@ export class SpacesController {
 	): Promise<void> {
 		this.logger.debug(`Deleting media activity binding id=${bindingId} for space=${id}`);
 
-		await this.spaceMediaActivityBindingService.delete(bindingId);
+		await this.spaceMediaActivityBindingService.deleteForSpace(id, bindingId);
 	}
 }
