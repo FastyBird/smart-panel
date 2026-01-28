@@ -57,6 +57,15 @@ import { SpaceMediaRoutingEntity } from './entities/space-media-routing.entity';
 import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
 import { SpaceEntity } from './entities/space.entity';
 import {
+	DerivedMediaCapabilitiesModel,
+	DerivedMediaEndpointModel,
+	DerivedMediaEndpointsResponseModel,
+	DerivedMediaEndpointsResultModel,
+	DerivedMediaLinksModel,
+	DerivedMediaPropertyLinkModel,
+	DerivedRemoteLinksModel,
+} from './models/derived-media-endpoint.model';
+import {
 	ActiveMediaRoutingResponseModel,
 	ActiveMediaRoutingStateModel,
 	ActiveMediaRoutingStateResponseModel,
@@ -250,6 +259,14 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	ActiveMediaRoutingStateModel,
 	ActiveMediaRoutingResponseModel,
 	ActiveMediaRoutingStateResponseModel,
+	// Derived media endpoint models
+	DerivedMediaPropertyLinkModel,
+	DerivedRemoteLinksModel,
+	DerivedMediaCapabilitiesModel,
+	DerivedMediaLinksModel,
+	DerivedMediaEndpointModel,
+	DerivedMediaEndpointsResultModel,
+	DerivedMediaEndpointsResponseModel,
 	// Sensor response models
 	SensorStateDataModel,
 	SensorStateResponseModel,

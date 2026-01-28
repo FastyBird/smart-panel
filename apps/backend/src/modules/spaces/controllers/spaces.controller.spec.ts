@@ -13,6 +13,7 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { SpaceEntity } from '../entities/space.entity';
+import { DerivedMediaEndpointService } from '../services/derived-media-endpoint.service';
 import { SpaceClimateRoleService } from '../services/space-climate-role.service';
 import { SpaceContextSnapshotService } from '../services/space-context-snapshot.service';
 import { SpaceCoversRoleService } from '../services/space-covers-role.service';
@@ -444,6 +445,15 @@ describe('SpacesController', () => {
 						getAllCoversModeOrchestrations: jest.fn().mockReturnValue(new Map()),
 						getBrightnessDeltaStep: jest.fn().mockReturnValue(25),
 						getSetpointDeltaStep: jest.fn().mockReturnValue(1.0),
+					},
+				},
+				{
+					provide: DerivedMediaEndpointService,
+					useValue: {
+						buildEndpointsForSpace: jest.fn().mockResolvedValue({
+							spaceId: mockSpace.id,
+							endpoints: [],
+						}),
 					},
 				},
 			],

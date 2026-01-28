@@ -32,6 +32,7 @@ import { WebsocketExchangeListener } from './listeners/websocket-exchange.listen
 import { SpacesConfigModel } from './models/config.model';
 import { ClimateIntentService } from './services/climate-intent.service';
 import { CoversIntentService } from './services/covers-intent.service';
+import { DerivedMediaEndpointService } from './services/derived-media-endpoint.service';
 import { LightingIntentService } from './services/lighting-intent.service';
 import { SpaceClimateRoleService } from './services/space-climate-role.service';
 import { SpaceClimateStateService } from './services/space-climate-state.service';
@@ -95,6 +96,7 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceClimateStateService,
 		SpaceCoversRoleService,
 		SpaceCoversStateService,
+		DerivedMediaEndpointService,
 		SpaceMediaEndpointService,
 		SpaceMediaRoutingService,
 		SpaceSensorRoleService,
