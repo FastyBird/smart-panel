@@ -42,6 +42,7 @@ import { SpaceIntentBaseService } from './services/space-intent-base.service';
 import { SpaceIntentService } from './services/space-intent.service';
 import { SpaceLightingRoleService } from './services/space-lighting-role.service';
 import { SpaceLightingStateService } from './services/space-lighting-state.service';
+import { DerivedMediaEndpointService } from './services/derived-media-endpoint.service';
 import { SpaceMediaEndpointService } from './services/space-media-endpoint.service';
 import { SpaceMediaRoutingService } from './services/space-media-routing.service';
 import { SpaceSensorRoleService } from './services/space-sensor-role.service';
@@ -95,6 +96,7 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceClimateStateService,
 		SpaceCoversRoleService,
 		SpaceCoversStateService,
+		DerivedMediaEndpointService,
 		SpaceMediaEndpointService,
 		SpaceMediaRoutingService,
 		SpaceSensorRoleService,

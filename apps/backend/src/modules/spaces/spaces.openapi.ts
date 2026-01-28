@@ -33,6 +33,15 @@ import {
 	UpdateMediaEndpointDto,
 } from './dto/media-endpoint.dto';
 import {
+	DerivedMediaCapabilitiesModel,
+	DerivedMediaEndpointModel,
+	DerivedMediaEndpointsResponseModel,
+	DerivedMediaEndpointsResultModel,
+	DerivedMediaLinksModel,
+	DerivedMediaPropertyLinkModel,
+	DerivedRemoteLinksModel,
+} from './models/derived-media-endpoint.model';
+import {
 	ActivateMediaRoutingDto,
 	CreateMediaRoutingDto,
 	ReqActivateMediaRoutingDto,
@@ -250,6 +259,14 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	ActiveMediaRoutingStateModel,
 	ActiveMediaRoutingResponseModel,
 	ActiveMediaRoutingStateResponseModel,
+	// Derived media endpoint models
+	DerivedMediaPropertyLinkModel,
+	DerivedRemoteLinksModel,
+	DerivedMediaCapabilitiesModel,
+	DerivedMediaLinksModel,
+	DerivedMediaEndpointModel,
+	DerivedMediaEndpointsResultModel,
+	DerivedMediaEndpointsResponseModel,
 	// Sensor response models
 	SensorStateDataModel,
 	SensorStateResponseModel,

@@ -12,6 +12,8 @@ import {
 } from '../../swagger/decorators/api-documentation.decorator';
 import { Roles } from '../../users/guards/roles.guard';
 import { UserRole } from '../../users/users.constants';
+import { DerivedMediaEndpointsResponseModel } from '../models/derived-media-endpoint.model';
+import { DerivedMediaEndpointService } from '../services/derived-media-endpoint.service';
 import { ReqBulkAssignDto } from '../dto/bulk-assign.dto';
 import { ReqClimateIntentDto } from '../dto/climate-intent.dto';
 import { ReqBulkSetClimateRolesDto, ReqSetClimateRoleDto } from '../dto/climate-role.dto';
@@ -167,6 +169,7 @@ export class SpacesController {
 		private readonly spaceContextSnapshotService: SpaceContextSnapshotService,
 		private readonly spaceUndoHistoryService: SpaceUndoHistoryService,
 		private readonly intentSpecLoaderService: IntentSpecLoaderService,
+		private readonly derivedMediaEndpointService: DerivedMediaEndpointService,
 	) {}
 
 	@Get()
@@ -1701,6 +1704,35 @@ export class SpacesController {
 		await this.spaceSensorRoleService.deleteRole(id, deviceId, channelId);
 
 		this.logger.debug(`Successfully deleted sensor role for device=${deviceId} channel=${channelId}`);
+	}
+
+	// ================================
+	// Derived Media Endpoints
+	// ================================
+
+	@Get(':id/media/endpoints')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-media-endpoints',
+		summary: 'List derived media endpoints for space',
+		description:
+			'Returns a derived read model of all media endpoints in a space. ' +
+			'Endpoints are computed on-the-fly from device capabilities and use deterministic IDs. ' +
+			'A single device may produce multiple endpoints (e.g., TV as display + audio_output + remote_target).',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(DerivedMediaEndpointsResponseModel, 'Returns derived media endpoints for the space')
+	@ApiNotFoundResponse('Space not found')
+	async getDerivedMediaEndpoints(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<DerivedMediaEndpointsResponseModel> {
+		this.logger.debug(`Fetching derived media endpoints for space with id=${id}`);
+
+		const result = await this.derivedMediaEndpointService.buildEndpointsForSpace(id);
+
+		const response = new DerivedMediaEndpointsResponseModel();
+		response.data = result;
+
+		return response;
 	}
 
 	// ================================
