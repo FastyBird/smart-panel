@@ -1086,7 +1086,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         decoration: BoxDecoration(
           color: isAlert
               ? dangerBgColor
-              : (isDark ? AppFillColorDark.light : AppFillColorLight.light),
+              : (isDark ? AppFillColorDark.light : AppFillColorLight.blank),
           borderRadius: BorderRadius.circular(AppBorderRadius.medium),
           border: Border.all(
             color: isAlert
