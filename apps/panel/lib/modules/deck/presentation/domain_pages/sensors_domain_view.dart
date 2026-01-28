@@ -2,7 +2,9 @@ import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
@@ -1604,7 +1606,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
           ),
           AppSpacings.spacingXsVertical,
           Text(
-            'Updated ${_formatTimestamp(widget.sensor.lastUpdated)}',
+            'Updated ${DatetimeUtils.formatTimeAgo(widget.sensor.lastUpdated, AppLocalizations.of(context)!)}',
             style: TextStyle(
               color: isDark
                   ? AppTextColorDark.placeholder
@@ -1615,13 +1617,6 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
         ],
       ),
     );
-  }
-
-  String _formatTimestamp(DateTime dt) {
-    final diff = DateTime.now().difference(dt);
-    if (diff.inSeconds < 60) return '${diff.inSeconds} seconds ago';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} minutes ago';
-    return '${diff.inHours} hours ago';
   }
 
   String _getDefaultValue(String type) {
