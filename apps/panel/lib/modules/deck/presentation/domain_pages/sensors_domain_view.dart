@@ -970,42 +970,52 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       thirdColor = isDark ? AppColorsDark.info : AppColorsLight.info;
     }
 
-    return Row(
-      children: [
-        Expanded(
-          child: _buildSummaryCard(
-            context,
-            title: 'Avg Temperature',
-            value: tempValue,
-            subtitle: tempSubtitle,
-            icon: MdiIcons.thermometer,
-            color: isDark ? AppColorsDark.info : AppColorsLight.info,
-          ),
+    final cards = <Widget>[];
+
+    if (env?.averageTemperature != null) {
+      cards.add(Expanded(
+        child: _buildSummaryCard(
+          context,
+          title: 'Avg Temperature',
+          value: tempValue,
+          subtitle: tempSubtitle,
+          icon: MdiIcons.thermometer,
+          color: isDark ? AppColorsDark.info : AppColorsLight.info,
         ),
-        AppSpacings.spacingMdHorizontal,
-        Expanded(
-          child: _buildSummaryCard(
-            context,
-            title: 'Avg Humidity',
-            value: humidityValue,
-            subtitle: humiditySubtitle,
-            icon: MdiIcons.waterPercent,
-            color: isDark ? AppColorsDark.success : AppColorsLight.success,
-          ),
+      ));
+    }
+
+    if (env?.averageHumidity != null) {
+      if (cards.isNotEmpty) cards.add(AppSpacings.spacingMdHorizontal);
+      cards.add(Expanded(
+        child: _buildSummaryCard(
+          context,
+          title: 'Avg Humidity',
+          value: humidityValue,
+          subtitle: humiditySubtitle,
+          icon: MdiIcons.waterPercent,
+          color: isDark ? AppColorsDark.success : AppColorsLight.success,
         ),
-        AppSpacings.spacingMdHorizontal,
-        Expanded(
-          child: _buildSummaryCard(
-            context,
-            title: thirdTitle,
-            value: thirdValue,
-            subtitle: thirdSubtitle,
-            icon: thirdIcon,
-            color: thirdColor,
-          ),
+      ));
+    }
+
+    if (env?.averageIlluminance != null || env?.averagePressure != null) {
+      if (cards.isNotEmpty) cards.add(AppSpacings.spacingMdHorizontal);
+      cards.add(Expanded(
+        child: _buildSummaryCard(
+          context,
+          title: thirdTitle,
+          value: thirdValue,
+          subtitle: thirdSubtitle,
+          icon: thirdIcon,
+          color: thirdColor,
         ),
-      ],
-    );
+      ));
+    }
+
+    if (cards.isEmpty) return const SizedBox.shrink();
+
+    return Row(children: cards);
   }
 
   Widget _buildSummaryCard(
@@ -1201,27 +1211,34 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
                     : AppTextColorLight.secondary,
                 fontSize: AppFontSize.small,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
             AppSpacings.spacingXsVertical,
 
             // Value
-            RichText(
-              text: TextSpan(
-                style: TextStyle(
-                  fontSize: _scale(28),
-                  fontWeight: FontWeight.w300,
-                  color: isAlert ? dangerColor : categoryColor,
-                ),
-                children: [
-                  TextSpan(text: sensor.value),
-                  TextSpan(
-                    text: sensor.unit,
-                    style: TextStyle(
-                      fontSize: AppFontSize.base,
-                      fontWeight: FontWeight.w400,
-                    ),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: RichText(
+                maxLines: 1,
+                text: TextSpan(
+                  style: TextStyle(
+                    fontSize: _scale(24),
+                    fontWeight: FontWeight.w300,
+                    color: isAlert ? dangerColor : categoryColor,
                   ),
-                ],
+                  children: [
+                    TextSpan(text: sensor.value),
+                    TextSpan(
+                      text: sensor.unit,
+                      style: TextStyle(
+                        fontSize: AppFontSize.base,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
 
