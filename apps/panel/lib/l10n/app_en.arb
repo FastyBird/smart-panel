@@ -238,6 +238,84 @@
       }
     }
   },
+  "time_ago_medium_minutes": "{count, plural, =1{1 minute ago} other{{count} minutes ago}}",
+  "@time_ago_medium_minutes": {
+    "description": "Medium time ago label for minutes",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "time_ago_medium_hours": "{count, plural, =1{1 hour ago} other{{count} hours ago}}",
+  "@time_ago_medium_hours": {
+    "description": "Medium time ago label for hours",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "time_ago_medium_days": "{count, plural, =1{1 day ago} other{{count} days ago}}",
+  "@time_ago_medium_days": {
+    "description": "Medium time ago label for days",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "time_ago_full_minutes": "{count, plural, =1{1 minute ago} other{{count} minutes ago}}",
+  "@time_ago_full_minutes": {
+    "description": "Full time ago label for minutes (same as medium, no sub-unit)",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "time_ago_full_hours_minutes": "{hours, plural, =1{1 hour} other{{hours} hours}} {minutes, plural, =1{1 minute} other{{minutes} minutes}} ago",
+  "@time_ago_full_hours_minutes": {
+    "description": "Full time ago label for hours and minutes",
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "time_ago_full_hours": "{count, plural, =1{1 hour ago} other{{count} hours ago}}",
+  "@time_ago_full_hours": {
+    "description": "Full time ago label for hours only (no remaining minutes)",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "time_ago_full_days_hours": "{days, plural, =1{1 day} other{{days} days}} {hours, plural, =1{1 hour} other{{hours} hours}} ago",
+  "@time_ago_full_days_hours": {
+    "description": "Full time ago label for days and hours",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "time_ago_full_days": "{count, plural, =1{1 day ago} other{{count} days ago}}",
+  "@time_ago_full_days": {
+    "description": "Full time ago label for days only (no remaining hours)",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "device_config_issue": "Configuration issue",
   "@device_config_issue": {
     "description": "Message shown when a device has configuration problems"

@@ -413,6 +413,54 @@ abstract class AppLocalizations {
   /// **'{count} d ago'**
   String time_ago_days(int count);
 
+  /// Medium time ago label for minutes
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 minute ago} other{{count} minutes ago}}'**
+  String time_ago_medium_minutes(int count);
+
+  /// Medium time ago label for hours
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 hour ago} other{{count} hours ago}}'**
+  String time_ago_medium_hours(int count);
+
+  /// Medium time ago label for days
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 day ago} other{{count} days ago}}'**
+  String time_ago_medium_days(int count);
+
+  /// Full time ago label for minutes (same as medium, no sub-unit)
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 minute ago} other{{count} minutes ago}}'**
+  String time_ago_full_minutes(int count);
+
+  /// Full time ago label for hours and minutes
+  ///
+  /// In en, this message translates to:
+  /// **'{hours, plural, =1{1 hour} other{{hours} hours}} {minutes, plural, =1{1 minute} other{{minutes} minutes}} ago'**
+  String time_ago_full_hours_minutes(int hours, int minutes);
+
+  /// Full time ago label for hours only (no remaining minutes)
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 hour ago} other{{count} hours ago}}'**
+  String time_ago_full_hours(int count);
+
+  /// Full time ago label for days and hours
+  ///
+  /// In en, this message translates to:
+  /// **'{days, plural, =1{1 day} other{{days} days}} {hours, plural, =1{1 hour} other{{hours} hours}} ago'**
+  String time_ago_full_days_hours(int days, int hours);
+
+  /// Full time ago label for days only (no remaining hours)
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 day ago} other{{count} days ago}}'**
+  String time_ago_full_days(int count);
+
   /// Message shown when a device has configuration problems
   ///
   /// In en, this message translates to:
