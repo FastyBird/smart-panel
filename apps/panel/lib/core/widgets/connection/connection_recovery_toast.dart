@@ -96,9 +96,11 @@ class _ConnectionRecoveryToastState extends State<ConnectionRecoveryToast>
             position: _slideAnimation,
             child: FadeTransition(
               opacity: _fadeAnimation,
-              child: GestureDetector(
-                onTap: _dismiss,
-                child: Container(
+              child: Material(
+                type: MaterialType.transparency,
+                child: GestureDetector(
+                  onTap: _dismiss,
+                  child: Container(
                   padding: EdgeInsets.symmetric(
                     horizontal: AppSpacings.pLg,
                     vertical: AppSpacings.pMd + AppSpacings.pSm,
@@ -131,7 +133,8 @@ class _ConnectionRecoveryToastState extends State<ConnectionRecoveryToast>
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
