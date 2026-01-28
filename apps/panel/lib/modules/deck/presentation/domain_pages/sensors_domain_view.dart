@@ -336,7 +336,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         sensors.add(SensorData(
           id: reading.channelId,
           propertyId: reading.propertyId,
-          name: reading.channelName.isNotEmpty ? reading.channelName : reading.deviceName,
+          name: reading.channelName,
           location: roomName,
           category: category,
           value: value,
