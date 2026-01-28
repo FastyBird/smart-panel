@@ -251,7 +251,18 @@ export class SpaceMediaRoutingService {
 			});
 
 			if (activeRouting) {
-				await this.activeRoutingRepository.remove(activeRouting);
+				// Update state to deactivated before removing
+				activeRouting.activationState = MediaActivationState.DEACTIVATED;
+				activeRouting.routingId = null;
+				await this.activeRoutingRepository.save(activeRouting);
+
+				// Emit deactivated event so clients are notified
+				this.emitRoutingEvent(
+					EventType.MEDIA_ROUTING_DEACTIVATED,
+					routing.spaceId,
+					routingId,
+					routing.type,
+				);
 			}
 
 			await this.repository.remove(routing);
@@ -432,15 +443,29 @@ export class SpaceMediaRoutingService {
 	async activateRouting(routingId: string): Promise<MediaRoutingActivationResultModel> {
 		const routing = await this.getOneOrThrow(routingId);
 
-		// Handle conflict policy
+		// Handle conflict policy - check if another routing is actually active
 		const existingActive = await this.getActiveRoutingRecord(routing.spaceId);
-		if (existingActive && existingActive.routingId !== routingId) {
+		const hasActiveRouting =
+			existingActive &&
+			existingActive.routingId !== null &&
+			existingActive.routingId !== routingId &&
+			existingActive.activationState !== MediaActivationState.DEACTIVATED;
+
+		if (hasActiveRouting) {
 			if (routing.conflictPolicy === MediaConflictPolicy.FAIL_IF_ACTIVE) {
 				throw new SpacesValidationException(
 					`Cannot activate routing: another routing is already active (conflict policy: FAIL_IF_ACTIVE)`,
 				);
 			}
-			// For REPLACE and DEACTIVATE_FIRST, we proceed (the database constraint ensures only one active)
+
+			// For DEACTIVATE_FIRST, properly deactivate the current routing before proceeding
+			if (routing.conflictPolicy === MediaConflictPolicy.DEACTIVATE_FIRST) {
+				this.logger.debug(
+					`Deactivating current routing ${existingActive.routingId} before activating ${routingId}`,
+				);
+				await this.deactivateMedia(routing.spaceId);
+			}
+			// For REPLACE, we just proceed and overwrite
 		}
 
 		// Emit activating event
