@@ -1522,6 +1522,7 @@ export class SpacesController {
 				readingData.value = reading.value;
 				readingData.unit = reading.unit;
 				readingData.role = reading.role;
+				readingData.updatedAt = reading.updatedAt;
 				return readingData;
 			});
 			return roleData;
