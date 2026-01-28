@@ -1838,48 +1838,35 @@ export const MEDIA_ROUTING_TYPE_META: Record<MediaRoutingType, IntentEnumValueMe
 
 /**
  * Default routing configurations - used when auto-creating routings
+ * Note: name and icon are derived from MEDIA_ROUTING_TYPE_META to avoid duplication
  */
 export interface MediaRoutingDefaults {
-	name: string;
-	icon: string;
 	powerPolicy: MediaPowerPolicy;
 	audioVolumePreset: number | null;
 }
 
 export const MEDIA_ROUTING_DEFAULTS: Record<MediaRoutingType, MediaRoutingDefaults> = {
 	[MediaRoutingType.WATCH]: {
-		name: 'Watch',
-		icon: 'mdi:television-play',
 		powerPolicy: MediaPowerPolicy.ON,
 		audioVolumePreset: 50,
 	},
 	[MediaRoutingType.LISTEN]: {
-		name: 'Listen',
-		icon: 'mdi:music',
 		powerPolicy: MediaPowerPolicy.ON,
 		audioVolumePreset: 40,
 	},
 	[MediaRoutingType.GAMING]: {
-		name: 'Gaming',
-		icon: 'mdi:gamepad-variant',
 		powerPolicy: MediaPowerPolicy.ON,
 		audioVolumePreset: 60,
 	},
 	[MediaRoutingType.BACKGROUND]: {
-		name: 'Background',
-		icon: 'mdi:music-note',
 		powerPolicy: MediaPowerPolicy.ON,
 		audioVolumePreset: 25,
 	},
 	[MediaRoutingType.OFF]: {
-		name: 'Off',
-		icon: 'mdi:power-off',
 		powerPolicy: MediaPowerPolicy.OFF,
 		audioVolumePreset: null,
 	},
 	[MediaRoutingType.CUSTOM]: {
-		name: 'Custom',
-		icon: 'mdi:cog',
 		powerPolicy: MediaPowerPolicy.UNCHANGED,
 		audioVolumePreset: null,
 	},

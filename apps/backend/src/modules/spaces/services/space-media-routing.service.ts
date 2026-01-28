@@ -22,6 +22,7 @@ import {
 import {
 	EventType,
 	MEDIA_ROUTING_DEFAULTS,
+	MEDIA_ROUTING_TYPE_META,
 	MediaPowerPolicy,
 	MediaRoutingType,
 	SPACES_MODULE_NAME,
@@ -135,13 +136,14 @@ export class SpaceMediaRoutingService {
 
 		// Get defaults for this routing type
 		const defaults = MEDIA_ROUTING_DEFAULTS[dto.type];
+		const meta = MEDIA_ROUTING_TYPE_META[dto.type];
 
 		// Create the routing
 		const routing = this.repository.create({
 			spaceId,
 			type: dto.type,
-			name: dto.name ?? defaults.name,
-			icon: dto.icon ?? defaults.icon,
+			name: dto.name ?? meta.label,
+			icon: dto.icon ?? meta.icon,
 			displayEndpointId: dto.displayEndpointId ?? null,
 			audioEndpointId: dto.audioEndpointId ?? null,
 			sourceEndpointId: dto.sourceEndpointId ?? null,
@@ -274,11 +276,12 @@ export class SpaceMediaRoutingService {
 			if (!existingTypes.has(type)) {
 				try {
 					const defaults = MEDIA_ROUTING_DEFAULTS[type];
+					const meta = MEDIA_ROUTING_TYPE_META[type];
 					const routing = this.repository.create({
 						spaceId,
 						type,
-						name: defaults.name,
-						icon: defaults.icon,
+						name: meta.label,
+						icon: meta.icon,
 						powerPolicy: defaults.powerPolicy,
 						audioVolumePreset: defaults.audioVolumePreset,
 						isDefault: true,
