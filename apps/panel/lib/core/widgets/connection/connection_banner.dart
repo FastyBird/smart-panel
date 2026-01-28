@@ -109,7 +109,6 @@ class _ConnectionBannerState extends State<ConnectionBanner>
                         color: spinnerColor,
                         fontSize: AppFontSize.base,
                         fontWeight: FontWeight.w600,
-                        decoration: TextDecoration.underline,
                       ),
                     ),
                   ),

@@ -2582,10 +2582,6 @@
   "@connection_overlay_retry": {
     "description": "Retry button text in overlay"
   },
-  "connection_overlay_open_settings": "Open Settings",
-  "@connection_overlay_open_settings": {
-    "description": "Open settings link text in overlay"
-  },
 
   "connection_recovery_connected": "Connected",
   "@connection_recovery_connected": {
@@ -2596,13 +2592,13 @@
   "@connection_auth_error_title": {
     "description": "Title for authentication error screen"
   },
-  "connection_auth_error_message": "Your session has expired. Please sign in again to continue using the panel.",
+  "connection_auth_error_message": "Your session has expired or was revoked. Please reset the device to reconnect.",
   "@connection_auth_error_message": {
     "description": "Message for authentication error screen"
   },
-  "connection_auth_error_button_reauth": "Sign In",
-  "@connection_auth_error_button_reauth": {
-    "description": "Re-authenticate button text"
+  "connection_auth_error_button_reset": "Reset Device",
+  "@connection_auth_error_button_reset": {
+    "description": "Reset device button text"
   },
 
   "connection_network_error_title": "Network Unavailable",
@@ -2616,10 +2612,6 @@
   "connection_network_error_button_retry": "Try Again",
   "@connection_network_error_button_retry": {
     "description": "Retry button text on network error screen"
-  },
-  "connection_network_error_button_settings": "Network Settings",
-  "@connection_network_error_button_settings": {
-    "description": "Settings button text on network error screen"
   },
 
   "connection_server_error_title": "Server Unavailable",

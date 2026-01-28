@@ -312,7 +312,6 @@ class _ConnectionStatusDemoState extends State<ConnectionStatusDemo> {
                 });
                 _startDurationTimer();
               },
-              onOpenSettings: () {},
             ),
           ),
         ];
@@ -347,12 +346,11 @@ class _ConnectionStatusDemoState extends State<ConnectionStatusDemo> {
     switch (_state) {
       case SocketConnectionState.authError:
         return AuthErrorScreen(
-          onSignIn: () => _setState(SocketConnectionState.reconnecting),
+          onReset: () => _setState(SocketConnectionState.reconnecting),
         );
       case SocketConnectionState.networkUnavailable:
         return NetworkErrorScreen(
           onRetry: () => _setState(SocketConnectionState.reconnecting),
-          onOpenSettings: () {},
         );
       case SocketConnectionState.serverUnavailable:
         return ServerErrorScreen(

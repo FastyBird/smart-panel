@@ -11,14 +11,15 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 ///
 /// This screen is displayed when the WebSocket connection fails due to
 /// an authentication error (invalid token, expired session, etc.).
-/// The user must go through the gateway discovery and registration flow again.
+/// Since the panel auto-authenticates, the only recovery option is to
+/// reset the device and go through the gateway discovery flow again.
 class AuthErrorScreen extends StatelessWidget {
-  /// Callback to initiate re-authentication flow (resets to gateway discovery)
-  final VoidCallback? onSignIn;
+  /// Callback to reset the device (returns to gateway discovery)
+  final VoidCallback? onReset;
 
   const AuthErrorScreen({
     super.key,
-    this.onSignIn,
+    this.onReset,
   });
 
   @override
@@ -77,21 +78,21 @@ class AuthErrorScreen extends StatelessWidget {
                       ),
                     ),
                     SizedBox(height: AppSpacings.pXl),
-                    // Single sign-in button
+                    // Reset device button
                     if (isLandscape)
                       SystemPagePrimaryButton(
-                        label: localizations.connection_auth_error_button_reauth,
-                        icon: MdiIcons.login,
-                        onPressed: onSignIn,
+                        label: localizations.connection_auth_error_button_reset,
+                        icon: MdiIcons.restart,
+                        onPressed: onReset,
                         isDark: isDark,
                       )
                     else
                       SizedBox(
                         width: double.infinity,
                         child: SystemPagePrimaryButton(
-                          label: localizations.connection_auth_error_button_reauth,
-                          icon: MdiIcons.login,
-                          onPressed: onSignIn,
+                          label: localizations.connection_auth_error_button_reset,
+                          icon: MdiIcons.restart,
+                          onPressed: onReset,
                           minWidth: double.infinity,
                           isDark: isDark,
                         ),

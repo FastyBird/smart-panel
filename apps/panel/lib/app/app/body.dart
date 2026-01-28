@@ -152,10 +152,6 @@ class _AppBodyState extends State<AppBody> {
     locator<StartupManagerService>().resetToDiscovery();
   }
 
-  void _handleOpenSettings() {
-    _navigator.navigateTo(AppRouteNames.settings);
-  }
-
   void _dismissRecoveryToast() {
     if (mounted) {
       setState(() {
@@ -263,7 +259,6 @@ class _AppBodyState extends State<AppBody> {
           child: ConnectionOverlay(
             disconnectedDuration: _connectionManager.disconnectedDuration,
             onRetry: _handleReconnect,
-            onOpenSettings: _handleOpenSettings,
           ),
         ),
       ],
@@ -282,13 +277,12 @@ class _AppBodyState extends State<AppBody> {
     switch (state) {
       case SocketConnectionState.authError:
         return AuthErrorScreen(
-          onSignIn: _handleChangeGateway,
+          onReset: _handleChangeGateway,
         );
 
       case SocketConnectionState.networkUnavailable:
         return NetworkErrorScreen(
           onRetry: _handleReconnect,
-          onOpenSettings: _handleOpenSettings,
         );
 
       case SocketConnectionState.serverUnavailable:

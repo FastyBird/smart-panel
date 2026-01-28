@@ -1898,19 +1898,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get connection_overlay_retry => 'Retry Now';
 
   @override
-  String get connection_overlay_open_settings => 'Open Settings';
-
-  @override
   String get connection_recovery_connected => 'Connected';
 
   @override
   String get connection_auth_error_title => 'Session Expired';
 
   @override
-  String get connection_auth_error_message => 'Your session has expired. Please sign in again to continue using the panel.';
+  String get connection_auth_error_message => 'Your session has expired or was revoked. Please reset the device to reconnect.';
 
   @override
-  String get connection_auth_error_button_reauth => 'Sign In';
+  String get connection_auth_error_button_reset => 'Reset Device';
 
   @override
   String get connection_network_error_title => 'Network Unavailable';
@@ -1920,9 +1917,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get connection_network_error_button_retry => 'Try Again';
-
-  @override
-  String get connection_network_error_button_settings => 'Network Settings';
 
   @override
   String get connection_server_error_title => 'Server Unavailable';

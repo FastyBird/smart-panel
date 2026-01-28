@@ -13,12 +13,10 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 /// due to network connectivity issues (no WiFi, DNS failure, etc.).
 class NetworkErrorScreen extends StatelessWidget {
   final VoidCallback? onRetry;
-  final VoidCallback? onOpenSettings;
 
   const NetworkErrorScreen({
     super.key,
     this.onRetry,
-    this.onOpenSettings,
   });
 
   @override
@@ -77,13 +75,25 @@ class NetworkErrorScreen extends StatelessWidget {
                       ),
                     ),
                     SizedBox(height: AppSpacings.pXl),
-                    // Buttons
-                    _buildButtons(
-                      screenService: screenService,
-                      localizations: localizations,
-                      isDark: isDark,
-                      isLandscape: isLandscape,
-                    ),
+                    // Retry button
+                    if (isLandscape)
+                      SystemPagePrimaryButton(
+                        label: localizations.connection_network_error_button_retry,
+                        icon: MdiIcons.refresh,
+                        onPressed: onRetry,
+                        isDark: isDark,
+                      )
+                    else
+                      SizedBox(
+                        width: double.infinity,
+                        child: SystemPagePrimaryButton(
+                          label: localizations.connection_network_error_button_retry,
+                          icon: MdiIcons.refresh,
+                          onPressed: onRetry,
+                          minWidth: double.infinity,
+                          isDark: isDark,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -94,57 +104,4 @@ class NetworkErrorScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildButtons({
-    required ScreenService screenService,
-    required AppLocalizations localizations,
-    required bool isDark,
-    required bool isLandscape,
-  }) {
-    if (isLandscape) {
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SystemPagePrimaryButton(
-            label: localizations.connection_network_error_button_retry,
-            icon: MdiIcons.refresh,
-            onPressed: onRetry,
-            isDark: isDark,
-          ),
-          SizedBox(width: AppSpacings.pLg),
-          SystemPageSecondaryButton(
-            label: localizations.connection_network_error_button_settings,
-            icon: MdiIcons.cog,
-            onPressed: onOpenSettings,
-            isDark: isDark,
-          ),
-        ],
-      );
-    }
-
-    return Column(
-      children: [
-        SizedBox(
-          width: double.infinity,
-          child: SystemPagePrimaryButton(
-            label: localizations.connection_network_error_button_retry,
-            icon: MdiIcons.refresh,
-            onPressed: onRetry,
-            minWidth: double.infinity,
-            isDark: isDark,
-          ),
-        ),
-        SizedBox(height: AppSpacings.pMd + AppSpacings.pSm),
-        SizedBox(
-          width: double.infinity,
-          child: SystemPageSecondaryButton(
-            label: localizations.connection_network_error_button_settings,
-            icon: MdiIcons.cog,
-            onPressed: onOpenSettings,
-            isDark: isDark,
-            minWidth: double.infinity,
-          ),
-        ),
-      ],
-    );
-  }
 }

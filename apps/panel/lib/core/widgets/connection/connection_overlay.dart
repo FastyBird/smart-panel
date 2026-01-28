@@ -15,13 +15,11 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 class ConnectionOverlay extends StatelessWidget {
   final Duration disconnectedDuration;
   final VoidCallback onRetry;
-  final VoidCallback? onOpenSettings;
 
   const ConnectionOverlay({
     super.key,
     required this.disconnectedDuration,
     required this.onRetry,
-    this.onOpenSettings,
   });
 
   @override
@@ -90,20 +88,6 @@ class ConnectionOverlay extends StatelessWidget {
                   isDark: isDark,
                 ),
               ),
-              if (onOpenSettings != null) ...[
-                SizedBox(height: AppSpacings.pMd),
-                GestureDetector(
-                  onTap: onOpenSettings,
-                  child: Text(
-                    localizations.connection_overlay_open_settings,
-                    style: TextStyle(
-                      color: SystemPagesTheme.accent(isDark),
-                      fontSize: AppFontSize.base,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
             ],
           ),
         ),

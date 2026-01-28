@@ -3749,12 +3749,6 @@ abstract class AppLocalizations {
   /// **'Retry Now'**
   String get connection_overlay_retry;
 
-  /// Open settings link text in overlay
-  ///
-  /// In en, this message translates to:
-  /// **'Open Settings'**
-  String get connection_overlay_open_settings;
-
   /// Toast message shown when connection is restored
   ///
   /// In en, this message translates to:
@@ -3770,14 +3764,14 @@ abstract class AppLocalizations {
   /// Message for authentication error screen
   ///
   /// In en, this message translates to:
-  /// **'Your session has expired. Please sign in again to continue using the panel.'**
+  /// **'Your session has expired or was revoked. Please reset the device to reconnect.'**
   String get connection_auth_error_message;
 
-  /// Re-authenticate button text
+  /// Reset device button text
   ///
   /// In en, this message translates to:
-  /// **'Sign In'**
-  String get connection_auth_error_button_reauth;
+  /// **'Reset Device'**
+  String get connection_auth_error_button_reset;
 
   /// Title for network error screen
   ///
@@ -3796,12 +3790,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Try Again'**
   String get connection_network_error_button_retry;
-
-  /// Settings button text on network error screen
-  ///
-  /// In en, this message translates to:
-  /// **'Network Settings'**
-  String get connection_network_error_button_settings;
 
   /// Title for server error screen
   ///
