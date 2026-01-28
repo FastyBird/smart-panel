@@ -5,7 +5,7 @@ This document describes the architecture of the media control system in the Smar
 > **Note**: The Media domain has been refactored to a **routing-based, activity-first architecture**.
 > See `docs/features/media-domain-convergence.md` for the finalized design contracts and invariants.
 
-## Architecture Summary (V2 - Routing-Based)
+## Architecture Summary
 
 The current Media domain architecture is based on:
 - **Endpoints**: Functional abstractions over device capabilities (display, audio_output, source, remote_target)
@@ -13,20 +13,20 @@ The current Media domain architecture is based on:
 - **Single Active Routing**: Only one routing can be active per space at any time
 - **Explicit Capabilities**: Capabilities are never hidden; UI renders based on what's available
 
-### Key Services (V2)
+### Key Services
 - `SpaceMediaEndpointService` - Manages endpoints and capability detection
 - `SpaceMediaRoutingService` - Handles routing CRUD, activation, and state
 
-### Key Entities (V2)
+### Key Entities
 - `SpaceMediaEndpointEntity` - Functional device projection with capabilities
 - `SpaceMediaRoutingEntity` - Activity preset with endpoint references and policies
 - `SpaceActiveMediaRoutingEntity` - Tracks current active routing per space
 
 ---
 
-## Legacy Overview (V1 - Role-Based)
+## Legacy Overview (Role-Based, Never Released)
 
-> **Deprecated**: The role-based system below is being phased out in favor of the routing-based architecture.
+> **Deprecated**: The role-based system below was an earlier design that was never released. It is being removed in favor of the routing-based architecture above.
 
 ## Overview
 
@@ -364,9 +364,9 @@ cd apps/backend
 npx jest "media" --no-coverage
 ```
 
-## Comparison with Climate Domain (Legacy)
+## Comparison with Climate Domain (Legacy Role-Based Design)
 
-| Aspect | Climate | Media (V1 - Legacy) |
+| Aspect | Climate | Media (Legacy, Never Released) |
 |--------|---------|-------|
 | Device Types | Thermostats, Heaters, ACs | TVs, Speakers, AVRs |
 | Modes | OFF, HEAT, COOL, AUTO | OFF, BACKGROUND, FOCUSED, PARTY |
@@ -377,9 +377,9 @@ npx jest "media" --no-coverage
 
 ---
 
-## V2 Architecture Details (Routing-Based)
+## Routing-Based Architecture Details
 
-The V2 architecture replaces roles with explicit endpoint+routing configuration.
+The routing-based architecture replaces the earlier role-based design with explicit endpoint+routing configuration.
 
 ### Endpoint Types
 
@@ -410,7 +410,7 @@ The V2 architecture replaces roles with explicit endpoint+routing configuration.
 | Conflict Policy | REPLACE, FAIL_IF_ACTIVE, DEACTIVATE_FIRST | REPLACE | How to handle existing routing |
 | Offline Policy | SKIP, FAIL, WAIT | SKIP | How to handle offline devices |
 
-### WebSocket Events (V2)
+### WebSocket Events
 
 | Event | Trigger | Payload |
 |-------|---------|---------|
@@ -420,9 +420,9 @@ The V2 architecture replaces roles with explicit endpoint+routing configuration.
 | `MEDIA_ROUTING_DEACTIVATED` | Routing deactivated | space_id, routing_id, routing_type |
 | `MEDIA_STATE_CHANGED` | Media state changed | space_id, state object |
 
-### Key Differences: V1 vs V2
+### Key Differences from Legacy Design
 
-| Aspect | V1 (Role-Based) | V2 (Routing-Based) |
+| Aspect | Legacy (Role-Based) | Current (Routing-Based) |
 |--------|-----------------|-------------------|
 | Device Classification | Roles (PRIMARY, SECONDARY, etc.) | Endpoints (functional projections) |
 | Activity Selection | Modes (OFF, BACKGROUND, etc.) | Routings (explicit endpoint sets) |
@@ -432,7 +432,7 @@ The V2 architecture replaces roles with explicit endpoint+routing configuration.
 
 ### Migration Notes
 
-The V1 role-based system is deprecated but may still exist in the codebase for backward compatibility. New development should use:
+The legacy role-based system was never released but may still exist in the codebase. New development should use:
 
 1. `SpaceMediaEndpointService` for endpoint management
 2. `SpaceMediaRoutingService` for routing operations
