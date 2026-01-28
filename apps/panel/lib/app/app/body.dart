@@ -262,9 +262,16 @@ class _AppBodyState extends State<AppBody> {
       ],
       ConnectionUISeverity.overlay => [
         Positioned.fill(
-          child: ConnectionOverlay(
-            disconnectedDuration: _connectionManager.disconnectedDuration,
-            onRetry: _handleReconnect,
+          // TODO: Remove GestureDetector wrapper after testing
+          child: GestureDetector(
+            onLongPress: () {
+              // DEBUG: Long-press overlay to test auth error screen
+              _connectionManager.onAuthError();
+            },
+            child: ConnectionOverlay(
+              disconnectedDuration: _connectionManager.disconnectedDuration,
+              onRetry: _handleReconnect,
+            ),
           ),
         ),
       ],
