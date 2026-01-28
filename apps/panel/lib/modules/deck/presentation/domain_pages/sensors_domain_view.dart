@@ -3,8 +3,10 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
@@ -609,7 +611,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
             child: Column(
               children: [
                 _buildHeader(context, alertCount),
-                if (_sensors.isNotEmpty) _buildCategorySelector(context),
                 Expanded(
                   child: _sensors.isEmpty
                       ? _buildEmptyState(context)
@@ -742,22 +743,14 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       }
     }
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacings.pLg,
-        0,
-        AppSpacings.pLg,
-        AppSpacings.pMd,
-      ),
-      child: ModeSelector<SensorCategory?>(
-        modes: modeOptions,
-        selectedValue: _selectedCategory,
-        onChanged: (category) => setState(() => _selectedCategory = category),
-        orientation: ModeSelectorOrientation.horizontal,
-        iconPlacement: ModeSelectorIconPlacement.top,
-        scrollable: true,
-        statusIcons: statusIcons,
-      ),
+    return ModeSelector<SensorCategory?>(
+      modes: modeOptions,
+      selectedValue: _selectedCategory,
+      onChanged: (category) => setState(() => _selectedCategory = category),
+      orientation: ModeSelectorOrientation.horizontal,
+      iconPlacement: ModeSelectorIconPlacement.top,
+      scrollable: true,
+      statusIcons: statusIcons,
     );
   }
 
@@ -769,26 +762,19 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     final isAtLeastMedium = _screenService.isAtLeastMedium;
     final sensorsPerRow = isAtLeastMedium ? 3 : 2;
 
-    return Column(
-      children: [
-        Expanded(
-          child: SingleChildScrollView(
-            padding: AppSpacings.paddingLg,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (_hasAlerts) _buildAlertBanner(context),
-                if (_selectedCategory == null) ...[
-                  _buildSummaryCards(context),
-                  AppSpacings.spacingLgVertical,
-                ],
-                _buildSensorGrid(context, crossAxisCount: sensorsPerRow),
-              ],
-            ),
-          ),
-        ),
-        AppSpacings.spacingLgVertical,
-      ],
+    return PortraitViewLayout(
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_hasAlerts) _buildAlertBanner(context),
+          if (_selectedCategory == null) ...[
+            _buildSummaryCards(context),
+            AppSpacings.spacingLgVertical,
+          ],
+          _buildSensorGrid(context, crossAxisCount: sensorsPerRow),
+        ],
+      ),
+      modeSelector: _buildCategorySelector(context),
     );
   }
 
@@ -797,44 +783,52 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   // --------------------------------------------------------------------------
 
   Widget _buildLandscapeLayout(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isLargeScreen = _screenService.isLargeScreen;
     final sensorsPerRow = isLargeScreen ? 3 : 2;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 2,
-          child: SingleChildScrollView(
-            padding: AppSpacings.paddingLg,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (_selectedCategory == null) _buildSummaryCards(context),
-                if (_selectedCategory == null) AppSpacings.spacingLgVertical,
-                _buildSensorGrid(context, crossAxisCount: sensorsPerRow),
-              ],
-            ),
+    return LandscapeViewLayout(
+      mainContent: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_selectedCategory == null) _buildSummaryCards(context),
+          if (_selectedCategory == null) AppSpacings.spacingLgVertical,
+          Expanded(
+            child: _buildSensorGrid(context, crossAxisCount: sensorsPerRow),
           ),
-        ),
-        Container(
-          width: 1,
-          color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
-        ),
-        SizedBox(
-          width: _scale(320),
-          child: Container(
-            color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-            padding: AppSpacings.paddingLg,
-            child: Column(
-              children: [
-                _buildActivityPanel(context),
-              ],
-            ),
-          ),
-        ),
-      ],
+        ],
+      ),
+      modeSelector: _buildLandscapeCategorySelector(context),
+      additionalContent: _buildActivityPanel(context),
+    );
+  }
+
+  /// Build vertical category selector for landscape layout
+  Widget _buildLandscapeCategorySelector(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final modeOptions = _getCategoryModeOptions();
+
+    // Build status icons for categories with alerts
+    final Map<SensorCategory?, (IconData, Color)> statusIcons = {};
+    for (final cat in SensorCategory.values) {
+      final hasAlert = _sensors.any(
+        (s) => s.category == cat && s.status == SensorStatus.alert,
+      );
+      if (hasAlert) {
+        statusIcons[cat] = (
+          Icons.warning,
+          isDark ? AppColorsDark.danger : AppColorsLight.danger,
+        );
+      }
+    }
+
+    return ModeSelector<SensorCategory?>(
+      modes: modeOptions,
+      selectedValue: _selectedCategory,
+      onChanged: (category) => setState(() => _selectedCategory = category),
+      orientation: ModeSelectorOrientation.vertical,
+      iconPlacement: ModeSelectorIconPlacement.top,
+      scrollable: true,
+      statusIcons: statusIcons,
     );
   }
 
