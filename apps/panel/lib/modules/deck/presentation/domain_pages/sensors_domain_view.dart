@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
@@ -1903,6 +1905,10 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
                         size: Size(double.infinity, _scale(160)),
                         painter: _ChartPainter(
                           color: _getCategoryColor(context),
+                          labelColor: isDark
+                              ? AppTextColorDark.secondary
+                              : AppTextColorLight.secondary,
+                          fontSize: AppFontSize.extraSmall,
                           timeseries: _timeseries,
                         ),
                       )
@@ -2010,41 +2016,89 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
 
 class _ChartPainter extends CustomPainter {
   final Color color;
+  final Color labelColor;
+  final double fontSize;
   final PropertyTimeseries? timeseries;
 
-  _ChartPainter({required this.color, this.timeseries});
+  static const double _labelWidth = 40.0;
+  static const double _labelGap = 6.0;
+
+  _ChartPainter({
+    required this.color,
+    required this.labelColor,
+    this.fontSize = 11,
+    this.timeseries,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Grid lines
+    final chartLeft = _labelWidth + _labelGap;
+    final chartWidth = size.width - chartLeft;
+    final chartHeight = size.height;
+
+    // Compute nice tick values for Y-axis
+    double niceMin = 0;
+    double niceMax = 1;
+    List<double> ticks = [0, 0.5, 1];
+
+    if (timeseries != null && timeseries!.isNotEmpty) {
+      ticks = _computeNiceTicks(timeseries!.minValue, timeseries!.maxValue);
+      niceMin = ticks.first;
+      niceMax = ticks.last;
+    }
+
+    final niceRange = niceMax - niceMin;
+
+    // Y-axis labels and grid lines
     final gridPaint = Paint()
       ..color = color.withValues(alpha: 0.1)
       ..strokeWidth = 0.5;
 
-    for (int i = 1; i < 4; i++) {
-      final y = size.height * i / 4;
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+    for (final tick in ticks) {
+      final normalized = niceRange == 0 ? 0.5 : (tick - niceMin) / niceRange;
+      final y = chartHeight * (1 - normalized);
+
+      // Grid line
+      canvas.drawLine(Offset(chartLeft, y), Offset(size.width, y), gridPaint);
+
+      // Label
+      if (timeseries != null && timeseries!.isNotEmpty) {
+        final label = _formatLabel(tick);
+
+        final textPainter = TextPainter(
+          text: TextSpan(
+            text: label,
+            style: TextStyle(
+              color: labelColor,
+              fontSize: fontSize,
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout(maxWidth: _labelWidth);
+
+        textPainter.paint(
+          canvas,
+          Offset(
+            _labelWidth - textPainter.width,
+            y - textPainter.height / 2,
+          ),
+        );
+      }
     }
 
-    // Use real time series data if available, otherwise show empty state
+    // Plot data points
     final points = <Offset>[];
 
     if (timeseries != null && timeseries!.isNotEmpty) {
-      // Use real data
       final data = timeseries!.points;
-      final minVal = timeseries!.minValue;
-      final maxVal = timeseries!.maxValue;
-      final range = maxVal - minVal;
-
-      // Add padding to range to avoid points at edges
-      final paddedRange = range == 0 ? 1.0 : range * 1.2;
-      final paddedMin = minVal - (range * 0.1);
 
       for (int i = 0; i < data.length; i++) {
-        final x = size.width * i / (data.length - 1).clamp(1, double.infinity);
-        // Invert Y since canvas Y increases downward
-        final normalizedValue = (data[i].numericValue - paddedMin) / paddedRange;
-        final y = size.height * (1 - normalizedValue.clamp(0.0, 1.0));
+        final x = chartLeft +
+            chartWidth * i / (data.length - 1).clamp(1, double.infinity);
+        final normalizedValue = niceRange == 0
+            ? 0.5
+            : (data[i].numericValue - niceMin) / niceRange;
+        final y = chartHeight * (1 - normalizedValue.clamp(0.0, 1.0));
         points.add(Offset(x, y));
       }
     }
@@ -2052,11 +2106,11 @@ class _ChartPainter extends CustomPainter {
     if (points.isEmpty) return;
 
     // Area fill
-    final areaPath = Path()..moveTo(0, size.height);
+    final areaPath = Path()..moveTo(chartLeft, chartHeight);
     for (final point in points) {
       areaPath.lineTo(point.dx, point.dy);
     }
-    areaPath.lineTo(size.width, size.height);
+    areaPath.lineTo(points.last.dx, chartHeight);
     areaPath.close();
 
     final areaPaint = Paint()
@@ -2081,6 +2135,89 @@ class _ChartPainter extends CustomPainter {
       final lastPoint = points.last;
       canvas.drawCircle(lastPoint, 4, Paint()..color = color);
     }
+  }
+
+  /// Compute nice rounded tick values for Y-axis
+  List<double> _computeNiceTicks(double dataMin, double dataMax, {int targetTicks = 5}) {
+    if (dataMin == dataMax) {
+      // Flat line — create range around the value
+      final v = dataMin;
+      if (v == 0) return [-1, -0.5, 0, 0.5, 1];
+      final offset = v.abs() * 0.1;
+      final step = _niceStep(offset * 2 / (targetTicks - 1));
+      final nMin = (v - offset / step).floor() * step;
+      return List.generate(targetTicks, (i) => _roundToStep(nMin + i * step, step));
+    }
+
+    final rawStep = (dataMax - dataMin) / (targetTicks - 1);
+    final step = _niceStep(rawStep);
+
+    final niceMin = (dataMin / step).floor() * step;
+    final niceMax = (dataMax / step).ceil() * step;
+
+    final ticks = <double>[];
+    var tick = niceMin;
+    while (tick <= niceMax + step * 0.5) {
+      ticks.add(_roundToStep(tick, step));
+      tick += step;
+    }
+
+    return ticks;
+  }
+
+  /// Find a "nice" step size (1, 2, 5 multiplied by power of 10)
+  double _niceStep(double rawStep) {
+    if (rawStep <= 0) return 1;
+    final magnitude = _pow10((log(rawStep) / ln10).floor().toDouble());
+    final fraction = rawStep / magnitude;
+
+    double niceFraction;
+    if (fraction <= 1.5) {
+      niceFraction = 1;
+    } else if (fraction <= 3) {
+      niceFraction = 2;
+    } else if (fraction <= 7) {
+      niceFraction = 5;
+    } else {
+      niceFraction = 10;
+    }
+
+    return niceFraction * magnitude;
+  }
+
+  double _pow10(double exp) {
+    if (exp >= 0) {
+      double result = 1;
+      for (int i = 0; i < exp.toInt(); i++) {
+        result *= 10;
+      }
+      return result;
+    } else {
+      double result = 1;
+      for (int i = 0; i < (-exp).toInt(); i++) {
+        result /= 10;
+      }
+      return result;
+    }
+  }
+
+  /// Round value to avoid floating point artifacts
+  double _roundToStep(double value, double step) {
+    if (step >= 1) return (value / step).round() * step;
+    // For fractional steps, round to appropriate decimal places
+    final decimals = -(log(step) / ln10).floor();
+    final factor = _pow10(decimals.toDouble());
+    return (value * factor).round() / factor;
+  }
+
+  String _formatLabel(double value) {
+    if (value.abs() >= 1000) {
+      return '${(value / 1000).toStringAsFixed(1)}k';
+    }
+    if (value == value.roundToDouble()) {
+      return value.round().toString();
+    }
+    return value.toStringAsFixed(1);
   }
 
   @override
