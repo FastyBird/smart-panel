@@ -333,11 +333,24 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         final status = _determineSensorStatus(reading, sensorState);
         final value = _formatSensorValue(reading.value, reading.channelCategory);
 
+        // Strip room name prefix from device name since we're already on the room page
+        var deviceLabel = reading.deviceName;
+        if (deviceLabel.toLowerCase().startsWith(roomName.toLowerCase())) {
+          deviceLabel = deviceLabel.substring(roomName.length).trim();
+          // Remove leading dash or separator if present
+          if (deviceLabel.startsWith('-') || deviceLabel.startsWith('–')) {
+            deviceLabel = deviceLabel.substring(1).trim();
+          }
+        }
+        if (deviceLabel.isEmpty) {
+          deviceLabel = reading.deviceName;
+        }
+
         sensors.add(SensorData(
           id: reading.channelId,
           propertyId: reading.propertyId,
           name: reading.channelName,
-          location: roomName,
+          location: deviceLabel,
           category: category,
           value: value,
           unit: reading.unit ?? '',
@@ -776,7 +789,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
             _buildSummaryCards(context, compact: isSmallScreen),
             AppSpacings.spacingLgVertical,
           ],
-          _buildSensorGrid(context, crossAxisCount: sensorsPerRow, childAspectRatio: isSmallScreen ? 1.2 : 1.0),
+          _buildSensorGrid(context, crossAxisCount: sensorsPerRow, childAspectRatio: isSmallScreen ? 1.0 : 0.9),
         ],
       ),
       modeSelector: _buildCategorySelector(context),
@@ -1197,7 +1210,19 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            AppSpacings.spacingXsVertical,
+            // Device name
+            Text(
+              sensor.location,
+              style: TextStyle(
+                color: isDark
+                    ? AppTextColorDark.placeholder
+                    : AppTextColorLight.placeholder,
+                fontSize: AppFontSize.extraSmall,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            AppSpacings.spacingSmVertical,
 
             // Value
             FittedBox(
