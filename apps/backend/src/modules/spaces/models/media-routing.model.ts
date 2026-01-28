@@ -3,9 +3,15 @@ import { Expose, Type } from 'class-transformer';
 import { ApiExtraModels, ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
+import { SpaceActiveMediaRoutingEntity } from '../entities/space-active-media-routing.entity';
 import { SpaceMediaEndpointEntity } from '../entities/space-media-endpoint.entity';
 import { SpaceMediaRoutingEntity } from '../entities/space-media-routing.entity';
-import { MediaCapabilityPermission, MediaEndpointType, MediaRoutingType } from '../spaces.constants';
+import {
+	MediaActivationState,
+	MediaCapabilityPermission,
+	MediaEndpointType,
+	MediaRoutingType,
+} from '../spaces.constants';
 
 // ========================
 // Capability Models
@@ -594,4 +600,108 @@ export class MediaStateV2ResponseModel extends BaseSuccessResponseModel<MediaSta
 	@Expose()
 	@Type(() => MediaStateV2Model)
 	declare data: MediaStateV2Model;
+}
+
+// ========================
+// Active Routing Models
+// ========================
+
+/**
+ * Active routing state model - represents the current active routing for a space
+ */
+@ApiSchema({ name: 'SpacesModuleDataActiveMediaRoutingState' })
+export class ActiveMediaRoutingStateModel {
+	@ApiPropertyOptional({
+		name: 'routing_id',
+		description: 'ID of the currently active routing (null if no routing active)',
+		type: 'string',
+		format: 'uuid',
+	})
+	@Expose({ name: 'routing_id' })
+	routingId: string | null;
+
+	@ApiPropertyOptional({
+		name: 'routing_type',
+		description: 'Type of the currently active routing',
+		enum: MediaRoutingType,
+	})
+	@Expose({ name: 'routing_type' })
+	routingType?: MediaRoutingType;
+
+	@ApiProperty({
+		name: 'activation_state',
+		description: 'Current state of the routing activation',
+		enum: MediaActivationState,
+	})
+	@Expose({ name: 'activation_state' })
+	activationState: MediaActivationState;
+
+	@ApiPropertyOptional({
+		name: 'activated_at',
+		description: 'Timestamp when the routing was activated',
+		type: 'string',
+		format: 'date-time',
+	})
+	@Expose({ name: 'activated_at' })
+	activatedAt?: Date;
+
+	@ApiPropertyOptional({
+		name: 'last_error',
+		description: 'Last error message if activation failed',
+		type: 'string',
+	})
+	@Expose({ name: 'last_error' })
+	lastError?: string;
+
+	@ApiPropertyOptional({
+		name: 'steps_executed',
+		description: 'Number of execution steps completed',
+		type: 'integer',
+	})
+	@Expose({ name: 'steps_executed' })
+	stepsExecuted?: number;
+
+	@ApiPropertyOptional({
+		name: 'steps_failed',
+		description: 'Number of execution steps that failed',
+		type: 'integer',
+	})
+	@Expose({ name: 'steps_failed' })
+	stepsFailed?: number;
+
+	@ApiPropertyOptional({
+		name: 'steps_skipped',
+		description: 'Number of execution steps skipped',
+		type: 'integer',
+	})
+	@Expose({ name: 'steps_skipped' })
+	stepsSkipped?: number;
+}
+
+/**
+ * Response wrapper for ActiveMediaRoutingEntity
+ */
+@ApiSchema({ name: 'SpacesModuleResActiveMediaRouting' })
+export class ActiveMediaRoutingResponseModel extends BaseSuccessResponseModel<SpaceActiveMediaRoutingEntity | null> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API (null if no active routing)',
+		type: () => SpaceActiveMediaRoutingEntity,
+		nullable: true,
+	})
+	@Expose()
+	declare data: SpaceActiveMediaRoutingEntity | null;
+}
+
+/**
+ * Response wrapper for active routing state
+ */
+@ApiSchema({ name: 'SpacesModuleResActiveMediaRoutingState' })
+export class ActiveMediaRoutingStateResponseModel extends BaseSuccessResponseModel<ActiveMediaRoutingStateModel> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: () => ActiveMediaRoutingStateModel,
+	})
+	@Expose()
+	@Type(() => ActiveMediaRoutingStateModel)
+	declare data: ActiveMediaRoutingStateModel;
 }

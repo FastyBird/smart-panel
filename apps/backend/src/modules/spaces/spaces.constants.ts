@@ -30,6 +30,11 @@ export enum EventType {
 	MEDIA_TARGET_CREATED = 'SpacesModule.MediaTarget.Created',
 	MEDIA_TARGET_UPDATED = 'SpacesModule.MediaTarget.Updated',
 	MEDIA_TARGET_DELETED = 'SpacesModule.MediaTarget.Deleted',
+	// Media routing activation events
+	MEDIA_ROUTING_ACTIVATING = 'SpacesModule.MediaRouting.Activating',
+	MEDIA_ROUTING_ACTIVATED = 'SpacesModule.MediaRouting.Activated',
+	MEDIA_ROUTING_FAILED = 'SpacesModule.MediaRouting.Failed',
+	MEDIA_ROUTING_DEACTIVATED = 'SpacesModule.MediaRouting.Deactivated',
 	// Sensor state change events
 	SENSOR_STATE_CHANGED = 'SpacesModule.Space.SensorStateChanged',
 	// Sensor role events
@@ -1742,6 +1747,56 @@ export enum MediaPowerPolicy {
 }
 
 /**
+ * Media Input Policy - defines how input switching is handled during routing activation
+ */
+export enum MediaInputPolicy {
+	/** Always switch inputs as configured */
+	ALWAYS = 'always',
+	/** Only switch inputs if device is currently on a different input */
+	IF_DIFFERENT = 'if_different',
+	/** Never switch inputs automatically */
+	NEVER = 'never',
+}
+
+/**
+ * Media Conflict Policy - defines how conflicts with existing routing are resolved
+ */
+export enum MediaConflictPolicy {
+	/** Replace the current active routing immediately */
+	REPLACE = 'replace',
+	/** Fail activation if another routing is active */
+	FAIL_IF_ACTIVE = 'fail_if_active',
+	/** Deactivate current routing first, then activate new one */
+	DEACTIVATE_FIRST = 'deactivate_first',
+}
+
+/**
+ * Media Offline Policy - defines how offline devices are handled during activation
+ */
+export enum MediaOfflinePolicy {
+	/** Skip offline devices and continue with available ones */
+	SKIP = 'skip',
+	/** Fail activation if any critical endpoint is offline */
+	FAIL = 'fail',
+	/** Wait for devices to come online (with timeout) */
+	WAIT = 'wait',
+}
+
+/**
+ * Media Activation State - state of the active routing
+ */
+export enum MediaActivationState {
+	/** Routing is being activated */
+	ACTIVATING = 'activating',
+	/** Routing is fully active */
+	ACTIVE = 'active',
+	/** Routing activation failed (partial or complete) */
+	FAILED = 'failed',
+	/** Routing has been deactivated */
+	DEACTIVATED = 'deactivated',
+}
+
+/**
  * Media Capability - individual capability that an endpoint can have
  */
 export enum MediaCapability {
@@ -1842,32 +1897,53 @@ export const MEDIA_ROUTING_TYPE_META: Record<MediaRoutingType, IntentEnumValueMe
  */
 export interface MediaRoutingDefaults {
 	powerPolicy: MediaPowerPolicy;
+	inputPolicy: MediaInputPolicy;
+	conflictPolicy: MediaConflictPolicy;
+	offlinePolicy: MediaOfflinePolicy;
 	audioVolumePreset: number | null;
 }
 
 export const MEDIA_ROUTING_DEFAULTS: Record<MediaRoutingType, MediaRoutingDefaults> = {
 	[MediaRoutingType.WATCH]: {
 		powerPolicy: MediaPowerPolicy.ON,
+		inputPolicy: MediaInputPolicy.ALWAYS,
+		conflictPolicy: MediaConflictPolicy.REPLACE,
+		offlinePolicy: MediaOfflinePolicy.SKIP,
 		audioVolumePreset: 50,
 	},
 	[MediaRoutingType.LISTEN]: {
 		powerPolicy: MediaPowerPolicy.ON,
+		inputPolicy: MediaInputPolicy.IF_DIFFERENT,
+		conflictPolicy: MediaConflictPolicy.REPLACE,
+		offlinePolicy: MediaOfflinePolicy.SKIP,
 		audioVolumePreset: 40,
 	},
 	[MediaRoutingType.GAMING]: {
 		powerPolicy: MediaPowerPolicy.ON,
+		inputPolicy: MediaInputPolicy.ALWAYS,
+		conflictPolicy: MediaConflictPolicy.REPLACE,
+		offlinePolicy: MediaOfflinePolicy.SKIP,
 		audioVolumePreset: 60,
 	},
 	[MediaRoutingType.BACKGROUND]: {
 		powerPolicy: MediaPowerPolicy.ON,
+		inputPolicy: MediaInputPolicy.NEVER,
+		conflictPolicy: MediaConflictPolicy.REPLACE,
+		offlinePolicy: MediaOfflinePolicy.SKIP,
 		audioVolumePreset: 25,
 	},
 	[MediaRoutingType.OFF]: {
 		powerPolicy: MediaPowerPolicy.OFF,
+		inputPolicy: MediaInputPolicy.NEVER,
+		conflictPolicy: MediaConflictPolicy.REPLACE,
+		offlinePolicy: MediaOfflinePolicy.SKIP,
 		audioVolumePreset: null,
 	},
 	[MediaRoutingType.CUSTOM]: {
 		powerPolicy: MediaPowerPolicy.UNCHANGED,
+		inputPolicy: MediaInputPolicy.IF_DIFFERENT,
+		conflictPolicy: MediaConflictPolicy.REPLACE,
+		offlinePolicy: MediaOfflinePolicy.SKIP,
 		audioVolumePreset: null,
 	},
 };

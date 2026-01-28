@@ -9,6 +9,7 @@ import { PropertyCategory } from '../../devices/devices.constants';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { CreateMediaRoutingDto, UpdateMediaRoutingDto } from '../dto/media-routing.dto';
+import { SpaceActiveMediaRoutingEntity } from '../entities/space-active-media-routing.entity';
 import { SpaceMediaEndpointEntity } from '../entities/space-media-endpoint.entity';
 import { SpaceMediaRoutingEntity } from '../entities/space-media-routing.entity';
 import {
@@ -23,6 +24,10 @@ import {
 	EventType,
 	MEDIA_ROUTING_DEFAULTS,
 	MEDIA_ROUTING_TYPE_META,
+	MediaActivationState,
+	MediaConflictPolicy,
+	MediaInputPolicy,
+	MediaOfflinePolicy,
 	MediaPowerPolicy,
 	MediaRoutingType,
 	SPACES_MODULE_NAME,
@@ -31,11 +36,6 @@ import { SpacesValidationException } from '../spaces.exceptions';
 
 import { SpaceMediaEndpointService } from './space-media-endpoint.service';
 import { SpacesService } from './spaces.service';
-
-/**
- * In-memory cache for active routing per space
- */
-const activeRoutingCache = new Map<string, string>();
 
 @Injectable()
 export class SpaceMediaRoutingService {
@@ -46,6 +46,8 @@ export class SpaceMediaRoutingService {
 		private readonly repository: Repository<SpaceMediaRoutingEntity>,
 		@InjectRepository(SpaceMediaEndpointEntity)
 		private readonly endpointRepository: Repository<SpaceMediaEndpointEntity>,
+		@InjectRepository(SpaceActiveMediaRoutingEntity)
+		private readonly activeRoutingRepository: Repository<SpaceActiveMediaRoutingEntity>,
 		private readonly spacesService: SpacesService,
 		@Inject(forwardRef(() => SpaceMediaEndpointService))
 		private readonly endpointService: SpaceMediaEndpointService,
@@ -152,6 +154,9 @@ export class SpaceMediaRoutingService {
 			audioInput: dto.audioInput ?? null,
 			audioVolumePreset: dto.audioVolumePreset ?? defaults.audioVolumePreset,
 			powerPolicy: dto.powerPolicy ?? defaults.powerPolicy,
+			inputPolicy: dto.inputPolicy ?? defaults.inputPolicy,
+			conflictPolicy: dto.conflictPolicy ?? defaults.conflictPolicy,
+			offlinePolicy: dto.offlinePolicy ?? defaults.offlinePolicy,
 			isDefault: false,
 		});
 
@@ -213,6 +218,15 @@ export class SpaceMediaRoutingService {
 		if (dto.powerPolicy !== undefined) {
 			routing.powerPolicy = dto.powerPolicy;
 		}
+		if (dto.inputPolicy !== undefined) {
+			routing.inputPolicy = dto.inputPolicy;
+		}
+		if (dto.conflictPolicy !== undefined) {
+			routing.conflictPolicy = dto.conflictPolicy;
+		}
+		if (dto.offlinePolicy !== undefined) {
+			routing.offlinePolicy = dto.offlinePolicy;
+		}
 		if (dto.isDefault !== undefined) {
 			routing.isDefault = dto.isDefault;
 		}
@@ -231,9 +245,22 @@ export class SpaceMediaRoutingService {
 		const routing = await this.findOne(routingId);
 
 		if (routing) {
-			// Clear active routing cache if this was active
-			if (activeRoutingCache.get(routing.spaceId) === routingId) {
-				activeRoutingCache.delete(routing.spaceId);
+			// Clear active routing if this was active
+			const activeRouting = await this.activeRoutingRepository.findOne({
+				where: { spaceId: routing.spaceId, routingId },
+			});
+
+			if (activeRouting) {
+				// Update state to deactivated before removing
+				activeRouting.activationState = MediaActivationState.DEACTIVATED;
+				activeRouting.routingId = null;
+				await this.activeRoutingRepository.save(activeRouting);
+
+				// Emit deactivated event so clients are notified
+				this.emitRoutingEvent(EventType.MEDIA_ROUTING_DEACTIVATED, routing.spaceId, routingId, routing.type);
+
+				// Emit state change so UI updates
+				void this.emitMediaStateChange(routing.spaceId);
 			}
 
 			await this.repository.remove(routing);
@@ -283,6 +310,9 @@ export class SpaceMediaRoutingService {
 						name: meta.label,
 						icon: meta.icon,
 						powerPolicy: defaults.powerPolicy,
+						inputPolicy: defaults.inputPolicy,
+						conflictPolicy: defaults.conflictPolicy,
+						offlinePolicy: defaults.offlinePolicy,
 						audioVolumePreset: defaults.audioVolumePreset,
 						isDefault: true,
 					});
@@ -407,136 +437,349 @@ export class SpaceMediaRoutingService {
 
 	/**
 	 * Execute a routing activation
+	 * @param routingId - The routing to activate
+	 * @param skipConflictCheck - Skip conflict policy checking (used internally to prevent recursion)
 	 */
-	async activateRouting(routingId: string): Promise<MediaRoutingActivationResultModel> {
+	async activateRouting(
+		routingId: string,
+		skipConflictCheck: boolean = false,
+	): Promise<MediaRoutingActivationResultModel> {
 		const routing = await this.getOneOrThrow(routingId);
-		const plan = await this.buildExecutionPlan(routingId);
 
-		this.logger.debug(`Activating routing id=${routingId} type=${routing.type} steps=${plan.totalSteps}`);
+		// Handle conflict policy - check if another routing is actually active
+		// Skip if called from deactivateMedia to prevent infinite recursion
+		// Only ACTIVE and ACTIVATING states are considered "active" - FAILED and DEACTIVATED are not
+		const existingActive = await this.getActiveRoutingRecord(routing.spaceId);
+		const hasActiveRouting =
+			!skipConflictCheck &&
+			existingActive &&
+			existingActive.routingId !== null &&
+			existingActive.routingId !== routingId &&
+			(existingActive.activationState === MediaActivationState.ACTIVE ||
+				existingActive.activationState === MediaActivationState.ACTIVATING);
 
+		if (hasActiveRouting) {
+			if (routing.conflictPolicy === MediaConflictPolicy.FAIL_IF_ACTIVE) {
+				throw new SpacesValidationException(
+					`Cannot activate routing: another routing is already active (conflict policy: FAIL_IF_ACTIVE)`,
+				);
+			}
+
+			// For DEACTIVATE_FIRST, properly deactivate the current routing before proceeding
+			// Pass skipConflictCheck=true to prevent infinite recursion if OFF routing also has DEACTIVATE_FIRST
+			if (routing.conflictPolicy === MediaConflictPolicy.DEACTIVATE_FIRST) {
+				this.logger.debug(`Deactivating current routing ${existingActive.routingId} before activating ${routingId}`);
+				await this.deactivateMedia(routing.spaceId, true);
+			}
+			// For REPLACE, we just proceed and overwrite
+		}
+
+		// Emit activating event
+		this.emitRoutingEvent(EventType.MEDIA_ROUTING_ACTIVATING, routing.spaceId, routingId, routing.type);
+
+		// Update or create active routing record (set state to ACTIVATING)
+		let activeRecord = await this.getActiveRoutingRecord(routing.spaceId);
+		if (!activeRecord) {
+			activeRecord = this.activeRoutingRepository.create({
+				spaceId: routing.spaceId,
+				routingId,
+				activationState: MediaActivationState.ACTIVATING,
+				activatedAt: new Date(),
+				lastError: null,
+			});
+		} else {
+			activeRecord.routingId = routingId;
+			activeRecord.activationState = MediaActivationState.ACTIVATING;
+			activeRecord.activatedAt = new Date();
+			activeRecord.lastError = null;
+			activeRecord.stepsExecuted = null;
+			activeRecord.stepsFailed = null;
+			activeRecord.stepsSkipped = null;
+		}
+		await this.activeRoutingRepository.save(activeRecord);
+
+		// Wrap activation logic in try-catch to ensure state is updated to FAILED on unexpected errors
+		let plan: MediaExecutionPlanModel;
 		const stepResults: MediaExecutionStepResultModel[] = [];
 		const offlineDeviceIds: string[] = [];
 		let stepsExecuted = 0;
 		let stepsFailed = 0;
 		let stepsSkipped = 0;
+		let criticalStepFailed = false;
 
-		// Get unique devices involved
-		const deviceIds = [...new Set(plan.steps.map((s) => s.deviceId))];
-		const devices = await this.spacesService.findDevicesByIds(deviceIds);
-		const deviceMap = new Map(devices.map((d) => [d.id, d]));
+		try {
+			plan = await this.buildExecutionPlan(routingId);
 
-		// Execute each step
-		for (const step of plan.steps) {
-			const device = deviceMap.get(step.deviceId);
+			this.logger.debug(`Activating routing id=${routingId} type=${routing.type} steps=${plan.totalSteps}`);
 
-			if (!device) {
-				stepsFailed++;
-				stepResults.push({
-					order: step.order,
-					deviceId: step.deviceId,
-					status: 'failed',
-					error: 'Device not found',
-				});
-				continue;
-			}
+			// Get unique devices involved
+			const deviceIds = [...new Set(plan.steps.map((s) => s.deviceId))];
+			const devices = await this.spacesService.findDevicesByIds(deviceIds);
+			const deviceMap = new Map(devices.map((d) => [d.id, d]));
 
-			// Check if device is online
-			if (!device.status?.online) {
-				stepsSkipped++;
-				if (!offlineDeviceIds.includes(step.deviceId)) {
-					offlineDeviceIds.push(step.deviceId);
-				}
-				stepResults.push({
-					order: step.order,
-					deviceId: step.deviceId,
-					status: 'skipped',
-					error: 'Device offline',
-				});
-				continue;
-			}
+			// Execute each step
+			for (const step of plan.steps) {
+				let device = deviceMap.get(step.deviceId);
 
-			// Find the channel and property
-			const channel = device.channels?.find((ch) => ch.id === step.channelId);
-			const property = channel?.properties?.find((p) => p.id === step.propertyId);
-
-			if (!channel || !property) {
-				stepsFailed++;
-				stepResults.push({
-					order: step.order,
-					deviceId: step.deviceId,
-					status: 'failed',
-					error: 'Channel or property not found',
-				});
-				continue;
-			}
-
-			// Execute the command
-			const platform = this.platformRegistryService.get(device);
-
-			if (!platform) {
-				stepsFailed++;
-				stepResults.push({
-					order: step.order,
-					deviceId: step.deviceId,
-					status: 'failed',
-					error: 'No platform for device',
-				});
-				continue;
-			}
-
-			try {
-				const command: IDevicePropertyData = {
-					device,
-					channel,
-					property,
-					value: step.value as string | number | boolean,
-				};
-
-				const success = await platform.processBatch([command]);
-
-				if (success) {
-					stepsExecuted++;
-					stepResults.push({
-						order: step.order,
-						deviceId: step.deviceId,
-						status: 'success',
-					});
-				} else {
+				if (!device) {
 					stepsFailed++;
 					stepResults.push({
 						order: step.order,
 						deviceId: step.deviceId,
 						status: 'failed',
-						error: 'Command execution failed',
+						error: 'Device not found',
+					});
+					if (step.critical) {
+						criticalStepFailed = true;
+						this.logger.warn(`Critical step failed: device not found, aborting routing activation`);
+						break;
+					}
+					continue;
+				}
+
+				// Check if device is online and handle offline policy
+				if (!device.status?.online) {
+					if (!offlineDeviceIds.includes(step.deviceId)) {
+						offlineDeviceIds.push(step.deviceId);
+					}
+
+					if (routing.offlinePolicy === MediaOfflinePolicy.FAIL && step.critical) {
+						stepsFailed++;
+						criticalStepFailed = true;
+						stepResults.push({
+							order: step.order,
+							deviceId: step.deviceId,
+							status: 'failed',
+							error: 'Device offline (offline policy: FAIL)',
+						});
+						this.logger.warn(`Critical device offline, aborting routing activation`);
+						break;
+					}
+
+					// Handle WAIT policy - wait for device to come online with timeout
+					if (routing.offlinePolicy === MediaOfflinePolicy.WAIT) {
+						const WAIT_TIMEOUT_MS = 10000; // 10 second timeout
+						const POLL_INTERVAL_MS = 500;
+						const startTime = Date.now();
+						let deviceOnline = false;
+
+						this.logger.debug(`Waiting for device ${step.deviceId} to come online (timeout: ${WAIT_TIMEOUT_MS}ms)`);
+
+						while (Date.now() - startTime < WAIT_TIMEOUT_MS) {
+							await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+							const refreshedDevices = await this.spacesService.findDevicesByIds([step.deviceId]);
+							const refreshedDevice = refreshedDevices[0];
+
+							if (refreshedDevice?.status?.online) {
+								deviceOnline = true;
+								// Update the device reference for subsequent operations
+								deviceMap.set(step.deviceId, refreshedDevice);
+								this.logger.debug(`Device ${step.deviceId} came online after ${Date.now() - startTime}ms`);
+								break;
+							}
+						}
+
+						if (!deviceOnline) {
+							this.logger.warn(`Device ${step.deviceId} did not come online within timeout`);
+							if (step.critical) {
+								stepsFailed++;
+								criticalStepFailed = true;
+								stepResults.push({
+									order: step.order,
+									deviceId: step.deviceId,
+									status: 'failed',
+									error: 'Device offline (WAIT timeout expired)',
+								});
+								break;
+							}
+							stepsSkipped++;
+							stepResults.push({
+								order: step.order,
+								deviceId: step.deviceId,
+								status: 'skipped',
+								error: 'Device offline (WAIT timeout expired)',
+							});
+							continue;
+						}
+						// Device is now online - reassign from updated deviceMap
+						device = deviceMap.get(step.deviceId)!;
+					} else {
+						// SKIP policy (default) - skip offline devices
+						stepsSkipped++;
+						stepResults.push({
+							order: step.order,
+							deviceId: step.deviceId,
+							status: 'skipped',
+							error: 'Device offline',
+						});
+						continue;
+					}
+				}
+
+				// Handle input policy for input switching steps
+				// Check for specific input step descriptions to avoid matching power steps for endpoints named with "input"
+				const isInputStep =
+					step.action === 'set_property' &&
+					(step.description?.startsWith('Set display input') || step.description?.startsWith('Set audio input'));
+
+				if (isInputStep) {
+					if (routing.inputPolicy === MediaInputPolicy.NEVER) {
+						stepsSkipped++;
+						stepResults.push({
+							order: step.order,
+							deviceId: step.deviceId,
+							status: 'skipped',
+							error: 'Input switching disabled (input policy: NEVER)',
+						});
+						continue;
+					}
+
+					// Handle IF_DIFFERENT - check current value before switching
+					if (routing.inputPolicy === MediaInputPolicy.IF_DIFFERENT) {
+						const currentDevice = deviceMap.get(step.deviceId);
+						const currentChannel = currentDevice?.channels?.find((ch) => ch.id === step.channelId);
+						const currentProperty = currentChannel?.properties?.find((p) => p.id === step.propertyId);
+
+						if (currentProperty?.value !== undefined && currentProperty.value === step.value) {
+							stepsSkipped++;
+							stepResults.push({
+								order: step.order,
+								deviceId: step.deviceId,
+								status: 'skipped',
+								error: 'Input already set to target value (input policy: IF_DIFFERENT)',
+							});
+							continue;
+						}
+					}
+					// ALWAYS policy - proceed with input switching
+				}
+
+				// Find the channel and property
+				const channel = device.channels?.find((ch) => ch.id === step.channelId);
+				const property = channel?.properties?.find((p) => p.id === step.propertyId);
+
+				if (!channel || !property) {
+					stepsFailed++;
+					stepResults.push({
+						order: step.order,
+						deviceId: step.deviceId,
+						status: 'failed',
+						error: 'Channel or property not found',
+					});
+					if (step.critical) {
+						criticalStepFailed = true;
+						this.logger.warn(`Critical step failed: channel or property not found, aborting routing activation`);
+						break;
+					}
+					continue;
+				}
+
+				// Execute the command
+				const platform = this.platformRegistryService.get(device);
+
+				if (!platform) {
+					stepsFailed++;
+					stepResults.push({
+						order: step.order,
+						deviceId: step.deviceId,
+						status: 'failed',
+						error: 'No platform for device',
+					});
+					if (step.critical) {
+						criticalStepFailed = true;
+						this.logger.warn(`Critical step failed: no platform for device, aborting routing activation`);
+						break;
+					}
+					continue;
+				}
+
+				try {
+					const command: IDevicePropertyData = {
+						device,
+						channel,
+						property,
+						value: step.value as string | number | boolean,
+					};
+
+					const success = await platform.processBatch([command]);
+
+					if (success) {
+						stepsExecuted++;
+						stepResults.push({
+							order: step.order,
+							deviceId: step.deviceId,
+							status: 'success',
+						});
+					} else {
+						stepsFailed++;
+						stepResults.push({
+							order: step.order,
+							deviceId: step.deviceId,
+							status: 'failed',
+							error: 'Command execution failed',
+						});
+
+						// If critical step failed, abort
+						if (step.critical) {
+							criticalStepFailed = true;
+							this.logger.warn(`Critical step failed, aborting routing activation`);
+							break;
+						}
+					}
+				} catch (error) {
+					const err = error as Error;
+					stepsFailed++;
+					stepResults.push({
+						order: step.order,
+						deviceId: step.deviceId,
+						status: 'failed',
+						error: err.message,
 					});
 
-					// If critical step failed, abort
 					if (step.critical) {
-						this.logger.warn(`Critical step failed, aborting routing activation`);
+						criticalStepFailed = true;
+						this.logger.warn(`Critical step threw error, aborting: ${err.message}`);
 						break;
 					}
 				}
-			} catch (error) {
-				const err = error as Error;
-				stepsFailed++;
-				stepResults.push({
-					order: step.order,
-					deviceId: step.deviceId,
-					status: 'failed',
-					error: err.message,
-				});
-
-				if (step.critical) {
-					this.logger.warn(`Critical step threw error, aborting: ${err.message}`);
-					break;
-				}
 			}
+		} catch (error) {
+			// Handle unexpected errors during activation (e.g., JSON.parse failures, database errors)
+			const err = error as Error;
+			this.logger.error(`Unexpected error during routing activation: ${err.message}`);
+
+			activeRecord.activationState = MediaActivationState.FAILED;
+			activeRecord.lastError = err.message;
+			await this.activeRoutingRepository.save(activeRecord);
+
+			this.emitRoutingEvent(EventType.MEDIA_ROUTING_FAILED, routing.spaceId, routingId, routing.type, err.message);
+
+			throw error;
 		}
 
-		// Update active routing cache
-		const overallSuccess = stepsFailed === 0 || stepsExecuted > 0;
+		// Determine overall success and update active routing record
+		// Critical step failures always mean failure, regardless of other step outcomes
+		const overallSuccess = !criticalStepFailed && (stepsFailed === 0 || stepsExecuted > 0);
+		const activationState = overallSuccess ? MediaActivationState.ACTIVE : MediaActivationState.FAILED;
+
+		activeRecord.activationState = activationState;
+		activeRecord.stepsExecuted = stepsExecuted;
+		activeRecord.stepsFailed = stepsFailed;
+		activeRecord.stepsSkipped = stepsSkipped;
+		activeRecord.lastError = overallSuccess ? null : (stepResults.find((r) => r.error)?.error ?? null);
+		await this.activeRoutingRepository.save(activeRecord);
+
+		// Emit appropriate event
 		if (overallSuccess) {
-			activeRoutingCache.set(routing.spaceId, routingId);
+			this.emitRoutingEvent(EventType.MEDIA_ROUTING_ACTIVATED, routing.spaceId, routingId, routing.type);
+		} else {
+			this.emitRoutingEvent(
+				EventType.MEDIA_ROUTING_FAILED,
+				routing.spaceId,
+				routingId,
+				routing.type,
+				activeRecord.lastError ?? undefined,
+			);
 		}
 
 		// Emit state change event
@@ -563,17 +806,31 @@ export class SpaceMediaRoutingService {
 
 	/**
 	 * Deactivate media (activate OFF routing or just power off)
+	 * @param spaceId - The space to deactivate media for
+	 * @param skipConflictCheck - Skip conflict policy checking when activating OFF routing (prevents recursion)
 	 */
-	async deactivateMedia(spaceId: string): Promise<MediaRoutingActivationResultModel> {
+	async deactivateMedia(
+		spaceId: string,
+		skipConflictCheck: boolean = false,
+	): Promise<MediaRoutingActivationResultModel> {
 		// Try to find and activate OFF routing
 		const offRouting = await this.findByType(spaceId, MediaRoutingType.OFF);
 
 		if (offRouting) {
-			return this.activateRouting(offRouting.id);
+			// Pass skipConflictCheck to prevent infinite recursion if OFF routing has DEACTIVATE_FIRST policy
+			return this.activateRouting(offRouting.id, skipConflictCheck);
 		}
 
-		// If no OFF routing exists, just clear the active routing
-		activeRoutingCache.delete(spaceId);
+		// If no OFF routing exists, just clear the active routing record
+		const activeRecord = await this.getActiveRoutingRecord(spaceId);
+		if (activeRecord) {
+			activeRecord.activationState = MediaActivationState.DEACTIVATED;
+			activeRecord.routingId = null;
+			await this.activeRoutingRepository.save(activeRecord);
+		}
+
+		// Emit deactivated event
+		this.emitRoutingEvent(EventType.MEDIA_ROUTING_DEACTIVATED, spaceId, null, MediaRoutingType.OFF);
 
 		// Emit state change
 		void this.emitMediaStateChange(spaceId);
@@ -589,16 +846,55 @@ export class SpaceMediaRoutingService {
 	}
 
 	/**
+	 * Get the active routing record for a space
+	 */
+	async getActiveRoutingRecord(spaceId: string): Promise<SpaceActiveMediaRoutingEntity | null> {
+		return this.activeRoutingRepository.findOne({
+			where: { spaceId },
+			relations: ['routing'],
+		});
+	}
+
+	/**
 	 * Get the current active routing for a space
+	 * Only returns a routing if it's in ACTIVE or ACTIVATING state (not FAILED or DEACTIVATED)
 	 */
 	async getActiveRouting(spaceId: string): Promise<SpaceMediaRoutingEntity | null> {
-		const activeId = activeRoutingCache.get(spaceId);
+		const activeRecord = await this.getActiveRoutingRecord(spaceId);
 
-		if (!activeId) {
+		// Only ACTIVE and ACTIVATING states are considered "active"
+		const isActive =
+			activeRecord &&
+			activeRecord.routingId &&
+			(activeRecord.activationState === MediaActivationState.ACTIVE ||
+				activeRecord.activationState === MediaActivationState.ACTIVATING);
+
+		if (!isActive) {
 			return null;
 		}
 
-		return this.findOne(activeId);
+		return this.findOne(activeRecord.routingId);
+	}
+
+	/**
+	 * Emit routing activation event
+	 */
+	private emitRoutingEvent(
+		eventType: EventType,
+		spaceId: string,
+		routingId: string | null,
+		routingType: MediaRoutingType,
+		error?: string,
+	): void {
+		this.eventEmitter.emit(eventType, {
+			space_id: spaceId,
+			routing_id: routingId,
+			routing_type: routingType,
+			error,
+			timestamp: new Date().toISOString(),
+		});
+
+		this.logger.debug(`Emitted ${eventType} event spaceId=${spaceId} routingId=${routingId}`);
 	}
 
 	/**

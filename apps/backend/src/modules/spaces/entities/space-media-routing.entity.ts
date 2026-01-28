@@ -5,7 +5,13 @@ import { Column, Entity, JoinColumn, ManyToOne, Unique } from 'typeorm';
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
-import { MediaPowerPolicy, MediaRoutingType } from '../spaces.constants';
+import {
+	MediaConflictPolicy,
+	MediaInputPolicy,
+	MediaOfflinePolicy,
+	MediaPowerPolicy,
+	MediaRoutingType,
+} from '../spaces.constants';
 
 import { SpaceMediaEndpointEntity } from './space-media-endpoint.entity';
 import { SpaceEntity } from './space.entity';
@@ -235,6 +241,67 @@ export class SpaceMediaRoutingEntity extends BaseEntity {
 		default: MediaPowerPolicy.ON,
 	})
 	powerPolicy: MediaPowerPolicy;
+
+	@ApiProperty({
+		name: 'input_policy',
+		description: 'How input switching is handled when activating this routing',
+		enum: MediaInputPolicy,
+		example: MediaInputPolicy.ALWAYS,
+	})
+	@Expose({ name: 'input_policy' })
+	@IsEnum(MediaInputPolicy)
+	@Transform(
+		({ obj }: { obj: { input_policy?: string; inputPolicy?: string } }) => obj.input_policy ?? obj.inputPolicy,
+		{
+			toClassOnly: true,
+		},
+	)
+	@Column({
+		type: 'varchar',
+		default: MediaInputPolicy.ALWAYS,
+	})
+	inputPolicy: MediaInputPolicy;
+
+	@ApiProperty({
+		name: 'conflict_policy',
+		description: 'How conflicts with existing routing are resolved',
+		enum: MediaConflictPolicy,
+		example: MediaConflictPolicy.REPLACE,
+	})
+	@Expose({ name: 'conflict_policy' })
+	@IsEnum(MediaConflictPolicy)
+	@Transform(
+		({ obj }: { obj: { conflict_policy?: string; conflictPolicy?: string } }) =>
+			obj.conflict_policy ?? obj.conflictPolicy,
+		{
+			toClassOnly: true,
+		},
+	)
+	@Column({
+		type: 'varchar',
+		default: MediaConflictPolicy.REPLACE,
+	})
+	conflictPolicy: MediaConflictPolicy;
+
+	@ApiProperty({
+		name: 'offline_policy',
+		description: 'How offline devices are handled during activation',
+		enum: MediaOfflinePolicy,
+		example: MediaOfflinePolicy.SKIP,
+	})
+	@Expose({ name: 'offline_policy' })
+	@IsEnum(MediaOfflinePolicy)
+	@Transform(
+		({ obj }: { obj: { offline_policy?: string; offlinePolicy?: string } }) => obj.offline_policy ?? obj.offlinePolicy,
+		{
+			toClassOnly: true,
+		},
+	)
+	@Column({
+		type: 'varchar',
+		default: MediaOfflinePolicy.SKIP,
+	})
+	offlinePolicy: MediaOfflinePolicy;
 
 	@ApiProperty({
 		name: 'is_default',

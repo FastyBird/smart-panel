@@ -48,6 +48,7 @@ import {
 } from './dto/sensor-role.dto';
 import { ReqSuggestionFeedbackDto, SuggestionFeedbackDto } from './dto/suggestion.dto';
 import { ReqUpdateSpaceDto, UpdateSpaceDto } from './dto/update-space.dto';
+import { SpaceActiveMediaRoutingEntity } from './entities/space-active-media-routing.entity';
 import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
 import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
@@ -56,6 +57,9 @@ import { SpaceMediaRoutingEntity } from './entities/space-media-routing.entity';
 import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
 import { SpaceEntity } from './entities/space.entity';
 import {
+	ActiveMediaRoutingResponseModel,
+	ActiveMediaRoutingStateModel,
+	ActiveMediaRoutingStateResponseModel,
 	MediaCapabilitiesResponseModel,
 	MediaCapabilityMappingModel,
 	MediaCapabilitySummaryModel,
@@ -243,6 +247,9 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	MediaRoutingsResponseModel,
 	MediaStateV2Model,
 	MediaStateV2ResponseModel,
+	ActiveMediaRoutingStateModel,
+	ActiveMediaRoutingResponseModel,
+	ActiveMediaRoutingStateResponseModel,
 	// Sensor response models
 	SensorStateDataModel,
 	SensorStateResponseModel,
@@ -289,5 +296,6 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	SpaceCoversRoleEntity,
 	SpaceMediaEndpointEntity,
 	SpaceMediaRoutingEntity,
+	SpaceActiveMediaRoutingEntity,
 	SpaceSensorRoleEntity,
 ];
