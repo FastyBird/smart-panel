@@ -10,6 +10,7 @@ import 'package:fastybird_smart_panel/core/services/mdns_discovery.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/system_pages/export.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 
@@ -59,7 +60,6 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
   DiscoveredBackend? _selectedBackend;
   bool _showManualEntry = false;
   bool _wasManualEntry = false;
-  bool _showErrorToast = false;
 
   // Discovery session tracking to prevent race conditions
   // Each discovery operation gets a unique session ID; only the current session
@@ -82,7 +82,12 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
 
     // Show error toast if there's an error message
     if (widget.errorMessage != null) {
-      _showErrorToast = true;
+      // Use post-frame callback to show toast after build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && widget.errorMessage != null) {
+          AppToast.showError(context, message: widget.errorMessage!);
+        }
+      });
     }
   }
 
@@ -104,12 +109,14 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     // Increment session ID to invalidate any pending discovery operations
     final currentSession = ++_discoverySessionId;
 
+    // Dismiss any existing toast when starting new discovery
+    AppToast.dismiss();
+
     setState(() {
       _state = DiscoveryState.searching;
       _backends = [];
       _selectedBackend = null;
       _showManualEntry = false;
-      _showErrorToast = false;
     });
 
     try {
@@ -185,10 +192,10 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
 
   void _confirmSelection() {
     if (_selectedBackend != null) {
+      AppToast.dismiss();
       setState(() {
         _state = DiscoveryState.connecting;
         _wasManualEntry = false;
-        _showErrorToast = false;
       });
       widget.onBackendSelected(_selectedBackend!);
     }
@@ -253,10 +260,10 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
       return;
     }
 
+    AppToast.dismiss();
     setState(() {
       _state = DiscoveryState.connecting;
       _wasManualEntry = true;
-      _showErrorToast = false;
     });
 
     widget.onManualUrlEntered(url);
@@ -280,12 +287,6 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     }
   }
 
-  void _dismissErrorToast() {
-    setState(() {
-      _showErrorToast = false;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -297,27 +298,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
           builder: (context, constraints) {
             final isLandscape = constraints.maxWidth > constraints.maxHeight;
 
-            return Stack(
-              children: [
-                // Main content
-                _buildContent(context, isDark, isLandscape),
-
-                // Error toast
-                if (_showErrorToast && widget.errorMessage != null)
-                  Positioned(
-                    left: AppSpacings.pLg + AppSpacings.pMd,
-                    right: AppSpacings.pLg + AppSpacings.pMd,
-                    bottom: _screenService.scale(isLandscape ? 100 : 160),
-                    child: Center(
-                      child: _ErrorToast(
-                        message: widget.errorMessage!,
-                        onDismiss: _dismissErrorToast,
-                        isDark: isDark,
-                      ),
-                    ),
-                  ),
-              ],
-            );
+            return _buildContent(context, isDark, isLandscape);
           },
         ),
       ),
@@ -1014,63 +995,3 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
   }
 }
 
-/// Error toast widget
-class _ErrorToast extends StatelessWidget {
-  final String message;
-  final VoidCallback? onDismiss;
-  final bool isDark;
-
-  const _ErrorToast({
-    required this.message,
-    this.onDismiss,
-    this.isDark = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: AppSpacings.pMd,
-        vertical: AppSpacings.pSm,
-      ),
-      decoration: BoxDecoration(
-        color: SystemPagesTheme.error(isDark),
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.black.withValues(alpha: 0.3),
-            blurRadius: 32,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.error_outline, color: AppColors.white, size: 20),
-          SizedBox(width: AppSpacings.pSm),
-          Flexible(
-            child: Text(
-              message,
-              style: TextStyle(
-                color: AppColors.white,
-                fontSize: AppFontSize.small,
-              ),
-            ),
-          ),
-          if (onDismiss != null) ...[
-            SizedBox(width: AppSpacings.pXs),
-            GestureDetector(
-              onTap: onDismiss,
-              child: Icon(
-                Icons.close,
-                color: AppColors.white.withValues(alpha: 0.7),
-                size: 20,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
