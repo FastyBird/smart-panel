@@ -8,17 +8,41 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/connection_state_manager.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/types/connection_state.dart';
 import 'package:fastybird_smart_panel/core/widgets/connection/export.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_connection_lost.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 
 // ============================================================================
 // DEMO APP
 // ============================================================================
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Register mock services for demo
+  if (!locator.isRegistered<VisualDensityService>()) {
+    locator.registerSingleton<VisualDensityService>(
+      VisualDensityService(pixelRatio: 2.0),
+    );
+  }
+
+  if (!locator.isRegistered<ScreenService>()) {
+    locator.registerSingleton<ScreenService>(
+      ScreenService(
+        screenWidth: 1080,
+        screenHeight: 1920,
+        pixelRatio: 2.0,
+      ),
+    );
+  }
+
   runApp(const ConnectionStatusDemo());
 }
 
@@ -114,6 +138,17 @@ class _ConnectionStatusDemoState extends State<ConnectionStatusDemo> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: _isDark ? ThemeData.dark() : ThemeData.light(),
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en', 'US'),
+        Locale('cs', 'CZ'),
+      ],
+      locale: const Locale('en', 'US'),
       home: Scaffold(
         backgroundColor: _isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF5F5F5),
         appBar: AppBar(
