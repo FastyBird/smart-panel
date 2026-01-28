@@ -11,7 +11,7 @@ class MediaTargetsRepository extends ChangeNotifier {
 
   /// Media targets indexed by space ID, then by target ID.
   final Map<String, Map<String, MediaTargetModel>> _mediaTargets = {};
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   MediaTargetsRepository({
     required SpacesModuleClient apiClient,
@@ -69,6 +69,85 @@ class MediaTargetsRepository extends ChangeNotifier {
 
     if (!mapEquals(_mediaTargets[spaceId], newData)) {
       _mediaTargets[spaceId] = newData;
+      notifyListeners();
+    }
+  }
+
+  /// Delete a single media target by ID
+  void delete(String mediaTargetId) {
+    for (final spaceId in _mediaTargets.keys) {
+      if (_mediaTargets[spaceId]?.containsKey(mediaTargetId) == true) {
+        _mediaTargets[spaceId]!.remove(mediaTargetId);
+
+        if (kDebugMode) {
+          debugPrint(
+            '[SPACES MODULE][MEDIA_TARGETS] Removed media target: $mediaTargetId',
+          );
+        }
+
+        notifyListeners();
+        return;
+      }
+    }
+  }
+
+  /// Insert or update a single media target from raw JSON data
+  void insertOne(Map<String, dynamic> json) {
+    final spaceId = json['space'] is Map<String, dynamic>
+        ? json['space']['id'] as String?
+        : json['space_id'] as String?;
+
+    if (spaceId == null) {
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][MEDIA_TARGETS] Cannot insert media target: missing space ID',
+        );
+      }
+      return;
+    }
+
+    try {
+      final mediaTarget = MediaTargetModel.fromJson(json, spaceId: spaceId);
+      _mediaTargets[spaceId] ??= {};
+      _mediaTargets[spaceId]![mediaTarget.id] = mediaTarget;
+
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][MEDIA_TARGETS] Inserted/updated media target: ${mediaTarget.id}',
+        );
+      }
+
+      notifyListeners();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][MEDIA_TARGETS] Failed to parse media target: $e',
+        );
+      }
+    }
+  }
+
+  /// Update device name for all media targets referencing the given device
+  void updateDeviceName(String deviceId, String newDeviceName) {
+    bool updated = false;
+
+    for (final spaceId in _mediaTargets.keys) {
+      final target = _mediaTargets[spaceId]?[deviceId];
+      if (target != null && target.deviceName != newDeviceName) {
+        _mediaTargets[spaceId]![deviceId] = target.copyWith(
+          deviceName: newDeviceName,
+        );
+        updated = true;
+
+        if (kDebugMode) {
+          debugPrint(
+            '[SPACES MODULE][MEDIA_TARGETS] Updated device name for: $deviceId',
+          );
+        }
+      }
+    }
+
+    if (updated) {
       notifyListeners();
     }
   }
