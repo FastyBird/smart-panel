@@ -2,233 +2,81 @@
 
 This document describes the architecture of the media control system in the Smart Panel backend.
 
-## Overview
+> See `docs/features/media-domain-convergence.md` for the finalized design contracts and invariants.
 
-The media domain provides multi-device media control with support for:
-- **Televisions** - Power, volume, mute, and input control
-- **Speakers** - Volume and mute control
-- **AV Receivers** - Power, volume, and input switching
-- **Set-Top Boxes** - Power and input control
-- **Game Consoles** - Power control
-- **Projectors** - Power and input control
-- **Media Players** - Playback control (play, pause, next, previous)
+## Architecture Summary
+
+The Media domain uses a **routing-based, activity-first architecture**:
+- **Endpoints**: Functional abstractions over device capabilities (display, audio_output, source, remote_target)
+- **Routings**: Activity presets that define which endpoints participate in a media activity
+- **Single Active Routing**: Only one routing can be active per space at any time
+- **Explicit Capabilities**: Capabilities are never hidden; UI renders based on what's available
+
+### Key Services
+- `SpaceMediaEndpointService` - Manages endpoints and capability detection
+- `SpaceMediaRoutingService` - Handles routing CRUD, activation, and state
+
+### Key Entities
+- `SpaceMediaEndpointEntity` - Functional device projection with capabilities
+- `SpaceMediaRoutingEntity` - Activity preset with endpoint references and policies
+- `SpaceActiveMediaRoutingEntity` - Tracks current active routing per space
+
+---
+
+## Endpoint Types
+
+| Type | Description | Typical Devices |
+|------|-------------|-----------------|
+| DISPLAY | Visual output | TV, Projector |
+| AUDIO_OUTPUT | Sound output | Receiver, Speaker, TV |
+| SOURCE | Content source | Streamer, Console, STB |
+| REMOTE_TARGET | Remote control target | TV, Streamer |
+
+## Routing Types
+
+| Type | Description | Default Endpoints |
+|------|-------------|-------------------|
+| WATCH | Watch video content | Display + Audio + Source |
+| LISTEN | Listen to audio | Audio + Source |
+| GAMING | Play games | Display + Audio + Console |
+| BACKGROUND | Ambient audio | Audio only |
+| OFF | All media off | All endpoints powered off |
+| CUSTOM | User-defined | Any combination |
+
+## Activation Policies
+
+| Policy | Options | Default | Description |
+|--------|---------|---------|-------------|
+| Power Policy | ON, OFF, UNCHANGED | Per routing type | Power state for endpoints |
+| Input Policy | ALWAYS, IF_DIFFERENT, NEVER | ALWAYS | When to switch inputs |
+| Conflict Policy | REPLACE, FAIL_IF_ACTIVE, DEACTIVATE_FIRST | REPLACE | How to handle existing routing |
+| Offline Policy | SKIP, FAIL, WAIT | SKIP | How to handle offline devices |
 
 ## Service Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        SpacesController                          │
-│                     POST /spaces/:id/media                       │
+│              POST /spaces/:id/media/routings/activate            │
 └───────────────────────────────┬─────────────────────────────────┘
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                       MediaIntentService                         │
-│  - executeMediaIntent()                                          │
-│  - Intent routing (SET_MODE, VOLUME_DELTA, PLAY, etc.)          │
-│  - Role-based orchestration via selectMediaForMode()            │
-│  - Per-device command execution                                  │
-│  - InfluxDB storage                                              │
+│                    SpaceMediaRoutingService                       │
+│  - activateRouting()                                             │
+│  - buildExecutionPlan()                                          │
+│  - deactivateMedia()                                             │
+│  - getMediaStateV2()                                             │
 └───────────────────────────────┬─────────────────────────────────┘
                                 │
                 ┌───────────────┼───────────────┐
                 ▼               ▼               ▼
 ┌───────────────────┐ ┌─────────────────┐ ┌──────────────────────┐
-│ SpaceMediaState   │ │ PlatformRegistry│ │ IntentTimeseries     │
-│     Service       │ │    Service      │ │     Service          │
-│ - getMediaState   │ │ - get(device)   │ │ - storeMediaState    │
-│ - detectMode      │ │ - processBatch()│ │   Change()           │
-│ - aggregateByRole │ │                 │ │ - getLastMediaState  │
+│ SpaceMediaEndpoint│ │ PlatformRegistry│ │ EventEmitter2        │
+│     Service       │ │    Service      │ │                      │
+│ - findBySpace     │ │ - get(device)   │ │ - routing events     │
+│ - detectCaps      │ │ - processBatch()│ │ - state change events│
 └───────────────────┘ └─────────────────┘ └──────────────────────┘
-```
-
-## Key Services
-
-### MediaIntentService
-
-**Location:** `apps/backend/src/modules/spaces/services/media-intent.service.ts`
-
-Handles all media intent operations:
-
-1. **SET_MODE** - Apply a media mode (OFF, BACKGROUND, FOCUSED, PARTY)
-2. **POWER_ON/POWER_OFF** - Turn all media devices on/off
-3. **VOLUME_SET** - Set specific volume level (0-100)
-4. **VOLUME_DELTA** - Adjust volume by delta (SMALL: 5%, MEDIUM: 10%, LARGE: 20%)
-5. **MUTE/UNMUTE** - Mute or unmute all devices
-6. **PLAY/PAUSE/STOP/NEXT/PREVIOUS** - Playback control
-7. **INPUT_SET** - Set input source on supported devices
-8. **ROLE_POWER/ROLE_VOLUME** - Control specific role's devices
-
-Each intent:
-- Creates an Intent record for tracking
-- Selects devices based on role configuration using `selectMediaForMode()`
-- Executes commands on all applicable devices
-- Stores results to InfluxDB for historical tracking
-- Emits WebSocket events for real-time UI updates
-
-#### selectMediaForMode() Pure Function
-
-**Location:** `apps/backend/src/modules/spaces/services/media-intent.service.ts`
-
-A deterministic pure function that handles device selection:
-
-1. **No roles configured** (MVP fallback) - All devices get PRIMARY role rules
-2. **Roles configured** - Each device gets its role-specific rules
-3. **Unassigned devices** - Treated as SECONDARY (fallback behavior)
-4. **HIDDEN devices** - Always skipped
-
-### SpaceMediaStateService
-
-**Location:** `apps/backend/src/modules/spaces/services/space-media-state.service.ts`
-
-Calculates aggregated media state for a space:
-
-- **Mode Detection** - Determines current mode by matching device states to mode rules
-- **Per-Role Aggregation** - Aggregates volume/mute state per role
-- **Mixed State Detection** - Detects when devices have inconsistent states
-- **Last Applied Mode** - Retrieves last user-applied mode from InfluxDB
-
-### SpaceMediaRoleService
-
-**Location:** `apps/backend/src/modules/spaces/services/space-media-role.service.ts`
-
-Manages device-level role assignments:
-
-- **Role CRUD** - Create, read, update, delete role assignments
-- **Bulk Operations** - Set multiple roles in one operation
-- **Default Role Inference** - Auto-assign roles based on device category
-- **Media Target Discovery** - List all media devices with their capabilities
-
-### SpaceMediaStateListener
-
-**Location:** `apps/backend/src/modules/spaces/listeners/space-media-state.listener.ts`
-
-Reacts to device property changes and emits `MEDIA_STATE_CHANGED` events.
-
-**Triggering Properties:**
-- `ON` / `ACTIVE` - Power state changes
-- `VOLUME` - Volume level changes
-- `MUTE` - Mute state changes
-- `COMMAND` / `REMOTE_KEY` - Playback changes
-
-**Event Flow:**
-```
-Device Property Change
-        │
-        ▼
-┌───────────────────────────────────────┐
-│  SpaceMediaStateListener              │
-│  @OnEvent(CHANNEL_PROPERTY_VALUE_SET) │
-│  @OnEvent(CHANNEL_PROPERTY_UPDATED)   │
-└───────────────────────────────────────┘
-        │
-        ▼ (if media-relevant, debounced 100ms)
-┌───────────────────────────────────────┐
-│  SpaceMediaStateService               │
-│  getMediaState(roomId)                │
-└───────────────────────────────────────┘
-        │
-        ▼
-┌───────────────────────────────────────┐
-│  EventEmitter2                        │
-│  emit(MEDIA_STATE_CHANGED, ...)       │
-└───────────────────────────────────────┘
-        │
-        ▼
-┌───────────────────────────────────────┐
-│  WebSocket Gateway                    │
-│  Broadcasts to connected clients      │
-└───────────────────────────────────────┘
-```
-
-## Media Modes
-
-| Mode | Description | PRIMARY | SECONDARY | BACKGROUND | GAMING |
-|------|-------------|---------|-----------|------------|--------|
-| OFF | All media devices off | OFF | OFF | OFF | OFF |
-| BACKGROUND | Background music only | OFF | OFF | ON @ 30% | OFF |
-| FOCUSED | Main device active | ON @ 50% | OFF | ON (muted) | OFF |
-| PARTY | All devices at high volume | ON @ 70% | ON @ 70% | ON @ 70% | ON @ 70% |
-
-## Device Roles
-
-Devices can be assigned roles to control their participation in media modes:
-
-| Role | Description | Default Assignment |
-|------|-------------|-------------------|
-| PRIMARY | Main entertainment device (TV/Projector) | First TV or Projector |
-| SECONDARY | Secondary displays/speakers | AV Receiver, Set-Top Box, other TVs |
-| BACKGROUND | Background music speakers | Speakers |
-| GAMING | Gaming-optimized devices | Game Consoles |
-| HIDDEN | Excluded from space-level control | Manual assignment only |
-
-### Role Auto-Assignment
-
-When `inferDefaultMediaRoles()` is called:
-1. **Television/Projector** → First one becomes PRIMARY, others SECONDARY
-2. **AV Receiver/Set-Top Box/Media/Streaming Service** → SECONDARY
-3. **Speaker** → BACKGROUND
-4. **Game Console** → GAMING
-
-## Media State Calculation
-
-```typescript
-interface SpaceMediaState {
-  // Mode detection
-  detectedMode: MediaMode | null;     // Current detected mode
-  modeConfidence: 'exact' | 'approximate' | 'none';
-  modeMatchPercentage: number | null;
-
-  // Last applied mode (from InfluxDB)
-  lastAppliedMode: MediaMode | null;
-  lastAppliedVolume: number | null;
-  lastAppliedMuted: boolean | null;
-  lastAppliedAt: Date | null;
-
-  // Summary
-  totalDevices: number;               // Number of media devices
-  devicesOn: number;                  // Devices currently on
-  averageVolume: number | null;       // Average volume across devices
-  anyMuted: boolean;                  // Any device muted
-
-  // Per-role state
-  roles: Partial<Record<MediaRole, RoleMediaAggregatedState>>;
-
-  // Devices without role
-  other: OtherMediaState;
-}
-
-interface RoleMediaAggregatedState {
-  role: MediaRole;
-  isOn: boolean;
-  isOnMixed: boolean;                 // Some on, some off
-  volume: number | null;              // null if mixed
-  isMuted: boolean;
-  isVolumeMixed: boolean;
-  isMutedMixed: boolean;
-  devicesCount: number;
-  devicesOn: number;
-}
-```
-
-### Mode Detection Algorithm
-
-```
-1. For each device with a role:
-   - Get device's current state (power, volume, mute)
-   - Get expected rule from mode orchestration
-
-2. Check if device matches the rule:
-   - Power matches (or rule doesn't specify)
-   - Volume within VOLUME_MATCH_TOLERANCE (5%) (or rule doesn't specify)
-   - Mute matches (or rule doesn't specify)
-
-3. Calculate match percentage:
-   - Exact match (100%) → 'exact' confidence
-   - 80%+ match → 'approximate' confidence
-   - < 80% → no mode detected
-
-4. Return best matching mode
 ```
 
 ## Channel Capability Detection
@@ -246,12 +94,42 @@ Playback detection:
 - **MEDIA_PLAYBACK channel** → `COMMAND` property
 - **TELEVISION channel** → `REMOTE_KEY` property (for remote control simulation)
 
+## WebSocket Events
+
+| Event | Trigger | Payload |
+|-------|---------|---------|
+| `MEDIA_ROUTING_ACTIVATING` | Activation started | space_id, routing_id, routing_type |
+| `MEDIA_ROUTING_ACTIVATED` | Activation successful | space_id, routing_id, routing_type |
+| `MEDIA_ROUTING_FAILED` | Activation failed | space_id, routing_id, routing_type, error |
+| `MEDIA_ROUTING_DEACTIVATED` | Routing deactivated | space_id, routing_id, routing_type |
+| `MEDIA_STATE_CHANGED` | Media state changed | space_id, state object |
+
+**Event Flow:**
+```
+Device Property Change
+        │
+        ▼ (if media-relevant, debounced 100ms)
+┌───────────────────────────────────────┐
+│  SpaceMediaRoutingService             │
+│  getMediaStateV2(spaceId)             │
+└───────────────────────────────────────┘
+        │
+        ▼
+┌───────────────────────────────────────┐
+│  EventEmitter2                        │
+│  emit(MEDIA_STATE_CHANGED, ...)       │
+└───────────────────────────────────────┘
+        │
+        ▼
+┌───────────────────────────────────────┐
+│  WebSocket Gateway                    │
+│  Broadcasts to connected clients      │
+└───────────────────────────────────────┘
+```
+
 ## Constants
 
 ```typescript
-// Volume match tolerance for mode detection (percentage points)
-const VOLUME_MATCH_TOLERANCE = 5;
-
 // Volume delta steps
 export const VOLUME_DELTA_STEPS: Record<VolumeDelta, number> = {
   [VolumeDelta.SMALL]: 5,    // 5%
@@ -281,56 +159,26 @@ export const MEDIA_CHANNEL_CATEGORIES = [
 ];
 ```
 
-## InfluxDB Storage
-
-Media mode changes are stored in InfluxDB for historical tracking:
-
-**Measurement:** `space_intent`
-**Tags:**
-- `space_id` - Space UUID
-- `type` - Intent type (e.g., `space.media.setMode`)
-
-**Fields:**
-- `mode` - Media mode
-- `volume` - Volume value (for volume intents)
-- `muted` - Mute state
-- `total_devices` - Number of targeted devices
-- `affected_devices` - Successfully updated devices
-- `failed_devices` - Failed device updates
-
 ## Error Handling
 
-1. **Device failures** - Partial success allowed (at least one device must succeed)
-2. **Platform not found** - Device skipped, counted as failed
-3. **Property change events** - Errors logged, event processing continues
-4. **InfluxDB writes** - Fire-and-forget with internal error handling
+1. **Critical step failure** - Routing activation aborted, state set to FAILED
+2. **Non-critical step failure** - Routing continues, partial success reported
+3. **Device offline** - Handled per offline policy (SKIP, FAIL, or WAIT)
+4. **Platform not found** - Step failed, counted in stepsFailed
 
 ## Performance Optimizations
 
 The media domain is optimized for low-resource devices:
 
-### Query Optimization
-- **Parallel data fetching** - `getMediaState()` fetches devices, role map, and InfluxDB state in parallel
-- **Data reuse** - Internal methods reuse already-fetched devices and role maps
-- **Early exits** - Returns early when space has no devices or no media capabilities
-
 ### Event Debouncing
-- **SpaceMediaStateListener** debounces `MEDIA_STATE_CHANGED` events (100ms delay)
+- `MEDIA_STATE_CHANGED` events are debounced (100ms delay)
 - Prevents WebSocket flooding when devices update multiple properties simultaneously
-- Single state recalculation per debounce window regardless of property change count
 
 ### Code Design
-- **Pure function for mode selection** - `selectMediaForMode()` is a deterministic pure function
-- **Fire-and-forget InfluxDB writes** - Non-blocking storage of mode changes
-- **Minimal allocations** - Reuses data structures where possible
+- **Fire-and-forget** state change events - Non-blocking
+- **Early exits** - Returns early when space has no media endpoints
 
 ## Testing
-
-Unit tests cover all critical services:
-
-- `media-intent.service.spec.ts` - Intent execution and selectMediaForMode tests
-- `space-media-role.service.spec.ts` - Role service tests
-- `space-media-state.service.spec.ts` - State calculation and mode detection tests
 
 Run tests:
 ```bash
@@ -343,8 +191,24 @@ npx jest "media" --no-coverage
 | Aspect | Climate | Media |
 |--------|---------|-------|
 | Device Types | Thermostats, Heaters, ACs | TVs, Speakers, AVRs |
-| Modes | OFF, HEAT, COOL, AUTO | OFF, BACKGROUND, FOCUSED, PARTY |
-| Role Types | AUTO, HEATING_ONLY, COOLING_ONLY, SENSOR, HIDDEN | PRIMARY, SECONDARY, BACKGROUND, GAMING, HIDDEN |
+| Control Model | Role-based intents | Routing-based activation |
 | Primary Control | Temperature setpoint | Volume level |
-| Secondary Control | Mode selection | Power, Mute |
-| State Detection | Based on heating/cooling status | Based on power/volume/mute matching |
+| Secondary Control | Mode selection | Power, Input, Mute |
+| State Detection | Based on heating/cooling status | Based on active routing + device state |
+
+## Unused Code
+
+The following code exists in the codebase from an earlier unreleased design and should not be used:
+- `MediaRole` enum
+- `SpaceMediaRoleService`
+- `MediaMode` enum
+- `MediaIntentService`
+- `SpaceMediaStateService`
+
+New development must use `SpaceMediaEndpointService` and `SpaceMediaRoutingService`.
+
+## Documentation References
+
+- **Convergence Phase**: `docs/features/media-domain-convergence.md`
+- **Backend Refactor Spec**: `docs/features/media-domain-backend-refactor.md`
+- **Constants**: `apps/backend/src/modules/spaces/spaces.constants.ts`
