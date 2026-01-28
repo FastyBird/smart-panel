@@ -17,6 +17,7 @@ import { WebsocketModule } from '../websocket/websocket.module';
 
 import { SpacesController } from './controllers/spaces.controller';
 import { UpdateSpacesConfigDto } from './dto/update-config.dto';
+import { SpaceActiveMediaRoutingEntity } from './entities/space-active-media-routing.entity';
 import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
 import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
@@ -67,6 +68,7 @@ import { IntentSpecLoaderService } from './spec';
 			SpaceCoversRoleEntity,
 			SpaceMediaEndpointEntity,
 			SpaceMediaRoutingEntity,
+			SpaceActiveMediaRoutingEntity,
 			SpaceSensorRoleEntity,
 			DeviceEntity,
 			ChannelEntity,

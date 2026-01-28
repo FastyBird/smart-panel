@@ -9,6 +9,7 @@ import { PropertyCategory } from '../../devices/devices.constants';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { CreateMediaRoutingDto, UpdateMediaRoutingDto } from '../dto/media-routing.dto';
+import { SpaceActiveMediaRoutingEntity } from '../entities/space-active-media-routing.entity';
 import { SpaceMediaEndpointEntity } from '../entities/space-media-endpoint.entity';
 import { SpaceMediaRoutingEntity } from '../entities/space-media-routing.entity';
 import {
@@ -23,6 +24,10 @@ import {
 	EventType,
 	MEDIA_ROUTING_DEFAULTS,
 	MEDIA_ROUTING_TYPE_META,
+	MediaActivationState,
+	MediaConflictPolicy,
+	MediaInputPolicy,
+	MediaOfflinePolicy,
 	MediaPowerPolicy,
 	MediaRoutingType,
 	SPACES_MODULE_NAME,
@@ -31,11 +36,6 @@ import { SpacesValidationException } from '../spaces.exceptions';
 
 import { SpaceMediaEndpointService } from './space-media-endpoint.service';
 import { SpacesService } from './spaces.service';
-
-/**
- * In-memory cache for active routing per space
- */
-const activeRoutingCache = new Map<string, string>();
 
 @Injectable()
 export class SpaceMediaRoutingService {
@@ -46,6 +46,8 @@ export class SpaceMediaRoutingService {
 		private readonly repository: Repository<SpaceMediaRoutingEntity>,
 		@InjectRepository(SpaceMediaEndpointEntity)
 		private readonly endpointRepository: Repository<SpaceMediaEndpointEntity>,
+		@InjectRepository(SpaceActiveMediaRoutingEntity)
+		private readonly activeRoutingRepository: Repository<SpaceActiveMediaRoutingEntity>,
 		private readonly spacesService: SpacesService,
 		@Inject(forwardRef(() => SpaceMediaEndpointService))
 		private readonly endpointService: SpaceMediaEndpointService,
@@ -152,6 +154,9 @@ export class SpaceMediaRoutingService {
 			audioInput: dto.audioInput ?? null,
 			audioVolumePreset: dto.audioVolumePreset ?? defaults.audioVolumePreset,
 			powerPolicy: dto.powerPolicy ?? defaults.powerPolicy,
+			inputPolicy: dto.inputPolicy ?? defaults.inputPolicy,
+			conflictPolicy: dto.conflictPolicy ?? defaults.conflictPolicy,
+			offlinePolicy: dto.offlinePolicy ?? defaults.offlinePolicy,
 			isDefault: false,
 		});
 
@@ -213,6 +218,15 @@ export class SpaceMediaRoutingService {
 		if (dto.powerPolicy !== undefined) {
 			routing.powerPolicy = dto.powerPolicy;
 		}
+		if (dto.inputPolicy !== undefined) {
+			routing.inputPolicy = dto.inputPolicy;
+		}
+		if (dto.conflictPolicy !== undefined) {
+			routing.conflictPolicy = dto.conflictPolicy;
+		}
+		if (dto.offlinePolicy !== undefined) {
+			routing.offlinePolicy = dto.offlinePolicy;
+		}
 		if (dto.isDefault !== undefined) {
 			routing.isDefault = dto.isDefault;
 		}
@@ -231,9 +245,13 @@ export class SpaceMediaRoutingService {
 		const routing = await this.findOne(routingId);
 
 		if (routing) {
-			// Clear active routing cache if this was active
-			if (activeRoutingCache.get(routing.spaceId) === routingId) {
-				activeRoutingCache.delete(routing.spaceId);
+			// Clear active routing if this was active
+			const activeRouting = await this.activeRoutingRepository.findOne({
+				where: { spaceId: routing.spaceId, routingId },
+			});
+
+			if (activeRouting) {
+				await this.activeRoutingRepository.remove(activeRouting);
 			}
 
 			await this.repository.remove(routing);
@@ -283,6 +301,9 @@ export class SpaceMediaRoutingService {
 						name: meta.label,
 						icon: meta.icon,
 						powerPolicy: defaults.powerPolicy,
+						inputPolicy: defaults.inputPolicy,
+						conflictPolicy: defaults.conflictPolicy,
+						offlinePolicy: defaults.offlinePolicy,
 						audioVolumePreset: defaults.audioVolumePreset,
 						isDefault: true,
 					});
@@ -410,6 +431,39 @@ export class SpaceMediaRoutingService {
 	 */
 	async activateRouting(routingId: string): Promise<MediaRoutingActivationResultModel> {
 		const routing = await this.getOneOrThrow(routingId);
+
+		// Handle conflict policy
+		const existingActive = await this.getActiveRoutingRecord(routing.spaceId);
+		if (existingActive && existingActive.routingId !== routingId) {
+			if (routing.conflictPolicy === MediaConflictPolicy.FAIL_IF_ACTIVE) {
+				throw new SpacesValidationException(
+					`Cannot activate routing: another routing is already active (conflict policy: FAIL_IF_ACTIVE)`,
+				);
+			}
+			// For REPLACE and DEACTIVATE_FIRST, we proceed (the database constraint ensures only one active)
+		}
+
+		// Emit activating event
+		this.emitRoutingEvent(EventType.MEDIA_ROUTING_ACTIVATING, routing.spaceId, routingId, routing.type);
+
+		// Update or create active routing record (set state to ACTIVATING)
+		let activeRecord = await this.getActiveRoutingRecord(routing.spaceId);
+		if (!activeRecord) {
+			activeRecord = this.activeRoutingRepository.create({
+				spaceId: routing.spaceId,
+				routingId,
+				activationState: MediaActivationState.ACTIVATING,
+				activatedAt: new Date(),
+				lastError: null,
+			});
+		} else {
+			activeRecord.routingId = routingId;
+			activeRecord.activationState = MediaActivationState.ACTIVATING;
+			activeRecord.activatedAt = new Date();
+			activeRecord.lastError = null;
+		}
+		await this.activeRoutingRepository.save(activeRecord);
+
 		const plan = await this.buildExecutionPlan(routingId);
 
 		this.logger.debug(`Activating routing id=${routingId} type=${routing.type} steps=${plan.totalSteps}`);
@@ -440,12 +494,25 @@ export class SpaceMediaRoutingService {
 				continue;
 			}
 
-			// Check if device is online
+			// Check if device is online and handle offline policy
 			if (!device.status?.online) {
-				stepsSkipped++;
 				if (!offlineDeviceIds.includes(step.deviceId)) {
 					offlineDeviceIds.push(step.deviceId);
 				}
+
+				if (routing.offlinePolicy === MediaOfflinePolicy.FAIL && step.critical) {
+					stepsFailed++;
+					stepResults.push({
+						order: step.order,
+						deviceId: step.deviceId,
+						status: 'failed',
+						error: 'Device offline (offline policy: FAIL)',
+					});
+					this.logger.warn(`Critical device offline, aborting routing activation`);
+					break;
+				}
+
+				stepsSkipped++;
 				stepResults.push({
 					order: step.order,
 					deviceId: step.deviceId,
@@ -453,6 +520,21 @@ export class SpaceMediaRoutingService {
 					error: 'Device offline',
 				});
 				continue;
+			}
+
+			// Handle input policy for input switching steps
+			if (step.action === 'set_property' && step.description?.includes('input')) {
+				if (routing.inputPolicy === MediaInputPolicy.NEVER) {
+					stepsSkipped++;
+					stepResults.push({
+						order: step.order,
+						deviceId: step.deviceId,
+						status: 'skipped',
+						error: 'Input switching disabled (input policy: NEVER)',
+					});
+					continue;
+				}
+				// IF_DIFFERENT would require reading current value - simplified for now
 			}
 
 			// Find the channel and property
@@ -533,10 +615,28 @@ export class SpaceMediaRoutingService {
 			}
 		}
 
-		// Update active routing cache
+		// Determine overall success and update active routing record
 		const overallSuccess = stepsFailed === 0 || stepsExecuted > 0;
+		const activationState = overallSuccess ? MediaActivationState.ACTIVE : MediaActivationState.FAILED;
+
+		activeRecord.activationState = activationState;
+		activeRecord.stepsExecuted = stepsExecuted;
+		activeRecord.stepsFailed = stepsFailed;
+		activeRecord.stepsSkipped = stepsSkipped;
+		activeRecord.lastError = overallSuccess ? null : (stepResults.find((r) => r.error)?.error ?? null);
+		await this.activeRoutingRepository.save(activeRecord);
+
+		// Emit appropriate event
 		if (overallSuccess) {
-			activeRoutingCache.set(routing.spaceId, routingId);
+			this.emitRoutingEvent(EventType.MEDIA_ROUTING_ACTIVATED, routing.spaceId, routingId, routing.type);
+		} else {
+			this.emitRoutingEvent(
+				EventType.MEDIA_ROUTING_FAILED,
+				routing.spaceId,
+				routingId,
+				routing.type,
+				activeRecord.lastError ?? undefined,
+			);
 		}
 
 		// Emit state change event
@@ -572,8 +672,16 @@ export class SpaceMediaRoutingService {
 			return this.activateRouting(offRouting.id);
 		}
 
-		// If no OFF routing exists, just clear the active routing
-		activeRoutingCache.delete(spaceId);
+		// If no OFF routing exists, just clear the active routing record
+		const activeRecord = await this.getActiveRoutingRecord(spaceId);
+		if (activeRecord) {
+			activeRecord.activationState = MediaActivationState.DEACTIVATED;
+			activeRecord.routingId = null;
+			await this.activeRoutingRepository.save(activeRecord);
+		}
+
+		// Emit deactivated event
+		this.emitRoutingEvent(EventType.MEDIA_ROUTING_DEACTIVATED, spaceId, null, MediaRoutingType.OFF);
 
 		// Emit state change
 		void this.emitMediaStateChange(spaceId);
@@ -589,16 +697,47 @@ export class SpaceMediaRoutingService {
 	}
 
 	/**
+	 * Get the active routing record for a space
+	 */
+	async getActiveRoutingRecord(spaceId: string): Promise<SpaceActiveMediaRoutingEntity | null> {
+		return this.activeRoutingRepository.findOne({
+			where: { spaceId },
+			relations: ['routing'],
+		});
+	}
+
+	/**
 	 * Get the current active routing for a space
 	 */
 	async getActiveRouting(spaceId: string): Promise<SpaceMediaRoutingEntity | null> {
-		const activeId = activeRoutingCache.get(spaceId);
+		const activeRecord = await this.getActiveRoutingRecord(spaceId);
 
-		if (!activeId) {
+		if (!activeRecord || !activeRecord.routingId || activeRecord.activationState === MediaActivationState.DEACTIVATED) {
 			return null;
 		}
 
-		return this.findOne(activeId);
+		return this.findOne(activeRecord.routingId);
+	}
+
+	/**
+	 * Emit routing activation event
+	 */
+	private emitRoutingEvent(
+		eventType: EventType,
+		spaceId: string,
+		routingId: string | null,
+		routingType: MediaRoutingType,
+		error?: string,
+	): void {
+		this.eventEmitter.emit(eventType, {
+			space_id: spaceId,
+			routing_id: routingId,
+			routing_type: routingType,
+			error,
+			timestamp: new Date().toISOString(),
+		});
+
+		this.logger.debug(`Emitted ${eventType} event spaceId=${spaceId} routingId=${routingId}`);
 	}
 
 	/**

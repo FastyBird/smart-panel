@@ -14,7 +14,13 @@ import {
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { MediaPowerPolicy, MediaRoutingType } from '../spaces.constants';
+import {
+	MediaConflictPolicy,
+	MediaInputPolicy,
+	MediaOfflinePolicy,
+	MediaPowerPolicy,
+	MediaRoutingType,
+} from '../spaces.constants';
 
 /**
  * DTO for creating a media routing
@@ -185,6 +191,59 @@ export class CreateMediaRoutingDto {
 		},
 	)
 	powerPolicy?: MediaPowerPolicy;
+
+	@ApiPropertyOptional({
+		name: 'input_policy',
+		description: 'How input switching is handled when activating',
+		enum: MediaInputPolicy,
+	})
+	@Expose({ name: 'input_policy' })
+	@IsOptional()
+	@IsEnum(MediaInputPolicy, { message: '[{"field":"input_policy","reason":"Input policy must be a valid policy."}]' })
+	@Transform(
+		({ obj }: { obj: { input_policy?: string; inputPolicy?: string } }) => obj.input_policy ?? obj.inputPolicy,
+		{
+			toClassOnly: true,
+		},
+	)
+	inputPolicy?: MediaInputPolicy;
+
+	@ApiPropertyOptional({
+		name: 'conflict_policy',
+		description: 'How conflicts with existing routing are resolved',
+		enum: MediaConflictPolicy,
+	})
+	@Expose({ name: 'conflict_policy' })
+	@IsOptional()
+	@IsEnum(MediaConflictPolicy, {
+		message: '[{"field":"conflict_policy","reason":"Conflict policy must be a valid policy."}]',
+	})
+	@Transform(
+		({ obj }: { obj: { conflict_policy?: string; conflictPolicy?: string } }) =>
+			obj.conflict_policy ?? obj.conflictPolicy,
+		{
+			toClassOnly: true,
+		},
+	)
+	conflictPolicy?: MediaConflictPolicy;
+
+	@ApiPropertyOptional({
+		name: 'offline_policy',
+		description: 'How offline devices are handled during activation',
+		enum: MediaOfflinePolicy,
+	})
+	@Expose({ name: 'offline_policy' })
+	@IsOptional()
+	@IsEnum(MediaOfflinePolicy, {
+		message: '[{"field":"offline_policy","reason":"Offline policy must be a valid policy."}]',
+	})
+	@Transform(
+		({ obj }: { obj: { offline_policy?: string; offlinePolicy?: string } }) => obj.offline_policy ?? obj.offlinePolicy,
+		{
+			toClassOnly: true,
+		},
+	)
+	offlinePolicy?: MediaOfflinePolicy;
 }
 
 /**
@@ -362,6 +421,59 @@ export class UpdateMediaRoutingDto {
 		},
 	)
 	powerPolicy?: MediaPowerPolicy;
+
+	@ApiPropertyOptional({
+		name: 'input_policy',
+		description: 'How input switching is handled when activating',
+		enum: MediaInputPolicy,
+	})
+	@Expose({ name: 'input_policy' })
+	@IsOptional()
+	@IsEnum(MediaInputPolicy, { message: '[{"field":"input_policy","reason":"Input policy must be a valid policy."}]' })
+	@Transform(
+		({ obj }: { obj: { input_policy?: string; inputPolicy?: string } }) => obj.input_policy ?? obj.inputPolicy,
+		{
+			toClassOnly: true,
+		},
+	)
+	inputPolicy?: MediaInputPolicy;
+
+	@ApiPropertyOptional({
+		name: 'conflict_policy',
+		description: 'How conflicts with existing routing are resolved',
+		enum: MediaConflictPolicy,
+	})
+	@Expose({ name: 'conflict_policy' })
+	@IsOptional()
+	@IsEnum(MediaConflictPolicy, {
+		message: '[{"field":"conflict_policy","reason":"Conflict policy must be a valid policy."}]',
+	})
+	@Transform(
+		({ obj }: { obj: { conflict_policy?: string; conflictPolicy?: string } }) =>
+			obj.conflict_policy ?? obj.conflictPolicy,
+		{
+			toClassOnly: true,
+		},
+	)
+	conflictPolicy?: MediaConflictPolicy;
+
+	@ApiPropertyOptional({
+		name: 'offline_policy',
+		description: 'How offline devices are handled during activation',
+		enum: MediaOfflinePolicy,
+	})
+	@Expose({ name: 'offline_policy' })
+	@IsOptional()
+	@IsEnum(MediaOfflinePolicy, {
+		message: '[{"field":"offline_policy","reason":"Offline policy must be a valid policy."}]',
+	})
+	@Transform(
+		({ obj }: { obj: { offline_policy?: string; offlinePolicy?: string } }) => obj.offline_policy ?? obj.offlinePolicy,
+		{
+			toClassOnly: true,
+		},
+	)
+	offlinePolicy?: MediaOfflinePolicy;
 
 	@ApiPropertyOptional({
 		name: 'is_default',

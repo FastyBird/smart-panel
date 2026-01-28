@@ -30,6 +30,11 @@ export enum EventType {
 	MEDIA_TARGET_CREATED = 'SpacesModule.MediaTarget.Created',
 	MEDIA_TARGET_UPDATED = 'SpacesModule.MediaTarget.Updated',
 	MEDIA_TARGET_DELETED = 'SpacesModule.MediaTarget.Deleted',
+	// Media routing activation events
+	MEDIA_ROUTING_ACTIVATING = 'SpacesModule.MediaRouting.Activating',
+	MEDIA_ROUTING_ACTIVATED = 'SpacesModule.MediaRouting.Activated',
+	MEDIA_ROUTING_FAILED = 'SpacesModule.MediaRouting.Failed',
+	MEDIA_ROUTING_DEACTIVATED = 'SpacesModule.MediaRouting.Deactivated',
 	// Sensor state change events
 	SENSOR_STATE_CHANGED = 'SpacesModule.Space.SensorStateChanged',
 	// Sensor role events
@@ -1742,6 +1747,56 @@ export enum MediaPowerPolicy {
 }
 
 /**
+ * Media Input Policy - defines how input switching is handled during routing activation
+ */
+export enum MediaInputPolicy {
+	/** Always switch inputs as configured */
+	ALWAYS = 'always',
+	/** Only switch inputs if device is currently on a different input */
+	IF_DIFFERENT = 'if_different',
+	/** Never switch inputs automatically */
+	NEVER = 'never',
+}
+
+/**
+ * Media Conflict Policy - defines how conflicts with existing routing are resolved
+ */
+export enum MediaConflictPolicy {
+	/** Replace the current active routing immediately */
+	REPLACE = 'replace',
+	/** Fail activation if another routing is active */
+	FAIL_IF_ACTIVE = 'fail_if_active',
+	/** Deactivate current routing first, then activate new one */
+	DEACTIVATE_FIRST = 'deactivate_first',
+}
+
+/**
+ * Media Offline Policy - defines how offline devices are handled during activation
+ */
+export enum MediaOfflinePolicy {
+	/** Skip offline devices and continue with available ones */
+	SKIP = 'skip',
+	/** Fail activation if any critical endpoint is offline */
+	FAIL = 'fail',
+	/** Wait for devices to come online (with timeout) */
+	WAIT = 'wait',
+}
+
+/**
+ * Media Activation State - state of the active routing
+ */
+export enum MediaActivationState {
+	/** Routing is being activated */
+	ACTIVATING = 'activating',
+	/** Routing is fully active */
+	ACTIVE = 'active',
+	/** Routing activation failed (partial or complete) */
+	FAILED = 'failed',
+	/** Routing has been deactivated */
+	DEACTIVATED = 'deactivated',
+}
+
+/**
  * Media Capability - individual capability that an endpoint can have
  */
 export enum MediaCapability {
@@ -1842,35 +1897,191 @@ export const MEDIA_ROUTING_TYPE_META: Record<MediaRoutingType, IntentEnumValueMe
  */
 export interface MediaRoutingDefaults {
 	powerPolicy: MediaPowerPolicy;
+	inputPolicy: MediaInputPolicy;
+	conflictPolicy: MediaConflictPolicy;
+	offlinePolicy: MediaOfflinePolicy;
 	audioVolumePreset: number | null;
 }
 
 export const MEDIA_ROUTING_DEFAULTS: Record<MediaRoutingType, MediaRoutingDefaults> = {
 	[MediaRoutingType.WATCH]: {
 		powerPolicy: MediaPowerPolicy.ON,
+		inputPolicy: MediaInputPolicy.ALWAYS,
+		conflictPolicy: MediaConflictPolicy.REPLACE,
+		offlinePolicy: MediaOfflinePolicy.SKIP,
 		audioVolumePreset: 50,
 	},
 	[MediaRoutingType.LISTEN]: {
 		powerPolicy: MediaPowerPolicy.ON,
+		inputPolicy: MediaInputPolicy.IF_DIFFERENT,
+		conflictPolicy: MediaConflictPolicy.REPLACE,
+		offlinePolicy: MediaOfflinePolicy.SKIP,
 		audioVolumePreset: 40,
 	},
 	[MediaRoutingType.GAMING]: {
 		powerPolicy: MediaPowerPolicy.ON,
+		inputPolicy: MediaInputPolicy.ALWAYS,
+		conflictPolicy: MediaConflictPolicy.REPLACE,
+		offlinePolicy: MediaOfflinePolicy.SKIP,
 		audioVolumePreset: 60,
 	},
 	[MediaRoutingType.BACKGROUND]: {
 		powerPolicy: MediaPowerPolicy.ON,
+		inputPolicy: MediaInputPolicy.NEVER,
+		conflictPolicy: MediaConflictPolicy.REPLACE,
+		offlinePolicy: MediaOfflinePolicy.SKIP,
 		audioVolumePreset: 25,
 	},
 	[MediaRoutingType.OFF]: {
 		powerPolicy: MediaPowerPolicy.OFF,
+		inputPolicy: MediaInputPolicy.NEVER,
+		conflictPolicy: MediaConflictPolicy.REPLACE,
+		offlinePolicy: MediaOfflinePolicy.SKIP,
 		audioVolumePreset: null,
 	},
 	[MediaRoutingType.CUSTOM]: {
 		powerPolicy: MediaPowerPolicy.UNCHANGED,
+		inputPolicy: MediaInputPolicy.IF_DIFFERENT,
+		conflictPolicy: MediaConflictPolicy.REPLACE,
+		offlinePolicy: MediaOfflinePolicy.SKIP,
 		audioVolumePreset: null,
 	},
 };
+
+// ========================
+// Media Capability Extractor Specifications
+// ========================
+
+/**
+ * Capability extractor specification - defines what capabilities to look for
+ * and how to extract them from device channels/properties
+ */
+export interface MediaCapabilityExtractorSpec {
+	/** Device categories this extractor applies to */
+	deviceCategories: DeviceCategory[];
+	/** Endpoint types this device can provide */
+	suggestedEndpoints: MediaEndpointType[];
+	/** Required capabilities - device must have these to be useful */
+	requiredCapabilities: MediaCapability[];
+	/** Optional capabilities - nice to have but not required */
+	optionalCapabilities: MediaCapability[];
+	/** Channel categories to search for capabilities */
+	channelCategories: ChannelCategory[];
+	/** Fallback rules when primary capability source is unavailable */
+	fallbackRules?: {
+		capability: MediaCapability;
+		fallbackTo?: MediaCapability;
+		skipIfUnavailable: boolean;
+	}[];
+}
+
+/**
+ * Capability extractor specifications by device category.
+ * These define how to detect media capabilities for each device type.
+ */
+export const MEDIA_CAPABILITY_EXTRACTOR_SPECS: MediaCapabilityExtractorSpec[] = [
+	// TV / Projector - Display devices
+	{
+		deviceCategories: [DeviceCategory.TELEVISION, DeviceCategory.PROJECTOR],
+		suggestedEndpoints: [MediaEndpointType.DISPLAY, MediaEndpointType.AUDIO_OUTPUT, MediaEndpointType.REMOTE_TARGET],
+		requiredCapabilities: [MediaCapability.POWER],
+		optionalCapabilities: [
+			MediaCapability.VOLUME,
+			MediaCapability.MUTE,
+			MediaCapability.INPUT,
+			MediaCapability.REMOTE,
+			MediaCapability.PLAYBACK,
+		],
+		channelCategories: [ChannelCategory.TELEVISION, ChannelCategory.SWITCHER, ChannelCategory.SPEAKER],
+		fallbackRules: [
+			{
+				capability: MediaCapability.VOLUME,
+				skipIfUnavailable: true, // TV audio may be handled by external receiver
+			},
+		],
+	},
+	// AV Receiver - Audio routing hub
+	{
+		deviceCategories: [DeviceCategory.AV_RECEIVER],
+		suggestedEndpoints: [MediaEndpointType.AUDIO_OUTPUT, MediaEndpointType.SOURCE],
+		requiredCapabilities: [MediaCapability.POWER, MediaCapability.VOLUME],
+		optionalCapabilities: [MediaCapability.MUTE, MediaCapability.INPUT],
+		channelCategories: [ChannelCategory.SPEAKER, ChannelCategory.SWITCHER, ChannelCategory.MEDIA_INPUT],
+		fallbackRules: [],
+	},
+	// Speaker - Simple audio output
+	{
+		deviceCategories: [DeviceCategory.SPEAKER],
+		suggestedEndpoints: [MediaEndpointType.AUDIO_OUTPUT],
+		requiredCapabilities: [MediaCapability.VOLUME],
+		optionalCapabilities: [MediaCapability.POWER, MediaCapability.MUTE, MediaCapability.PLAYBACK],
+		channelCategories: [ChannelCategory.SPEAKER, ChannelCategory.SWITCHER, ChannelCategory.MEDIA_PLAYBACK],
+		fallbackRules: [
+			{
+				capability: MediaCapability.POWER,
+				skipIfUnavailable: true, // Some speakers don't have explicit power control
+			},
+		],
+	},
+	// Set-top box / Streaming device - Media source
+	{
+		deviceCategories: [DeviceCategory.SET_TOP_BOX, DeviceCategory.STREAMING_SERVICE],
+		suggestedEndpoints: [MediaEndpointType.SOURCE, MediaEndpointType.REMOTE_TARGET],
+		requiredCapabilities: [],
+		optionalCapabilities: [
+			MediaCapability.POWER,
+			MediaCapability.PLAYBACK,
+			MediaCapability.PLAYBACK_STATE,
+			MediaCapability.REMOTE,
+			MediaCapability.TRACK_METADATA,
+		],
+		channelCategories: [ChannelCategory.SWITCHER, ChannelCategory.MEDIA_PLAYBACK],
+		fallbackRules: [],
+	},
+	// Game console - Gaming source
+	{
+		deviceCategories: [DeviceCategory.GAME_CONSOLE],
+		suggestedEndpoints: [MediaEndpointType.SOURCE],
+		requiredCapabilities: [],
+		optionalCapabilities: [MediaCapability.POWER],
+		channelCategories: [ChannelCategory.SWITCHER],
+		fallbackRules: [
+			{
+				capability: MediaCapability.POWER,
+				skipIfUnavailable: true, // Consoles often don't expose power via API
+			},
+		],
+	},
+	// Generic media device - Fallback
+	{
+		deviceCategories: [DeviceCategory.MEDIA],
+		suggestedEndpoints: [MediaEndpointType.SOURCE, MediaEndpointType.AUDIO_OUTPUT],
+		requiredCapabilities: [],
+		optionalCapabilities: [
+			MediaCapability.POWER,
+			MediaCapability.VOLUME,
+			MediaCapability.MUTE,
+			MediaCapability.PLAYBACK,
+			MediaCapability.PLAYBACK_STATE,
+			MediaCapability.INPUT,
+			MediaCapability.REMOTE,
+		],
+		channelCategories: [
+			ChannelCategory.SWITCHER,
+			ChannelCategory.SPEAKER,
+			ChannelCategory.MEDIA_PLAYBACK,
+			ChannelCategory.MEDIA_INPUT,
+		],
+		fallbackRules: [],
+	},
+];
+
+/**
+ * Get the extractor spec for a device category
+ */
+export function getMediaExtractorSpec(deviceCategory: DeviceCategory): MediaCapabilityExtractorSpec | null {
+	return MEDIA_CAPABILITY_EXTRACTOR_SPECS.find((spec) => spec.deviceCategories.includes(deviceCategory)) ?? null;
+}
 
 /**
  * Media Intent Types V2 - routing-based intents
