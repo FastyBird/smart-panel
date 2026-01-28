@@ -2,6 +2,7 @@ import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
@@ -273,6 +274,8 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     return SensorStatus.normal;
   }
 
+  static const _formatter = NumberFormatUtils.defaultFormat;
+
   /// Format sensor value for display
   String _formatSensorValue(dynamic value, String channelCategory) {
     if (value == null) return '--';
@@ -286,11 +289,10 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
 
     // Numeric values
     if (value is num) {
-      // Round to 1 decimal place for temperature, humidity, etc.
       if (value is double) {
-        return value.toStringAsFixed(1);
+        return _formatter.formatDecimal(value, decimalPlaces: 1);
       }
-      return value.toString();
+      return _formatter.formatInteger(value.toInt());
     }
 
     return value.toString();
@@ -919,7 +921,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     String tempValue = '--';
     String tempSubtitle = 'No data';
     if (env?.averageTemperature != null) {
-      tempValue = '${env!.averageTemperature!.toStringAsFixed(1)}°';
+      tempValue = '${_formatter.formatDecimal(env!.averageTemperature!, decimalPlaces: 1)}°';
       if (env.averageTemperature! >= 18 && env.averageTemperature! <= 24) {
         tempSubtitle = 'Comfortable range';
       } else if (env.averageTemperature! < 18) {
@@ -933,7 +935,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     String humidityValue = '--';
     String humiditySubtitle = 'No data';
     if (env?.averageHumidity != null) {
-      humidityValue = '${env!.averageHumidity!.round()}%';
+      humidityValue = '${_formatter.formatInteger(env!.averageHumidity!.round())}%';
       if (env.averageHumidity! >= 40 && env.averageHumidity! <= 60) {
         humiditySubtitle = 'Optimal level';
       } else if (env.averageHumidity! < 40) {
@@ -951,7 +953,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     Color thirdColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
 
     if (env?.averageIlluminance != null) {
-      thirdValue = '${env!.averageIlluminance!.round()}';
+      thirdValue = _formatter.formatInteger(env!.averageIlluminance!.round());
       thirdSubtitle = 'lux';
       if (env.averageIlluminance! < 100) {
         thirdSubtitle = 'Low light';
@@ -963,7 +965,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     } else if (env?.averagePressure != null) {
       thirdTitle = 'Pressure';
       thirdIcon = MdiIcons.gaugeEmpty;
-      thirdValue = '${env!.averagePressure!.round()}';
+      thirdValue = _formatter.formatInteger(env!.averagePressure!.round());
       thirdSubtitle = 'hPa';
       thirdColor = isDark ? AppColorsDark.info : AppColorsLight.info;
     }
@@ -1586,9 +1588,9 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
     _highThreshold = widget.sensor.highThreshold ?? _getDefaultHighThreshold();
     _lowThreshold = widget.sensor.lowThreshold ?? _getDefaultLowThreshold();
     _highThresholdController =
-        TextEditingController(text: _highThreshold.toStringAsFixed(0));
+        TextEditingController(text: NumberFormatUtils.defaultFormat.formatInteger(_highThreshold.toInt()));
     _lowThresholdController =
-        TextEditingController(text: _lowThreshold.toStringAsFixed(0));
+        TextEditingController(text: NumberFormatUtils.defaultFormat.formatInteger(_lowThreshold.toInt()));
 
     try {
       _timeseriesService = locator<PropertyTimeseriesService>();
@@ -1969,7 +1971,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
         default:
           return '--$unit';
       }
-      return '${value.toStringAsFixed(1)}$unit';
+      return '${NumberFormatUtils.defaultFormat.formatDecimal(value, decimalPlaces: 1)}$unit';
     }
 
     // Fall back to sensor data or default
@@ -1978,7 +1980,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
         : (type == 'max' ? widget.sensor.maxValue : widget.sensor.avgValue);
 
     if (sensorValue != null) {
-      return '${sensorValue.toStringAsFixed(1)}$unit';
+      return '${NumberFormatUtils.defaultFormat.formatDecimal(sensorValue, decimalPlaces: 1)}$unit';
     }
 
     return '${_getDefaultValue(type)}$unit';
