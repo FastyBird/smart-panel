@@ -494,6 +494,9 @@ export class SpaceMediaRoutingService {
 			activeRecord.activationState = MediaActivationState.ACTIVATING;
 			activeRecord.activatedAt = new Date();
 			activeRecord.lastError = null;
+			activeRecord.stepsExecuted = null;
+			activeRecord.stepsFailed = null;
+			activeRecord.stepsSkipped = null;
 		}
 		await this.activeRoutingRepository.save(activeRecord);
 
@@ -514,7 +517,7 @@ export class SpaceMediaRoutingService {
 
 		// Execute each step
 		for (const step of plan.steps) {
-			const device = deviceMap.get(step.deviceId);
+			let device = deviceMap.get(step.deviceId);
 
 			if (!device) {
 				stepsFailed++;
@@ -589,7 +592,8 @@ export class SpaceMediaRoutingService {
 						});
 						continue;
 					}
-					// Device is now online, continue with execution
+					// Device is now online - reassign from updated deviceMap
+					device = deviceMap.get(step.deviceId)!;
 				} else {
 					// SKIP policy (default) - skip offline devices
 					stepsSkipped++;
@@ -604,7 +608,12 @@ export class SpaceMediaRoutingService {
 			}
 
 			// Handle input policy for input switching steps
-			if (step.action === 'set_property' && step.description?.includes('input')) {
+			// Check for specific input step descriptions to avoid matching power steps for endpoints named with "input"
+			const isInputStep =
+				step.action === 'set_property' &&
+				(step.description?.startsWith('Set display input') || step.description?.startsWith('Set audio input'));
+
+			if (isInputStep) {
 				if (routing.inputPolicy === MediaInputPolicy.NEVER) {
 					stepsSkipped++;
 					stepResults.push({
