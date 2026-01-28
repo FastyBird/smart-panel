@@ -1698,58 +1698,78 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
 
   Widget _buildLandscapeLayout(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isSmall = !_screenService.isLargeScreen;
 
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // Left panel: Large value + Stats
-        Container(
-          width: _scale(320),
-          padding: AppSpacings.paddingLg,
-          decoration: BoxDecoration(
-            border: Border(
-              right: BorderSide(
-                color: isDark
-                    ? AppBorderColorDark.light
-                    : AppBorderColorLight.light,
-                width: 1,
-              ),
-            ),
-          ),
-          child: Column(
-            children: [
-              _buildLargeValue(context),
-              if (!_sensor.isBinary) ...[
-                const Spacer(),
-                _buildStatsRowCompact(context),
-              ],
-            ],
-          ),
-        ),
+        _buildLandscapeLeftPanel(context, isDark, isSmall),
         // Right panel: Chart or Event Log
         Expanded(
-          child: SingleChildScrollView(
-            padding: AppSpacings.paddingLg,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (_sensor.isBinary)
-                  _buildEventLog(context, withMargin: false)
-                else
-                  _buildChart(context, withMargin: false),
-              ],
-            ),
+          child: Container(
+            color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
+            child: _sensor.isBinary
+                ? SingleChildScrollView(
+                    padding: EdgeInsets.only(top: AppSpacings.pLg),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildEventLog(context, withMargin: false, withDecoration: false),
+                      ],
+                    ),
+                  )
+                : Center(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildChart(context, withMargin: false, withDecoration: false),
+                        ],
+                      ),
+                    ),
+                  ),
           ),
         ),
       ],
     );
   }
 
+  Widget _buildLandscapeLeftPanel(BuildContext context, bool isDark, bool isSmall) {
+    final content = Container(
+      width: isSmall ? null : _scale(320),
+      padding: AppSpacings.paddingLg,
+      decoration: BoxDecoration(
+        border: Border(
+          right: BorderSide(
+            color: isDark
+                ? AppBorderColorDark.light
+                : AppBorderColorLight.base,
+            width: 1,
+          ),
+        ),
+      ),
+      child: Column(
+        children: [
+          _buildLargeValue(context),
+          if (!_sensor.isBinary) ...[
+            const Spacer(),
+            _buildStatsRowCompact(context),
+          ],
+        ],
+      ),
+    );
+
+    return isSmall ? Expanded(child: content) : content;
+  }
+
   Widget _buildLargeValue(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final isCompact = isLandscape && !_screenService.isLargeScreen;
 
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: AppSpacings.pXl),
+      padding: EdgeInsets.symmetric(vertical: isCompact ? AppSpacings.pMd : AppSpacings.pXl),
       child: Column(
         children: [
           RichText(
@@ -1880,7 +1900,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
       child: Container(
         padding: AppSpacings.paddingMd,
         decoration: BoxDecoration(
-          color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
+          color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
           borderRadius: BorderRadius.circular(AppBorderRadius.medium),
           border: Border.all(
             color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
@@ -1916,22 +1936,27 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
     );
   }
 
-  Widget _buildEventLog(BuildContext context, {bool withMargin = true}) {
+  Widget _buildEventLog(BuildContext context, {bool withMargin = true, bool withDecoration = true}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       margin: withMargin ? AppSpacings.paddingLg : EdgeInsets.zero,
-      padding: AppSpacings.paddingLg,
-      decoration: BoxDecoration(
-        color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-        borderRadius: BorderRadius.circular(AppBorderRadius.round),
-        border: Border.all(
-          color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
-          width: 1,
-        ),
-      ),
+      padding: withDecoration
+          ? AppSpacings.paddingLg
+          : EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
+      decoration: withDecoration
+          ? BoxDecoration(
+              color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
+              borderRadius: BorderRadius.circular(AppBorderRadius.round),
+              border: Border.all(
+                color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
+                width: 1,
+              ),
+            )
+          : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: withDecoration ? MainAxisAlignment.start : MainAxisAlignment.center,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2103,22 +2128,27 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
     );
   }
 
-  Widget _buildChart(BuildContext context, {bool withMargin = true}) {
+  Widget _buildChart(BuildContext context, {bool withMargin = true, bool withDecoration = true}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       margin: withMargin ? AppSpacings.paddingLg : EdgeInsets.zero,
-      padding: AppSpacings.paddingLg,
-      decoration: BoxDecoration(
-        color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-        borderRadius: BorderRadius.circular(AppBorderRadius.round),
-        border: Border.all(
-          color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
-          width: 1,
-        ),
-      ),
+      padding: withDecoration
+          ? AppSpacings.paddingLg
+          : EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
+      decoration: withDecoration
+          ? BoxDecoration(
+              color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
+              borderRadius: BorderRadius.circular(AppBorderRadius.round),
+              border: Border.all(
+                color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
+                width: 1,
+              ),
+            )
+          : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: withDecoration ? MainAxisAlignment.start : MainAxisAlignment.center,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
