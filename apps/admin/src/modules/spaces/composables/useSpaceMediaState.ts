@@ -84,6 +84,8 @@ export interface IUseSpaceMediaState {
  * @returns Stubbed media state with null/empty values
  */
 export const useSpaceMediaState = (_spaceId: Ref<ISpace['id'] | undefined>): IUseSpaceMediaState => {
+	void _spaceId; // Will be used when V2 media routing API is available
+
 	const mediaStateData = ref<IMediaState | null>(null);
 	const isLoading = computed(() => false);
 	const error = ref<string | null>(null);
