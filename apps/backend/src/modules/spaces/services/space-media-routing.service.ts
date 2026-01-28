@@ -500,20 +500,24 @@ export class SpaceMediaRoutingService {
 		}
 		await this.activeRoutingRepository.save(activeRecord);
 
-		const plan = await this.buildExecutionPlan(routingId);
-
-		this.logger.debug(`Activating routing id=${routingId} type=${routing.type} steps=${plan.totalSteps}`);
-
+		// Wrap activation logic in try-catch to ensure state is updated to FAILED on unexpected errors
+		let plan: MediaExecutionPlanModel;
 		const stepResults: MediaExecutionStepResultModel[] = [];
 		const offlineDeviceIds: string[] = [];
 		let stepsExecuted = 0;
 		let stepsFailed = 0;
 		let stepsSkipped = 0;
+		let criticalStepFailed = false;
 
-		// Get unique devices involved
-		const deviceIds = [...new Set(plan.steps.map((s) => s.deviceId))];
-		const devices = await this.spacesService.findDevicesByIds(deviceIds);
-		const deviceMap = new Map(devices.map((d) => [d.id, d]));
+		try {
+			plan = await this.buildExecutionPlan(routingId);
+
+			this.logger.debug(`Activating routing id=${routingId} type=${routing.type} steps=${plan.totalSteps}`);
+
+			// Get unique devices involved
+			const deviceIds = [...new Set(plan.steps.map((s) => s.deviceId))];
+			const devices = await this.spacesService.findDevicesByIds(deviceIds);
+			const deviceMap = new Map(devices.map((d) => [d.id, d]));
 
 		// Execute each step
 		for (const step of plan.steps) {
@@ -527,6 +531,11 @@ export class SpaceMediaRoutingService {
 					status: 'failed',
 					error: 'Device not found',
 				});
+				if (step.critical) {
+					criticalStepFailed = true;
+					this.logger.warn(`Critical step failed: device not found, aborting routing activation`);
+					break;
+				}
 				continue;
 			}
 
@@ -538,6 +547,7 @@ export class SpaceMediaRoutingService {
 
 				if (routing.offlinePolicy === MediaOfflinePolicy.FAIL && step.critical) {
 					stepsFailed++;
+					criticalStepFailed = true;
 					stepResults.push({
 						order: step.order,
 						deviceId: step.deviceId,
@@ -575,6 +585,7 @@ export class SpaceMediaRoutingService {
 						this.logger.warn(`Device ${step.deviceId} did not come online within timeout`);
 						if (step.critical) {
 							stepsFailed++;
+							criticalStepFailed = true;
 							stepResults.push({
 								order: step.order,
 								deviceId: step.deviceId,
@@ -657,6 +668,11 @@ export class SpaceMediaRoutingService {
 					status: 'failed',
 					error: 'Channel or property not found',
 				});
+				if (step.critical) {
+					criticalStepFailed = true;
+					this.logger.warn(`Critical step failed: channel or property not found, aborting routing activation`);
+					break;
+				}
 				continue;
 			}
 
@@ -671,6 +687,11 @@ export class SpaceMediaRoutingService {
 					status: 'failed',
 					error: 'No platform for device',
 				});
+				if (step.critical) {
+					criticalStepFailed = true;
+					this.logger.warn(`Critical step failed: no platform for device, aborting routing activation`);
+					break;
+				}
 				continue;
 			}
 
@@ -702,6 +723,7 @@ export class SpaceMediaRoutingService {
 
 					// If critical step failed, abort
 					if (step.critical) {
+						criticalStepFailed = true;
 						this.logger.warn(`Critical step failed, aborting routing activation`);
 						break;
 					}
@@ -717,14 +739,35 @@ export class SpaceMediaRoutingService {
 				});
 
 				if (step.critical) {
+					criticalStepFailed = true;
 					this.logger.warn(`Critical step threw error, aborting: ${err.message}`);
 					break;
 				}
 			}
 		}
+		} catch (error) {
+			// Handle unexpected errors during activation (e.g., JSON.parse failures, database errors)
+			const err = error as Error;
+			this.logger.error(`Unexpected error during routing activation: ${err.message}`);
+
+			activeRecord.activationState = MediaActivationState.FAILED;
+			activeRecord.lastError = err.message;
+			await this.activeRoutingRepository.save(activeRecord);
+
+			this.emitRoutingEvent(
+				EventType.MEDIA_ROUTING_FAILED,
+				routing.spaceId,
+				routingId,
+				routing.type,
+				err.message,
+			);
+
+			throw error;
+		}
 
 		// Determine overall success and update active routing record
-		const overallSuccess = stepsFailed === 0 || stepsExecuted > 0;
+		// Critical step failures always mean failure, regardless of other step outcomes
+		const overallSuccess = !criticalStepFailed && (stepsFailed === 0 || stepsExecuted > 0);
 		const activationState = overallSuccess ? MediaActivationState.ACTIVE : MediaActivationState.FAILED;
 
 		activeRecord.activationState = activationState;
