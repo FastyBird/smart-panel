@@ -1606,7 +1606,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
           ),
           AppSpacings.spacingXsVertical,
           Text(
-            'Updated ${DatetimeUtils.formatTimeAgo(widget.sensor.lastUpdated, AppLocalizations.of(context)!)}',
+            'Updated ${DatetimeUtils.formatTimeAgo(widget.sensor.lastUpdated, AppLocalizations.of(context)!, format: TimeAgoFormat.medium)}',
             style: TextStyle(
               color: isDark
                   ? AppTextColorDark.placeholder
