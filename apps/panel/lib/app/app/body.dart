@@ -58,9 +58,6 @@ class _AppBodyState extends State<AppBody> {
   bool _swipeActionTriggered = false;
   bool _isSettingsOpen = false;
 
-  // TODO: Remove after testing
-  int _debugErrorIndex = -1;
-
   @override
   void initState() {
     super.initState();
@@ -265,28 +262,9 @@ class _AppBodyState extends State<AppBody> {
       ],
       ConnectionUISeverity.overlay => [
         Positioned.fill(
-          // TODO: Remove GestureDetector wrapper after testing
-          child: GestureDetector(
-            onLongPress: () {
-              // DEBUG: Long-press overlay to cycle through error screens
-              // 1st: auth, 2nd: server, 3rd: network, then repeats
-              _debugErrorIndex = (_debugErrorIndex + 1) % 3;
-              switch (_debugErrorIndex) {
-                case 0:
-                  _connectionManager.onAuthError();
-                  break;
-                case 1:
-                  _connectionManager.onServerUnavailable();
-                  break;
-                case 2:
-                  _connectionManager.onNetworkUnavailable();
-                  break;
-              }
-            },
-            child: ConnectionOverlay(
-              disconnectedDuration: _connectionManager.disconnectedDuration,
-              onRetry: _handleReconnect,
-            ),
+          child: ConnectionOverlay(
+            disconnectedDuration: _connectionManager.disconnectedDuration,
+            onRetry: _handleReconnect,
           ),
         ),
       ],
