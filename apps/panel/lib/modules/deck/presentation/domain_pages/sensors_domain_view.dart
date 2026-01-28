@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:event_bus/event_bus.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
@@ -63,6 +64,8 @@ class SensorData {
   final TrendDirection trend;
   final String? trendText;
   final DateTime lastUpdated;
+  final bool isBinary;
+  final String? channelCategory;
 
   const SensorData({
     required this.id,
@@ -76,6 +79,8 @@ class SensorData {
     this.trend = TrendDirection.stable,
     this.trendText,
     required this.lastUpdated,
+    this.isBinary = false,
+    this.channelCategory,
   });
 
   IconData get icon {
@@ -248,16 +253,60 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
 
   static const _formatter = NumberFormatUtils.defaultFormat;
 
+  /// Get short label for binary sensor state (for tiles)
+  static String _getBinaryLabel(String channelCategory, bool isActive) {
+    switch (channelCategory.toLowerCase()) {
+      case 'motion':
+      case 'occupancy':
+        return isActive ? 'Detected' : 'Clear';
+      case 'contact':
+        return isActive ? 'Open' : 'Closed';
+      case 'smoke':
+      case 'gas':
+      case 'leak':
+      case 'carbon_monoxide':
+        return isActive ? 'Detected' : 'Clear';
+      default:
+        return isActive ? 'Active' : 'Inactive';
+    }
+  }
+
+  /// Get long label for binary sensor state (for event log)
+  static String _getBinaryLabelLong(String channelCategory, bool isActive) {
+    switch (channelCategory.toLowerCase()) {
+      case 'motion':
+      case 'occupancy':
+        return isActive ? 'Detected' : 'Clear';
+      case 'contact':
+        return isActive ? 'Open' : 'Closed';
+      case 'smoke':
+        return isActive ? 'Smoke detected' : 'Clear';
+      case 'gas':
+        return isActive ? 'Gas detected' : 'Clear';
+      case 'leak':
+        return isActive ? 'Leak detected' : 'Clear';
+      case 'carbon_monoxide':
+        return isActive ? 'CO detected' : 'Clear';
+      default:
+        return isActive ? 'Active' : 'Inactive';
+    }
+  }
+
+  /// Check if a dynamic value represents a boolean true
+  static bool _isBooleanTrue(dynamic value) {
+    if (value is bool) return value;
+    if (value == 'true' || value == '1' || value == 1) return true;
+    return false;
+  }
+
   /// Format sensor value for display
   String _formatSensorValue(dynamic value, String channelCategory) {
     if (value == null) return '--';
 
-    // Boolean sensors (motion, occupancy, safety)
-    if (value is bool) {
-      return value ? 'Active' : 'Inactive';
+    // Boolean sensors
+    if (value is bool || value == 'true' || value == 'false' || value == '1' || value == '0') {
+      return _getBinaryLabel(channelCategory, _isBooleanTrue(value));
     }
-    if (value == 'true' || value == '1') return 'Active';
-    if (value == 'false' || value == '0') return 'Inactive';
 
     // Numeric values
     if (value is num) {
@@ -268,6 +317,19 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     }
 
     return value.toString();
+  }
+
+  /// Check if a property has boolean data type
+  bool _isBinaryProperty(String? propertyId) {
+    if (propertyId == null) return false;
+    try {
+      final repo = locator<ChannelPropertiesRepository>();
+      final property = repo.getItem(propertyId);
+      if (property == null) return false;
+      return property.dataType.json == 'bool';
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Load sensor data from repository
@@ -326,6 +388,8 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
           status: status,
           trend: TrendDirection.stable, // Trend data not available from API yet
           lastUpdated: reading.updatedAt ?? DateTime.now(),
+          isBinary: _isBinaryProperty(reading.propertyId),
+          channelCategory: reading.channelCategory,
         ));
       }
     }
@@ -1418,6 +1482,8 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
               unit: reading.unit ?? '',
               status: _sensor.status,
               lastUpdated: reading.updatedAt ?? DateTime.now(),
+              isBinary: _sensor.isBinary,
+              channelCategory: _sensor.channelCategory,
             );
           });
 
@@ -1434,7 +1500,9 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
   /// Format a reading value the same way the list page does
   String _formatReadingValue(dynamic value, String channelCategory) {
     if (value == null) return '--';
-    if (value is bool) return value ? 'Detected' : 'Normal';
+    if (value is bool || value == 'true' || value == 'false' || value == '1' || value == '0') {
+      return _SensorsDomainViewPageState._getBinaryLabel(channelCategory, _SensorsDomainViewPageState._isBooleanTrue(value));
+    }
     if (value is num) {
       return value == value.toInt()
           ? NumberFormatUtils.defaultFormat.formatInteger(value.toInt())
@@ -1617,8 +1685,12 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
       child: Column(
         children: [
           _buildLargeValue(context),
-          _buildStatsRow(context),
-          _buildChart(context),
+          if (_sensor.isBinary)
+            _buildEventLog(context)
+          else ...[
+            _buildStatsRow(context),
+            _buildChart(context),
+          ],
         ],
       ),
     );
@@ -1647,19 +1719,24 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
           child: Column(
             children: [
               _buildLargeValue(context),
-              const Spacer(),
-              _buildStatsRowCompact(context),
+              if (!_sensor.isBinary) ...[
+                const Spacer(),
+                _buildStatsRowCompact(context),
+              ],
             ],
           ),
         ),
-        // Right panel: Chart + Thresholds
+        // Right panel: Chart or Event Log
         Expanded(
           child: SingleChildScrollView(
             padding: AppSpacings.paddingLg,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildChart(context, withMargin: false),
+                if (_sensor.isBinary)
+                  _buildEventLog(context, withMargin: false)
+                else
+                  _buildChart(context, withMargin: false),
               ],
             ),
           ),
@@ -1835,6 +1912,193 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildEventLog(BuildContext context, {bool withMargin = true}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      margin: withMargin ? AppSpacings.paddingLg : EdgeInsets.zero,
+      padding: AppSpacings.paddingLg,
+      decoration: BoxDecoration(
+        color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
+        borderRadius: BorderRadius.circular(AppBorderRadius.round),
+        border: Border.all(
+          color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Event Log',
+                style: TextStyle(
+                  color: isDark
+                      ? AppTextColorDark.primary
+                      : AppTextColorLight.primary,
+                  fontSize: AppFontSize.base,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.all(AppSpacings.pXs),
+                decoration: BoxDecoration(
+                  color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
+                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
+                ),
+                child: Row(
+                  children: [
+                    _buildPeriodButton(context, '1H', 0),
+                    _buildPeriodButton(context, '24H', 1),
+                    _buildPeriodButton(context, '7D', 2),
+                    _buildPeriodButton(context, '30D', 3),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          AppSpacings.spacingMdVertical,
+          _isLoadingTimeseries
+              ? SizedBox(
+                  height: _scale(160),
+                  child: Center(
+                    child: SizedBox(
+                      width: _scale(24),
+                      height: _scale(24),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: _getCategoryColor(context),
+                      ),
+                    ),
+                  ),
+                )
+              : (_timeseries != null && _timeseries!.isNotEmpty)
+                  ? _buildEventLogEntries(context)
+                  : SizedBox(
+                      height: _scale(160),
+                      child: Center(
+                        child: Text(
+                          'No events recorded',
+                          style: TextStyle(
+                            color: isDark
+                                ? AppTextColorDark.placeholder
+                                : AppTextColorLight.placeholder,
+                            fontSize: AppFontSize.small,
+                          ),
+                        ),
+                      ),
+                    ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEventLogEntries(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final points = _timeseries!.points;
+
+    // Filter to state changes only (skip consecutive same-state points)
+    final events = <TimeseriesPoint>[];
+    for (int i = 0; i < points.length; i++) {
+      final isActive = points[i].numericValue >= 0.5;
+      if (i == 0 || (points[i - 1].numericValue >= 0.5) != isActive) {
+        events.add(points[i]);
+      }
+    }
+
+    // Show most recent first
+    final reversedEvents = events.reversed.toList();
+
+    if (reversedEvents.isEmpty) {
+      return SizedBox(
+        height: _scale(160),
+        child: Center(
+          child: Text(
+            'No state changes',
+            style: TextStyle(
+              color: isDark
+                  ? AppTextColorDark.placeholder
+                  : AppTextColorLight.placeholder,
+              fontSize: AppFontSize.small,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Time format depends on selected period
+    final useShortDate = _selectedPeriod <= 1; // 1H or 24H
+    final dateFormat = useShortDate
+        ? DateFormat.Hm()
+        : DateFormat('MMM d, HH:mm');
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: _scale(200)),
+      child: ListView.separated(
+        shrinkWrap: true,
+        padding: EdgeInsets.zero,
+        itemCount: reversedEvents.length,
+        separatorBuilder: (_, __) => Divider(
+          height: 1,
+          color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
+        ),
+        itemBuilder: (context, index) {
+          final point = reversedEvents[index];
+          final isActive = point.numericValue >= 0.5;
+          final stateLabel = _SensorsDomainViewPageState._getBinaryLabelLong(
+            _sensor.channelCategory ?? '',
+            isActive,
+          );
+
+          final dangerColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
+          final successColor = isDark ? AppColorsDark.success : AppColorsLight.success;
+          final dotColor = isActive ? dangerColor : successColor;
+          final textColor = isActive ? dangerColor : (isDark
+              ? AppTextColorDark.secondary
+              : AppTextColorLight.secondary);
+
+          return Padding(
+            padding: EdgeInsets.symmetric(vertical: AppSpacings.pSm),
+            child: Row(
+              children: [
+                Container(
+                  width: _scale(8),
+                  height: _scale(8),
+                  decoration: BoxDecoration(
+                    color: dotColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                SizedBox(width: AppSpacings.pMd),
+                Expanded(
+                  child: Text(
+                    stateLabel,
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: AppFontSize.small,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                Text(
+                  dateFormat.format(point.time.toLocal()),
+                  style: TextStyle(
+                    color: isDark
+                        ? AppTextColorDark.placeholder
+                        : AppTextColorLight.placeholder,
+                    fontSize: AppFontSize.extraSmall,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
