@@ -24,6 +24,7 @@ export interface SensorReading {
 	channelId: string;
 	channelName: string;
 	channelCategory: ChannelCategory;
+	propertyId: string | null;
 	value: number | boolean | string | null;
 	unit: string | null;
 	role: SensorRole | null;
@@ -155,7 +156,7 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 				}
 
 				// Get the primary property value
-				const { value, unit } = this.extractChannelValue(channel);
+				const { propertyId, value, unit } = this.extractChannelValue(channel);
 
 				const reading: SensorReading = {
 					deviceId: device.id,
@@ -163,6 +164,7 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 					channelId: channel.id,
 					channelName: channel.name ?? channel.category,
 					channelCategory: channel.category,
+					propertyId,
 					value,
 					unit,
 					role,
@@ -225,9 +227,10 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 	}
 
 	/**
-	 * Extract the primary value and unit from a sensor channel
+	 * Extract the primary value, unit, and property ID from a sensor channel
 	 */
 	private extractChannelValue(channel: ChannelEntity): {
+		propertyId: string | null;
 		value: number | boolean | string | null;
 		unit: string | null;
 	} {
@@ -311,28 +314,29 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 		}
 
 		if (!primaryProperty) {
-			return { value: null, unit: null };
+			return { propertyId: null, value: null, unit: null };
 		}
 
+		const propertyId = primaryProperty.id;
 		const value = primaryProperty.value;
 
 		if (typeof value === 'boolean') {
-			return { value, unit: null };
+			return { propertyId, value, unit: null };
 		}
 
 		if (typeof value === 'number') {
-			return { value, unit };
+			return { propertyId, value, unit };
 		}
 
 		if (typeof value === 'string') {
 			const parsed = parseFloat(value);
 			if (!isNaN(parsed)) {
-				return { value: parsed, unit };
+				return { propertyId, value: parsed, unit };
 			}
-			return { value, unit: null };
+			return { propertyId, value, unit: null };
 		}
 
-		return { value: null, unit };
+		return { propertyId, value: null, unit };
 	}
 
 	/**
