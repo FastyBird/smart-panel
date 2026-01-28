@@ -9,7 +9,6 @@ import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
@@ -105,28 +104,6 @@ class SensorData {
   }
 }
 
-class SensorActivityItem {
-  final String title;
-  final String subtitle;
-  final SensorCategory category;
-  final DateTime timestamp;
-
-  const SensorActivityItem({
-    required this.title,
-    required this.subtitle,
-    required this.category,
-    required this.timestamp,
-  });
-
-  String get timeAgo {
-    final diff = DateTime.now().difference(timestamp);
-    if (diff.inMinutes < 1) return 'Just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
-    if (diff.inHours < 24) return '${diff.inHours} hr ago';
-    return '${diff.inDays} days ago';
-  }
-}
-
 // ============================================================================
 // SENSORS DOMAIN VIEW PAGE
 // ============================================================================
@@ -156,7 +133,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
 
   // Sensor data from API
   List<SensorData> _sensors = [];
-  List<SensorActivityItem> _activity = [];
 
   String get _roomId => widget.viewItem.roomId;
 
@@ -315,7 +291,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         debugPrint('[SensorsDomainViewPage] No sensor data available');
       }
       _sensors = [];
-      _activity = [];
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -361,61 +336,12 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       }
     }
 
-    // Build activity list from recent events (safety alerts, motion detection)
-    final List<SensorActivityItem> activity = [];
-
-    // Add motion/occupancy events
-    if (sensorState.motionDetected) {
-      activity.add(SensorActivityItem(
-        title: 'Motion detected',
-        subtitle: roomName,
-        category: SensorCategory.motion,
-        timestamp: DateTime.now(),
-      ));
-    }
-
-    if (sensorState.occupancyDetected) {
-      activity.add(SensorActivityItem(
-        title: 'Occupancy detected',
-        subtitle: roomName,
-        category: SensorCategory.motion,
-        timestamp: DateTime.now(),
-      ));
-    }
-
-    // Add safety alert events
-    for (final alert in sensorState.safetyAlerts.where((a) => a.triggered)) {
-      activity.add(SensorActivityItem(
-        title: '${_formatAlertType(alert.channelCategory)} Alert',
-        subtitle: alert.deviceName,
-        category: SensorCategory.safety,
-        timestamp: DateTime.now(),
-      ));
-    }
-
     _sensors = sensors;
-    _activity = activity;
 
     if (mounted) {
       setState(() {
         _isLoading = false;
       });
-    }
-  }
-
-  /// Format alert type for display
-  String _formatAlertType(String channelCategory) {
-    switch (channelCategory.toLowerCase()) {
-      case 'smoke':
-        return 'Smoke';
-      case 'gas':
-        return 'Gas';
-      case 'leak':
-        return 'Water Leak';
-      case 'carbon_monoxide':
-        return 'CO';
-      default:
-        return 'Safety';
     }
   }
 
@@ -802,7 +728,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
 
   Widget _buildLandscapeLayout(BuildContext context) {
     final isLargeScreen = _screenService.isLargeScreen;
-    final sensorsPerRow = isLargeScreen ? 3 : 2;
+    final sensorsPerRow = isLargeScreen ? 4 : (_screenService.isAtLeastMedium ? 3 : 2);
 
     return LandscapeViewLayout(
       mainContent: Column(
@@ -810,13 +736,11 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         children: [
           if (_selectedCategory == null) _buildSummaryCards(context),
           if (_selectedCategory == null) AppSpacings.spacingLgVertical,
-          Expanded(
-            child: _buildSensorGrid(context, crossAxisCount: sensorsPerRow),
-          ),
+          _buildSensorGrid(context, crossAxisCount: sensorsPerRow),
         ],
       ),
+      mainContentScrollable: true,
       modeSelector: _buildLandscapeCategorySelector(context),
-      additionalContent: _buildActivityPanel(context),
     );
   }
 
@@ -1357,208 +1281,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     }
 
     return Icon(icon, size: _scale(12), color: color);
-  }
-
-  // --------------------------------------------------------------------------
-  // ACTIVITY PANEL (Landscape)
-  // --------------------------------------------------------------------------
-
-  Widget _buildActivityPanel(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Expanded(
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SectionTitle(title: 'Recent Activity', icon: Icons.history),
-            AppSpacings.spacingMdVertical,
-            ..._activity.map((item) => _buildActivityItem(context, item)),
-            Divider(
-              height: _scale(32),
-              color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
-            ),
-            SectionTitle(title: 'Alerts', icon: Icons.warning_amber),
-            AppSpacings.spacingMdVertical,
-            if (_hasAlerts)
-              ..._sensors
-                  .where((s) => s.status == SensorStatus.alert)
-                  .map((sensor) => _buildAlertItem(context, sensor))
-            else
-              Center(
-                child: Padding(
-                  padding: EdgeInsets.all(AppSpacings.pLg),
-                  child: Text(
-                    'No active alerts',
-                    style: TextStyle(
-                      color: isDark
-                          ? AppTextColorDark.placeholder
-                          : AppTextColorLight.placeholder,
-                      fontSize: AppFontSize.small,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAlertItem(BuildContext context, SensorData sensor) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final dangerColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
-    final dangerBgColor =
-        isDark ? AppColorsDark.dangerLight5 : AppColorsLight.dangerLight5;
-
-    return GestureDetector(
-      onTap: () => _openSensorDetail(context, sensor),
-      child: Container(
-        padding: AppSpacings.paddingSm,
-        margin: EdgeInsets.only(bottom: AppSpacings.pSm),
-        decoration: BoxDecoration(
-          color: dangerBgColor,
-          borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          border: Border.all(
-            color: dangerColor.withValues(alpha: 0.3),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: _scale(32),
-              height: _scale(32),
-              decoration: BoxDecoration(
-                color: dangerColor.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(AppBorderRadius.small),
-              ),
-              child: Icon(sensor.icon, size: _scale(18), color: dangerColor),
-            ),
-            AppSpacings.spacingMdHorizontal,
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'High ${sensor.name} Alert',
-                    style: TextStyle(
-                      color: dangerColor,
-                      fontSize: AppFontSize.small,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  AppSpacings.spacingXsVertical,
-                  Text(
-                    '${sensor.value}${sensor.unit} - Threshold exceeded',
-                    style: TextStyle(
-                      color: isDark
-                          ? AppTextColorDark.secondary
-                          : AppTextColorLight.secondary,
-                      fontSize: AppFontSize.extraSmall,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.chevron_right,
-              size: _scale(20),
-              color: dangerColor,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActivityItem(BuildContext context, SensorActivityItem item) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final color = _getCategoryColor(context, item.category);
-    final lightColor = _getCategoryLightColor(context, item.category);
-
-    IconData icon;
-    switch (item.category) {
-      case SensorCategory.temperature:
-        icon = MdiIcons.thermometer;
-        break;
-      case SensorCategory.humidity:
-        icon = MdiIcons.waterPercent;
-        break;
-      case SensorCategory.airQuality:
-        icon = MdiIcons.airFilter;
-        break;
-      case SensorCategory.motion:
-        icon = MdiIcons.motionSensor;
-        break;
-      case SensorCategory.safety:
-        icon = MdiIcons.shieldCheck;
-        break;
-      case SensorCategory.light:
-        icon = MdiIcons.weatherSunny;
-        break;
-      case SensorCategory.energy:
-        icon = MdiIcons.flash;
-        break;
-    }
-
-    return Container(
-      padding: AppSpacings.paddingSm,
-      margin: EdgeInsets.only(bottom: AppSpacings.pSm),
-      decoration: BoxDecoration(
-        color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: _scale(32),
-            height: _scale(32),
-            decoration: BoxDecoration(
-              color: lightColor,
-              borderRadius: BorderRadius.circular(AppBorderRadius.small),
-            ),
-            child: Icon(icon, size: _scale(18), color: color),
-          ),
-          AppSpacings.spacingMdHorizontal,
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.title,
-                  style: TextStyle(
-                    color: isDark
-                        ? AppTextColorDark.primary
-                        : AppTextColorLight.primary,
-                    fontSize: AppFontSize.small,
-                  ),
-                ),
-                AppSpacings.spacingXsVertical,
-                Text(
-                  item.subtitle,
-                  style: TextStyle(
-                    color: isDark
-                        ? AppTextColorDark.placeholder
-                        : AppTextColorLight.placeholder,
-                    fontSize: AppFontSize.extraSmall,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            item.timeAgo,
-            style: TextStyle(
-              color: isDark
-                  ? AppTextColorDark.placeholder
-                  : AppTextColorLight.placeholder,
-              fontSize: AppFontSize.extraSmall,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   // --------------------------------------------------------------------------
