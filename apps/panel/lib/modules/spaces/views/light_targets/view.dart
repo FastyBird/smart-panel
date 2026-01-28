@@ -69,8 +69,7 @@ class LightTargetView {
       _model.hasBrightness || _model.hasColorTemp || _model.hasColor;
 
   /// Display name for the light target
-  String get displayName =>
-      _model.channelName.isNotEmpty ? _model.channelName : _model.deviceName;
+  String get displayName => _model.channelName;
 
   @override
   bool operator ==(Object other) {

@@ -65,8 +65,7 @@ class CoversTargetView {
       _model.hasPosition || _model.hasTilt;
 
   /// Display name for the covers target
-  String get displayName =>
-      _model.channelName.isNotEmpty ? _model.channelName : _model.deviceName;
+  String get displayName => _model.channelName;
 
   @override
   bool operator ==(Object other) {
