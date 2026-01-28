@@ -261,7 +261,7 @@ Avoid:
 
 ### Related Documentation
 - **Convergence Phase**: `docs/features/media-domain-convergence.md` - Finalized contracts, invariants, and UI/backend responsibilities
-- **Architecture Guide**: `.ai-rules/MEDIA_ARCHITECTURE.md` - Updated with V2 architecture details
+- **Architecture Guide**: `.ai-rules/MEDIA_ARCHITECTURE.md` - Routing-based architecture details
 
 ### Architecture Notes
 
