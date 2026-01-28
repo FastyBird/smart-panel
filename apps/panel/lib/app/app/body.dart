@@ -139,9 +139,15 @@ class _AppBodyState extends State<AppBody> {
   }
 
   void _handleReconnect() {
+    // Check if we're in a full-screen error state before reconnecting
+    final wasFullScreen = _connectionManager.uiSeverity == ConnectionUISeverity.fullScreen;
+
     // Trigger manual reconnection attempt
     _socketService.reconnect();
-    _connectionManager.onReconnecting();
+
+    // Show banner immediately if coming from full-screen to avoid
+    // confusing 2-second gap where no UI is shown
+    _connectionManager.onReconnecting(showBannerImmediately: wasFullScreen);
   }
 
   void _handleChangeGateway() {

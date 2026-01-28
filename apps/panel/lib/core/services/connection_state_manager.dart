@@ -179,9 +179,13 @@ class ConnectionStateManager extends ChangeNotifier {
   ///
   /// Resets the disconnect timestamp to give reconnection a fresh window
   /// before escalating back to offline state.
-  void onReconnecting() {
+  ///
+  /// If [showBannerImmediately] is true, skips the 2-second grace period
+  /// and shows the reconnecting banner immediately. Use this when retrying
+  /// from a full-screen error state to avoid confusing UI transition.
+  void onReconnecting({bool showBannerImmediately = false}) {
     if (kDebugMode) {
-      debugPrint('[ConnectionStateManager] onReconnecting called');
+      debugPrint('[ConnectionStateManager] onReconnecting called (showBannerImmediately: $showBannerImmediately)');
     }
 
     _debounceTimer?.cancel();
@@ -192,7 +196,13 @@ class ConnectionStateManager extends ChangeNotifier {
     if (_state != SocketConnectionState.online) {
       // Reset timestamp to give reconnection a fresh escalation window.
       // This prevents immediate jump back to offline when retrying after 60+ seconds.
-      _disconnectedAt = DateTime.now();
+      if (showBannerImmediately) {
+        // Set timestamp to already be past the banner threshold (2s)
+        // so the banner shows immediately instead of waiting.
+        _disconnectedAt = DateTime.now().subtract(_bannerThreshold + const Duration(milliseconds: 100));
+      } else {
+        _disconnectedAt = DateTime.now();
+      }
       _updateState(SocketConnectionState.reconnecting);
       _startEscalationTimer();
     }
