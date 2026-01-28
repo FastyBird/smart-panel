@@ -46,12 +46,19 @@ import {
 	ReqSetSensorRoleDto,
 	SetSensorRoleDto,
 } from './dto/sensor-role.dto';
+import {
+	CreateMediaActivityBindingDto,
+	ReqCreateMediaActivityBindingDto,
+	ReqUpdateMediaActivityBindingDto,
+	UpdateMediaActivityBindingDto,
+} from './dto/media-activity-binding.dto';
 import { ReqSuggestionFeedbackDto, SuggestionFeedbackDto } from './dto/suggestion.dto';
 import { ReqUpdateSpaceDto, UpdateSpaceDto } from './dto/update-space.dto';
 import { SpaceActiveMediaRoutingEntity } from './entities/space-active-media-routing.entity';
 import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
 import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
+import { SpaceMediaActivityBindingEntity } from './entities/space-media-activity-binding.entity';
 import { SpaceMediaEndpointEntity } from './entities/space-media-endpoint.entity';
 import { SpaceMediaRoutingEntity } from './entities/space-media-routing.entity';
 import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
@@ -65,6 +72,10 @@ import {
 	DerivedMediaPropertyLinkModel,
 	DerivedRemoteLinksModel,
 } from './models/derived-media-endpoint.model';
+import {
+	MediaActivityBindingResponseModel,
+	MediaActivityBindingsResponseModel,
+} from './models/media-activity-binding.model';
 import {
 	ActiveMediaRoutingResponseModel,
 	ActiveMediaRoutingStateModel,
@@ -199,6 +210,11 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	ReqActivateMediaRoutingDto,
 	SuggestionFeedbackDto,
 	ReqSuggestionFeedbackDto,
+	// Media activity binding DTOs
+	CreateMediaActivityBindingDto,
+	ReqCreateMediaActivityBindingDto,
+	UpdateMediaActivityBindingDto,
+	ReqUpdateMediaActivityBindingDto,
 	// Sensor DTOs
 	SetSensorRoleDto,
 	ReqSetSensorRoleDto,
@@ -259,6 +275,9 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	ActiveMediaRoutingStateModel,
 	ActiveMediaRoutingResponseModel,
 	ActiveMediaRoutingStateResponseModel,
+	// Media activity binding response models
+	MediaActivityBindingResponseModel,
+	MediaActivityBindingsResponseModel,
 	// Derived media endpoint models
 	DerivedMediaPropertyLinkModel,
 	DerivedRemoteLinksModel,
@@ -311,6 +330,7 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	SpaceLightingRoleEntity,
 	SpaceClimateRoleEntity,
 	SpaceCoversRoleEntity,
+	SpaceMediaActivityBindingEntity,
 	SpaceMediaEndpointEntity,
 	SpaceMediaRoutingEntity,
 	SpaceActiveMediaRoutingEntity,

@@ -6,6 +6,7 @@ import { DevicesResponseModel } from '../../devices/models/devices-response.mode
 import { DisplaysResponseModel } from '../../displays/models/displays-response.model';
 import {
 	ApiBadRequestResponse,
+	ApiCreatedSuccessResponse,
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
@@ -19,11 +20,16 @@ import { ReqCoversIntentDto } from '../dto/covers-intent.dto';
 import { ReqBulkSetCoversRolesDto, ReqSetCoversRoleDto } from '../dto/covers-role.dto';
 import { ReqCreateSpaceDto } from '../dto/create-space.dto';
 import { ReqLightingIntentDto } from '../dto/lighting-intent.dto';
+import { ReqCreateMediaActivityBindingDto, ReqUpdateMediaActivityBindingDto } from '../dto/media-activity-binding.dto';
 import { ReqBulkSetLightingRolesDto, ReqSetLightingRoleDto } from '../dto/lighting-role.dto';
 import { ReqBulkSetSensorRolesDto, ReqSetSensorRoleDto } from '../dto/sensor-role.dto';
 import { ReqSuggestionFeedbackDto } from '../dto/suggestion.dto';
 import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
 import { DerivedMediaEndpointsResponseModel } from '../models/derived-media-endpoint.model';
+import {
+	MediaActivityBindingResponseModel,
+	MediaActivityBindingsResponseModel,
+} from '../models/media-activity-binding.model';
 import {
 	BulkAssignmentResponseModel,
 	BulkAssignmentResultDataModel,
@@ -106,6 +112,7 @@ import {
 	UndoStateResponseModel,
 } from '../models/spaces-response.model';
 import { DerivedMediaEndpointService } from '../services/derived-media-endpoint.service';
+import { SpaceMediaActivityBindingService } from '../services/space-media-activity-binding.service';
 import { SpaceClimateRoleService } from '../services/space-climate-role.service';
 import { SpaceContextSnapshotService } from '../services/space-context-snapshot.service';
 import { SpaceCoversRoleService } from '../services/space-covers-role.service';
@@ -170,6 +177,7 @@ export class SpacesController {
 		private readonly spaceUndoHistoryService: SpaceUndoHistoryService,
 		private readonly intentSpecLoaderService: IntentSpecLoaderService,
 		private readonly derivedMediaEndpointService: DerivedMediaEndpointService,
+		private readonly spaceMediaActivityBindingService: SpaceMediaActivityBindingService,
 	) {}
 
 	@Get()
@@ -1966,5 +1974,159 @@ export class SpacesController {
 		response.data = resultData;
 
 		return response;
+	}
+
+	// ================================
+	// Media Activity Bindings
+	// ================================
+
+	@Get(':id/media/bindings')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-media-bindings',
+		summary: 'List media activity bindings for space',
+		description:
+			'Returns all media activity bindings for a space. ' +
+			'Each binding maps a predefined activity (watch, listen, gaming, background, off) ' +
+			'to concrete derived endpoint IDs.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(MediaActivityBindingsResponseModel, 'Returns media activity bindings for the space')
+	@ApiNotFoundResponse('Space not found')
+	async getMediaActivityBindings(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<MediaActivityBindingsResponseModel> {
+		this.logger.debug(`Fetching media activity bindings for space with id=${id}`);
+
+		const bindings = await this.spaceMediaActivityBindingService.findBySpace(id);
+
+		const response = new MediaActivityBindingsResponseModel();
+		response.data = bindings;
+
+		return response;
+	}
+
+	@Post(':id/media/bindings/apply-defaults')
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-media-bindings-apply-defaults',
+		summary: 'Apply default activity bindings',
+		description:
+			'Creates missing activity bindings with heuristic defaults based on available endpoints. ' +
+			'Does not overwrite existing bindings. Returns the full set of bindings after applying defaults.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(MediaActivityBindingsResponseModel, 'Default bindings applied successfully')
+	@ApiNotFoundResponse('Space not found')
+	async applyDefaultMediaActivityBindings(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<MediaActivityBindingsResponseModel> {
+		this.logger.debug(`Applying default media activity bindings for space=${id}`);
+
+		const bindings = await this.spaceMediaActivityBindingService.applyDefaults(id);
+
+		const response = new MediaActivityBindingsResponseModel();
+		response.data = bindings;
+
+		return response;
+	}
+
+	@Get(':id/media/bindings/:bindingId')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-media-binding',
+		summary: 'Get a single media activity binding',
+		description: 'Returns a single media activity binding by ID.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiParam({ name: 'bindingId', type: 'string', format: 'uuid', description: 'Binding ID' })
+	@ApiSuccessResponse(MediaActivityBindingResponseModel, 'Returns the media activity binding')
+	@ApiNotFoundResponse('Space or binding not found')
+	async getMediaActivityBinding(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Param('bindingId', new ParseUUIDPipe({ version: '4' })) bindingId: string,
+	): Promise<MediaActivityBindingResponseModel> {
+		this.logger.debug(`Fetching media activity binding id=${bindingId} for space=${id}`);
+
+		const binding = await this.spaceMediaActivityBindingService.getOneOrThrow(bindingId);
+
+		const response = new MediaActivityBindingResponseModel();
+		response.data = binding;
+
+		return response;
+	}
+
+	@Post(':id/media/bindings')
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-media-binding',
+		summary: 'Create a media activity binding',
+		description:
+			'Creates a new media activity binding for a space. ' +
+			'Validates that referenced endpoint IDs exist and match the expected slot types. ' +
+			'Only one binding per activity key is allowed per space.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiCreatedSuccessResponse(MediaActivityBindingResponseModel, 'Binding created successfully')
+	@ApiBadRequestResponse('Invalid binding data')
+	@ApiUnprocessableEntityResponse('Validation failed (endpoint not found, type mismatch, etc.)')
+	@ApiNotFoundResponse('Space not found')
+	async createMediaActivityBinding(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqCreateMediaActivityBindingDto,
+	): Promise<MediaActivityBindingResponseModel> {
+		this.logger.debug(`Creating media activity binding for space=${id} key=${body.data.activityKey}`);
+
+		const binding = await this.spaceMediaActivityBindingService.create(id, body.data);
+
+		const response = new MediaActivityBindingResponseModel();
+		response.data = binding;
+
+		return response;
+	}
+
+	@Patch(':id/media/bindings/:bindingId')
+	@ApiOperation({
+		operationId: 'update-spaces-module-space-media-binding',
+		summary: 'Update a media activity binding',
+		description:
+			'Updates an existing media activity binding. ' +
+			'Validates endpoint IDs and overrides against current derived endpoints.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiParam({ name: 'bindingId', type: 'string', format: 'uuid', description: 'Binding ID' })
+	@ApiSuccessResponse(MediaActivityBindingResponseModel, 'Binding updated successfully')
+	@ApiBadRequestResponse('Invalid binding data')
+	@ApiUnprocessableEntityResponse('Validation failed')
+	@ApiNotFoundResponse('Space or binding not found')
+	async updateMediaActivityBinding(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Param('bindingId', new ParseUUIDPipe({ version: '4' })) bindingId: string,
+		@Body() body: ReqUpdateMediaActivityBindingDto,
+	): Promise<MediaActivityBindingResponseModel> {
+		this.logger.debug(`Updating media activity binding id=${bindingId} for space=${id}`);
+
+		const binding = await this.spaceMediaActivityBindingService.update(bindingId, body.data);
+
+		const response = new MediaActivityBindingResponseModel();
+		response.data = binding;
+
+		return response;
+	}
+
+	@Delete(':id/media/bindings/:bindingId')
+	@HttpCode(204)
+	@ApiOperation({
+		operationId: 'delete-spaces-module-space-media-binding',
+		summary: 'Delete a media activity binding',
+		description: 'Deletes a media activity binding.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiParam({ name: 'bindingId', type: 'string', format: 'uuid', description: 'Binding ID' })
+	@ApiNoContentResponse({ description: 'Binding deleted successfully' })
+	@ApiNotFoundResponse('Space or binding not found')
+	async deleteMediaActivityBinding(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Param('bindingId', new ParseUUIDPipe({ version: '4' })) bindingId: string,
+	): Promise<void> {
+		this.logger.debug(`Deleting media activity binding id=${bindingId} for space=${id}`);
+
+		await this.spaceMediaActivityBindingService.delete(bindingId);
 	}
 }
