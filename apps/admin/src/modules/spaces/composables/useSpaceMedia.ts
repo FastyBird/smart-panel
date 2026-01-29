@@ -55,9 +55,14 @@ export interface IBindingSavePayload {
 
 export interface IMediaStepFailure {
 	stepIndex: number;
+	critical: boolean;
 	reason: string;
 	targetDeviceId?: string;
+	kind?: string;
 	propertyId?: string;
+	commandId?: string;
+	label?: string;
+	timestamp?: string;
 }
 
 export interface IMediaActivationSummary {
@@ -65,6 +70,10 @@ export interface IMediaActivationSummary {
 	stepsSucceeded: number;
 	stepsFailed: number;
 	failures?: IMediaStepFailure[];
+	warnings?: IMediaStepFailure[];
+	errors?: IMediaStepFailure[];
+	warningCount?: number;
+	errorCount?: number;
 }
 
 export interface IMediaResolvedDevices {
@@ -163,9 +172,14 @@ const transformBinding = (raw: Record<string, unknown>): IMediaActivityBinding =
 
 const transformStepFailure = (raw: Record<string, unknown>): IMediaStepFailure => ({
 	stepIndex: (raw.step_index as number) ?? (raw.stepIndex as number) ?? 0,
+	critical: (raw.critical as boolean) ?? false,
 	reason: (raw.reason as string) ?? '',
 	targetDeviceId: (raw.target_device_id as string | undefined) ?? (raw.targetDeviceId as string | undefined),
+	kind: (raw.kind as string | undefined),
 	propertyId: (raw.property_id as string | undefined) ?? (raw.propertyId as string | undefined),
+	commandId: (raw.command_id as string | undefined) ?? (raw.commandId as string | undefined),
+	label: (raw.label as string | undefined),
+	timestamp: (raw.timestamp as string | undefined),
 });
 
 const transformResolvedDevices = (data: Record<string, unknown>): IMediaResolvedDevices => ({
@@ -182,6 +196,14 @@ const transformSummary = (data: Record<string, unknown>): IMediaActivationSummar
 	failures: Array.isArray(data.failures)
 		? (data.failures as Record<string, unknown>[]).map(transformStepFailure)
 		: undefined,
+	warnings: Array.isArray(data.warnings)
+		? (data.warnings as Record<string, unknown>[]).map(transformStepFailure)
+		: undefined,
+	errors: Array.isArray(data.errors)
+		? (data.errors as Record<string, unknown>[]).map(transformStepFailure)
+		: undefined,
+	warningCount: (data.warning_count as number) ?? (data.warningCount as number) ?? 0,
+	errorCount: (data.error_count as number) ?? (data.errorCount as number) ?? 0,
 });
 
 const transformActivationResult = (raw: Record<string, unknown>): IMediaActiveState => {

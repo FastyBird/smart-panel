@@ -168,11 +168,95 @@
 						<span class="text-gray-500">{{ t('spacesModule.media.activities.failures.failed') }}:</span>
 						<span class="ml-1 font-medium text-red-600">{{ activeState.summary.stepsFailed }}</span>
 					</span>
+					<span v-if="activeState.summary.errorCount">
+						<span class="text-gray-500">Errors:</span>
+						<span class="ml-1 font-medium text-red-600">{{ activeState.summary.errorCount }}</span>
+					</span>
+					<span v-if="activeState.summary.warningCount">
+						<span class="text-gray-500">Warnings:</span>
+						<span class="ml-1 font-medium text-orange-500">{{ activeState.summary.warningCount }}</span>
+					</span>
 				</div>
 
-				<!-- Failed steps table -->
+				<!-- Errors table (critical failures) -->
+				<template v-if="activeState.summary.errors?.length">
+					<div class="text-xs font-semibold text-red-600 mb-1">Critical Errors</div>
+					<el-table
+						:data="activeState.summary.errors"
+						size="small"
+						border
+						class="mb-3"
+					>
+						<el-table-column
+							:label="t('spacesModule.media.activities.failures.stepIndex')"
+							prop="stepIndex"
+							width="80"
+						/>
+						<el-table-column
+							label="Label"
+							min-width="120"
+						>
+							<template #default="{ row }">
+								{{ row.label ?? '-' }}
+							</template>
+						</el-table-column>
+						<el-table-column
+							:label="t('spacesModule.media.activities.failures.device')"
+							min-width="140"
+						>
+							<template #default="{ row }">
+								{{ row.targetDeviceId ? resolveDeviceName(row.targetDeviceId) : '-' }}
+							</template>
+						</el-table-column>
+						<el-table-column
+							:label="t('spacesModule.media.activities.failures.reason')"
+							prop="reason"
+							min-width="200"
+						/>
+					</el-table>
+				</template>
+
+				<!-- Warnings table (non-critical failures) -->
+				<template v-if="activeState.summary.warnings?.length">
+					<div class="text-xs font-semibold text-orange-500 mb-1">Warnings (non-critical)</div>
+					<el-table
+						:data="activeState.summary.warnings"
+						size="small"
+						border
+						class="mb-2"
+					>
+						<el-table-column
+							:label="t('spacesModule.media.activities.failures.stepIndex')"
+							prop="stepIndex"
+							width="80"
+						/>
+						<el-table-column
+							label="Label"
+							min-width="120"
+						>
+							<template #default="{ row }">
+								{{ row.label ?? '-' }}
+							</template>
+						</el-table-column>
+						<el-table-column
+							:label="t('spacesModule.media.activities.failures.device')"
+							min-width="140"
+						>
+							<template #default="{ row }">
+								{{ row.targetDeviceId ? resolveDeviceName(row.targetDeviceId) : '-' }}
+							</template>
+						</el-table-column>
+						<el-table-column
+							:label="t('spacesModule.media.activities.failures.reason')"
+							prop="reason"
+							min-width="200"
+						/>
+					</el-table>
+				</template>
+
+				<!-- Legacy failures table (fallback if no structured warnings/errors) -->
 				<el-table
-					v-if="activeState.summary.failures?.length"
+					v-if="activeState.summary.failures?.length && !activeState.summary.errors?.length && !activeState.summary.warnings?.length"
 					:data="activeState.summary.failures"
 					size="small"
 					border
@@ -183,6 +267,19 @@
 						prop="stepIndex"
 						width="80"
 					/>
+					<el-table-column
+						label="Critical"
+						width="80"
+					>
+						<template #default="{ row }">
+							<el-tag
+								:type="row.critical ? 'danger' : 'warning'"
+								size="small"
+							>
+								{{ row.critical ? 'Error' : 'Warning' }}
+							</el-tag>
+						</template>
+					</el-table-column>
 					<el-table-column
 						:label="t('spacesModule.media.activities.failures.device')"
 						min-width="140"
@@ -287,7 +384,7 @@
 								type="success"
 								circle
 								:loading="activating && activatingKey === activity"
-								:disabled="activating || deactivating"
+								:disabled="activating || deactivating || (activeState?.state === 'activating')"
 								:title="t('spacesModule.media.activities.run')"
 								@click.stop="onActivate(activity)"
 							>

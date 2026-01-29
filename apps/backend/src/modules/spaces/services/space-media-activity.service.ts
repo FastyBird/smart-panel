@@ -37,7 +37,10 @@ interface ExecutionFailure {
 	reason: string;
 	critical: boolean;
 	targetDeviceId?: string;
+	kind?: string;
 	propertyId?: string;
+	label?: string;
+	timestamp?: string;
 }
 
 interface ExecutionResult {
@@ -162,20 +165,30 @@ export class SpaceMediaActivityService {
 			const hasCriticalFailure = executionResult.failures.some((f) => f.critical);
 			const finalState = hasCriticalFailure ? MediaActivationState.FAILED : MediaActivationState.ACTIVE;
 
-			// Build last result
+			// Build last result with structured warnings/errors
+			const allFailures = executionResult.failures.map((f) => ({
+				stepIndex: f.stepIndex,
+				critical: f.critical,
+				reason: f.reason,
+				targetDeviceId: f.targetDeviceId,
+				kind: f.kind,
+				propertyId: f.propertyId,
+				label: f.label,
+				timestamp: f.timestamp,
+			}));
+
+			const warningItems = allFailures.filter((f) => !f.critical);
+			const errorItems = allFailures.filter((f) => f.critical);
+
 			const lastResult: MediaActivityLastResultModel = {
 				stepsTotal: plan.steps.length,
 				stepsSucceeded: executionResult.succeeded,
 				stepsFailed: executionResult.failures.length,
-				failures:
-					executionResult.failures.length > 0
-						? executionResult.failures.map((f) => ({
-								stepIndex: f.stepIndex,
-								reason: f.reason,
-								targetDeviceId: f.targetDeviceId,
-								propertyId: f.propertyId,
-							}))
-						: undefined,
+				failures: allFailures.length > 0 ? allFailures : undefined,
+				warnings: warningItems.length > 0 ? warningItems : undefined,
+				errors: errorItems.length > 0 ? errorItems : undefined,
+				warningCount: warningItems.length,
+				errorCount: errorItems.length,
 			};
 
 			// Persist final state
@@ -206,6 +219,7 @@ export class SpaceMediaActivityService {
 				resolved: plan.resolved,
 				summary: lastResult,
 				warnings: warnings.length > 0 ? warnings : undefined,
+				requiresRealtime: true,
 			};
 		} catch (error) {
 			this.logger.error(
@@ -213,16 +227,21 @@ export class SpaceMediaActivityService {
 				error instanceof Error ? error.stack : String(error),
 			);
 
+			const unexpectedFailure = {
+				stepIndex: 0,
+				critical: true,
+				reason: `Unexpected error: ${error instanceof Error ? error.message : String(error)}`,
+				timestamp: new Date().toISOString(),
+			};
+
 			const lastResult: MediaActivityLastResultModel = {
 				stepsTotal: plan.steps.length,
 				stepsSucceeded: 0,
 				stepsFailed: plan.steps.length,
-				failures: [
-					{
-						stepIndex: 0,
-						reason: `Unexpected error: ${error instanceof Error ? error.message : String(error)}`,
-					},
-				],
+				failures: [unexpectedFailure],
+				errors: [unexpectedFailure],
+				warningCount: 0,
+				errorCount: 1,
 			};
 
 			record.state = MediaActivationState.FAILED;
@@ -236,6 +255,7 @@ export class SpaceMediaActivityService {
 				state: MediaActivationState.FAILED,
 				resolved: plan.resolved,
 				summary: lastResult,
+				requiresRealtime: true,
 			};
 		}
 	}
@@ -247,8 +267,23 @@ export class SpaceMediaActivityService {
 		await this.spacesService.getOneOrThrow(spaceId);
 
 		const record = await this.getActiveRecord(spaceId);
+		const deactivationWarnings: string[] = [];
 
 		if (record) {
+			// Best-effort: try to stop playback on resolved devices before deactivating
+			if (record.resolved && record.state !== MediaActivationState.DEACTIVATED) {
+				try {
+					const resolved = JSON.parse(record.resolved) as MediaActivityResolvedModel;
+					const stopWarnings = await this.bestEffortStopPlayback(spaceId, resolved);
+					deactivationWarnings.push(...stopWarnings);
+				} catch (error) {
+					const err = error as Error;
+					deactivationWarnings.push(`Best-effort stop failed: ${err.message}`);
+					this.logger.warn(`Best-effort stop playback failed during deactivation: ${err.message}`);
+				}
+			}
+
+			// Always set to deactivated regardless of stop playback outcome
 			record.activityKey = null;
 			record.state = MediaActivationState.DEACTIVATED;
 			record.lastResult = null;
@@ -260,7 +295,86 @@ export class SpaceMediaActivityService {
 		return {
 			activityKey: null,
 			state: MediaActivationState.DEACTIVATED,
+			warnings: deactivationWarnings.length > 0 ? deactivationWarnings : undefined,
+			requiresRealtime: true,
 		};
+	}
+
+	/**
+	 * Best-effort: try to stop/pause playback on resolved devices.
+	 * Returns warning messages for any failures (never throws).
+	 */
+	private async bestEffortStopPlayback(spaceId: string, resolved: MediaActivityResolvedModel): Promise<string[]> {
+		const warnings: string[] = [];
+		const endpointsResult = await this.derivedEndpointService.buildEndpointsForSpace(spaceId);
+
+		const playbackEndpoints = endpointsResult.endpoints.filter((e) => e.capabilities.playback && e.links.playback);
+
+		// Only target endpoints that are part of the resolved activity
+		const resolvedDeviceIds = new Set(
+			[resolved.displayDeviceId, resolved.audioDeviceId, resolved.sourceDeviceId, resolved.remoteDeviceId].filter(
+				Boolean,
+			),
+		);
+
+		for (const ep of playbackEndpoints) {
+			if (!resolvedDeviceIds.has(ep.deviceId)) {
+				continue;
+			}
+
+			try {
+				const devices = await this.spacesService.findDevicesByIds([ep.deviceId]);
+				const device = devices[0];
+
+				if (!device) {
+					continue;
+				}
+
+				const platform = this.platformRegistryService.get(device);
+
+				if (!platform) {
+					continue;
+				}
+
+				let foundChannel: (typeof device.channels extends (infer U)[] | undefined ? U : never) | null = null;
+				let foundProperty: unknown = null;
+
+				for (const channel of device.channels ?? []) {
+					for (const property of channel.properties ?? []) {
+						if (property.id === ep.links.playback.propertyId) {
+							foundChannel = channel;
+							foundProperty = property;
+							break;
+						}
+					}
+
+					if (foundProperty) {
+						break;
+					}
+				}
+
+				if (foundChannel && foundProperty) {
+					const command = {
+						device,
+						channel: foundChannel,
+						property: foundProperty,
+						value: 'pause',
+					} as IDevicePropertyData;
+
+					await Promise.race([
+						platform.processBatch([command]),
+						new Promise<boolean>((_, reject) =>
+							setTimeout(() => reject(new Error('Stop playback timeout')), STEP_TIMEOUT_MS),
+						),
+					]);
+				}
+			} catch (error) {
+				const err = error as Error;
+				warnings.push(`Failed to stop playback on ${ep.name}: ${err.message}`);
+			}
+		}
+
+		return warnings;
 	}
 
 	/**
@@ -405,7 +519,10 @@ export class SpaceMediaActivityService {
 					reason: `Device ${step.targetDeviceId} not found`,
 					critical: step.critical,
 					targetDeviceId: step.targetDeviceId,
+					kind: step.action.kind,
 					propertyId: step.action.propertyId,
+					label: step.label,
+					timestamp: new Date().toISOString(),
 				});
 
 				if (step.critical) {
@@ -424,7 +541,10 @@ export class SpaceMediaActivityService {
 					reason: `No platform for device ${step.targetDeviceId}`,
 					critical: step.critical,
 					targetDeviceId: step.targetDeviceId,
+					kind: step.action.kind,
 					propertyId: step.action.propertyId,
+					label: step.label,
+					timestamp: new Date().toISOString(),
 				});
 
 				if (step.critical) {
@@ -441,6 +561,9 @@ export class SpaceMediaActivityService {
 					reason: `Unsupported action kind: ${step.action.kind}`,
 					critical: step.critical,
 					targetDeviceId: step.targetDeviceId,
+					kind: step.action.kind,
+					label: step.label,
+					timestamp: new Date().toISOString(),
 				});
 
 				if (step.critical) {
@@ -474,7 +597,10 @@ export class SpaceMediaActivityService {
 					reason: `Property ${step.action.propertyId} not found on device`,
 					critical: step.critical,
 					targetDeviceId: step.targetDeviceId,
+					kind: step.action.kind,
 					propertyId: step.action.propertyId,
+					label: step.label,
+					timestamp: new Date().toISOString(),
 				});
 
 				if (step.critical) {
@@ -506,7 +632,10 @@ export class SpaceMediaActivityService {
 						reason: 'Command execution returned false',
 						critical: step.critical,
 						targetDeviceId: step.targetDeviceId,
+						kind: step.action.kind,
 						propertyId: step.action.propertyId,
+						label: step.label,
+						timestamp: new Date().toISOString(),
 					});
 
 					if (step.critical) {
@@ -522,7 +651,10 @@ export class SpaceMediaActivityService {
 					reason: err.message,
 					critical: step.critical,
 					targetDeviceId: step.targetDeviceId,
+					kind: step.action.kind,
 					propertyId: step.action.propertyId,
+					label: step.label,
+					timestamp: new Date().toISOString(),
 				});
 
 				if (step.critical) {
@@ -721,6 +853,7 @@ export class SpaceMediaActivityService {
 			state: record.state,
 			resolved,
 			summary,
+			requiresRealtime: true,
 		};
 	}
 
