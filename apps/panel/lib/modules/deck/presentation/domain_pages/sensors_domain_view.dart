@@ -918,7 +918,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   // --------------------------------------------------------------------------
 
   /// Build summary data items for the environment
-  List<({String name, String status, IconData icon, Color color})> _buildSummaryItems() {
+  List<({String name, String status, IconData icon, Color color})> _buildSummaryItems({required bool isDark}) {
     final env = _environment;
     final items = <({String name, String status, IconData icon, Color color})>[];
 
@@ -927,7 +927,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         name: '${_formatter.formatDecimal(env!.averageTemperature!, decimalPlaces: 1)}°C',
         status: 'Avg Temperature',
         icon: MdiIcons.thermometer,
-        color: AppColorsLight.info,
+        color: isDark ? AppColorsDark.info : AppColorsLight.info,
       ));
     }
 
@@ -936,7 +936,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         name: '${_formatter.formatInteger(env!.averageHumidity!.round())}%',
         status: 'Avg Humidity',
         icon: MdiIcons.waterPercent,
-        color: AppColorsLight.success,
+        color: isDark ? AppColorsDark.success : AppColorsLight.success,
       ));
     }
 
@@ -945,14 +945,14 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         name: '${_formatter.formatInteger(env!.averageIlluminance!.round())} lux',
         status: 'Illuminance',
         icon: MdiIcons.weatherSunny,
-        color: AppColorsLight.warning,
+        color: isDark ? AppColorsDark.warning : AppColorsLight.warning,
       ));
     } else if (env?.averagePressure != null) {
       items.add((
         name: '${_formatter.formatInteger(env!.averagePressure!.round())} hPa',
         status: 'Pressure',
         icon: MdiIcons.gaugeEmpty,
-        color: AppColorsLight.info,
+        color: isDark ? AppColorsDark.info : AppColorsLight.info,
       ));
     }
 
@@ -960,7 +960,8 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   }
 
   Widget _buildSummaryCards(BuildContext context, {bool compact = false}) {
-    final items = _buildSummaryItems();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final items = _buildSummaryItems(isDark: isDark);
 
     if (items.isEmpty) return const SizedBox.shrink();
 
@@ -988,7 +989,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     }
 
     // Standard: expanded cards in a row
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final cards = <Widget>[];
 
     for (var i = 0; i < items.length; i++) {
@@ -1000,7 +1000,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
           title: item.status,
           value: item.name,
           icon: item.icon,
-          color: isDark ? item.color : item.color,
+          color: item.color,
         ),
       ));
     }
