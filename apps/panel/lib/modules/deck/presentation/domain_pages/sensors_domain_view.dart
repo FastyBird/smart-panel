@@ -1221,7 +1221,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
 
   Widget _buildSensorCard(BuildContext context, SensorData sensor) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isAlert = sensor.status == SensorStatus.alert;
+    final isAlert = sensor.status == SensorStatus.alert && !sensor.isOffline;
     final dangerColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
     final freshness = sensor.freshness;
 
@@ -1322,25 +1322,33 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
                       style: TextStyle(
                         fontSize: _scale(24),
                         fontWeight: FontWeight.w300,
-                        color: isAlert ? dangerColor : categoryColor,
+                        color: sensor.isOffline
+                            ? (isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder)
+                            : isAlert ? dangerColor : categoryColor,
                       ),
-                      children: [
-                        TextSpan(
-                          text: _SensorsDomainViewPageState.translateSensorValue(
-                            AppLocalizations.of(context)!,
-                            sensor.value,
-                            sensor.channelCategory,
-                            short: true,
-                          ),
-                        ),
-                        TextSpan(
-                          text: sensor.unit,
-                          style: TextStyle(
-                            fontSize: AppFontSize.base,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ],
+                      children: sensor.isOffline
+                          ? [
+                              TextSpan(
+                                text: AppLocalizations.of(context)!.device_status_offline,
+                              ),
+                            ]
+                          : [
+                              TextSpan(
+                                text: _SensorsDomainViewPageState.translateSensorValue(
+                                  AppLocalizations.of(context)!,
+                                  sensor.value,
+                                  sensor.channelCategory,
+                                  short: true,
+                                ),
+                              ),
+                              TextSpan(
+                                text: sensor.unit,
+                                style: TextStyle(
+                                  fontSize: AppFontSize.base,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                            ],
                     ),
                   ),
                 ],
@@ -1873,22 +1881,30 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
                 style: TextStyle(
                   fontSize: _scale(isCompact ? 56 : 72),
                   fontWeight: FontWeight.w200,
-                  color: _getCategoryColor(context),
+                  color: _sensor.isOffline
+                      ? (isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder)
+                      : _getCategoryColor(context),
                 ),
-                children: [
-                  TextSpan(
-                    text: _SensorsDomainViewPageState.translateSensorValue(
-                      AppLocalizations.of(context)!,
-                      _sensor.value,
-                      _sensor.channelCategory,
-                      short: false,
-                    ),
-                  ),
-                  TextSpan(
-                    text: _sensor.unit,
-                    style: TextStyle(
-                      fontSize: _scale(isCompact ? 18 : 24),
-                      fontWeight: FontWeight.w300,
+                children: _sensor.isOffline
+                    ? [
+                        TextSpan(
+                          text: AppLocalizations.of(context)!.device_status_offline,
+                        ),
+                      ]
+                    : [
+                        TextSpan(
+                          text: _SensorsDomainViewPageState.translateSensorValue(
+                            AppLocalizations.of(context)!,
+                            _sensor.value,
+                            _sensor.channelCategory,
+                            short: false,
+                          ),
+                        ),
+                        TextSpan(
+                          text: _sensor.unit,
+                          style: TextStyle(
+                            fontSize: _scale(isCompact ? 18 : 24),
+                            fontWeight: FontWeight.w300,
                     ),
                   ),
                 ],
@@ -1906,17 +1922,17 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
             ),
           ),
           AppSpacings.spacingXsVertical,
-          // Freshness / offline label with color
+          // Freshness label (invisible when offline to avoid duplicate, but preserves layout space)
           Text(
             _sensor.isOffline
-                ? 'Offline'
+                ? ' '
                 : SensorFreshnessUtils.label(
                     _sensor.freshness,
                     DateTime.now().difference(_sensor.lastUpdated),
                   ),
             style: TextStyle(
               color: _sensor.isOffline
-                  ? SensorFreshnessUtils.color(SensorFreshness.offline, isDark)
+                  ? Colors.transparent
                   : SensorFreshnessUtils.color(_sensor.freshness, isDark),
               fontSize: AppFontSize.small,
               fontWeight: FontWeight.w500,
