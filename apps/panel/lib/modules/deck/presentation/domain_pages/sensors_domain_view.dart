@@ -1766,10 +1766,13 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
   Widget _buildLargeValue(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    final isCompact = isLandscape && !_screenService.isLargeScreen;
+    final isCompact = _screenService.isSmallScreen;
 
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: isCompact ? AppSpacings.pMd : AppSpacings.pXl),
+      padding: EdgeInsets.only(
+        top: isCompact ? AppSpacings.pSm : AppSpacings.pXl,
+        bottom: isCompact ? AppSpacings.pSm : AppSpacings.pXl,
+      ),
       child: Column(
         children: [
           FittedBox(
@@ -1777,7 +1780,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
             child: RichText(
               text: TextSpan(
                 style: TextStyle(
-                  fontSize: _scale(72),
+                  fontSize: _scale(isCompact ? 56 : 72),
                   fontWeight: FontWeight.w200,
                   color: _getCategoryColor(context),
                 ),
@@ -1786,7 +1789,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
                   TextSpan(
                     text: _sensor.unit,
                     style: TextStyle(
-                      fontSize: _scale(24),
+                      fontSize: _scale(isCompact ? 18 : 24),
                       fontWeight: FontWeight.w300,
                     ),
                   ),
