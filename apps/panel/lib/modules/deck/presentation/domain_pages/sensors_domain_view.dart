@@ -1765,7 +1765,6 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
 
   Widget _buildLargeValue(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
     final isCompact = _screenService.isSmallScreen;
 
     return Padding(
