@@ -370,6 +370,15 @@ class DeckService extends ChangeNotifier {
           }
           return null;
         }),
+        // Prefetch sensor data
+        spacesService.fetchSensorState(roomId).catchError((e) {
+          if (kDebugMode) {
+            debugPrint(
+              '[DECK SERVICE] Failed to prefetch sensor state: $e',
+            );
+          }
+          return null;
+        }),
       ]).then((_) {
         if (kDebugMode) {
           debugPrint(

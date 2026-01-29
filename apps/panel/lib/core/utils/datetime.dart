@@ -3,22 +3,84 @@ import 'dart:async';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 
+/// Format style for relative time strings.
+enum TimeAgoFormat {
+  /// Abbreviated: "5 min ago", "3 d ago"
+  short,
+
+  /// Single unit with full words: "5 minutes ago", "3 days ago"
+  medium,
+
+  /// Two-unit precision: "3 days 5 hours ago"
+  full,
+}
+
 class DatetimeUtils {
   /// Formats a DateTime as a relative "time ago" string.
   ///
-  /// Returns strings like "just now", "5 min ago", "2 h ago", "3 d ago".
-  static String formatTimeAgo(DateTime dateTime, AppLocalizations localizations) {
+  /// [format] controls verbosity:
+  /// - [TimeAgoFormat.short]: "5 min ago", "3 d ago"
+  /// - [TimeAgoFormat.medium]: "5 minutes ago", "3 days ago"
+  /// - [TimeAgoFormat.full]: "3 days 5 hours ago", "2 hours 30 minutes ago"
+  static String formatTimeAgo(
+    DateTime dateTime,
+    AppLocalizations localizations, {
+    TimeAgoFormat format = TimeAgoFormat.short,
+  }) {
     final now = DateTime.now();
     final difference = now.difference(dateTime);
 
     if (difference.inMinutes < 1) {
       return localizations.time_ago_just_now;
-    } else if (difference.inHours < 1) {
-      return localizations.time_ago_minutes(difference.inMinutes);
+    }
+
+    switch (format) {
+      case TimeAgoFormat.short:
+        return _formatShort(difference, localizations);
+      case TimeAgoFormat.medium:
+        return _formatMedium(difference, localizations);
+      case TimeAgoFormat.full:
+        return _formatFull(difference, localizations);
+    }
+  }
+
+  static String _formatShort(Duration difference, AppLocalizations l) {
+    if (difference.inHours < 1) {
+      return l.time_ago_minutes(difference.inMinutes);
     } else if (difference.inDays < 1) {
-      return localizations.time_ago_hours(difference.inHours);
+      return l.time_ago_hours(difference.inHours);
     } else {
-      return localizations.time_ago_days(difference.inDays);
+      return l.time_ago_days(difference.inDays);
+    }
+  }
+
+  static String _formatMedium(Duration difference, AppLocalizations l) {
+    if (difference.inHours < 1) {
+      return l.time_ago_medium_minutes(difference.inMinutes);
+    } else if (difference.inDays < 1) {
+      return l.time_ago_medium_hours(difference.inHours);
+    } else {
+      return l.time_ago_medium_days(difference.inDays);
+    }
+  }
+
+  static String _formatFull(Duration difference, AppLocalizations l) {
+    if (difference.inHours < 1) {
+      return l.time_ago_full_minutes(difference.inMinutes);
+    } else if (difference.inDays < 1) {
+      final hours = difference.inHours;
+      final minutes = difference.inMinutes % 60;
+      if (minutes == 0) {
+        return l.time_ago_full_hours(hours);
+      }
+      return l.time_ago_full_hours_minutes(hours, minutes);
+    } else {
+      final days = difference.inDays;
+      final hours = (difference.inHours % 24);
+      if (hours == 0) {
+        return l.time_ago_full_days(days);
+      }
+      return l.time_ago_full_days_hours(days, hours);
     }
   }
 

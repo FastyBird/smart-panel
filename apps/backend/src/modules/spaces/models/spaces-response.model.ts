@@ -1,4 +1,4 @@
-import { Expose, Type, instanceToPlain } from 'class-transformer';
+import { Expose, Transform, Type, instanceToPlain } from 'class-transformer';
 
 import { ApiExtraModels, ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
@@ -3429,6 +3429,17 @@ export class SensorReadingDataModel {
 	channelCategory: ChannelCategory;
 
 	@ApiPropertyOptional({
+		name: 'property_id',
+		description: 'ID of the primary property (for time series queries)',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: 'd4e30fc5-743g-6f9d-d5bg-efe9c0f7d1g9',
+	})
+	@Expose({ name: 'property_id' })
+	propertyId: string | null;
+
+	@ApiPropertyOptional({
 		description: 'Current sensor value (type depends on sensor)',
 		oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
 		nullable: true,
@@ -3454,6 +3465,20 @@ export class SensorReadingDataModel {
 	})
 	@Expose()
 	role: SensorRole | null;
+
+	@ApiPropertyOptional({
+		name: 'updated_at',
+		description: 'Timestamp of the last property value update',
+		type: 'string',
+		format: 'date-time',
+		nullable: true,
+		example: '2025-01-25T12:00:00Z',
+	})
+	@Expose({ name: 'updated_at' })
+	@Transform(({ value }: { value: unknown }) => (value instanceof Date ? value.toISOString() : value), {
+		toPlainOnly: true,
+	})
+	updatedAt: Date | string | null;
 }
 
 /**

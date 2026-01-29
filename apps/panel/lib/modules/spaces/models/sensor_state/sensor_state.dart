@@ -56,9 +56,11 @@ class SensorReadingModel {
   final String channelId;
   final String channelName;
   final String channelCategory;
+  final String? propertyId;
   final dynamic value;
   final String? unit;
   final String? role;
+  final DateTime? updatedAt;
 
   SensorReadingModel({
     required this.deviceId,
@@ -66,9 +68,11 @@ class SensorReadingModel {
     required this.channelId,
     required this.channelName,
     required this.channelCategory,
+    this.propertyId,
     this.value,
     this.unit,
     this.role,
+    this.updatedAt,
   });
 
   factory SensorReadingModel.fromJson(Map<String, dynamic> json) {
@@ -78,9 +82,13 @@ class SensorReadingModel {
       channelId: json['channel_id'] as String? ?? '',
       channelName: json['channel_name'] as String? ?? '',
       channelCategory: json['channel_category'] as String? ?? '',
+      propertyId: json['property_id'] as String?,
       value: json['value'],
       unit: json['unit'] as String?,
       role: json['role'] as String?,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'] as String)
+          : null,
     );
   }
 }
