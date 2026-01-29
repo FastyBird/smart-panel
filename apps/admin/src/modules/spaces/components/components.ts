@@ -32,5 +32,9 @@ export { default as SpaceAddDeviceDialog } from './space-add-device-dialog.vue';
 export { default as SpaceAddSceneDialog } from './space-add-scene-dialog.vue';
 export { default as SpaceAddDisplayDialog } from './space-add-display-dialog.vue';
 
+// Space media sections
+export { default as SpaceMediaEndpoints } from './space-media-endpoints.vue';
+export { default as SpaceMediaActivities } from './space-media-activities.vue';
+
 // Deprecated - use ListSpaces instead
 export { default as SpacesList } from './spaces-list.vue';

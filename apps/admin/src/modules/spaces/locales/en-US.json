@@ -521,6 +521,10 @@
 			"removed": "Display \"{name}\" was removed from this space.",
 			"removeCanceled": "Display removal was canceled."
 		},
+		"media": {
+			"endpoints": "Media Endpoints",
+			"activities": "Media Activities"
+		},
 		"scenes": {
 			"title": "Scenes",
 			"add": "Add scene",
@@ -546,6 +550,71 @@
 			"assigned": "Scene \"{name}\" was assigned to this space.",
 			"removed": "Scene \"{name}\" was removed from this space.",
 			"removeCanceled": "Scene removal was canceled."
+		}
+	},
+	"media": {
+		"endpoints": {
+			"filterPlaceholder": "Filter by type",
+			"loading": "Loading media endpoints...",
+			"columns": {
+				"name": "Name",
+				"type": "Type",
+				"capabilities": "Capabilities"
+			},
+			"empty": {
+				"title": "No media endpoints found",
+				"subtitle": "Check device capabilities or integration configuration."
+			}
+		},
+		"endpointTypes": {
+			"display": "Display",
+			"audio_output": "Audio Output",
+			"source": "Source",
+			"remote_target": "Remote Target"
+		},
+		"capabilities": {
+			"power": "Power",
+			"input": "Input",
+			"volume": "Volume",
+			"playback": "Playback",
+			"track": "Track",
+			"remote": "Remote",
+			"mute": "Mute"
+		},
+		"activityLabels": {
+			"watch": "Watch",
+			"listen": "Listen",
+			"gaming": "Gaming",
+			"background": "Background",
+			"off": "Off"
+		},
+		"activities": {
+			"loading": "Loading media configuration...",
+			"applyDefaults": "Apply defaults",
+			"defaultsApplied": "Default bindings have been applied.",
+			"defaultsFailed": "Failed to apply default bindings.",
+			"selectPrompt": "Select an activity from the list to configure its bindings.",
+			"selectEndpoint": "Select endpoint...",
+			"save": "Save",
+			"reset": "Reset",
+			"saveError": "Failed to save binding",
+			"savedSuccessfully": "Binding saved successfully.",
+			"slots": {
+				"display": "Display",
+				"audio": "Audio output",
+				"source": "Source",
+				"remote": "Remote target"
+			},
+			"overrides": {
+				"displayInput": "Display input preset",
+				"displayInputPlaceholder": "e.g. HDMI1, Apps",
+				"audioVolume": "Audio volume preset"
+			},
+			"status": {
+				"configured": "Configured",
+				"incomplete": "Incomplete",
+				"unconfigured": "Not set"
+			}
 		}
 	},
 	"messages": {
