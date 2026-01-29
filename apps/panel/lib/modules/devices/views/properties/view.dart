@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/api/models/devices_module_data_type.dart';
 import 'package:fastybird_smart_panel/api/models/devices_module_permission_type.dart';
 import 'package:fastybird_smart_panel/api/models/devices_module_property_category.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/value_state.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 
 class ChannelPropertyView {
@@ -17,7 +18,7 @@ class ChannelPropertyView {
   final InvalidValueType? _invalid;
   final double? _step;
   final ValueType? _defaultValue;
-  final ValueType? _value;
+  final PropertyValueState? _valueState;
 
   ChannelPropertyView({
     required String id,
@@ -32,7 +33,7 @@ class ChannelPropertyView {
     InvalidValueType? invalid,
     double? step,
     ValueType? defaultValue,
-    ValueType? value,
+    PropertyValueState? valueState,
   })  : _id = id,
         _type = type,
         _channel = channel,
@@ -45,7 +46,7 @@ class ChannelPropertyView {
         _invalid = invalid,
         _step = step,
         _defaultValue = defaultValue,
-        _value = value;
+        _valueState = valueState;
 
   String get id => _id;
 
@@ -71,7 +72,17 @@ class ChannelPropertyView {
 
   ValueType? get defaultValue => _defaultValue;
 
-  ValueType? get value => _value;
+  /// The raw value extracted from the value state.
+  ValueType? get value => _valueState?.value;
+
+  /// The full value state including lastUpdated and trend.
+  PropertyValueState? get valueState => _valueState;
+
+  /// Timestamp of the last measurement from the backend.
+  DateTime? get lastUpdated => _valueState?.lastUpdated;
+
+  /// Trend direction computed from recent data points.
+  ValueTrend? get trend => _valueState?.trend;
 
   bool get isReadable {
     return _permission.any(

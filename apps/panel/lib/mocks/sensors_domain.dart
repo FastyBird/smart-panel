@@ -1,5 +1,8 @@
-import 'package:flutter/material.dart';
 import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+
+import 'package:fastybird_smart_panel/modules/deck/types/sensor_category.dart';
 
 // ============================================================================
 // THEME
@@ -85,16 +88,6 @@ class SensorTheme {
 // ============================================================================
 // DATA MODELS
 // ============================================================================
-
-enum SensorCategory {
-  temperature,
-  humidity,
-  airQuality,
-  motion,
-  safety,
-  light,
-  energy,
-}
 
 enum SensorStatus {
   normal,

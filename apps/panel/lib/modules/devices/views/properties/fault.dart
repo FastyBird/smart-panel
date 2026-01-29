@@ -15,7 +15,7 @@ class FaultChannelPropertyView extends ChannelPropertyView {
     super.invalid,
     super.step,
     super.defaultValue,
-    super.value,
+    super.valueState,
   });
 
   int? get faultCode => value is NumberValueType ? (value as NumberValueType).value.toInt() : null;

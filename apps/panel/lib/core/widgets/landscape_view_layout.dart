@@ -56,6 +56,10 @@ class LandscapeViewLayout extends StatelessWidget {
   /// Whether the mode selector should show labels (for large screens)
   final bool? modeSelectorShowLabels;
 
+  /// Whether the main content should be scrollable with gradient
+  /// Default: false
+  final bool mainContentScrollable;
+
   /// Whether the additional content should be scrollable with gradient
   /// Default: true
   final bool additionalContentScrollable;
@@ -71,6 +75,7 @@ class LandscapeViewLayout extends StatelessWidget {
     this.mainContentFlex = 2,
     this.additionalContentFlex = 1,
     this.modeSelectorShowLabels,
+    this.mainContentScrollable = false,
     this.additionalContentScrollable = true,
   });
 
@@ -97,10 +102,18 @@ class LandscapeViewLayout extends StatelessWidget {
             children: [
               // Main content takes remaining space
               Expanded(
-                child: Padding(
-                  padding: mainContentPadding ?? AppSpacings.paddingLg,
-                  child: mainContent,
-                ),
+                child: mainContentScrollable
+                    ? VerticalScrollWithGradient(
+                        gradientHeight: AppSpacings.pLg,
+                        padding: mainContentPadding ?? AppSpacings.paddingLg,
+                        itemCount: 1,
+                        separatorHeight: 0,
+                        itemBuilder: (context, index) => mainContent,
+                      )
+                    : Padding(
+                        padding: mainContentPadding ?? AppSpacings.paddingLg,
+                        child: mainContent,
+                      ),
               ),
               // Mode selector (optional) - intrinsic width within main flex
               if (modeSelector != null)

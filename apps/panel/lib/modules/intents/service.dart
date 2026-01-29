@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import 'package:fastybird_smart_panel/modules/intents/mappers/intent.dart';
@@ -21,12 +23,14 @@ class IntentOverlayService extends ChangeNotifier {
 
   Map<String, IntentView> _intents = {};
 
+  Timer? _updateDebounce;
+
   IntentOverlayService({
     required IntentsRepository intentsRepository,
   }) : _intentsRepository = intentsRepository;
 
   Future<void> initialize() async {
-    _intentsRepository.addListener(_updateData);
+    _intentsRepository.addListener(_scheduleUpdate);
     _updateData();
   }
 
@@ -171,6 +175,11 @@ class IntentOverlayService extends ChangeNotifier {
   // Internal methods
   // ============================================
 
+  void _scheduleUpdate() {
+    _updateDebounce?.cancel();
+    _updateDebounce = Timer(const Duration(milliseconds: 50), _updateData);
+  }
+
   void _updateData() {
     final intentModels = _intentsRepository.intents;
 
@@ -202,7 +211,10 @@ class IntentOverlayService extends ChangeNotifier {
 
   @override
   void dispose() {
-    _intentsRepository.removeListener(_updateData);
+    _updateDebounce?.cancel();
+
+    _intentsRepository.removeListener(_scheduleUpdate);
+
     super.dispose();
   }
 }

@@ -15,7 +15,7 @@ class InfraredChannelPropertyView extends ChannelPropertyView {
     super.invalid,
     super.step,
     super.defaultValue,
-    super.value,
+    super.valueState,
   });
 
   bool? get isInfraredEnabled => value is BooleanValueType ? (value as BooleanValueType).value : null;

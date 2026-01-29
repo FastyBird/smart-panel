@@ -15,7 +15,7 @@ class ConsumptionChannelPropertyView extends ChannelPropertyView {
     super.invalid,
     super.step,
     super.defaultValue,
-    super.value,
+    super.valueState,
   });
 
   num? get consumption => value is NumberValueType ? (value as NumberValueType).value : null;

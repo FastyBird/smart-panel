@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fastybird_smart_panel/plugins/pages-cards/models/model.dart';
 import 'package:fastybird_smart_panel/plugins/pages-tiles/models/model.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
@@ -20,6 +22,8 @@ class DashboardService extends ChangeNotifier {
   Map<String, TileView> _tiles = {};
   Map<String, DataSourceView> _dataSources = {};
   Map<String, CardView> _cards = {};
+
+  Timer? _updateDebounce;
 
   /// Tracks the current page ID during the session for space-aware idle mode.
   /// When the panel returns from idle (screensaver/lock), it will restore
@@ -55,10 +59,10 @@ class DashboardService extends ChangeNotifier {
       await _dataSourcesRepository.fetchAll('tile', tile.id);
     }
 
-    _pagesRepository.addListener(_updateData);
-    _cardsRepository.addListener(_updateData);
-    _tilesRepository.addListener(_updateData);
-    _dataSourcesRepository.addListener(_updateData);
+    _pagesRepository.addListener(_scheduleUpdate);
+    _cardsRepository.addListener(_scheduleUpdate);
+    _tilesRepository.addListener(_scheduleUpdate);
+    _dataSourcesRepository.addListener(_scheduleUpdate);
 
     _updateData();
   }
@@ -118,6 +122,11 @@ class DashboardService extends ChangeNotifier {
     }
 
     return _cards[id];
+  }
+
+  void _scheduleUpdate() {
+    _updateDebounce?.cancel();
+    _updateDebounce = Timer(const Duration(milliseconds: 50), _updateData);
   }
 
   void _updateData() {
@@ -285,11 +294,13 @@ class DashboardService extends ChangeNotifier {
 
   @override
   void dispose() {
-    super.dispose();
+    _updateDebounce?.cancel();
 
-    _pagesRepository.removeListener(_updateData);
-    _tilesRepository.removeListener(_updateData);
-    _dataSourcesRepository.removeListener(_updateData);
-    _cardsRepository.removeListener(_updateData);
+    _pagesRepository.removeListener(_scheduleUpdate);
+    _tilesRepository.removeListener(_scheduleUpdate);
+    _dataSourcesRepository.removeListener(_scheduleUpdate);
+    _cardsRepository.removeListener(_scheduleUpdate);
+
+    super.dispose();
   }
 }

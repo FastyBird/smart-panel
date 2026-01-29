@@ -11,6 +11,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/status.da
 import 'package:fastybird_smart_panel/modules/devices/views/properties/temperature.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/value_state.dart';
 
 class MockDeviceControlStateService extends Mock
     implements DeviceControlStateService {}
@@ -46,14 +47,14 @@ void main() {
             type: 'on',
             channel: channelId,
             category: DevicesModulePropertyCategory.valueOn,
-            value: BooleanValueType(true),
+            valueState: PropertyValueState(value: BooleanValueType(true)),
           ),
           TemperatureChannelPropertyView(
             id: temperaturePropId,
             type: 'temperature',
             channel: channelId,
             category: DevicesModulePropertyCategory.temperature,
-            value: NumberValueType(18.5),
+            valueState: PropertyValueState(value: NumberValueType(18.5)),
             format: NumberListFormatType([10, 30]),
           ),
           StatusChannelPropertyView(
@@ -61,7 +62,7 @@ void main() {
             type: 'status',
             channel: channelId,
             category: DevicesModulePropertyCategory.status,
-            value: BooleanValueType(true),
+            valueState: PropertyValueState(value: BooleanValueType(true)),
           ),
         ],
       );

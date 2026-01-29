@@ -20,6 +20,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/status.da
 import 'package:fastybird_smart_panel/modules/devices/views/properties/temperature.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/value_state.dart';
 
 class MockDeviceControlStateService extends Mock
     implements DeviceControlStateService {}
@@ -71,13 +72,13 @@ void main() {
                 id: 'manufacturer-prop',
                 type: 'manufacturer',
                 channel: deviceInfoChannelId,
-                value: StringValueType('Test Manufacturer'),
+                valueState: PropertyValueState(value: StringValueType('Test Manufacturer')),
               ),
               ModelChannelPropertyView(
                 id: 'model-prop',
                 type: 'model',
                 channel: deviceInfoChannelId,
-                value: StringValueType('Test Model'),
+                valueState: PropertyValueState(value: StringValueType('Test Model')),
               ),
             ],
           ),
@@ -92,7 +93,7 @@ void main() {
                 type: 'locked',
                 channel: thermostatChannelId,
                 category: DevicesModulePropertyCategory.locked,
-                value: BooleanValueType(false),
+                valueState: PropertyValueState(value: BooleanValueType(false)),
               ),
             ],
           ),
@@ -107,14 +108,14 @@ void main() {
                 type: 'on',
                 channel: heaterChannelId,
                 category: DevicesModulePropertyCategory.valueOn,
-                value: BooleanValueType(true),
+                valueState: PropertyValueState(value: BooleanValueType(true)),
               ),
               TemperatureChannelPropertyView(
                 id: heaterTempPropId,
                 type: 'temperature',
                 channel: heaterChannelId,
                 category: DevicesModulePropertyCategory.temperature,
-                value: NumberValueType(21.5),
+                valueState: PropertyValueState(value: NumberValueType(21.5)),
                 format: NumberListFormatType([16.0, 30.0]),
               ),
               StatusChannelPropertyView(
@@ -122,7 +123,7 @@ void main() {
                 type: 'status',
                 channel: heaterChannelId,
                 category: DevicesModulePropertyCategory.generic,
-                value: BooleanValueType(true), // isHeating
+                valueState: PropertyValueState(value: BooleanValueType(true)), // isHeating
               ),
             ],
           ),
@@ -137,7 +138,7 @@ void main() {
                 type: 'temperature',
                 channel: temperatureChannelId,
                 category: DevicesModulePropertyCategory.temperature,
-                value: NumberValueType(20.0),
+                valueState: PropertyValueState(value: NumberValueType(20.0)),
               ),
             ],
           ),

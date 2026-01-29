@@ -1,4 +1,4 @@
-import { ChannelCategory, DeviceCategory } from '../devices/devices.constants';
+import { ChannelCategory, DeviceCategory, PropertyCategory } from '../devices/devices.constants';
 
 export const SPACES_MODULE_NAME = 'spaces-module';
 export const SPACES_MODULE_PREFIX = 'spaces';
@@ -2184,6 +2184,72 @@ export const SENSOR_ENERGY_CHANNEL_CATEGORIES = [
 	ChannelCategory.ELECTRICAL_ENERGY,
 	ChannelCategory.ELECTRICAL_POWER,
 ] as const;
+
+/**
+ * Priority-ordered primary property candidates per sensor channel category.
+ * The first matching property found on a channel becomes the primary reading.
+ * Channels not listed here have a single obvious property (handled separately).
+ */
+export const SENSOR_PRIMARY_PROPERTY_CANDIDATES: Partial<
+	Record<ChannelCategory, { category: PropertyCategory; unit: string | null }[]>
+> = {
+	[ChannelCategory.TEMPERATURE]: [{ category: PropertyCategory.TEMPERATURE, unit: '°C' }],
+	[ChannelCategory.HUMIDITY]: [{ category: PropertyCategory.HUMIDITY, unit: '%' }],
+	[ChannelCategory.PRESSURE]: [{ category: PropertyCategory.PRESSURE, unit: 'hPa' }],
+	[ChannelCategory.ILLUMINANCE]: [
+		{ category: PropertyCategory.ILLUMINANCE, unit: 'lux' },
+		{ category: PropertyCategory.LEVEL, unit: null },
+	],
+	[ChannelCategory.MOTION]: [{ category: PropertyCategory.DETECTED, unit: null }],
+	[ChannelCategory.OCCUPANCY]: [{ category: PropertyCategory.DETECTED, unit: null }],
+	[ChannelCategory.CONTACT]: [{ category: PropertyCategory.DETECTED, unit: null }],
+	[ChannelCategory.SMOKE]: [{ category: PropertyCategory.DETECTED, unit: null }],
+	[ChannelCategory.LEAK]: [{ category: PropertyCategory.DETECTED, unit: null }],
+	[ChannelCategory.GAS]: [
+		{ category: PropertyCategory.DETECTED, unit: null },
+		{ category: PropertyCategory.STATUS, unit: null },
+		{ category: PropertyCategory.CONCENTRATION, unit: 'ppm' },
+	],
+	[ChannelCategory.CARBON_DIOXIDE]: [
+		{ category: PropertyCategory.CONCENTRATION, unit: 'ppm' },
+		{ category: PropertyCategory.DETECTED, unit: null },
+	],
+	[ChannelCategory.CARBON_MONOXIDE]: [
+		{ category: PropertyCategory.CONCENTRATION, unit: 'ppm' },
+		{ category: PropertyCategory.DETECTED, unit: null },
+	],
+	[ChannelCategory.NITROGEN_DIOXIDE]: [
+		{ category: PropertyCategory.CONCENTRATION, unit: 'µg/m³' },
+		{ category: PropertyCategory.DETECTED, unit: null },
+		{ category: PropertyCategory.LEVEL, unit: null },
+	],
+	[ChannelCategory.OZONE]: [
+		{ category: PropertyCategory.CONCENTRATION, unit: 'µg/m³' },
+		{ category: PropertyCategory.DETECTED, unit: null },
+		{ category: PropertyCategory.LEVEL, unit: null },
+	],
+	[ChannelCategory.SULPHUR_DIOXIDE]: [
+		{ category: PropertyCategory.CONCENTRATION, unit: 'µg/m³' },
+		{ category: PropertyCategory.DETECTED, unit: null },
+		{ category: PropertyCategory.LEVEL, unit: null },
+	],
+	[ChannelCategory.VOLATILE_ORGANIC_COMPOUNDS]: [
+		{ category: PropertyCategory.CONCENTRATION, unit: 'µg/m³' },
+		{ category: PropertyCategory.DETECTED, unit: null },
+		{ category: PropertyCategory.LEVEL, unit: null },
+	],
+	[ChannelCategory.AIR_QUALITY]: [
+		{ category: PropertyCategory.AQI, unit: 'AQI' },
+		{ category: PropertyCategory.LEVEL, unit: null },
+	],
+	[ChannelCategory.AIR_PARTICULATE]: [
+		{ category: PropertyCategory.CONCENTRATION, unit: 'µg/m³' },
+		{ category: PropertyCategory.DETECTED, unit: null },
+	],
+	[ChannelCategory.ELECTRICAL_POWER]: [{ category: PropertyCategory.POWER, unit: 'W' }],
+	[ChannelCategory.ELECTRICAL_ENERGY]: [{ category: PropertyCategory.CONSUMPTION, unit: 'kWh' }],
+	[ChannelCategory.BATTERY]: [{ category: PropertyCategory.PERCENTAGE, unit: '%' }],
+};
 
 /**
  * Metadata for sensor role values

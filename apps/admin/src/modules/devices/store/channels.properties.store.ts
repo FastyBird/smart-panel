@@ -322,7 +322,7 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 						},
 						body: {
 							data: transformChannelPropertyCreateRequest<IChannelPropertyCreateReq>(
-								parsedNewItem.data,
+								{ ...parsedNewItem.data, value: parsedNewItem.data.value?.value ?? null },
 								element?.schemas?.channelPropertyCreateReqSchema || ChannelPropertyCreateReqSchema
 							),
 						},
@@ -405,7 +405,7 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 						body: {
 							data: transformChannelPropertyUpdateRequest<IChannelPropertyUpdateReq>(
 								{
-									...('value' in payload.data ? parsedEditedItem.data : omit(parsedEditedItem.data, 'value')),
+									...('value' in payload.data ? { ...parsedEditedItem.data, value: parsedEditedItem.data.value?.value ?? null } : omit(parsedEditedItem.data, 'value')),
 								},
 								element?.schemas?.channelPropertyUpdateReqSchema || ChannelPropertyUpdateReqSchema
 							),
@@ -471,7 +471,7 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 					},
 					body: {
 						data: transformChannelPropertyCreateRequest<IChannelPropertyCreateReq>(
-							parsedSaveItem.data,
+							{ ...parsedSaveItem.data, value: parsedSaveItem.data.value?.value ?? null },
 							element?.schemas?.channelPropertyCreateReqSchema || ChannelPropertyCreateReqSchema
 						),
 					},

@@ -3,9 +3,11 @@ import { Injectable } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
+import { SpaceSensorRoleEntity } from '../entities/space-sensor-role.entity';
 import {
 	SAFETY_SENSOR_THRESHOLDS,
 	SENSOR_CHANNEL_CATEGORIES,
+	SENSOR_PRIMARY_PROPERTY_CANDIDATES,
 	SENSOR_SAFETY_CHANNEL_CATEGORIES,
 	SPACES_MODULE_NAME,
 	SensorRole,
@@ -16,6 +18,18 @@ import { SpaceSensorRoleService } from './space-sensor-role.service';
 import { SpacesService } from './spaces.service';
 
 /**
+ * Additional reading from a multi-property channel
+ */
+export interface SensorAdditionalReading {
+	propertyId: string;
+	propertyCategory: PropertyCategory;
+	value: number | boolean | string | null;
+	unit: string | null;
+	updatedAt: Date | string | null;
+	trend: 'rising' | 'falling' | 'stable' | null;
+}
+
+/**
  * Individual sensor reading
  */
 export interface SensorReading {
@@ -24,9 +38,13 @@ export interface SensorReading {
 	channelId: string;
 	channelName: string;
 	channelCategory: ChannelCategory;
+	propertyId: string | null;
 	value: number | boolean | string | null;
 	unit: string | null;
 	role: SensorRole | null;
+	updatedAt: Date | string | null;
+	trend: 'rising' | 'falling' | 'stable' | null;
+	additionalReadings: SensorAdditionalReading[];
 }
 
 /**
@@ -154,8 +172,16 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 					continue;
 				}
 
+				// Skip sensors with no assigned role
+				if (role === null) {
+					continue;
+				}
+
 				// Get the primary property value
-				const { value, unit } = this.extractChannelValue(channel);
+				const { propertyId, value, unit, updatedAt, trend } = this.extractChannelValue(channel);
+
+				// Get additional readings from remaining displayable properties
+				const additionalReadings = this.extractAdditionalReadings(channel, propertyId);
 
 				const reading: SensorReading = {
 					deviceId: device.id,
@@ -163,9 +189,13 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 					channelId: channel.id,
 					channelName: channel.name ?? channel.category,
 					channelCategory: channel.category,
+					propertyId,
 					value,
 					unit,
 					role,
+					updatedAt,
+					trend,
+					additionalReadings,
 				};
 
 				allReadings.push(reading);
@@ -195,7 +225,7 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 		}
 
 		// Group readings by role
-		const readingsByRole = this.groupReadingsByRole(allReadings);
+		const readingsByRole = this.groupReadingsByRole(allReadings, roleMap);
 
 		// Build environment summary
 		const environment: EnvironmentSummary = {
@@ -225,114 +255,119 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 	}
 
 	/**
-	 * Extract the primary value and unit from a sensor channel
+	 * Property categories excluded from additional readings (status/meta properties)
+	 */
+	private static readonly EXCLUDED_ADDITIONAL_CATEGORIES: PropertyCategory[] = [
+		PropertyCategory.ACTIVE,
+		PropertyCategory.FAULT,
+		PropertyCategory.TAMPERED,
+	];
+
+	/**
+	 * Find the first matching property from a priority-ordered list of candidates
+	 */
+	private findPrimaryProperty(
+		properties: ChannelPropertyEntity[],
+		candidates: { category: PropertyCategory; unit: string | null }[],
+	): { property: ChannelPropertyEntity; unit: string | null } | null {
+		for (const candidate of candidates) {
+			const prop = properties.find((p) => p.category === candidate.category);
+			if (prop) return { property: prop, unit: candidate.unit };
+		}
+		return null;
+	}
+
+	/**
+	 * Extract the primary value, unit, and property ID from a sensor channel
 	 */
 	private extractChannelValue(channel: ChannelEntity): {
+		propertyId: string | null;
 		value: number | boolean | string | null;
 		unit: string | null;
+		updatedAt: Date | string | null;
+		trend: 'rising' | 'falling' | 'stable' | null;
 	} {
 		const properties = channel.properties ?? [];
 
-		// Try to find the primary property based on channel category
+		// Look up priority-ordered candidates from the constant map
+		const candidates = SENSOR_PRIMARY_PROPERTY_CANDIDATES[channel.category];
+
 		let primaryProperty: ChannelPropertyEntity | undefined;
 		let unit: string | null = null;
 
-		switch (channel.category) {
-			case ChannelCategory.TEMPERATURE:
-				primaryProperty = properties.find((p) => p.category === PropertyCategory.TEMPERATURE);
-				unit = '°C';
-				break;
-			case ChannelCategory.HUMIDITY:
-				primaryProperty = properties.find((p) => p.category === PropertyCategory.HUMIDITY);
-				unit = '%';
-				break;
-			case ChannelCategory.PRESSURE:
-				primaryProperty = properties.find((p) => p.category === PropertyCategory.PRESSURE);
-				unit = 'hPa';
-				break;
-			case ChannelCategory.ILLUMINANCE:
-				// Illuminance uses its own property category
-				// There's also a "level" property with enum values (bright, moderate, dusky, dark)
-				primaryProperty = properties.find((p) => p.category === PropertyCategory.ILLUMINANCE);
-				unit = 'lux';
-				break;
-			case ChannelCategory.MOTION:
-			case ChannelCategory.OCCUPANCY:
-			case ChannelCategory.CONTACT:
-			case ChannelCategory.SMOKE:
-			case ChannelCategory.LEAK:
-				primaryProperty = properties.find((p) => p.category === PropertyCategory.DETECTED);
-				unit = null;
-				break;
-			case ChannelCategory.GAS:
-				primaryProperty =
-					properties.find((p) => p.category === PropertyCategory.DETECTED) ??
-					properties.find((p) => p.category === PropertyCategory.CONCENTRATION);
-				unit = primaryProperty?.category === PropertyCategory.CONCENTRATION ? 'ppm' : null;
-				break;
-			case ChannelCategory.CARBON_DIOXIDE:
-			case ChannelCategory.CARBON_MONOXIDE:
-				primaryProperty = properties.find((p) => p.category === PropertyCategory.CONCENTRATION);
-				unit = 'ppm';
-				break;
-			case ChannelCategory.NITROGEN_DIOXIDE:
-			case ChannelCategory.OZONE:
-			case ChannelCategory.SULPHUR_DIOXIDE:
-			case ChannelCategory.VOLATILE_ORGANIC_COMPOUNDS:
-				primaryProperty =
-					properties.find((p) => p.category === PropertyCategory.DETECTED) ??
-					properties.find((p) => p.category === PropertyCategory.CONCENTRATION);
-				unit = primaryProperty?.category === PropertyCategory.CONCENTRATION ? 'ppb' : null;
-				break;
-			case ChannelCategory.AIR_QUALITY:
-				primaryProperty = properties.find((p) => p.category === PropertyCategory.AQI);
-				unit = 'AQI';
-				break;
-			case ChannelCategory.AIR_PARTICULATE:
-				primaryProperty = properties.find((p) => p.category === PropertyCategory.CONCENTRATION);
-				unit = 'µg/m³';
-				break;
-			case ChannelCategory.ELECTRICAL_POWER:
-				primaryProperty = properties.find((p) => p.category === PropertyCategory.POWER);
-				unit = 'W';
-				break;
-			case ChannelCategory.ELECTRICAL_ENERGY:
-				primaryProperty = properties.find((p) => p.category === PropertyCategory.CONSUMPTION);
-				unit = 'kWh';
-				break;
-			case ChannelCategory.BATTERY:
-				primaryProperty = properties.find((p) => p.category === PropertyCategory.PERCENTAGE);
-				unit = '%';
-				break;
-			default:
-				// Try to find any value property
-				primaryProperty = properties[0];
-				unit = primaryProperty?.unit ?? null;
+		if (candidates) {
+			const result = this.findPrimaryProperty(properties, candidates);
+			primaryProperty = result?.property;
+			unit = result?.unit ?? null;
+		} else {
+			// Unknown channel category — use the first available property
+			primaryProperty = properties[0];
+			unit = primaryProperty?.unit ?? null;
 		}
 
 		if (!primaryProperty) {
-			return { value: null, unit: null };
+			return { propertyId: null, value: null, unit: null, updatedAt: null, trend: null };
 		}
 
-		const value = primaryProperty.value;
+		const propertyId = primaryProperty.id;
+		const value = primaryProperty.value?.value ?? null;
+		const updatedAt = primaryProperty.value?.lastUpdated
+			? new Date(primaryProperty.value.lastUpdated)
+			: (primaryProperty.updatedAt ?? primaryProperty.createdAt ?? null);
+		const trend = primaryProperty.value?.trend ?? null;
 
 		if (typeof value === 'boolean') {
-			return { value, unit: null };
+			return { propertyId, value, unit: null, updatedAt, trend };
 		}
 
 		if (typeof value === 'number') {
-			return { value, unit };
+			return { propertyId, value, unit, updatedAt, trend };
 		}
 
 		if (typeof value === 'string') {
 			const parsed = parseFloat(value);
 			if (!isNaN(parsed)) {
-				return { value: parsed, unit };
+				return { propertyId, value: parsed, unit, updatedAt, trend };
 			}
-			return { value, unit: null };
+			return { propertyId, value, unit: null, updatedAt, trend };
 		}
 
-		return { value: null, unit };
+		return { propertyId, value: null, unit, updatedAt, trend };
+	}
+
+	/**
+	 * Extract additional displayable readings from a channel, excluding the primary property
+	 * and status/meta properties (active, fault, tampered)
+	 */
+	private extractAdditionalReadings(
+		channel: ChannelEntity,
+		primaryPropertyId: string | null,
+	): SensorAdditionalReading[] {
+		const properties = channel.properties ?? [];
+		const additional: SensorAdditionalReading[] = [];
+
+		for (const prop of properties) {
+			if (prop.id === primaryPropertyId) continue;
+			if (SpaceSensorStateService.EXCLUDED_ADDITIONAL_CATEGORIES.includes(prop.category)) continue;
+
+			const value = prop.value?.value ?? null;
+			const updatedAt = prop.value?.lastUpdated
+				? new Date(prop.value.lastUpdated)
+				: (prop.updatedAt ?? prop.createdAt ?? null);
+			const trend = prop.value?.trend ?? null;
+			const unit = prop.unit ?? null;
+
+			additional.push({
+				propertyId: prop.id,
+				propertyCategory: prop.category,
+				value,
+				unit,
+				updatedAt,
+				trend,
+			});
+		}
+
+		return additional;
 	}
 
 	/**
@@ -434,7 +469,10 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 	/**
 	 * Group readings by role
 	 */
-	private groupReadingsByRole(readings: SensorReading[]): SensorRoleReadings[] {
+	private groupReadingsByRole(
+		readings: SensorReading[],
+		roleMap: Map<string, SpaceSensorRoleEntity>,
+	): SensorRoleReadings[] {
 		const byRole = new Map<SensorRole, SensorReading[]>();
 
 		for (const reading of readings) {
@@ -460,6 +498,15 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 		for (const role of roleOrder) {
 			const roleReadings = byRole.get(role);
 			if (roleReadings && roleReadings.length > 0) {
+				// Sort by configured priority within each role group
+				roleReadings.sort((a, b) => {
+					const keyA = `${a.deviceId}:${a.channelId}`;
+					const keyB = `${b.deviceId}:${b.channelId}`;
+					const prioA = roleMap.get(keyA)?.priority ?? Infinity;
+					const prioB = roleMap.get(keyB)?.priority ?? Infinity;
+					return prioA - prioB;
+				});
+
 				result.push({
 					role,
 					sensorsCount: roleReadings.length,

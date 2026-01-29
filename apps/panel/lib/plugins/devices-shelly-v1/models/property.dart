@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/api/models/devices_module_permission_type.
 import 'package:fastybird_smart_panel/api/models/devices_module_property_category.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/properties/properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/value_state.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/plugins/devices-shelly-v1/constants.dart';
 
@@ -19,7 +20,7 @@ class ShellyV1ChannelPropertyModel extends ChannelPropertyModel {
     super.invalid,
     super.step,
     super.defaultValue,
-    super.value,
+    super.valueState,
     super.createdAt,
     super.updatedAt,
   }) : super(
@@ -27,6 +28,11 @@ class ShellyV1ChannelPropertyModel extends ChannelPropertyModel {
         );
 
   factory ShellyV1ChannelPropertyModel.fromJson(Map<String, dynamic> json) {
+    final rawValue = json['value'];
+    final PropertyValueState? valueState = rawValue is Map<String, dynamic>
+        ? PropertyValueState.fromJson(rawValue)
+        : null;
+
     return ShellyV1ChannelPropertyModel(
       channel: json['channel'],
       id: json['id'],
@@ -47,7 +53,7 @@ class ShellyV1ChannelPropertyModel extends ChannelPropertyModel {
       defaultValue: json['default_value'] != null
           ? ValueType.fromJson(json['default_value'])
           : null,
-      value: json['value'] != null ? ValueType.fromJson(json['value']) : null,
+      valueState: valueState,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,
@@ -59,17 +65,17 @@ class ShellyV1ChannelPropertyModel extends ChannelPropertyModel {
 
   @override
   ShellyV1ChannelPropertyModel copyWith({
-    ValueType? value,
+    PropertyValueState? valueState,
     bool? clearValue,
   }) {
-    ValueType? setValue;
+    PropertyValueState? setValueState;
 
     if (clearValue == true) {
-      setValue = null;
-    } else if (value != null) {
-      setValue = value;
+      setValueState = null;
+    } else if (valueState != null) {
+      setValueState = valueState;
     } else {
-      setValue = this.value;
+      setValueState = this.valueState;
     }
 
     return ShellyV1ChannelPropertyModel(
@@ -84,7 +90,7 @@ class ShellyV1ChannelPropertyModel extends ChannelPropertyModel {
       invalid: invalid,
       step: step,
       defaultValue: defaultValue,
-      value: setValue,
+      valueState: setValueState,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );

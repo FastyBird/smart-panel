@@ -11,7 +11,7 @@
 		</dt>
 		<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
 			<el-text>
-				{{ property.value }}
+				{{ property.value !== null && typeof property.value === 'object' && 'value' in property.value ? property.value.value : property.value }}
 			</el-text>
 		</dd>
 	</template>

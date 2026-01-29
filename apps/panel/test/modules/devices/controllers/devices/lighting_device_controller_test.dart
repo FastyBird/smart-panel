@@ -15,6 +15,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/model.dar
 import 'package:fastybird_smart_panel/modules/devices/views/properties/on.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/value_state.dart';
 
 class MockDeviceControlStateService extends Mock
     implements DeviceControlStateService {}
@@ -55,13 +56,13 @@ void main() {
                 id: 'manufacturer-prop',
                 type: 'manufacturer',
                 channel: deviceInfoChannelId,
-                value: StringValueType('Test Manufacturer'),
+                valueState: PropertyValueState(value: StringValueType('Test Manufacturer')),
               ),
               ModelChannelPropertyView(
                 id: 'model-prop',
                 type: 'model',
                 channel: deviceInfoChannelId,
-                value: StringValueType('Test Model'),
+                valueState: PropertyValueState(value: StringValueType('Test Model')),
               ),
             ],
           ),
@@ -76,14 +77,14 @@ void main() {
                 type: 'on',
                 channel: lightChannelId,
                 category: DevicesModulePropertyCategory.valueOn,
-                value: BooleanValueType(true),
+                valueState: PropertyValueState(value: BooleanValueType(true)),
               ),
               BrightnessChannelPropertyView(
                 id: brightnessPropId,
                 type: 'brightness',
                 channel: lightChannelId,
                 category: DevicesModulePropertyCategory.brightness,
-                value: NumberValueType(75),
+                valueState: PropertyValueState(value: NumberValueType(75)),
                 format: NumberListFormatType([0, 100]),
               ),
             ],

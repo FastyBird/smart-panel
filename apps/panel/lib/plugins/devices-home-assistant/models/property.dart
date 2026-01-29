@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/api/models/devices_module_permission_type.
 import 'package:fastybird_smart_panel/api/models/devices_module_property_category.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/properties/properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/value_state.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/plugins/devices-home-assistant/constants.dart';
 
@@ -23,7 +24,7 @@ class HomeAssistantChannelPropertyModel extends ChannelPropertyModel {
     super.invalid,
     super.step,
     super.defaultValue,
-    super.value,
+    super.valueState,
     super.createdAt,
     super.updatedAt,
     required String? haEntityId,
@@ -40,6 +41,11 @@ class HomeAssistantChannelPropertyModel extends ChannelPropertyModel {
 
   factory HomeAssistantChannelPropertyModel.fromJson(
       Map<String, dynamic> json) {
+    final rawValue = json['value'];
+    final PropertyValueState? valueState = rawValue is Map<String, dynamic>
+        ? PropertyValueState.fromJson(rawValue)
+        : null;
+
     return HomeAssistantChannelPropertyModel(
       channel: json['channel'],
       id: json['id'],
@@ -60,7 +66,7 @@ class HomeAssistantChannelPropertyModel extends ChannelPropertyModel {
       defaultValue: json['default_value'] != null
           ? ValueType.fromJson(json['default_value'])
           : null,
-      value: json['value'] != null ? ValueType.fromJson(json['value']) : null,
+      valueState: valueState,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,
@@ -74,13 +80,17 @@ class HomeAssistantChannelPropertyModel extends ChannelPropertyModel {
 
   @override
   HomeAssistantChannelPropertyModel copyWith({
-    ValueType? value,
+    PropertyValueState? valueState,
     bool? clearValue,
   }) {
-    ValueType? setValue = value ?? value;
+    PropertyValueState? setValueState;
 
-    if (clearValue != null) {
-      setValue = null;
+    if (clearValue == true) {
+      setValueState = null;
+    } else if (valueState != null) {
+      setValueState = valueState;
+    } else {
+      setValueState = this.valueState;
     }
 
     return HomeAssistantChannelPropertyModel(
@@ -95,7 +105,7 @@ class HomeAssistantChannelPropertyModel extends ChannelPropertyModel {
       invalid: invalid,
       step: step,
       defaultValue: defaultValue,
-      value: setValue,
+      valueState: setValueState,
       createdAt: createdAt,
       updatedAt: updatedAt,
       haEntityId: haEntityId,

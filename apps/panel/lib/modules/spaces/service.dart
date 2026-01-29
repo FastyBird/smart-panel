@@ -10,6 +10,7 @@ import 'package:fastybird_smart_panel/modules/spaces/models/covers_state/covers_
 import 'package:fastybird_smart_panel/modules/spaces/models/intent_result/intent_result.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/media_state/media_state.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/sensor_state/sensor_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/suggestion/suggestion.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/undo/undo_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/climate_targets.dart';
@@ -24,6 +25,8 @@ import 'package:fastybird_smart_panel/modules/spaces/views/covers_targets/view.d
 import 'package:fastybird_smart_panel/modules/spaces/views/light_targets/view.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/media_targets/view.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/spaces/view.dart';
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 /// Service for managing spaces and their associated state.
@@ -72,6 +75,9 @@ class SpacesService extends ChangeNotifier {
   Map<String, MediaTargetView> _mediaTargets = {};
   Map<String, CoversTargetView> _coversTargets = {};
 
+  Timer? _updateDebounce;
+  Timer? _stateDebounce;
+
   /// Creates a new [SpacesService] with the required repositories.
   SpacesService({
     required SpacesRepository spacesRepository,
@@ -93,14 +99,24 @@ class SpacesService extends ChangeNotifier {
   Future<void> initialize() async {
     await _spacesRepository.fetchAll();
 
-    _spacesRepository.addListener(_updateData);
-    _lightTargetsRepository.addListener(_updateData);
-    _climateTargetsRepository.addListener(_updateData);
-    _mediaTargetsRepository.addListener(_updateData);
-    _coversTargetsRepository.addListener(_updateData);
-    _spaceStateRepository.addListener(_onStateChanged);
+    _spacesRepository.addListener(_scheduleUpdate);
+    _lightTargetsRepository.addListener(_scheduleUpdate);
+    _climateTargetsRepository.addListener(_scheduleUpdate);
+    _mediaTargetsRepository.addListener(_scheduleUpdate);
+    _coversTargetsRepository.addListener(_scheduleUpdate);
+    _spaceStateRepository.addListener(_scheduleStateChanged);
 
     _updateData();
+  }
+
+  void _scheduleUpdate() {
+    _updateDebounce?.cancel();
+    _updateDebounce = Timer(const Duration(milliseconds: 50), _updateData);
+  }
+
+  void _scheduleStateChanged() {
+    _stateDebounce?.cancel();
+    _stateDebounce = Timer(const Duration(milliseconds: 50), _onStateChanged);
   }
 
   void _onStateChanged() {
@@ -339,6 +355,20 @@ class SpacesService extends ChangeNotifier {
   /// Fetch covers state from API
   Future<CoversStateModel?> fetchCoversState(String spaceId) {
     return _spaceStateRepository.fetchCoversState(spaceId);
+  }
+
+  // ============================================
+  // SENSOR STATE
+  // ============================================
+
+  /// Get cached sensor state for a space
+  SensorStateModel? getSensorState(String spaceId) {
+    return _spaceStateRepository.getSensorState(spaceId);
+  }
+
+  /// Fetch sensor state from API
+  Future<SensorStateModel?> fetchSensorState(String spaceId) {
+    return _spaceStateRepository.fetchSensorState(spaceId);
   }
 
   // ============================================
@@ -779,12 +809,15 @@ class SpacesService extends ChangeNotifier {
 
   @override
   void dispose() {
-    _spacesRepository.removeListener(_updateData);
-    _lightTargetsRepository.removeListener(_updateData);
-    _climateTargetsRepository.removeListener(_updateData);
-    _mediaTargetsRepository.removeListener(_updateData);
-    _coversTargetsRepository.removeListener(_updateData);
-    _spaceStateRepository.removeListener(_onStateChanged);
+    _updateDebounce?.cancel();
+    _stateDebounce?.cancel();
+
+    _spacesRepository.removeListener(_scheduleUpdate);
+    _lightTargetsRepository.removeListener(_scheduleUpdate);
+    _climateTargetsRepository.removeListener(_scheduleUpdate);
+    _mediaTargetsRepository.removeListener(_scheduleUpdate);
+    _coversTargetsRepository.removeListener(_scheduleUpdate);
+    _spaceStateRepository.removeListener(_scheduleStateChanged);
 
     // Clear internal maps to prevent memory leaks
     _spaces.clear();

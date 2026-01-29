@@ -20,6 +20,7 @@ import {
 } from '../devices.constants';
 import { PropertyCommandDto } from '../dto/property-command.dto';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
+import { PropertyValueState } from '../models/property-value-state.model';
 import { IDevicePlatform } from '../platforms/device.platform';
 import { ChannelExistsConstraintValidator } from '../validators/channel-exists-constraint.validator';
 import { ChannelPropertyExistsConstraintValidator } from '../validators/channel-property-exists-constraint.validator';
@@ -136,7 +137,7 @@ describe('PropertyCommandService', () => {
 		format: null,
 		invalid: null,
 		step: null,
-		value: false,
+		value: new PropertyValueState(false),
 		channel: mockChannel.id,
 		createdAt: new Date(),
 		updatedAt: new Date(),

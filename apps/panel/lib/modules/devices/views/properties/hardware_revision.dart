@@ -15,7 +15,7 @@ class HardwareRevisionChannelPropertyView extends ChannelPropertyView {
     super.invalid,
     super.step,
     super.defaultValue,
-    super.value,
+    super.valueState,
   });
 
   String? get hardwareRevision => value is StringValueType ? (value as StringValueType).value : null;

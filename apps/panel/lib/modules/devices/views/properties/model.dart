@@ -15,7 +15,7 @@ class ModelChannelPropertyView extends ChannelPropertyView {
     super.invalid,
     super.step,
     super.defaultValue,
-    super.value,
+    super.valueState,
   });
 
   String? get model => value is StringValueType ? (value as StringValueType).value : null;

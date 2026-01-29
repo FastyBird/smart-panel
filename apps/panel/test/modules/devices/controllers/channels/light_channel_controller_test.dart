@@ -16,6 +16,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/color_red
 import 'package:fastybird_smart_panel/modules/devices/views/properties/on.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/value_state.dart';
 
 class MockDeviceControlStateService extends Mock
     implements DeviceControlStateService {}
@@ -57,14 +58,14 @@ void main() {
             type: 'on',
             channel: channelId,
             category: DevicesModulePropertyCategory.valueOn,
-            value: BooleanValueType(true),
+            valueState: PropertyValueState(value: BooleanValueType(true)),
           ),
           BrightnessChannelPropertyView(
             id: brightnessPropId,
             type: 'brightness',
             channel: channelId,
             category: DevicesModulePropertyCategory.brightness,
-            value: NumberValueType(75),
+            valueState: PropertyValueState(value: NumberValueType(75)),
             format: NumberListFormatType([0, 100]),
           ),
           ColorRedChannelPropertyView(
@@ -72,7 +73,7 @@ void main() {
             type: 'color_red',
             channel: channelId,
             category: DevicesModulePropertyCategory.colorRed,
-            value: NumberValueType(255),
+            valueState: PropertyValueState(value: NumberValueType(255)),
             format: NumberListFormatType([0, 255]),
           ),
           ColorGreenChannelPropertyView(
@@ -80,7 +81,7 @@ void main() {
             type: 'color_green',
             channel: channelId,
             category: DevicesModulePropertyCategory.colorGreen,
-            value: NumberValueType(128),
+            valueState: PropertyValueState(value: NumberValueType(128)),
             format: NumberListFormatType([0, 255]),
           ),
           ColorBlueChannelPropertyView(
@@ -88,7 +89,7 @@ void main() {
             type: 'color_blue',
             channel: channelId,
             category: DevicesModulePropertyCategory.colorBlue,
-            value: NumberValueType(64),
+            valueState: PropertyValueState(value: NumberValueType(64)),
             format: NumberListFormatType([0, 255]),
           ),
         ],
@@ -595,7 +596,7 @@ void main() {
               id: onPropId,
               type: 'on',
               channel: channelId,
-              value: BooleanValueType(true),
+              valueState: PropertyValueState(value: BooleanValueType(true)),
             ),
           ],
         );
@@ -624,7 +625,7 @@ void main() {
               id: onPropId,
               type: 'on',
               channel: channelId,
-              value: BooleanValueType(true),
+              valueState: PropertyValueState(value: BooleanValueType(true)),
             ),
           ],
         );

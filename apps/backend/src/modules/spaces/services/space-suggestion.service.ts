@@ -357,7 +357,7 @@ export class SpaceSuggestionService {
 			return false;
 		}
 
-		const value = property.value;
+		const value = property.value?.value;
 
 		return value === true || value === 'true' || value === 1 || value === '1';
 	}
@@ -370,7 +370,7 @@ export class SpaceSuggestionService {
 			return null;
 		}
 
-		const value = property.value;
+		const value = property.value?.value;
 
 		if (typeof value === 'number') {
 			return value;

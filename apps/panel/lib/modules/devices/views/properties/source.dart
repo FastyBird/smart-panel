@@ -17,7 +17,7 @@ class SourceChannelPropertyView extends ChannelPropertyView {
     super.invalid,
     super.step,
     super.defaultValue,
-    super.value,
+    super.valueState,
   });
 
   /// Returns the source value as string.

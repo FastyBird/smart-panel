@@ -543,13 +543,13 @@ export class ShellyV1Service implements IManagedPluginService {
 			DEVICES_SHELLY_V1_TYPE,
 		);
 
-		if (!modelProperty || !modelProperty.value) {
+		if (!modelProperty || !modelProperty.value?.value) {
 			this.logger.warn(`No model property found for device: ${device.identifier}`, { resource: device.id });
 
 			return null;
 		}
 
-		const deviceModel = String(modelProperty.value).toUpperCase();
+		const deviceModel = String(modelProperty.value.value).toUpperCase();
 
 		// Try to find by exact device model match first
 		for (const descriptor of Object.values(DESCRIPTORS)) {

@@ -15,7 +15,7 @@ class ResetChannelPropertyView extends ChannelPropertyView {
     super.invalid,
     super.step,
     super.defaultValue,
-    super.value,
+    super.valueState,
   });
 
   bool? get shouldReset => value is BooleanValueType ? (value as BooleanValueType).value : null;

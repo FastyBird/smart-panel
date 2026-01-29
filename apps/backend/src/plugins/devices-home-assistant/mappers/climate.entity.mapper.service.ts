@@ -287,12 +287,12 @@ export class ClimateEntityMapperService extends EntityMapper {
 		const heaterOn = heaterOnProp
 			? values.has(heaterOnProp.id)
 				? values.get(heaterOnProp.id) === true
-				: heaterOnProp.value === true
+				: heaterOnProp.value?.value === true
 			: false;
 		const coolerOn = coolerOnProp
 			? values.has(coolerOnProp.id)
 				? values.get(coolerOnProp.id) === true
-				: coolerOnProp.value === true
+				: coolerOnProp.value?.value === true
 			: false;
 
 		if (heaterOn && coolerOn) {

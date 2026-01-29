@@ -4,6 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
+import { PropertyValueState } from '../../devices/models/property-value-state.model';
 import { IntentStatus } from '../../intents/intents.constants';
 import { IntentTimeseriesService, LastAppliedClimateState } from '../../intents/services/intent-timeseries.service';
 import { SpaceClimateRoleEntity } from '../entities/space-climate-role.entity';
@@ -48,7 +49,7 @@ describe('SpaceClimateStateService', () => {
 			const tempProp: Partial<ChannelPropertyEntity> = {
 				id: uuid(),
 				category: PropertyCategory.TEMPERATURE,
-				value: options.temperature,
+				value: new PropertyValueState(options.temperature),
 			};
 			channels.push({
 				id: uuid(),
@@ -62,7 +63,7 @@ describe('SpaceClimateStateService', () => {
 			const humidityProp: Partial<ChannelPropertyEntity> = {
 				id: uuid(),
 				category: PropertyCategory.HUMIDITY,
-				value: options.humidity,
+				value: new PropertyValueState(options.humidity),
 			};
 			channels.push({
 				id: uuid(),
@@ -77,19 +78,19 @@ describe('SpaceClimateStateService', () => {
 				{
 					id: uuid(),
 					category: PropertyCategory.ON,
-					value: options.heaterOn ?? false,
+					value: new PropertyValueState(options.heaterOn ?? false),
 				},
 				{
 					id: uuid(),
 					category: PropertyCategory.STATUS,
-					value: options.heaterOn ?? false,
+					value: new PropertyValueState(options.heaterOn ?? false),
 				},
 			];
 			if (options.heaterSetpoint !== undefined) {
 				heaterProps.push({
 					id: uuid(),
 					category: PropertyCategory.TEMPERATURE,
-					value: options.heaterSetpoint,
+					value: new PropertyValueState(options.heaterSetpoint),
 					format: [15, 30], // min, max
 				});
 			}
@@ -106,19 +107,19 @@ describe('SpaceClimateStateService', () => {
 				{
 					id: uuid(),
 					category: PropertyCategory.ON,
-					value: options.coolerOn ?? false,
+					value: new PropertyValueState(options.coolerOn ?? false),
 				},
 				{
 					id: uuid(),
 					category: PropertyCategory.STATUS,
-					value: options.coolerOn ?? false,
+					value: new PropertyValueState(options.coolerOn ?? false),
 				},
 			];
 			if (options.coolerSetpoint !== undefined) {
 				coolerProps.push({
 					id: uuid(),
 					category: PropertyCategory.TEMPERATURE,
-					value: options.coolerSetpoint,
+					value: new PropertyValueState(options.coolerSetpoint),
 					format: [18, 35], // min, max
 				});
 			}
