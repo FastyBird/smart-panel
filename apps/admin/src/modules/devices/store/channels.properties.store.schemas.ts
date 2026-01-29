@@ -220,7 +220,7 @@ const _ChannelPropertyResSchema = z.object({
 		.object({
 			value: z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
 			last_updated: z.string().nullable().optional(),
-			trend: z.nativeEnum(SpacesModuleDataSensorReadingTrend).optional(),
+			trend: z.nativeEnum(SpacesModuleDataSensorReadingTrend).nullable().optional(),
 		})
 		.nullable()
 		.optional(),
