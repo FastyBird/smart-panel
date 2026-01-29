@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:event_bus/event_bus.dart';
@@ -5,9 +6,7 @@ import 'package:intl/intl.dart' hide TextDirection;
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
-import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
-import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
@@ -24,6 +23,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
+
+import 'package:fastybird_smart_panel/modules/deck/utils/sensor_freshness.dart';
 
 // ============================================================================
 // DATA MODELS
@@ -82,6 +83,14 @@ class SensorData {
     this.isBinary = false,
     this.channelCategory,
   });
+
+  SensorFreshness get freshness =>
+      SensorFreshnessUtils.evaluate(lastUpdated, category);
+
+  bool get isStaleOrOffline =>
+      freshness == SensorFreshness.stale || freshness == SensorFreshness.offline;
+
+  bool get isOffline => freshness == SensorFreshness.offline;
 
   IconData get icon {
     switch (category) {
@@ -143,6 +152,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
 
   bool _isLoading = true;
   SensorCategory? _selectedCategory;
+  Timer? _freshnessTimer;
 
   // Sensor data from API
   List<SensorData> _sensors = [];
@@ -198,6 +208,14 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
 
     // Data is prefetched by DeckService, just load from cache
     _loadSensorData();
+
+    // Periodic refresh so freshness indicators update over time
+    _freshnessTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) {
+        if (mounted) setState(() {});
+      },
+    );
   }
 
   /// Map channel category string to SensorCategory
@@ -425,6 +443,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
 
   @override
   void dispose() {
+    _freshnessTimer?.cancel();
     _spacesService?.removeListener(_onDataChanged);
     _spaceStateRepository?.removeListener(_onDataChanged);
     _devicesService?.removeListener(_onDataChanged);
@@ -704,18 +723,31 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   Widget _buildHeader(BuildContext context, int alertCount) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasAlerts = alertCount > 0;
+    final staleCount = _sensors.where((s) => s.freshness == SensorFreshness.stale).length;
+    final offlineCount = _sensors.where((s) => s.freshness == SensorFreshness.offline).length;
+    final hasHealthIssues = staleCount > 0 || offlineCount > 0;
+
     final accentColor = hasAlerts
         ? (isDark ? AppColorsDark.danger : AppColorsLight.danger)
-        : (isDark ? AppColorsDark.primary : AppColorsLight.primary);
+        : hasHealthIssues
+            ? (isDark ? AppColorsDark.warning : AppColorsLight.warning)
+            : (isDark ? AppColorsDark.primary : AppColorsLight.primary);
     final accentBgColor = hasAlerts
         ? (isDark ? AppColorsDark.dangerLight5 : AppColorsLight.dangerLight5)
-        : (isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight5);
+        : hasHealthIssues
+            ? (isDark ? AppColorsDark.warningLight5 : AppColorsLight.warningLight5)
+            : (isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight5);
 
     String subtitle;
     if (hasAlerts) {
       subtitle = '$alertCount Alert${alertCount > 1 ? 's' : ''} Active';
     } else if (_sensors.isEmpty) {
       subtitle = 'No sensors configured';
+    } else if (hasHealthIssues) {
+      final parts = <String>[];
+      if (staleCount > 0) parts.add('$staleCount stale');
+      if (offlineCount > 0) parts.add('$offlineCount offline');
+      subtitle = '${_sensors.length} sensor${_sensors.length > 1 ? 's' : ''} • ${parts.join(', ')}';
     } else {
       subtitle = '${_sensors.length} sensor${_sensors.length > 1 ? 's' : ''} • All normal';
     }
@@ -723,7 +755,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     return PageHeader(
       title: 'Sensors',
       subtitle: subtitle,
-      subtitleColor: hasAlerts ? accentColor : null,
+      subtitleColor: (hasAlerts || hasHealthIssues) ? accentColor : null,
       backgroundColor: AppColors.blank,
       leading: HeaderDeviceIcon(
         icon: MdiIcons.accessPointNetwork,
@@ -1019,7 +1051,47 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       ));
     }
 
-    return Row(children: cards);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(children: cards),
+        _buildHealthRow(context),
+      ],
+    );
+  }
+
+  Widget _buildHealthRow(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final staleCount = _sensors.where((s) => s.freshness == SensorFreshness.stale).length;
+    final offlineCount = _sensors.where((s) => s.freshness == SensorFreshness.offline).length;
+
+    if (staleCount == 0 && offlineCount == 0) return const SizedBox.shrink();
+
+    final parts = <String>[];
+    if (staleCount > 0) parts.add('$staleCount stale');
+    if (offlineCount > 0) parts.add('$offlineCount offline');
+
+    return Padding(
+      padding: EdgeInsets.only(top: AppSpacings.pSm),
+      child: Row(
+        children: [
+          Icon(
+            Icons.warning_amber,
+            size: _scale(14),
+            color: isDark ? AppColorsDark.warning : AppColorsLight.warning,
+          ),
+          SizedBox(width: AppSpacings.pXs),
+          Text(
+            parts.join(' · '),
+            style: TextStyle(
+              color: isDark ? AppColorsDark.warning : AppColorsLight.warning,
+              fontSize: AppFontSize.extraSmall,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildSummaryCard(
@@ -1151,11 +1223,23 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isAlert = sensor.status == SensorStatus.alert;
     final dangerColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
+    final freshness = sensor.freshness;
 
     final categoryColor = _getCategoryColor(context, sensor.category);
     final categoryBgColor = _getCategoryLightColor(context, sensor.category);
 
-    return GestureDetector(
+    // Determine opacity based on freshness
+    final double cardOpacity = freshness == SensorFreshness.offline
+        ? 0.4
+        : freshness == SensorFreshness.stale
+            ? 0.6
+            : 1.0;
+
+    // Trend text: use sensor trendText if available, otherwise show freshness age
+    final age = DateTime.now().difference(sensor.lastUpdated);
+    final trendLabel = sensor.trendText ?? SensorFreshnessUtils.label(freshness, age);
+
+    Widget card = GestureDetector(
       onTap: () => _openSensorDetail(context, sensor),
       child: Container(
         padding: AppSpacings.paddingMd,
@@ -1176,7 +1260,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header: Icon + Status
+            // Header: Icon + Freshness/Status dot
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -1193,7 +1277,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
                     color: isAlert ? dangerColor : categoryColor,
                   ),
                 ),
-                _buildStatusDot(context, sensor.status),
+                _buildFreshnessDot(context, sensor),
               ],
             ),
             AppSpacings.spacingMdVertical,
@@ -1254,8 +1338,8 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
               ),
             ),
 
-            // Trend
-            if (sensor.trendText != null) ...[
+            // Trend — always show for numeric sensors
+            if (!sensor.isBinary) ...[
               const Spacer(),
               Row(
                 children: [
@@ -1263,7 +1347,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
                   AppSpacings.spacingXsHorizontal,
                   Expanded(
                     child: Text(
-                      sensor.trendText!,
+                      trendLabel,
                       style: TextStyle(
                         color: isAlert
                             ? dangerColor
@@ -1282,34 +1366,30 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         ),
       ),
     );
+
+    if (cardOpacity < 1.0) {
+      card = Opacity(opacity: cardOpacity, child: card);
+    }
+
+    return card;
   }
 
-  Widget _buildStatusDot(BuildContext context, SensorStatus status) {
+  Widget _buildFreshnessDot(BuildContext context, SensorData sensor) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    Color color;
-    switch (status) {
-      case SensorStatus.normal:
-        color = isDark ? AppColorsDark.success : AppColorsLight.success;
-        break;
-      case SensorStatus.warning:
-        color = isDark ? AppColorsDark.warning : AppColorsLight.warning;
-        break;
-      case SensorStatus.alert:
-        color = isDark ? AppColorsDark.danger : AppColorsLight.danger;
-        break;
-      case SensorStatus.offline:
-        color = isDark
-            ? AppTextColorDark.placeholder
-            : AppTextColorLight.placeholder;
-        break;
+    // Alert status takes priority
+    Color dotColor;
+    if (sensor.status == SensorStatus.alert) {
+      dotColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
+    } else {
+      dotColor = SensorFreshnessUtils.color(sensor.freshness, isDark);
     }
 
     return Container(
       width: _scale(8),
       height: _scale(8),
       decoration: BoxDecoration(
-        color: color,
+        color: dotColor,
         shape: BoxShape.circle,
       ),
     );
@@ -1405,6 +1485,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
   SpaceStateRepository? _spaceStateRepository;
   SpacesService? _spacesService;
   PropertyTimeseriesService? _timeseriesService;
+  Timer? _freshnessTimer;
 
   int _selectedPeriod = 1; // 0=1H, 1=24H, 2=7D, 3=30D
   bool _isLoadingTimeseries = false;
@@ -1446,10 +1527,19 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
 
     // Fetch initial time series data
     _fetchTimeseries();
+
+    // Periodic refresh so freshness indicators update over time
+    _freshnessTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) {
+        if (mounted) setState(() {});
+      },
+    );
   }
 
   @override
   void dispose() {
+    _freshnessTimer?.cancel();
     _spaceStateRepository?.removeListener(_onStateChanged);
     super.dispose();
   }
@@ -1675,7 +1765,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
   Widget _buildHeader(BuildContext context) {
     return PageHeader(
       title: _sensor.name,
-      subtitle: '${_sensor.location} • Online',
+      subtitle: '${_sensor.location} • ${_sensor.isOffline ? 'Offline' : 'Online'}',
       backgroundColor: AppColors.blank,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1822,13 +1912,16 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
             ),
           ),
           AppSpacings.spacingXsVertical,
+          // Freshness label with color
           Text(
-            'Updated ${DatetimeUtils.formatTimeAgo(_sensor.lastUpdated, AppLocalizations.of(context)!, format: TimeAgoFormat.medium)}',
+            SensorFreshnessUtils.label(
+              _sensor.freshness,
+              DateTime.now().difference(_sensor.lastUpdated),
+            ),
             style: TextStyle(
-              color: isDark
-                  ? AppTextColorDark.placeholder
-                  : AppTextColorLight.placeholder,
+              color: SensorFreshnessUtils.color(_sensor.freshness, isDark),
               fontSize: AppFontSize.small,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],

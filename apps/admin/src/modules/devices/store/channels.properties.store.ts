@@ -405,7 +405,7 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 						body: {
 							data: transformChannelPropertyUpdateRequest<IChannelPropertyUpdateReq>(
 								{
-									...('value' in payload.data ? parsedEditedItem.data : omit(parsedEditedItem.data, 'value')),
+									...('value' in payload.data ? { ...parsedEditedItem.data, value: parsedEditedItem.data.value?.value ?? null } : omit(parsedEditedItem.data, 'value')),
 								},
 								element?.schemas?.channelPropertyUpdateReqSchema || ChannelPropertyUpdateReqSchema
 							),
