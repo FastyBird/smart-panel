@@ -415,7 +415,8 @@ const onSelectActivity = (key: MediaActivityKey): void => {
 };
 
 const onSave = async (): Promise<void> => {
-	if (!selectedActivity.value) return;
+	const activityKey = selectedActivity.value;
+	if (!activityKey) return;
 
 	const payload = {
 		displayEndpointId: form.displayEndpointId || null,
@@ -427,20 +428,22 @@ const onSave = async (): Promise<void> => {
 	};
 
 	try {
-		const existingBinding = findBindingByActivity(selectedActivity.value);
+		const existingBinding = findBindingByActivity(activityKey);
 
 		if (existingBinding) {
 			await saveBinding(existingBinding.id, payload);
 		} else {
-			await createBinding(selectedActivity.value, payload);
+			await createBinding(activityKey, payload);
 		}
 
 		// Reload bindings to get updated state
 		await fetchBindings();
 
-		// Reload form with updated binding
-		const updatedBinding = findBindingByActivity(selectedActivity.value);
-		loadBindingIntoForm(updatedBinding);
+		// Reload form only if the same activity is still selected
+		if (selectedActivity.value === activityKey) {
+			const updatedBinding = findBindingByActivity(activityKey);
+			loadBindingIntoForm(updatedBinding);
+		}
 
 		flashMessage.success(t('spacesModule.media.activities.savedSuccessfully'));
 	} catch {
