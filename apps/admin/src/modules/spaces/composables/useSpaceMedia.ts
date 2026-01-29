@@ -167,6 +167,22 @@ const transformStepFailure = (raw: Record<string, unknown>): IMediaStepFailure =
 	propertyId: (raw.property_id as string | undefined) ?? (raw.propertyId as string | undefined),
 });
 
+const transformResolvedDevices = (data: Record<string, unknown>): IMediaResolvedDevices => ({
+	displayDeviceId: (data.display_device_id as string | undefined) ?? (data.displayDeviceId as string | undefined),
+	audioDeviceId: (data.audio_device_id as string | undefined) ?? (data.audioDeviceId as string | undefined),
+	sourceDeviceId: (data.source_device_id as string | undefined) ?? (data.sourceDeviceId as string | undefined),
+	remoteDeviceId: (data.remote_device_id as string | undefined) ?? (data.remoteDeviceId as string | undefined),
+});
+
+const transformSummary = (data: Record<string, unknown>): IMediaActivationSummary => ({
+	stepsTotal: (data.steps_total as number) ?? (data.stepsTotal as number) ?? 0,
+	stepsSucceeded: (data.steps_succeeded as number) ?? (data.stepsSucceeded as number) ?? 0,
+	stepsFailed: (data.steps_failed as number) ?? (data.stepsFailed as number) ?? 0,
+	failures: Array.isArray(data.failures)
+		? (data.failures as Record<string, unknown>[]).map(transformStepFailure)
+		: undefined,
+});
+
 const transformActivationResult = (raw: Record<string, unknown>): IMediaActiveState => {
 	const resolved = raw.resolved as Record<string, unknown> | undefined;
 	const summary = raw.summary as Record<string, unknown> | undefined;
@@ -176,24 +192,8 @@ const transformActivationResult = (raw: Record<string, unknown>): IMediaActiveSt
 			(raw.activity_key as PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyActivatePostParametersPathActivityKey) ??
 			null,
 		state: (raw.state as MediaActivationState) ?? 'deactivated',
-		resolved: resolved
-			? {
-					displayDeviceId: resolved.display_device_id as string | undefined,
-					audioDeviceId: resolved.audio_device_id as string | undefined,
-					sourceDeviceId: resolved.source_device_id as string | undefined,
-					remoteDeviceId: resolved.remote_device_id as string | undefined,
-				}
-			: undefined,
-		summary: summary
-			? {
-					stepsTotal: (summary.steps_total as number) ?? 0,
-					stepsSucceeded: (summary.steps_succeeded as number) ?? 0,
-					stepsFailed: (summary.steps_failed as number) ?? 0,
-					failures: Array.isArray(summary.failures)
-						? (summary.failures as Record<string, unknown>[]).map(transformStepFailure)
-						: undefined,
-				}
-			: undefined,
+		resolved: resolved ? transformResolvedDevices(resolved) : undefined,
+		summary: summary ? transformSummary(summary) : undefined,
 		warnings: raw.warnings as string[] | undefined,
 	};
 };
@@ -205,12 +205,7 @@ const transformActiveEntity = (raw: Record<string, unknown>): IMediaActiveState 
 	if (raw.resolved) {
 		try {
 			const parsed = typeof raw.resolved === 'string' ? JSON.parse(raw.resolved) : raw.resolved;
-			resolved = {
-				displayDeviceId: parsed.display_device_id ?? parsed.displayDeviceId,
-				audioDeviceId: parsed.audio_device_id ?? parsed.audioDeviceId,
-				sourceDeviceId: parsed.source_device_id ?? parsed.sourceDeviceId,
-				remoteDeviceId: parsed.remote_device_id ?? parsed.remoteDeviceId,
-			};
+			resolved = transformResolvedDevices(parsed as Record<string, unknown>);
 		} catch {
 			// ignore parse errors
 		}
@@ -219,14 +214,7 @@ const transformActiveEntity = (raw: Record<string, unknown>): IMediaActiveState 
 	if (raw.last_result) {
 		try {
 			const parsed = typeof raw.last_result === 'string' ? JSON.parse(raw.last_result) : raw.last_result;
-			summary = {
-				stepsTotal: parsed.steps_total ?? parsed.stepsTotal ?? 0,
-				stepsSucceeded: parsed.steps_succeeded ?? parsed.stepsSucceeded ?? 0,
-				stepsFailed: parsed.steps_failed ?? parsed.stepsFailed ?? 0,
-				failures: Array.isArray(parsed.failures)
-					? (parsed.failures as Record<string, unknown>[]).map(transformStepFailure)
-					: undefined,
-			};
+			summary = transformSummary(parsed as Record<string, unknown>);
 		} catch {
 			// ignore parse errors
 		}

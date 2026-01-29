@@ -35,7 +35,7 @@
 							size="small"
 							type="warning"
 							:loading="deactivating"
-							:disabled="activating"
+							:disabled="activating || deactivating"
 							@click="onDeactivate"
 						>
 							<template #icon>
@@ -226,7 +226,7 @@
 					type="warning"
 					plain
 					:loading="deactivating"
-					:disabled="activating || !activeState || activeState.state === 'deactivated'"
+					:disabled="activating || deactivating || !activeState || activeState.state === 'deactivated'"
 					@click="onDeactivate"
 				>
 					<template #icon>
@@ -287,7 +287,7 @@
 								type="success"
 								circle
 								:loading="activating && activatingKey === activity"
-								:disabled="activating && activatingKey !== activity || deactivating"
+								:disabled="activating || deactivating"
 								:title="t('spacesModule.media.activities.run')"
 								@click.stop="onActivate(activity)"
 							>
