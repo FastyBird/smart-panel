@@ -17,6 +17,7 @@ import { WebsocketModule } from '../websocket/websocket.module';
 
 import { SpacesController } from './controllers/spaces.controller';
 import { UpdateSpacesConfigDto } from './dto/update-config.dto';
+import { SpaceActiveMediaActivityEntity } from './entities/space-active-media-activity.entity';
 import { SpaceActiveMediaRoutingEntity } from './entities/space-active-media-routing.entity';
 import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
 import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
@@ -45,6 +46,7 @@ import { SpaceIntentService } from './services/space-intent.service';
 import { SpaceLightingRoleService } from './services/space-lighting-role.service';
 import { SpaceLightingStateService } from './services/space-lighting-state.service';
 import { SpaceMediaActivityBindingService } from './services/space-media-activity-binding.service';
+import { SpaceMediaActivityService } from './services/space-media-activity.service';
 import { SpaceMediaEndpointService } from './services/space-media-endpoint.service';
 import { SpaceMediaRoutingService } from './services/space-media-routing.service';
 import { SpaceSensorRoleService } from './services/space-sensor-role.service';
@@ -73,6 +75,7 @@ import { IntentSpecLoaderService } from './spec';
 			SpaceMediaEndpointEntity,
 			SpaceMediaRoutingEntity,
 			SpaceActiveMediaRoutingEntity,
+			SpaceActiveMediaActivityEntity,
 			SpaceSensorRoleEntity,
 			DeviceEntity,
 			ChannelEntity,
@@ -101,6 +104,7 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceCoversStateService,
 		DerivedMediaEndpointService,
 		SpaceMediaActivityBindingService,
+		SpaceMediaActivityService,
 		SpaceMediaEndpointService,
 		SpaceMediaRoutingService,
 		SpaceSensorRoleService,
@@ -122,6 +126,7 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceClimateRoleService,
 		SpaceCoversRoleService,
 		SpaceMediaActivityBindingService,
+		SpaceMediaActivityService,
 		SpaceMediaEndpointService,
 		SpaceMediaRoutingService,
 		SpaceSensorRoleService,

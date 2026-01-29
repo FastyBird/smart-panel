@@ -54,6 +54,7 @@ import {
 } from './dto/sensor-role.dto';
 import { ReqSuggestionFeedbackDto, SuggestionFeedbackDto } from './dto/suggestion.dto';
 import { ReqUpdateSpaceDto, UpdateSpaceDto } from './dto/update-space.dto';
+import { SpaceActiveMediaActivityEntity } from './entities/space-active-media-activity.entity';
 import { SpaceActiveMediaRoutingEntity } from './entities/space-active-media-routing.entity';
 import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
 import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
@@ -76,6 +77,16 @@ import {
 	MediaActivityBindingResponseModel,
 	MediaActivityBindingsResponseModel,
 } from './models/media-activity-binding.model';
+import {
+	ActiveMediaActivityResponseModel,
+	MediaActivityActivationResponseModel,
+	MediaActivityActivationResultModel,
+	MediaActivityExecutionPlanModel,
+	MediaActivityExecutionStepModel,
+	MediaActivityLastResultModel,
+	MediaActivityResolvedModel,
+	MediaActivityStepFailureModel,
+} from './models/media-activity.model';
 import {
 	ActiveMediaRoutingResponseModel,
 	ActiveMediaRoutingStateModel,
@@ -278,6 +289,16 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	// Media activity binding response models
 	MediaActivityBindingResponseModel,
 	MediaActivityBindingsResponseModel,
+	// Media activity activation models
+	SpaceActiveMediaActivityEntity,
+	MediaActivityResolvedModel,
+	MediaActivityStepFailureModel,
+	MediaActivityLastResultModel,
+	MediaActivityExecutionStepModel,
+	MediaActivityExecutionPlanModel,
+	MediaActivityActivationResultModel,
+	MediaActivityActivationResponseModel,
+	ActiveMediaActivityResponseModel,
 	// Derived media endpoint models
 	DerivedMediaPropertyLinkModel,
 	DerivedRemoteLinksModel,

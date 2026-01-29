@@ -35,6 +35,11 @@ export enum EventType {
 	MEDIA_ROUTING_ACTIVATED = 'SpacesModule.MediaRouting.Activated',
 	MEDIA_ROUTING_FAILED = 'SpacesModule.MediaRouting.Failed',
 	MEDIA_ROUTING_DEACTIVATED = 'SpacesModule.MediaRouting.Deactivated',
+	// Media activity activation events
+	MEDIA_ACTIVITY_ACTIVATING = 'SpacesModule.MediaActivity.Activating',
+	MEDIA_ACTIVITY_ACTIVATED = 'SpacesModule.MediaActivity.Activated',
+	MEDIA_ACTIVITY_FAILED = 'SpacesModule.MediaActivity.Failed',
+	MEDIA_ACTIVITY_DEACTIVATED = 'SpacesModule.MediaActivity.Deactivated',
 	// Sensor state change events
 	SENSOR_STATE_CHANGED = 'SpacesModule.Space.SensorStateChanged',
 	// Sensor role events
