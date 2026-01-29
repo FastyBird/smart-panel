@@ -20,7 +20,6 @@ class ShellyV1ChannelPropertyModel extends ChannelPropertyModel {
     super.invalid,
     super.step,
     super.defaultValue,
-    super.value,
     super.valueState,
     super.createdAt,
     super.updatedAt,
@@ -29,14 +28,10 @@ class ShellyV1ChannelPropertyModel extends ChannelPropertyModel {
         );
 
   factory ShellyV1ChannelPropertyModel.fromJson(Map<String, dynamic> json) {
-    PropertyValueState? valueState;
-    ValueType? legacyValue;
     final rawValue = json['value'];
-    if (rawValue is Map<String, dynamic>) {
-      valueState = PropertyValueState.fromJson(rawValue);
-    } else if (rawValue != null) {
-      legacyValue = ValueType.fromJson(rawValue);
-    }
+    final PropertyValueState? valueState = rawValue is Map<String, dynamic>
+        ? PropertyValueState.fromJson(rawValue)
+        : null;
 
     return ShellyV1ChannelPropertyModel(
       channel: json['channel'],
@@ -58,7 +53,6 @@ class ShellyV1ChannelPropertyModel extends ChannelPropertyModel {
       defaultValue: json['default_value'] != null
           ? ValueType.fromJson(json['default_value'])
           : null,
-      value: legacyValue,
       valueState: valueState,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
@@ -71,17 +65,17 @@ class ShellyV1ChannelPropertyModel extends ChannelPropertyModel {
 
   @override
   ShellyV1ChannelPropertyModel copyWith({
-    ValueType? value,
+    PropertyValueState? valueState,
     bool? clearValue,
   }) {
-    ValueType? setValue;
+    PropertyValueState? setValueState;
 
     if (clearValue == true) {
-      setValue = null;
-    } else if (value != null) {
-      setValue = value;
+      setValueState = null;
+    } else if (valueState != null) {
+      setValueState = valueState;
     } else {
-      setValue = this.value;
+      setValueState = this.valueState;
     }
 
     return ShellyV1ChannelPropertyModel(
@@ -96,7 +90,7 @@ class ShellyV1ChannelPropertyModel extends ChannelPropertyModel {
       invalid: invalid,
       step: step,
       defaultValue: defaultValue,
-      value: setValue,
+      valueState: setValueState,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );

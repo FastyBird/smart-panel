@@ -20,7 +20,6 @@ class Zigbee2mqttChannelPropertyModel extends ChannelPropertyModel {
     super.invalid,
     super.step,
     super.defaultValue,
-    super.value,
     super.valueState,
     super.createdAt,
     super.updatedAt,
@@ -29,14 +28,10 @@ class Zigbee2mqttChannelPropertyModel extends ChannelPropertyModel {
         );
 
   factory Zigbee2mqttChannelPropertyModel.fromJson(Map<String, dynamic> json) {
-    PropertyValueState? valueState;
-    ValueType? legacyValue;
     final rawValue = json['value'];
-    if (rawValue is Map<String, dynamic>) {
-      valueState = PropertyValueState.fromJson(rawValue);
-    } else if (rawValue != null) {
-      legacyValue = ValueType.fromJson(rawValue);
-    }
+    final PropertyValueState? valueState = rawValue is Map<String, dynamic>
+        ? PropertyValueState.fromJson(rawValue)
+        : null;
 
     return Zigbee2mqttChannelPropertyModel(
       channel: json['channel'],
@@ -58,7 +53,6 @@ class Zigbee2mqttChannelPropertyModel extends ChannelPropertyModel {
       defaultValue: json['default_value'] != null
           ? ValueType.fromJson(json['default_value'])
           : null,
-      value: legacyValue,
       valueState: valueState,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
@@ -71,13 +65,17 @@ class Zigbee2mqttChannelPropertyModel extends ChannelPropertyModel {
 
   @override
   Zigbee2mqttChannelPropertyModel copyWith({
-    ValueType? value,
+    PropertyValueState? valueState,
     bool? clearValue,
   }) {
-    ValueType? setValue = value ?? this.value;
+    PropertyValueState? setValueState;
 
-    if (clearValue != null) {
-      setValue = null;
+    if (clearValue == true) {
+      setValueState = null;
+    } else if (valueState != null) {
+      setValueState = valueState;
+    } else {
+      setValueState = this.valueState;
     }
 
     return Zigbee2mqttChannelPropertyModel(
@@ -92,7 +90,7 @@ class Zigbee2mqttChannelPropertyModel extends ChannelPropertyModel {
       invalid: invalid,
       step: step,
       defaultValue: defaultValue,
-      value: setValue,
+      valueState: setValueState,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );

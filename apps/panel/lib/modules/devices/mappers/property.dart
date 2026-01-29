@@ -130,7 +130,6 @@ T _createPropertyView<T extends ChannelPropertyView>(
     InvalidValueType? invalid,
     double? step,
     ValueType? defaultValue,
-    ValueType? value,
     PropertyValueState? valueState,
   }) constructor,
 ) {
@@ -147,7 +146,6 @@ T _createPropertyView<T extends ChannelPropertyView>(
     invalid: model.invalid,
     step: model.step,
     defaultValue: model.defaultValue,
-    value: model.value,
     valueState: model.valueState,
   );
 }

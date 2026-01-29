@@ -10,6 +10,7 @@ import 'package:fastybird_smart_panel/modules/devices/models/property_command.da
 import 'package:fastybird_smart_panel/modules/devices/repositories/channels.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/devices.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/repository.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/value_state.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
@@ -20,7 +21,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
   ChannelsRepository? _channelsRepository;
   DevicesRepository? _devicesRepository;
 
-  final Map<String, ValueType?> _valueBackup = {};
+  final Map<String, PropertyValueState?> _valueBackup = {};
   final Map<String, Timer> _debounceTimers = {};
 
   ChannelPropertiesRepository({
@@ -136,13 +137,13 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
     }
 
     if (!_valueBackup.containsKey(id)) {
-      _valueBackup[id] = property.value;
+      _valueBackup[id] = property.valueState;
     }
 
     if (property.dataType == DevicesModuleDataType.bool) {
       try {
         property = property.copyWith(
-          value: BooleanValueType(_valueToBoolean(value)),
+          valueState: PropertyValueState(value: BooleanValueType(_valueToBoolean(value))),
         );
       } on ArgumentError {
         /// Clearing of backup value
@@ -159,7 +160,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
         property.dataType == DevicesModuleDataType.float) {
       try {
         property = property.copyWith(
-          value: NumberValueType(_valueToNumber(value)),
+          valueState: PropertyValueState(value: NumberValueType(_valueToNumber(value))),
         );
       } on ArgumentError {
         /// Clearing of backup value
@@ -170,7 +171,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
     } else if (property.dataType == DevicesModuleDataType.string ||
         property.dataType == DevicesModuleDataType.valueEnum) {
       property = property.copyWith(
-        value: StringValueType(value.toString()),
+        valueState: PropertyValueState(value: StringValueType(value.toString())),
       );
     } else {
       /// Clearing of backup value
@@ -451,7 +452,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
     if (property != null) {
       replaceItem(
         property.copyWith(
-          value: _valueBackup[property.id],
+          valueState: _valueBackup[property.id],
           clearValue: _valueBackup[property.id] == null,
         ),
       );

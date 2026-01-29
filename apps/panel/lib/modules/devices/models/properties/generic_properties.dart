@@ -24,7 +24,6 @@ class GenericChannelPropertyModel extends ChannelPropertyModel {
     super.invalid,
     super.step,
     super.defaultValue,
-    super.value,
     super.valueState,
     super.createdAt,
     super.updatedAt,
@@ -35,17 +34,10 @@ class GenericChannelPropertyModel extends ChannelPropertyModel {
   Map<String, dynamic> get configuration => _configuration;
 
   factory GenericChannelPropertyModel.fromJson(Map<String, dynamic> json) {
-    // Parse value state object (new format) or fall back to primitive (legacy)
-    PropertyValueState? valueState;
-    ValueType? legacyValue;
-
     final rawValue = json['value'];
-    if (rawValue is Map<String, dynamic>) {
-      valueState = PropertyValueState.fromJson(rawValue);
-    } else if (rawValue != null) {
-      // Legacy primitive value
-      legacyValue = ValueType.fromJson(rawValue);
-    }
+    final PropertyValueState? valueState = rawValue is Map<String, dynamic>
+        ? PropertyValueState.fromJson(rawValue)
+        : null;
 
     return GenericChannelPropertyModel(
       id: json['id'],
@@ -68,7 +60,6 @@ class GenericChannelPropertyModel extends ChannelPropertyModel {
       defaultValue: json['default_value'] != null
           ? ValueType.fromJson(json['default_value'])
           : null,
-      value: legacyValue,
       valueState: valueState,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
@@ -82,13 +73,17 @@ class GenericChannelPropertyModel extends ChannelPropertyModel {
 
   @override
   GenericChannelPropertyModel copyWith({
-    ValueType? value,
+    PropertyValueState? valueState,
     bool? clearValue,
   }) {
-    ValueType? setValue = value ?? this.value;
+    PropertyValueState? setValueState;
 
     if (clearValue == true) {
-      setValue = null;
+      setValueState = null;
+    } else if (valueState != null) {
+      setValueState = valueState;
+    } else {
+      setValueState = this.valueState;
     }
 
     return GenericChannelPropertyModel(
@@ -104,7 +99,7 @@ class GenericChannelPropertyModel extends ChannelPropertyModel {
       invalid: invalid,
       step: step,
       defaultValue: defaultValue,
-      value: setValue,
+      valueState: setValueState,
       createdAt: createdAt,
       updatedAt: updatedAt,
       configuration: _configuration,

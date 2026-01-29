@@ -15,7 +15,6 @@ class DistanceChannelPropertyView extends ChannelPropertyView {
     super.invalid,
     super.step,
     super.defaultValue,
-    super.value,
     super.valueState,
   });
 

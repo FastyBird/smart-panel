@@ -19,6 +19,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/status.da
 import 'package:fastybird_smart_panel/modules/devices/views/properties/temperature.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/value_state.dart';
 
 class MockDeviceControlStateService extends Mock
     implements DeviceControlStateService {}
@@ -70,13 +71,13 @@ void main() {
                 id: 'manufacturer-prop',
                 type: 'manufacturer',
                 channel: deviceInfoChannelId,
-                value: StringValueType('Test Manufacturer'),
+                valueState: PropertyValueState(value: StringValueType('Test Manufacturer')),
               ),
               ModelChannelPropertyView(
                 id: 'model-prop',
                 type: 'model',
                 channel: deviceInfoChannelId,
-                value: StringValueType('Test Model'),
+                valueState: PropertyValueState(value: StringValueType('Test Model')),
               ),
             ],
           ),
@@ -91,14 +92,14 @@ void main() {
                 type: 'on',
                 channel: coolerChannelId,
                 category: DevicesModulePropertyCategory.valueOn,
-                value: BooleanValueType(true),
+                valueState: PropertyValueState(value: BooleanValueType(true)),
               ),
               TemperatureChannelPropertyView(
                 id: coolerTempPropId,
                 type: 'temperature',
                 channel: coolerChannelId,
                 category: DevicesModulePropertyCategory.temperature,
-                value: NumberValueType(24.0),
+                valueState: PropertyValueState(value: NumberValueType(24.0)),
                 format: NumberListFormatType([18.0, 30.0]),
               ),
               StatusChannelPropertyView(
@@ -106,7 +107,7 @@ void main() {
                 type: 'status',
                 channel: coolerChannelId,
                 category: DevicesModulePropertyCategory.generic,
-                value: BooleanValueType(true), // isCooling
+                valueState: PropertyValueState(value: BooleanValueType(true)), // isCooling
               ),
             ],
           ),
@@ -121,7 +122,7 @@ void main() {
                 type: 'on',
                 channel: fanChannelId,
                 category: DevicesModulePropertyCategory.valueOn,
-                value: BooleanValueType(true),
+                valueState: PropertyValueState(value: BooleanValueType(true)),
               ),
             ],
           ),
@@ -136,7 +137,7 @@ void main() {
                 type: 'temperature',
                 channel: temperatureChannelId,
                 category: DevicesModulePropertyCategory.temperature,
-                value: NumberValueType(26.0),
+                valueState: PropertyValueState(value: NumberValueType(26.0)),
               ),
             ],
           ),

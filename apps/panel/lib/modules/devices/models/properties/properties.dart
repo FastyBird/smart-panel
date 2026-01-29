@@ -38,7 +38,6 @@ abstract class ChannelPropertyModel extends Model {
     InvalidValueType? invalid,
     double? step,
     ValueType? defaultValue,
-    ValueType? value,
     PropertyValueState? valueState,
     super.createdAt,
     super.updatedAt,
@@ -53,7 +52,7 @@ abstract class ChannelPropertyModel extends Model {
         _invalid = invalid,
         _step = step,
         _defaultValue = defaultValue,
-        _valueState = valueState ?? (value != null ? PropertyValueState(value: value) : null);
+        _valueState = valueState;
 
   String get type => _type;
 
@@ -100,7 +99,7 @@ abstract class ChannelPropertyModel extends Model {
   }
 
   ChannelPropertyModel copyWith({
-    ValueType? value,
+    PropertyValueState? valueState,
     bool? clearValue,
   });
 }

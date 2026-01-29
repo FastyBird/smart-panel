@@ -20,7 +20,6 @@ class WledChannelPropertyModel extends ChannelPropertyModel {
     super.invalid,
     super.step,
     super.defaultValue,
-    super.value,
     super.valueState,
     super.createdAt,
     super.updatedAt,
@@ -29,14 +28,10 @@ class WledChannelPropertyModel extends ChannelPropertyModel {
         );
 
   factory WledChannelPropertyModel.fromJson(Map<String, dynamic> json) {
-    PropertyValueState? valueState;
-    ValueType? legacyValue;
     final rawValue = json['value'];
-    if (rawValue is Map<String, dynamic>) {
-      valueState = PropertyValueState.fromJson(rawValue);
-    } else if (rawValue != null) {
-      legacyValue = ValueType.fromJson(rawValue);
-    }
+    final PropertyValueState? valueState = rawValue is Map<String, dynamic>
+        ? PropertyValueState.fromJson(rawValue)
+        : null;
 
     return WledChannelPropertyModel(
       channel: json['channel'],
@@ -58,7 +53,6 @@ class WledChannelPropertyModel extends ChannelPropertyModel {
       defaultValue: json['default_value'] != null
           ? ValueType.fromJson(json['default_value'])
           : null,
-      value: legacyValue,
       valueState: valueState,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
@@ -71,13 +65,17 @@ class WledChannelPropertyModel extends ChannelPropertyModel {
 
   @override
   WledChannelPropertyModel copyWith({
-    ValueType? value,
+    PropertyValueState? valueState,
     bool? clearValue,
   }) {
-    ValueType? setValue = value ?? value;
+    PropertyValueState? setValueState;
 
-    if (clearValue != null) {
-      setValue = null;
+    if (clearValue == true) {
+      setValueState = null;
+    } else if (valueState != null) {
+      setValueState = valueState;
+    } else {
+      setValueState = this.valueState;
     }
 
     return WledChannelPropertyModel(
@@ -92,7 +90,7 @@ class WledChannelPropertyModel extends ChannelPropertyModel {
       invalid: invalid,
       step: step,
       defaultValue: defaultValue,
-      value: setValue,
+      valueState: setValueState,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );

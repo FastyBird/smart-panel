@@ -33,7 +33,6 @@ class ChannelPropertyView {
     InvalidValueType? invalid,
     double? step,
     ValueType? defaultValue,
-    ValueType? value,
     PropertyValueState? valueState,
   })  : _id = id,
         _type = type,
@@ -47,7 +46,7 @@ class ChannelPropertyView {
         _invalid = invalid,
         _step = step,
         _defaultValue = defaultValue,
-        _valueState = valueState ?? (value != null ? PropertyValueState(value: value) : null);
+        _valueState = valueState;
 
   String get id => _id;
 
