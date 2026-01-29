@@ -21,6 +21,7 @@ import { SpaceActiveMediaRoutingEntity } from './entities/space-active-media-rou
 import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
 import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
+import { SpaceMediaActivityBindingEntity } from './entities/space-media-activity-binding.entity';
 import { SpaceMediaEndpointEntity } from './entities/space-media-endpoint.entity';
 import { SpaceMediaRoutingEntity } from './entities/space-media-routing.entity';
 import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
@@ -43,6 +44,7 @@ import { SpaceIntentBaseService } from './services/space-intent-base.service';
 import { SpaceIntentService } from './services/space-intent.service';
 import { SpaceLightingRoleService } from './services/space-lighting-role.service';
 import { SpaceLightingStateService } from './services/space-lighting-state.service';
+import { SpaceMediaActivityBindingService } from './services/space-media-activity-binding.service';
 import { SpaceMediaEndpointService } from './services/space-media-endpoint.service';
 import { SpaceMediaRoutingService } from './services/space-media-routing.service';
 import { SpaceSensorRoleService } from './services/space-sensor-role.service';
@@ -67,6 +69,7 @@ import { IntentSpecLoaderService } from './spec';
 			SpaceLightingRoleEntity,
 			SpaceClimateRoleEntity,
 			SpaceCoversRoleEntity,
+			SpaceMediaActivityBindingEntity,
 			SpaceMediaEndpointEntity,
 			SpaceMediaRoutingEntity,
 			SpaceActiveMediaRoutingEntity,
@@ -97,6 +100,7 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceCoversRoleService,
 		SpaceCoversStateService,
 		DerivedMediaEndpointService,
+		SpaceMediaActivityBindingService,
 		SpaceMediaEndpointService,
 		SpaceMediaRoutingService,
 		SpaceSensorRoleService,
@@ -117,6 +121,7 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceLightingRoleService,
 		SpaceClimateRoleService,
 		SpaceCoversRoleService,
+		SpaceMediaActivityBindingService,
 		SpaceMediaEndpointService,
 		SpaceMediaRoutingService,
 		SpaceSensorRoleService,
