@@ -590,6 +590,18 @@ class StartupManagerService {
         locator.unregister<SpaceStateRepository>();
       } catch (_) {}
     }
+    if (locator.isRegistered<MediaActivityRepository>()) {
+      try {
+        locator<MediaActivityRepository>().dispose();
+        locator.unregister<MediaActivityRepository>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<MediaActivityService>()) {
+      try {
+        locator<MediaActivityService>().dispose();
+        locator.unregister<MediaActivityService>();
+      } catch (_) {}
+    }
     if (locator.isRegistered<SpacesService>()) {
       try {
         locator.unregister<SpacesService>();

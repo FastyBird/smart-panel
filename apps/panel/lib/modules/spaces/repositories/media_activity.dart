@@ -192,7 +192,8 @@ class MediaActivityRepository extends ChangeNotifier {
 			final keyStr = mediaActivityKeyToString(activityKey);
 			final response = await _dio.post('/spaces/$spaceId/media/activities/$keyStr/activate');
 
-			if (response.statusCode == 200 || response.statusCode == 201) {
+			final statusCode = response.statusCode ?? 0;
+			if (statusCode >= 200 && statusCode < 300) {
 				final data = response.data['data'] as Map<String, dynamic>;
 				final result = MediaActivationResultModel.fromJson(data);
 
@@ -207,6 +208,14 @@ class MediaActivityRepository extends ChangeNotifier {
 				);
 				notifyListeners();
 				return result;
+			} else {
+				// Non-2xx: revert to failed
+				_activeStates[spaceId] = MediaActiveStateModel(
+					spaceId: spaceId,
+					activityKey: activityKey,
+					state: MediaActivationState.failed,
+				);
+				notifyListeners();
 			}
 		} on DioException catch (e) {
 			if (kDebugMode) {
@@ -249,7 +258,8 @@ class MediaActivityRepository extends ChangeNotifier {
 		try {
 			final response = await _dio.post('/spaces/$spaceId/media/activities/deactivate');
 
-			if (response.statusCode == 200 || response.statusCode == 201) {
+			final statusCode = response.statusCode ?? 0;
+			if (statusCode >= 200 && statusCode < 300) {
 				final data = response.data['data'] as Map<String, dynamic>;
 				final result = MediaActivationResultModel.fromJson(data);
 
@@ -263,6 +273,13 @@ class MediaActivityRepository extends ChangeNotifier {
 				);
 				notifyListeners();
 				return result;
+			} else {
+				// Non-2xx: revert to failed
+				_activeStates[spaceId] = MediaActiveStateModel(
+					spaceId: spaceId,
+					state: MediaActivationState.failed,
+				);
+				notifyListeners();
 			}
 		} on DioException catch (e) {
 			if (kDebugMode) {

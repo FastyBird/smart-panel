@@ -745,7 +745,13 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 		if (_spaceStateRepo == null) return;
 		setState(() => _isSending = true);
 		try {
-			await _spaceStateRepo!.muteMedia(_roomId);
+			final mediaState = _spaceStateRepo!.getMediaState(_roomId);
+			final isMuted = mediaState?.isMuted ?? false;
+			if (isMuted) {
+				await _spaceStateRepo!.unmuteMedia(_roomId);
+			} else {
+				await _spaceStateRepo!.muteMedia(_roomId);
+			}
 		} finally {
 			if (mounted) setState(() => _isSending = false);
 		}

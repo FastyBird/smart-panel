@@ -198,7 +198,9 @@ class MediaActivityService extends ChangeNotifier {
 		final inputTarget = (display?.capabilities.input == true) ? display : null;
 		final playbackTarget = (source?.capabilities.playback == true)
 				? source
-				: (audio?.capabilities.playback == true ? audio : null);
+				: (audio?.capabilities.playback == true
+						? audio
+						: (display?.capabilities.playback == true ? display : null));
 
 		return ActiveControlTargets(
 			volumeTarget: volumeTarget,
