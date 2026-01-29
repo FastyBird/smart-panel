@@ -27,13 +27,13 @@ import { ReqSuggestionFeedbackDto } from '../dto/suggestion.dto';
 import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
 import { DerivedMediaEndpointsResponseModel } from '../models/derived-media-endpoint.model';
 import {
-	ActiveMediaActivityResponseModel,
-	MediaActivityActivationResponseModel,
-} from '../models/media-activity.model';
-import {
 	MediaActivityBindingResponseModel,
 	MediaActivityBindingsResponseModel,
 } from '../models/media-activity-binding.model';
+import {
+	ActiveMediaActivityResponseModel,
+	MediaActivityActivationResponseModel,
+} from '../models/media-activity.model';
 import {
 	BulkAssignmentResponseModel,
 	BulkAssignmentResultDataModel,

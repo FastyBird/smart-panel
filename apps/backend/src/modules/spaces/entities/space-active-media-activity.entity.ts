@@ -99,10 +99,9 @@ export class SpaceActiveMediaActivityEntity extends BaseEntity {
 	@IsOptional()
 	@IsString()
 	@MaxLength(4000)
-	@Transform(
-		({ obj }: { obj: { last_result?: string; lastResult?: string } }) => obj.last_result ?? obj.lastResult,
-		{ toClassOnly: true },
-	)
+	@Transform(({ obj }: { obj: { last_result?: string; lastResult?: string } }) => obj.last_result ?? obj.lastResult, {
+		toClassOnly: true,
+	})
 	@Column({ type: 'text', nullable: true })
 	lastResult: string | null;
 }

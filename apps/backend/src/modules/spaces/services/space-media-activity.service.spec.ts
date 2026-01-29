@@ -20,7 +20,12 @@ const powerPropertyId = uuid();
 const inputPropertyId = uuid();
 const volumePropertyId = uuid();
 
-function buildEndpoint(type: MediaEndpointType, deviceId: string, caps: Record<string, boolean>, links: Record<string, any> = {}) {
+function buildEndpoint(
+	type: MediaEndpointType,
+	deviceId: string,
+	caps: Record<string, boolean>,
+	links: Record<string, { propertyId: string }> = {},
+) {
 	return {
 		endpointId: `${spaceId}:${type}:${deviceId}`,
 		spaceId,
@@ -40,17 +45,17 @@ function buildEndpoint(type: MediaEndpointType, deviceId: string, caps: Record<s
 	};
 }
 
-function buildBinding(activityKey: MediaActivityKey, overrides: Record<string, any> = {}) {
+function buildBinding(activityKey: MediaActivityKey, overrides: Record<string, string | number | null> = {}) {
 	return {
 		id: uuid(),
 		spaceId,
 		activityKey,
-		displayEndpointId: overrides.displayEndpointId ?? null,
-		audioEndpointId: overrides.audioEndpointId ?? null,
-		sourceEndpointId: overrides.sourceEndpointId ?? null,
-		remoteEndpointId: overrides.remoteEndpointId ?? null,
-		displayInputId: overrides.displayInputId ?? null,
-		audioVolumePreset: overrides.audioVolumePreset ?? null,
+		displayEndpointId: (overrides.displayEndpointId as string) ?? null,
+		audioEndpointId: (overrides.audioEndpointId as string) ?? null,
+		sourceEndpointId: (overrides.sourceEndpointId as string) ?? null,
+		remoteEndpointId: (overrides.remoteEndpointId as string) ?? null,
+		displayInputId: (overrides.displayInputId as string) ?? null,
+		audioVolumePreset: (overrides.audioVolumePreset as number) ?? null,
 	};
 }
 
@@ -138,9 +143,7 @@ describe('SpaceMediaActivityService', () => {
 		it('should throw when no binding exists for activity key', async () => {
 			mockBindingService.findBySpace.mockResolvedValue([]);
 
-			await expect(service.activate(spaceId, MediaActivityKey.WATCH)).rejects.toThrow(
-				/No binding found/,
-			);
+			await expect(service.activate(spaceId, MediaActivityKey.WATCH)).rejects.toThrow(/No binding found/);
 		});
 
 		it('should return current state if same activity is already active (idempotent)', async () => {
@@ -245,12 +248,9 @@ describe('SpaceMediaActivityService', () => {
 
 			mockBindingService.findBySpace.mockResolvedValue([binding]);
 
-			const displayEndpoint = buildEndpoint(
-				MediaEndpointType.DISPLAY,
-				deviceTvId,
-				{ power: true },
-				{ power: { propertyId: powerPropertyId } },
-			);
+			const displayEndpoint = buildEndpoint(MediaEndpointType.DISPLAY, deviceTvId, { power: true }, {
+				power: { propertyId: powerPropertyId },
+			});
 
 			mockDerivedEndpointService.buildEndpointsForSpace.mockResolvedValue({
 				spaceId,
@@ -274,7 +274,6 @@ describe('SpaceMediaActivityService', () => {
 		});
 
 		it('should allow partial success for non-critical step failure', async () => {
-			const displayEndpointId = `${spaceId}:display:${deviceTvId}`;
 			const audioEndpointId = `${spaceId}:audio_output:${deviceSpeakerId}`;
 			const binding = buildBinding(MediaActivityKey.LISTEN, {
 				audioEndpointId,

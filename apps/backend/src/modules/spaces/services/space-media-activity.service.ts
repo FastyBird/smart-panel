@@ -15,9 +15,13 @@ import {
 	MediaActivityExecutionStepModel,
 	MediaActivityLastResultModel,
 	MediaActivityResolvedModel,
-	MediaActivityStepFailureModel,
 } from '../models/media-activity.model';
-import { EventType, MediaActivationState, MediaActivityKey, MediaEndpointType, SPACES_MODULE_NAME } from '../spaces.constants';
+import {
+	EventType,
+	MediaActivationState,
+	MediaActivityKey,
+	SPACES_MODULE_NAME,
+} from '../spaces.constants';
 import { SpacesValidationException } from '../spaces.exceptions';
 
 import { DerivedMediaEndpointService } from './derived-media-endpoint.service';
@@ -25,6 +29,19 @@ import { SpaceMediaActivityBindingService } from './space-media-activity-binding
 import { SpacesService } from './spaces.service';
 
 const STEP_TIMEOUT_MS = 5000;
+
+interface ExecutionFailure {
+	stepIndex: number;
+	reason: string;
+	critical: boolean;
+	targetDeviceId?: string;
+	propertyId?: string;
+}
+
+interface ExecutionResult {
+	succeeded: number;
+	failures: ExecutionFailure[];
+}
 
 @Injectable()
 export class SpaceMediaActivityService {
@@ -144,14 +161,15 @@ export class SpaceMediaActivityService {
 			stepsTotal: plan.steps.length,
 			stepsSucceeded: executionResult.succeeded,
 			stepsFailed: executionResult.failures.length,
-			failures: executionResult.failures.length > 0
-				? executionResult.failures.map((f) => ({
-						stepIndex: f.stepIndex,
-						reason: f.reason,
-						targetDeviceId: f.targetDeviceId,
-						propertyId: f.propertyId,
-					}))
-				: undefined,
+			failures:
+				executionResult.failures.length > 0
+					? executionResult.failures.map((f) => ({
+							stepIndex: f.stepIndex,
+							reason: f.reason,
+							targetDeviceId: f.targetDeviceId,
+							propertyId: f.propertyId,
+						}))
+					: undefined,
 		};
 
 		// Persist final state
@@ -160,9 +178,7 @@ export class SpaceMediaActivityService {
 		await this.activeRepository.save(record);
 
 		// Emit appropriate event
-		const warnings = executionResult.failures
-			.filter((f) => !f.critical)
-			.map((f) => `Step ${f.stepIndex}: ${f.reason}`);
+		const warnings = executionResult.failures.filter((f) => !f.critical).map((f) => `Step ${f.stepIndex}: ${f.reason}`);
 
 		if (finalState === MediaActivationState.ACTIVE) {
 			this.emitEvent(EventType.MEDIA_ACTIVITY_ACTIVATED, spaceId, activityKey, plan.resolved, lastResult, warnings);
@@ -273,7 +289,12 @@ export class SpaceMediaActivityService {
 		}
 
 		// Step 2: Set inputs (critical if configured)
-		if (displayEndpoint && binding.displayInputId && displayEndpoint.capabilities.inputSelect && displayEndpoint.links.inputSelect) {
+		if (
+			displayEndpoint &&
+			binding.displayInputId &&
+			displayEndpoint.capabilities.inputSelect &&
+			displayEndpoint.links.inputSelect
+		) {
 			steps.push({
 				targetDeviceId: displayEndpoint.deviceId,
 				action: {
@@ -287,7 +308,12 @@ export class SpaceMediaActivityService {
 		}
 
 		// Step 3: Apply volume preset (non-critical)
-		if (audioEndpoint && binding.audioVolumePreset !== null && audioEndpoint.capabilities.volume && audioEndpoint.links.volume) {
+		if (
+			audioEndpoint &&
+			binding.audioVolumePreset !== null &&
+			audioEndpoint.capabilities.volume &&
+			audioEndpoint.links.volume
+		) {
 			steps.push({
 				targetDeviceId: audioEndpoint.deviceId,
 				action: {
@@ -311,20 +337,9 @@ export class SpaceMediaActivityService {
 	/**
 	 * Execute a plan with timeouts and partial success
 	 */
-	private async executePlan(
-		plan: MediaActivityExecutionPlanModel,
-	): Promise<{
-		succeeded: number;
-		failures: Array<{ stepIndex: number; reason: string; critical: boolean; targetDeviceId?: string; propertyId?: string }>;
-	}> {
+	private async executePlan(plan: MediaActivityExecutionPlanModel): Promise<ExecutionResult> {
 		let succeeded = 0;
-		const failures: Array<{
-			stepIndex: number;
-			reason: string;
-			critical: boolean;
-			targetDeviceId?: string;
-			propertyId?: string;
-		}> = [];
+		const failures: ExecutionFailure[] = [];
 
 		// Collect unique device IDs
 		const deviceIds = [...new Set(plan.steps.map((s) => s.targetDeviceId))];
@@ -336,15 +351,13 @@ export class SpaceMediaActivityService {
 			const device = deviceMap.get(step.targetDeviceId);
 
 			if (!device) {
-				const failure = {
+				failures.push({
 					stepIndex: i,
 					reason: `Device ${step.targetDeviceId} not found`,
 					critical: step.critical,
 					targetDeviceId: step.targetDeviceId,
 					propertyId: step.action.propertyId,
-				};
-
-				failures.push(failure);
+				});
 
 				if (step.critical) {
 					this.logger.warn(`Critical step ${i} failed: device not found, aborting`);
@@ -357,15 +370,13 @@ export class SpaceMediaActivityService {
 			const platform = this.platformRegistryService.get(device);
 
 			if (!platform) {
-				const failure = {
+				failures.push({
 					stepIndex: i,
 					reason: `No platform for device ${step.targetDeviceId}`,
 					critical: step.critical,
 					targetDeviceId: step.targetDeviceId,
 					propertyId: step.action.propertyId,
-				};
-
-				failures.push(failure);
+				});
 
 				if (step.critical) {
 					this.logger.warn(`Critical step ${i} failed: no platform, aborting`);
@@ -376,14 +387,12 @@ export class SpaceMediaActivityService {
 			}
 
 			if (step.action.kind !== 'setProperty' || !step.action.propertyId) {
-				const failure = {
+				failures.push({
 					stepIndex: i,
 					reason: `Unsupported action kind: ${step.action.kind}`,
 					critical: step.critical,
 					targetDeviceId: step.targetDeviceId,
-				};
-
-				failures.push(failure);
+				});
 
 				if (step.critical) {
 					break;
@@ -393,8 +402,8 @@ export class SpaceMediaActivityService {
 			}
 
 			// Find channel and property
-			let foundChannel = null;
-			let foundProperty = null;
+			let foundChannel: (typeof device.channels extends (infer U)[] | undefined ? U : never) | null = null;
+			let foundProperty: unknown = null;
 
 			for (const channel of device.channels ?? []) {
 				for (const property of channel.properties ?? []) {
@@ -411,15 +420,13 @@ export class SpaceMediaActivityService {
 			}
 
 			if (!foundChannel || !foundProperty) {
-				const failure = {
+				failures.push({
 					stepIndex: i,
 					reason: `Property ${step.action.propertyId} not found on device`,
 					critical: step.critical,
 					targetDeviceId: step.targetDeviceId,
 					propertyId: step.action.propertyId,
-				};
-
-				failures.push(failure);
+				});
 
 				if (step.critical) {
 					this.logger.warn(`Critical step ${i} failed: property not found, aborting`);
@@ -430,30 +437,30 @@ export class SpaceMediaActivityService {
 			}
 
 			try {
-				const command: IDevicePropertyData = {
+				const command = {
 					device,
 					channel: foundChannel,
 					property: foundProperty,
 					value: step.action.value as string | number | boolean,
-				};
+				} as IDevicePropertyData;
 
 				const result = await Promise.race([
 					platform.processBatch([command]),
-					new Promise<boolean>((_, reject) => setTimeout(() => reject(new Error('Step timeout')), STEP_TIMEOUT_MS)),
+					new Promise<boolean>((_, reject) =>
+						setTimeout(() => reject(new Error('Step timeout')), STEP_TIMEOUT_MS),
+					),
 				]);
 
 				if (result) {
 					succeeded++;
 				} else {
-					const failure = {
+					failures.push({
 						stepIndex: i,
 						reason: 'Command execution returned false',
 						critical: step.critical,
 						targetDeviceId: step.targetDeviceId,
 						propertyId: step.action.propertyId,
-					};
-
-					failures.push(failure);
+					});
 
 					if (step.critical) {
 						this.logger.warn(`Critical step ${i} failed: command returned false, aborting`);
@@ -462,15 +469,14 @@ export class SpaceMediaActivityService {
 				}
 			} catch (error) {
 				const err = error as Error;
-				const failure = {
+
+				failures.push({
 					stepIndex: i,
 					reason: err.message,
 					critical: step.critical,
 					targetDeviceId: step.targetDeviceId,
 					propertyId: step.action.propertyId,
-				};
-
-				failures.push(failure);
+				});
 
 				if (step.critical) {
 					this.logger.warn(`Critical step ${i} threw error: ${err.message}, aborting`);
@@ -486,7 +492,9 @@ export class SpaceMediaActivityService {
 	 * Build an activation result from an existing record
 	 */
 	private buildResultFromRecord(record: SpaceActiveMediaActivityEntity): MediaActivityActivationResultModel {
-		const resolved = record.resolved ? (JSON.parse(record.resolved) as MediaActivityResolvedModel) : undefined;
+		const resolved = record.resolved
+			? (JSON.parse(record.resolved) as MediaActivityResolvedModel)
+			: undefined;
 		const summary = record.lastResult
 			? (JSON.parse(record.lastResult) as MediaActivityLastResultModel)
 			: undefined;
