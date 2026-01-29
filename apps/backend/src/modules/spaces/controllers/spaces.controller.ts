@@ -27,6 +27,9 @@ import { ReqSuggestionFeedbackDto } from '../dto/suggestion.dto';
 import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
 import { DerivedMediaEndpointsResponseModel } from '../models/derived-media-endpoint.model';
 import {
+	BindingValidationIssueModel,
+	BindingValidationReportModel,
+	BindingValidationResponseModel,
 	MediaActivityBindingResponseModel,
 	MediaActivityBindingsResponseModel,
 } from '../models/media-activity-binding.model';
@@ -163,6 +166,9 @@ import { IntentSpecLoaderService } from '../spec';
 	BulkSensorRolesResponseModel,
 	BulkSensorRolesResultDataModel,
 	BulkSensorRoleResultItemModel,
+	BindingValidationResponseModel,
+	BindingValidationReportModel,
+	BindingValidationIssueModel,
 )
 @Controller('spaces')
 export class SpacesController {
@@ -2045,6 +2051,40 @@ export class SpacesController {
 
 		const response = new MediaActivityBindingsResponseModel();
 		response.data = bindings;
+
+		return response;
+	}
+
+	@Get(':id/media/bindings/validate')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-media-bindings-validate',
+		summary: 'Validate media activity bindings',
+		description:
+			'Returns a diagnostic report for all activity bindings in a space. ' +
+			'Reports missing slots, invalid endpoints, type mismatches, and override issues.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(BindingValidationResponseModel, 'Binding validation report')
+	@ApiNotFoundResponse('Space not found')
+	async validateMediaActivityBindings(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<BindingValidationResponseModel> {
+		this.logger.debug(`Validating media activity bindings for space=${id}`);
+
+		const reports = await this.spaceMediaActivityBindingService.validateBindings(id);
+
+		const data: BindingValidationReportModel[] = reports.map((r) => {
+			const report = new BindingValidationReportModel();
+			report.activityKey = r.activityKey;
+			report.bindingId = r.bindingId;
+			report.valid = r.valid;
+			report.issues = r.issues;
+
+			return report;
+		});
+
+		const response = new BindingValidationResponseModel();
+		response.data = data;
 
 		return response;
 	}
