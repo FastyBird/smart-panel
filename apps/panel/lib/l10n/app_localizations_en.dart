@@ -2029,4 +2029,94 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get connection_server_error_button_retry => 'Try Again';
+
+  @override
+  String get sensor_enum_illuminance_dark => 'Dark';
+
+  @override
+  String get sensor_enum_illuminance_dim => 'Dim';
+
+  @override
+  String get sensor_enum_illuminance_light => 'Light';
+
+  @override
+  String get sensor_enum_illuminance_bright => 'Bright';
+
+  @override
+  String get sensor_enum_illuminance_dark_long => 'Dark';
+
+  @override
+  String get sensor_enum_illuminance_dim_long => 'Dim';
+
+  @override
+  String get sensor_enum_illuminance_light_long => 'Light';
+
+  @override
+  String get sensor_enum_illuminance_bright_long => 'Bright';
+
+  @override
+  String get sensor_enum_gas_status_normal => 'OK';
+
+  @override
+  String get sensor_enum_gas_status_testing => 'Test';
+
+  @override
+  String get sensor_enum_gas_status_detected => 'Gas!';
+
+  @override
+  String get sensor_enum_gas_status_normal_long => 'Normal';
+
+  @override
+  String get sensor_enum_gas_status_testing_long => 'Testing';
+
+  @override
+  String get sensor_enum_gas_status_detected_long => 'Gas Detected';
+
+  @override
+  String get sensor_enum_leak_none => 'Dry';
+
+  @override
+  String get sensor_enum_leak_detected => 'Leak!';
+
+  @override
+  String get sensor_enum_leak_none_long => 'No Leak';
+
+  @override
+  String get sensor_enum_leak_detected_long => 'Leak Detected';
+
+  @override
+  String get sensor_enum_battery_level_normal => 'OK';
+
+  @override
+  String get sensor_enum_battery_level_low => 'Low';
+
+  @override
+  String get sensor_enum_battery_level_normal_long => 'Normal';
+
+  @override
+  String get sensor_enum_battery_level_low_long => 'Low Battery';
+
+  @override
+  String get sensor_enum_battery_status_normal => 'OK';
+
+  @override
+  String get sensor_enum_battery_status_charging => 'Chrg';
+
+  @override
+  String get sensor_enum_battery_status_not_charging => 'Idle';
+
+  @override
+  String get sensor_enum_battery_status_not_chargeable => 'N/A';
+
+  @override
+  String get sensor_enum_battery_status_normal_long => 'Normal';
+
+  @override
+  String get sensor_enum_battery_status_charging_long => 'Charging';
+
+  @override
+  String get sensor_enum_battery_status_not_charging_long => 'Not Charging';
+
+  @override
+  String get sensor_enum_battery_status_not_chargeable_long => 'Not Chargeable';
 }

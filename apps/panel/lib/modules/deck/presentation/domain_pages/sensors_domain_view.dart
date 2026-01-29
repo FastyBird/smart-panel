@@ -24,6 +24,8 @@ import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
 
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/deck/utils/sensor_enum_utils.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/sensor_freshness.dart';
 
 // ============================================================================
@@ -55,6 +57,7 @@ enum TrendDirection {
 
 class SensorData {
   final String id;
+  final String deviceId;
   final String? propertyId;
   final String name;
   final String location;
@@ -68,9 +71,11 @@ class SensorData {
   final bool isBinary;
   final String? channelCategory;
   final List<SensorAdditionalReadingModel> additionalReadings;
+  final bool deviceOnline;
 
   const SensorData({
     required this.id,
+    required this.deviceId,
     this.propertyId,
     required this.name,
     required this.location,
@@ -84,17 +89,20 @@ class SensorData {
     this.isBinary = false,
     this.channelCategory,
     this.additionalReadings = const [],
+    this.deviceOnline = true,
   });
 
+  /// Data age freshness (fresh/recent/stale) — purely time-based
   SensorFreshness get freshness {
-    if (value == '--') return SensorFreshness.offline;
+    if (value == '--') return SensorFreshness.stale;
     return SensorFreshnessUtils.evaluate(lastUpdated, category);
   }
 
   bool get isStaleOrOffline =>
-      freshness == SensorFreshness.stale || freshness == SensorFreshness.offline;
+      isOffline || freshness == SensorFreshness.stale;
 
-  bool get isOffline => freshness == SensorFreshness.offline;
+  /// Offline means the parent device is not connected
+  bool get isOffline => !deviceOnline;
 
   IconData get icon {
     switch (category) {
@@ -355,6 +363,24 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     return value.toString();
   }
 
+  /// Translate a pre-formatted sensor value using enum utils.
+  /// Call at display time when BuildContext is available.
+  static String translateSensorValue(
+    AppLocalizations l,
+    String value,
+    String? channelCategory, {
+    bool short = true,
+  }) {
+    if (channelCategory == null || channelCategory.isEmpty) return value;
+    // Only translate non-numeric, non-placeholder values
+    if (value == '--' || value.isEmpty) return value;
+    if (double.tryParse(value.replaceAll(',', '')) != null) return value;
+    final translated = SensorEnumUtils.translatePrimary(
+      l, channelCategory, value, short: short,
+    );
+    return translated ?? value;
+  }
+
   /// Check if a property has a discrete (non-numeric) data type — bool or enum
   bool _isDiscreteProperty(String? propertyId) {
     if (propertyId == null) return false;
@@ -413,8 +439,11 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
           deviceLabel = reading.deviceName;
         }
 
+        final deviceOnline = _devicesService?.getDevice(reading.deviceId)?.isOnline ?? false;
+
         sensors.add(SensorData(
           id: reading.channelId,
+          deviceId: reading.deviceId,
           propertyId: reading.propertyId,
           name: reading.channelName,
           location: deviceLabel,
@@ -427,6 +456,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
           isBinary: _isDiscreteProperty(reading.propertyId),
           channelCategory: reading.channelCategory,
           additionalReadings: reading.additionalReadings,
+          deviceOnline: deviceOnline,
         ));
       }
     }
@@ -728,8 +758,8 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   Widget _buildHeader(BuildContext context, int alertCount) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasAlerts = alertCount > 0;
-    final staleCount = _sensors.where((s) => s.freshness == SensorFreshness.stale).length;
-    final offlineCount = _sensors.where((s) => s.freshness == SensorFreshness.offline).length;
+    final staleCount = _sensors.where((s) => !s.isOffline && s.freshness == SensorFreshness.stale).length;
+    final offlineCount = _sensors.where((s) => s.isOffline).length;
     final hasHealthIssues = staleCount > 0 || offlineCount > 0;
 
     final accentColor = hasAlerts
@@ -1198,12 +1228,8 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     final categoryColor = _getCategoryColor(context, sensor.category);
     final categoryBgColor = _getCategoryLightColor(context, sensor.category);
 
-    // Determine opacity based on freshness
-    final double cardOpacity = freshness == SensorFreshness.offline
-        ? 0.4
-        : freshness == SensorFreshness.stale
-            ? 0.6
-            : 1.0;
+    // Dim only offline (device disconnected) sensors
+    final double cardOpacity = sensor.isOffline ? 0.4 : 1.0;
 
     Widget card = GestureDetector(
       onTap: () => _openSensorDetail(context, sensor),
@@ -1299,7 +1325,14 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
                         color: isAlert ? dangerColor : categoryColor,
                       ),
                       children: [
-                        TextSpan(text: sensor.value),
+                        TextSpan(
+                          text: _SensorsDomainViewPageState.translateSensorValue(
+                            AppLocalizations.of(context)!,
+                            sensor.value,
+                            sensor.channelCategory,
+                            short: true,
+                          ),
+                        ),
                         TextSpan(
                           text: sensor.unit,
                           style: TextStyle(
@@ -1328,10 +1361,12 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   Widget _buildFreshnessDot(BuildContext context, SensorData sensor) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Alert status takes priority
+    // Alert > Offline > Freshness
     Color dotColor;
     if (sensor.status == SensorStatus.alert) {
       dotColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
+    } else if (sensor.isOffline) {
+      dotColor = SensorFreshnessUtils.color(SensorFreshness.offline, isDark);
     } else {
       dotColor = SensorFreshnessUtils.color(sensor.freshness, isDark);
     }
@@ -1418,6 +1453,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
 
   SpaceStateRepository? _spaceStateRepository;
   SpacesService? _spacesService;
+  DevicesService? _devicesService;
   PropertyTimeseriesService? _timeseriesService;
   Timer? _freshnessTimer;
 
@@ -1439,6 +1475,14 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[SensorDetailPage] Failed to get SpacesService: $e');
+      }
+    }
+
+    try {
+      _devicesService = locator<DevicesService>();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[SensorDetailPage] Failed to get DevicesService: $e');
       }
     }
 
@@ -1509,9 +1553,12 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
             deviceLabel = reading.deviceName;
           }
 
+          final deviceOnline = _devicesService?.getDevice(reading.deviceId)?.isOnline ?? _sensor.deviceOnline;
+
           setState(() {
             _sensor = SensorData(
               id: reading.channelId,
+              deviceId: reading.deviceId,
               propertyId: reading.propertyId,
               name: reading.channelName,
               location: deviceLabel,
@@ -1524,6 +1571,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
               isBinary: _sensor.isBinary,
               channelCategory: _sensor.channelCategory,
               additionalReadings: reading.additionalReadings,
+              deviceOnline: deviceOnline,
             );
           });
 
@@ -1828,7 +1876,14 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
                   color: _getCategoryColor(context),
                 ),
                 children: [
-                  TextSpan(text: _sensor.value),
+                  TextSpan(
+                    text: _SensorsDomainViewPageState.translateSensorValue(
+                      AppLocalizations.of(context)!,
+                      _sensor.value,
+                      _sensor.channelCategory,
+                      short: false,
+                    ),
+                  ),
                   TextSpan(
                     text: _sensor.unit,
                     style: TextStyle(
@@ -1851,14 +1906,18 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
             ),
           ),
           AppSpacings.spacingXsVertical,
-          // Freshness label with color
+          // Freshness / offline label with color
           Text(
-            SensorFreshnessUtils.label(
-              _sensor.freshness,
-              DateTime.now().difference(_sensor.lastUpdated),
-            ),
+            _sensor.isOffline
+                ? 'Offline'
+                : SensorFreshnessUtils.label(
+                    _sensor.freshness,
+                    DateTime.now().difference(_sensor.lastUpdated),
+                  ),
             style: TextStyle(
-              color: SensorFreshnessUtils.color(_sensor.freshness, isDark),
+              color: _sensor.isOffline
+                  ? SensorFreshnessUtils.color(SensorFreshness.offline, isDark)
+                  : SensorFreshnessUtils.color(_sensor.freshness, isDark),
               fontSize: AppFontSize.small,
               fontWeight: FontWeight.w500,
             ),
@@ -2018,7 +2077,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
             runSpacing: AppSpacings.pSm,
             children: _sensor.additionalReadings.map((ar) {
               final label = _formatPropertyCategory(ar.propertyCategory);
-              final valueStr = _formatAdditionalValue(ar.value);
+              final valueStr = _formatAdditionalValue(ar.value, ar.propertyCategory, context);
               final unitStr = ar.unit != null && ar.unit!.isNotEmpty ? ' ${ar.unit}' : '';
               final freshness = SensorFreshnessUtils.evaluate(ar.updatedAt, _sensor.category);
               final freshnessColor = SensorFreshnessUtils.color(freshness, isDark);
@@ -2080,14 +2139,25 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
         .join(' ');
   }
 
-  String _formatAdditionalValue(dynamic value) {
+  String _formatAdditionalValue(dynamic value, String propertyCategory, BuildContext context) {
     if (value == null) return '--';
     if (value is num) {
       return value == value.toInt()
           ? NumberFormatUtils.defaultFormat.formatInteger(value.toInt())
           : NumberFormatUtils.defaultFormat.formatDecimal(value.toDouble(), decimalPlaces: 1);
     }
-    return value.toString();
+    final strValue = value.toString();
+    // Try enum translation for non-numeric string values
+    if (value is String && double.tryParse(strValue) == null) {
+      final l = AppLocalizations.of(context);
+      if (l != null && _sensor.channelCategory != null) {
+        final translated = SensorEnumUtils.translate(
+          l, _sensor.channelCategory!, propertyCategory, strValue, short: false,
+        );
+        if (translated != null) return translated;
+      }
+    }
+    return strValue;
   }
 
   Widget _buildEventLog(BuildContext context, {bool withMargin = true, bool withDecoration = true}) {

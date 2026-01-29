@@ -659,5 +659,40 @@
 
   "connection_server_error_title": "Server nedostupný",
   "connection_server_error_message": "Server je dočasně nedostupný. Zkuste to prosím později.",
-  "connection_server_error_button_retry": "Zkusit znovu"
+  "connection_server_error_button_retry": "Zkusit znovu",
+
+  "sensor_enum_illuminance_dark": "Tma",
+  "sensor_enum_illuminance_dim": "Šero",
+  "sensor_enum_illuminance_light": "Světlo",
+  "sensor_enum_illuminance_bright": "Jasno",
+  "sensor_enum_illuminance_dark_long": "Tma",
+  "sensor_enum_illuminance_dim_long": "Šero",
+  "sensor_enum_illuminance_light_long": "Světlo",
+  "sensor_enum_illuminance_bright_long": "Jasno",
+
+  "sensor_enum_gas_status_normal": "OK",
+  "sensor_enum_gas_status_testing": "Test",
+  "sensor_enum_gas_status_detected": "Plyn!",
+  "sensor_enum_gas_status_normal_long": "Normální",
+  "sensor_enum_gas_status_testing_long": "Testování",
+  "sensor_enum_gas_status_detected_long": "Plyn detekován",
+
+  "sensor_enum_leak_none": "Sucho",
+  "sensor_enum_leak_detected": "Únik!",
+  "sensor_enum_leak_none_long": "Žádný únik",
+  "sensor_enum_leak_detected_long": "Únik detekován",
+
+  "sensor_enum_battery_level_normal": "OK",
+  "sensor_enum_battery_level_low": "Nízká",
+  "sensor_enum_battery_level_normal_long": "Normální",
+  "sensor_enum_battery_level_low_long": "Nízká baterie",
+
+  "sensor_enum_battery_status_normal": "OK",
+  "sensor_enum_battery_status_charging": "Nabíjí",
+  "sensor_enum_battery_status_not_charging": "Nečinná",
+  "sensor_enum_battery_status_not_chargeable": "N/A",
+  "sensor_enum_battery_status_normal_long": "Normální",
+  "sensor_enum_battery_status_charging_long": "Nabíjení",
+  "sensor_enum_battery_status_not_charging_long": "Nenabíjí se",
+  "sensor_enum_battery_status_not_chargeable_long": "Nelze nabíjet"
 }
