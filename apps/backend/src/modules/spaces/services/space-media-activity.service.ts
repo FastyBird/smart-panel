@@ -11,12 +11,13 @@ import { SpaceActiveMediaActivityEntity } from '../entities/space-active-media-a
 import { DerivedMediaEndpointModel } from '../models/derived-media-endpoint.model';
 import {
 	MediaActivityActivationResultModel,
+	MediaActivityControlTargetsModel,
 	MediaActivityExecutionPlanModel,
 	MediaActivityExecutionStepModel,
 	MediaActivityLastResultModel,
 	MediaActivityResolvedModel,
 } from '../models/media-activity.model';
-import { EventType, MediaActivationState, MediaActivityKey, SPACES_MODULE_NAME } from '../spaces.constants';
+import { EventType, MediaActivationState, MediaActivityKey, MediaEndpointType, SPACES_MODULE_NAME } from '../spaces.constants';
 import { SpacesValidationException } from '../spaces.exceptions';
 
 import { DerivedMediaEndpointService } from './derived-media-endpoint.service';
@@ -146,6 +147,9 @@ export class SpaceMediaActivityService {
 
 		// Execute plan — wrapped in try-catch to ensure state is updated to FAILED on unexpected errors
 		try {
+			// Handle conflicts (best-effort, non-critical)
+			const conflictWarnings = await this.handleConflicts(spaceId, activityKey, endpointMap);
+
 			const executionResult = await this.executePlan(plan);
 
 			// Determine final state
@@ -174,9 +178,12 @@ export class SpaceMediaActivityService {
 			await this.activeRepository.save(record);
 
 			// Emit appropriate event
-			const warnings = executionResult.failures
-				.filter((f) => !f.critical)
-				.map((f) => `Step ${f.stepIndex}: ${f.reason}`);
+			const warnings = [
+				...conflictWarnings,
+				...executionResult.failures
+					.filter((f) => !f.critical)
+					.map((f) => `Step ${f.stepIndex}: ${f.reason}`),
+			];
 
 			if (finalState === MediaActivationState.ACTIVE) {
 				this.emitEvent(EventType.MEDIA_ACTIVITY_ACTIVATED, spaceId, activityKey, plan.resolved, lastResult, warnings);
@@ -289,6 +296,15 @@ export class SpaceMediaActivityService {
 		if (remoteEndpoint) {
 			resolved.remoteDeviceId = remoteEndpoint.deviceId;
 		}
+
+		// Compute control target hints using fallback heuristics
+		resolved.controlTargets = this.computeControlTargets(
+			displayEndpoint,
+			audioEndpoint,
+			sourceEndpoint,
+			remoteEndpoint,
+			endpointMap,
+		);
 
 		// Track which devices we've already powered on to avoid duplicates
 		const poweredDeviceIds = new Set<string>();
@@ -513,6 +529,184 @@ export class SpaceMediaActivityService {
 		}
 
 		return { succeeded, failures };
+	}
+
+	/**
+	 * Compute control target hints using fallback heuristics.
+	 * These help the UI find the best device for volume/input/playback/remote controls
+	 * even when binding slots are empty or endpoints lack specific capabilities.
+	 */
+	private computeControlTargets(
+		displayEndpoint: DerivedMediaEndpointModel | undefined,
+		audioEndpoint: DerivedMediaEndpointModel | undefined,
+		sourceEndpoint: DerivedMediaEndpointModel | undefined,
+		remoteEndpoint: DerivedMediaEndpointModel | undefined,
+		endpointMap: Map<string, DerivedMediaEndpointModel>,
+	): MediaActivityControlTargetsModel {
+		const allEndpoints = Array.from(endpointMap.values());
+		const targets: MediaActivityControlTargetsModel = {};
+
+		// Volume target: audio if volume → display if volume → any audio_output with volume
+		if (audioEndpoint?.capabilities.volume) {
+			targets.volumeTargetDeviceId = audioEndpoint.deviceId;
+		} else if (displayEndpoint?.capabilities.volume) {
+			targets.volumeTargetDeviceId = displayEndpoint.deviceId;
+		} else {
+			const fallback = allEndpoints.find(
+				(e) => e.type === MediaEndpointType.AUDIO_OUTPUT && e.capabilities.volume,
+			);
+
+			if (fallback) {
+				targets.volumeTargetDeviceId = fallback.deviceId;
+			}
+		}
+
+		// Input target: display if inputSelect → any display with inputSelect
+		if (displayEndpoint?.capabilities.inputSelect) {
+			targets.inputTargetDeviceId = displayEndpoint.deviceId;
+		} else {
+			const fallback = allEndpoints.find(
+				(e) => e.type === MediaEndpointType.DISPLAY && e.capabilities.inputSelect,
+			);
+
+			if (fallback) {
+				targets.inputTargetDeviceId = fallback.deviceId;
+			}
+		}
+
+		// Playback target: source if playback → audio if playback → any with playback
+		if (sourceEndpoint?.capabilities.playback) {
+			targets.playbackTargetDeviceId = sourceEndpoint.deviceId;
+		} else if (audioEndpoint?.capabilities.playback) {
+			targets.playbackTargetDeviceId = audioEndpoint.deviceId;
+		} else {
+			const fallback = allEndpoints.find((e) => e.capabilities.playback);
+
+			if (fallback) {
+				targets.playbackTargetDeviceId = fallback.deviceId;
+			}
+		}
+
+		// Remote target: binding remote → display if remote → any remote_target
+		if (remoteEndpoint?.capabilities.remoteCommands) {
+			targets.remoteTargetDeviceId = remoteEndpoint.deviceId;
+		} else if (displayEndpoint?.capabilities.remoteCommands) {
+			targets.remoteTargetDeviceId = displayEndpoint.deviceId;
+		} else {
+			const fallback = allEndpoints.find(
+				(e) => e.type === MediaEndpointType.REMOTE_TARGET && e.capabilities.remoteCommands,
+			);
+
+			if (fallback) {
+				targets.remoteTargetDeviceId = fallback.deviceId;
+			}
+		}
+
+		return targets;
+	}
+
+	/**
+	 * Scan for and handle conflicts when activating a new activity.
+	 * Best-effort: pause playing endpoints, never treat as critical.
+	 * Returns warning messages.
+	 */
+	private async handleConflicts(
+		spaceId: string,
+		activityKey: MediaActivityKey,
+		endpointMap: Map<string, DerivedMediaEndpointModel>,
+	): Promise<string[]> {
+		const warnings: string[] = [];
+
+		// Only apply conflict handling for Watch/Gaming
+		if (activityKey !== MediaActivityKey.WATCH && activityKey !== MediaActivityKey.GAMING) {
+			return warnings;
+		}
+
+		// Check if there's an existing active activity
+		const existingRecord = await this.getActiveRecord(spaceId);
+
+		if (!existingRecord || !existingRecord.activityKey) {
+			return warnings;
+		}
+
+		if (
+			existingRecord.state !== MediaActivationState.ACTIVE &&
+			existingRecord.state !== MediaActivationState.ACTIVATING
+		) {
+			return warnings;
+		}
+
+		const currentKey = existingRecord.activityKey;
+
+		// Only handle conflicts with background/listen activities
+		if (currentKey !== MediaActivityKey.BACKGROUND && currentKey !== MediaActivityKey.LISTEN) {
+			return warnings;
+		}
+
+		this.logger.debug(
+			`Conflict detected: activating ${activityKey} while ${currentKey} is active in space=${spaceId}`,
+		);
+
+		// Try to pause playback on any playing endpoints
+		const allEndpoints = Array.from(endpointMap.values());
+		const playbackEndpoints = allEndpoints.filter((e) => e.capabilities.playback && e.links.playback);
+
+		for (const ep of playbackEndpoints) {
+			try {
+				const devices = await this.spacesService.findDevicesByIds([ep.deviceId]);
+				const device = devices[0];
+
+				if (!device) {
+					continue;
+				}
+
+				const platform = this.platformRegistryService.get(device);
+
+				if (!platform) {
+					continue;
+				}
+
+				// Find the playback property
+				let foundChannel: (typeof device.channels extends (infer U)[] | undefined ? U : never) | null = null;
+				let foundProperty: unknown = null;
+
+				for (const channel of device.channels ?? []) {
+					for (const property of channel.properties ?? []) {
+						if (property.id === ep.links.playback!.propertyId) {
+							foundChannel = channel;
+							foundProperty = property;
+							break;
+						}
+					}
+
+					if (foundProperty) {
+						break;
+					}
+				}
+
+				if (foundChannel && foundProperty) {
+					const command = {
+						device,
+						channel: foundChannel,
+						property: foundProperty,
+						value: 'pause',
+					} as IDevicePropertyData;
+
+					await Promise.race([
+						platform.processBatch([command]),
+						new Promise<boolean>((_, reject) => setTimeout(() => reject(new Error('Conflict step timeout')), STEP_TIMEOUT_MS)),
+					]);
+
+					warnings.push(`Paused playback on ${ep.name} (conflict with ${currentKey})`);
+				}
+			} catch (error) {
+				const err = error as Error;
+				warnings.push(`Failed to pause ${ep.name}: ${err.message} (non-critical)`);
+				this.logger.warn(`Conflict handling failed for endpoint ${ep.endpointId}: ${err.message}`);
+			}
+		}
+
+		return warnings;
 	}
 
 	/**

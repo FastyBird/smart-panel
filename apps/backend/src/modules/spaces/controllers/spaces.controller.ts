@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
-import { ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiExtraModels, ApiNoContentResponse, ApiOkResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { DevicesResponseModel } from '../../devices/models/devices-response.model';
@@ -2047,6 +2047,63 @@ export class SpacesController {
 		response.data = bindings;
 
 		return response;
+	}
+
+	@Get(':id/media/bindings/validate')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-media-bindings-validate',
+		summary: 'Validate media activity bindings',
+		description:
+			'Returns a diagnostic report for all activity bindings in a space. ' +
+			'Reports missing slots, invalid endpoints, type mismatches, and override issues.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiOkResponse({
+		description: 'Binding validation report',
+		schema: {
+			type: 'object',
+			properties: {
+				data: {
+					type: 'array',
+					items: {
+						type: 'object',
+						properties: {
+							activity_key: { type: 'string' },
+							binding_id: { type: 'string', nullable: true },
+							valid: { type: 'boolean' },
+							issues: {
+								type: 'array',
+								items: {
+									type: 'object',
+									properties: {
+										slot: { type: 'string', nullable: true },
+										severity: { type: 'string', enum: ['error', 'warning', 'info'] },
+										message: { type: 'string' },
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+	@ApiNotFoundResponse('Space not found')
+	async validateMediaActivityBindings(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<{ data: unknown[] }> {
+		this.logger.debug(`Validating media activity bindings for space=${id}`);
+
+		const reports = await this.spaceMediaActivityBindingService.validateBindings(id);
+
+		return {
+			data: reports.map((r) => ({
+				activity_key: r.activityKey,
+				binding_id: r.bindingId,
+				valid: r.valid,
+				issues: r.issues,
+			})),
+		};
 	}
 
 	@Get(':id/media/bindings/:bindingId')

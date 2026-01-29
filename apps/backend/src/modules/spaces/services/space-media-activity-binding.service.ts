@@ -4,13 +4,16 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { DeviceCategory } from '../../devices/devices.constants';
 import { CreateMediaActivityBindingDto, UpdateMediaActivityBindingDto } from '../dto/media-activity-binding.dto';
 import { SpaceMediaActivityBindingEntity } from '../entities/space-media-activity-binding.entity';
 import { DerivedMediaEndpointModel } from '../models/derived-media-endpoint.model';
+import { MediaCapabilitySummaryModel } from '../models/media-routing.model';
 import { MediaActivityKey, MediaEndpointType, SPACES_MODULE_NAME } from '../spaces.constants';
 import { SpacesValidationException } from '../spaces.exceptions';
 
 import { DerivedMediaEndpointService } from './derived-media-endpoint.service';
+import { SpaceMediaEndpointService } from './space-media-endpoint.service';
 import { SpacesService } from './spaces.service';
 
 /**
@@ -43,6 +46,7 @@ export class SpaceMediaActivityBindingService {
 		private readonly repository: Repository<SpaceMediaActivityBindingEntity>,
 		private readonly spacesService: SpacesService,
 		private readonly derivedMediaEndpointService: DerivedMediaEndpointService,
+		private readonly mediaEndpointService: SpaceMediaEndpointService,
 	) {}
 
 	/**
@@ -191,6 +195,13 @@ export class SpaceMediaActivityBindingService {
 	 * Apply default bindings for a space.
 	 * Creates missing bindings with heuristic endpoint assignments.
 	 * Does not overwrite existing bindings.
+	 *
+	 * Heuristic priorities:
+	 * - Watch: display w/ inputSelect, AVR audio > TV audio > speaker, streamer source, display remote
+	 * - Listen: playback-capable audio, playback source, source remote
+	 * - Gaming: display w/ inputSelect, AVR audio, game console source, display remote
+	 * - Background: playback-capable audio, volume preset 20
+	 * - Off: empty
 	 */
 	async applyDefaults(spaceId: string): Promise<SpaceMediaActivityBindingEntity[]> {
 		await this.spacesService.getOneOrThrow(spaceId);
@@ -200,46 +211,112 @@ export class SpaceMediaActivityBindingService {
 		const endpoints = await this.buildEndpointMap(spaceId);
 		const endpointList = Array.from(endpoints.values());
 
+		// Load capability summaries for device category awareness
+		const summaries = await this.mediaEndpointService.getMediaCapabilitiesInSpace(spaceId);
+		const categoryMap = new Map<string, string>();
+
+		for (const s of summaries) {
+			categoryMap.set(s.deviceId, s.deviceCategory);
+		}
+
 		const displays = endpointList.filter((e) => e.type === MediaEndpointType.DISPLAY);
 		const audioOutputs = endpointList.filter((e) => e.type === MediaEndpointType.AUDIO_OUTPUT);
 		const sources = endpointList.filter((e) => e.type === MediaEndpointType.SOURCE);
 		const remotes = endpointList.filter((e) => e.type === MediaEndpointType.REMOTE_TARGET);
 
-		// Prefer audio with playback capability for listen
-		const playbackAudio = audioOutputs.find((e) => e.capabilities.playback) ?? audioOutputs[0];
+		// Sort displays: prefer those with inputSelect
+		const sortedDisplays = [...displays].sort((a, b) => {
+			const aScore = (a.capabilities.inputSelect ? 2 : 0) + (a.capabilities.remoteCommands ? 1 : 0);
+			const bScore = (b.capabilities.inputSelect ? 2 : 0) + (b.capabilities.remoteCommands ? 1 : 0);
 
-		const defaults: Record<MediaActivityKey, Partial<SpaceMediaActivityBindingEntity>> = {
+			return bScore - aScore;
+		});
+
+		// Audio ranking helper: AVR=3, TV speaker=2, speaker=1, other=0
+		const audioRank = (ep: DerivedMediaEndpointModel): number => {
+			const cat = categoryMap.get(ep.deviceId);
+
+			if (cat === DeviceCategory.AV_RECEIVER) {
+				return 3;
+			}
+			if (cat === DeviceCategory.TELEVISION || cat === DeviceCategory.PROJECTOR) {
+				return 2;
+			}
+			if (cat === DeviceCategory.SPEAKER) {
+				return 1;
+			}
+
+			return 0;
+		};
+
+		// Best audio for video activities (volume-capable, prefer AVR > TV > speaker)
+		const videoAudio = [...audioOutputs].filter((e) => e.capabilities.volume).sort((a, b) => audioRank(b) - audioRank(a));
+		const bestVideoAudio = videoAudio[0] ?? audioOutputs[0];
+
+		// Best audio for listen/background (prefer playback/track capable, then speaker-like)
+		const playbackAudioSorted = [...audioOutputs].sort((a, b) => {
+			const aPlay = a.capabilities.playback ? 2 : 0;
+			const bPlay = b.capabilities.playback ? 2 : 0;
+			const aSpeaker = categoryMap.get(a.deviceId) === DeviceCategory.SPEAKER ? 1 : 0;
+			const bSpeaker = categoryMap.get(b.deviceId) === DeviceCategory.SPEAKER ? 1 : 0;
+
+			return (bPlay + bSpeaker) - (aPlay + aSpeaker);
+		});
+		const bestListenAudio = playbackAudioSorted[0] ?? audioOutputs[0];
+
+		// Game source: prefer game console, then set-top-box, then name-match
+		const gameSource =
+			sources.find((s) => categoryMap.get(s.deviceId) === DeviceCategory.GAME_CONSOLE) ??
+			sources.find((s) => s.name.toLowerCase().includes('game')) ??
+			sources.find((s) => categoryMap.get(s.deviceId) === DeviceCategory.SET_TOP_BOX);
+
+		// Streamer source: prefer streaming service, then source with playback
+		const streamerSource =
+			sources.find((s) => categoryMap.get(s.deviceId) === DeviceCategory.STREAMING_SERVICE) ??
+			sources.find((s) => s.capabilities.playback);
+
+		// Playback-capable source for Listen
+		const playbackSource = sources.find((s) => s.capabilities.playback || s.capabilities.track);
+
+		const bestDisplay = sortedDisplays[0];
+
+		const defaults: Record<MediaActivityKey, Partial<SpaceMediaActivityBindingEntity> & { audioVolumePreset?: number | null }> = {
 			[MediaActivityKey.WATCH]: {
-				displayEndpointId: displays[0]?.endpointId ?? null,
-				audioEndpointId: audioOutputs[0]?.endpointId ?? null,
-				sourceEndpointId: sources[0]?.endpointId ?? null,
+				displayEndpointId: bestDisplay?.endpointId ?? null,
+				audioEndpointId: bestVideoAudio?.endpointId ?? null,
+				sourceEndpointId: streamerSource?.endpointId ?? sources[0]?.endpointId ?? null,
 				remoteEndpointId:
-					(displays[0] ? this.findRemoteForDevice(displays[0], remotes) : null) ?? remotes[0]?.endpointId ?? null,
+					(bestDisplay ? this.findRemoteForDevice(bestDisplay, remotes) : null) ?? remotes[0]?.endpointId ?? null,
+				audioVolumePreset: null,
 			},
 			[MediaActivityKey.LISTEN]: {
 				displayEndpointId: null,
-				audioEndpointId: playbackAudio?.endpointId ?? null,
-				sourceEndpointId: sources[0]?.endpointId ?? null,
-				remoteEndpointId: null,
+				audioEndpointId: bestListenAudio?.endpointId ?? null,
+				sourceEndpointId: playbackSource?.endpointId ?? sources[0]?.endpointId ?? null,
+				remoteEndpointId: this.findListenRemote(playbackSource, bestListenAudio, remotes, bestDisplay),
+				audioVolumePreset: null,
 			},
 			[MediaActivityKey.GAMING]: {
-				displayEndpointId: displays[0]?.endpointId ?? null,
-				audioEndpointId: audioOutputs[0]?.endpointId ?? null,
-				sourceEndpointId:
-					sources.find((s) => s.name.toLowerCase().includes('game'))?.endpointId ?? sources[0]?.endpointId ?? null,
-				remoteEndpointId: remotes[0]?.endpointId ?? null,
+				displayEndpointId: bestDisplay?.endpointId ?? null,
+				audioEndpointId: bestVideoAudio?.endpointId ?? null,
+				sourceEndpointId: gameSource?.endpointId ?? sources[0]?.endpointId ?? null,
+				remoteEndpointId:
+					(bestDisplay ? this.findRemoteForDevice(bestDisplay, remotes) : null) ?? remotes[0]?.endpointId ?? null,
+				audioVolumePreset: null,
 			},
 			[MediaActivityKey.BACKGROUND]: {
 				displayEndpointId: null,
-				audioEndpointId: playbackAudio?.endpointId ?? null,
+				audioEndpointId: bestListenAudio?.endpointId ?? null,
 				sourceEndpointId: null,
 				remoteEndpointId: null,
+				audioVolumePreset: bestListenAudio ? 20 : null,
 			},
 			[MediaActivityKey.OFF]: {
 				displayEndpointId: null,
 				audioEndpointId: null,
 				sourceEndpointId: null,
 				remoteEndpointId: null,
+				audioVolumePreset: null,
 			},
 		};
 
@@ -260,7 +337,7 @@ export class SpaceMediaActivityBindingService {
 					sourceEndpointId: def.sourceEndpointId ?? null,
 					remoteEndpointId: def.remoteEndpointId ?? null,
 					displayInputId: null,
-					audioVolumePreset: null,
+					audioVolumePreset: def.audioVolumePreset ?? null,
 				});
 
 				const saved = await this.repository.save(binding);
@@ -275,6 +352,83 @@ export class SpaceMediaActivityBindingService {
 
 		// Return all bindings (existing + newly created)
 		return this.findBySpace(spaceId);
+	}
+
+	/**
+	 * Validate all bindings for a space and return a diagnostic report.
+	 */
+	async validateBindings(
+		spaceId: string,
+	): Promise<BindingValidationReport[]> {
+		await this.spacesService.getOneOrThrow(spaceId);
+
+		const bindings = await this.findBySpace(spaceId);
+		const endpoints = await this.buildEndpointMap(spaceId);
+		const reports: BindingValidationReport[] = [];
+
+		for (const binding of bindings) {
+			const issues: BindingValidationIssue[] = [];
+
+			// Check each slot
+			this.validateSlotForReport(binding.displayEndpointId, 'displayEndpointId', MediaEndpointType.DISPLAY, endpoints, issues);
+			this.validateSlotForReport(binding.audioEndpointId, 'audioEndpointId', MediaEndpointType.AUDIO_OUTPUT, endpoints, issues);
+			this.validateSlotForReport(binding.sourceEndpointId, 'sourceEndpointId', MediaEndpointType.SOURCE, endpoints, issues);
+			this.validateSlotForReport(binding.remoteEndpointId, 'remoteEndpointId', MediaEndpointType.REMOTE_TARGET, endpoints, issues);
+
+			// Check missing slots that are typically expected
+			if (binding.activityKey === MediaActivityKey.WATCH || binding.activityKey === MediaActivityKey.GAMING) {
+				if (!binding.displayEndpointId) {
+					issues.push({ slot: 'displayEndpointId', severity: 'warning', message: 'Missing display endpoint for video activity' });
+				}
+				if (!binding.audioEndpointId) {
+					issues.push({ slot: 'audioEndpointId', severity: 'warning', message: 'Missing audio endpoint for video activity' });
+				}
+			}
+
+			if (binding.activityKey === MediaActivityKey.LISTEN || binding.activityKey === MediaActivityKey.BACKGROUND) {
+				if (!binding.audioEndpointId) {
+					issues.push({ slot: 'audioEndpointId', severity: 'warning', message: 'Missing audio endpoint for audio activity' });
+				}
+			}
+
+			// Check overrides
+			if (binding.displayInputId && binding.displayEndpointId) {
+				const ep = endpoints.get(binding.displayEndpointId);
+
+				if (ep && !ep.capabilities.inputSelect) {
+					issues.push({ slot: 'displayInputId', severity: 'error', message: 'Display endpoint does not support input selection' });
+				}
+			}
+
+			if (binding.audioVolumePreset !== null && binding.audioEndpointId) {
+				const ep = endpoints.get(binding.audioEndpointId);
+
+				if (ep && !ep.capabilities.volume) {
+					issues.push({ slot: 'audioVolumePreset', severity: 'error', message: 'Audio endpoint does not support volume control' });
+				}
+			}
+
+			reports.push({
+				activityKey: binding.activityKey,
+				bindingId: binding.id,
+				issues,
+				valid: issues.filter((i) => i.severity === 'error').length === 0,
+			});
+		}
+
+		// Report missing bindings
+		for (const key of Object.values(MediaActivityKey)) {
+			if (!bindings.find((b) => b.activityKey === key)) {
+				reports.push({
+					activityKey: key,
+					bindingId: null,
+					issues: [{ slot: null, severity: 'info', message: `No binding configured for activity "${key}"` }],
+					valid: true,
+				});
+			}
+		}
+
+		return reports;
 	}
 
 	/**
@@ -463,4 +617,93 @@ export class SpaceMediaActivityBindingService {
 
 		return match?.endpointId ?? null;
 	}
+
+	/**
+	 * Find the best remote for Listen activity:
+	 * 1) source remote if available
+	 * 2) audio device remote if available
+	 * 3) display remote as fallback
+	 */
+	private findListenRemote(
+		source: DerivedMediaEndpointModel | undefined,
+		audio: DerivedMediaEndpointModel | undefined,
+		remotes: DerivedMediaEndpointModel[],
+		display: DerivedMediaEndpointModel | undefined,
+	): string | null {
+		if (source) {
+			const sourceRemote = remotes.find((r) => r.deviceId === source.deviceId);
+
+			if (sourceRemote) {
+				return sourceRemote.endpointId;
+			}
+		}
+
+		if (audio) {
+			const audioRemote = remotes.find((r) => r.deviceId === audio.deviceId);
+
+			if (audioRemote) {
+				return audioRemote.endpointId;
+			}
+		}
+
+		if (display) {
+			const displayRemote = remotes.find((r) => r.deviceId === display.deviceId);
+
+			if (displayRemote) {
+				return displayRemote.endpointId;
+			}
+		}
+
+		return remotes[0]?.endpointId ?? null;
+	}
+
+	/**
+	 * Validate a single slot for the diagnostic report
+	 */
+	private validateSlotForReport(
+		endpointId: string | null,
+		slotName: string,
+		expectedType: MediaEndpointType,
+		endpoints: Map<string, DerivedMediaEndpointModel>,
+		issues: BindingValidationIssue[],
+	): void {
+		if (!endpointId) {
+			return;
+		}
+
+		const ep = endpoints.get(endpointId);
+
+		if (!ep) {
+			issues.push({ slot: slotName, severity: 'error', message: `Endpoint "${endpointId}" not found in space` });
+
+			return;
+		}
+
+		if (ep.type !== expectedType) {
+			issues.push({
+				slot: slotName,
+				severity: 'error',
+				message: `Endpoint type "${ep.type}" does not match expected "${expectedType}"`,
+			});
+		}
+	}
+}
+
+/**
+ * Diagnostic issue for a binding slot
+ */
+export interface BindingValidationIssue {
+	slot: string | null;
+	severity: 'error' | 'warning' | 'info';
+	message: string;
+}
+
+/**
+ * Diagnostic report for a single activity binding
+ */
+export interface BindingValidationReport {
+	activityKey: MediaActivityKey;
+	bindingId: string | null;
+	issues: BindingValidationIssue[];
+	valid: boolean;
 }

@@ -10,6 +10,46 @@ import { MediaActivationState, MediaActivityKey } from '../spaces.constants';
 // Resolved Devices Model
 // ========================
 
+/**
+ * Control target hints – computed fallback device IDs for UI controls.
+ * These help the UI pick the best device for volume/input/playback/remote
+ * even when binding slots are empty or endpoints lack specific capabilities.
+ */
+@ApiSchema({ name: 'SpacesModuleDataMediaActivityControlTargets' })
+export class MediaActivityControlTargetsModel {
+	@ApiPropertyOptional({
+		name: 'volume_target_device_id',
+		description: 'Best device ID for volume control',
+		type: 'string',
+	})
+	@Expose({ name: 'volume_target_device_id' })
+	volumeTargetDeviceId?: string;
+
+	@ApiPropertyOptional({
+		name: 'input_target_device_id',
+		description: 'Best device ID for input selection',
+		type: 'string',
+	})
+	@Expose({ name: 'input_target_device_id' })
+	inputTargetDeviceId?: string;
+
+	@ApiPropertyOptional({
+		name: 'playback_target_device_id',
+		description: 'Best device ID for playback control',
+		type: 'string',
+	})
+	@Expose({ name: 'playback_target_device_id' })
+	playbackTargetDeviceId?: string;
+
+	@ApiPropertyOptional({
+		name: 'remote_target_device_id',
+		description: 'Best device ID for remote commands',
+		type: 'string',
+	})
+	@Expose({ name: 'remote_target_device_id' })
+	remoteTargetDeviceId?: string;
+}
+
 @ApiSchema({ name: 'SpacesModuleDataMediaActivityResolved' })
 export class MediaActivityResolvedModel {
 	@ApiPropertyOptional({
@@ -43,6 +83,15 @@ export class MediaActivityResolvedModel {
 	})
 	@Expose({ name: 'remote_device_id' })
 	remoteDeviceId?: string;
+
+	@ApiPropertyOptional({
+		name: 'control_targets',
+		description: 'Computed fallback control target device IDs for UI',
+		type: () => MediaActivityControlTargetsModel,
+	})
+	@Expose({ name: 'control_targets' })
+	@Type(() => MediaActivityControlTargetsModel)
+	controlTargets?: MediaActivityControlTargetsModel;
 }
 
 // ========================
