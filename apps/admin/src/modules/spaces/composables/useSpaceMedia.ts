@@ -101,6 +101,7 @@ export interface IUseSpaceMedia {
 	bindingsError: Ref<string | null>;
 	saveError: Ref<string | null>;
 	activationError: Ref<string | null>;
+	activationErrorSource: Ref<'activate' | 'deactivate' | 'fetch' | null>;
 	fetchEndpoints: () => Promise<void>;
 	fetchBindings: () => Promise<void>;
 	fetchActiveState: () => Promise<void>;
@@ -250,6 +251,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 	const bindingsError = ref<string | null>(null);
 	const saveError = ref<string | null>(null);
 	const activationError = ref<string | null>(null);
+	const activationErrorSource = ref<'activate' | 'deactivate' | 'fetch' | null>(null);
 
 	const endpoints = computed<IDerivedMediaEndpoint[]>(() => endpointsData.value);
 	const bindings = computed<IMediaActivityBinding[]>(() => bindingsData.value);
@@ -428,6 +430,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 
 		fetchingActiveState.value = true;
 		activationError.value = null;
+		activationErrorSource.value = null;
 
 		try {
 			const { data: responseData, error } = await backend.client.GET(
@@ -443,6 +446,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 			activeState.value = raw ? transformActiveEntity(raw) : null;
 		} catch (e: unknown) {
 			activationError.value = e instanceof Error ? e.message : 'Unknown error';
+			activationErrorSource.value = 'fetch';
 		} finally {
 			fetchingActiveState.value = false;
 		}
@@ -465,6 +469,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 
 		activating.value = true;
 		activationError.value = null;
+		activationErrorSource.value = null;
 
 		// Optimistic UI
 		activeState.value = {
@@ -497,6 +502,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 			return activeState.value ?? result;
 		} catch (e: unknown) {
 			activationError.value = e instanceof Error ? e.message : 'Unknown error';
+			activationErrorSource.value = 'activate';
 			activeState.value = {
 				activityKey,
 				state: 'failed',
@@ -512,6 +518,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 
 		deactivating.value = true;
 		activationError.value = null;
+		activationErrorSource.value = null;
 
 		try {
 			const { data: responseData, error } = await backend.client.POST(
@@ -533,6 +540,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 			return result;
 		} catch (e: unknown) {
 			activationError.value = e instanceof Error ? e.message : 'Unknown error';
+			activationErrorSource.value = 'deactivate';
 			throw e;
 		} finally {
 			deactivating.value = false;
@@ -566,6 +574,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 		bindingsError,
 		saveError,
 		activationError,
+		activationErrorSource,
 		fetchEndpoints,
 		fetchBindings,
 		fetchActiveState,

@@ -212,7 +212,7 @@
 		<el-alert
 			v-if="activationError"
 			type="error"
-			:title="t('spacesModule.media.activities.activateFailed')"
+			:title="t(`spacesModule.media.activities.${activationErrorSource === 'deactivate' ? 'deactivateFailed' : activationErrorSource === 'fetch' ? 'fetchFailed' : 'activateFailed'}`)"
 			:description="activationError"
 			show-icon
 			closable
@@ -543,6 +543,7 @@ const {
 	applyingDefaults,
 	saveError,
 	activationError,
+	activationErrorSource,
 	fetchEndpoints,
 	fetchBindings,
 	fetchActiveState,
@@ -709,11 +710,8 @@ const resolveDeviceName = (deviceId: string): string => {
 };
 
 const formatTimestamp = (ts: string): string => {
-	try {
-		return new Date(ts).toLocaleString();
-	} catch {
-		return ts;
-	}
+	const date = new Date(ts);
+	return isNaN(date.getTime()) ? ts : date.toLocaleString();
 };
 
 const loadBindingIntoForm = (binding: IMediaActivityBinding | undefined): void => {

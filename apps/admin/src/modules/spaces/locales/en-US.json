@@ -625,6 +625,7 @@
 			"activateFailed": "Failed to activate activity.",
 			"deactivateSuccess": "Activity deactivated.",
 			"deactivateFailed": "Failed to deactivate activity.",
+			"fetchFailed": "Failed to refresh activity status.",
 			"activePanel": {
 				"title": "Active State",
 				"currentActivity": "Current activity",
