@@ -313,11 +313,26 @@ export class SpaceMediaActivityBindingService {
 					: (binding.audioVolumePreset ?? undefined),
 		};
 
+		// Auto-clear dependent overrides when parent endpoint is being cleared
+		if (effective.displayEndpointId === null) {
+			effective.displayInputId = undefined;
+		}
+		if (effective.audioEndpointId === null) {
+			effective.audioVolumePreset = undefined;
+		}
+
 		const endpoints = await this.buildEndpointMap(binding.spaceId);
 		this.validateSlots(effective, endpoints);
 		this.validateOverrides(effective, endpoints);
 
 		// Apply updates — normalize empty strings
+		// Auto-clear dependent overrides when parent endpoint is cleared
+		if (dto.displayEndpointId !== undefined && normalizeEndpointId(dto.displayEndpointId) === null) {
+			binding.displayInputId = null;
+		}
+		if (dto.audioEndpointId !== undefined && normalizeEndpointId(dto.audioEndpointId) === null) {
+			binding.audioVolumePreset = null;
+		}
 		if (dto.displayEndpointId !== undefined) {
 			binding.displayEndpointId = normalizeEndpointId(dto.displayEndpointId);
 		}
