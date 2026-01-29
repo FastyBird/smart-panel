@@ -1056,45 +1056,10 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       ));
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(children: cards),
-        _buildHealthRow(context),
-      ],
-    );
-  }
-
-  Widget _buildHealthRow(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final staleCount = _sensors.where((s) => s.freshness == SensorFreshness.stale).length;
-    final offlineCount = _sensors.where((s) => s.freshness == SensorFreshness.offline).length;
-
-    if (staleCount == 0 && offlineCount == 0) return const SizedBox.shrink();
-
-    final parts = <String>[];
-    if (staleCount > 0) parts.add('$staleCount stale');
-    if (offlineCount > 0) parts.add('$offlineCount offline');
-
-    return Padding(
-      padding: EdgeInsets.only(top: AppSpacings.pSm),
+    return IntrinsicHeight(
       child: Row(
-        children: [
-          Icon(
-            Icons.warning_amber,
-            size: _scale(14),
-            color: isDark ? AppColorsDark.warning : AppColorsLight.warning,
-          ),
-          SizedBox(width: AppSpacings.pXs),
-          Text(
-            parts.join(' · '),
-            style: TextStyle(
-              color: isDark ? AppColorsDark.warning : AppColorsLight.warning,
-              fontSize: AppFontSize.extraSmall,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: cards,
       ),
     );
   }
@@ -1240,10 +1205,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
             ? 0.6
             : 1.0;
 
-    // Trend text: use sensor trendText if available, otherwise show freshness age
-    final age = DateTime.now().difference(sensor.lastUpdated);
-    final trendLabel = sensor.trendText ?? SensorFreshnessUtils.label(freshness, age);
-
     Widget card = GestureDetector(
       onTap: () => _openSensorDetail(context, sensor),
       child: Container(
@@ -1317,56 +1278,41 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
             ),
             AppSpacings.spacingSmVertical,
 
-            // Value
+            // Value + trend icon
             FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
-              child: RichText(
-                maxLines: 1,
-                text: TextSpan(
-                  style: TextStyle(
-                    fontSize: _scale(24),
-                    fontWeight: FontWeight.w300,
-                    color: isAlert ? dangerColor : categoryColor,
-                  ),
-                  children: [
-                    TextSpan(text: sensor.value),
-                    TextSpan(
-                      text: sensor.unit,
-                      style: TextStyle(
-                        fontSize: AppFontSize.base,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Trend — always show for numeric sensors
-            if (!sensor.isBinary) ...[
-              const Spacer(),
-              Row(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  _buildTrendIcon(context, sensor.trend, isAlert),
-                  AppSpacings.spacingXsHorizontal,
-                  Expanded(
-                    child: Text(
-                      trendLabel,
+                  if (!sensor.isBinary) ...[
+                    _buildTrendIcon(context, sensor.trend, isAlert),
+                    SizedBox(width: _scale(4)),
+                  ],
+                  RichText(
+                    maxLines: 1,
+                    text: TextSpan(
                       style: TextStyle(
-                        color: isAlert
-                            ? dangerColor
-                            : (isDark
-                                ? AppTextColorDark.placeholder
-                                : AppTextColorLight.placeholder),
-                        fontSize: AppFontSize.extraSmall,
+                        fontSize: _scale(24),
+                        fontWeight: FontWeight.w300,
+                        color: isAlert ? dangerColor : categoryColor,
                       ),
-                      overflow: TextOverflow.ellipsis,
+                      children: [
+                        TextSpan(text: sensor.value),
+                        TextSpan(
+                          text: sensor.unit,
+                          style: TextStyle(
+                            fontSize: AppFontSize.base,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-            ],
+            ),
           ],
         ),
       ),
@@ -1408,44 +1354,27 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final dangerColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
 
-    // If alert, always use danger color regardless of direction
-    if (isAlert) {
-      IconData icon;
-      switch (direction) {
-        case TrendDirection.up:
-          icon = Icons.arrow_upward;
-          break;
-        case TrendDirection.down:
-          icon = Icons.arrow_downward;
-          break;
-        case TrendDirection.stable:
-          icon = Icons.remove;
-          break;
-      }
-      return Icon(icon, size: _scale(12), color: dangerColor);
-    }
-
     IconData icon;
     Color color;
 
     switch (direction) {
       case TrendDirection.up:
-        icon = Icons.arrow_upward;
-        color = isDark ? AppColorsDark.danger : AppColorsLight.danger;
+        icon = MdiIcons.arrowTopRightThick;
+        color = isAlert ? dangerColor : (isDark ? AppColorsDark.danger : AppColorsLight.danger);
         break;
       case TrendDirection.down:
-        icon = Icons.arrow_downward;
-        color = isDark ? AppColorsDark.info : AppColorsLight.info;
+        icon = MdiIcons.arrowBottomRightThick;
+        color = isAlert ? dangerColor : (isDark ? AppColorsDark.info : AppColorsLight.info);
         break;
       case TrendDirection.stable:
-        icon = Icons.remove;
-        color = isDark
-            ? AppTextColorDark.placeholder
-            : AppTextColorLight.placeholder;
+        icon = MdiIcons.arrowRightThick;
+        color = isAlert
+            ? dangerColor
+            : (isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder);
         break;
     }
 
-    return Icon(icon, size: _scale(12), color: color);
+    return Icon(icon, size: _scale(14), color: color);
   }
 
   // --------------------------------------------------------------------------
