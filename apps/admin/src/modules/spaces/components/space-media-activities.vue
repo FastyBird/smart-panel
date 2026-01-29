@@ -48,7 +48,7 @@
 							size="small"
 							type="primary"
 							:loading="activating"
-							:disabled="deactivating"
+							:disabled="activating || deactivating"
 							@click="onRerun"
 						>
 							<template #icon>
@@ -827,7 +827,7 @@ const onCopyDebugJson = async (): Promise<void> => {
 		await navigator.clipboard.writeText(JSON.stringify(activeState.value, null, 2));
 		flashMessage.success(t('spacesModule.media.activities.copiedToClipboard'));
 	} catch {
-		// Fallback: select text for manual copy
+		// Clipboard API may fail in non-secure contexts; silently ignore
 	}
 };
 
