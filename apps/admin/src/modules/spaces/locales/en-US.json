@@ -592,6 +592,7 @@
 			"loading": "Loading media configuration...",
 			"applyDefaults": "Apply defaults",
 			"defaultsApplied": "Default bindings have been applied.",
+			"defaultsFailed": "Failed to apply default bindings.",
 			"selectPrompt": "Select an activity from the list to configure its bindings.",
 			"selectEndpoint": "Select endpoint...",
 			"save": "Save",

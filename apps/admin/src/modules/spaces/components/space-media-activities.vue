@@ -299,6 +299,7 @@ const {
 	createBinding,
 	applyDefaults,
 	findBindingByActivity,
+	endpointsByType,
 } = useSpaceMedia(spaceIdRef);
 
 const activityKeys = [
@@ -333,10 +334,10 @@ const lastLoadedForm = ref<typeof form | null>(null);
 const initialLoading = computed(() => fetchingEndpoints.value || fetchingBindings.value);
 
 // Filtered endpoints by type
-const displayEndpoints = computed(() => endpoints.value.filter((ep) => ep.type === MediaEndpointType.display));
-const audioEndpoints = computed(() => endpoints.value.filter((ep) => ep.type === MediaEndpointType.audio_output));
-const sourceEndpoints = computed(() => endpoints.value.filter((ep) => ep.type === MediaEndpointType.source));
-const remoteEndpoints = computed(() => endpoints.value.filter((ep) => ep.type === MediaEndpointType.remote_target));
+const displayEndpoints = endpointsByType(MediaEndpointType.display);
+const audioEndpoints = endpointsByType(MediaEndpointType.audio_output);
+const sourceEndpoints = endpointsByType(MediaEndpointType.source);
+const remoteEndpoints = endpointsByType(MediaEndpointType.remote_target);
 
 // Check if selected endpoints support overrides
 const selectedDisplayHasInputSelect = computed(() => {
@@ -456,13 +457,17 @@ const onReset = (): void => {
 };
 
 const onApplyDefaults = async (): Promise<void> => {
-	await applyDefaults();
-	flashMessage.success(t('spacesModule.media.activities.defaultsApplied'));
+	try {
+		await applyDefaults();
+		flashMessage.success(t('spacesModule.media.activities.defaultsApplied'));
 
-	// Reload form if an activity is selected
-	if (selectedActivity.value) {
-		const binding = findBindingByActivity(selectedActivity.value);
-		loadBindingIntoForm(binding);
+		// Reload form if an activity is selected
+		if (selectedActivity.value) {
+			const binding = findBindingByActivity(selectedActivity.value);
+			loadBindingIntoForm(binding);
+		}
+	} catch {
+		flashMessage.error(t('spacesModule.media.activities.defaultsFailed'));
 	}
 };
 

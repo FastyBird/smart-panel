@@ -80,7 +80,7 @@ export interface IUseSpaceMedia {
 }
 
 const transformEndpoint = (raw: Record<string, unknown>): IDerivedMediaEndpoint => {
-	const caps = raw.capabilities as Record<string, boolean>;
+	const caps = (raw.capabilities as Record<string, boolean> | null | undefined) ?? {};
 
 	return {
 		endpointId: raw.endpoint_id as string,
@@ -197,13 +197,13 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 					params: { path: { id: spaceId.value, bindingId } },
 					body: {
 						data: {
-							display_endpoint_id: payload.displayEndpointId ?? undefined,
-							audio_endpoint_id: payload.audioEndpointId ?? undefined,
-							source_endpoint_id: payload.sourceEndpointId ?? undefined,
-							remote_endpoint_id: payload.remoteEndpointId ?? undefined,
-							display_input_id: payload.displayInputId ?? undefined,
-							audio_volume_preset: payload.audioVolumePreset ?? undefined,
-						},
+							display_endpoint_id: payload.displayEndpointId,
+							audio_endpoint_id: payload.audioEndpointId,
+							source_endpoint_id: payload.sourceEndpointId,
+							remote_endpoint_id: payload.remoteEndpointId,
+							display_input_id: payload.displayInputId,
+							audio_volume_preset: payload.audioVolumePreset,
+						} as Record<string, string | number | null | undefined>,
 					},
 				},
 			);
@@ -254,7 +254,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 							remote_endpoint_id: payload.remoteEndpointId ?? undefined,
 							display_input_id: payload.displayInputId ?? undefined,
 							audio_volume_preset: payload.audioVolumePreset ?? undefined,
-						},
+						} as Record<string, string | number | null | undefined>,
 					},
 				},
 			);
@@ -296,6 +296,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 			bindingsData.value = rawBindings.map(transformBinding);
 		} catch (e: unknown) {
 			bindingsError.value = e instanceof Error ? e.message : 'Unknown error';
+			throw e;
 		} finally {
 			applyingDefaults.value = false;
 		}
