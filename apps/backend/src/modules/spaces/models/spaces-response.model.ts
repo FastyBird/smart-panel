@@ -3434,7 +3434,7 @@ export class SensorReadingDataModel {
 		type: 'string',
 		format: 'uuid',
 		nullable: true,
-		example: 'd4e30fc5-743g-6f9d-d5bg-efe9c0f7d1g9',
+		example: 'd4e30fc5-743a-6f9d-d5ba-efe9c0f7d1a9',
 	})
 	@Expose({ name: 'property_id' })
 	propertyId: string | null;

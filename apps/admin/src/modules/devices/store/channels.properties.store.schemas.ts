@@ -10,6 +10,7 @@ import {
 	DevicesModuleChannelPropertyCategory,
 	DevicesModuleChannelPropertyDataType,
 	DevicesModuleChannelPropertyPermissions,
+	SpacesModuleDataSensorReadingTrend,
 } from '../../../openapi.constants';
 
 import { ItemIdSchema } from './types';
@@ -36,14 +37,11 @@ export const ChannelPropertySchema = z.object({
 	invalid: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 	step: z.number().nullable(),
 	value: z
-		.union([
-			z.object({
-				value: z.union([z.string(), z.number(), z.boolean()]).nullable(),
-				lastUpdated: z.string().nullable().optional().default(null),
-				trend: z.enum(['rising', 'falling', 'stable']).nullable().optional().default(null),
-			}),
-			z.union([z.string(), z.number(), z.boolean()]).nullable(),
-		])
+		.object({
+			value: z.union([z.string(), z.number(), z.boolean()]).nullable().default(null),
+			lastUpdated: z.string().nullable().optional().default(null),
+			trend: z.nativeEnum(SpacesModuleDataSensorReadingTrend).nullable().optional().default(null),
+		})
 		.nullable()
 		.default(null),
 	createdAt: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
@@ -88,14 +86,11 @@ export const ChannelsPropertiesSetActionPayloadSchema = z.object({
 		invalid: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 		step: z.number().nullable(),
 		value: z
-			.union([
-				z.object({
-					value: z.union([z.string(), z.number(), z.boolean()]).nullable(),
-					lastUpdated: z.string().nullable().optional().default(null),
-					trend: z.enum(['rising', 'falling', 'stable']).nullable().optional().default(null),
-				}),
-				z.union([z.string(), z.number(), z.boolean()]).nullable(),
-			])
+			.object({
+				value: z.union([z.string(), z.number(), z.boolean()]).nullable().default(null),
+				lastUpdated: z.string().nullable().optional().default(null),
+				trend: z.nativeEnum(SpacesModuleDataSensorReadingTrend).nullable().optional().default(null),
+			})
 			.nullable(),
 	}),
 });
@@ -214,15 +209,12 @@ export const ChannelPropertyResSchema: ZodType<ApiChannelProperty> = z.object({
 	invalid: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 	step: z.number().nullable(),
 	value: z
-		.union([
-			z.object({
-				value: z.union([z.string(), z.number(), z.boolean()]).nullable(),
-				last_updated: z.string().nullable().optional().default(null),
-				trend: z.enum(['rising', 'falling', 'stable']).nullable().optional().default(null),
-			}),
-			z.union([z.string(), z.number(), z.boolean(), z.null()]).nullable(),
-		])
-		.nullable(),
+		.object({
+			value: z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
+			last_updated: z.string().nullable().optional(),
+			trend: z.nativeEnum(SpacesModuleDataSensorReadingTrend).optional(),
+		})
+		.optional(),
 	created_at: z.string().date(),
 	updated_at: z.string().date().nullable(),
 });

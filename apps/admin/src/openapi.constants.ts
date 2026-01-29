@@ -347,6 +347,8 @@ export { DevicesModuleCreateDeviceChannelPropertyData_type as DevicesModuleChann
 
 export { DevicesModuleCreateDeviceChannelPropertyPermissions as DevicesModuleChannelPropertyPermissions } from './openapi';
 
+export { SpacesModuleDataSensorReadingTrend } from './openapi';
+
 // Device Status Enums
 // ===================
 export { PathsPluginsDevicesSimulatorSimulatorDeviceIdSimulateConnectionPostRequestBodyApplicationJsonDataState as DevicesModuleDeviceConnectionStatus } from './openapi';

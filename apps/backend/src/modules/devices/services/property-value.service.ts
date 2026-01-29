@@ -211,7 +211,7 @@ export class PropertyValueService {
 				: null;
 
 			// Build recent values cache from query results (for trend computation)
-			if (this.isNumericDataType(property.dataType) && result.length > 1) {
+			if (this.isNumericDataType(property.dataType) && result.length >= 1) {
 				// Results are DESC, reverse to get ASC order for trend
 				const recentValues: number[] = [];
 				for (let i = result.length - 1; i >= 0; i--) {

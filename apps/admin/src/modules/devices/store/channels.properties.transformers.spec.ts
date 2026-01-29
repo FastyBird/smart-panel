@@ -51,7 +51,7 @@ const validChannelResponse: IChannelPropertyRes = {
 	format: null,
 	invalid: -1,
 	step: null,
-	value: 'Some value',
+	value: { value: 'Some value', last_updated: null },
 	created_at: '2024-03-01T12:00:00Z',
 	updated_at: '2024-03-02T12:00:00Z',
 };
@@ -94,7 +94,7 @@ describe('Channels Transformers', (): void => {
 				format: null,
 				invalid: -1,
 				step: null,
-				value: 'Some value',
+				value: { value: 'Some value', lastUpdated: null, trend: null },
 				draft: false,
 				createdAt: new Date('2024-03-01T12:00:00Z'),
 				updatedAt: new Date('2024-03-02T12:00:00Z'),

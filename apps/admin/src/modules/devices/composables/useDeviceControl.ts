@@ -99,7 +99,7 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 
 		const property = channelsPropertiesStore.findById(propertyId);
 
-		return property?.value ?? null;
+		return property?.value?.value ?? null;
 	};
 
 	const isPropertyLoading = (propertyId: IChannelProperty['id']): boolean => {
@@ -300,7 +300,7 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 				const property = channelsPropertiesStore.findById(propertyId);
 
 				if (property) {
-					storeValues[propertyId] = property.value;
+					storeValues[propertyId] = property.value?.value ?? null;
 				}
 			}
 
