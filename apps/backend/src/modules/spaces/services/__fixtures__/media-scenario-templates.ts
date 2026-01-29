@@ -82,7 +82,6 @@ export const DEVICE_SPEAKER = '00000000-0000-4000-b000-000000000003';
 export const DEVICE_STREAMER = '00000000-0000-4000-b000-000000000004';
 export const DEVICE_CONSOLE = '00000000-0000-4000-b000-000000000005';
 export const DEVICE_PROJECTOR = '00000000-0000-4000-b000-000000000006';
-export const DEVICE_SPEAKER_2 = '00000000-0000-4000-b000-000000000007';
 
 // ---------------------------------------------------------------------------
 // 1) media_tv_only
