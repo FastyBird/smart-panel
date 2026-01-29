@@ -49,6 +49,38 @@ class SensorSafetyAlertModel {
   }
 }
 
+/// Additional reading from a multi-property sensor channel
+class SensorAdditionalReadingModel {
+  final String propertyId;
+  final String propertyCategory;
+  final dynamic value;
+  final String? unit;
+  final DateTime? updatedAt;
+  final String? trend;
+
+  SensorAdditionalReadingModel({
+    required this.propertyId,
+    required this.propertyCategory,
+    this.value,
+    this.unit,
+    this.updatedAt,
+    this.trend,
+  });
+
+  factory SensorAdditionalReadingModel.fromJson(Map<String, dynamic> json) {
+    return SensorAdditionalReadingModel(
+      propertyId: json['property_id'] as String? ?? '',
+      propertyCategory: json['property_category'] as String? ?? '',
+      value: json['value'],
+      unit: json['unit'] as String?,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'] as String)
+          : null,
+      trend: json['trend'] as String?,
+    );
+  }
+}
+
 /// Individual sensor reading
 class SensorReadingModel {
   final String deviceId;
@@ -62,6 +94,7 @@ class SensorReadingModel {
   final String? role;
   final DateTime? updatedAt;
   final String? trend;
+  final List<SensorAdditionalReadingModel> additionalReadings;
 
   SensorReadingModel({
     required this.deviceId,
@@ -75,9 +108,11 @@ class SensorReadingModel {
     this.role,
     this.updatedAt,
     this.trend,
+    this.additionalReadings = const [],
   });
 
   factory SensorReadingModel.fromJson(Map<String, dynamic> json) {
+    final additionalJson = json['additional_readings'] as List<dynamic>? ?? [];
     return SensorReadingModel(
       deviceId: json['device_id'] as String? ?? '',
       deviceName: json['device_name'] as String? ?? '',
@@ -92,6 +127,9 @@ class SensorReadingModel {
           ? DateTime.tryParse(json['updated_at'] as String)
           : null,
       trend: json['trend'] as String?,
+      additionalReadings: additionalJson
+          .map((item) => SensorAdditionalReadingModel.fromJson(item as Map<String, dynamic>))
+          .toList(),
     );
   }
 }

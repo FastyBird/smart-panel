@@ -67,6 +67,7 @@ class SensorData {
   final DateTime lastUpdated;
   final bool isBinary;
   final String? channelCategory;
+  final List<SensorAdditionalReadingModel> additionalReadings;
 
   const SensorData({
     required this.id,
@@ -82,6 +83,7 @@ class SensorData {
     required this.lastUpdated,
     this.isBinary = false,
     this.channelCategory,
+    this.additionalReadings = const [],
   });
 
   SensorFreshness get freshness {
@@ -424,6 +426,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
           lastUpdated: reading.updatedAt ?? DateTime.now(),
           isBinary: _isBinaryProperty(reading.propertyId),
           channelCategory: reading.channelCategory,
+          additionalReadings: reading.additionalReadings,
         ));
       }
     }
@@ -1591,6 +1594,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
               lastUpdated: reading.updatedAt ?? DateTime.now(),
               isBinary: _sensor.isBinary,
               channelCategory: _sensor.channelCategory,
+              additionalReadings: reading.additionalReadings,
             );
           });
 
@@ -1798,6 +1802,8 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
             _buildStatsRow(context),
             _buildChart(context),
           ],
+          if (_sensor.additionalReadings.isNotEmpty)
+            _buildAdditionalReadings(context),
         ],
       ),
     );
@@ -1856,14 +1862,16 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
           ),
         ),
       ),
-      child: Column(
-        children: [
-          _buildLargeValue(context),
-          if (!_sensor.isBinary) ...[
-            const Spacer(),
-            _buildStatsRowCompact(context),
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            _buildLargeValue(context),
+            if (!_sensor.isBinary)
+              _buildStatsRowCompact(context),
+            if (_sensor.additionalReadings.isNotEmpty)
+              _buildAdditionalReadings(context),
           ],
-        ],
+        ),
       ),
     );
 
@@ -2052,6 +2060,105 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
         ),
       ),
     );
+  }
+
+  Widget _buildAdditionalReadings(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacings.pMd,
+        vertical: AppSpacings.pSm,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.only(bottom: AppSpacings.pSm),
+            child: Text(
+              'Additional Properties',
+              style: TextStyle(
+                fontSize: _scale(13),
+                fontWeight: FontWeight.w600,
+                color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
+              ),
+            ),
+          ),
+          Wrap(
+            spacing: AppSpacings.pSm,
+            runSpacing: AppSpacings.pSm,
+            children: _sensor.additionalReadings.map((ar) {
+              final label = _formatPropertyCategory(ar.propertyCategory);
+              final valueStr = _formatAdditionalValue(ar.value);
+              final unitStr = ar.unit != null && ar.unit!.isNotEmpty ? ' ${ar.unit}' : '';
+              final freshness = SensorFreshnessUtils.evaluate(ar.updatedAt, _sensor.category);
+              final freshnessColor = SensorFreshnessUtils.color(freshness, isDark);
+
+              return Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacings.pMd,
+                  vertical: AppSpacings.pSm,
+                ),
+                decoration: BoxDecoration(
+                  color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
+                  borderRadius: BorderRadius.circular(AppSpacings.pSm),
+                  border: Border.all(
+                    color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: freshnessColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    SizedBox(width: AppSpacings.pSm),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: _scale(11),
+                        color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
+                      ),
+                    ),
+                    SizedBox(width: AppSpacings.pSm),
+                    Text(
+                      '$valueStr$unitStr',
+                      style: TextStyle(
+                        fontSize: _scale(12),
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatPropertyCategory(String category) {
+    return category
+        .split('_')
+        .map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '')
+        .join(' ');
+  }
+
+  String _formatAdditionalValue(dynamic value) {
+    if (value == null) return '--';
+    if (value is num) {
+      return value == value.toInt()
+          ? NumberFormatUtils.defaultFormat.formatInteger(value.toInt())
+          : NumberFormatUtils.defaultFormat.formatDecimal(value.toDouble(), decimalPlaces: 1);
+    }
+    return value.toString();
   }
 
   Widget _buildEventLog(BuildContext context, {bool withMargin = true, bool withDecoration = true}) {
