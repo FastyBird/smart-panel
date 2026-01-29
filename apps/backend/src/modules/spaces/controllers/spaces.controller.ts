@@ -27,6 +27,7 @@ import { ReqSuggestionFeedbackDto } from '../dto/suggestion.dto';
 import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
 import { DerivedMediaEndpointsResponseModel } from '../models/derived-media-endpoint.model';
 import {
+	BindingValidationIssueModel,
 	BindingValidationReportModel,
 	BindingValidationResponseModel,
 	MediaActivityBindingResponseModel,
@@ -166,6 +167,7 @@ import { IntentSpecLoaderService } from '../spec';
 	BulkSensorRolesResultDataModel,
 	BulkSensorRoleResultItemModel,
 	BindingValidationReportModel,
+	BindingValidationIssueModel,
 )
 @Controller('spaces')
 export class SpacesController {
