@@ -254,7 +254,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 							remote_endpoint_id: payload.remoteEndpointId ?? undefined,
 							display_input_id: payload.displayInputId ?? undefined,
 							audio_volume_preset: payload.audioVolumePreset ?? undefined,
-						} as Record<string, string | number | null | undefined>,
+						},
 					},
 				},
 			);
