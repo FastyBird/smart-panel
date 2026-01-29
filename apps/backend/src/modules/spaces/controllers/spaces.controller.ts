@@ -30,10 +30,7 @@ import {
 	MediaActivityBindingResponseModel,
 	MediaActivityBindingsResponseModel,
 } from '../models/media-activity-binding.model';
-import {
-	ActiveMediaActivityResponseModel,
-	MediaActivityActivationResponseModel,
-} from '../models/media-activity.model';
+import { ActiveMediaActivityResponseModel, MediaActivityActivationResponseModel } from '../models/media-activity.model';
 import {
 	BulkAssignmentResponseModel,
 	BulkAssignmentResultDataModel,

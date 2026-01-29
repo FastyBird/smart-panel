@@ -75,7 +75,7 @@ describe('SpaceMediaActivityService', () => {
 	beforeEach(async () => {
 		mockActiveRepository = {
 			findOne: jest.fn().mockResolvedValue(null),
-			create: jest.fn().mockImplementation((data) => ({ ...data, id: uuid() })),
+			create: jest.fn().mockImplementation((data: Record<string, unknown>) => ({ ...data, id: uuid() })),
 			save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
 		};
 
@@ -163,10 +163,7 @@ describe('SpaceMediaActivityService', () => {
 			expect(result.state).toBe(MediaActivationState.ACTIVE);
 			expect(result.activityKey).toBe(MediaActivityKey.WATCH);
 			// Should not have emitted activating event
-			expect(mockEventEmitter.emit).not.toHaveBeenCalledWith(
-				EventType.MEDIA_ACTIVITY_ACTIVATING,
-				expect.anything(),
-			);
+			expect(mockEventEmitter.emit).not.toHaveBeenCalledWith(EventType.MEDIA_ACTIVITY_ACTIVATING, expect.anything());
 		});
 
 		it('should treat "off" activity as deactivation', async () => {
@@ -248,9 +245,12 @@ describe('SpaceMediaActivityService', () => {
 
 			mockBindingService.findBySpace.mockResolvedValue([binding]);
 
-			const displayEndpoint = buildEndpoint(MediaEndpointType.DISPLAY, deviceTvId, { power: true }, {
-				power: { propertyId: powerPropertyId },
-			});
+			const displayEndpoint = buildEndpoint(
+				MediaEndpointType.DISPLAY,
+				deviceTvId,
+				{ power: true },
+				{ power: { propertyId: powerPropertyId } },
+			);
 
 			mockDerivedEndpointService.buildEndpointsForSpace.mockResolvedValue({
 				spaceId,
@@ -265,7 +265,7 @@ describe('SpaceMediaActivityService', () => {
 			expect(result.state).toBe(MediaActivationState.FAILED);
 			expect(result.summary?.stepsFailed).toBeGreaterThan(0);
 			expect(result.summary?.failures).toBeDefined();
-			expect(result.summary!.failures![0].reason).toContain('not found');
+			expect(result.summary?.failures?.[0].reason).toContain('not found');
 
 			expect(mockEventEmitter.emit).toHaveBeenCalledWith(
 				EventType.MEDIA_ACTIVITY_FAILED,
