@@ -666,10 +666,19 @@ const getActivityIcon = (key: string): string => {
 	}
 };
 
+const getActivityContext = (key: MediaActivityKey): { isActive: boolean; state?: MediaActivationState; binding?: IMediaActivityBinding; hasSlots: boolean } => {
+	const isActive = activeState.value?.activityKey === key && activeState.value.state !== 'deactivated';
+	const state = isActive ? (activeState.value!.state as MediaActivationState) : undefined;
+	const binding = findBindingByActivity(key);
+	const hasSlots = !!(binding?.displayEndpointId || binding?.audioEndpointId || binding?.sourceEndpointId || binding?.remoteEndpointId);
+	return { isActive, state, binding, hasSlots };
+};
+
 const getActivityTagType = (key: MediaActivityKey): 'primary' | 'success' | 'warning' | 'info' | 'danger' => {
-	// Show "Active" state if this activity is the active one
-	if (activeState.value?.activityKey === key && activeState.value.state !== 'deactivated') {
-		switch (activeState.value.state as MediaActivationState) {
+	const { isActive, state, binding, hasSlots } = getActivityContext(key);
+
+	if (isActive) {
+		switch (state) {
 			case 'active':
 				return 'success';
 			case 'activating':
@@ -679,23 +688,18 @@ const getActivityTagType = (key: MediaActivityKey): 'primary' | 'success' | 'war
 		}
 	}
 
-	// Otherwise show binding configuration status
-	const binding = findBindingByActivity(key);
 	if (!binding) return 'info';
-	const hasSlots = binding.displayEndpointId || binding.audioEndpointId || binding.sourceEndpointId || binding.remoteEndpointId;
 	return hasSlots ? 'success' : 'warning';
 };
 
 const getActivityStatusLabel = (key: MediaActivityKey): string => {
-	// Show activation state if this is the active activity
-	if (activeState.value?.activityKey === key && activeState.value.state !== 'deactivated') {
-		return t(`spacesModule.media.activities.activationState.${activeState.value.state}`);
+	const { isActive, state, binding, hasSlots } = getActivityContext(key);
+
+	if (isActive) {
+		return t(`spacesModule.media.activities.activationState.${state}`);
 	}
 
-	// Otherwise show binding status
-	const binding = findBindingByActivity(key);
 	if (!binding) return t('spacesModule.media.activities.status.unconfigured');
-	const hasSlots = binding.displayEndpointId || binding.audioEndpointId || binding.sourceEndpointId || binding.remoteEndpointId;
 	return hasSlots
 		? t('spacesModule.media.activities.status.configured')
 		: t('spacesModule.media.activities.status.incomplete');

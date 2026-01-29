@@ -636,21 +636,17 @@
 				"display": "Display",
 				"audio": "Audio",
 				"source": "Source",
-				"remote": "Remote",
-				"unknownDevice": "Unknown device"
+				"remote": "Remote"
 			},
 			"failures": {
 				"title": "Failures",
-				"summaryLabel": "Execution summary",
 				"total": "Total steps",
 				"succeeded": "Succeeded",
 				"failed": "Failed",
-				"failedSteps": "Failed steps",
 				"stepIndex": "Step",
 				"device": "Device",
 				"property": "Property",
-				"reason": "Reason",
-				"warnings": "Warnings"
+				"reason": "Reason"
 			},
 			"activationState": {
 				"activating": "Activating",

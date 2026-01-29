@@ -438,6 +438,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 		if (!spaceId.value) return;
 
 		fetchingActiveState.value = true;
+		activationError.value = null;
 
 		try {
 			const { data: responseData, error } = await backend.client.GET(
@@ -504,7 +505,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 				await pollActiveState();
 			}
 
-			return activeState.value;
+			return activeState.value ?? result;
 		} catch (e: unknown) {
 			activationError.value = e instanceof Error ? e.message : 'Unknown error';
 			activeState.value = {
