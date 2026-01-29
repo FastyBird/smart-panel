@@ -1,13 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
-import {
-	ApiExtraModels,
-	ApiNoContentResponse,
-	ApiOkResponse,
-	ApiOperation,
-	ApiParam,
-	ApiQuery,
-	ApiTags,
-} from '@nestjs/swagger';
+import { ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { DevicesResponseModel } from '../../devices/models/devices-response.model';
@@ -35,6 +27,8 @@ import { ReqSuggestionFeedbackDto } from '../dto/suggestion.dto';
 import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
 import { DerivedMediaEndpointsResponseModel } from '../models/derived-media-endpoint.model';
 import {
+	BindingValidationReportModel,
+	BindingValidationResponseModel,
 	MediaActivityBindingResponseModel,
 	MediaActivityBindingsResponseModel,
 } from '../models/media-activity-binding.model';
@@ -171,6 +165,7 @@ import { IntentSpecLoaderService } from '../spec';
 	BulkSensorRolesResponseModel,
 	BulkSensorRolesResultDataModel,
 	BulkSensorRoleResultItemModel,
+	BindingValidationReportModel,
 )
 @Controller('spaces')
 export class SpacesController {
@@ -2066,52 +2061,29 @@ export class SpacesController {
 			'Reports missing slots, invalid endpoints, type mismatches, and override issues.',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
-	@ApiOkResponse({
-		description: 'Binding validation report',
-		schema: {
-			type: 'object',
-			properties: {
-				data: {
-					type: 'array',
-					items: {
-						type: 'object',
-						properties: {
-							activity_key: { type: 'string' },
-							binding_id: { type: 'string', nullable: true },
-							valid: { type: 'boolean' },
-							issues: {
-								type: 'array',
-								items: {
-									type: 'object',
-									properties: {
-										slot: { type: 'string', nullable: true },
-										severity: { type: 'string', enum: ['error', 'warning', 'info'] },
-										message: { type: 'string' },
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	})
+	@ApiSuccessResponse(BindingValidationResponseModel, 'Binding validation report')
 	@ApiNotFoundResponse('Space not found')
 	async validateMediaActivityBindings(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-	): Promise<{ data: unknown[] }> {
+	): Promise<BindingValidationResponseModel> {
 		this.logger.debug(`Validating media activity bindings for space=${id}`);
 
 		const reports = await this.spaceMediaActivityBindingService.validateBindings(id);
 
-		return {
-			data: reports.map((r) => ({
-				activity_key: r.activityKey,
-				binding_id: r.bindingId,
-				valid: r.valid,
-				issues: r.issues,
-			})),
-		};
+		const data: BindingValidationReportModel[] = reports.map((r) => {
+			const report = new BindingValidationReportModel();
+			report.activityKey = r.activityKey;
+			report.bindingId = r.bindingId;
+			report.valid = r.valid;
+			report.issues = r.issues;
+
+			return report;
+		});
+
+		const response = new BindingValidationResponseModel();
+		response.data = data;
+
+		return response;
 	}
 
 	@Get(':id/media/bindings/:bindingId')
