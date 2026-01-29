@@ -827,7 +827,9 @@ class MediaDeviceDetailPage extends StatefulWidget {
 
 class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 	SpaceStateRepository? _spaceStateRepo;
+	SocketService? _socketService;
 	bool _isSending = false;
+	bool _wsConnected = false;
 
 	MediaDeviceGroup get _group => widget.deviceGroup;
 
@@ -840,6 +842,27 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 			if (kDebugMode) {
 				debugPrint('[MediaDeviceDetailPage] Failed to get SpaceStateRepository: $e');
 			}
+		}
+		try {
+			_socketService = locator<SocketService>();
+			_socketService?.addConnectionListener(_onConnectionChanged);
+			_wsConnected = _socketService?.isConnected ?? false;
+		} catch (e) {
+			if (kDebugMode) {
+				debugPrint('[MediaDeviceDetailPage] Failed to get SocketService: $e');
+			}
+		}
+	}
+
+	@override
+	void dispose() {
+		_socketService?.removeConnectionListener(_onConnectionChanged);
+		super.dispose();
+	}
+
+	void _onConnectionChanged(bool connected) {
+		if (mounted) {
+			setState(() => _wsConnected = connected);
 		}
 	}
 
@@ -854,18 +877,64 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 				backgroundColor: AppColors.blank,
 				elevation: 0,
 			),
-			body: ListView(
-				padding: const EdgeInsets.all(16),
+			body: Stack(
 				children: [
-					// Display controls
-					if (_group.hasDisplay) _buildDisplaySection(context, _group.displayEndpoint!),
-					// Audio controls
-					if (_group.hasAudio) _buildAudioSection(context, _group.audioEndpoint!),
-					// Source controls
-					if (_group.hasSource) _buildSourceSection(context, _group.sourceEndpoint!),
-					// Remote controls
-					if (_group.hasRemote) _buildRemoteSection(context),
+					ListView(
+						padding: const EdgeInsets.all(16),
+						children: [
+							// Display controls
+							if (_group.hasDisplay) _buildDisplaySection(context, _group.displayEndpoint!),
+							// Audio controls
+							if (_group.hasAudio) _buildAudioSection(context, _group.audioEndpoint!),
+							// Source controls
+							if (_group.hasSource) _buildSourceSection(context, _group.sourceEndpoint!),
+							// Remote controls
+							if (_group.hasRemote) _buildRemoteSection(context),
+						],
+					),
+					if (!_wsConnected) _buildDetailOfflineOverlay(context),
 				],
+			),
+		);
+	}
+
+	Widget _buildDetailOfflineOverlay(BuildContext context) {
+		return GestureDetector(
+			behavior: HitTestBehavior.opaque,
+			onTap: () {},
+			child: Container(
+				color: Colors.black.withValues(alpha: 0.7),
+				child: Center(
+					child: Card(
+						margin: const EdgeInsets.all(32),
+						child: Padding(
+							padding: const EdgeInsets.all(24),
+							child: Column(
+								mainAxisSize: MainAxisSize.min,
+								children: [
+									const Icon(Icons.wifi_off, size: 48, color: Colors.grey),
+									const SizedBox(height: 16),
+									Text(
+										'Connection lost',
+										style: Theme.of(context).textTheme.titleMedium,
+										textAlign: TextAlign.center,
+									),
+									const SizedBox(height: 8),
+									Text(
+										'Media controls require a live WebSocket connection.',
+										style: Theme.of(context).textTheme.bodySmall,
+										textAlign: TextAlign.center,
+									),
+									const SizedBox(height: 16),
+									OutlinedButton(
+										onPressed: () => Navigator.of(context).pop(),
+										child: const Text('Go back'),
+									),
+								],
+							),
+						),
+					),
+				),
 			),
 		);
 	}

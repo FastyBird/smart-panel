@@ -169,6 +169,7 @@ class SpacesModuleService {
       _mediaTargetsRepository.deleteForSpace(payload['id']);
       _coversTargetsRepository.deleteForSpace(payload['id']);
       _spaceStateRepository.clearForSpace(payload['id']);
+      _mediaActivityRepository.clearForSpace(payload['id']);
 
       /// Light Target CREATE/UPDATE
     } else if (event == SpacesModuleConstants.lightTargetCreatedEvent ||
