@@ -1020,7 +1020,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     return Container(
       padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
-        color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
+        color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
         borderRadius: BorderRadius.circular(AppBorderRadius.medium),
         border: Border.all(
           color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
@@ -1772,23 +1772,26 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
       padding: EdgeInsets.symmetric(vertical: isCompact ? AppSpacings.pMd : AppSpacings.pXl),
       child: Column(
         children: [
-          RichText(
-            text: TextSpan(
-              style: TextStyle(
-                fontSize: _scale(72),
-                fontWeight: FontWeight.w200,
-                color: _getCategoryColor(context),
-              ),
-              children: [
-                TextSpan(text: _sensor.value),
-                TextSpan(
-                  text: _sensor.unit,
-                  style: TextStyle(
-                    fontSize: _scale(24),
-                    fontWeight: FontWeight.w300,
-                  ),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: RichText(
+              text: TextSpan(
+                style: TextStyle(
+                  fontSize: _scale(72),
+                  fontWeight: FontWeight.w200,
+                  color: _getCategoryColor(context),
                 ),
-              ],
+                children: [
+                  TextSpan(text: _sensor.value),
+                  TextSpan(
+                    text: _sensor.unit,
+                    style: TextStyle(
+                      fontSize: _scale(24),
+                      fontWeight: FontWeight.w300,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           AppSpacings.spacingSmVertical,
@@ -1919,15 +1922,18 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
               ),
             ),
             AppSpacings.spacingXsVertical,
-            Text(
-              value,
-              style: TextStyle(
-                color: valueColor ??
-                    (isDark
-                        ? AppTextColorDark.primary
-                        : AppTextColorLight.primary),
-                fontSize: AppFontSize.large,
-                fontWeight: FontWeight.w500,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                value,
+                style: TextStyle(
+                  color: valueColor ??
+                      (isDark
+                          ? AppTextColorDark.primary
+                          : AppTextColorLight.primary),
+                  fontSize: AppFontSize.large,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ],
@@ -1946,7 +1952,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
           : EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
       decoration: withDecoration
           ? BoxDecoration(
-              color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
+              color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
               borderRadius: BorderRadius.circular(AppBorderRadius.round),
               border: Border.all(
                 color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
@@ -2138,7 +2144,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
           : EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
       decoration: withDecoration
           ? BoxDecoration(
-              color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
+              color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
               borderRadius: BorderRadius.circular(AppBorderRadius.round),
               border: Border.all(
                 color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
