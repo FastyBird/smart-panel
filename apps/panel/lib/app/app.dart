@@ -24,6 +24,8 @@ import 'package:fastybird_smart_panel/modules/intents/export.dart'
     as intents_module;
 import 'package:fastybird_smart_panel/modules/system/export.dart'
     as system_module;
+import 'package:fastybird_smart_panel/modules/spaces/export.dart'
+    as spaces_module;
 import 'package:fastybird_smart_panel/modules/weather/export.dart'
     as weather_module;
 import 'package:flutter/material.dart';
@@ -410,6 +412,12 @@ class _MyAppState extends State<MyApp> {
         ),
         ChangeNotifierProvider.value(
           value: locator<deck_module.IntentsService>(),
+        ),
+        ChangeNotifierProvider.value(
+          value: locator<spaces_module.MediaActivityRepository>(),
+        ),
+        ChangeNotifierProvider.value(
+          value: locator<spaces_module.MediaActivityService>(),
         ),
       ],
       child: AppBody(),

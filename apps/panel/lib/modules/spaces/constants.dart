@@ -52,6 +52,16 @@ class SpacesModuleConstants {
       'SpacesModule.Space.CoversStateChanged';
   static const String sensorStateChangedEvent =
       'SpacesModule.Space.SensorStateChanged';
+
+  // Media activity lifecycle events (V2)
+  static const String mediaActivityActivatingEvent =
+      'SpacesModule.MediaActivity.Activating';
+  static const String mediaActivityActivatedEvent =
+      'SpacesModule.MediaActivity.Activated';
+  static const String mediaActivityFailedEvent =
+      'SpacesModule.MediaActivity.Failed';
+  static const String mediaActivityDeactivatedEvent =
+      'SpacesModule.MediaActivity.Deactivated';
 }
 
 /// WebSocket command handler names for spaces module intents
