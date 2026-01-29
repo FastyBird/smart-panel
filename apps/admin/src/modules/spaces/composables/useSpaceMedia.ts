@@ -53,18 +53,62 @@ export interface IBindingSavePayload {
 	audioVolumePreset?: number | null;
 }
 
+export interface IMediaStepFailure {
+	stepIndex: number;
+	reason: string;
+	targetDeviceId?: string;
+	propertyId?: string;
+}
+
+export interface IMediaActivationSummary {
+	stepsTotal: number;
+	stepsSucceeded: number;
+	stepsFailed: number;
+	failures?: IMediaStepFailure[];
+}
+
+export interface IMediaResolvedDevices {
+	displayDeviceId?: string;
+	audioDeviceId?: string;
+	sourceDeviceId?: string;
+	remoteDeviceId?: string;
+}
+
+export type MediaActivationState = 'activating' | 'active' | 'failed' | 'deactivated';
+
+export interface IMediaActiveState {
+	activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyActivatePostParametersPathActivityKey | null;
+	state: MediaActivationState;
+	resolved?: IMediaResolvedDevices;
+	summary?: IMediaActivationSummary;
+	warnings?: string[];
+	activatedAt?: string | null;
+	updatedAt?: string | null;
+}
+
 export interface IUseSpaceMedia {
 	endpoints: ComputedRef<IDerivedMediaEndpoint[]>;
 	bindings: ComputedRef<IMediaActivityBinding[]>;
+	activeState: Ref<IMediaActiveState | null>;
 	fetchingEndpoints: Ref<boolean>;
 	fetchingBindings: Ref<boolean>;
+	fetchingActiveState: Ref<boolean>;
+	activating: Ref<boolean>;
+	deactivating: Ref<boolean>;
 	savingBinding: Ref<boolean>;
 	applyingDefaults: Ref<boolean>;
 	endpointsError: Ref<string | null>;
 	bindingsError: Ref<string | null>;
 	saveError: Ref<string | null>;
+	activationError: Ref<string | null>;
+	activationErrorSource: Ref<'activate' | 'deactivate' | 'fetch' | null>;
 	fetchEndpoints: () => Promise<void>;
 	fetchBindings: () => Promise<void>;
+	fetchActiveState: () => Promise<void>;
+	activate: (
+		activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyActivatePostParametersPathActivityKey,
+	) => Promise<IMediaActiveState>;
+	deactivate: () => Promise<IMediaActiveState>;
 	saveBinding: (bindingId: string, payload: IBindingSavePayload) => Promise<IMediaActivityBinding>;
 	createBinding: (
 		activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyActivatePostParametersPathActivityKey,
@@ -117,18 +161,97 @@ const transformBinding = (raw: Record<string, unknown>): IMediaActivityBinding =
 	};
 };
 
+const transformStepFailure = (raw: Record<string, unknown>): IMediaStepFailure => ({
+	stepIndex: (raw.step_index as number) ?? (raw.stepIndex as number) ?? 0,
+	reason: (raw.reason as string) ?? '',
+	targetDeviceId: (raw.target_device_id as string | undefined) ?? (raw.targetDeviceId as string | undefined),
+	propertyId: (raw.property_id as string | undefined) ?? (raw.propertyId as string | undefined),
+});
+
+const transformResolvedDevices = (data: Record<string, unknown>): IMediaResolvedDevices => ({
+	displayDeviceId: (data.display_device_id as string | undefined) ?? (data.displayDeviceId as string | undefined),
+	audioDeviceId: (data.audio_device_id as string | undefined) ?? (data.audioDeviceId as string | undefined),
+	sourceDeviceId: (data.source_device_id as string | undefined) ?? (data.sourceDeviceId as string | undefined),
+	remoteDeviceId: (data.remote_device_id as string | undefined) ?? (data.remoteDeviceId as string | undefined),
+});
+
+const transformSummary = (data: Record<string, unknown>): IMediaActivationSummary => ({
+	stepsTotal: (data.steps_total as number) ?? (data.stepsTotal as number) ?? 0,
+	stepsSucceeded: (data.steps_succeeded as number) ?? (data.stepsSucceeded as number) ?? 0,
+	stepsFailed: (data.steps_failed as number) ?? (data.stepsFailed as number) ?? 0,
+	failures: Array.isArray(data.failures)
+		? (data.failures as Record<string, unknown>[]).map(transformStepFailure)
+		: undefined,
+});
+
+const transformActivationResult = (raw: Record<string, unknown>): IMediaActiveState => {
+	const resolved = raw.resolved as Record<string, unknown> | undefined;
+	const summary = raw.summary as Record<string, unknown> | undefined;
+
+	return {
+		activityKey:
+			(raw.activity_key as PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyActivatePostParametersPathActivityKey) ??
+			null,
+		state: (raw.state as MediaActivationState) ?? 'deactivated',
+		resolved: resolved ? transformResolvedDevices(resolved) : undefined,
+		summary: summary ? transformSummary(summary) : undefined,
+		warnings: raw.warnings as string[] | undefined,
+	};
+};
+
+const transformActiveEntity = (raw: Record<string, unknown>): IMediaActiveState => {
+	let resolved: IMediaResolvedDevices | undefined;
+	let summary: IMediaActivationSummary | undefined;
+
+	if (raw.resolved) {
+		try {
+			const parsed = typeof raw.resolved === 'string' ? JSON.parse(raw.resolved) : raw.resolved;
+			resolved = transformResolvedDevices(parsed as Record<string, unknown>);
+		} catch {
+			// ignore parse errors
+		}
+	}
+
+	if (raw.last_result) {
+		try {
+			const parsed = typeof raw.last_result === 'string' ? JSON.parse(raw.last_result) : raw.last_result;
+			summary = transformSummary(parsed as Record<string, unknown>);
+		} catch {
+			// ignore parse errors
+		}
+	}
+
+	return {
+		activityKey:
+			(raw.activity_key as PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyActivatePostParametersPathActivityKey) ??
+			null,
+		state: (raw.state as MediaActivationState) ?? 'deactivated',
+		resolved,
+		summary,
+		warnings: raw.warnings as string[] | undefined,
+		activatedAt: (raw.activated_at as string) ?? null,
+		updatedAt: (raw.updated_at as string) ?? null,
+	};
+};
+
 export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia => {
 	const backend = useBackend();
 
 	const endpointsData = ref<IDerivedMediaEndpoint[]>([]);
 	const bindingsData = ref<IMediaActivityBinding[]>([]);
+	const activeState = ref<IMediaActiveState | null>(null);
 	const fetchingEndpoints = ref<boolean>(false);
 	const fetchingBindings = ref<boolean>(false);
+	const fetchingActiveState = ref<boolean>(false);
+	const activating = ref<boolean>(false);
+	const deactivating = ref<boolean>(false);
 	const savingBinding = ref<boolean>(false);
 	const applyingDefaults = ref<boolean>(false);
 	const endpointsError = ref<string | null>(null);
 	const bindingsError = ref<string | null>(null);
 	const saveError = ref<string | null>(null);
+	const activationError = ref<string | null>(null);
+	const activationErrorSource = ref<'activate' | 'deactivate' | 'fetch' | null>(null);
 
 	const endpoints = computed<IDerivedMediaEndpoint[]>(() => endpointsData.value);
 	const bindings = computed<IMediaActivityBinding[]>(() => bindingsData.value);
@@ -302,6 +425,128 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 		}
 	};
 
+	const fetchActiveState = async (): Promise<void> => {
+		if (!spaceId.value || fetchingActiveState.value) return;
+
+		fetchingActiveState.value = true;
+		activationError.value = null;
+		activationErrorSource.value = null;
+
+		try {
+			const { data: responseData, error } = await backend.client.GET(
+				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/media/activities/active`,
+				{ params: { path: { id: spaceId.value } } },
+			);
+
+			if (error || !responseData) {
+				throw new Error('Failed to fetch active state');
+			}
+
+			const raw = responseData.data as Record<string, unknown> | null;
+			activeState.value = raw ? transformActiveEntity(raw) : null;
+		} catch (e: unknown) {
+			activationError.value = e instanceof Error ? e.message : 'Unknown error';
+			activationErrorSource.value = 'fetch';
+		} finally {
+			fetchingActiveState.value = false;
+		}
+	};
+
+	const pollActiveState = async (attempts: number = 3, delayMs: number = 1000): Promise<void> => {
+		for (let i = 0; i < attempts; i++) {
+			await new Promise((resolve) => setTimeout(resolve, delayMs));
+			await fetchActiveState();
+			if (activeState.value?.state === 'active' || activeState.value?.state === 'failed' || activeState.value?.state === 'deactivated') {
+				break;
+			}
+		}
+	};
+
+	const activate = async (
+		activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyActivatePostParametersPathActivityKey,
+	): Promise<IMediaActiveState> => {
+		if (!spaceId.value) throw new Error('Space ID is required');
+
+		activating.value = true;
+		activationError.value = null;
+		activationErrorSource.value = null;
+
+		// Optimistic UI
+		activeState.value = {
+			activityKey,
+			state: 'activating',
+		};
+
+		try {
+			const { data: responseData, error } = await backend.client.POST(
+				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/media/activities/{activityKey}/activate`,
+				{
+					params: { path: { id: spaceId.value, activityKey } },
+				},
+			);
+
+			if (error || !responseData || !responseData.data) {
+				const errBody = error as Record<string, unknown> | undefined;
+				const message = (errBody?.message as string) ?? 'Failed to activate activity';
+				throw new Error(message);
+			}
+
+			const result = transformActivationResult(responseData.data as unknown as Record<string, unknown>);
+			activeState.value = result;
+
+			// Poll for stable state if still activating
+			if (result.state === 'activating') {
+				await pollActiveState();
+			}
+
+			return activeState.value ?? result;
+		} catch (e: unknown) {
+			activationError.value = e instanceof Error ? e.message : 'Unknown error';
+			activationErrorSource.value = 'activate';
+			activeState.value = {
+				activityKey,
+				state: 'failed',
+			};
+			throw e;
+		} finally {
+			activating.value = false;
+		}
+	};
+
+	const deactivate = async (): Promise<IMediaActiveState> => {
+		if (!spaceId.value) throw new Error('Space ID is required');
+
+		deactivating.value = true;
+		activationError.value = null;
+		activationErrorSource.value = null;
+
+		try {
+			const { data: responseData, error } = await backend.client.POST(
+				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/media/activities/deactivate`,
+				{
+					params: { path: { id: spaceId.value } },
+				},
+			);
+
+			if (error || !responseData || !responseData.data) {
+				const errBody = error as Record<string, unknown> | undefined;
+				const message = (errBody?.message as string) ?? 'Failed to deactivate';
+				throw new Error(message);
+			}
+
+			const result = transformActivationResult(responseData.data as unknown as Record<string, unknown>);
+			activeState.value = result;
+
+			return result;
+		} catch (e: unknown) {
+			activationError.value = e instanceof Error ? e.message : 'Unknown error';
+			activationErrorSource.value = 'deactivate';
+			throw e;
+		} finally {
+			deactivating.value = false;
+		}
+	};
+
 	const endpointsByType = (
 		type: SpacesModuleCreateMediaEndpointType,
 	): ComputedRef<IDerivedMediaEndpoint[]> => {
@@ -317,15 +562,24 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 	return {
 		endpoints,
 		bindings,
+		activeState,
 		fetchingEndpoints,
 		fetchingBindings,
+		fetchingActiveState,
+		activating,
+		deactivating,
 		savingBinding,
 		applyingDefaults,
 		endpointsError,
 		bindingsError,
 		saveError,
+		activationError,
+		activationErrorSource,
 		fetchEndpoints,
 		fetchBindings,
+		fetchActiveState,
+		activate,
+		deactivate,
 		saveBinding,
 		createBinding,
 		applyDefaults,

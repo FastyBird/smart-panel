@@ -614,6 +614,46 @@
 				"configured": "Configured",
 				"incomplete": "Incomplete",
 				"unconfigured": "Not set"
+			},
+			"run": "Run",
+			"deactivate": "Deactivate",
+			"refreshStatus": "Refresh status",
+			"rerun": "Re-run",
+			"copyDebugJson": "Copy debug JSON",
+			"copiedToClipboard": "Debug JSON copied to clipboard.",
+			"activateSuccess": "Activity activated successfully.",
+			"activateFailed": "Failed to activate activity.",
+			"deactivateSuccess": "Activity deactivated.",
+			"deactivateFailed": "Failed to deactivate activity.",
+			"fetchFailed": "Failed to refresh activity status.",
+			"activePanel": {
+				"title": "Active State",
+				"currentActivity": "Current activity",
+				"none": "None",
+				"state": "State",
+				"activatedAt": "Activated at",
+				"updatedAt": "Updated at",
+				"resolvedDevices": "Resolved devices",
+				"display": "Display",
+				"audio": "Audio",
+				"source": "Source",
+				"remote": "Remote"
+			},
+			"failures": {
+				"title": "Failures",
+				"total": "Total steps",
+				"succeeded": "Succeeded",
+				"failed": "Failed",
+				"stepIndex": "Step",
+				"device": "Device",
+				"property": "Property",
+				"reason": "Reason"
+			},
+			"activationState": {
+				"activating": "Activating",
+				"active": "Active",
+				"failed": "Failed",
+				"deactivated": "Deactivated"
 			}
 		}
 	},

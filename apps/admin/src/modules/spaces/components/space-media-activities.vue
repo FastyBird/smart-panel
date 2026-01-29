@@ -4,7 +4,237 @@
 		:element-loading-text="t('spacesModule.media.activities.loading')"
 		class="flex flex-col gap-4"
 	>
-		<div class="flex items-center justify-end gap-2 mb-2">
+		<!-- Active State Panel -->
+		<el-card
+			v-if="activeState"
+			shadow="never"
+			:class="['border-l-4', activeStateBorderClass]"
+		>
+			<template #header>
+				<div class="flex items-center justify-between">
+					<div class="flex items-center gap-2">
+						<icon
+							icon="mdi:play-circle"
+							class="w[20px] h[20px]"
+						/>
+						<span class="font-medium">{{ t('spacesModule.media.activities.activePanel.title') }}</span>
+					</div>
+					<div class="flex items-center gap-2">
+						<el-button
+							size="small"
+							:loading="fetchingActiveState"
+							@click="onRefreshStatus"
+						>
+							<template #icon>
+								<icon icon="mdi:refresh" />
+							</template>
+							{{ t('spacesModule.media.activities.refreshStatus') }}
+						</el-button>
+						<el-button
+							v-if="activeState.activityKey && activeState.state !== 'deactivated'"
+							size="small"
+							type="warning"
+							:loading="deactivating"
+							:disabled="activating || deactivating"
+							@click="onDeactivate"
+						>
+							<template #icon>
+								<icon icon="mdi:stop" />
+							</template>
+							{{ t('spacesModule.media.activities.deactivate') }}
+						</el-button>
+						<el-button
+							v-if="activeState.activityKey && (activeState.state === 'active' || activeState.state === 'failed')"
+							size="small"
+							type="primary"
+							:loading="activating"
+							:disabled="activating || deactivating"
+							@click="onRerun"
+						>
+							<template #icon>
+								<icon icon="mdi:replay" />
+							</template>
+							{{ t('spacesModule.media.activities.rerun') }}
+						</el-button>
+					</div>
+				</div>
+			</template>
+
+			<div class="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+				<div>
+					<span class="text-gray-500">{{ t('spacesModule.media.activities.activePanel.currentActivity') }}:</span>
+					<span class="ml-2 font-medium">
+						{{ activeState.activityKey ? t(`spacesModule.media.activityLabels.${activeState.activityKey}`) : t('spacesModule.media.activities.activePanel.none') }}
+					</span>
+				</div>
+				<div>
+					<span class="text-gray-500">{{ t('spacesModule.media.activities.activePanel.state') }}:</span>
+					<el-tag
+						:type="activationStateTagType"
+						size="small"
+						class="ml-2"
+					>
+						{{ t(`spacesModule.media.activities.activationState.${activeState.state}`) }}
+					</el-tag>
+				</div>
+				<div v-if="activeState.activatedAt">
+					<span class="text-gray-500">{{ t('spacesModule.media.activities.activePanel.activatedAt') }}:</span>
+					<span class="ml-2">{{ formatTimestamp(activeState.activatedAt) }}</span>
+				</div>
+				<div v-if="activeState.updatedAt">
+					<span class="text-gray-500">{{ t('spacesModule.media.activities.activePanel.updatedAt') }}:</span>
+					<span class="ml-2">{{ formatTimestamp(activeState.updatedAt) }}</span>
+				</div>
+			</div>
+
+			<!-- Resolved devices -->
+			<div
+				v-if="activeState.resolved"
+				class="mt-3 pt-3 border-t border-gray-100"
+			>
+				<div class="text-sm text-gray-500 mb-2">{{ t('spacesModule.media.activities.activePanel.resolvedDevices') }}</div>
+				<div class="grid grid-cols-2 gap-2 text-sm">
+					<div v-if="activeState.resolved.displayDeviceId">
+						<span class="text-gray-400">{{ t('spacesModule.media.activities.activePanel.display') }}:</span>
+						<span class="ml-1">{{ resolveDeviceName(activeState.resolved.displayDeviceId) }}</span>
+					</div>
+					<div v-if="activeState.resolved.audioDeviceId">
+						<span class="text-gray-400">{{ t('spacesModule.media.activities.activePanel.audio') }}:</span>
+						<span class="ml-1">{{ resolveDeviceName(activeState.resolved.audioDeviceId) }}</span>
+					</div>
+					<div v-if="activeState.resolved.sourceDeviceId">
+						<span class="text-gray-400">{{ t('spacesModule.media.activities.activePanel.source') }}:</span>
+						<span class="ml-1">{{ resolveDeviceName(activeState.resolved.sourceDeviceId) }}</span>
+					</div>
+					<div v-if="activeState.resolved.remoteDeviceId">
+						<span class="text-gray-400">{{ t('spacesModule.media.activities.activePanel.remote') }}:</span>
+						<span class="ml-1">{{ resolveDeviceName(activeState.resolved.remoteDeviceId) }}</span>
+					</div>
+				</div>
+			</div>
+
+			<!-- Warnings -->
+			<div
+				v-if="activeState.warnings?.length"
+				class="mt-3"
+			>
+				<el-alert
+					v-for="(warning, idx) in activeState.warnings"
+					:key="idx"
+					type="warning"
+					:title="warning"
+					show-icon
+					:closable="false"
+					class="mb-1"
+				/>
+			</div>
+
+			<!-- Failures section -->
+			<div
+				v-if="activeState.summary && activeState.summary.stepsFailed > 0"
+				class="mt-3 pt-3 border-t border-gray-100"
+			>
+				<div class="flex items-center justify-between mb-2">
+					<div class="flex items-center gap-2">
+						<icon
+							icon="mdi:alert-circle"
+							class="w[18px] h[18px] text-red-500"
+						/>
+						<span class="font-medium text-sm text-red-600">{{ t('spacesModule.media.activities.failures.title') }}</span>
+					</div>
+					<el-button
+						size="small"
+						text
+						@click="onCopyDebugJson"
+					>
+						<template #icon>
+							<icon icon="mdi:content-copy" />
+						</template>
+						{{ t('spacesModule.media.activities.copyDebugJson') }}
+					</el-button>
+				</div>
+
+				<!-- Summary counts -->
+				<div class="flex gap-4 text-sm mb-3">
+					<span>
+						<span class="text-gray-500">{{ t('spacesModule.media.activities.failures.total') }}:</span>
+						<span class="ml-1 font-medium">{{ activeState.summary.stepsTotal }}</span>
+					</span>
+					<span>
+						<span class="text-gray-500">{{ t('spacesModule.media.activities.failures.succeeded') }}:</span>
+						<span class="ml-1 font-medium text-green-600">{{ activeState.summary.stepsSucceeded }}</span>
+					</span>
+					<span>
+						<span class="text-gray-500">{{ t('spacesModule.media.activities.failures.failed') }}:</span>
+						<span class="ml-1 font-medium text-red-600">{{ activeState.summary.stepsFailed }}</span>
+					</span>
+				</div>
+
+				<!-- Failed steps table -->
+				<el-table
+					v-if="activeState.summary.failures?.length"
+					:data="activeState.summary.failures"
+					size="small"
+					border
+					class="mb-2"
+				>
+					<el-table-column
+						:label="t('spacesModule.media.activities.failures.stepIndex')"
+						prop="stepIndex"
+						width="80"
+					/>
+					<el-table-column
+						:label="t('spacesModule.media.activities.failures.device')"
+						min-width="140"
+					>
+						<template #default="{ row }">
+							{{ row.targetDeviceId ? resolveDeviceName(row.targetDeviceId) : '-' }}
+						</template>
+					</el-table-column>
+					<el-table-column
+						:label="t('spacesModule.media.activities.failures.property')"
+						min-width="120"
+					>
+						<template #default="{ row }">
+							{{ row.propertyId ?? '-' }}
+						</template>
+					</el-table-column>
+					<el-table-column
+						:label="t('spacesModule.media.activities.failures.reason')"
+						prop="reason"
+						min-width="200"
+					/>
+				</el-table>
+			</div>
+		</el-card>
+
+		<!-- Activation error -->
+		<el-alert
+			v-if="activationError"
+			type="error"
+			:title="t(`spacesModule.media.activities.${activationErrorSource === 'deactivate' ? 'deactivateFailed' : activationErrorSource === 'fetch' ? 'fetchFailed' : 'activateFailed'}`)"
+			:description="activationError"
+			show-icon
+			closable
+			@close="activationError = null"
+		/>
+
+		<!-- Top controls -->
+		<div class="flex items-center justify-between gap-2 mb-2">
+			<div class="flex items-center gap-2">
+				<el-button
+					type="warning"
+					plain
+					:loading="deactivating"
+					:disabled="activating || deactivating || !activeState || activeState.state === 'deactivated'"
+					@click="onDeactivate"
+				>
+					<template #icon>
+						<icon icon="mdi:stop" />
+					</template>
+					{{ t('spacesModule.media.activities.deactivate') }}
+				</el-button>
+			</div>
 			<el-button
 				type="primary"
 				plain
@@ -20,7 +250,7 @@
 
 		<div class="flex gap-4 min-h-400px">
 			<!-- Left: Activity list -->
-			<div class="w-240px shrink-0">
+			<div class="w-280px shrink-0">
 				<el-card
 					shadow="never"
 					body-class="p-0!"
@@ -46,12 +276,25 @@
 								</div>
 							</div>
 							<el-tag
-								:type="getActivityStatusType(activity)"
+								:type="getActivityTagType(activity)"
 								size="small"
 								round
 							>
 								{{ getActivityStatusLabel(activity) }}
 							</el-tag>
+							<el-button
+								size="small"
+								type="success"
+								circle
+								:loading="activating && activatingKey === activity"
+								:disabled="activating || deactivating"
+								:title="t('spacesModule.media.activities.run')"
+								@click.stop="onActivate(activity)"
+							>
+								<template #icon>
+									<icon icon="mdi:play" />
+								</template>
+							</el-button>
 						</div>
 					</template>
 				</el-card>
@@ -260,6 +503,8 @@ import {
 	ElResult,
 	ElSelect,
 	ElSlider,
+	ElTable,
+	ElTableColumn,
 	ElTag,
 	vLoading,
 } from 'element-plus';
@@ -268,6 +513,7 @@ import { Icon } from '@iconify/vue';
 import { useFlashMessage } from '../../../common';
 import {
 	type IMediaActivityBinding,
+	type MediaActivationState,
 	MediaActivityKey,
 	MediaEndpointType,
 	useSpaceMedia,
@@ -287,13 +533,22 @@ const flashMessage = useFlashMessage();
 const spaceIdRef = computed(() => props.spaceId);
 const {
 	endpoints,
+	activeState,
 	fetchingEndpoints,
 	fetchingBindings,
+	fetchingActiveState,
+	activating,
+	deactivating,
 	savingBinding,
 	applyingDefaults,
 	saveError,
+	activationError,
+	activationErrorSource,
 	fetchEndpoints,
 	fetchBindings,
+	fetchActiveState,
+	activate,
+	deactivate,
 	saveBinding,
 	createBinding,
 	applyDefaults,
@@ -310,6 +565,7 @@ const activityKeys = [
 ];
 
 const selectedActivity = ref<MediaActivityKey | null>(null);
+const activatingKey = ref<MediaActivityKey | null>(null);
 
 const form = reactive<{
 	displayEndpointId: string;
@@ -362,6 +618,42 @@ const formChanged = computed(() => {
 	);
 });
 
+const activeStateBorderClass = computed(() => {
+	if (!activeState.value) return 'border-gray-300';
+	switch (activeState.value.state) {
+		case 'active':
+			return 'border-green-500';
+		case 'activating':
+			return 'border-blue-500';
+		case 'failed':
+			return 'border-red-500';
+		case 'deactivated':
+			return 'border-gray-300';
+		default:
+			return 'border-gray-300';
+	}
+});
+
+const getStateTagType = (state: string): 'primary' | 'success' | 'warning' | 'info' | 'danger' => {
+	switch (state) {
+		case 'active':
+			return 'success';
+		case 'activating':
+			return 'primary';
+		case 'failed':
+			return 'danger';
+		case 'deactivated':
+			return 'info';
+		default:
+			return 'info';
+	}
+};
+
+const activationStateTagType = computed<'primary' | 'success' | 'warning' | 'info' | 'danger'>(() => {
+	if (!activeState.value) return 'info';
+	return getStateTagType(activeState.value.state);
+});
+
 const getActivityIcon = (key: string): string => {
 	switch (key) {
 		case MediaActivityKey.watch:
@@ -379,22 +671,47 @@ const getActivityIcon = (key: string): string => {
 	}
 };
 
-const getActivityStatusType = (key: MediaActivityKey): 'primary' | 'success' | 'warning' | 'info' | 'danger' => {
+const getActivityContext = (key: MediaActivityKey): { isActive: boolean; state?: MediaActivationState; binding?: IMediaActivityBinding; hasSlots: boolean } => {
+	const isActive = activeState.value?.activityKey === key && activeState.value.state !== 'deactivated';
+	const state = isActive ? (activeState.value!.state as MediaActivationState) : undefined;
 	const binding = findBindingByActivity(key);
-	if (!binding) return 'info';
+	const hasSlots = !!(binding?.displayEndpointId || binding?.audioEndpointId || binding?.sourceEndpointId || binding?.remoteEndpointId);
+	return { isActive, state, binding, hasSlots };
+};
 
-	const hasSlots = binding.displayEndpointId || binding.audioEndpointId || binding.sourceEndpointId || binding.remoteEndpointId;
+const getActivityTagType = (key: MediaActivityKey): 'primary' | 'success' | 'warning' | 'info' | 'danger' => {
+	const { isActive, state, binding, hasSlots } = getActivityContext(key);
+
+	if (isActive && state) {
+		return getStateTagType(state);
+	}
+
+	if (!binding) return 'info';
 	return hasSlots ? 'success' : 'warning';
 };
 
 const getActivityStatusLabel = (key: MediaActivityKey): string => {
-	const binding = findBindingByActivity(key);
-	if (!binding) return t('spacesModule.media.activities.status.unconfigured');
+	const { isActive, state, binding, hasSlots } = getActivityContext(key);
 
-	const hasSlots = binding.displayEndpointId || binding.audioEndpointId || binding.sourceEndpointId || binding.remoteEndpointId;
+	if (isActive) {
+		return t(`spacesModule.media.activities.activationState.${state}`);
+	}
+
+	if (!binding) return t('spacesModule.media.activities.status.unconfigured');
 	return hasSlots
 		? t('spacesModule.media.activities.status.configured')
 		: t('spacesModule.media.activities.status.incomplete');
+};
+
+const resolveDeviceName = (deviceId: string): string => {
+	// Try to find the device name from endpoints data (endpoints contain deviceId and name)
+	const ep = endpoints.value.find((e) => e.deviceId === deviceId);
+	return ep?.name ?? deviceId;
+};
+
+const formatTimestamp = (ts: string): string => {
+	const date = new Date(ts);
+	return isNaN(date.getTime()) ? ts : date.toLocaleString();
 };
 
 const loadBindingIntoForm = (binding: IMediaActivityBinding | undefined): void => {
@@ -472,7 +789,47 @@ const onApplyDefaults = async (): Promise<void> => {
 	}
 };
 
+const onActivate = async (key: MediaActivityKey): Promise<void> => {
+	activatingKey.value = key;
+	try {
+		await activate(key);
+		flashMessage.success(t('spacesModule.media.activities.activateSuccess'));
+	} catch {
+		flashMessage.error(t('spacesModule.media.activities.activateFailed'));
+	} finally {
+		activatingKey.value = null;
+	}
+};
+
+const onDeactivate = async (): Promise<void> => {
+	try {
+		await deactivate();
+		flashMessage.success(t('spacesModule.media.activities.deactivateSuccess'));
+	} catch {
+		flashMessage.error(t('spacesModule.media.activities.deactivateFailed'));
+	}
+};
+
+const onRerun = async (): Promise<void> => {
+	if (!activeState.value?.activityKey) return;
+	await onActivate(activeState.value.activityKey as MediaActivityKey);
+};
+
+const onRefreshStatus = async (): Promise<void> => {
+	await fetchActiveState();
+};
+
+const onCopyDebugJson = async (): Promise<void> => {
+	if (!activeState.value) return;
+	try {
+		await navigator.clipboard.writeText(JSON.stringify(activeState.value, null, 2));
+		flashMessage.success(t('spacesModule.media.activities.copiedToClipboard'));
+	} catch {
+		// Clipboard API may fail in non-secure contexts; silently ignore
+	}
+};
+
 onBeforeMount(async () => {
-	await Promise.all([fetchEndpoints(), fetchBindings()]);
+	await Promise.all([fetchEndpoints(), fetchBindings(), fetchActiveState()]);
 });
 </script>
