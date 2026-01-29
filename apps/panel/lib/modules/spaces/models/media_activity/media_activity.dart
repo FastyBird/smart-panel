@@ -1,5 +1,7 @@
 // Media activity domain models for the V2 activity-based media architecture.
 
+import 'dart:convert';
+
 /// Activity keys matching backend MediaActivityKey enum.
 enum MediaActivityKey {
 	watch,
@@ -12,6 +14,7 @@ enum MediaActivityKey {
 /// Activation lifecycle states matching backend MediaActivationState enum.
 enum MediaActivationState {
 	activating,
+	deactivating,
 	active,
 	failed,
 	deactivated,
@@ -79,6 +82,8 @@ MediaActivationState? mediaActivationStateFromString(String? value) {
 	switch (value) {
 		case 'activating':
 			return MediaActivationState.activating;
+		case 'deactivating':
+			return MediaActivationState.deactivating;
 		case 'active':
 			return MediaActivationState.active;
 		case 'failed':
@@ -332,6 +337,7 @@ class MediaActiveStateModel {
 
 	bool get isActive => state == MediaActivationState.active;
 	bool get isActivating => state == MediaActivationState.activating;
+	bool get isDeactivating => state == MediaActivationState.deactivating;
 	bool get isFailed => state == MediaActivationState.failed;
 	bool get isDeactivated => state == MediaActivationState.deactivated;
 	bool get hasWarnings => warnings.isNotEmpty;
@@ -345,8 +351,10 @@ class MediaActiveStateModel {
 			resolved = MediaActivityResolvedModel.fromJson(resolvedRaw);
 		} else if (resolvedRaw is String && resolvedRaw.isNotEmpty) {
 			try {
-				// It might be a JSON-encoded string
-				resolved = null; // Skip string parsing for safety
+				final decoded = jsonDecode(resolvedRaw);
+				if (decoded is Map<String, dynamic>) {
+					resolved = MediaActivityResolvedModel.fromJson(decoded);
+				}
 			} catch (_) {
 				resolved = null;
 			}

@@ -38,7 +38,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 
 	bool _isLoading = true;
 	bool _isSending = false;
-	bool _wsConnected = true;
+	bool _wsConnected = false;
 
 	String get _roomId => widget.viewItem.roomId;
 
@@ -395,6 +395,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 		if (state.isActivating) {
 			badgeColor = Colors.orange;
 			label = 'Activating...';
+		} else if (state.isDeactivating) {
+			badgeColor = Colors.orange;
+			label = 'Deactivating...';
 		} else if (state.isActive) {
 			badgeColor = Colors.green;
 			label = 'Active';

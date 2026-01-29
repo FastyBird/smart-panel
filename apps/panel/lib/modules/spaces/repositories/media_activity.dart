@@ -251,7 +251,7 @@ class MediaActivityRepository extends ChangeNotifier {
 		_activeStates[spaceId] = MediaActiveStateModel(
 			spaceId: spaceId,
 			activityKey: MediaActivityKey.off,
-			state: MediaActivationState.activating,
+			state: MediaActivationState.deactivating,
 		);
 		notifyListeners();
 
