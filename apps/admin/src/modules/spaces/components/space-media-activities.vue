@@ -633,9 +633,8 @@ const activeStateBorderClass = computed(() => {
 	}
 });
 
-const activationStateTagType = computed<'primary' | 'success' | 'warning' | 'info' | 'danger'>(() => {
-	if (!activeState.value) return 'info';
-	switch (activeState.value.state) {
+const getStateTagType = (state: string): 'primary' | 'success' | 'warning' | 'info' | 'danger' => {
+	switch (state) {
 		case 'active':
 			return 'success';
 		case 'activating':
@@ -647,6 +646,11 @@ const activationStateTagType = computed<'primary' | 'success' | 'warning' | 'inf
 		default:
 			return 'info';
 	}
+};
+
+const activationStateTagType = computed<'primary' | 'success' | 'warning' | 'info' | 'danger'>(() => {
+	if (!activeState.value) return 'info';
+	return getStateTagType(activeState.value.state);
 });
 
 const getActivityIcon = (key: string): string => {
@@ -677,15 +681,8 @@ const getActivityContext = (key: MediaActivityKey): { isActive: boolean; state?:
 const getActivityTagType = (key: MediaActivityKey): 'primary' | 'success' | 'warning' | 'info' | 'danger' => {
 	const { isActive, state, binding, hasSlots } = getActivityContext(key);
 
-	if (isActive) {
-		switch (state) {
-			case 'active':
-				return 'success';
-			case 'activating':
-				return 'primary';
-			case 'failed':
-				return 'danger';
-		}
+	if (isActive && state) {
+		return getStateTagType(state);
 	}
 
 	if (!binding) return 'info';

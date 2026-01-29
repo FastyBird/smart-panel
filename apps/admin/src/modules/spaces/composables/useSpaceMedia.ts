@@ -161,10 +161,10 @@ const transformBinding = (raw: Record<string, unknown>): IMediaActivityBinding =
 };
 
 const transformStepFailure = (raw: Record<string, unknown>): IMediaStepFailure => ({
-	stepIndex: (raw.step_index as number) ?? 0,
+	stepIndex: (raw.step_index as number) ?? (raw.stepIndex as number) ?? 0,
 	reason: (raw.reason as string) ?? '',
-	targetDeviceId: raw.target_device_id as string | undefined,
-	propertyId: raw.property_id as string | undefined,
+	targetDeviceId: (raw.target_device_id as string | undefined) ?? (raw.targetDeviceId as string | undefined),
+	propertyId: (raw.property_id as string | undefined) ?? (raw.propertyId as string | undefined),
 });
 
 const transformActivationResult = (raw: Record<string, unknown>): IMediaActiveState => {
@@ -239,6 +239,7 @@ const transformActiveEntity = (raw: Record<string, unknown>): IMediaActiveState 
 		state: (raw.state as MediaActivationState) ?? 'deactivated',
 		resolved,
 		summary,
+		warnings: raw.warnings as string[] | undefined,
 		activatedAt: (raw.activated_at as string) ?? null,
 		updatedAt: (raw.updated_at as string) ?? null,
 	};
@@ -435,7 +436,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 	};
 
 	const fetchActiveState = async (): Promise<void> => {
-		if (!spaceId.value) return;
+		if (!spaceId.value || fetchingActiveState.value) return;
 
 		fetchingActiveState.value = true;
 		activationError.value = null;
