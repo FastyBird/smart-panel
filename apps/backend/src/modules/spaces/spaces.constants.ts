@@ -1717,6 +1717,23 @@ export enum MediaEndpointType {
 }
 
 /**
+ * Media Activity Key - predefined activity types for activity bindings.
+ * Each activity maps to a set of endpoint slots (display, audio, source, remote).
+ */
+export enum MediaActivityKey {
+	/** Watch activity - video content (TV + AVR + source) */
+	WATCH = 'watch',
+	/** Listen activity - audio content (speakers/AVR only) */
+	LISTEN = 'listen',
+	/** Gaming activity - gaming (low latency, game console) */
+	GAMING = 'gaming',
+	/** Background activity - ambient audio at low volume */
+	BACKGROUND = 'background',
+	/** Off activity - all media devices powered off */
+	OFF = 'off',
+}
+
+/**
  * Media Routing Types - activity presets that define endpoint configurations
  */
 export enum MediaRoutingType {

@@ -212,7 +212,7 @@ export class DerivedMediaEndpointService {
 				caps.volume = !!summary.volume;
 				caps.mute = !!summary.mute;
 				caps.inputSelect = false;
-				caps.playback = false;
+				caps.playback = !!summary.playback;
 				caps.track = false;
 				caps.remoteCommands = false;
 				break;

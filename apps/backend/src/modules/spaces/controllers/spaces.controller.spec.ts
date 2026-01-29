@@ -20,6 +20,7 @@ import { SpaceCoversRoleService } from '../services/space-covers-role.service';
 import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
 import { SpaceLightingStateService } from '../services/space-lighting-state.service';
+import { SpaceMediaActivityBindingService } from '../services/space-media-activity-binding.service';
 import { SpaceSensorRoleService } from '../services/space-sensor-role.service';
 import { SpaceSensorStateService } from '../services/space-sensor-state.service';
 import { SpaceSuggestionService } from '../services/space-suggestion.service';
@@ -454,6 +455,21 @@ describe('SpacesController', () => {
 							spaceId: mockSpace.id,
 							endpoints: [],
 						}),
+					},
+				},
+				{
+					provide: SpaceMediaActivityBindingService,
+					useValue: {
+						findBySpace: jest.fn().mockResolvedValue([]),
+						findOne: jest.fn().mockResolvedValue(null),
+						getOneOrThrow: jest.fn().mockResolvedValue(null),
+						getOneOrThrowForSpace: jest.fn().mockResolvedValue(null),
+						create: jest.fn().mockResolvedValue(null),
+						update: jest.fn().mockResolvedValue(null),
+						updateForSpace: jest.fn().mockResolvedValue(null),
+						delete: jest.fn().mockResolvedValue(undefined),
+						deleteForSpace: jest.fn().mockResolvedValue(undefined),
+						applyDefaults: jest.fn().mockResolvedValue([]),
 					},
 				},
 			],
