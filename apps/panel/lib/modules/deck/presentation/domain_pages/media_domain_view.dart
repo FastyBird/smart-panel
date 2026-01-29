@@ -227,7 +227,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 		final localizations = AppLocalizations.of(context)!;
 		final hasActive = activeState != null && activeState.isActive;
 		final subtitle = hasActive
-				? '${_activityLabel(activeState!.activityKey)} active'
+				? '${_activityLabel(activeState.activityKey)} active'
 				: localizations.media_mode_off;
 
 		return PageHeader(
@@ -454,7 +454,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 	Widget _buildInputControl(BuildContext context) {
 		return Row(
 			children: [
-				Icon(MdiIcons.import_, size: 20),
+				Icon(MdiIcons.audioInputStereoMinijack, size: 20),
 				const SizedBox(width: 8),
 				const Text('Input'),
 				const Spacer(),
@@ -702,7 +702,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 		if (group.hasAudio) return MdiIcons.speaker;
 		if (group.hasSource) return MdiIcons.playCircle;
 		if (group.hasRemote) return MdiIcons.remote;
-		return MdiIcons.devicesOther;
+		return MdiIcons.devices;
 	}
 
 	String _deviceGroupBadges(MediaDeviceGroup group) {
@@ -1056,7 +1056,7 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 	Widget _buildInputRow(BuildContext context) {
 		return Row(
 			children: [
-				Icon(MdiIcons.import_, size: 20),
+				Icon(MdiIcons.audioInputStereoMinijack, size: 20),
 				const SizedBox(width: 8),
 				const Text('Input'),
 				const Spacer(),

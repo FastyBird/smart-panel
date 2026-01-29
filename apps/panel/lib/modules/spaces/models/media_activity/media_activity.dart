@@ -1,14 +1,4 @@
-/// Media activity domain models for the V2 activity-based media architecture.
-///
-/// These models represent:
-/// - [MediaActivityKey]: Activity types (watch, listen, gaming, etc.)
-/// - [MediaActivationState]: Lifecycle states (activating, active, failed, deactivated)
-/// - [MediaEndpointType]: Endpoint types (display, audio_output, source, remote_target)
-/// - [MediaCapability]: Individual capability flags
-/// - [MediaEndpointModel]: A derived media endpoint with capabilities and links
-/// - [MediaActivityBindingModel]: A binding from activity to endpoints
-/// - [MediaActiveStateModel]: The current active activity state
-/// - [MediaActivationResultModel]: Result of an activation/deactivation call
+// Media activity domain models for the V2 activity-based media architecture.
 
 /// Activity keys matching backend MediaActivityKey enum.
 enum MediaActivityKey {
